@@ -1,0 +1,76 @@
+[project]
+name = "atomsmltr"
+version = "0.1.5"
+description = "Laser cooling and trapping simulation tool"
+authors = [
+    {name = "Alexandre Dareau",email = "alexandre.dareau@protonmail.com"}
+]
+maintainers = [
+  {name = "Alexandre Dareau", email = "alexandre.dareau@protonmail.com"}
+]
+license = { text = "GPL-3.0-or-later"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "black (>=24.10.0,<25.0.0)",
+    "scipy (>=1.15.1,<2.0.0)",
+    "matplotlib (>=3.10.0,<4.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)"
+]
+
+classifiers = [
+  # How mature is this project? Common values are
+  #   3 - Alpha
+  #   4 - Beta
+  #   5 - Production/Stable
+  "Development Status :: 4 - Beta",
+
+  # Indicate who your project is intended for
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Education",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.urls]
+Homepage = "https://atomsmltr.readthedocs.io"
+Repository = "https://github.com/adareau/atomSmltr"
+Issues = "https://github.com/adareau/atomSmltr/issues"
+
+[tool.poetry]
+packages = [{include = "atomsmltr", from = "src"}]
+
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+ipykernel = "^6.29.5"
+tqdm = "^4.67.1"
+line-profiler = "^4.2.0"
+ipympl = "^0.9.7"
+
+
+[tool.poetry.group.wayland.dependencies]
+pyqt5 = "^5.15.11"
+
+
+[tool.poetry.group.magpy.dependencies]
+magpylib = "^5.1.1"
+
+
+[tool.poetry.group.docs.dependencies]
+sphinx = "^8.2.3"
+sphinx-design = "^0.6.1"
+sphinx-thebe = "^0.3.1"
+sphinx-favicon = "^1.0.1"
+sphinx-gallery = "^0.19.0"
+sphinx-copybutton = "^0.5.2"
+myst-nb = "^1.2.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+]
