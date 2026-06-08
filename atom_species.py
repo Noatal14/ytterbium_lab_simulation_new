@@ -13,18 +13,7 @@ the excited F=3/2 state (ground state J=0 has negligible Zeeman shift).
 import numpy as np
 from scipy import constants as csts
 from atomsmltr.atoms import Atom, J0J1Transition, Ytterbium, Strontium
-
-# ── Yb-171 physical constants ──────
-YB171_MASS_AMU = 170.936331515          # atomic mass in amu
-YB171_WAVELENGTH_M = 398.9108443e-9     # transition wavelength (m)
-YB171_GAMMA_HZ = 2 * np.pi * 29.13e6    # linewidth Γ (rad/s)
-YB171_ISAT_MW_CM2 = 59.97               # saturation intensity (mW/cm²)
-
-# g-factors given as μ_B·g_F/h in kHz/G:
-#   Excited 1P1 F=3/2:   965    → g_F ≈ 0.6895
-_MU_B_OVER_H_KHZ_PER_G = ( csts.value("Bohr magneton") / csts.h * 1e-4 * 1e-3)  # μ_B/h in kHz/G ≈ 1399.6
-YB171_LANDE_G = 965.0 / _MU_B_OVER_H_KHZ_PER_G  # ≈ 0.6895
-
+from config import YB171, BLUE_TRANSITION, GREEN_TRANSITION
 
 def create_yb171():
     """
@@ -37,21 +26,31 @@ def create_yb171():
     -------
     atomsmltr.atoms.Atom
     """
-    atom = Atom(mass=YB171_MASS_AMU * csts.m_u, name="Yb171")
+    atom = Atom(mass=YB171.mass_kg, name="Yb171")
 
     # Correction factor for J=0 -> J=1 model:
     # Real transition is F=1/2 -> F=3/2 with max shift 1.5 * g_F.
     # Model has max shift 1.0 * g_model.
     # So we set g_model = 1.5 * g_F to match the force strength.
-    g_effective = YB171_LANDE_G * 1.5
+    g_effective = BLUE_TRANSITION.lande_g * 1.5
 
     main_transition = J0J1Transition(
-        wavelength=YB171_WAVELENGTH_M,
-        Gamma=YB171_GAMMA_HZ,
+        wavelength=BLUE_TRANSITION.wavelength,
+        Gamma=BLUE_TRANSITION.gamma,
         lande_factor=g_effective,
-        tag="main",
+        tag="399",
     )
     atom.add_transition(main_transition)
+
+    # 556nm Intercombination Line (F=1/2 -> F=3/2)
+    green_transition = J0J1Transition(
+        wavelength=GREEN_TRANSITION.wavelength,
+        Gamma=GREEN_TRANSITION.gamma,
+        lande_factor=GREEN_TRANSITION.lande_g * 1.5, # Same 1.5 correction factor for J0->J1 model
+        tag="556",
+    )
+    atom.add_transition(green_transition)
+
     return atom
 
 

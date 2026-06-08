@@ -1,7 +1,7 @@
 import numpy as np
 from atomsmltr.environment.lasers.beams import LaserBeam
 from atomsmltr.environment.lasers.polarization import CircularLeft, CircularRight
-from .atom_species import create_atom, YB171_ISAT_MW_CM2
+from config import BLUE_TRANSITION, YB171_ISAT_MW_CM2
 
 class EllipticalLaserBeam(LaserBeam):
     """
@@ -89,15 +89,8 @@ def setup_2dmot_lasers(s0=10.0, detuning_gamma=-1.0, atom_species_name="Yb171", 
     -------
     list of EllipticalLaserBeam
     """
-    # 1. Fetch atomic properties
-    atom = create_atom(atom_species_name)
-    main_trans = list(atom.trans.keys())[0] if atom.trans else None
-    if not main_trans:
-        raise ValueError(f"Atom '{atom_species_name}' has no defined transition.")
-    
-    trans = atom.trans[main_trans]
-    wavelength = trans.wavelength
-    
+    wavelength = BLUE_TRANSITION.wavelength
+        
     # Calculate I_sat in pure SI units (W/m^2)
     # 1 mW/cm^2 = 10 W/m^2
     # Hardcoding to YB171_ISAT for now or generalized if passed

@@ -1,5 +1,10 @@
+# pyrefly: ignore [missing-import]
 import numpy as np
+# pyrefly: ignore [missing-import]
 from atomsmltr.environment.zones.generic import Zone
+# pyrefly: ignore [missing-import]
+from atomsmltr.utils.infostring import InfoString
+from config import Geometry
 
 class FiniteCylinder(Zone):
     """
@@ -67,7 +72,6 @@ class FiniteCylinder(Zone):
         return "finite cylinder"
 
     def gen_infostring_obj(self):
-        from atomsmltr.utils.infostring import InfoString
         info = InfoString("Finite Cylinder")
         info.add_property("type", self.type)
         info.add_property("tag", self.tag)
@@ -107,7 +111,6 @@ class OutOfBoundsZone(Zone):
         return "out of bounds inverted zone"
 
     def gen_infostring_obj(self):
-        from atomsmltr.utils.infostring import InfoString
         info = InfoString("Out Of Bounds Zone")
         info.add_property("type", self.type)
         info.add_property("tag", self.tag)
@@ -128,10 +131,10 @@ def get_apparatus_internal_volume():
     # 1. MOT_Chamber: Centered at origin along Z axis. Length 40mm, Radius 15mm.
     # To center it at origin of Z, we start it at Z = -20mm (-0.02m)
     mot_chamber = FiniteCylinder(
-        origin=(0, 0, -0.02),
-        direction=(0, 0, 1),
-        radius=0.015,
-        length=0.04,
+        origin=Geometry.MOT_CHAMBER_ORIGIN,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.MOT_CHAMBER_RADIUS,
+        length=Geometry.MOT_CHAMBER_LENGTH,
         tag="MOT_chamber"
     )
 
@@ -139,65 +142,61 @@ def get_apparatus_internal_volume():
     # Length 378mm, Radius 8mm.
     # Convention: Atom beam enters from the 3rd quadrant (-Y, -Z) of the ZY plane.
     # Direction points FROM origin TOWARD the atom source (into -Y, -Z).
-    angle_rad = np.radians(25)
+    angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
     dir_z1 = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
-    L1 = 0.378
     z1 = FiniteCylinder(
         origin=(0, 0, 0),
         direction=dir_z1,
-        radius=0.008,
-        length=L1,
+        radius=Geometry.ZEEMAN_ARM_1_RADIUS,
+        length=Geometry.ZEEMAN_ARM_1_LENGTH,
         tag="Zeeman_Arm_1"
     )
 
     # 3. Zeeman_Arm_2: Collinear with last one, starts at the end of Arm 1. Length 23.7mm, radius 3.5mm
-    end_z1 = dir_z1 * L1
-    L2 = 0.0237
+    end_z1 = dir_z1 * Geometry.ZEEMAN_ARM_1_LENGTH
+
     z2 = FiniteCylinder(
         origin=end_z1,
         direction=dir_z1,
-        radius=0.0035,
-        length=L2,
+        radius=Geometry.ZEEMAN_ARM_2_RADIUS,
+        length=Geometry.ZEEMAN_ARM_2_LENGTH,
         tag="Zeeman_Arm_2"
     )
 
     # 4. Zeeman_Arm_3: Collinear with last one, starts at the end of Arm 2. Length 60mm, radius 17.4mm.
-    end_z2 = end_z1 + dir_z1 * L2
+    end_z2 = end_z1 + dir_z1 * Geometry.ZEEMAN_ARM_2_LENGTH   
     z3 = FiniteCylinder(
         origin=end_z2,
         direction=dir_z1,
-        radius=0.0174,
-        length=0.060,
+        radius=Geometry.ZEEMAN_ARM_3_RADIUS,
+        length=Geometry.ZEEMAN_ARM_3_LENGTH,
         tag="Zeeman_Arm_3"
     )
 
     # 5. Science_Arm_Part1: Length 144.5mm, radius 8mm.
-    len_part1 = 0.1445
     science_arm_part1 = FiniteCylinder(
         origin=(0, 0, 0),
-        direction=(0, 0, 1),
-        radius=0.008,
-        length=len_part1,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.SCIENCE_ARM_1_RADIUS,
+        length=Geometry.SCIENCE_ARM_1_LENGTH,
         tag="Science_Arm_Part1"
     )
 
     # 6. Science_Arm_DPS: Cylinder radius 1.5mm, length 7cm.
-    len_dps = 0.070
     science_arm_dps = FiniteCylinder(
-        origin=(0, 0, len_part1),
-        direction=(0, 0, 1),
-        radius=0.0015,
-        length=len_dps,
+        origin=(0, 0, Geometry.SCIENCE_ARM_1_LENGTH),
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.DPS_RADIUS,
+        length=Geometry.DPS_LENGTH,
         tag="Science_Arm_DPS"
     )
     
     # 7. Science_Arm_Part3: Original radius 8mm, reaching to 510mm from origin.
-    len_part3 = 0.510 - (len_part1 + len_dps)
     science_arm_part3 = FiniteCylinder(
-        origin=(0, 0, len_part1 + len_dps),
-        direction=(0, 0, 1),
-        radius=0.008,
-        length=len_part3,
+        origin=(0, 0, Geometry.SCIENCE_ARM_1_LENGTH + Geometry.DPS_LENGTH),
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.SCIENCE_ARM_1_RADIUS,
+        length=Geometry.SCIENCE_ARM_3_LENGTH,
         tag="Science_Arm_Part3"
     )
 
@@ -208,6 +207,18 @@ def get_apparatus_internal_volume():
     
     return apparatus_internal_volume
 
+def get_2dmot_chamber_only_zone():
+    """Returns a list containing only the MOT chamber and an OutOfBoundsZone to stop simulation."""
+    mot_chamber = FiniteCylinder(
+        origin=Geometry.MOT_CHAMBER_ORIGIN,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.MOT_CHAMBER_RADIUS,
+        length=Geometry.MOT_CHAMBER_LENGTH,
+        tag="MOT_chamber"
+    )
+    mot_chamber.action = "ignore"
+    out_of_bounds = OutOfBoundsZone(mot_chamber, action="stop", tag="MOT_Chamber_Boundary")
+    return [mot_chamber, out_of_bounds]
 
 def get_2dmot_testing_zone():
     """
@@ -216,32 +227,32 @@ def get_2dmot_testing_zone():
     """
     # 1. MOT_Chamber: Centered at origin along Z axis. Length 40mm, Radius 15mm.
     mot_chamber = FiniteCylinder(
-        origin=(0, 0, -0.02),
-        direction=(0, 0, 1),
-        radius=0.015,
-        length=0.04,
+        origin=Geometry.MOT_CHAMBER_ORIGIN,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.MOT_CHAMBER_RADIUS,
+        length=Geometry.MOT_CHAMBER_LENGTH,
         tag="MOT_chamber"
     )
 
     # 2. Zeeman_Arm_1 (shortened): Starts from origin, in ZY plane, 25 degree angle with -Z axis.
     # Convention: 3rd quadrant (-Y, -Z).
     # Length 100mm (10cm), Radius 8mm.
-    angle_rad = np.radians(25)
+    angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
     dir_z1 = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
     z1_short = FiniteCylinder(
         origin=(0, 0, 0),
         direction=dir_z1,
-        radius=0.008,
-        length=0.10,  # 10 cm
+        radius=Geometry.ZEEMAN_ARM_1_RADIUS,
+        length=Geometry.ZEEMAN_ARM_1_SHORT_LENGTH,
         tag="Zeeman_Arm_1_short"
     )
 
     # 5. Science_Arm: Collinear with Positive Z axis, starts at origin, length 510mm, radius 8mm.
     science_arm = FiniteCylinder(
         origin=(0, 0, 0),
-        direction=(0, 0, 1),
-        radius=0.008,
-        length=0.510,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.SCIENCE_ARM_1_RADIUS,
+        length=Geometry.SCIENCE_ARM_TOTAL_LENGTH,
         tag="Science_Arm"
     )
 
@@ -257,52 +268,52 @@ def get_dps_testing_zone():
     """
     # 1. MOT_Chamber: Centered at origin along Z axis. Length 40mm, Radius 15mm.
     mot_chamber = FiniteCylinder(
-        origin=(0, 0, -0.02),
-        direction=(0, 0, 1),
-        radius=0.015,
-        length=0.04,
+        origin=Geometry.MOT_CHAMBER_ORIGIN,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.MOT_CHAMBER_RADIUS,
+        length=Geometry.MOT_CHAMBER_LENGTH,
         tag="MOT_chamber"
     )
 
     # 2. Zeeman_Arm_1 (extended to encompass source): 
     # Starts from origin, in ZY plane, 25 degree angle with -Z axis.
     # Source generates atoms at dist=10cm. We make it 12cm long so they start inside.
-    angle_rad = np.radians(25)
+    angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
     dir_z1 = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
     z1_short = FiniteCylinder(
         origin=(0, 0, 0),
         direction=dir_z1,
-        radius=0.008,
-        length=0.12,  # 12 cm to comfortably contain distance=10cm atoms
+        radius=Geometry.ZEEMAN_ARM_1_RADIUS,
+        length=Geometry.ZEEMAN_ARM_1_EXTENDED_LENGTH,
         tag="Zeeman_Arm_1_short"
     )
 
     # 3. Science_Arm_Part1: Length 144.5mm, radius 8mm.
-    len_part1 = 0.1445
+    len_part1 = Geometry.SCIENCE_ARM_1_LENGTH
     science_arm_part1 = FiniteCylinder(
         origin=(0, 0, 0),
-        direction=(0, 0, 1),
-        radius=0.008,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.SCIENCE_ARM_1_RADIUS,
         length=len_part1,
         tag="Science_Arm_Part1"
     )
     
     # 4. Science_Arm_DPS: Cylinder radius 1.5mm, length 7cm.
-    len_dps = 0.070
+    len_dps = Geometry.DPS_LENGTH
     science_arm_dps = FiniteCylinder(
         origin=(0, 0, len_part1),
-        direction=(0, 0, 1),
-        radius=0.0015,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.DPS_RADIUS,
         length=len_dps,
         tag="Science_Arm_DPS"
     )
     
     # 5. Science_Arm_Part3: Original radius 8mm, reaching to 510mm from origin.
-    len_part3 = 0.510 - (len_part1 + len_dps)
+    len_part3 = Geometry.SCIENCE_ARM_3_LENGTH
     science_arm_part3 = FiniteCylinder(
         origin=(0, 0, len_part1 + len_dps),
-        direction=(0, 0, 1),
-        radius=0.008,
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.SCIENCE_ARM_3_RADIUS,
         length=len_part3,
         tag="Science_Arm_Part3"
     )
