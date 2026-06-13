@@ -97,6 +97,12 @@ def plot_2d_series(
         x_array = np.asarray(x_series, dtype=float)
         x_iter = [x_array for _ in y_series]
 
+    # Generate distinct colors if none provided
+    if colors is None:
+        n_lines = len(y_series)
+        cmap = plt.get_cmap("tab20")
+        colors = [cmap(i / n_lines) for i in range(n_lines)]
+
     fig, ax = plt.subplots(figsize=figsize)
     for idx, y in enumerate(y_series):
         y_array = np.asarray(y, dtype=float)

@@ -160,28 +160,33 @@ def plot_ni_histogram_for_dt(
     row_index = _find_dt_row_index(json_file, dt_value)
 
     counts = []
-    for laser in laser_names:
-        key_path = ni_value_key_template.format(laser=laser)
-        values = np.asarray(
-            get_json_value(json_file, f"summary_rows.{row_index}.{key_path}"),
-            dtype=float,
-        )
-        histogram, _ = np.histogram(values, bins=bins)
-        counts.append(histogram)
-
-    filename = output_dir / f"ni_histogram_dt_{dt_value:.0e}.png"
-    plot_grouped_histogram(
-        categories=list(bin_labels),
-        counts=counts,
-        labels=list(laser_names),
-        title=f"Ni histogram by laser for dt={dt_value}",
-        xlabel="Ni range",
-        ylabel="count",
-        save=True,
-        filename=filename,
-        show=show,
+    # Load mean_N_channels directly from stochastic_results
+    mean_n_channels = get_json_value(
+        json_file, f"summary_rows.{row_index}.stochastic_results.mean_N_channels"
     )
-    print(f"Saved Ni histogram for dt={dt_value} to {filename}")
+
+    for laser_idx, laser in enumerate(laser_names):
+        if laser_idx < len(mean_n_channels):
+            values = np.asarray(mean_n_channels[laser_idx], dtype=float)
+            histogram, _ = np.histogram(values, bins=bins)
+            counts.append(histogram)
+
+    if counts:
+        filename = output_dir / f"ni_histogram_dt_{dt_value:.0e}.png"
+        plot_grouped_histogram(
+            categories=list(bin_labels),
+            counts=counts,
+            labels=list(laser_names[:len(counts)]),
+            title=f"Ni histogram by laser for dt={dt_value}",
+            xlabel="Ni range",
+            ylabel="count",
+            save=True,
+            filename=filename,
+            show=show,
+        )
+        print(f"Saved Ni histogram for dt={dt_value} to {filename}")
+    else:
+        print(f"No laser data found for dt={dt_value}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -203,14 +208,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--laser-names",
         nargs="+",
-        help="Laser names used for Ni histogram plotting.",
+        default=["laser1", "laser2", "laser3", "laser4"],
+        help="Laser names used for Ni histogram plotting (default: laser1, laser2, laser3, laser4).",
     )
     parser.add_argument(
         "--ni-key-template",
+        default="stochastic_results.laser_counts.{laser}.Ni",
         help=(
             "Template path to laser Ni values inside the summary row. "
-            "Use '{laser}' as placeholder for each laser name, e.g. "
-            "stochastic_results.laser_counts.{laser}.Ni"
+            "Use '{laser}' as placeholder for each laser name "
+            "(default: stochastic_results.laser_counts.{laser}.Ni)"
         ),
     )
     parser.add_argument(
@@ -224,30 +231,33 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     json_file = str(Path(args.json_file).resolve())
-    output_dir = Path(args.output_dir) if args.output_dir else Path(json_file).resolve().parent / "figures"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Extract JSON filename without extension for subdirectory
+    json_filename = Path(json_file).stem
+    
+    base_output_dir = Path(args.output_dir) if args.output_dir else Path(json_file).resolve().parent / "figures"
+    
+    # Create subdirectories for each plot type
+    apparatus_3d_dir = base_output_dir / json_filename / "3d_apparatus"
+    distance_vs_time_dir = base_output_dir / json_filename / "distance_vs_time"
+    ni_histogram_dir = base_output_dir / json_filename / "ni_histogram"
 
     dt_values = args.dt if args.dt else _get_all_dts(json_file)
     dt_values = sorted(set(float(value) for value in dt_values))
 
     for dt_value in dt_values:
-        plot_3d_apparatus_for_dt(json_file, dt_value, output_dir, show=args.show)
+        plot_3d_apparatus_for_dt(json_file, dt_value, apparatus_3d_dir, show=args.show)
 
-    plot_distance_vs_time_for_dts(json_file, dt_values, output_dir, show=args.show)
+    plot_distance_vs_time_for_dts(json_file, dt_values, distance_vs_time_dir, show=args.show)
 
-    if args.laser_names and args.ni_key_template:
-        for dt_value in dt_values:
-            plot_ni_histogram_for_dt(
-                json_file,
-                dt_value,
-                args.laser_names,
-                args.ni_key_template,
-                output_dir,
-                show=args.show,
-            )
-    elif args.laser_names or args.ni_key_template:
-        print(
-            "Skipping Ni histogram plots because both --laser-names and --ni-key-template are required."
+    for dt_value in dt_values:
+        plot_ni_histogram_for_dt(
+            json_file,
+            dt_value,
+            args.laser_names,
+            args.ni_key_template,
+            ni_histogram_dir,
+            show=args.show,
         )
 
 
