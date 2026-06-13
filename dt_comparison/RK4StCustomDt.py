@@ -13,32 +13,41 @@ def smooth_weight(Ni, N0=5.0, p=2):
 class RK4StCustomDt(RK4StCustom):
     """
     A subclass of RK4St that intercepts the du_fluct call to track
-    the expected number of scattering events (Ni) at every timestep.
+    the expected number of scattering events (Ni) and the expected force
+    contribution from each laser channel at every timestep.
     """
     def __init__(self, config=None):
         super().__init__(config)
         self.tracked_Ni_vals = []
+        self.tracked_force_vals = []
     
     def du_fluct(self, t, u, dt):
         _, scatt_list = get_force_vec(u, self.config, return_list=True)
         dv_tot = np.zeros_like(u[..., :3])
 
         Ni_vals = []
+        force_vals = []
 
         for scatt in scatt_list:
             # 0 - get scattering rate, laser wavenumber and unit vector for each laser
             rate = scatt["rate"]  # scattering rate
             k = scatt["k"]  # laser wavenumber
-            u = scatt["unit_vector"]  # laser unit vector
+            unit_vector = scatt["unit_vector"]  # laser unit vector
             Ni = rate * dt  # number of scattered photons
             Ni_vals.append(Ni)
+
+            # 0a - expected force contribution from this channel
+            # Use the same radiation pressure expression as atomsmltr._get_force_vec
+            force = csts.hbar * k * rate
+            force_vals.append(force)
+
             m = self.config.atom.mass
             # 1 - absorption fluctuation
             # large number of photon approximation
-            #   > fluctuation are Gaussian with std = np.sqrt(Ni)
+            #   > fluctuations are Gaussian with std = np.sqrt(Ni)
             # note that dN has the same shape as Ni, and can be an array !!
             dN = np.asanyarray(self.rng.normal(loc=0, scale=np.sqrt(Ni)))
-            dv_abs = (csts.hbar * k / m) * dN[..., np.newaxis] * u
+            dv_abs = (csts.hbar * k / m) * dN[..., np.newaxis] * unit_vector
             dv_tot = dv_tot + dv_abs
             # 2 - emission fluctuation
             # Gaussian approx for random walk, with std = sqrt(Ni/3) for x, y, z
@@ -50,6 +59,7 @@ class RK4StCustomDt(RK4StCustom):
             dv_tot = dv_tot + dv_em
 
         self.tracked_Ni_vals.append(Ni_vals)
+        self.tracked_force_vals.append(force_vals)
         dx, dy, dz = np.zeros_like(dv_tot.T)
         dvx, dvy, dvz = dv_tot.T
         res = np.array([dx, dy, dz, dvx, dvy, dvz]).T

@@ -115,18 +115,34 @@ if __name__ == "__main__":
     # macOS only: prevents sleep while the script is running.
     caffeinate_process = subprocess.Popen(["caffeinate", "-i"])
 
+    real = True
+
+    r0, v0 = mot_entry_initial_condition(v0=50, r0=0.02)
+    u0 = np.concatenate((r0, v0))
+    
+    params = {
+        "t_max": 3.0e-3,
+        "s0": 1.5,
+        "detuning_gamma": -1.2,
+        "magnet_radius": 0.055,
+        "u0": list(u0),
+        "npools": 8,
+        "save_dir": "dt_comparison/data",
+    }
+
     try:
-        sim(
-            dt_values=[1e-4, 9e-5],
-            n_seeds=10,
-            t_max=3.0e-3,  # 3 ms is plenty of time for 2D MOT chamber exit
-            s0=1.5,
-            detuning_gamma=-1.2,
-            magnet_radius=0.055,
-            npools=8,
-            u0 = mot_entry_initial_condition(),
-            save_dir="tests/dt_comparison/data",
-        )
+        if (real):
+            sim(
+                dt_values=[1e-4, 9e-5, 8e-5, 7e-5, 6e-5, 5e-5, 4e-5, 3e-5, 2e-5, 1e-5, 5e-6, 1e-6],
+                n_seeds=5000,
+                **params
+            )
+        else:
+            sim(
+                dt_values=[1e-4, 9e-5],
+                n_seeds=10,
+                **params
+            )
         
     finally:
         caffeinate_process.terminate()

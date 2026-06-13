@@ -7,7 +7,7 @@ if str(ROOT) not in sys.path:
 
 import numpy as np
 
-from utils.graph_utils import make_graph
+from utils.quantitative_analysis_graphs_builder import make_graph
 from utils.helper_functions import read_data
 
 

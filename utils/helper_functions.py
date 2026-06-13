@@ -1,17 +1,8 @@
 import csv
 import json
 import numpy as np
-from config import K_B, MOT_ENTRY_POSITION, MOT_ENTRY_VELOCITY
+from config import K_B
 from atomsmltr.simulation.simulator import ScipyIVP_3D
-
-
-def mot_entry_initial_condition():
-    """
-    Returns the exact physical entry state of the atom as it enters the 2D MOT
-    chamber after being slowed down by the Zeeman slower in the full simulation.
-    Uses centralized coordinates from config.py to avoid magic numbers.
-    """
-    return np.concatenate((MOT_ENTRY_POSITION, MOT_ENTRY_VELOCITY))
 
 def run_simulation(
         seed_idx = None, 
@@ -27,7 +18,7 @@ def run_simulation(
     res = sim.run(time_points, npools=0, verbose=False)[0]
     return seed_idx, res.y, sim
 
-def generate_single_atom_state(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):
+def mot_entry_initial_condition(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):
     """
     Generate the position and velocity vector for a single atom source,
     following the standard conventions for the 2DMOT simulator.

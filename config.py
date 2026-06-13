@@ -43,19 +43,6 @@ GREEN_TRANSITION = Transition(wavelength=GREEN_LASER_WAVELENGTH_M, gamma=GREEN_L
 
 
 # ============================================================
-# Initial Conditions
-# ============================================================
-
-# 2D MOT Entry Initial Conditions (Zeeman-cooled state)
-# Position: [0.0, -9.05 mm, -20.0 mm]
-# Velocity: [0.0, 16.95 m/s, 28.12 m/s]
-MOT_ENTRY_POSITION = np.array([0.0, -9.05344710e-03, -1.99750274e-02])
-MOT_ENTRY_VELOCITY = np.array([0.0, 1.69503096e+01, 2.81249595e+01])
-
-EPS_INTENSITY = 1e-4
-
-
-# ============================================================
 # Geometry Config
 # ============================================================
 

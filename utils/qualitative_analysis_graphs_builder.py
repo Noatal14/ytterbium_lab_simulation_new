@@ -70,6 +70,84 @@ def plot_3d_paths(
     return fig, ax
 
 
+def plot_3d_paths_with_beams(
+    paths: Sequence[Sequence[Sequence[float]]],
+    labels: Sequence[str],
+    beam_paths: Sequence[Sequence[Sequence[float]]],
+    beam_labels: Sequence[str],
+    colors: Optional[Sequence[str]] = None,
+    beam_color: str = "gray",
+    linestyles: Optional[Sequence[str]] = None,
+    linewidths: Optional[Sequence[float]] = None,
+    beam_linewidth: float = 2.0,
+    beam_linestyle: str = "--",
+    title: Optional[str] = None,
+    xlabel: str = "x",
+    ylabel: str = "y",
+    zlabel: str = "z",
+    save: bool = False,
+    filename: Optional[Union[str, Path]] = None,
+    show: bool = True,
+    figsize: Tuple[float, float] = (10.0, 8.0),
+) -> Tuple[Figure, Any]:
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111, projection="3d")
+
+    for idx, path in enumerate(paths):
+        array = np.asarray(path, dtype=float)
+        if array.ndim != 2 or array.shape[1] != 3:
+            raise ValueError("Each path must be shape (N, 3) for x, y, z coordinates.")
+
+        label = labels[idx] if idx < len(labels) else None
+        color = colors[idx] if colors is not None and idx < len(colors) else None
+        linestyle = linestyles[idx] if linestyles is not None and idx < len(linestyles) else "-"
+        linewidth = linewidths[idx] if linewidths is not None and idx < len(linewidths) else 1.5
+
+        ax.plot(
+            array[:, 0],
+            array[:, 1],
+            array[:, 2],
+            label=label,
+            color=color,
+            linestyle=linestyle,
+            linewidth=linewidth,
+        )
+
+    for idx, beam_path in enumerate(beam_paths):
+        array = np.asarray(beam_path, dtype=float)
+        if array.ndim != 2 or array.shape[1] != 3:
+            raise ValueError("Each beam path must be shape (2, 3) for x, y, z endpoints.")
+
+        beam_label = beam_labels[idx] if idx == 0 else None
+        ax.plot(
+            array[:, 0],
+            array[:, 1],
+            array[:, 2],
+            label=beam_label,
+            color=beam_color,
+            linestyle=beam_linestyle,
+            linewidth=beam_linewidth,
+            alpha=0.8,
+        )
+
+    ax.set_title(title if title is not None else "3D Trajectories")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_zlabel(zlabel)
+    ax.grid(True, linestyle="--", alpha=0.4)
+    if labels or beam_paths:
+        ax.legend()
+
+    if save and filename is not None:
+        _save_figure(fig, filename)
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+    return fig, ax
+
+
 def plot_2d_series(
     x_series: Union[Sequence[float], Sequence[Sequence[float]]],
     y_series: Sequence[Sequence[float]],
@@ -124,6 +202,50 @@ def plot_2d_series(
     ax.set_ylabel(ylabel)
     ax.grid(True, linestyle="--", alpha=0.4)
     if labels:
+        ax.legend()
+
+    if save and filename is not None:
+        _save_figure(fig, filename)
+    if show:
+        plt.show()
+    else:
+        plt.close(fig)
+
+    return fig, ax
+
+
+def plot_scatter_with_thresholds(
+    x: Sequence[float],
+    y: Sequence[float],
+    title: Optional[str] = None,
+    xlabel: str = "x",
+    ylabel: str = "y",
+    xscale: str = "linear",
+    x_threshold: Optional[float] = None,
+    y_threshold: Optional[float] = None,
+    x_threshold_label: Optional[str] = None,
+    y_threshold_label: Optional[str] = None,
+    save: bool = False,
+    filename: Optional[Union[str, Path]] = None,
+    show: bool = True,
+    figsize: Tuple[float, float] = (10.0, 6.0),
+) -> Tuple[Figure, Any]:
+    fig, ax = plt.subplots(figsize=figsize)
+    x_array = np.asarray(x, dtype=float)
+    y_array = np.asarray(y, dtype=float)
+    ax.scatter(x_array, y_array, s=16, alpha=0.6, c="C0", edgecolors="none")
+    ax.set_xscale(xscale)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title if title is not None else "Scatter plot")
+    ax.grid(True, linestyle="--", alpha=0.4)
+
+    if x_threshold is not None:
+        ax.axvline(x_threshold, color="C1", linestyle="--", label=x_threshold_label)
+    if y_threshold is not None:
+        ax.axhline(y_threshold, color="C2", linestyle="--", label=y_threshold_label)
+
+    if x_threshold is not None or y_threshold is not None:
         ax.legend()
 
     if save and filename is not None:
@@ -193,4 +315,9 @@ def plot_grouped_histogram(
     return fig, ax
 
 
-__all__ = ["plot_3d_paths", "plot_2d_series", "plot_grouped_histogram"]
+__all__ = [
+    "plot_3d_paths",
+    "plot_2d_series",
+    "plot_grouped_histogram",
+    "plot_scatter_with_thresholds",
+]

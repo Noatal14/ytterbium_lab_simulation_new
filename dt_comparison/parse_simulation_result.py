@@ -13,6 +13,7 @@ def parse_stoch_results(seed_results):
     """
     transmitted_trajectories = []
     transmitted_Ns = []
+    transmitted_forces = []
 
     for seed_idx, y, sim in seed_results:
         if y.shape[1] == 0:
@@ -24,6 +25,9 @@ def parse_stoch_results(seed_results):
             if hasattr(sim, "tracked_Ni_vals") and sim.tracked_Ni_vals:
                 # sim.tracked_Ni_vals is a list of per-timestep Ni arrays
                 transmitted_Ns.append([np.asarray(row, dtype=float) for row in sim.tracked_Ni_vals])
+            if hasattr(sim, "tracked_force_vals") and sim.tracked_force_vals:
+                # sim.tracked_force_vals is a list of per-timestep force arrays
+                transmitted_forces.append([np.asarray(row, dtype=float) for row in sim.tracked_force_vals])
 
     if not transmitted_trajectories:
         return {
@@ -97,6 +101,29 @@ def parse_stoch_results(seed_results):
         mean_N_channels = []
         std_N_channels = []
 
+    if transmitted_forces:
+        max_force_channels = 0
+        for seed_F in transmitted_forces:
+            for row in seed_F[:min_steps]:
+                if row.size > max_force_channels:
+                    max_force_channels = row.size
+
+        force_stack = np.zeros((len(transmitted_forces), min_steps, max_force_channels), dtype=float)
+        for s_idx, seed_F in enumerate(transmitted_forces):
+            for t_idx in range(min_steps):
+                if t_idx < len(seed_F):
+                    row = np.asarray(seed_F[t_idx], dtype=float)
+                    force_stack[s_idx, t_idx, : row.size] = row
+
+        mean_force_by_time_channel = np.mean(force_stack, axis=0)
+        std_force_by_time_channel = np.std(force_stack, axis=0, ddof=0)
+
+        mean_force_channels = [mean_force_by_time_channel[:, ch] for ch in range(mean_force_by_time_channel.shape[1])]
+        std_force_channels = [std_force_by_time_channel[:, ch] for ch in range(std_force_by_time_channel.shape[1])]
+    else:
+        mean_force_channels = []
+        std_force_channels = []
+
     return {
         "timepoints": min_steps,
         "transmitted": count,
@@ -114,6 +141,8 @@ def parse_stoch_results(seed_results):
         "std_z_velocity": std_velocities[2],
         "mean_N_channels": mean_N_channels,
         "std_N_channels": std_N_channels,
+        "mean_force_channels": mean_force_channels,
+        "std_force_channels": std_force_channels,
     }
 
 
