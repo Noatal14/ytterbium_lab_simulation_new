@@ -25,7 +25,7 @@ def plot_3d_paths(
     zlabel: str = "z",
     save: bool = False,
     filename: Optional[Union[str, Path]] = None,
-    show: bool = True,
+    show: bool = False,
     figsize: Tuple[float, float] = (10.0, 8.0),
 ) -> Tuple[Figure, Any]:
     """Plot multiple 3D trajectories on the same axes."""
@@ -87,7 +87,7 @@ def plot_3d_paths_with_beams(
     zlabel: str = "z",
     save: bool = False,
     filename: Optional[Union[str, Path]] = None,
-    show: bool = True,
+    show: bool = False,
     figsize: Tuple[float, float] = (10.0, 8.0),
 ) -> Tuple[Figure, Any]:
     fig = plt.figure(figsize=figsize)
@@ -160,7 +160,7 @@ def plot_2d_series(
     ylabel: str = "y",
     save: bool = False,
     filename: Optional[Union[str, Path]] = None,
-    show: bool = True,
+    show: bool = False,
     figsize: Tuple[float, float] = (10.0, 6.0),
 ) -> Tuple[Figure, Any]:
     """Plot multiple 2D series on a single axes."""
@@ -227,7 +227,7 @@ def plot_scatter_with_thresholds(
     y_threshold_label: Optional[str] = None,
     save: bool = False,
     filename: Optional[Union[str, Path]] = None,
-    show: bool = True,
+    show: bool = False,
     figsize: Tuple[float, float] = (10.0, 6.0),
 ) -> Tuple[Figure, Any]:
     fig, ax = plt.subplots(figsize=figsize)
@@ -268,7 +268,7 @@ def plot_grouped_histogram(
     ylabel: str = "Count",
     save: bool = False,
     filename: Optional[Union[str, Path]] = None,
-    show: bool = True,
+    show: bool = False,
     figsize: Tuple[float, float] = (10.0, 6.0),
     bar_alpha: float = 0.85,
 ) -> Tuple[Figure, Any]:

@@ -12,20 +12,18 @@ This is a simplified replacement for the old dt_comparison.py script:
 - starts at the 2D MOT entrance with initial speed ~35 m/s
 - saves raw trajectories + compact summary data
 """
-
-import json
 import numpy as np
 import subprocess
 import multiprocessing as mp
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from atomsmltr.simulation.simulator import ScipyIVP_3D, RK4St
+from atomsmltr.simulation.simulator import ScipyIVP_3D
 from dt_comparison.RK4StCustomDt import RK4StCustomDt
-from utils.RK4StCustom import RK4StCustom
-from dt_comparison.parse_simulation_result import parse_results
+from dt_comparison.simulations.parse_simulation_result import parse_results
 from lab_setup.config_builder import build_2dmot_config
-from utils.helper_functions import mot_entry_initial_condition, run_simulation, save_file_csv, save_file_json, generate_timepoints
+from utils.file_helpers import save_file_json
+from utils.simulation_helpers import mot_entry_initial_condition, run_simulation, generate_timepoints
 
 def sim(
     dt_values=[],
@@ -115,9 +113,9 @@ if __name__ == "__main__":
     # macOS only: prevents sleep while the script is running.
     caffeinate_process = subprocess.Popen(["caffeinate", "-i"])
 
-    real = True
+    real = False
 
-    r0, v0 = mot_entry_initial_condition(v0=50, r0=0.02)
+    r0, v0 = mot_entry_initial_condition(v0=35, r0=0.02)
     u0 = np.concatenate((r0, v0))
     
     params = {
@@ -133,7 +131,7 @@ if __name__ == "__main__":
     try:
         if (real):
             sim(
-                dt_values=[1e-4, 9e-5, 8e-5, 7e-5, 6e-5, 5e-5, 4e-5, 3e-5, 2e-5, 1e-5, 5e-6, 1e-6],
+                dt_values=[9e-6, 8e-6, 7e-6, 6e-6],
                 n_seeds=5000,
                 **params
             )
