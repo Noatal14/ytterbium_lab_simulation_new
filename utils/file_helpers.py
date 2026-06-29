@@ -1,5 +1,6 @@
 import csv
 import json
+from pathlib import Path
 import numpy as np
 from atomsmltr.simulation.simulator import ScipyIVP_3D
 from typing import Any
@@ -80,10 +81,12 @@ JSON
 """
 
 def save_file_json(filename, data):
-    with open(filename, "w") as f:
+    filepath = Path(filename)
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    with open(filepath, "w") as f:
         json.dump(data, f, indent=2, default=_json_default)
 
-    print(f"JSON summary saved to: {filename}")
+    print(f"JSON summary saved to: {filepath}")
 
 
 def read_data_json(json_file):

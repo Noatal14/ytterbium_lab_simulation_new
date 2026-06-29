@@ -27,6 +27,7 @@ def plot_force_vs_Ni_diagnostic(
     N_min: float = 10.0,
 
 ) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
     diagnostics = compute_force_Ni_bad_fraction(
         Ni_values=Ni_values,
         force_values=force_values,
@@ -157,7 +158,7 @@ def main() -> None:
         "output_dir": Path(json_file).resolve().parent / "figures",
         "laser_names": ["laser1", "laser2", "laser3", "laser4"],
         "epsilon": 0.1,
-        "n_min": 10,
+        "n_min": 15,
     }
         
     # Create subdirectories for each plot type

@@ -113,7 +113,7 @@ if __name__ == "__main__":
     # macOS only: prevents sleep while the script is running.
     caffeinate_process = subprocess.Popen(["caffeinate", "-i"])
 
-    real = False
+    real = True
 
     r0, v0 = mot_entry_initial_condition(v0=35, r0=0.02)
     u0 = np.concatenate((r0, v0))

@@ -3,6 +3,8 @@ import numpy as np
 from utils.file_helpers import save_file_json
 from utils.data_helpers import get_from_data
 
+F_scale = 3.141895058426422e-20
+
 def _get_all_dts(data: dict) -> List[float]:
     rows = get_from_data(data, "summary_rows")
     return [float(row["dt"]) for row in rows if "dt" in row]
@@ -107,8 +109,6 @@ def compute_force_Ni_bad_fraction(
     dt_value = None,
     output_dir = None,
 ) -> dict:
-
-    F_scale = float(np.nanpercentile(force_values, 95.0))
     F_norm = force_values / F_scale
 
     important_mask = F_norm > epsilon

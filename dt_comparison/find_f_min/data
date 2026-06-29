@@ -1,0 +1,22 @@
+position = [0.015, 0, 0]
+
+v= 1 m/s | A=0.114 | F+=8.145e-21 N | F-=1.025e-20 NF_plus_norm=0.259 | F_minus_norm=0.326 | 
+v= 2 m/s | A=0.226 | F+=7.313e-21 N | F-=1.158e-20 NF_plus_norm=0.233 | F_minus_norm=0.369 | 
+v= 3 m/s | A=0.332 | F+=6.596e-21 N | F-=1.316e-20 NF_plus_norm=0.210 | F_minus_norm=0.419 | 
+v= 4 m/s | A=0.431 | F+=5.975e-21 N | F-=1.503e-20 NF_plus_norm=0.190 | F_minus_norm=0.478 | 
+v= 5 m/s | A=0.521 | F+=5.434e-21 N | F-=1.724e-20 NF_plus_norm=0.173 | F_minus_norm=0.549 | 
+v= 6 m/s | A=0.600 | F+=4.960e-21 N | F-=1.985e-20 NF_plus_norm=0.158 | F_minus_norm=0.632 | 
+v= 7 m/s | A=0.669 | F+=4.544e-21 N | F-=2.291e-20 NF_plus_norm=0.145 | F_minus_norm=0.729 | 
+v= 8 m/s | A=0.727 | F+=4.176e-21 N | F-=2.644e-20 NF_plus_norm=0.133 | F_minus_norm=0.842 | 
+v= 9 m/s | A=0.775 | F+=3.850e-21 N | F-=3.040e-20 NF_plus_norm=0.123 | F_minus_norm=0.968 | 
+v=10 m/s | A=0.814 | F+=3.560e-21 N | F-=3.463e-20 NF_plus_norm=0.113 | F_minus_norm=1.102 | 
+v=11 m/s | A=0.843 | F+=3.300e-21 N | F-=3.882e-20 NF_plus_norm=0.105 | F_minus_norm=1.235 | 
+v=12 m/s | A=0.865 | F+=3.067e-21 N | F-=4.246e-20 NF_plus_norm=0.098 | F_minus_norm=1.351 | 
+v=13 m/s | A=0.880 | F+=2.858e-21 N | F-=4.496e-20 NF_plus_norm=0.091 | F_minus_norm=1.431 | 
+v=14 m/s | A=0.890 | F+=2.669e-21 N | F-=4.579e-20 NF_plus_norm=0.085 | F_minus_norm=1.457 | 
+v=15 m/s | A=0.894 | F+=2.497e-21 N | F-=4.477e-20 NF_plus_norm=0.079 | F_minus_norm=1.425 | 
+v=16 m/s | A=0.895 | F+=2.342e-21 N | F-=4.212e-20 NF_plus_norm=0.075 | F_minus_norm=1.341 | 
+v=17 m/s | A=0.892 | F+=2.200e-21 N | F-=3.839e-20 NF_plus_norm=0.070 | F_minus_norm=1.222 | 
+v=18 m/s | A=0.886 | F+=2.071e-21 N | F-=3.418e-20 NF_plus_norm=0.066 | F_minus_norm=1.088 | 
+v=19 m/s | A=0.878 | F+=1.952e-21 N | F-=2.997e-20 NF_plus_norm=0.062 | F_minus_norm=0.954 | 
+v=20 m/s | A=0.868 | F+=1.843e-21 N | F-=2.605e-20 NF_plus_norm=0.059 | F_minus_norm=0.829 |
