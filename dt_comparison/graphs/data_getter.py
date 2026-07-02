@@ -2,8 +2,7 @@ from typing import Sequence, List
 import numpy as np
 from utils.file_helpers import save_file_json
 from utils.data_helpers import get_from_data
-
-F_scale = 3.141895058426422e-20
+from dt_comparison.consts import F_scale
 
 def _get_all_dts(data: dict) -> List[float]:
     rows = get_from_data(data, "summary_rows")

@@ -56,6 +56,9 @@ class Geometry:
     MOT_CHAMBER_RADIUS = 0.015
     MOT_CHAMBER_ORIGIN = (0, 0, -MOT_CHAMBER_LENGTH / 2)
 
+    MOT_WX = 19e-3
+    MOT_WY = 5e-3
+
     ZEEMAN_ARM_ANGLE_DEG = 25
 
     ZEEMAN_ARM_1_LENGTH = 0.378

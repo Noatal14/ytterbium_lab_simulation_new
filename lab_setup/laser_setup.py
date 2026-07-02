@@ -1,7 +1,7 @@
 import numpy as np
 from atomsmltr.environment.lasers.beams import LaserBeam
 from atomsmltr.environment.lasers.polarization import CircularLeft, CircularRight
-from config import BLUE_TRANSITION, YB171_ISAT_MW_CM2
+from config import BLUE_TRANSITION, YB171_ISAT_MW_CM2, Geometry
 
 class EllipticalLaserBeam(LaserBeam):
     """
@@ -107,8 +107,8 @@ def setup_2dmot_lasers(s0=10.0, detuning_gamma=-1.0, atom_species_name="Yb171", 
     # for BOTH X-directed and Y-directed beams. Therefore wx=19mm always produces
     # a 19mm-wide beam along Lab Z, and wy=5mm produces 5mm in the other transverse axis.
     # This has been confirmed by evaluating the actual intensity profile at specific lab points.
-    wx = 19e-3  # Semi-major: always along Lab Z due to frame mapping
-    wy = 5e-3   # Semi-minor: transverse (Lab Y for X-beams, Lab X for Y-beams)
+    wx = Geometry.MOT_WX  # Semi-major: always along Lab Z due to frame mapping
+    wy = Geometry.MOT_WY   # Semi-minor: transverse (Lab Y for X-beams, Lab X for Y-beams)
 
     beams = []
     
