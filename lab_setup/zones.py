@@ -4,7 +4,7 @@ import numpy as np
 from atomsmltr.environment.zones.generic import Zone
 # pyrefly: ignore [missing-import]
 from atomsmltr.utils.infostring import InfoString
-from config import Geometry
+from config import Geometry, zeeman_sim_config
 
 class FiniteCylinder(Zone):
     """
@@ -219,6 +219,44 @@ def get_2dmot_chamber_only_zone():
     mot_chamber.action = "ignore"
     out_of_bounds = OutOfBoundsZone(mot_chamber, action="stop", tag="MOT_Chamber_Boundary")
     return [mot_chamber, out_of_bounds]
+
+def get_zeeman_only_zone(cutoff_distance=zeeman_sim_config["cutoff_distance"]):
+    """Return a Zeeman-only geometry and an out-of-bounds stop zone."""
+    angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
+    beam_dir = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
+
+    z1 = FiniteCylinder(
+        origin=beam_dir * cutoff_distance,
+        direction=beam_dir,
+        radius=Geometry.ZEEMAN_ARM_1_RADIUS,
+        length=max(Geometry.ZEEMAN_ARM_1_LENGTH - cutoff_distance, 0.0),
+        tag="Zeeman_Arm_1_truncated",
+    )
+
+    end_z1 = beam_dir * Geometry.ZEEMAN_ARM_1_LENGTH
+    z2 = FiniteCylinder(
+        origin=end_z1,
+        direction=beam_dir,
+        radius=Geometry.ZEEMAN_ARM_2_RADIUS,
+        length=Geometry.ZEEMAN_ARM_2_LENGTH,
+        tag="Zeeman_Arm_2",
+    )
+
+    end_z2 = end_z1 + beam_dir * Geometry.ZEEMAN_ARM_2_LENGTH
+    z3 = FiniteCylinder(
+        origin=end_z2,
+        direction=beam_dir,
+        radius=Geometry.ZEEMAN_ARM_3_RADIUS,
+        length=Geometry.ZEEMAN_ARM_3_LENGTH,
+        tag="Zeeman_Arm_3",
+    )
+
+    zone = z1 | z2 | z3
+    zone.tag = "zeeman_only_zone"
+    zone.action = "ignore"
+    out_of_bounds = OutOfBoundsZone(zone, action="stop", tag="Zeeman_Boundary")
+    return [zone, out_of_bounds]
+
 
 def get_2dmot_testing_zone():
     """

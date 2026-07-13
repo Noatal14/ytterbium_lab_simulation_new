@@ -1,22 +1,158 @@
+Mot Laser
+
 position = [0.015, 0, 0]
 
-v= 1 m/s | A=0.114 | F+=8.145e-21 N | F-=1.025e-20 NF_plus_norm=0.259 | F_minus_norm=0.326 | 
-v= 2 m/s | A=0.226 | F+=7.313e-21 N | F-=1.158e-20 NF_plus_norm=0.233 | F_minus_norm=0.369 | 
-v= 3 m/s | A=0.332 | F+=6.596e-21 N | F-=1.316e-20 NF_plus_norm=0.210 | F_minus_norm=0.419 | 
-v= 4 m/s | A=0.431 | F+=5.975e-21 N | F-=1.503e-20 NF_plus_norm=0.190 | F_minus_norm=0.478 | 
-v= 5 m/s | A=0.521 | F+=5.434e-21 N | F-=1.724e-20 NF_plus_norm=0.173 | F_minus_norm=0.549 | 
-v= 6 m/s | A=0.600 | F+=4.960e-21 N | F-=1.985e-20 NF_plus_norm=0.158 | F_minus_norm=0.632 | 
-v= 7 m/s | A=0.669 | F+=4.544e-21 N | F-=2.291e-20 NF_plus_norm=0.145 | F_minus_norm=0.729 | 
-v= 8 m/s | A=0.727 | F+=4.176e-21 N | F-=2.644e-20 NF_plus_norm=0.133 | F_minus_norm=0.842 | 
-v= 9 m/s | A=0.775 | F+=3.850e-21 N | F-=3.040e-20 NF_plus_norm=0.123 | F_minus_norm=0.968 | 
-v=10 m/s | A=0.814 | F+=3.560e-21 N | F-=3.463e-20 NF_plus_norm=0.113 | F_minus_norm=1.102 | 
-v=11 m/s | A=0.843 | F+=3.300e-21 N | F-=3.882e-20 NF_plus_norm=0.105 | F_minus_norm=1.235 | 
-v=12 m/s | A=0.865 | F+=3.067e-21 N | F-=4.246e-20 NF_plus_norm=0.098 | F_minus_norm=1.351 | 
-v=13 m/s | A=0.880 | F+=2.858e-21 N | F-=4.496e-20 NF_plus_norm=0.091 | F_minus_norm=1.431 | 
-v=14 m/s | A=0.890 | F+=2.669e-21 N | F-=4.579e-20 NF_plus_norm=0.085 | F_minus_norm=1.457 | 
-v=15 m/s | A=0.894 | F+=2.497e-21 N | F-=4.477e-20 NF_plus_norm=0.079 | F_minus_norm=1.425 | 
-v=16 m/s | A=0.895 | F+=2.342e-21 N | F-=4.212e-20 NF_plus_norm=0.075 | F_minus_norm=1.341 | 
-v=17 m/s | A=0.892 | F+=2.200e-21 N | F-=3.839e-20 NF_plus_norm=0.070 | F_minus_norm=1.222 | 
-v=18 m/s | A=0.886 | F+=2.071e-21 N | F-=3.418e-20 NF_plus_norm=0.066 | F_minus_norm=1.088 | 
-v=19 m/s | A=0.878 | F+=1.952e-21 N | F-=2.997e-20 NF_plus_norm=0.062 | F_minus_norm=0.954 | 
-v=20 m/s | A=0.868 | F+=1.843e-21 N | F-=2.605e-20 NF_plus_norm=0.059 | F_minus_norm=0.829 |
+v= 1 m/s | A=0.049 | F+=5.702e-21 N | F-=6.294e-21 NF_plus_norm=0.181 | F_minus_norm=0.200 | 
+v= 2 m/s | A=0.094 | F+=5.630e-21 N | F-=6.800e-21 NF_plus_norm=0.179 | F_minus_norm=0.216 | 
+v= 3 m/s | A=0.129 | F+=5.708e-21 N | F-=7.399e-21 NF_plus_norm=0.182 | F_minus_norm=0.236 | 
+v= 4 m/s | A=0.148 | F+=5.939e-21 N | F-=8.006e-21 NF_plus_norm=0.189 | F_minus_norm=0.255 | 
+v= 5 m/s | A=0.145 | F+=6.331e-21 N | F-=8.483e-21 NF_plus_norm=0.202 | F_minus_norm=0.270 | 
+v= 6 m/s | A=0.114 | F+=6.899e-21 N | F-=8.676e-21 NF_plus_norm=0.220 | F_minus_norm=0.276 | 
+v= 7 m/s | A=0.051 | F+=7.658e-21 N | F-=8.488e-21 NF_plus_norm=0.244 | F_minus_norm=0.270 | 
+v= 8 m/s | A=0.041 | F+=8.626e-21 N | F-=7.940e-21 NF_plus_norm=0.275 | F_minus_norm=0.253 | 
+v= 9 m/s | A=0.156 | F+=9.804e-21 N | F-=7.157e-21 NF_plus_norm=0.312 | F_minus_norm=0.228 | 
+v=10 m/s | A=0.279 | F+=1.116e-20 N | F-=6.287e-21 NF_plus_norm=0.355 | F_minus_norm=0.200 | 
+v=11 m/s | A=0.396 | F+=1.259e-20 N | F-=5.445e-21 NF_plus_norm=0.401 | F_minus_norm=0.173 | 
+v=12 m/s | A=0.496 | F+=1.391e-20 N | F-=4.690e-21 NF_plus_norm=0.443 | F_minus_norm=0.149 | 
+v=13 m/s | A=0.572 | F+=1.485e-20 N | F-=4.042e-21 NF_plus_norm=0.473 | F_minus_norm=0.129 | 
+v=14 m/s | A=0.625 | F+=1.517e-20 N | F-=3.499e-21 NF_plus_norm=0.483 | F_minus_norm=0.111 | 
+v=15 m/s | A=0.658 | F+=1.477e-20 N | F-=3.047e-21 NF_plus_norm=0.470 | F_minus_norm=0.097 | 
+v=16 m/s | A=0.675 | F+=1.377e-20 N | F-=2.672e-21 NF_plus_norm=0.438 | F_minus_norm=0.085 | 
+v=17 m/s | A=0.681 | F+=1.243e-20 N | F-=2.360e-21 NF_plus_norm=0.396 | F_minus_norm=0.075 | 
+v=18 m/s | A=0.679 | F+=1.100e-20 N | F-=2.099e-21 NF_plus_norm=0.350 | F_minus_norm=0.067 | 
+v=19 m/s | A=0.674 | F+=9.663e-21 N | F-=1.880e-21 NF_plus_norm=0.308 | F_minus_norm=0.060 | 
+v=20 m/s | A=0.668 | F+=8.508e-21 N | F-=1.693e-21 NF_plus_norm=0.271 | F_minus_norm=0.054 | 
+v=21 m/s | A=0.663 | F+=7.564e-21 N | F-=1.534e-21 NF_plus_norm=0.241 | F_minus_norm=0.049 | 
+v=22 m/s | A=0.660 | F+=6.826e-21 N | F-=1.398e-21 NF_plus_norm=0.217 | F_minus_norm=0.044 | 
+v=23 m/s | A=0.662 | F+=6.279e-21 N | F-=1.279e-21 NF_plus_norm=0.200 | F_minus_norm=0.041 | 
+v=24 m/s | A=0.668 | F+=5.906e-21 N | F-=1.176e-21 NF_plus_norm=0.188 | F_minus_norm=0.037 | 
+v=25 m/s | A=0.680 | F+=5.692e-21 N | F-=1.085e-21 NF_plus_norm=0.181 | F_minus_norm=0.035 | 
+v=26 m/s | A=0.697 | F+=5.631e-21 N | F-=1.005e-21 NF_plus_norm=0.179 | F_minus_norm=0.032 | 
+v=27 m/s | A=0.719 | F+=5.719e-21 N | F-=9.344e-22 NF_plus_norm=0.182 | F_minus_norm=0.030 | 
+v=28 m/s | A=0.745 | F+=5.958e-21 N | F-=8.712e-22 NF_plus_norm=0.190 | F_minus_norm=0.028 | 
+v=29 m/s | A=0.772 | F+=6.344e-21 N | F-=8.145e-22 NF_plus_norm=0.202 | F_minus_norm=0.026 | 
+v=30 m/s | A=0.800 | F+=6.863e-21 N | F-=7.636e-22 NF_plus_norm=0.218 | F_minus_norm=0.024 | 
+v=31 m/s | A=0.825 | F+=7.469e-21 N | F-=7.175e-22 NF_plus_norm=0.238 | F_minus_norm=0.023 | 
+v=32 m/s | A=0.845 | F+=8.069e-21 N | F-=6.758e-22 NF_plus_norm=0.257 | F_minus_norm=0.022 | 
+v=33 m/s | A=0.861 | F+=8.522e-21 N | F-=6.378e-22 NF_plus_norm=0.271 | F_minus_norm=0.020 | 
+v=34 m/s | A=0.870 | F+=8.675e-21 N | F-=6.031e-22 NF_plus_norm=0.276 | F_minus_norm=0.019 | 
+v=35 m/s | A=0.873 | F+=8.443e-21 N | F-=5.713e-22 NF_plus_norm=0.269 | F_minus_norm=0.018 | 
+v=36 m/s | A=0.871 | F+=7.862e-21 N | F-=5.421e-22 NF_plus_norm=0.250 | F_minus_norm=0.017 | 
+v=37 m/s | A=0.864 | F+=7.062e-21 N | F-=5.152e-22 NF_plus_norm=0.225 | F_minus_norm=0.016 | 
+v=38 m/s | A=0.853 | F+=6.191e-21 N | F-=4.904e-22 NF_plus_norm=0.197 | F_minus_norm=0.016 | 
+v=39 m/s | A=0.839 | F+=5.356e-21 N | F-=4.674e-22 NF_plus_norm=0.170 | F_minus_norm=0.015 | 
+v=40 m/s | A=0.824 | F+=4.613e-21 N | F-=4.461e-22 NF_plus_norm=0.147 | F_minus_norm=0.014 | 
+v=41 m/s | A=0.806 | F+=3.977e-21 N | F-=4.263e-22 NF_plus_norm=0.127 | F_minus_norm=0.014 | 
+v=42 m/s | A=0.788 | F+=3.444e-21 N | F-=4.079e-22 NF_plus_norm=0.110 | F_minus_norm=0.013 | 
+v=43 m/s | A=0.770 | F+=3.002e-21 N | F-=3.907e-22 NF_plus_norm=0.096 | F_minus_norm=0.012 | 
+v=44 m/s | A=0.751 | F+=2.634e-21 N | F-=3.746e-22 NF_plus_norm=0.084 | F_minus_norm=0.012 | 
+v=45 m/s | A=0.733 | F+=2.329e-21 N | F-=3.595e-22 NF_plus_norm=0.074 | F_minus_norm=0.011 | 
+v=46 m/s | A=0.714 | F+=2.073e-21 N | F-=3.454e-22 NF_plus_norm=0.066 | F_minus_norm=0.011 | 
+v=47 m/s | A=0.697 | F+=1.857e-21 N | F-=3.321e-22 NF_plus_norm=0.059 | F_minus_norm=0.011 | 
+v=48 m/s | A=0.679 | F+=1.675e-21 N | F-=3.196e-22 NF_plus_norm=0.053 | F_minus_norm=0.010 | 
+v=49 m/s | A=0.663 | F+=1.518e-21 N | F-=3.078e-22 NF_plus_norm=0.048 | F_minus_norm=0.010 |
+
+Zeeman Laser
+============
+
+vel  1 z  0.02  Normalized F  0.019344436361178077
+vel  2 z  0.02  Normalized F  0.019589195667539798
+vel  3 z  0.02  Normalized F  0.01983862121128633
+vel  4 z  0.02  Normalized F  0.020092832139693588
+vel  5 z  0.02  Normalized F  0.020351951419989234
+vel  6 z  0.02  Normalized F  0.02061610598697514
+vel  7 z  0.02  Normalized F  0.02088542689733523
+vel  8 z  0.02  Normalized F  0.02116004949097613
+vel  9 z  0.02  Normalized F  0.021440113559768804
+vel  10 z  0.02  Normalized F  0.021725763524080503
+vel  11 z  0.02  Normalized F  0.022017148617510415
+vel  12 z  0.02  Normalized F  0.022314423080266228
+vel  13 z  0.02  Normalized F  0.022617746361645794
+vel  14 z  0.02  Normalized F  0.022927283332116015
+vel  15 z  0.02  Normalized F  0.023243204505511213
+vel  16 z  0.02  Normalized F  0.023565686271905195
+vel  17 z  0.02  Normalized F  0.023894911141745852
+vel  18 z  0.02  Normalized F  0.02423106800187741
+vel  19 z  0.02  Normalized F  0.02457435238411499
+vel  20 z  0.02  Normalized F  0.024924966747078107
+vel  21 z  0.02  Normalized F  0.02528312077203445
+vel  22 z  0.02  Normalized F  0.025649031673553608
+vel  23 z  0.02  Normalized F  0.0260229245258221
+vel  24 z  0.02  Normalized F  0.02640503260552589
+vel  25 z  0.02  Normalized F  0.026795597752266472
+vel  26 z  0.02  Normalized F  0.027194870747539734
+vel  27 z  0.02  Normalized F  0.02760311171337544
+vel  28 z  0.02  Normalized F  0.02802059053180827
+vel  29 z  0.02  Normalized F  0.02844758728643042
+vel  30 z  0.02  Normalized F  0.028884392727360434
+vel  31 z  0.02  Normalized F  0.029331308761053894
+vel  32 z  0.02  Normalized F  0.02978864896648031
+vel  33 z  0.02  Normalized F  0.03025673913929525
+vel  34 z  0.02  Normalized F  0.030735917865751756
+vel  35 z  0.02  Normalized F  0.031226537128216672
+vel  36 z  0.02  Normalized F  0.031728962944290666
+vel  37 z  0.02  Normalized F  0.03224357604167318
+vel  38 z  0.02  Normalized F  0.03277077257106766
+vel  39 z  0.02  Normalized F  0.03331096485958955
+vel  40 z  0.02  Normalized F  0.03386458220731884
+vel  41 z  0.02  Normalized F  0.0344320717298345
+vel  42 z  0.02  Normalized F  0.03501389924977853
+vel  43 z  0.02  Normalized F  0.03561055024072589
+vel  44 z  0.02  Normalized F  0.036222530826883724
+vel  45 z  0.02  Normalized F  0.036850368842411975
+vel  46 z  0.02  Normalized F  0.037494614954448204
+vel  47 z  0.02  Normalized F  0.03815584385423533
+vel  48 z  0.02  Normalized F  0.038834655521094635
+vel  49 z  0.02  Normalized F  0.039531676564359554
+
+
+
+vel  1 z  0  Normalized F  0.019342741068758617
+vel  2 z  0  Normalized F  0.019587468157481854
+vel  3 z  0  Normalized F  0.019836860663568268
+vel  4 z  0  Normalized F  0.020091037708087373
+vel  5 z  0  Normalized F  0.020350122231050913
+vel  6 z  0  Normalized F  0.020614241138989773
+vel  7 z  0  Normalized F  0.020883525459213886
+vel  8 z  0  Normalized F  0.02115811050110248
+vel  9 z  0  Normalized F  0.021438136024792574
+vel  10 z  0  Normalized F  0.02172374641765512
+vel  11 z  0  Normalized F  0.02201509087897176
+vel  12 z  0  Normalized F  0.022312323613249408
+vel  13 z  0  Normalized F  0.02261560403263649
+vel  14 z  0  Normalized F  0.0229250969689331
+vel  15 z  0  Normalized F  0.023240972895716572
+vel  16 z  0  Normalized F  0.02356340816113701
+vel  17 z  0  Normalized F  0.023892585231970936
+vel  18 z  0  Normalized F  0.024228692949558196
+vel  19 z  0  Normalized F  0.024571926798286334
+vel  20 z  0  Normalized F  0.02492248918732885
+vel  21 z  0  Normalized F  0.025280589746388225
+vel  22 z  0  Normalized F  0.025646445636243274
+vel  23 z  0  Normalized F  0.02602028187495152
+vel  24 z  0  Normalized F  0.02640233168061263
+vel  25 z  0  Normalized F  0.026792836831658378
+vel  26 z  0  Normalized F  0.02719204804569797
+vel  27 z  0  Normalized F  0.027600225378016048
+vel  28 z  0  Normalized F  0.02801763864089392
+vel  29 z  0  Normalized F  0.0284445678450031
+vel  30 z  0  Normalized F  0.02888130366420561
+vel  31 z  0  Normalized F  0.029328147925185868
+vel  32 z  0  Normalized F  0.029785414123437513
+vel  33 z  0  Normalized F  0.03025342796723404
+vel  34 z  0  Normalized F  0.030732527951325778
+vel  35 z  0  Normalized F  0.03122306596222859
+vel  36 z  0  Normalized F  0.03172540791710153
+vel  37 z  0  Normalized F  0.03223993443835414
+vel  38 z  0  Normalized F  0.0327670415662773
+vel  39 z  0  Normalized F  0.033307141512159064
+vel  40 z  0  Normalized F  0.033860663454525916
+vel  41 z  0  Normalized F  0.03442805438134532
+vel  42 z  0  Normalized F  0.03500977998123585
+vel  43 z  0  Normalized F  0.0356063255869594
+vel  44 z  0  Normalized F  0.036218197174717304
+vel  45 z  0  Normalized F  0.03684592242304002
+vel  46 z  0  Normalized F  0.03749005183535179
+vel  47 z  0  Normalized F  0.03815115993060602
+vel  48 z  0  Normalized F  0.03882984650673165
+vel  49 z  0  Normalized F  0.039526737982003124

@@ -8,7 +8,17 @@ class ZeemanSlowerField(MagneticField):
     A setup for a Zeeman slower consisting of 20 rings, 
     each with 8 permanent magnets rotated towards or away from the central axis.
     """
-    def __init__(self, zeeman_axis_offset=0.0, magnet_dimensions=(0.005, 0.005, 0.005), polarization_T=-1.24, angle_deg=25.0, start_distance=0.314):
+    def __init__(
+        self,
+        zeeman_axis_offset=0.0,
+        magnet_dimensions=(0.005, 0.005, 0.005),
+        polarization_T=-1.24,
+        angle_deg=25.0,
+        start_distance=0.314,
+        radii=None,
+        positions_z=None,
+        tilt_angles=None,
+    ):
         """
         Initializes the custom magpylib Zeeman Slower field.
         
@@ -26,16 +36,19 @@ class ZeemanSlowerField(MagneticField):
         self.angle_deg = angle_deg
         self.start_distance = start_distance
 
-        self.radii = [0.0175, 0.0175, 0.0175, 0.0185, 0.0175, 0.0187, 0.0181, 0.0175, 0.0175, 0.0179, 
-                      0.0188, 0.0207, 0.0245, 0.0249, 0.0210, 0.0194, 0.0200, 0.0232, 0.0175, 0.0185]
-        self.positions_z = [-0.0200, -0.0123, -0.0053, 0.0020, 0.0103, 0.0192, 0.0273, 0.0351, 0.0431, 
+        default_radii = [0.0175, 0.0175, 0.0175, 0.0185, 0.0175, 0.0187, 0.0181, 0.0175, 0.0175, 0.0179, 
+                        0.0188, 0.0207, 0.0245, 0.0249, 0.0210, 0.0194, 0.0200, 0.0232, 0.0175, 0.0185]
+        default_positions_z = [-0.0200, -0.0123, -0.0053, 0.0020, 0.0103, 0.0192, 0.0273, 0.0351, 0.0431, 
                             0.0510, 0.0592, 0.0678, 0.0784, 0.1075, 0.1193, 0.1283, 0.1370, 0.1457, 
                             0.1547, 0.1637]
-        self.tilt_angles = [-70.2857, -89.9994, -90.0000, -172.7935, -138.4226, -155.4454, -171.3141, 
+        default_tilt_angles = [-70.2857, -89.9994, -90.0000, -172.7935, -138.4226, -155.4454, -171.3141, 
                             -168.2399, -167.7998, -166.2449, -161.4433, -150.2352, -145.7914, 21.2799, 
                             17.5568, 38.4814, 70.7662, 50.5701, 36.0731, 136.4575]
 
-        self.tilt_angles = [-i for i in self.tilt_angles]
+        self.radii = list(radii) if radii is not None else default_radii
+        self.positions_z = list(positions_z) if positions_z is not None else default_positions_z
+        self.tilt_angles = list(tilt_angles) if tilt_angles is not None else default_tilt_angles
+        self.tilt_angles = [-angle for angle in self.tilt_angles]
 
         # The polarization vector magnitude is set initially along the magnet's local Z-axis.
         pol = (0, 0, self.polarization_T)

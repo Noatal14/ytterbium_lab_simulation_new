@@ -1,1 +1,3 @@
-F_scale = 3.141895058426422e-20
+from config import F_scale
+
+F_scale = F_scale

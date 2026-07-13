@@ -1,0 +1,144 @@
+import numpy as np
+from dt_comparison.RK4StCustomDt import RK4StCustomDt
+from lab_setup.config_builder import build_base_config
+from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone
+from thermal_beam import generate_thermal_beam_state
+from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors
+from config import zeeman_configs, zeeman_sim_config, _2d_mot_sim_config
+
+# Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
+
+def zeeman_simulation(
+        N_particles=1000,
+        _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+        zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
+        zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
+        magnet_radius=0.053,
+        gravity_enabled=True,
+        T_C=400.0,
+        seed=42,
+        npools=8,
+    ):
+
+    mot_config = dict(_2d_mot_config)
+    mot_config.setdefault("swap_polarization", False)
+
+    atom, config = build_base_config(
+        atom_species="Yb171",
+        gravity_enabled=gravity_enabled,
+        include_zeeman_field=True,
+        include_zeeman_laser=True,
+        include_2d_mot_lasers=True,
+        include_3dmot_lasers=False,
+        magnet_radius=magnet_radius,
+        _2d_mot_config=mot_config,
+        zeeman_config= zeeman_config,
+        zeeman_field_config=zeeman_field_config,
+        include_magnetic_field=True,
+        zones=get_zeeman_only_zone()
+    )
+
+    r0_arr, v0_arr, beam_info = generate_thermal_beam_state(
+        config_name="thermal beam",
+        N=N_particles,
+        T_C=T_C,
+        m=atom.mass,
+        distance_m=zeeman_sim_config["start_distance"],
+        seed=seed
+    )
+
+    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], zeeman_sim_config["dt"])
+
+    u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
+
+    res, sim =run_multiple_atoms_simulation(
+        config=config,
+        u0=u0_list,
+        time_points=time_points,
+        sim_function=RK4StCustomDt,
+        npools=npools
+    )
+
+    survivor_states, survivor_indices = zeeman_extract_survivors(res, zeeman_sim_config["cutoff_distance"])
+
+    return res, survivor_states, survivor_indices
+        
+
+def mot_simulation(
+    survivor_states,
+    _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+    zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
+    zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
+    magnet_radius=0.053,
+    gravity_enabled=True,
+    npools=8,
+):
+    N = len(survivor_states)
+    if N == 0:
+        return [], np.array([])
+
+    mot_config = dict(_2d_mot_config)
+    mot_config.setdefault("swap_polarization", False)
+
+    atom, config = build_base_config(
+        atom_species="Yb171",
+        gravity_enabled=gravity_enabled,
+        include_zeeman_field=True,
+        include_zeeman_laser=True,
+        include_2d_mot_lasers=True,
+        include_3dmot_lasers=False,
+        magnet_radius=magnet_radius,
+        _2d_mot_config=mot_config,
+        zeeman_config= zeeman_config,
+        zeeman_field_config=zeeman_field_config,
+        include_magnetic_field=True,
+        zones=get_entire_apparatus_zone()
+    )
+
+    # 2. Set initial conditions from survivor states
+    u0_list = [state.copy() for state in survivor_states]
+
+    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], _2d_mot_sim_config["dt"])
+
+    res, sim =run_multiple_atoms_simulation(
+        config=config,
+        u0=u0_list,
+        time_points=time_points,
+        sim_function=RK4StCustomDt,
+        npools=npools
+    )
+
+    mot_survivor_states, mot_survivor_indices = mot_extract_survivors(res)
+    count = _2d_mot_success_count(res)
+
+    return res, count, mot_survivor_states
+
+if __name__ == "__main__":
+    radii, positions, tilt_angles = zeeman_configs["80_2"]
+
+    print("Running Zeeman phase simulation...")
+
+    zeeman_traj, survivors, surv_idx = zeeman_simulation(
+        N_particles=500,
+        _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+        zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
+        zeeman_field_config={ "radii": radii, "positions": positions, "tilt_angles": tilt_angles },
+        magnet_radius=0.053,
+        T_C=400.0,
+    )
+
+    print(f"Zeeman phase simulation ended")
+
+    print("zeeman survivors: ", len(survivors))
+    
+    if len(survivors) == 0:
+        print("No survivors — nothing to do in Phase 2.")
+    else:
+        mot_traj, success_count = mot_simulation(
+            survivor_states=survivors,
+            _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+            magnet_radius=0.053,
+        )
+        print(f"Success count: {success_count}")
+
+

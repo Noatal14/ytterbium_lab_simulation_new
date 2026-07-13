@@ -10,9 +10,37 @@ class CircularGaussianBeam(LaserBeam):
 
     The 1/e^2 beam waist is `waist`.
     """
-    def __init__(self, wavelength=399e-9, waist=7e-3, power=1e-3, **kwargs):
+    def __init__(
+        self,
+        wavelength=399e-9,
+        waist=7e-3,
+        power=1e-3,
+        waist_position=None,
+        direction=None,
+        direction_type="vector",
+        polarization=None,
+        tag=None,
+        **kwargs,
+    ):
         self._waist = waist
-        super().__init__(wavelength=wavelength, waist=waist, power=power, **kwargs)
+        if "position" in kwargs:
+            waist_position = kwargs.pop("position")
+        if waist_position is None:
+            waist_position = (0, 0, 0)
+        if direction is None:
+            direction = kwargs.pop("direction", (0, 0, 1))
+        if polarization is None:
+            polarization = kwargs.pop("polarization", None)
+        super().__init__(
+            wavelength=wavelength,
+            waist=waist,
+            power=power,
+            waist_position=waist_position,
+            direction=direction,
+            direction_type=direction_type,
+            polarization=polarization,
+            tag=tag,
+        )
 
     @property
     def type(self):

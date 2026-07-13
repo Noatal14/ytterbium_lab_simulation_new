@@ -1,25 +1,49 @@
 import numpy as np
-from config import K_B, YB171_MASS_KG
+from config import K_B, YB171_MASS_KG, F_scale, Geometry
 
-def is_transmitted_2d_mot(final_pos):
+def is_transmitted_2d_mot(final_pos, trajectory=None):
     """Determine if the final position corresponds to a transmitted atom."""
     return (final_pos[2] >= 0.0195) and (np.sqrt(final_pos[0]**2 + final_pos[1]**2) <= 0.015)
 
-def parse_stoch_results(seed_results):
+
+def is_transmitted_zeeman(final_pos, trajectory=None, cutoff_distance=0.100, beam_dir=None):
+    """Determine whether a Zeeman trajectory reached the cutoff boundary."""
+    if trajectory is None:
+        return False
+
+    if beam_dir is None:
+        angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
+        beam_dir = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
+
+    positions = np.asarray(trajectory[:3, :]).T
+    if positions.size == 0:
+        return False
+
+    proj = positions @ beam_dir
+    min_proj = np.min(proj)
+    return min_proj <= cutoff_distance + 0.010
+
+
+def parse_stoch_results(seed_results, is_transmitted_fn=None):
     """Compute mean trajectory arrays for the transmitted stochastic runs.
 
     All transmitted trajectories are trimmed to the shortest transmitted length so
     the mean arrays are aligned and comparisons use a consistent size.
     """
+    if is_transmitted_fn is None:
+        is_transmitted_fn = is_transmitted_2d_mot
+
     transmitted_trajectories = []
     transmitted_Ns = []
     transmitted_forces = []
+    completed_lengths = []
 
     for seed_idx, y, sim in seed_results:
         if y.shape[1] == 0:
             continue
+        completed_lengths.append(int(y.shape[1]))
         final_pos = y[:3, -1]
-        is_transmitted = is_transmitted_2d_mot(final_pos)
+        is_transmitted = bool(is_transmitted_fn(final_pos, y))
         if is_transmitted:
             transmitted_trajectories.append(y)
             if hasattr(sim, "tracked_Ni_vals") and sim.tracked_Ni_vals:
@@ -47,6 +71,8 @@ def parse_stoch_results(seed_results):
             "std_z_velocity": np.array([]),
             "mean_N_channels": [],
             "std_N_channels": [],
+            "completed_runs": len(completed_lengths),
+            "trajectory_lengths": completed_lengths,
         }
 
     min_steps = min(y.shape[1] for y in transmitted_trajectories)
@@ -119,10 +145,14 @@ def parse_stoch_results(seed_results):
         std_force_by_time_channel = np.std(force_stack, axis=0, ddof=0)
 
         mean_force_channels = [mean_force_by_time_channel[:, ch] for ch in range(mean_force_by_time_channel.shape[1])]
+        normalized_mean_force_channels = [f/F_scale for f in mean_force_channels]
         std_force_channels = [std_force_by_time_channel[:, ch] for ch in range(std_force_by_time_channel.shape[1])]
+        normalized_std_force_channels = [f/F_scale for f in std_force_channels]
     else:
         mean_force_channels = []
+        normalized_mean_force_channels = []
         std_force_channels = []
+        normalized_std_force_channels = []
 
     return {
         "timepoints": min_steps,
@@ -143,10 +173,14 @@ def parse_stoch_results(seed_results):
         "std_N_channels": std_N_channels,
         "mean_force_channels": mean_force_channels,
         "std_force_channels": std_force_channels,
+        "normalized_mean_force_channels": normalized_mean_force_channels,
+        "normalized_std_force_channels": normalized_std_force_channels,
+        "completed_runs": len(completed_lengths),
+        "trajectory_lengths": completed_lengths,
     }
 
 
-def parse_det_results(y):
+def parse_det_results(y, is_transmitted_fn=None):
     """Analyze a deterministic trajectory `y` and return the same row format as stochastic analysis."""
     timepoints = y.shape[1]
 
@@ -157,6 +191,9 @@ def parse_det_results(y):
     velocity_x = np.full(timepoints, np.nan)
     velocity_y = np.full(timepoints, np.nan)
     velocity_z = np.full(timepoints, np.nan)
+
+    if is_transmitted_fn is None:
+        is_transmitted_fn = is_transmitted_2d_mot
 
     if timepoints > 0:
         final_pos = y[:3, -1]
@@ -169,7 +206,7 @@ def parse_det_results(y):
         velocity_y[:] = y[4, :]
         velocity_z[:] = y[5, :]
 
-        is_transmitted = is_transmitted_2d_mot(final_pos)
+        is_transmitted = bool(is_transmitted_fn(final_pos, y))
 
     return {
         "transmitted": is_transmitted,
@@ -183,13 +220,13 @@ def parse_det_results(y):
     }
 
 
-def parse_results(seed_results, det_y, dt):
+def parse_results(seed_results, det_y, dt, is_transmitted_fn=None):
     """Compare stochastic seed results to one deterministic trajectory.
 
     Returns a compact row with raw stochastic mean/std arrays and deterministic arrays.
     """
-    det_row = parse_det_results(det_y)
-    stoch_row = parse_stoch_results(seed_results)
+    det_row = parse_det_results(det_y, is_transmitted_fn=is_transmitted_fn)
+    stoch_row = parse_stoch_results(seed_results, is_transmitted_fn=is_transmitted_fn)
 
     return {
         "dt": dt,

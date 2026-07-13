@@ -60,6 +60,7 @@ class Geometry:
     MOT_WY = 5e-3
 
     ZEEMAN_ARM_ANGLE_DEG = 25
+    ZEEMAN_ARM_ANGLE_DEG_RAD = np.radians(ZEEMAN_ARM_ANGLE_DEG)
 
     ZEEMAN_ARM_1_LENGTH = 0.378
     ZEEMAN_ARM_1_RADIUS = 0.008
@@ -89,6 +90,8 @@ class Geometry:
     ZEEMAN_LASER_WAIST = 7e-3
 
     ZEEMAN_START_DISTANCRE = 0.314
+
+ZEEMAN_BEAM_DIR = np.array([0, -np.sin(Geometry.ZEEMAN_ARM_ANGLE_DEG_RAD), -np.cos(Geometry.ZEEMAN_ARM_ANGLE_DEG_RAD)])
 
 
 # ============================================================
@@ -137,4 +140,31 @@ zeeman_laser_config = {
 mot_3d_laser_config = { 
     "399": { "s0": 0.5, "detuning_gamma": -1.0, "waist": 0.01 }, 
     "556": { "s0": 5.0, "detuning_gamma": -10.0, "waist": 0.015 } 
+}
+
+F_scale = 3.141895058426422e-20
+
+# Full sim config
+# ===============
+full_sim_config = {
+    "dt": 8e-6,
+    "t_max": 25e-3,
+    "start_distance": 0.450,
+}
+
+# Zeeman sim config
+# =================
+zeeman_sim_config = {
+    "dt": 4e-5,
+    "t_max": 20e-3,
+    "start_distance": 0.450,
+    "cutoff_distance": 0.100,
+}
+
+# 2D MOT sim config
+# =================
+_2d_mot_sim_config = {
+    "dt": 8e-6,
+    "t_max": 25e-3,
+    "start_distance": 0.100,
 }

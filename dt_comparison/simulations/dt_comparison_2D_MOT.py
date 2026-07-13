@@ -23,7 +23,7 @@ from dt_comparison.RK4StCustomDt import RK4StCustomDt
 from dt_comparison.simulations.parse_simulation_result import parse_results
 from lab_setup.config_builder import build_2dmot_config
 from utils.file_helpers import save_file_json
-from utils.simulation_helpers import mot_entry_initial_condition, run_simulation, generate_timepoints
+from utils.simulation_helpers import entry_initial_condition, run_simulation, generate_timepoints
 
 def sim(
     dt_values=[],
@@ -73,7 +73,7 @@ def sim(
         worker = partial(
             run_simulation,
             config=config,
-            u0=u0,
+            u0=[u0],
             time_points=time_points,
             sim_function=RK4StCustomDt,
         )
@@ -115,7 +115,7 @@ if __name__ == "__main__":
 
     real = True
 
-    r0, v0 = mot_entry_initial_condition(v0=35, r0=0.02)
+    r0, v0 = entry_initial_condition(v0=35, r0=0.02)
     u0 = np.concatenate((r0, v0))
     
     params = {

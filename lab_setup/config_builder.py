@@ -16,7 +16,7 @@ from lab_setup.mag_field_custom import CustomQuadrupole
 from lab_setup.mag_field_Zeeman import ZeemanSlowerField
 from lab_setup.mag_field_builtin import get_builtin_2dmot_magnetic_field
 from lab_setup.gravity import get_gravity_force
-from lab_setup.zones import get_2dmot_testing_zone, get_2dmot_chamber_only_zone
+from lab_setup.zones import get_2dmot_testing_zone, get_2dmot_chamber_only_zone, get_entire_apparatus_zone, get_zeeman_only_zone
 from config import Geometry, zeeman_laser_config, mot_2d_laser_config, mot_3d_laser_config
 
 def build_base_config(**kwargs):
@@ -90,21 +90,32 @@ def build_base_config(**kwargs):
     # --- 5. Magnetic Field Config ---
     use_builtin_mag = kwargs.get("use_builtin_mag", False)
     include_zeeman_field = kwargs.get("include_zeeman_field", False)
+    include_magnetic_field = kwargs.get("include_magnetic_field", True)
     
     mag_fields = []
-    if not use_builtin_mag:
-        radius = kwargs.get("magnet_radius", 0.06)
-        mag_fields.append(CustomQuadrupole(radius=radius))
-    else:
-        gradient_G_cm = kwargs.get("builtin_mag_gradient", 50.0)
-        mag_fields.append(get_builtin_2dmot_magnetic_field(gradient_G_cm=gradient_G_cm))
+    if include_magnetic_field:
+        if not use_builtin_mag:
+            radius = kwargs.get("magnet_radius", 0.06)
+            mag_fields.append(CustomQuadrupole(radius=radius))
+        else:
+            gradient_G_cm = kwargs.get("builtin_mag_gradient", 50.0)
+            mag_fields.append(get_builtin_2dmot_magnetic_field(gradient_G_cm=gradient_G_cm))
         
     if include_zeeman_field:
-        zeeman_fiels_config = kwargs.get("zeeman_fiels_config", { "radii": None, "positions": None, "tilt_angles": None })
-        if radius is None or zeeman_fiels_config.positions_z is None or zeeman_fiels_config.tilt_angles is None:
+        zeeman_field_config = kwargs.get("zeeman_field_config", { "radii": None, "positions": None, "tilt_angles": None })
+        radii = zeeman_field_config.get("radii")
+        positions = zeeman_field_config.get("positions")
+        tilt_angles = zeeman_field_config.get("tilt_angles")
+        if radii is None or positions is None or tilt_angles is None:
             mag_fields.append(ZeemanSlowerField(angle_deg=Geometry.ZEEMAN_ARM_ANGLE_DEG, start_distance=Geometry.ZEEMAN_START_DISTANCRE))
         else:
-            mag_fields.append(ZeemanSlowerField(angle_deg=Geometry.ZEEMAN_ARM_ANGLE_DEG, start_distance=Geometry.ZEEMAN_START_DISTANCRE, radii=zeeman_fiels_config.radii, positions_z=zeeman_fiels_config.positions_z, tilt_angles=zeeman_fiels_config.tilt_angles))
+            mag_fields.append(ZeemanSlowerField(
+                angle_deg=Geometry.ZEEMAN_ARM_ANGLE_DEG,
+                start_distance=Geometry.ZEEMAN_START_DISTANCRE,
+                radii=radii,
+                positions_z=positions,
+                tilt_angles=tilt_angles,
+            ))
 
     # --- 6. Gravity Config ---
     gravity_enabled = kwargs.get("gravity_enabled", False)
@@ -167,6 +178,50 @@ def build_2dmot_config(
         include_zeeman_laser=False,
         include_3dmot_lasers=False,
         zones=get_2dmot_chamber_only_zone(),
+    )
+    return atom, config
+
+
+def build_zeeman_config(
+    s0_zeeman=zeeman_laser_config["s0"],
+    detuning_gamma_zeeman=zeeman_laser_config["detuning_gamma"],
+    magnet_radius=0.055,
+    gravity_enabled=False,
+    include_mot_lasers=False,
+    include_zeeman_field=True,
+    include_zeeman_laser=True,
+    s0_mot=mot_2d_laser_config["s0"],
+    detuning_gamma_mot=mot_2d_laser_config["detuning_gamma"],
+    radii=None,
+    positions=None,
+    tilt_angles=None,
+    zones=None,
+):
+    """Build a configuration that contains the Zeeman slower components."""
+    atom, config = build_base_config(
+        atom_species="Yb171",
+        include_2d_mot_lasers=include_mot_lasers,
+        _2d_mot_config={
+            "s0": s0_mot,
+            "detuning_gamma": detuning_gamma_mot,
+            "swap_polarization": False,
+        },
+        magnet_radius=magnet_radius,
+        gravity_enabled=gravity_enabled,
+        include_zeeman_field=include_zeeman_field,
+        include_zeeman_laser=include_zeeman_laser,
+        zeeman_config={
+            "s0": s0_zeeman,
+            "detuning_gamma": detuning_gamma_zeeman,
+        },
+        zeeman_field_config={
+            "radii": radii,
+            "positions": positions,
+            "tilt_angles": tilt_angles,
+        },
+        include_3dmot_lasers=False,
+        include_magnetic_field=False,
+        zones=get_zeeman_only_zone() if zones is None else zones,
     )
     return atom, config
 

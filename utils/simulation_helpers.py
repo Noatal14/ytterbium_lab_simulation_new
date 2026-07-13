@@ -1,21 +1,38 @@
 import numpy as np
 from atomsmltr.simulation.simulator import ScipyIVP_3D
+from config import ZEEMAN_BEAM_DIR, Geometry
 
 def run_simulation(
         seed_idx = None, 
         config = None, 
         u0 = None, 
         time_points = None, 
-        sim_function = ScipyIVP_3D
+        sim_function = ScipyIVP_3D,
+        npools = 0
     ):
     sim = sim_function(config)
     sim.rng = np.random.default_rng(seed_idx)
-    sim.u0_list = [u0]
+    sim.u0_list = u0
 
-    res = sim.run(time_points, npools=0, verbose=False)[0]
+    res = sim.run(time_points, npools=npools, verbose=False)[0]
     return seed_idx, res.y, sim
 
-def mot_entry_initial_condition(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):
+def run_multiple_atoms_simulation(
+        seed_idx = None, 
+        config = None, 
+        u0 = None, 
+        time_points = None, 
+        sim_function = ScipyIVP_3D,
+        npools = 0
+    ):
+    sim = sim_function(config)
+    sim.rng = np.random.default_rng(seed_idx)
+    sim.u0_list = u0
+
+    res = sim.run(time_points, npools=npools, verbose=False)
+    return res, sim
+
+def entry_initial_condition(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):
     """
     Generate the position and velocity vector for a single atom source,
     following the standard conventions for the 2DMOT simulator.
@@ -101,3 +118,101 @@ def generate_timepoints(t_final, dt):
     time_points = np.linspace(0, t_final, n_steps + 1)
     
     return time_points, len(time_points)
+
+def zeeman_extract_survivors(res_list, cutoff_distance):
+    tolerance = 0.010  # 10mm tolerance
+    survivor_states = []
+    survivor_indices = []
+
+    for i, res in enumerate(res_list):
+        positions = res.y[:3, :].T  # (N_timesteps, 3)
+        # Projection onto beam axis (larger = further from origin)
+        proj = positions @ ZEEMAN_BEAM_DIR
+        min_proj = np.min(proj)
+
+        if min_proj <= cutoff_distance + tolerance:
+            # This particle reached the cutoff boundary
+            # Use the state at the point of minimum projection (closest to origin)
+            idx_min = np.argmin(proj)
+            final_state = res.y[:, idx_min]  # (6,)
+            survivor_states.append(final_state)
+            survivor_indices.append(i)
+
+    if len(survivor_states) == 0:
+        return np.empty((0, 6)), []
+
+    return np.array(survivor_states), survivor_indices
+
+def mot_extract_survivors(res_list):
+    """
+    Extract the states of particles successfully captured after the 2D MOT.
+
+    A particle is considered captured if, at the first trajectory point where
+
+        z >= Geometry.CAPTURE_DISK_Z
+
+    its transverse distance from the z-axis satisfies
+
+        sqrt(x**2 + y**2) <= Geometry.CAPTURE_DISK_RADIUS.
+
+    Parameters
+    ----------
+    res_list : list
+        List of simulation results. Each result is expected to contain
+        res.y with shape (6, N_timesteps), where the state is
+
+            [x, y, z, vx, vy, vz].
+
+    Returns
+    -------
+    survivor_states : np.ndarray
+        Array with shape (N_survivors, 6), containing the state of each
+        captured particle at its first point inside the capture disk.
+
+    survivor_indices : list[int]
+        Indices of the captured particles in the original res_list.
+    """
+    survivor_states = []
+    survivor_indices = []
+
+    for i, res in enumerate(res_list):
+        z_traj = res.y[2, :]
+
+        # Find the first sampled point at or beyond the capture-disk plane.
+        crossed_indices = np.where(z_traj >= Geometry.CAPTURE_DISK_Z)[0]
+
+        if len(crossed_indices) == 0:
+            continue
+
+        idx = crossed_indices[0]
+
+        x = res.y[0, idx]
+        y = res.y[1, idx]
+        rho = np.sqrt(x**2 + y**2)
+
+        if rho <= Geometry.CAPTURE_DISK_RADIUS:
+            survivor_states.append(res.y[:, idx].copy())
+            survivor_indices.append(i)
+
+    if len(survivor_states) == 0:
+        return np.empty((0, 6)), []
+
+    return np.array(survivor_states), survivor_indices
+
+def _2d_mot_success_count(res_list):
+    """
+    Count the number of successful particles that reach the target region.
+    A particle is considered successful if it crosses the plane z >= target_z
+    and its transverse distance from the origin is less than or equal to target_radius.
+    """
+    success_count = 0
+    for res in res_list:
+        z_traj = res.y[2, :]
+        crossed = np.where(z_traj >= Geometry.CAPTURE_DISK_Z)[0]
+        if len(crossed) > 0:
+            idx = crossed[0]
+            rho = np.sqrt(res.y[0, idx]**2 + res.y[1, idx]**2)
+            if rho <= Geometry.CAPTURE_DISK_RADIUS:
+                success_count += 1
+
+    return success_count
