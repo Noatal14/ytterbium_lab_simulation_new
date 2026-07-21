@@ -1,10 +1,14 @@
 import numpy as np
+from atomsmltr.simulation.simulator import ScipyIVP_3D
 from dt_comparison.RK4StCustomDt import RK4StCustomDt
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone
 from thermal_beam import generate_thermal_beam_state
-from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors
+from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors, extract_trajectory_data
 from config import zeeman_configs, zeeman_sim_config, _2d_mot_sim_config
+from pathlib import Path
+from datetime import datetime
+from utils.file_helpers import save_file_json
 
 # Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
 
@@ -18,6 +22,7 @@ def zeeman_simulation(
         T_C=400.0,
         seed=42,
         npools=8,
+        stochastic=True,
     ):
 
     mot_config = dict(_2d_mot_config)
@@ -51,12 +56,15 @@ def zeeman_simulation(
 
     u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
 
+    sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
+
     res, sim =run_multiple_atoms_simulation(
         config=config,
         u0=u0_list,
         time_points=time_points,
-        sim_function=RK4StCustomDt,
-        npools=npools
+        sim_function=sim_func,
+        npools=npools,
+        seed_idx=seed
     )
 
     survivor_states, survivor_indices = zeeman_extract_survivors(res, zeeman_sim_config["cutoff_distance"])
@@ -71,7 +79,9 @@ def mot_simulation(
     zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
     magnet_radius=0.053,
     gravity_enabled=True,
+    seed=None,
     npools=8,
+    stochastic=True,
 ):
     N = len(survivor_states)
     if N == 0:
@@ -100,12 +110,15 @@ def mot_simulation(
 
     time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], _2d_mot_sim_config["dt"])
 
+    sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
+
     res, sim =run_multiple_atoms_simulation(
         config=config,
         u0=u0_list,
         time_points=time_points,
-        sim_function=RK4StCustomDt,
-        npools=npools
+        sim_function=sim_func,
+        npools=npools,
+        seed_idx=seed
     )
 
     mot_survivor_states, mot_survivor_indices = mot_extract_survivors(res)
@@ -113,18 +126,19 @@ def mot_simulation(
 
     return res, count, mot_survivor_states
 
-if __name__ == "__main__":
+def run_both(save_file = None, N=500, seed=42):
     radii, positions, tilt_angles = zeeman_configs["80_2"]
 
     print("Running Zeeman phase simulation...")
 
     zeeman_traj, survivors, surv_idx = zeeman_simulation(
-        N_particles=500,
+        N_particles=N,
         _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
         zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
         zeeman_field_config={ "radii": radii, "positions": positions, "tilt_angles": tilt_angles },
         magnet_radius=0.053,
         T_C=400.0,
+        seed=seed,
     )
 
     print(f"Zeeman phase simulation ended")
@@ -134,11 +148,24 @@ if __name__ == "__main__":
     if len(survivors) == 0:
         print("No survivors — nothing to do in Phase 2.")
     else:
-        mot_traj, success_count = mot_simulation(
+        mot_traj, success_count, _ = mot_simulation(
             survivor_states=survivors,
-            _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+            _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
             magnet_radius=0.053,
+            seed=seed,
         )
+
         print(f"Success count: {success_count}")
 
+        if (save_file):
+            save_path = Path(save_file)
+            zeeman_traj_ex = extract_trajectory_data(zeeman_traj)
+            mot_traj_ex = extract_trajectory_data(mot_traj)
+
+            save_file_json(save_path / f"zeeman_traj_N={N}_{datetime.utcnow().isoformat()}.json", zeeman_traj_ex)
+            save_file_json(save_path / f"mot_traj_N={N}_{datetime.utcnow().isoformat()}.json", mot_traj_ex)
+
+if __name__ == "__main__":
+    save_file = "junk/simulation_results"
+    run_both(save_file=save_file, N=1000)
 

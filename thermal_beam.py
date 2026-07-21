@@ -1,4 +1,4 @@
-from config import Geometry
+from config import YB171_MASS_KG, Geometry
 import numpy as np
 import scipy.constants as csts
 from atomsmltr.atoms import Ytterbium
@@ -14,6 +14,50 @@ def _microtube_alpha(beta):
 def _microtube_R(q):
     q = np.clip(q, 0.0, 1.0)
     return np.arccos(q) - q * np.sqrt(1 - q**2)
+
+
+def geometric_acceptance_angle_deg(r0):
+    """
+    Computes the tightest (most restrictive) half-angle, in degrees, that still
+    geometrically clears every downstream vacuum-tube aperture (Zeeman_Arm_1/2/3,
+    see lab_setup/zones.py) along a straight-line path from a source at axial
+    distance `r0` (along the beam axis, matching the `distance_m` convention used
+    throughout this module) down to the origin (2D-MOT chamber center).
+
+    This replaces an arbitrary hardcoded collimation-angle cutoff with a value
+    directly tied to the actual apparatus geometry in `config.Geometry`, so the
+    emission-angle sampling cutoff no longer needs to be guessed.
+
+    Parameters
+    ----------
+    r0 : float
+        distance from the origin to the atom source, along the beam axis [m]
+
+    Returns
+    -------
+    float
+        the tightest acceptance half-angle, in degrees (capped at 90 deg if no
+        segment is actually a constraint, e.g. for sources very close to origin)
+    """
+    # (z_start, radius) for each tube segment, ordered from the 2D-MOT/origin
+    # side (z=0) outward towards the oven -- matches lab_setup/zones.py
+    # get_apparatus_internal_volume() ordering.
+    segments = [
+        (0.0, Geometry.ZEEMAN_ARM_1_RADIUS),
+        (Geometry.ZEEMAN_ARM_1_LENGTH, Geometry.ZEEMAN_ARM_2_RADIUS),
+        (Geometry.ZEEMAN_ARM_1_LENGTH + Geometry.ZEEMAN_ARM_2_LENGTH, Geometry.ZEEMAN_ARM_3_RADIUS),
+    ]
+
+    theta_max_deg = 90.0
+    for z_start, radius in segments:
+        # worst-case transverse deviation for this segment occurs at its
+        # farthest point from the source, i.e. at z_start (distance = r0 - z_start)
+        distance_from_source = r0 - z_start
+        if distance_from_source <= 0:
+            continue  # source is before (or inside) this segment; not yet a constraint
+        theta_max_deg = min(theta_max_deg, np.degrees(np.arctan(radius / distance_from_source)))
+
+    return theta_max_deg
 
 
 def microtube_intensity_theta(theta, r_tube, L_tube):
@@ -66,11 +110,23 @@ def sample_microtube_angles(N, r_tube, L_tube, rng, theta_max=np.pi / 2):
     Important:
     I(theta) is intensity per solid angle, so the probability density
     for theta is proportional to I(theta) * sin(theta).
+
+    Note:
+    Truncating at `theta_max` discards whatever fraction of the true I(theta)
+    lies beyond it. We report that discarded fraction via `included_fraction`
+    so callers can tell how aggressive the truncation is, instead of silently
+    renormalizing the sampled distribution as if nothing were cut.
     """
     theta_grid = np.linspace(1e-9, theta_max, 5000)
     weights = microtube_intensity_theta(theta_grid, r_tube, L_tube) * np.sin(theta_grid)
+    truncated_mass = np.trapezoid(weights, theta_grid)
 
-    pdf = weights / np.trapezoid(weights, theta_grid)
+    full_grid = np.linspace(1e-9, np.pi / 2, 5000)
+    full_weights = microtube_intensity_theta(full_grid, r_tube, L_tube) * np.sin(full_grid)
+    full_mass = np.trapezoid(full_weights, full_grid)
+    included_fraction = float(truncated_mass / full_mass)
+
+    pdf = weights / truncated_mass
     cdf = np.cumsum(pdf)
     cdf = cdf / cdf[-1]
 
@@ -79,7 +135,7 @@ def sample_microtube_angles(N, r_tube, L_tube, rng, theta_max=np.pi / 2):
 
     phi = rng.uniform(0.0, 2 * np.pi, N)
 
-    return theta, phi
+    return theta, phi, included_fraction
 
 def generate_thermal_beam_state(
     config_name="thermal beam",
@@ -87,7 +143,7 @@ def generate_thermal_beam_state(
     T_C=400.0,
     v_target=50.0,
     v_spread=5.0,
-    collimation_angle_deg=2.0,
+    collimation_angle_deg=None,
     m=None,
     distance_m=None,
     seed=None
@@ -117,8 +173,12 @@ def generate_thermal_beam_state(
         Target final velocity for the 'Atomic Zeeman beam' in m/s (default: 50.0).
     v_spread : float
         Velocity spread for the 'Atomic Zeeman beam' in m/s (default: 5.0).
-    collimation_angle_deg : float
-        Angular divergence constraint for collimated beams in degrees (default: 2.0).
+    collimation_angle_deg : float, optional
+        Angular divergence constraint for collimated beams in degrees. If None
+        (default), it is derived from `Geometry` as the tightest half-angle that
+        geometrically clears every downstream vacuum-tube aperture between the
+        source and the origin (see `geometric_acceptance_angle_deg`), rather than
+        an arbitrary fixed cutoff.
     m : float, optional
         Mass of the atom in kg. Defaults to Ytterbium mass.
 
@@ -131,9 +191,9 @@ def generate_thermal_beam_state(
     """
     
     if m is None:
-        m = Ytterbium().mass
+        m = YB171_MASS_KG
 
-    angle_deg = 25.0
+    angle_deg = Geometry.ZEEMAN_ARM_ANGLE_DEG
     alpha = np.radians(angle_deg)
     
     # Determine distance based on configuration
@@ -146,6 +206,11 @@ def generate_thermal_beam_state(
             r0 = 0.4317  # 431.7 mm
         else:
             raise ValueError(f"Unknown config_name: '{config_name}'")
+
+    # If not explicitly overridden, derive the collimation half-angle from the
+    # actual apparatus geometry instead of using an arbitrary fixed cutoff.
+    if collimation_angle_deg is None:
+        collimation_angle_deg = geometric_acceptance_angle_deg(r0)
 
     # Base position in 3rd quadrant of ZY plane
     x_pos = 0.0
@@ -199,8 +264,9 @@ def generate_thermal_beam_state(
         v_L_arr = np.sqrt(x1**2 + x2**2 + x3**2 + x4**2)
         
         # Transparent-flow microtube angular intensity distribution
-        # We cap theta at the collimation angle to simulate the physical skimmer
-        theta, phi = sample_microtube_angles(
+        # We cap theta at the collimation angle to simulate the physical acceptance
+        # of the downstream apertures (see geometric_acceptance_angle_deg).
+        theta, phi, included_fraction = sample_microtube_angles(
             N=N,
             r_tube=Geometry.R_TUBE,
             L_tube=Geometry.L_TUBE,
@@ -216,6 +282,8 @@ def generate_thermal_beam_state(
                   v_L_arr[:, None] * u_L)
         
         info["description"] = f"Collimated Thermal Beam (Gaussian I(theta), sigma={collimation_angle_deg} deg)"
+        info["collimation_angle_deg"] = collimation_angle_deg
+        info["emission_included_flux_fraction"] = included_fraction
         info["mean_axial_velocity"] = float(np.mean(v_L_arr))
         info["std_axial_velocity"] = float(np.std(v_L_arr))
         info["most_probable_velocity_theory"] = np.sqrt(3 * csts.k * T_K / m)

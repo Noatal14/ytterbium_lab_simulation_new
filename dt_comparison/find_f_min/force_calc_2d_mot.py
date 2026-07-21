@@ -149,8 +149,8 @@ def calc_f_min_2d_mot(
 
 if __name__ == "__main__":
     F_min, F_min_norm, threshold_result, results = calc_f_min_2d_mot(
-        detuning_gamma=-1.2,
-        s0=1.5,
+        detuning_gamma=-1.47,
+        s0=1.4,
         magnet_radius=0.055
     )
 

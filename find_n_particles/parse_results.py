@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_multiple_zeeman_angular_intensities(
+def plot_multiple_angular_intensities(
     particle_state_sets,
     labels,
     n_bins,
     normalization="max",
     max_angle_deg=None,
+    beam_dir=-ZEEMAN_BEAM_DIR
 ):
     """
     Plot normalized angular-intensity distributions for several
@@ -70,7 +71,7 @@ def plot_multiple_zeeman_angular_intensities(
     if not isinstance(n_bins, (int, np.integer)) or n_bins <= 0:
         raise ValueError("n_bins must be a positive integer.")
 
-    beam_direction = -np.asarray(ZEEMAN_BEAM_DIR, dtype=float)
+    beam_direction = np.asarray(beam_dir, dtype=float)
 
     beam_norm = np.linalg.norm(beam_direction)
 
@@ -205,7 +206,7 @@ def plot_multiple_zeeman_angular_intensities(
                 angular_intensity
             )
 
-        plt.xlim(0, 3.5)
+        #plt.xlim(0, 3.5)
         plt.plot(
             theta_centers_deg,
             normalized_intensity,
@@ -238,7 +239,7 @@ def plot_multiple_zeeman_angular_intensities(
         fontsize=16,
     )
     plt.title(
-        "Angular Distribution of Zeeman Beam Survivors",
+        "Angular Distribution of MOT Beam Survivors",
         fontsize=20,
     )
 
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     for N in N_results:
         path = (
             "find_n_particles/"
-            "zeeman_phase_survivors/"
+            "mot_phase_survivors/"
             f"N_{N}.json"
         )
 
@@ -289,10 +290,10 @@ if __name__ == "__main__":
         for N in N_results
     ]
 
-    results = plot_multiple_zeeman_angular_intensities(
+    results = plot_multiple_angular_intensities(
         particle_state_sets=states_by_particle_number,
         labels=labels,
-        n_bins=40,
+        n_bins=10,
         normalization="max",
-        max_angle_deg=None,
+        beam_dir=np.array([0,0,1])
     )

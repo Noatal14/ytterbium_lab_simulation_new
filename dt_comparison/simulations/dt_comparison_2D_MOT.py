@@ -29,8 +29,8 @@ def sim(
     dt_values=[],
     n_seeds=5000,
     t_max=3.0e-3,  # 3 ms is plenty of time for 2D MOT chamber exit
-    s0=1.5,
-    detuning_gamma=-1.2,
+    s0=1.4,
+    detuning_gamma=-1.47,
     magnet_radius=0.055,
     u0=[0, 0, 0, 0, 0, 0],
     npools=8,

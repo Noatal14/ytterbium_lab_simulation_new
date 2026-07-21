@@ -3,7 +3,7 @@ from config import K_B, YB171_MASS_KG, F_scale, Geometry
 
 def is_transmitted_2d_mot(final_pos, trajectory=None):
     """Determine if the final position corresponds to a transmitted atom."""
-    return (final_pos[2] >= 0.0195) and (np.sqrt(final_pos[0]**2 + final_pos[1]**2) <= 0.015)
+    return (final_pos[2] >= 0.0195) and (np.sqrt(final_pos[0]**2 + final_pos[1]**2) <= Geometry.MOT_CHAMBER_RADIUS)
 
 
 def is_transmitted_zeeman(final_pos, trajectory=None, cutoff_distance=0.100, beam_dir=None):

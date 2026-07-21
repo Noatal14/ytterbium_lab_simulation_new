@@ -147,13 +147,19 @@ def mot_extract_survivors(res_list):
     """
     Extract the states of particles successfully captured after the 2D MOT.
 
-    A particle is considered captured if, at the first trajectory point where
+    Per the proposal (Sec. 2.1.3), capture is defined qualitatively as an atom
+    being "deflected toward the downstream 3D-MOT capture region" after passing
+    through the 2D-MOT. We operationalize this as: the particle survives past
+    the differential-pumping stage (DPS) bore --
 
-        z >= Geometry.CAPTURE_DISK_Z
+        z >= Geometry.CAPTURE_MIN_Z  (= DPS_START_Z + DPS_LENGTH)
 
-    its transverse distance from the z-axis satisfies
-
-        sqrt(x**2 + y**2) <= Geometry.CAPTURE_DISK_RADIUS.
+    while still moving toward the science chamber (vz > 0). The DPS radius
+    (Geometry.DPS_RADIUS = 1.5mm) is already enforced as a hard wall by the
+    apparatus zones (see lab_setup/zones.py), so simply surviving to this
+    z-plane already means the atom physically threaded that bottleneck -- this
+    ties "captured" to the one aperture the proposal actually dimensions,
+    instead of an arbitrary disk unconnected to any stated geometry.
 
     Parameters
     ----------
@@ -167,7 +173,7 @@ def mot_extract_survivors(res_list):
     -------
     survivor_states : np.ndarray
         Array with shape (N_survivors, 6), containing the state of each
-        captured particle at its first point inside the capture disk.
+        captured particle at its first point past the DPS.
 
     survivor_indices : list[int]
         Indices of the captured particles in the original res_list.
@@ -177,22 +183,17 @@ def mot_extract_survivors(res_list):
 
     for i, res in enumerate(res_list):
         z_traj = res.y[2, :]
+        vz_traj = res.y[5, :]
 
-        # Find the first sampled point at or beyond the capture-disk plane.
-        crossed_indices = np.where(z_traj >= Geometry.CAPTURE_DISK_Z)[0]
+        # Find the first sampled point past the DPS, still moving forward.
+        crossed_indices = np.where((z_traj >= Geometry.CAPTURE_MIN_Z) & (vz_traj > 0))[0]
 
         if len(crossed_indices) == 0:
             continue
 
         idx = crossed_indices[0]
-
-        x = res.y[0, idx]
-        y = res.y[1, idx]
-        rho = np.sqrt(x**2 + y**2)
-
-        if rho <= Geometry.CAPTURE_DISK_RADIUS:
-            survivor_states.append(res.y[:, idx].copy())
-            survivor_indices.append(i)
+        survivor_states.append(res.y[:, idx].copy())
+        survivor_indices.append(i)
 
     if len(survivor_states) == 0:
         return np.empty((0, 6)), []
@@ -202,17 +203,35 @@ def mot_extract_survivors(res_list):
 def _2d_mot_success_count(res_list):
     """
     Count the number of successful particles that reach the target region.
-    A particle is considered successful if it crosses the plane z >= target_z
-    and its transverse distance from the origin is less than or equal to target_radius.
+    See `mot_extract_survivors` for the definition of "successful".
     """
     success_count = 0
     for res in res_list:
         z_traj = res.y[2, :]
-        crossed = np.where(z_traj >= Geometry.CAPTURE_DISK_Z)[0]
+        vz_traj = res.y[5, :]
+        crossed = np.where((z_traj >= Geometry.CAPTURE_MIN_Z) & (vz_traj > 0))[0]
         if len(crossed) > 0:
-            idx = crossed[0]
-            rho = np.sqrt(res.y[0, idx]**2 + res.y[1, idx]**2)
-            if rho <= Geometry.CAPTURE_DISK_RADIUS:
-                success_count += 1
+            success_count += 1
 
     return success_count
+
+def extract_trajectory_data(results):
+    """
+    Convert a list of scipy OdeResult objects into a JSON-serializable format.
+
+    Parameters
+    ----------
+    results : list[OdeResult]
+
+    Returns
+    -------
+    list[dict]
+        Each element contains only the time vector and state matrix.
+    """
+    return [
+        {
+            "t": res.t.tolist(),
+            "y": res.y.tolist(),
+        }
+        for res in results
+    ]

@@ -49,9 +49,6 @@ GREEN_TRANSITION = Transition(wavelength=GREEN_LASER_WAVELENGTH_M, gamma=GREEN_L
 class Geometry:
     Z_AXIS = (0, 0, 1)
 
-    CAPTURE_DISK_Z = 0.500
-    CAPTURE_DISK_RADIUS = 0.005
-
     MOT_CHAMBER_LENGTH = 0.04   
     MOT_CHAMBER_RADIUS = 0.015
     MOT_CHAMBER_ORIGIN = (0, 0, -MOT_CHAMBER_LENGTH / 2)
@@ -60,7 +57,7 @@ class Geometry:
     MOT_WY = 5e-3
 
     ZEEMAN_ARM_ANGLE_DEG = 25
-    ZEEMAN_ARM_ANGLE_DEG_RAD = np.radians(ZEEMAN_ARM_ANGLE_DEG)
+    ZEEMAN_ARM_ANGLE_RAD = np.radians(ZEEMAN_ARM_ANGLE_DEG)
 
     ZEEMAN_ARM_1_LENGTH = 0.378
     ZEEMAN_ARM_1_RADIUS = 0.008
@@ -81,6 +78,15 @@ class Geometry:
     DPS_RADIUS = 0.0015
     DPS_START_Z = 0.1445
 
+    # "Capture" (reaching the 3D-MOT capture region, proposal Sec. 2.1.3) is
+    # defined as an atom that survives past the differential-pumping stage
+    # (DPS) still moving toward the science chamber. The DPS bore (radius
+    # DPS_RADIUS=1.5mm) is already enforced as a hard wall by the apparatus
+    # zones, so surviving to this z-plane means the atom has physically
+    # threaded that bottleneck -- unlike the previous arbitrary capture disk
+    # (z=0.500m, r=5mm), which had no stated basis in the proposal.
+    CAPTURE_MIN_Z = DPS_START_Z + DPS_LENGTH
+
     SCIENCE_ARM_3_LENGTH = 0.510 - (DPS_LENGTH + SCIENCE_ARM_1_LENGTH)
     SCIENCE_ARM_3_RADIUS = 0.008
 
@@ -91,7 +97,7 @@ class Geometry:
 
     ZEEMAN_START_DISTANCRE = 0.314
 
-ZEEMAN_BEAM_DIR = np.array([0, -np.sin(Geometry.ZEEMAN_ARM_ANGLE_DEG_RAD), -np.cos(Geometry.ZEEMAN_ARM_ANGLE_DEG_RAD)])
+ZEEMAN_BEAM_DIR = np.array([0, -np.sin(Geometry.ZEEMAN_ARM_ANGLE_RAD), -np.cos(Geometry.ZEEMAN_ARM_ANGLE_RAD)])
 
 
 # ============================================================
@@ -128,7 +134,7 @@ zeeman_configs = {
 # ============================================================
 
 mot_2d_laser_config = {
-    "s0": 1.5,
+    "s0": 1.4,
     "detuning_gamma": -1.47,
 }
 
@@ -149,7 +155,7 @@ F_scale = 3.141895058426422e-20
 full_sim_config = {
     "dt": 8e-6,
     "t_max": 25e-3,
-    "start_distance": 0.450,
+    "start_distance": 0.4317,
 }
 
 # Zeeman sim config
@@ -157,7 +163,7 @@ full_sim_config = {
 zeeman_sim_config = {
     "dt": 4e-5,
     "t_max": 20e-3,
-    "start_distance": 0.450,
+    "start_distance": 0.4317,
     "cutoff_distance": 0.100,
 }
 

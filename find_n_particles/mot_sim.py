@@ -13,19 +13,14 @@ if __name__ == "__main__":
 
     try:
         N_results = [
-            1000,
-            5000,
-            10000,
-            30000,
-            50000,
-            100000,
+            5000
         ]
 
         for N in N_results:
             path = (
                 "find_n_particles/"
                 "zeeman_phase_survivors/"
-                f"N_{N}.json"
+                f"N_{N}_det_new.json"
             )
 
             survivors = read_data_json(path)
@@ -39,8 +34,10 @@ if __name__ == "__main__":
 
             _, success_count, mot_survivor_states = mot_simulation(
                 survivor_states=survivors,
-                _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+                _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
                 magnet_radius=0.053,
+                seed=N,
+                stochastic=True
             )
 
             print(f"N={N}, Success count: {success_count}")
@@ -48,7 +45,7 @@ if __name__ == "__main__":
             save_dir = "find_n_particles/mot_phase_survivors"
             save_path = Path(save_dir)
 
-            save_file_json(save_dir / f"N_{N}_survivors_{datetime.utcnow().isoformat()}.json", survivors)
+            save_file_json(save_path / f"N_{N}_survivors_{datetime.utcnow().isoformat()}.json", mot_survivor_states)
 
         
     finally:
