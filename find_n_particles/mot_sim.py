@@ -13,14 +13,14 @@ if __name__ == "__main__":
 
     try:
         N_results = [
-            5000
+            1000
         ]
 
         for N in N_results:
             path = (
                 "find_n_particles/"
-                "zeeman_phase_survivors/"
-                f"N_{N}_det_new.json"
+                "zeeman_survivors/"
+                f"N_{N}_det.json"
             )
 
             survivors = read_data_json(path)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
             print(f"N={N}, Success count: {success_count}")
 
-            save_dir = "find_n_particles/mot_phase_survivors"
+            save_dir = "find_n_particles/mot_survivors"
             save_path = Path(save_dir)
 
             save_file_json(save_path / f"N_{N}_survivors_{datetime.utcnow().isoformat()}.json", mot_survivor_states)

@@ -14,9 +14,7 @@ if __name__ == "__main__":
     try:
         print("Running Zeeman phase simulation...")
 
-        N_particles = 10000
-
-        N_vals = [200000, 500000]
+        N_vals = [1000, 10000, 50000, 100000]
 
         for N in N_vals:
             print(f"Running Zeeman phase simulation for N={N}...")
@@ -31,10 +29,10 @@ if __name__ == "__main__":
                 stochastic=True
             )
 
-            save_dir_1 = "find_n_particles/zeeman_phase_survivors"
-            save_path_1 = Path(save_dir_1)
+            save_dir = "find_n_particles/zeeman_survivors"
+            save_path = Path(save_dir)
 
-            save_file_json(save_path_1 / f"N_{N}_survivors_{datetime.utcnow().isoformat()}.json", survivors)
+            save_file_json(save_path / f"N_{N}_survivors_{datetime.utcnow().isoformat()}.json", survivors)
 
         print(f"Zeeman phase simulation ended")
         
