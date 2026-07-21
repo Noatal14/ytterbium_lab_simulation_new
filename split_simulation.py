@@ -9,12 +9,13 @@ from config import zeeman_configs, zeeman_sim_config, _2d_mot_sim_config
 from pathlib import Path
 from datetime import datetime
 from utils.file_helpers import save_file_json
+from dt_comparison.main import get_optimal_dt_2d_mot, get_optimal_dt_zeeman
 
 # Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
 
 def zeeman_simulation(
         N_particles=1000,
-        _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+        _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
         zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
         zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
         magnet_radius=0.053,
@@ -52,7 +53,12 @@ def zeeman_simulation(
         seed=seed
     )
 
-    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], zeeman_sim_config["dt"])
+    dt_zeeman = get_optimal_dt_zeeman(
+        s0=zeeman_config["s0"],
+        detuning_gamma=zeeman_config["detuning_gamma"],
+    )
+
+    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], dt_zeeman["dt"])
 
     u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
 
@@ -74,7 +80,7 @@ def zeeman_simulation(
 
 def mot_simulation(
     survivor_states,
-    _2d_mot_config={ "s0": 1.5, "detuning_gamma": -1.2 },
+    _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
     zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
     zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
     magnet_radius=0.053,
@@ -108,7 +114,13 @@ def mot_simulation(
     # 2. Set initial conditions from survivor states
     u0_list = [state.copy() for state in survivor_states]
 
-    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], _2d_mot_sim_config["dt"])
+    dt_2d_mot = get_optimal_dt_2d_mot(
+        s0=_2d_mot_config["s0"],
+        detuning_gamma=_2d_mot_config["detuning_gamma"],
+        magnet_radius=magnet_radius,
+    )
+
+    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], dt_2d_mot["dt"])
 
     sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
 

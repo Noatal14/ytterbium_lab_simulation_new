@@ -161,7 +161,6 @@ full_sim_config = {
 # Zeeman sim config
 # =================
 zeeman_sim_config = {
-    "dt": 4e-5,
     "t_max": 20e-3,
     "start_distance": 0.4317,
     "cutoff_distance": 0.100,
@@ -170,7 +169,6 @@ zeeman_sim_config = {
 # 2D MOT sim config
 # =================
 _2d_mot_sim_config = {
-    "dt": 8e-6,
     "t_max": 25e-3,
     "start_distance": 0.100,
 }
