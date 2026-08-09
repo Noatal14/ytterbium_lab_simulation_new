@@ -17,7 +17,6 @@ def simulation(
         zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
         magnet_radius=0.053,
         T_C=400.0,
-        seed=None,
         npools=8,
     ):
 
@@ -42,7 +41,6 @@ def simulation(
         T_C=T_C,
         m=atom.mass,
         distance_m=full_sim_config.start_distance,
-        seed=seed
     )
 
     time_points, _ = generate_timepoints(full_sim_config.t_max, full_sim_config.dt)

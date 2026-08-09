@@ -13,14 +13,17 @@ if __name__ == "__main__":
 
     try:
         N_results = [
-            1000
+            1000,
+            10000,
+            50000,
+            100000,
         ]
 
         for N in N_results:
             path = (
                 "find_n_particles/"
                 "zeeman_survivors/"
-                f"N_{N}_det.json"
+                f"N_{N}.json"
             )
 
             survivors = read_data_json(path)

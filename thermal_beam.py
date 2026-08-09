@@ -146,7 +146,7 @@ def generate_thermal_beam_state(
     collimation_angle_deg=None,
     m=None,
     distance_m=None,
-    seed=None
+    seed=42
 ):
     """
     Generate the position and velocity arrays for a collection of atoms (thermal source),

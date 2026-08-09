@@ -29,10 +29,10 @@ if __name__ == "__main__":
                 stochastic=True
             )
 
-            save_dir = "find_n_particles/zeeman_survivors"
+            save_dir = "find_n_particles/zeeman_survivors_dt_1e-4"
             save_path = Path(save_dir)
 
-            save_file_json(save_path / f"N_{N}_survivors_{datetime.utcnow().isoformat()}.json", survivors)
+            save_file_json(save_path / f"N_{N}_survivors.json", survivors)
 
         print(f"Zeeman phase simulation ended")
         

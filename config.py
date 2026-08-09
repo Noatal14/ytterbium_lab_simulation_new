@@ -150,6 +150,8 @@ mot_3d_laser_config = {
 
 F_scale = 3.141895058426422e-20
 
+N_particles = 1000
+
 # Full sim config
 # ===============
 full_sim_config = {
@@ -162,6 +164,7 @@ full_sim_config = {
 # =================
 zeeman_sim_config = {
     "t_max": 20e-3,
+    "dt": 1e-4,
     "start_distance": 0.4317,
     "cutoff_distance": 0.100,
 }
@@ -170,5 +173,6 @@ zeeman_sim_config = {
 # =================
 _2d_mot_sim_config = {
     "t_max": 25e-3,
+    "dt": 8e-6,
     "start_distance": 0.100,
 }

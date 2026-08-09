@@ -110,28 +110,6 @@ def calc_f_min_2d_mot(
             f"F_minus_norm={res['F_minus_norm']:.3f} | "
         )
 
-    
-    v_values = [result["v"] for result in results]
-    F_plus_norm_values = [result["F_plus_norm"] for result in results]
-
-    plt.figure(figsize=(8, 5))
-
-    plt.plot(
-        v_values,
-        F_plus_norm_values,
-        marker="o",
-        markersize=3,
-        linewidth=1,
-    )
-
-    plt.xlabel("v")
-    plt.ylabel(r"$F_+/F_{\mathrm{scale}}$")
-    plt.title(r"Beam force vs. velocity")
-    plt.grid(True, which="both", alpha=0.3)
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
-
     # Find the first velocity for which A exceeds the chosen threshold
     valid_results = [res for res in results if res["A"] > good_A]
 

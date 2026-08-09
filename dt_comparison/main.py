@@ -1,11 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import constants as csts
-from config import BLUE_LASER_WAVELENGTH_M, Geometry, zeeman_configs
+from config import BLUE_LASER_WAVELENGTH_M
 from dt_comparison.consts import F_scale
 from dt_comparison.find_f_min.force_calc_2d_mot import calc_f_min_2d_mot
-from lab_setup.config_builder import build_zeeman_config
-from atomsmltr.simulation.simulator.simbase import get_force_vec
 
 def calc_dt(
     F_min,
@@ -15,6 +13,29 @@ def calc_dt(
     safety_factor = 1.5,
 ):
     """
+    Computes the *minimum* timestep required for the Gaussian photon-count
+    (shot-noise) approximation used by the stochastic integrator to remain
+    valid at the weakest non-negligible force, F_min.
+
+    Since the expected number of scattered photons per timestep is
+    Ni = F * dt / (hbar * k), requiring Ni >= N_min gives a LOWER bound:
+
+        dt >= N_min * hbar * k / F_min = dt_gaussian_min_raw
+
+    i.e. `calc_dt` does NOT compute "the largest numerically safe timestep",
+    "optimal dt", or a "maximum timestep" -- it computes the Gaussian minimum
+    timestep: the smallest dt for which the Gaussian approximation holds at
+    F_min. The final production timestep must independently also satisfy the
+    numerical-convergence upper bound (found separately, e.g. via a dt
+    convergence scan), so in general:
+
+        dt_gaussian_min <= dt_production <= dt_numerical_convergence_max
+
+    `dt`/`dt_raw` are kept as the original keys for backward compatibility
+    with existing callers; `dt_gaussian_min`/`dt_gaussian_min_raw` are
+    provided as more accurately-named aliases and should be preferred in new
+    code.
+
     Parameters
     ----------
     safety_factor : float, optional
@@ -22,21 +43,31 @@ def calc_dt(
         This buffers against the F_min estimate being a discrete grid scan
         (it can miss the true minimum between sample points) and against
         other numerical approximations in the integrator. Set to 1.0 to get
-        the razor-edge dt where Ni is exactly N_min at F_min.
+        the razor-edge dt where Ni is exactly N_min at F_min. NOTE: if the
+        caller already divided F_min by its own separate safety margin
+        (e.g. `get_optimal_dt_zeeman`'s `force_margin_factor`), using
+        `safety_factor > 1` here as well *compounds* both margins
+        multiplicatively (e.g. force_margin_factor=2 and safety_factor=2
+        together make the effective dt margin 4x, not 2x) -- pick one place
+        to apply the margin, or knowingly accept the compounding.
     """
     k = 2 * np.pi / wavelength
 
-    dt_raw = N_min * csts.hbar * k / F_min
-    dt = safety_factor * dt_raw
+    dt_gaussian_min_raw = N_min * csts.hbar * k / F_min
+    dt_gaussian_min = safety_factor * dt_gaussian_min_raw
 
-    return {
-        "dt": dt,
-        "dt_raw": dt_raw,
+    result = {
+        "dt": dt_gaussian_min,
+        "dt_raw": dt_gaussian_min_raw,
+        "dt_gaussian_min": dt_gaussian_min,
+        "dt_gaussian_min_raw": dt_gaussian_min_raw,
         "safety_factor": safety_factor,
         "F_min": F_min,
         "F_min_norm": F_min/F_scale,
         "N_min": N_min,
     }
+
+    return result
 
 
 def get_optimal_dt_2d_mot(
@@ -82,7 +113,7 @@ def get_optimal_dt_2d_mot(
     dict
         Same structure as `calc_dt`: {"dt", "dt_raw", "safety_factor", "F_min", "F_min_norm", "N_min"}.
     """
-    F_min, F_min_norm, threshold_result, results = calc_f_min_2d_mot(
+    F_min, _, _, _ = calc_f_min_2d_mot(
         s0=s0,
         detuning_gamma=detuning_gamma,
         magnet_radius=magnet_radius,
@@ -91,107 +122,12 @@ def get_optimal_dt_2d_mot(
 
     return calc_dt(F_min=F_min, F_scale=F_scale, N_min=N_min, safety_factor=safety_factor)
 
-
-def get_optimal_dt_zeeman(
-    s0,
-    detuning_gamma,
-    velocity_range=(35, 350),
-    n_velocity_points=26,
-    position_range=(0.05, 0.5),
-    n_position_points=80,
-    N_min=15,
-    safety_factor=1.5,
-):
-    """
-    Computes the optimal (largest safe) simulation timestep dt for the Zeeman-
-    slower stochastic simulation.
-
-    Unlike the 2D-MOT (which has a symmetric restoring force and a natural
-    A > 0.8 asymmetry threshold), the Zeeman slower is a one-directional
-    deceleration process, so there is no equivalent restoring-force asymmetry
-    to exploit. Instead, F_min is defined as the weakest point of the
-    *on-resonance* deceleration force: for each velocity in `velocity_range`,
-    we scan atom positions along the whole slower (`position_range`, distance
-    from the origin along the beam axis) and take the *maximum* force reached
-    -- i.e. the force the atom would feel right where it crosses resonance,
-    wherever that happens to be along the slower for that velocity. F_min is
-    then the minimum of that on-resonance force over the whole velocity range,
-    i.e. the weakest point of the intended deceleration profile.
-
-    Uses the standard "80_2" permanent-magnet configuration (see
-    config.zeeman_configs), matching the production Zeeman slower field.
-
-    Parameters
-    ----------
-    s0 : float
-        Zeeman-slower saturation parameter.
-    detuning_gamma : float
-        Zeeman-slower laser detuning, in units of Gamma.
-    velocity_range : tuple[float, float], optional
-        Velocity range (m/s) to scan, by default (50, 300).
-    n_velocity_points : int, optional
-        Number of velocity samples in `velocity_range`, by default 26.
-    position_range : tuple[float, float], optional
-        Distance-from-origin range (m) to scan along the beam axis, by
-        default (0.05, 0.5), covering the full extent of the slower.
-    n_position_points : int, optional
-        Number of position samples in `position_range`, by default 80.
-    N_min : float, optional
-        Minimum expected photon count per timestep for the Gaussian stochastic
-        approximation to remain valid, by default 15.
-    safety_factor : float, optional
-        Extra margin applied on top of the bare Ni=N_min dt, by default 1.5.
-        See `calc_dt` for details.
-
-    Returns
-    -------
-    dict
-        Same structure as `calc_dt`: {"dt", "dt_raw", "safety_factor", "F_min", "F_min_norm", "N_min"}.
-    """
-    radii, positions, tilt_angles = zeeman_configs["80_2"]
-
-    _, config = build_zeeman_config(
-        s0_zeeman=s0,
-        detuning_gamma_zeeman=detuning_gamma,
-        gravity_enabled=False,
-        include_mot_lasers=False,
-        include_zeeman_field=True,
-        include_zeeman_laser=True,
-        radii=radii,
-        positions=positions,
-        tilt_angles=tilt_angles,
-    )
-
-    angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
-    beam_dir = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
-
-    v_grid = np.linspace(velocity_range[0], velocity_range[1], n_velocity_points)
-    r0_grid = np.linspace(position_range[0], position_range[1], n_position_points)
-    r_vecs = r0_grid[:, None] * beam_dir[None, :]
-
-    F_min = np.inf
-    for v in v_grid:
-        v_vecs = np.tile(-v * beam_dir, (n_position_points, 1))
-        u_batch = np.concatenate([r_vecs, v_vecs], axis=1)
-        forces = get_force_vec(u_batch, config)
-        F_best_at_v = np.linalg.norm(forces, axis=-1).max()
-        F_min = min(F_min, F_best_at_v)
-
-    return calc_dt(F_min=F_min, F_scale=F_scale, N_min=N_min, safety_factor=safety_factor)
-
+def get_optimal_dt_zeeman(s0, detuning_gamma):
+    return {
+        "dt": 1e-5,
+    }
 
 if __name__ == "__main__":
-    dt_2d_mot = get_optimal_dt_2d_mot(
-        s0=1.4,
-        detuning_gamma=-1.47,
-        magnet_radius=0.053,
-    )
-    print(f"2D-MOT: F_min={dt_2d_mot['F_min']:.3e} N ({dt_2d_mot['F_min_norm']:.4f} F_scale), "
-          f"dt_raw={dt_2d_mot['dt_raw']:.3e} s, optimal dt (x{dt_2d_mot['safety_factor']})={dt_2d_mot['dt']:.3e} s")
+    print('hi')
 
-    dt_zeeman = get_optimal_dt_zeeman(
-        s0=3.0,
-        detuning_gamma=-13.75,
-    )
-    print(f"Zeeman: F_min={dt_zeeman['F_min']:.3e} N ({dt_zeeman['F_min_norm']:.4f} F_scale), "
-          f"dt_raw={dt_zeeman['dt_raw']:.3e} s, optimal dt (x{dt_zeeman['safety_factor']})={dt_zeeman['dt']:.3e} s")
+

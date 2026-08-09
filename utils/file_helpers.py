@@ -92,3 +92,30 @@ def save_file_json(filename, data):
 def read_data_json(json_file):
 	with open(json_file,"r", encoding="utf-8") as fh:
 		return json.load(fh)
+
+def update_json_file(json_file, new_key, new_value):
+    """Update a JSON file with new data.
+
+    Parameters
+    ----------
+    json_file : str
+        Path to the JSON file.
+    new_key : str
+        The key to update in the JSON file.
+    new_value : any
+        The new value for the specified key.
+    """
+    # Read existing data from the JSON file
+    if Path(json_file).exists():
+        with open(json_file, "r", encoding="utf-8") as fh:
+            existing_data = json.load(fh)
+    else:
+        existing_data = {}
+
+    existing_data[new_key] = new_value
+
+    # Write the updated data back to the JSON file
+    with open(json_file, "w", encoding="utf-8") as fh:
+        json.dump(existing_data, fh, indent=2, default=_json_default)
+
+    print(f"JSON file updated: {json_file}")

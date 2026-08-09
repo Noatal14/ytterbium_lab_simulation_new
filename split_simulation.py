@@ -44,7 +44,7 @@ def zeeman_simulation(
         zones=get_zeeman_only_zone()
     )
 
-    r0_arr, v0_arr, beam_info = generate_thermal_beam_state(
+    r0_arr, v0_arr, _ = generate_thermal_beam_state(
         config_name="thermal beam",
         N=N_particles,
         T_C=T_C,
@@ -58,7 +58,7 @@ def zeeman_simulation(
         detuning_gamma=zeeman_config["detuning_gamma"],
     )
 
-    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], dt_zeeman["dt"])
+    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], zeeman_sim_config["dt"])
 
     u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
 
@@ -85,7 +85,7 @@ def mot_simulation(
     zeeman_field_config={ "radii": None, "positions": None, "tilt_angles": None },
     magnet_radius=0.053,
     gravity_enabled=True,
-    seed=None,
+    seed=42,
     npools=8,
     stochastic=True,
 ):
@@ -120,7 +120,7 @@ def mot_simulation(
         magnet_radius=magnet_radius,
     )
 
-    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], dt_2d_mot["dt"])
+    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], _2d_mot_sim_config["dt"])
 
     sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
 
