@@ -46,7 +46,7 @@ if __name__ == "__main__":
             zeeman_field_config={ "radii": radii, "positions": positions, "tilt_angles": tilt_angles },
             magnet_radius=0.053,
             T_C=400.0,
-            seed=N,
+            seed=42,
             stochastic=True,
             dt=dt
         )
