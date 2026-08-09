@@ -24,6 +24,7 @@ def zeeman_simulation(
         seed=42,
         npools=8,
         stochastic=True,
+        dt=zeeman_sim_config["dt"],
     ):
 
     mot_config = dict(_2d_mot_config)
@@ -58,7 +59,7 @@ def zeeman_simulation(
         detuning_gamma=zeeman_config["detuning_gamma"],
     )
 
-    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], zeeman_sim_config["dt"])
+    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], dt)
 
     u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
 
