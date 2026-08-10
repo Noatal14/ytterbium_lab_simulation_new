@@ -89,6 +89,7 @@ def mot_simulation(
     seed=42,
     npools=8,
     stochastic=True,
+    dt=_2d_mot_sim_config["dt"],
 ):
     N = len(survivor_states)
     if N == 0:
@@ -121,7 +122,7 @@ def mot_simulation(
         magnet_radius=magnet_radius,
     )
 
-    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], _2d_mot_sim_config["dt"])
+    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], dt)
 
     sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
 

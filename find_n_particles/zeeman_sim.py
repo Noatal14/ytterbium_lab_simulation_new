@@ -18,6 +18,14 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--npools",
+        type=int,
+        nargs="+",
+        default=8,
+        help="npools",
+    )
+
+    parser.add_argument(
         "--n-values",
         type=int,
         nargs="+",
@@ -31,6 +39,7 @@ if __name__ == "__main__":
     args = parse_args()
 
     dt = args.dt
+    npools = args.npools
     N_vals = args.n_values
 
     radii, positions, tilt_angles = zeeman_configs["80_2"]
@@ -47,6 +56,7 @@ if __name__ == "__main__":
             magnet_radius=0.053,
             T_C=400.0,
             seed=42,
+            npools=npools,
             stochastic=True,
             dt=dt
         )
