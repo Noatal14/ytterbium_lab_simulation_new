@@ -20,9 +20,8 @@ def parse_args():
     parser.add_argument(
         "--npools",
         type=int,
-        nargs="+",
         default=8,
-        help="npools",
+        help="Number of worker processes",
     )
 
     parser.add_argument(
