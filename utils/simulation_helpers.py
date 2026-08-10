@@ -14,7 +14,7 @@ def run_simulation(
     sim.rng = np.random.default_rng(seed_idx)
     sim.u0_list = u0
 
-    res = sim.run(time_points, npools=npools, verbose=False)[0]
+    res = sim.run(time_points, npools=npools, verbose=True)[0]
     return seed_idx, res.y, sim
 
 def run_multiple_atoms_simulation(
@@ -29,7 +29,7 @@ def run_multiple_atoms_simulation(
     sim.rng = np.random.default_rng(seed_idx)
     sim.u0_list = u0
 
-    res = sim.run(time_points, npools=npools, verbose=False)
+    res = sim.run(time_points, npools=npools, verbose=True)
     return res, sim
 
 def entry_initial_condition(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):
