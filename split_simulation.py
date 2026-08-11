@@ -286,4 +286,4 @@ if __name__ == "__main__":
     cutoff_angle_deg = args.cutoff_angle_deg
     npools = args.npools
     
-    run_both(save_file=None, N=n_atoms, cutoff_angle_deg=cutoff_angle_deg, npools=npools)
+    run_both(save_file=None, N=n_atoms, collimation_angle_deg=cutoff_angle_deg, npools=npools)
