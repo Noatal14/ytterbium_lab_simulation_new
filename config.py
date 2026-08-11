@@ -19,6 +19,12 @@ class Transition:
     gamma: float
     lande_g: float
 
+
+def saturation_intensity_W_m2(transition: Transition) -> float:
+    """Return the saturation intensity in SI units for a transition."""
+    lifetime_s = 1.0 / transition.gamma
+    return np.pi * csts.h * csts.c / (3.0 * transition.wavelength**3 * lifetime_s)
+
 # ============================================================
 # Yb-171 physical constants
 # ============================================================
@@ -40,6 +46,10 @@ YB171_ISAT_MW_CM2 = 59.97  # saturation intensity (mW/cm²)
 YB171 = Atom(name=YB171_NAME, mass_kg=YB171_MASS_KG, mass_amu=YB171_MASS_AMU)
 BLUE_TRANSITION = Transition(wavelength=BLUE_LASER_WAVELENGTH_M, gamma=BLUE_LASER_GAMMA_HZ, lande_g=BLUE_LASER_LANDE_G)
 GREEN_TRANSITION = Transition(wavelength=GREEN_LASER_WAVELENGTH_M, gamma=GREEN_LASER_GAMMA_HZ, lande_g=GREEN_LASER_LANDE_G)
+
+BLUE_SATURATION_INTENSITY_W_M2 = saturation_intensity_W_m2(BLUE_TRANSITION)
+GREEN_SATURATION_INTENSITY_W_M2 = saturation_intensity_W_m2(GREEN_TRANSITION)
+GREEN_ISAT_MW_CM2 = GREEN_SATURATION_INTENSITY_W_M2 / 10.0
 
 
 # ============================================================
@@ -86,6 +96,12 @@ class Geometry:
     # threaded that bottleneck -- unlike the previous arbitrary capture disk
     # (z=0.500m, r=5mm), which had no stated basis in the proposal.
     CAPTURE_MIN_Z = DPS_START_Z + DPS_LENGTH
+    
+    # Assumed 3D MOT center:
+    # currently chosen as the midpoint of the post-DPS science region.
+    # The proposal does not specify the exact axial MOT position.
+    SCIENCE_REGION_CENTER_Z = 0.5 * (CAPTURE_MIN_Z + SCIENCE_ARM_TOTAL_LENGTH)
+    MOT_3D_CENTER = (0.0, 0.0, SCIENCE_REGION_CENTER_Z)
 
     SCIENCE_ARM_3_LENGTH = 0.510 - (DPS_LENGTH + SCIENCE_ARM_1_LENGTH)
     SCIENCE_ARM_3_RADIUS = 0.008
@@ -104,7 +120,7 @@ ZEEMAN_BEAM_DIR = np.array([0, -np.sin(Geometry.ZEEMAN_ARM_ANGLE_RAD), -np.cos(G
 # Oven / atomic beam parameters
 # ============================================================
 
-oven_temperature = 400.0  # K, placeholder
+oven_temperature = 400.0  # C
 
 zeeman_configs = {
     "50": [[0.0175355339059327,0.0175355339059327,0.0175355339059327,0.0201891263330892,0.0176198150316935,0.0175355339059327,0.0178252116597853,0.0175355339059327,0.01754638149051,0.018188011709049,0.0197122927636358,0.022296638617251,0.0251670309427908,0.0247091061118729,0.0216820328250508,0.019343574511782,0.0178558361000801,0.0178317326245773,0.0214866085051259,0.0190852362243728], [-0.02,-0.0123431457505076,-0.0043283476349881,0.00452259112729557,0.0128092170413323,0.0209589166209663,0.0290349308376656,0.036691785087158,0.0443766827227191,0.0523293953149637,0.0607300318872457,0.0718739594443776,0.087109698880217,0.109271202386712,0.12312177253889,0.134175289343433,0.143558975477972,0.152351584947448,0.16117297602231,0.17], [288.23907593143105,269.99999130604459,231.20851661314464,205.66573759422005,191.566216890318,199.80639369069763,189.45722700868535,186.842762302471,190.24665380464114,194.5495445590673,203.4154977796957,190.9065911787898,157.83247603598079,53.866206270109672,34.263325417042829,27.596822871144276,33.942170542634386,64.9810662840316,36.71946009392861,115.2878123276525]],
@@ -144,8 +160,20 @@ zeeman_laser_config = {
 }
 
 mot_3d_laser_config = { 
-    "399": { "s0": 0.5, "detuning_gamma": -1.0, "waist": 0.01 }, 
-    "556": { "s0": 5.0, "detuning_gamma": -10.0, "waist": 0.015 } 
+    "center_position": Geometry.MOT_3D_CENTER,
+    "magnetic_field_gradient_G_cm": 10.0,
+    "399": {
+        "enabled": True,
+        "s0": 0.5,
+        "detuning_gamma": -1.0,
+        "waist": 0.01,
+    },
+    "556": {
+        "enabled": True,
+        "s0": 5.0,
+        "detuning_gamma": -10.0,
+        "waist": 0.015,
+    },
 }
 
 F_scale = 3.141895058426422e-20
@@ -175,4 +203,11 @@ _2d_mot_sim_config = {
     "t_max": 25e-3,
     "dt": 8e-6,
     "start_distance": 0.100,
+}
+
+# 3D MOT sim config
+# =================
+_3d_mot_sim_config = {
+    "t_max": 25e-3,
+    "dt": 8e-6,
 }

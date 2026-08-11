@@ -258,6 +258,22 @@ def get_zeeman_only_zone(cutoff_distance=zeeman_sim_config["cutoff_distance"]):
     return [zone, out_of_bounds]
 
 
+def get_science_region_zone():
+    """
+    Return the post-DPS science-region transport volume used for the 3D MOT stage.
+    """
+    science_region = FiniteCylinder(
+        origin=(0, 0, Geometry.CAPTURE_MIN_Z),
+        direction=Geometry.Z_AXIS,
+        radius=Geometry.SCIENCE_ARM_3_RADIUS,
+        length=Geometry.SCIENCE_ARM_3_LENGTH,
+        tag="Science_Region",
+    )
+    science_region.action = "ignore"
+    out_of_bounds = OutOfBoundsZone(science_region, action="stop", tag="Science_Region_Boundary")
+    return [science_region, out_of_bounds]
+
+
 def get_2dmot_testing_zone():
     """
     Creates the '2D MOT testing zone' configuration.

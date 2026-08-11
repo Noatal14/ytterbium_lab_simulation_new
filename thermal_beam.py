@@ -3,19 +3,6 @@ import numpy as np
 import scipy.constants as csts
 from atomsmltr.atoms import Ytterbium
 
-def _microtube_alpha(beta):
-    numerator = 1 - 2 * beta**3 + (2 * beta**2 - 1) * np.sqrt(1 + beta**2)
-    denominator = np.sqrt(1 + beta**2) - beta**2 * (
-        np.log(np.sqrt(1 + beta**2) + 1) - np.log(beta)
-    )
-    return 0.5 - (1 / (3 * beta**2)) * (numerator / denominator)
-
-
-def _microtube_R(q):
-    q = np.clip(q, 0.0, 1.0)
-    return np.arccos(q) - q * np.sqrt(1 - q**2)
-
-
 def geometric_acceptance_angle_deg(r0):
     """
     Computes the tightest (most restrictive) half-angle, in degrees, that still
@@ -58,6 +45,20 @@ def geometric_acceptance_angle_deg(r0):
         theta_max_deg = min(theta_max_deg, np.degrees(np.arctan(radius / distance_from_source)))
 
     return theta_max_deg
+
+collimation_angle_deg = 1.3
+
+def _microtube_alpha(beta):
+    numerator = 1 - 2 * beta**3 + (2 * beta**2 - 1) * np.sqrt(1 + beta**2)
+    denominator = np.sqrt(1 + beta**2) - beta**2 * (
+        np.log(np.sqrt(1 + beta**2) + 1) - np.log(beta)
+    )
+    return 0.5 - (1 / (3 * beta**2)) * (numerator / denominator)
+
+
+def _microtube_R(q):
+    q = np.clip(q, 0.0, 1.0)
+    return np.arccos(q) - q * np.sqrt(1 - q**2)
 
 
 def microtube_intensity_theta(theta, r_tube, L_tube):
@@ -138,12 +139,9 @@ def sample_microtube_angles(N, r_tube, L_tube, rng, theta_max=np.pi / 2):
     return theta, phi, included_fraction
 
 def generate_thermal_beam_state(
-    config_name="thermal beam",
     N=1000,
     T_C=400.0,
-    v_target=50.0,
-    v_spread=5.0,
-    collimation_angle_deg=None,
+    collimation_angle_deg=collimation_angle_deg,
     m=None,
     distance_m=None,
     seed=42
@@ -159,12 +157,6 @@ def generate_thermal_beam_state(
     
     Parameters
     ----------
-    config_name : str
-        Configuration type. Must be one of:
-        - "thermal beam": 10cm away, thermal beam pointing to origin.
-        - "Atomic Zeeman beam": 10cm away, Gaussian velocity peaked at v_target pointing to origin.
-        - "GAS at oven": 431.7mm away, isotropic 3D gas.
-        - "beam from oven": 431.7mm away, thermal beam pointing to origin.
     N : int
         Number of atoms to generate.
     T_C : float
@@ -197,20 +189,7 @@ def generate_thermal_beam_state(
     alpha = np.radians(angle_deg)
     
     # Determine distance based on configuration
-    if distance_m is not None:
-        r0 = distance_m
-    else:
-        if config_name in ["thermal beam", "Atomic Zeeman beam"]:
-            r0 = 0.10  # 10 cm
-        elif config_name in ["GAS at oven", "beam from oven"]:
-            r0 = 0.4317  # 431.7 mm
-        else:
-            raise ValueError(f"Unknown config_name: '{config_name}'")
-
-    # If not explicitly overridden, derive the collimation half-angle from the
-    # actual apparatus geometry instead of using an arbitrary fixed cutoff.
-    if collimation_angle_deg is None:
-        collimation_angle_deg = geometric_acceptance_angle_deg(r0)
+    r0 = distance_m
 
     # Base position in 3rd quadrant of ZY plane
     x_pos = 0.0
@@ -235,83 +214,44 @@ def generate_thermal_beam_state(
     sigma = np.sqrt(csts.k * T_K / m)
     
     info = {
-        "config_name": config_name,
         "temperature_C": T_C,
         "temperature_K": T_K,
         "distance_m": r0,
         "mass_kg": m
     }
 
-    if config_name == "GAS at oven":
-        # Isotropic 3D Maxwell-Boltzmann Gas
-        vx = rng.normal(0, sigma, N)
-        vy = rng.normal(0, sigma, N)
-        vz = rng.normal(0, sigma, N)
-        v_vecs = np.vstack((vx, vy, vz)).T
-        
-        info["description"] = "Isotropic 3D Maxwell-Boltzmann Gas"
-        info["v_rms"] = np.sqrt(3) * sigma
-        info["v_mean_magnitude"] = np.sqrt(8 * csts.k * T_K / (np.pi * m))
-
-    elif config_name in ["thermal beam", "beam from oven"]:
-        # Thermal beam pointing to origin
-        # The axial velocity v_L for an effusive beam flux follows a v^3 exp(-v^2 / (2*sigma^2)) distribution.
-        # This is mathematically equivalent to a scaled Chi distribution with 4 degrees of freedom.
-        x1 = rng.normal(0, sigma, N)
-        x2 = rng.normal(0, sigma, N)
-        x3 = rng.normal(0, sigma, N)
-        x4 = rng.normal(0, sigma, N)
-        v_L_arr = np.sqrt(x1**2 + x2**2 + x3**2 + x4**2)
-        
-        # Transparent-flow microtube angular intensity distribution
-        # We cap theta at the collimation angle to simulate the physical acceptance
-        # of the downstream apertures (see geometric_acceptance_angle_deg).
-        theta, phi, included_fraction = sample_microtube_angles(
-            N=N,
-            r_tube=Geometry.R_TUBE,
-            L_tube=Geometry.L_TUBE,
-            rng=rng,
-            theta_max=np.radians(collimation_angle_deg)
-        )
-        v_T1_arr = v_L_arr * np.tan(theta) * np.cos(phi)
-        v_T2_arr = v_L_arr * np.tan(theta) * np.sin(phi)
-        
-        # Transform from local beam frame (u_T1, u_T2, u_L) to lab frame (X, Y, Z)
-        v_vecs = (v_T1_arr[:, None] * u_T1 + 
-                  v_T2_arr[:, None] * u_T2 + 
-                  v_L_arr[:, None] * u_L)
-        
-        info["description"] = f"Collimated Thermal Beam (Gaussian I(theta), sigma={collimation_angle_deg} deg)"
-        info["collimation_angle_deg"] = collimation_angle_deg
-        info["emission_included_flux_fraction"] = included_fraction
-        info["mean_axial_velocity"] = float(np.mean(v_L_arr))
-        info["std_axial_velocity"] = float(np.std(v_L_arr))
-        info["most_probable_velocity_theory"] = np.sqrt(3 * csts.k * T_K / m)
-
-    elif config_name == "Atomic Zeeman beam":
-        # Narrow Gaussian velocity profile around a target velocity, with small transverse spread
-        v_L_arr = rng.normal(v_target, v_spread, N)
-        
-        # Keep transverse spread characteristic of a collimated beam at that velocity
-        target_transverse_spread = v_target * np.tan(np.radians(collimation_angle_deg))
-        # ensure spread is not 0
-        target_transverse_spread = max(target_transverse_spread, 1.0)
-        
-        v_T1_arr = rng.normal(0, target_transverse_spread, N)
-        v_T2_arr = rng.normal(0, target_transverse_spread, N)
-        
-        # Ensure moving forward
-        mask = v_L_arr > 0
-        v_L_arr = np.where(mask, v_L_arr, -v_L_arr) # flip any negative tail just in case
-        
-        v_vecs = (v_T1_arr[:, None] * u_T1 + 
-                  v_T2_arr[:, None] * u_T2 + 
-                  v_L_arr[:, None] * u_L)
-                  
-        info["description"] = "Zeeman Slowed Beam (Gaussian Longitudinal Peak)"
-        info["target_velocity"] = v_target
-        info["velocity_spread"] = v_spread
-        info["mean_axial_velocity"] = float(np.mean(v_L_arr))
-        info["std_axial_velocity"] = float(np.std(v_L_arr))
+    # Thermal beam pointing to origin
+    # The axial velocity v_L for an effusive beam flux follows a v^3 exp(-v^2 / (2*sigma^2)) distribution.
+    # This is mathematically equivalent to a scaled Chi distribution with 4 degrees of freedom.
+    x1 = rng.normal(0, sigma, N)
+    x2 = rng.normal(0, sigma, N)
+    x3 = rng.normal(0, sigma, N)
+    x4 = rng.normal(0, sigma, N)
+    v_L_arr = np.sqrt(x1**2 + x2**2 + x3**2 + x4**2)
+    
+    # Transparent-flow microtube angular intensity distribution
+    # We cap theta at the collimation angle to simulate the physical acceptance
+    # of the downstream apertures (see geometric_acceptance_angle_deg).
+    theta, phi, included_fraction = sample_microtube_angles(
+        N=N,
+        r_tube=Geometry.R_TUBE,
+        L_tube=Geometry.L_TUBE,
+        rng=rng,
+        theta_max=np.radians(collimation_angle_deg)
+    )
+    v_T1_arr = v_L_arr * np.tan(theta) * np.cos(phi)
+    v_T2_arr = v_L_arr * np.tan(theta) * np.sin(phi)
+    
+    # Transform from local beam frame (u_T1, u_T2, u_L) to lab frame (X, Y, Z)
+    v_vecs = (v_T1_arr[:, None] * u_T1 + 
+                v_T2_arr[:, None] * u_T2 + 
+                v_L_arr[:, None] * u_L)
+    
+    info["description"] = f"Microcapillary thermal beam (transparent-flow angular distribution), sigma={collimation_angle_deg} deg)"
+    info["collimation_angle_deg"] = collimation_angle_deg
+    info["emission_included_flux_fraction"] = included_fraction
+    info["mean_axial_velocity"] = float(np.mean(v_L_arr))
+    info["std_axial_velocity"] = float(np.std(v_L_arr))
+    info["most_probable_velocity_theory"] = np.sqrt(3 * csts.k * T_K / m)
 
     return r_vecs, v_vecs, info

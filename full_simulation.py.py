@@ -36,7 +36,6 @@ def simulation(
     )
 
     r0_arr, v0_arr, beam_info = generate_thermal_beam_state(
-        config_name="thermal beam",
         N=N_particles,
         T_C=T_C,
         m=atom.mass,
