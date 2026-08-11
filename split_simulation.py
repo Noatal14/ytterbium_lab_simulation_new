@@ -5,9 +5,9 @@ from atomsmltr.simulation.simulator import ScipyIVP_3D
 from dt_comparison.RK4StCustomDt import RK4StCustomDt
 from lab_setup.config_builder import build_base_config, build_3dmot_config
 from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone
-from thermal_beam import generate_thermal_beam_state, collimation_angle_deg
+from thermal_beam import generate_thermal_beam_state
 from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors, extract_trajectory_data
-from config import zeeman_configs, zeeman_sim_config, _2d_mot_sim_config, _3d_mot_sim_config, mot_3d_laser_config
+from config import zeeman_configs, zeeman_sim_config, _2d_mot_sim_config, _3d_mot_sim_config, mot_3d_laser_config, collimation_angle_deg
 from pathlib import Path
 from datetime import datetime
 from utils.file_helpers import save_file_json
@@ -21,14 +21,14 @@ def parse_args():
     parser.add_argument(
         "--n_atoms",
         type=int,
-        required=True,
+        default=1000,
         help="Number of atoms to simulate",
     )
 
     parser.add_argument(
         "--cutoff_angle_deg",
         type=float,
-        required=True,
+        default=collimation_angle_deg,
         help="Cutoff angle for the thermal beam in degrees",
     )
 

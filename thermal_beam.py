@@ -1,52 +1,7 @@
-from config import YB171_MASS_KG, Geometry
+from config import YB171_MASS_KG, Geometry, collimation_angle_deg
 import numpy as np
 import scipy.constants as csts
 from atomsmltr.atoms import Ytterbium
-
-def geometric_acceptance_angle_deg(r0):
-    """
-    Computes the tightest (most restrictive) half-angle, in degrees, that still
-    geometrically clears every downstream vacuum-tube aperture (Zeeman_Arm_1/2/3,
-    see lab_setup/zones.py) along a straight-line path from a source at axial
-    distance `r0` (along the beam axis, matching the `distance_m` convention used
-    throughout this module) down to the origin (2D-MOT chamber center).
-
-    This replaces an arbitrary hardcoded collimation-angle cutoff with a value
-    directly tied to the actual apparatus geometry in `config.Geometry`, so the
-    emission-angle sampling cutoff no longer needs to be guessed.
-
-    Parameters
-    ----------
-    r0 : float
-        distance from the origin to the atom source, along the beam axis [m]
-
-    Returns
-    -------
-    float
-        the tightest acceptance half-angle, in degrees (capped at 90 deg if no
-        segment is actually a constraint, e.g. for sources very close to origin)
-    """
-    # (z_start, radius) for each tube segment, ordered from the 2D-MOT/origin
-    # side (z=0) outward towards the oven -- matches lab_setup/zones.py
-    # get_apparatus_internal_volume() ordering.
-    segments = [
-        (0.0, Geometry.ZEEMAN_ARM_1_RADIUS),
-        (Geometry.ZEEMAN_ARM_1_LENGTH, Geometry.ZEEMAN_ARM_2_RADIUS),
-        (Geometry.ZEEMAN_ARM_1_LENGTH + Geometry.ZEEMAN_ARM_2_LENGTH, Geometry.ZEEMAN_ARM_3_RADIUS),
-    ]
-
-    theta_max_deg = 90.0
-    for z_start, radius in segments:
-        # worst-case transverse deviation for this segment occurs at its
-        # farthest point from the source, i.e. at z_start (distance = r0 - z_start)
-        distance_from_source = r0 - z_start
-        if distance_from_source <= 0:
-            continue  # source is before (or inside) this segment; not yet a constraint
-        theta_max_deg = min(theta_max_deg, np.degrees(np.arctan(radius / distance_from_source)))
-
-    return theta_max_deg
-
-collimation_angle_deg = 1.3
 
 def _microtube_alpha(beta):
     numerator = 1 - 2 * beta**3 + (2 * beta**2 - 1) * np.sqrt(1 + beta**2)

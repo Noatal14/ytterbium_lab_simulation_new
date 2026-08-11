@@ -180,6 +180,8 @@ F_scale = 3.141895058426422e-20
 
 N_particles = 1000
 
+collimation_angle_deg = 1.5
+
 # Full sim config
 # ===============
 full_sim_config = {
