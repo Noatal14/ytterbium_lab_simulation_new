@@ -252,7 +252,6 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stoch
             magnet_radius=0.053,
             stochastic=False,
             npools=npools,
-            seed_idx=42
         )
 
         print(f"Success count: {success_count}")
