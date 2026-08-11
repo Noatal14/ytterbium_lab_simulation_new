@@ -243,30 +243,30 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stoch
 
     print("zeeman survivors: ", len(survivors))
     
-    if len(survivors) == 0:
-        print("No survivors — nothing to do in Phase 2.")
-    else:
-        _, success_count, _ = mot_simulation(
-            survivor_states=survivors,
-            _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
-            magnet_radius=0.053,
-            stochastic=False,
-            npools=npools,
-        )
+    # if len(survivors) == 0:
+    #     print("No survivors — nothing to do in Phase 2.")
+    # else:
+    #     _, success_count, _ = mot_simulation(
+    #         survivor_states=survivors,
+    #         _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
+    #         magnet_radius=0.053,
+    #         stochastic=False,
+    #         npools=npools,
+    #     )
 
-        print(f"Success count: {success_count}")
+    #     print(f"Success count: {success_count}")
 
-        n_survivors = len(survivors)
-        efficiency = success_count / n_survivors if n_survivors > 0 else np.nan
+    #     n_survivors = len(survivors)
+    #     efficiency = success_count / n_survivors if n_survivors > 0 else np.nan
 
-        print(
-            f"RESULT "
-            f"cutoff_angle_deg={collimation_angle_deg} "
-            f"N_initial={N} "
-            f"N_zeeman_survivors={n_survivors} "
-            f"N_mot_success={success_count} "
-            f"mot_given_zeeman_efficiency={efficiency:.8f}"
-        )
+    #     print(
+    #         f"RESULT "
+    #         f"cutoff_angle_deg={collimation_angle_deg} "
+    #         f"N_initial={N} "
+    #         f"N_zeeman_survivors={n_survivors} "
+    #         f"N_mot_success={success_count} "
+    #         f"mot_given_zeeman_efficiency={efficiency:.8f}"
+    #     )
 
         # mot3d_traj = []
         # if success_count == 0:
