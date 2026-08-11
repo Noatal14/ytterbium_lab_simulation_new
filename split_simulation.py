@@ -40,8 +40,16 @@ def parse_args():
     parser.add_argument(
         "--stochastic",
         type=int,
-        default=True,
-        help="Number of worker processes",
+        choices=[0, 1],
+        default=1,
+        help="1 for stochastic simulation, 0 for deterministic simulation",
+    )
+
+    parser.add_argument(
+        "--dt",
+        type=float,
+        default=1e-5,
+        help="Zeeman timestep in seconds",
     )
 
     return parser.parse_args()
@@ -84,12 +92,13 @@ def zeeman_simulation(
         collimation_angle_deg=collimation_angle_deg,
         m=atom.mass,
         distance_m=zeeman_sim_config["start_distance"],
+        seed=42
     )
 
-    dt_zeeman = get_optimal_dt_zeeman(
-        s0=zeeman_config["s0"],
-        detuning_gamma=zeeman_config["detuning_gamma"],
-    )
+    # dt_zeeman = get_optimal_dt_zeeman(
+    #     s0=zeeman_config["s0"],
+    #     detuning_gamma=zeeman_config["detuning_gamma"],
+    # )
 
     time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], dt)
 
@@ -103,6 +112,7 @@ def zeeman_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
+        seed_idx=42,
     )
 
     survivor_states, survivor_indices = zeeman_extract_survivors(res, zeeman_sim_config["cutoff_distance"])
@@ -164,6 +174,7 @@ def mot_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
+        seed_idx=42
     )
 
     mot_survivor_states, _ = mot_extract_survivors(res)
@@ -207,12 +218,13 @@ def mot_3d_simulation(
         time_points=time_points,
         sim_function=ScipyIVP_3D,
         npools=npools,
+        seed_idx=42
     )
 
     final_states = np.array([traj.y[:, -1].copy() for traj in res]) if len(res) > 0 else np.empty((0, 6))
     return res, final_states
 
-def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stochastic=True):
+def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stochastic=True, dt=zeeman_sim_config["dt"]):
     print("Running Zeeman phase simulation...")
 
     _, survivors, _ = zeeman_simulation(
@@ -224,6 +236,7 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stoch
         stochastic=stochastic,
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
+        dt=dt
     )
 
     print(f"Zeeman phase simulation ended")
@@ -282,6 +295,13 @@ if __name__ == "__main__":
     n_atoms = args.n_atoms
     cutoff_angle_deg = args.cutoff_angle_deg
     npools = args.npools
-    stochastic = args.stochastic
+    stochastic = bool(args.stochastic)
+    dt = args.dt
     
-    run_both(N=n_atoms, collimation_angle_deg=cutoff_angle_deg, npools=npools, stochastic=stochastic)
+    run_both(
+        N=n_atoms, 
+        collimation_angle_deg=cutoff_angle_deg, 
+        npools=npools, 
+        stochastic=stochastic, 
+        dt=dt
+    )
