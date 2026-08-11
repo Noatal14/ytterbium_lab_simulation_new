@@ -31,7 +31,7 @@ def simulation(
         _2d_mot_config=_2d_mot_config,
         zeeman_config= zeeman_config,
         zeeman_field_config=zeeman_field_config,
-        include_magnetic_field=True,
+        include_2dmot_field=True,
         zones=get_entire_apparatus_zone()
     )
 

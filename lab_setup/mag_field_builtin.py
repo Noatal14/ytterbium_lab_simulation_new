@@ -1,6 +1,8 @@
 import numpy as np
 from atomsmltr.environment.fields.magnetic import MagneticField
 
+from config import Geometry
+
 class Ideal2DQuadrupole(MagneticField):
     """
     A custom analytical 2D Magnetic Quadrupole strictly obeying:
@@ -75,17 +77,20 @@ class Ideal3DQuadrupole(MagneticField):
         self.gradient = gradient  # Tesla / meter
 
     def _field_value_func(self, position):
-        B = np.zeros_like(position)
-        B[:, 0] = self.gradient * position[:, 0]
-        B[:, 1] = self.gradient * position[:, 1]
-        B[:, 2] = -2.0 * self.gradient * position[:, 2]
+        relative_position = position - self.origin
+
+        B = np.zeros_like(relative_position)
+        B[:, 0] = self.gradient * relative_position[:, 0]
+        B[:, 1] = self.gradient * relative_position[:, 1]
+        B[:, 2] = -2.0 * self.gradient * relative_position[:, 2]
+
         return B
 
     def gen_infostring_obj(self):
         return f"Ideal 3D Quadrupole Field (G={self.gradient:.2f} T/m, origin={self.origin})"
 
 
-def get_builtin_3dmot_magnetic_field(gradient_G_cm=10.0, origin=(0.0, 0.0, 0.0)):
+def get_builtin_3dmot_magnetic_field(gradient_G_cm=10.0, origin=Geometry.MOT_3D_CENTER):
     """
     Create an ideal 3D MOT quadrupole field centered at `origin`.
     """

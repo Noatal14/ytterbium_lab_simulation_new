@@ -89,27 +89,23 @@ def build_base_config(**kwargs):
     all_beams = mot_beams + zeeman_beams + mot3d_beams
     
     # --- 5. Magnetic Field Config ---
-    use_builtin_mag = kwargs.get("use_builtin_mag", False)
     use_3d_mot_field = kwargs.get("use_3d_mot_field", False)
     include_zeeman_field = kwargs.get("include_zeeman_field", False)
-    include_magnetic_field = kwargs.get("include_magnetic_field", True)
+    include_2dmot_field = kwargs.get("include_2dmot_field", True)
     
     mag_fields = []
-    if include_magnetic_field:
-        if use_3d_mot_field:
-            mag_fields.append(
-                get_builtin_3dmot_magnetic_field(
-                    gradient_G_cm=_3d_mot_config.get("magnetic_field_gradient_G_cm", 10.0),
-                    origin=_3d_mot_config.get("center_position", Geometry.MOT_3D_CENTER),
-                )
+    if include_2dmot_field:
+        radius = kwargs.get("magnet_radius", 0.06)
+        mag_fields.append(CustomQuadrupole(radius=radius))
+
+    if use_3d_mot_field:
+        mag_fields.append(
+            get_builtin_3dmot_magnetic_field(
+                gradient_G_cm=_3d_mot_config.get("magnetic_field_gradient_G_cm", 10.0),
+                origin=_3d_mot_config.get("center_position", Geometry.MOT_3D_CENTER),
             )
-        elif not use_builtin_mag:
-            radius = kwargs.get("magnet_radius", 0.06)
-            mag_fields.append(CustomQuadrupole(radius=radius))
-        else:
-            gradient_G_cm = kwargs.get("builtin_mag_gradient", 50.0)
-            mag_fields.append(get_builtin_2dmot_magnetic_field(gradient_G_cm=gradient_G_cm))
-        
+        )
+
     if include_zeeman_field:
         zeeman_field_config = kwargs.get("zeeman_field_config", { "radii": None, "positions": None, "tilt_angles": None })
         radii = zeeman_field_config.get("radii")
@@ -229,29 +225,8 @@ def build_zeeman_config(
             "tilt_angles": tilt_angles,
         },
         include_3dmot_lasers=False,
-        include_magnetic_field=False,
+        include_2dmot_field=False,
         zones=get_zeeman_only_zone() if zones is None else zones,
-    )
-    return atom, config
-
-
-def build_3dmot_config(
-    _3d_mot_config=mot_3d_laser_config,
-    gravity_enabled=True,
-    zones=None,
-):
-    """Build a configuration that contains only the proposal-grounded 3D MOT stage."""
-    atom, config = build_base_config(
-        atom_species="Yb171",
-        include_2d_mot_lasers=False,
-        include_zeeman_field=False,
-        include_zeeman_laser=False,
-        include_3dmot_lasers=True,
-        _3d_mot_config=_3d_mot_config,
-        include_magnetic_field=True,
-        use_3d_mot_field=True,
-        gravity_enabled=gravity_enabled,
-        zones=get_science_region_zone() if zones is None else zones,
     )
     return atom, config
 

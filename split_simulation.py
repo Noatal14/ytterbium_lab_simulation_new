@@ -4,7 +4,7 @@ import numpy as np
 from atomsmltr.simulation.simulator import ScipyIVP_3D
 from dt_comparison.RK4StCustomDt import RK4StCustomDt
 from lab_setup.config_builder import build_base_config, build_3dmot_config
-from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone
+from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone, get_science_region_zone
 from thermal_beam import generate_thermal_beam_state
 from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors, extract_trajectory_data
 from config import zeeman_configs, zeeman_sim_config, _2d_mot_sim_config, _3d_mot_sim_config, mot_3d_laser_config, collimation_angle_deg
@@ -70,7 +70,7 @@ def zeeman_simulation(
         _2d_mot_config=mot_config,
         zeeman_config= zeeman_config,
         zeeman_field_config=zeeman_field_config,
-        include_magnetic_field=True,
+        include_2dmot_field=True,
         zones=get_zeeman_only_zone()
     )
 
@@ -138,7 +138,7 @@ def mot_simulation(
         _2d_mot_config=mot_config,
         zeeman_config= zeeman_config,
         zeeman_field_config=zeeman_field_config,
-        include_magnetic_field=True,
+        include_2dmot_field=True,
         zones=get_entire_apparatus_zone()
     )
 
@@ -189,9 +189,17 @@ def mot_3d_simulation(
     if N == 0:
         return [], np.empty((0, 6))
 
-    _, config = build_3dmot_config(
+    _, config = build_base_config(
+        atom_species="Yb171",
+        include_2d_mot_lasers=False,
+        include_zeeman_field=False,
+        include_zeeman_laser=False,
+        include_3dmot_lasers=True,
         _3d_mot_config=_3d_mot_config,
+        include_2dmot_field=True,
+        use_3d_mot_field=True,
         gravity_enabled=gravity_enabled,
+        zones=get_entire_apparatus_zone(),
     )
 
     u0_list = [state.copy() for state in survivor_states]
