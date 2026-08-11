@@ -133,7 +133,7 @@ def mot_simulation(
 ):
     N = len(survivor_states)
     if N == 0:
-        return [], np.array([])
+        return [], 0, np.empty((0, 6))
 
     mot_config = dict(_2d_mot_config)
     mot_config.setdefault("swap_polarization", False)
