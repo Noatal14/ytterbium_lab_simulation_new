@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from thermal_beam import microtube_intensity_theta, sample_microtube_angles, collection_angle_deg
-from config import Geometry
+from thermal_beam import microtube_intensity_theta, sample_microtube_angles
+from config import Geometry, collimation_angle_deg
 
-MAX_DEG = collection_angle_deg
+MAX_DEG = collimation_angle_deg
 
 def verify_microtube_distribution():
     print("Testing microtube distribution...")
