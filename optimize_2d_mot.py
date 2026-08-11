@@ -1,9 +1,20 @@
 import argparse
 import optuna
-from config import N_particles, zeeman_field_config, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius
+from config import (
+    N_particles,
+    zeeman_field_config,
+    zeeman_laser_config,
+    _2d_mot_laser_config,
+    _2d_mot_magnet_radius,
+)
 from pathlib import Path
-from utils.file_helpers import read_data_json, save_file_json, update_json_file
+from utils.file_helpers import (
+    read_data_json,
+    save_file_json,
+    update_json_file,
+)
 from split_simulation import zeeman_simulation, mot_simulation
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -17,37 +28,50 @@ def parse_args():
 
     return parser.parse_args()
 
-def run_zeeman():
-    print(f"Running Zeeman phase simulation...")
+
+def run_zeeman(npools=8):
+    print("Running Zeeman phase simulation...")
+
     _, survivors, _ = zeeman_simulation(
         N_particles=N_particles,
         _2d_mot_config=_2d_mot_laser_config,
         zeeman_config=zeeman_laser_config,
         zeeman_field_config=zeeman_field_config,
         magnet_radius=_2d_mot_magnet_radius,
-        stochastic=True
+        stochastic=True,
+        npools=npools,
     )
 
     save_dir = "data"
     save_path = Path(save_dir)
 
-    save_file_json(save_path / "zeeman_survivors_states.json", survivors)
-
-def run_mot(s0, detuning_gamma, magnet_radius):
-    path = (
-        "data/"
-        "zeeman_survivors_states.json"
+    save_file_json(
+        save_path / "zeeman_survivors_states.json",
+        survivors,
     )
+
+
+def run_mot(s0, detuning_gamma, magnet_radius, npools=8):
+    path = "data/zeeman_survivors_states.json"
 
     survivors = read_data_json(path)
 
-    print(f"Running MOT phase simulation s0={s0}, detuning_gamma={detuning_gamma}, magnet_radius={magnet_radius}...")
+    print(
+        f"Running MOT phase simulation "
+        f"s0={s0}, "
+        f"detuning_gamma={detuning_gamma}, "
+        f"magnet_radius={magnet_radius}..."
+    )
 
     _, success_count, mot_survivor_states = mot_simulation(
         survivor_states=survivors,
-        _2d_mot_config={ "s0": s0, "detuning_gamma": detuning_gamma },
+        _2d_mot_config={
+            "s0": s0,
+            "detuning_gamma": detuning_gamma,
+        },
         magnet_radius=magnet_radius,
-        stochastic=True
+        stochastic=True,
+        npools=npools,
     )
 
     print(f"Success count: {success_count}")
@@ -62,7 +86,11 @@ def run_mot(s0, detuning_gamma, magnet_radius):
     save_dir = "data"
     save_path = Path(save_dir)
 
-    update_json_file(save_path / "mot_summary.json", f"s0_{s0}_detuning_gamma_{detuning_gamma}_magnet_radius_{magnet_radius}", data_to_push)
+    update_json_file(
+        save_path / "mot_summary.json",
+        f"s0_{s0}_detuning_gamma_{detuning_gamma}_magnet_radius_{magnet_radius}",
+        data_to_push,
+    )
 
     return success_count
 
@@ -72,6 +100,7 @@ def optimize_mot(
     detuning_gamma_range,
     magnet_radius_range,
     n_trials=50,
+    npools=8,
 ):
     def objective(trial):
         s0 = trial.suggest_float(
@@ -93,6 +122,7 @@ def optimize_mot(
             s0=s0,
             detuning_gamma=detuning_gamma,
             magnet_radius=magnet_radius,
+            npools=npools,
         )
 
         return success_count
@@ -122,16 +152,22 @@ def optimize_mot(
 
     return study
 
+
 if __name__ == "__main__":
+    args = parse_args()
+
     BOUNDS_DETUNING = (-2, -0.6)
     BOUNDS_MAGNET_RADIUS = (0.045, 0.054)
     BOUNDS_S0 = (0.8, 2.0)
 
-    run_zeeman()
+    run_zeeman(
+        npools=args.npools,
+    )
 
     study = optimize_mot(
         s0_range=BOUNDS_S0,
         detuning_gamma_range=BOUNDS_DETUNING,
         magnet_radius_range=BOUNDS_MAGNET_RADIUS,
-        n_trials=50
+        n_trials=50,
+        npools=args.npools,
     )
