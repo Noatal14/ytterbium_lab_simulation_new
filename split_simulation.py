@@ -250,7 +250,7 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stoch
             survivor_states=survivors,
             _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
             magnet_radius=0.053,
-            stochastic=False,
+            stochastic=stochastic,
             npools=npools,
         )
 
