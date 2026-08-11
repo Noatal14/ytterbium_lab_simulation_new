@@ -37,6 +37,13 @@ def parse_args():
         help="Number of worker processes",
     )
 
+    parser.add_argument(
+        "--stochastic",
+        type=int,
+        default=True,
+        help="Number of worker processes",
+    )
+
     return parser.parse_args()
 
 def zeeman_simulation(
@@ -205,7 +212,7 @@ def mot_3d_simulation(
     final_states = np.array([traj.y[:, -1].copy() for traj in res]) if len(res) > 0 else np.empty((0, 6))
     return res, final_states
 
-def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8):
+def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stochastic=True):
     print("Running Zeeman phase simulation...")
 
     _, survivors, _ = zeeman_simulation(
@@ -214,7 +221,7 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8):
         zeeman_config=zeeman_laser_config,
         zeeman_field_config=zeeman_field_config,
         magnet_radius=_2d_mot_magnet_radius,
-        stochastic=False,
+        stochastic=stochastic,
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
     )
@@ -275,5 +282,6 @@ if __name__ == "__main__":
     n_atoms = args.n_atoms
     cutoff_angle_deg = args.cutoff_angle_deg
     npools = args.npools
+    stochastic = args.stochastic
     
-    run_both(N=n_atoms, collimation_angle_deg=cutoff_angle_deg, npools=npools)
+    run_both(N=n_atoms, collimation_angle_deg=cutoff_angle_deg, npools=npools, stochastic=stochastic)
