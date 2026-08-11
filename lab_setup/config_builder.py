@@ -14,12 +14,31 @@ from lab_setup.zeeman_laser_setup import setup_zeeman_laser
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
 from lab_setup.mag_field_custom import CustomQuadrupole
 from lab_setup.mag_field_Zeeman import ZeemanSlowerField
-from lab_setup.mag_field_builtin import get_builtin_2dmot_magnetic_field, get_builtin_3dmot_magnetic_field
+from lab_setup.mag_field_builtin import get_builtin_3dmot_magnetic_field
 from lab_setup.gravity import get_gravity_force
-from lab_setup.zones import get_2dmot_testing_zone, get_2dmot_chamber_only_zone, get_entire_apparatus_zone, get_zeeman_only_zone, get_science_region_zone
-from config import Geometry, zeeman_laser_config, mot_2d_laser_config, mot_3d_laser_config
+from lab_setup.zones import get_2dmot_chamber_only_zone, get_zeeman_only_zone
+from config import Geometry, zeeman_laser_config, _2d_mot_laser_config, mot_3d_laser_config, _3d_mot_gradient_G_cm, zeeman_field_config
 
-def build_base_config(**kwargs):
+def build_base_config(
+    atom_species="Yb171",
+
+    include_2d_mot=True,
+    include_zeeman=True,
+    include_3dmot=False,
+
+    # Lasers configurations
+    _2d_mot_config=_2d_mot_laser_config,
+    zeeman_config=zeeman_laser_config,
+    _3d_mot_config=mot_3d_laser_config,
+
+    # Magnetic field configurations
+    zeeman_field_config=zeeman_field_config,
+    magnet_radius=0.06,
+    _3d_mot_gradient_G_cm=_3d_mot_gradient_G_cm,
+
+    gravity_enabled=False,
+    zones=None,
+):
     """
     Configuration Factory for 2DMOT Simulation.
     Creates an `Atom` and an `Environment` configured with dynamic parameters.
@@ -51,36 +70,26 @@ def build_base_config(**kwargs):
     """
     
     # --- 1. Atom Species Config ---
-    atom_name = kwargs.get("atom_species", "Yb171")
+    atom_name = atom_species
     atom = create_atom(atom_name)
     
     # --- 2. 2D MOT Lasers Config ---
-    include_2d_mot_lasers = kwargs.get("include_2d_mot_lasers", True)
-    _2d_mot_config = kwargs.get("_2d_mot_config", { **mot_2d_laser_config, "swap_polarization": False })
-    
-    if include_2d_mot_lasers:
+    if include_2d_mot:
         mot_beams = setup_2dmot_lasers(s0=_2d_mot_config["s0"], detuning_gamma=_2d_mot_config["detuning_gamma"], atom_species_name=atom_name, swap_polarization=_2d_mot_config["swap_polarization"])
     else:
         mot_beams = []
 
-    # --- 3. Zeeman laser Config ---
-    include_zeeman_laser = kwargs.get("include_zeeman_laser", True)
-    zeeman_config = kwargs.get("zeeman_config", zeeman_laser_config)
-    
-    if include_zeeman_laser:
+    # --- 3. Zeeman laser Config ---    
+    if include_zeeman:
         zeeman_beams = setup_zeeman_laser(s0=zeeman_config["s0"], detuning_gamma=zeeman_config["detuning_gamma"], atom_species_name=atom_name)
     else:
         zeeman_beams = []
         
     # --- 4. 3D MOT Lasers Config ---
-    include_3dmot_lasers = kwargs.get("include_3dmot_lasers", True)
-    _3d_mot_config = kwargs.get("_3d_mot_config", mot_3d_laser_config)
-
-    if include_3dmot_lasers:
+    if include_3dmot:
         mot3d_beams = setup_3dmot_lasers(
-            center_position=_3d_mot_config.get("center_position", Geometry.MOT_3D_CENTER),
-            s0_399=_3d_mot_config["399"]["s0"], detuning_gamma_399=_3d_mot_config["399"]["detuning_gamma"], waist_399=_3d_mot_config["399"]["waist"], enabled_399=_3d_mot_config["399"].get("enabled", True),
-            s0_556=_3d_mot_config["556"]["s0"], detuning_gamma_556=_3d_mot_config["556"]["detuning_gamma"], waist_556=_3d_mot_config["556"]["waist"], enabled_556=_3d_mot_config["556"].get("enabled", True),
+            s0_399=_3d_mot_config["399"]["s0"], detuning_gamma_399=_3d_mot_config["399"]["detuning_gamma"], waist_399=_3d_mot_config["399"]["waist"], enabled_399=_3d_mot_config["399"]["enabled"],
+            s0_556=_3d_mot_config["556"]["s0"], detuning_gamma_556=_3d_mot_config["556"]["detuning_gamma"], waist_556=_3d_mot_config["556"]["waist"], enabled_556=_3d_mot_config["556"]["enabled"],
             atom_species_name=atom_name
         )
     else:
@@ -88,29 +97,24 @@ def build_base_config(**kwargs):
     
     all_beams = mot_beams + zeeman_beams + mot3d_beams
     
-    # --- 5. Magnetic Field Config ---
-    use_3d_mot_field = kwargs.get("use_3d_mot_field", False)
-    include_zeeman_field = kwargs.get("include_zeeman_field", False)
-    include_2dmot_field = kwargs.get("include_2dmot_field", True)
-    
+    # --- 5. Magnetic Field Config ---    
     mag_fields = []
-    if include_2dmot_field:
-        radius = kwargs.get("magnet_radius", 0.06)
+    if include_2d_mot:
+        radius = magnet_radius
         mag_fields.append(CustomQuadrupole(radius=radius))
 
-    if use_3d_mot_field:
+    if include_3dmot:
         mag_fields.append(
             get_builtin_3dmot_magnetic_field(
-                gradient_G_cm=_3d_mot_config.get("magnetic_field_gradient_G_cm", 10.0),
-                origin=_3d_mot_config.get("center_position", Geometry.MOT_3D_CENTER),
+                gradient_G_cm=_3d_mot_gradient_G_cm,
+                origin=_3d_mot_config["center_position"],
             )
         )
 
-    if include_zeeman_field:
-        zeeman_field_config = kwargs.get("zeeman_field_config", { "radii": None, "positions": None, "tilt_angles": None })
-        radii = zeeman_field_config.get("radii")
-        positions = zeeman_field_config.get("positions")
-        tilt_angles = zeeman_field_config.get("tilt_angles")
+    if include_zeeman:
+        radii = zeeman_field_config["radii"]
+        positions = zeeman_field_config["positions"]
+        tilt_angles = zeeman_field_config["tilt_angles"]
         if radii is None or positions is None or tilt_angles is None:
             mag_fields.append(ZeemanSlowerField(angle_deg=Geometry.ZEEMAN_ARM_ANGLE_DEG, start_distance=Geometry.ZEEMAN_START_DISTANCRE))
         else:
@@ -123,12 +127,9 @@ def build_base_config(**kwargs):
             ))
 
     # --- 6. Gravity Config ---
-    gravity_enabled = kwargs.get("gravity_enabled", False)
     gravity_force = get_gravity_force(atom.mass, enabled=gravity_enabled)
 
     # --- 7. Zones Config ---
-    zones = kwargs.get("zones", get_2dmot_testing_zone())
-
     # --- Construct Full Configuration ---
     # The Configuration object requires a list of EnvObjects and the Atom object.
     env_objects = all_beams + mag_fields + [gravity_force]
@@ -164,14 +165,18 @@ def build_base_config(**kwargs):
     return atom, config
 
 def build_2dmot_config(
-    s0=mot_2d_laser_config["s0"],
-    detuning_gamma=mot_2d_laser_config["detuning_gamma"],
+    s0=_2d_mot_laser_config["s0"],
+    detuning_gamma=_2d_mot_laser_config["detuning_gamma"],
     magnet_radius=0.055,
 ):
     """Build a configuration that contains only the 2D MOT components."""
     atom, config = build_base_config(
         atom_species="Yb171",
-        include_2d_mot_lasers=True,
+
+        include_2d_mot=True,
+        include_zeeman=False,
+        include_3dmot=False,
+
         _2d_mot_config={ 
             "s0": s0, 
             "detuning_gamma": detuning_gamma, 
@@ -179,9 +184,6 @@ def build_2dmot_config(
         },
         magnet_radius=magnet_radius,
         gravity_enabled=False,
-        include_zeeman_field=False,
-        include_zeeman_laser=False,
-        include_3dmot_lasers=False,
         zones=get_2dmot_chamber_only_zone(),
     )
     return atom, config
@@ -192,11 +194,6 @@ def build_zeeman_config(
     detuning_gamma_zeeman=zeeman_laser_config["detuning_gamma"],
     magnet_radius=0.055,
     gravity_enabled=False,
-    include_mot_lasers=False,
-    include_zeeman_field=True,
-    include_zeeman_laser=True,
-    s0_mot=mot_2d_laser_config["s0"],
-    detuning_gamma_mot=mot_2d_laser_config["detuning_gamma"],
     radii=None,
     positions=None,
     tilt_angles=None,
@@ -205,16 +202,13 @@ def build_zeeman_config(
     """Build a configuration that contains the Zeeman slower components."""
     atom, config = build_base_config(
         atom_species="Yb171",
-        include_2d_mot_lasers=include_mot_lasers,
-        _2d_mot_config={
-            "s0": s0_mot,
-            "detuning_gamma": detuning_gamma_mot,
-            "swap_polarization": False,
-        },
+
+        include_2d_mot=False,
+        include_zeeman=True,
+        include_3dmot=False,
+
         magnet_radius=magnet_radius,
         gravity_enabled=gravity_enabled,
-        include_zeeman_field=include_zeeman_field,
-        include_zeeman_laser=include_zeeman_laser,
         zeeman_config={
             "s0": s0_zeeman,
             "detuning_gamma": detuning_gamma_zeeman,
@@ -224,8 +218,6 @@ def build_zeeman_config(
             "positions": positions,
             "tilt_angles": tilt_angles,
         },
-        include_3dmot_lasers=False,
-        include_2dmot_field=False,
         zones=get_zeeman_only_zone() if zones is None else zones,
     )
     return atom, config

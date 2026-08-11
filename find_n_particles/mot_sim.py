@@ -4,9 +4,7 @@ from split_simulation import mot_simulation
 from pathlib import Path
 from utils.file_helpers import read_data_json, save_file_json
 
-
 MOT_DT = 8e-6
-
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -71,7 +69,6 @@ if __name__ == "__main__":
                 "detuning_gamma": -1.47,
             },
             magnet_radius=0.053,
-            seed=42,
             npools=npools,
             stochastic=True,
             dt=MOT_DT,

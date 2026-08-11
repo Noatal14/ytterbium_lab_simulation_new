@@ -3,7 +3,7 @@ from atomsmltr.simulation.simulator import ScipyIVP_3D
 from config import ZEEMAN_BEAM_DIR, Geometry
 
 def run_simulation(
-        seed_idx = None, 
+        seed_idx = 42, 
         config = None, 
         u0 = None, 
         time_points = None, 
@@ -18,7 +18,7 @@ def run_simulation(
     return seed_idx, res.y, sim
 
 def run_multiple_atoms_simulation(
-        seed_idx = None, 
+        seed_idx = 42, 
         config = None, 
         u0 = None, 
         time_points = None, 

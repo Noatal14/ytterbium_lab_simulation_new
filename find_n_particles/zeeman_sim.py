@@ -2,7 +2,7 @@ import argparse
 import subprocess
 
 from split_simulation import zeeman_simulation
-from config import zeeman_configs
+from config import zeeman_laser_config, _2d_mot_laser_config, zeeman_field_config, _2d_mot_magnet_radius
 from pathlib import Path
 from datetime import datetime
 from utils.file_helpers import save_file_json
@@ -41,20 +41,16 @@ if __name__ == "__main__":
     npools = args.npools
     N_vals = args.n_values
 
-    radii, positions, tilt_angles = zeeman_configs["80_2"]
-
     print(f"Running Zeeman simulations with dt={dt:.2e}")
 
     for N in N_vals:
         print(f"Running Zeeman phase simulation for N={N}...")
         zeeman_traj, survivors, surv_idx = zeeman_simulation(
             N_particles=N,
-            _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
-            zeeman_config={ "s0": 3.0, "detuning_gamma": -13.75 },
-            zeeman_field_config={ "radii": radii, "positions": positions, "tilt_angles": tilt_angles },
-            magnet_radius=0.053,
-            T_C=400.0,
-            seed=42,
+            _2d_mot_config=_2d_mot_laser_config,
+            zeeman_config=zeeman_laser_config,
+            zeeman_field_config=zeeman_field_config,
+            magnet_radius=_2d_mot_magnet_radius,
             npools=npools,
             stochastic=True,
             dt=dt

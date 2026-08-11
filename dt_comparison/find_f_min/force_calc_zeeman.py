@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.cm import ScalarMappable
 from matplotlib.ticker import ScalarFormatter
-from config import YB171_MASS_KG, ZEEMAN_BEAM_DIR, zeeman_configs
+from config import YB171_MASS_KG, ZEEMAN_BEAM_DIR, _2d_mot_laser_config, zeeman_laser_config, zeeman_field_config, _2d_mot_magnet_radius
 from dt_comparison.consts import F_scale
 from split_simulation import zeeman_simulation
 from utils.file_helpers import read_data_json, save_file_json
@@ -14,15 +14,12 @@ def run_zeeman_sim_and_save_data(
         detuning_gamma,
         N_particles=1000,
     ):
-    radii, positions, tilt_angles = zeeman_configs["80_2"]
-
     zeeman_traj, _, surv_idx = zeeman_simulation(
         N_particles=N_particles,
-        _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
-        zeeman_config={ "s0": s0, "detuning_gamma": detuning_gamma },
-        zeeman_field_config={ "radii": radii, "positions": positions, "tilt_angles": tilt_angles },
-        magnet_radius=0.053,
-        T_C=400.0,
+        _2d_mot_config={ "s0": s0, "detuning_gamma": detuning_gamma },
+        zeeman_config=zeeman_laser_config,
+        zeeman_field_config=zeeman_field_config,
+        magnet_radius=_2d_mot_magnet_radius,
         stochastic=False
     )
 
