@@ -119,24 +119,81 @@ def generate_timepoints(t_final, dt):
     
     return time_points, len(time_points)
 
-def zeeman_extract_survivors(res_list, cutoff_distance):
-    tolerance = 0.010  # 10mm tolerance
+def zeeman_extract_survivors(
+    res_list,
+    cutoff_distance,
+    event_tolerance=1e-6,
+):
+    """
+    Extract atoms that successfully reach the inner Zeeman cutoff boundary.
+
+    A particle is defined as a Zeeman survivor if its terminal event occurs
+    at the cutoff plane along the Zeeman axis.
+
+    This criterion uses the exact event state returned by solve_ivp, rather
+    than sampled trajectory points, so the result is independent of the
+    output timepoint spacing.
+
+    Parameters
+    ----------
+    res_list : list of scipy.integrate.OdeResult
+        Trajectories returned by the deterministic Zeeman simulation.
+
+    cutoff_distance : float
+        Position of the inner Zeeman cutoff plane along the Zeeman axis [m].
+
+    event_tolerance : float, optional
+        Numerical tolerance for identifying the cutoff plane [m].
+        Default is 1e-6 m.
+
+    Returns
+    -------
+    survivor_states : np.ndarray, shape (M, 6)
+        State [x, y, z, vx, vy, vz] at the exact cutoff crossing.
+
+    survivor_indices : list of int
+        Indices of the surviving atoms in res_list.
+    """
+
     survivor_states = []
     survivor_indices = []
 
     for i, res in enumerate(res_list):
-        positions = res.y[:3, :].T  # (N_timesteps, 3)
-        # Projection onto beam axis (larger = further from origin)
-        proj = positions @ ZEEMAN_BEAM_DIR
-        min_proj = np.min(proj)
 
-        if min_proj <= cutoff_distance + tolerance:
-            # This particle reached the cutoff boundary
-            # Use the state at the point of minimum projection (closest to origin)
-            idx_min = np.argmin(proj)
-            final_state = res.y[:, idx_min]  # (6,)
-            survivor_states.append(final_state)
-            survivor_indices.append(i)
+        # A terminal event must have occurred.
+        if res.status != 1:
+            continue
+
+        if not hasattr(res, "y_events") or res.y_events is None:
+            continue
+
+        survivor_found = False
+
+        for event_states in res.y_events:
+            if len(event_states) == 0:
+                continue
+
+            for state_event in event_states:
+                position_event = state_event[:3]
+
+                # Distance along the Zeeman beam axis.
+                proj_event = position_event @ ZEEMAN_BEAM_DIR
+
+                # Successful transmission through the Zeeman stage:
+                # the trajectory terminated at the inner cutoff plane.
+                if np.isclose(
+                    proj_event,
+                    cutoff_distance,
+                    atol=event_tolerance,
+                    rtol=0.0,
+                ):
+                    survivor_states.append(state_event.copy())
+                    survivor_indices.append(i)
+                    survivor_found = True
+                    break
+
+            if survivor_found:
+                break
 
     if len(survivor_states) == 0:
         return np.empty((0, 6)), []

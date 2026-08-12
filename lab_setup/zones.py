@@ -225,11 +225,12 @@ def get_zeeman_only_zone(cutoff_distance=zeeman_sim_config["cutoff_distance"]):
     angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
     beam_dir = np.array([0, -np.sin(angle_rad), -np.cos(angle_rad)])
 
+    # Arm 1: truncated — starts at cutoff_distance, not at origin
     z1 = FiniteCylinder(
         origin=beam_dir * cutoff_distance,
         direction=beam_dir,
         radius=Geometry.ZEEMAN_ARM_1_RADIUS,
-        length=max(Geometry.ZEEMAN_ARM_1_LENGTH - cutoff_distance, 0.0),
+        length=Geometry.ZEEMAN_ARM_1_LENGTH - cutoff_distance,
         tag="Zeeman_Arm_1_truncated",
     )
 

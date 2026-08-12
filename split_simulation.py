@@ -6,7 +6,7 @@ from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone
 from thermal_beam import generate_thermal_beam_state
 from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors, extract_trajectory_data
-from config import zeeman_sim_config, _2d_mot_sim_config, _3d_mot_sim_config, mot_3d_laser_config, collimation_angle_deg, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius, zeeman_field_config
+from config import Geometry, ZEEMAN_BEAM_DIR, N_particles, zeeman_sim_config, _2d_mot_sim_config, _3d_mot_sim_config, mot_3d_laser_config, collimation_angle_deg, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius, zeeman_field_config
 from pathlib import Path
 from datetime import datetime
 from dt_comparison.main import get_optimal_dt_2d_mot, get_optimal_dt_zeeman
@@ -19,7 +19,7 @@ def parse_args():
     parser.add_argument(
         "--n_atoms",
         type=int,
-        default=1000,
+        default=N_particles,
         help="Number of atoms to simulate",
     )
 
@@ -48,7 +48,7 @@ def parse_args():
     parser.add_argument(
         "--dt",
         type=float,
-        default=1e-5,
+        default=zeeman_sim_config["dt"],
         help="Zeeman timestep in seconds",
     )
 
@@ -84,7 +84,7 @@ def zeeman_simulation(
         _2d_mot_config=mot_config,
         zeeman_config= zeeman_config,
 
-        zones=get_zeeman_only_zone()
+        zones=get_zeeman_only_zone(cutoff_distance=zeeman_sim_config["cutoff_distance"])
     )
 
     r0_arr, v0_arr, _ = generate_thermal_beam_state(
@@ -135,9 +135,6 @@ def mot_simulation(
     if N == 0:
         return [], 0, np.empty((0, 6))
 
-    mot_config = dict(_2d_mot_config)
-    mot_config.setdefault("swap_polarization", False)
-
     atom, config = build_base_config(
         atom_species="Yb171",
         gravity_enabled=gravity_enabled,
@@ -149,7 +146,7 @@ def mot_simulation(
         magnet_radius=magnet_radius,
         zeeman_field_config=zeeman_field_config,
 
-        _2d_mot_config=mot_config,
+        _2d_mot_config=_2d_mot_config,
         zeeman_config= zeeman_config,
 
         zones=get_entire_apparatus_zone()
@@ -168,7 +165,7 @@ def mot_simulation(
 
     sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
 
-    res, _ =run_multiple_atoms_simulation(
+    res, _ = run_multiple_atoms_simulation(
         config=config,
         u0=u0_list,
         time_points=time_points,
@@ -248,8 +245,8 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stoch
     else:
         _, success_count, _ = mot_simulation(
             survivor_states=survivors,
-            _2d_mot_config={ "s0": 1.4, "detuning_gamma": -1.47 },
-            magnet_radius=0.053,
+            _2d_mot_config=_2d_mot_laser_config,
+            magnet_radius=_2d_mot_magnet_radius,
             stochastic=stochastic,
             npools=npools,
         )
