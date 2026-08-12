@@ -122,78 +122,89 @@ def generate_timepoints(t_final, dt):
 def zeeman_extract_survivors(
     res_list,
     cutoff_distance,
+    radial_tolerance=1e-9,
     event_tolerance=1e-6,
 ):
-    """
-    Extract atoms that successfully reach the inner Zeeman cutoff boundary.
-
-    A particle is defined as a Zeeman survivor if its terminal event occurs
-    at the cutoff plane along the Zeeman axis.
-
-    This criterion uses the exact event state returned by solve_ivp, rather
-    than sampled trajectory points, so the result is independent of the
-    output timepoint spacing.
-
-    Parameters
-    ----------
-    res_list : list of scipy.integrate.OdeResult
-        Trajectories returned by the deterministic Zeeman simulation.
-
-    cutoff_distance : float
-        Position of the inner Zeeman cutoff plane along the Zeeman axis [m].
-
-    event_tolerance : float, optional
-        Numerical tolerance for identifying the cutoff plane [m].
-        Default is 1e-6 m.
-
-    Returns
-    -------
-    survivor_states : np.ndarray, shape (M, 6)
-        State [x, y, z, vx, vy, vz] at the exact cutoff crossing.
-
-    survivor_indices : list of int
-        Indices of the surviving atoms in res_list.
-    """
-
     survivor_states = []
     survivor_indices = []
 
     for i, res in enumerate(res_list):
 
-        # A terminal event must have occurred.
-        if res.status != 1:
-            continue
+        # =====================================================
+        # Deterministic: ScipyIVP_3D
+        # =====================================================
+        if getattr(res, "y_events", None) is not None:
 
-        if not hasattr(res, "y_events") or res.y_events is None:
-            continue
+            survivor_found = False
 
-        survivor_found = False
+            for event_states in res.y_events:
+                for state_event in event_states:
 
-        for event_states in res.y_events:
-            if len(event_states) == 0:
-                continue
+                    r_event = state_event[:3]
+                    proj_event = r_event @ ZEEMAN_BEAM_DIR
 
-            for state_event in event_states:
-                position_event = state_event[:3]
+                    if np.isclose(
+                        proj_event,
+                        cutoff_distance,
+                        atol=event_tolerance,
+                        rtol=0.0,
+                    ):
+                        survivor_states.append(state_event.copy())
+                        survivor_indices.append(i)
+                        survivor_found = True
+                        break
 
-                # Distance along the Zeeman beam axis.
-                proj_event = position_event @ ZEEMAN_BEAM_DIR
-
-                # Successful transmission through the Zeeman stage:
-                # the trajectory terminated at the inner cutoff plane.
-                if np.isclose(
-                    proj_event,
-                    cutoff_distance,
-                    atol=event_tolerance,
-                    rtol=0.0,
-                ):
-                    survivor_states.append(state_event.copy())
-                    survivor_indices.append(i)
-                    survivor_found = True
+                if survivor_found:
                     break
 
-            if survivor_found:
-                break
+        # =====================================================
+        # Stochastic: RK4StCustomDt / SimRes
+        # =====================================================
+        else:
+            if res.y.shape[1] < 2:
+                continue
+
+            state_before = res.y[:, -2]
+            state_after = res.y[:, -1]
+
+            r_before = state_before[:3]
+            r_after = state_after[:3]
+
+            p_before = r_before @ ZEEMAN_BEAM_DIR
+            p_after = r_after @ ZEEMAN_BEAM_DIR
+
+            # Did this RK4 step cross the inner cutoff plane?
+            if not (
+                p_before > cutoff_distance
+                and p_after <= cutoff_distance
+            ):
+                continue
+
+            # Interpolate to the exact cutoff crossing.
+            alpha = (
+                (p_before - cutoff_distance)
+                / (p_before - p_after)
+            )
+
+            state_cutoff = (
+                state_before
+                + alpha * (state_after - state_before)
+            )
+
+            r_cutoff = state_cutoff[:3]
+
+            # Distance from the Zeeman beam axis.
+            axial_point = (
+                (r_cutoff @ ZEEMAN_BEAM_DIR)
+                * ZEEMAN_BEAM_DIR
+            )
+
+            rho = np.linalg.norm(r_cutoff - axial_point)
+
+            # Must cross through the physical opening of Arm 1.
+            if rho <= Geometry.ZEEMAN_ARM_1_RADIUS + radial_tolerance:
+                survivor_states.append(state_cutoff)
+                survivor_indices.append(i)
 
     if len(survivor_states) == 0:
         return np.empty((0, 6)), []

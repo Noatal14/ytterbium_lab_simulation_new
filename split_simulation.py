@@ -173,7 +173,6 @@ def mot_simulation(
         npools=npools,
         seed_idx=42
     )
-
     mot_survivor_states, _ = mot_extract_survivors(res)
     count = _2d_mot_success_count(res)
 
