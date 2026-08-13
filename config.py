@@ -215,7 +215,7 @@ full_sim_config = {
 # =================
 zeeman_sim_config = {
     "t_max": 20e-3,
-    "dt": 1e-5,
+    "dt": 4e-5,
     "start_distance": 0.450,
     "cutoff_distance": 0.100,
 }

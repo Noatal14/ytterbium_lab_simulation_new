@@ -1,26 +1,71 @@
 import argparse
-import numpy as np
-from atomsmltr.simulation.simulator import ScipyIVP_3D
-from dt_comparison.RK4StCustomDt import RK4StCustomDt
-from lab_setup.config_builder import build_base_config
-from lab_setup.zones import get_entire_apparatus_zone, get_zeeman_only_zone
-from thermal_beam import generate_thermal_beam_state
-from utils.simulation_helpers import run_multiple_atoms_simulation, generate_timepoints, zeeman_extract_survivors, _2d_mot_success_count, mot_extract_survivors, extract_trajectory_data
-from config import Geometry, ZEEMAN_BEAM_DIR, N_particles, zeeman_sim_config, _2d_mot_sim_config, _3d_mot_sim_config, mot_3d_laser_config, collimation_angle_deg, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius, zeeman_field_config
 from pathlib import Path
-from datetime import datetime
-from dt_comparison.main import get_optimal_dt_2d_mot, get_optimal_dt_zeeman
 
-# Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
+import numpy as np
+
+from atomsmltr.simulation.simulator import ScipyIVP_3D
+from utils.RK4StCustom import RK4StCustom
+
+from lab_setup.config_builder import build_base_config
+from lab_setup.zones import (
+    get_entire_apparatus_zone,
+    get_zeeman_only_zone,
+)
+
+from thermal_beam import generate_thermal_beam_state
+
+from utils.simulation_helpers import (
+    run_multiple_atoms_simulation,
+    generate_timepoints,
+    zeeman_extract_survivors,
+    _2d_mot_success_count,
+    mot_extract_survivors,
+)
+
+from config import (
+    Geometry,
+    ZEEMAN_BEAM_DIR,
+    N_particles,
+    zeeman_sim_config,
+    _2d_mot_sim_config,
+    _3d_mot_sim_config,
+    mot_3d_laser_config,
+    collimation_angle_deg,
+    zeeman_laser_config,
+    _2d_mot_laser_config,
+    _2d_mot_magnet_radius,
+    zeeman_field_config,
+)
+
+
+# ============================================================
+# Command-line arguments
+# ============================================================
 
 def parse_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
+        "--mode",
+        choices=[
+            "both",
+            "generate_zeeman_survivors",
+            "mot_from_survivors",
+        ],
+        default="both",
+        help=(
+            "Simulation mode: "
+            "'both' runs Zeeman + MOT, "
+            "'generate_zeeman_survivors' runs Zeeman and saves survivors, "
+            "'mot_from_survivors' loads saved survivors and runs the MOT."
+        ),
+    )
+
+    parser.add_argument(
         "--n_atoms",
         type=int,
         default=N_particles,
-        help="Number of atoms to simulate",
+        help="Number of initial atoms to simulate",
     )
 
     parser.add_argument(
@@ -52,24 +97,39 @@ def parse_args():
         help="Zeeman timestep in seconds",
     )
 
+    parser.add_argument(
+        "--mot_dt_us",
+        type=float,
+        default=8.0,
+        help="2D MOT timestep in microseconds",
+    )
+
+    parser.add_argument(
+        "--survivors_file",
+        type=str,
+        default="data/mot_dt_scan_zeeman_survivors.npy",
+        help="File used to save/load fixed Zeeman survivor states",
+    )
+
     return parser.parse_args()
 
+
+# ============================================================
+# Zeeman slower simulation
+# ============================================================
+
 def zeeman_simulation(
-        N_particles=1000,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
-        gravity_enabled=True,
-        npools=8,
-        stochastic=True,
-        dt=zeeman_sim_config["dt"],
-        collimation_angle_deg=collimation_angle_deg,
-    ):
-
-    mot_config = dict(_2d_mot_config)
-    mot_config.setdefault("swap_polarization", False)
-
+    N_particles=1000,
+    _2d_mot_config=_2d_mot_laser_config,
+    zeeman_config=zeeman_laser_config,
+    zeeman_field_config=zeeman_field_config,
+    magnet_radius=_2d_mot_magnet_radius,
+    gravity_enabled=True,
+    npools=8,
+    stochastic=True,
+    dt=zeeman_sim_config["dt"],
+    collimation_angle_deg=collimation_angle_deg,
+):
     atom, config = build_base_config(
         atom_species="Yb171",
         gravity_enabled=gravity_enabled,
@@ -81,10 +141,12 @@ def zeeman_simulation(
         magnet_radius=magnet_radius,
         zeeman_field_config=zeeman_field_config,
 
-        _2d_mot_config=mot_config,
-        zeeman_config= zeeman_config,
+        _2d_mot_config=_2d_mot_config,
+        zeeman_config=zeeman_config,
 
-        zones=get_zeeman_only_zone(cutoff_distance=zeeman_sim_config["cutoff_distance"])
+        zones=get_zeeman_only_zone(
+            cutoff_distance=zeeman_sim_config["cutoff_distance"]
+        ),
     )
 
     r0_arr, v0_arr, _ = generate_thermal_beam_state(
@@ -92,21 +154,22 @@ def zeeman_simulation(
         collimation_angle_deg=collimation_angle_deg,
         m=atom.mass,
         distance_m=zeeman_sim_config["start_distance"],
-        seed=42
+        seed=42,
     )
 
-    # dt_zeeman = get_optimal_dt_zeeman(
-    #     s0=zeeman_config["s0"],
-    #     detuning_gamma=zeeman_config["detuning_gamma"],
-    # )
+    time_points, _ = generate_timepoints(
+        zeeman_sim_config["t_max"],
+        dt,
+    )
 
-    time_points, _ = generate_timepoints(zeeman_sim_config["t_max"], dt)
+    u0_list = [
+        np.concatenate((r0, v0))
+        for r0, v0 in zip(r0_arr, v0_arr)
+    ]
 
-    u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
+    sim_func = RK4StCustom if stochastic else ScipyIVP_3D
 
-    sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
-
-    res, _ =run_multiple_atoms_simulation(
+    res, _ = run_multiple_atoms_simulation(
         config=config,
         u0=u0_list,
         time_points=time_points,
@@ -115,10 +178,17 @@ def zeeman_simulation(
         seed_idx=42,
     )
 
-    survivor_states, survivor_indices = zeeman_extract_survivors(res, zeeman_sim_config["cutoff_distance"])
+    survivor_states, survivor_indices = zeeman_extract_survivors(
+        res,
+        zeeman_sim_config["cutoff_distance"],
+    )
 
     return res, survivor_states, survivor_indices
-        
+
+
+# ============================================================
+# 2D MOT simulation
+# ============================================================
 
 def mot_simulation(
     survivor_states,
@@ -132,10 +202,11 @@ def mot_simulation(
     dt=_2d_mot_sim_config["dt"],
 ):
     N = len(survivor_states)
+
     if N == 0:
         return [], 0, np.empty((0, 6))
 
-    atom, config = build_base_config(
+    _, config = build_base_config(
         atom_species="Yb171",
         gravity_enabled=gravity_enabled,
 
@@ -147,23 +218,24 @@ def mot_simulation(
         zeeman_field_config=zeeman_field_config,
 
         _2d_mot_config=_2d_mot_config,
-        zeeman_config= zeeman_config,
+        zeeman_config=zeeman_config,
 
-        zones=get_entire_apparatus_zone()
+        zones=get_entire_apparatus_zone(),
     )
 
-    # 2. Set initial conditions from survivor states
-    u0_list = [state.copy() for state in survivor_states]
+    # Initial conditions are the fixed states that survived
+    # the Zeeman slower.
+    u0_list = [
+        np.asarray(state).copy()
+        for state in survivor_states
+    ]
 
-    # dt_2d_mot = get_optimal_dt_2d_mot(
-    #     s0=_2d_mot_config["s0"],
-    #     detuning_gamma=_2d_mot_config["detuning_gamma"],
-    #     magnet_radius=magnet_radius,
-    # )
+    time_points, _ = generate_timepoints(
+        _2d_mot_sim_config["t_max"],
+        dt,
+    )
 
-    time_points, _ = generate_timepoints(_2d_mot_sim_config["t_max"], dt)
-
-    sim_func = RK4StCustomDt if stochastic else ScipyIVP_3D
+    sim_func = RK4StCustom if stochastic else ScipyIVP_3D
 
     res, _ = run_multiple_atoms_simulation(
         config=config,
@@ -171,13 +243,18 @@ def mot_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
-        seed_idx=42
+        seed_idx=42,
     )
+
     mot_survivor_states, _ = mot_extract_survivors(res)
     count = _2d_mot_success_count(res)
 
     return res, count, mot_survivor_states
 
+
+# ============================================================
+# 3D MOT simulation
+# ============================================================
 
 def mot_3d_simulation(
     survivor_states,
@@ -187,6 +264,7 @@ def mot_3d_simulation(
     dt=_3d_mot_sim_config["dt"],
 ):
     N = len(survivor_states)
+
     if N == 0:
         return [], np.empty((0, 6))
 
@@ -199,14 +277,23 @@ def mot_3d_simulation(
 
         gravity_enabled=gravity_enabled,
         magnet_radius=_2d_mot_magnet_radius,
+
         _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config= zeeman_laser_config,
+        zeeman_config=zeeman_laser_config,
+
         zones=get_entire_apparatus_zone(),
         _3d_mot_config=_3d_mot_config,
     )
 
-    u0_list = [state.copy() for state in survivor_states]
-    time_points, _ = generate_timepoints(_3d_mot_sim_config["t_max"], dt)
+    u0_list = [
+        np.asarray(state).copy()
+        for state in survivor_states
+    ]
+
+    time_points, _ = generate_timepoints(
+        _3d_mot_sim_config["t_max"],
+        dt,
+    )
 
     res, _ = run_multiple_atoms_simulation(
         config=config,
@@ -214,13 +301,29 @@ def mot_3d_simulation(
         time_points=time_points,
         sim_function=ScipyIVP_3D,
         npools=npools,
-        seed_idx=42
+        seed_idx=42,
     )
 
-    final_states = np.array([traj.y[:, -1].copy() for traj in res]) if len(res) > 0 else np.empty((0, 6))
+    final_states = (
+        np.array([traj.y[:, -1].copy() for traj in res])
+        if len(res) > 0
+        else np.empty((0, 6))
+    )
+
     return res, final_states
 
-def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stochastic=True, dt=zeeman_sim_config["dt"]):
+
+# ============================================================
+# Standard full Zeeman + 2D MOT run
+# ============================================================
+
+def run_both(
+    N=500,
+    collimation_angle_deg=collimation_angle_deg,
+    npools=8,
+    stochastic=True,
+    dt=zeeman_sim_config["dt"],
+):
     print("Running Zeeman phase simulation...")
 
     _, survivors, _ = zeeman_simulation(
@@ -232,72 +335,195 @@ def run_both(N=500, collimation_angle_deg=collimation_angle_deg, npools=8, stoch
         stochastic=stochastic,
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
-        dt=dt
+        dt=dt,
     )
 
-    print(f"Zeeman phase simulation ended")
+    print("Zeeman phase simulation ended")
+    print("Zeeman survivors:", len(survivors))
 
-    print("zeeman survivors: ", len(survivors))
-    
     if len(survivors) == 0:
         print("No survivors — nothing to do in Phase 2.")
-    else:
-        _, success_count, _ = mot_simulation(
-            survivor_states=survivors,
-            _2d_mot_config=_2d_mot_laser_config,
-            magnet_radius=_2d_mot_magnet_radius,
-            stochastic=stochastic,
-            npools=npools,
-        )
+        return
 
-        print(f"Success count: {success_count}")
+    _, success_count, _ = mot_simulation(
+        survivor_states=survivors,
+        _2d_mot_config=_2d_mot_laser_config,
+        magnet_radius=_2d_mot_magnet_radius,
+        stochastic=stochastic,
+        npools=npools,
+    )
 
-        n_survivors = len(survivors)
-        efficiency = success_count / n_survivors if n_survivors > 0 else np.nan
+    print(f"Success count: {success_count}")
 
-        print(
-            f"RESULT "
-            f"cutoff_angle_deg={collimation_angle_deg} "
-            f"N_initial={N} "
-            f"N_zeeman_survivors={n_survivors} "
-            f"N_mot_success={success_count} "
-            f"mot_given_zeeman_efficiency={efficiency:.8f}"
-        )
+    n_survivors = len(survivors)
 
-        # mot3d_traj = []
-        # if success_count == 0:
-        #     print("No 2D MOT survivors reached the science region — nothing to do in Phase 3.")
-        # else:
-        #     mot3d_traj, final_3d_states = mot_3d_simulation(
-        #         survivor_states=mot_survivors,
-        #         _3d_mot_config=mot_3d_laser_config,
-        #     )
-        #     print(f"3D MOT deterministic trajectories: {len(mot3d_traj)}")
+    efficiency = (
+        success_count / n_survivors
+        if n_survivors > 0
+        else np.nan
+    )
 
-        # if (save_file):
-        #     save_path = Path(save_file)
-        #     zeeman_traj_ex = extract_trajectory_data(zeeman_traj)
-        #     mot_traj_ex = extract_trajectory_data(mot_traj)
+    print(
+        f"RESULT "
+        f"cutoff_angle_deg={collimation_angle_deg} "
+        f"N_initial={N} "
+        f"N_zeeman_survivors={n_survivors} "
+        f"N_mot_success={success_count} "
+        f"mot_given_zeeman_efficiency={efficiency:.8f}"
+    )
 
-        #     save_file_json(save_path / f"zeeman_traj_N={N}_{datetime.utcnow().isoformat()}.json", zeeman_traj_ex)
-        #     save_file_json(save_path / f"mot_traj_N={N}_{datetime.utcnow().isoformat()}.json", mot_traj_ex)
-        #     if mot3d_traj:
-        #         mot3d_traj_ex = extract_trajectory_data(mot3d_traj)
-        #         save_file_json(save_path / f"mot3d_traj_N={N}_{datetime.utcnow().isoformat()}.json", mot3d_traj_ex)
+
+# ============================================================
+# Generate fixed Zeeman ensemble for MOT timestep scan
+# ============================================================
+
+def generate_and_save_zeeman_survivors(
+    save_file,
+    N,
+    collimation_angle_deg,
+    npools,
+    stochastic=True,
+    zeeman_dt=4e-5,
+):
+    print("========================================")
+    print("GENERATING FIXED ZEEMAN SURVIVOR ENSEMBLE")
+    print("========================================")
+
+    print(f"N_initial = {N}")
+    print(f"Zeeman dt = {zeeman_dt:.2e} s")
+    print(f"cutoff angle = {collimation_angle_deg} deg")
+    print(f"stochastic = {int(stochastic)}")
+    print(f"npools = {npools}")
+
+    _, survivors, _ = zeeman_simulation(
+        N_particles=N,
+        _2d_mot_config=_2d_mot_laser_config,
+        zeeman_config=zeeman_laser_config,
+        zeeman_field_config=zeeman_field_config,
+        magnet_radius=_2d_mot_magnet_radius,
+        stochastic=stochastic,
+        collimation_angle_deg=collimation_angle_deg,
+        npools=npools,
+        dt=zeeman_dt,
+    )
+
+    survivors = np.asarray(survivors)
+
+    save_path = Path(save_file)
+    save_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    np.save(save_path, survivors)
+
+    print()
+    print("Zeeman phase simulation ended")
+    print(f"Zeeman survivors = {len(survivors)}")
+    print(f"Saved survivor states to: {save_path}")
+
+    print(
+        f"ZEEMAN_SURVIVORS_RESULT "
+        f"N_initial={N} "
+        f"N_zeeman_survivors={len(survivors)} "
+        f"zeeman_dt={zeeman_dt:.8e} "
+        f"cutoff_angle_deg={collimation_angle_deg}"
+    )
+
+    return survivors
+
+
+# ============================================================
+# Run one MOT timestep using saved Zeeman survivors
+# ============================================================
+
+def run_mot_from_saved_survivors(
+    survivors_file,
+    mot_dt_us,
+    npools=8,
+    stochastic=True,
+):
+    survivor_states = np.load(survivors_file)
+
+    n_survivors = len(survivor_states)
+    mot_dt = mot_dt_us * 1e-6
+
+    print("========================================")
+    print("2D MOT TIMESTEP TEST")
+    print("========================================")
+
+    print(f"Survivors file = {survivors_file}")
+    print(f"N_zeeman_survivors = {n_survivors}")
+    print(f"MOT dt = {mot_dt_us:g} us")
+    print(f"MOT dt = {mot_dt:.8e} s")
+    print(f"stochastic = {int(stochastic)}")
+    print(f"npools = {npools}")
+
+    if n_survivors == 0:
+        print("No Zeeman survivors — MOT simulation skipped.")
+        return
+
+    _, success_count, _ = mot_simulation(
+        survivor_states=survivor_states,
+        _2d_mot_config=_2d_mot_laser_config,
+        zeeman_config=zeeman_laser_config,
+        zeeman_field_config=zeeman_field_config,
+        magnet_radius=_2d_mot_magnet_radius,
+        stochastic=stochastic,
+        npools=npools,
+        dt=mot_dt,
+    )
+
+    efficiency = success_count / n_survivors
+
+    print()
+    print(f"Success count = {success_count}")
+
+    print(
+        f"MOT_DT_RESULT "
+        f"dt_us={mot_dt_us:g} "
+        f"N_zeeman_survivors={n_survivors} "
+        f"N_mot_success={success_count} "
+        f"mot_given_zeeman_efficiency={efficiency:.8f}"
+    )
+
+
+# ============================================================
+# Main
+# ============================================================
 
 if __name__ == "__main__":
     args = parse_args()
 
     n_atoms = args.n_atoms
-    cutoff_angle_deg = args.cutoff_angle_deg
+    cutoff_angle = args.cutoff_angle_deg
     npools = args.npools
     stochastic = bool(args.stochastic)
-    dt = args.dt
-    
-    run_both(
-        N=n_atoms, 
-        collimation_angle_deg=cutoff_angle_deg, 
-        npools=npools, 
-        stochastic=stochastic, 
-        dt=dt
-    )
+    zeeman_dt = args.dt
+
+    if args.mode == "both":
+        run_both(
+            N=n_atoms,
+            collimation_angle_deg=cutoff_angle,
+            npools=npools,
+            stochastic=stochastic,
+            dt=zeeman_dt,
+        )
+
+    elif args.mode == "generate_zeeman_survivors":
+        generate_and_save_zeeman_survivors(
+            save_file=args.survivors_file,
+            N=n_atoms,
+            collimation_angle_deg=cutoff_angle,
+            npools=npools,
+            stochastic=stochastic,
+            zeeman_dt=zeeman_dt,
+        )
+
+    elif args.mode == "mot_from_survivors":
+        run_mot_from_saved_survivors(
+            survivors_file=args.survivors_file,
+            mot_dt_us=args.mot_dt_us,
+            npools=npools,
+            stochastic=stochastic,
+        )

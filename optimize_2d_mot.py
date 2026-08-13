@@ -6,6 +6,8 @@ from config import (
     zeeman_laser_config,
     _2d_mot_laser_config,
     _2d_mot_magnet_radius,
+    zeeman_sim_config,
+    collimation_angle_deg,
 )
 from pathlib import Path
 from utils.file_helpers import (
@@ -26,6 +28,11 @@ def parse_args():
         help="Number of worker processes",
     )
 
+    parser.add_argument(
+        "--run_zeeman",
+        action="store_true",
+    )
+
     return parser.parse_args()
 
 
@@ -38,16 +45,29 @@ def run_zeeman(npools=8):
         zeeman_config=zeeman_laser_config,
         zeeman_field_config=zeeman_field_config,
         magnet_radius=_2d_mot_magnet_radius,
-        stochastic=True,
+        stochastic=False,
         npools=npools,
     )
 
-    save_dir = "data"
-    save_path = Path(save_dir)
+    metadata = {
+        "N_initial": N_particles,
+        "N_zeeman_survivors": len(survivors),
+        "zeeman_dt": zeeman_sim_config["dt"],
+        "collimation_angle_deg": collimation_angle_deg,
+        "seed": 42,
+    }
+
+    save_path = Path("data")
+    save_path.mkdir(parents=True, exist_ok=True)
 
     save_file_json(
         save_path / "zeeman_survivors_states.json",
         survivors,
+    )
+
+    save_file_json(
+        save_path / "metadata.json",
+        metadata,
     )
 
 
@@ -68,9 +88,10 @@ def run_mot(s0, detuning_gamma, magnet_radius, npools=8):
         _2d_mot_config={
             "s0": s0,
             "detuning_gamma": detuning_gamma,
+            "swap_polarization": False,
         },
         magnet_radius=magnet_radius,
-        stochastic=True,
+        stochastic=False,
         npools=npools,
     )
 
@@ -83,8 +104,8 @@ def run_mot(s0, detuning_gamma, magnet_radius, npools=8):
         "success_count": success_count,
     }
 
-    save_dir = "data"
-    save_path = Path(save_dir)
+    save_path = Path("data")
+    save_path.mkdir(parents=True, exist_ok=True)
 
     update_json_file(
         save_path / "mot_summary.json",
@@ -127,10 +148,20 @@ def optimize_mot(
 
         return success_count
 
+    study_name = (
+        f"mot_opt_"
+        f"N{N_particles}_"
+        f"zsdt{zeeman_sim_config['dt']}_"
+        f"angle{collimation_angle_deg}"
+    )
+
+    sampler = optuna.samplers.TPESampler(seed=42)
+
     study = optuna.create_study(
-        study_name="mot_optimization",
+        study_name=study_name,
         storage="sqlite:///mot_optimization.db",
         direction="maximize",
+        sampler=sampler,
         load_if_exists=True,
     )
 
@@ -160,9 +191,8 @@ if __name__ == "__main__":
     BOUNDS_MAGNET_RADIUS = (0.045, 0.054)
     BOUNDS_S0 = (0.8, 2.0)
 
-    run_zeeman(
-        npools=args.npools,
-    )
+    if args.run_zeeman:
+        run_zeeman(npools=args.npools)
 
     study = optimize_mot(
         s0_range=BOUNDS_S0,

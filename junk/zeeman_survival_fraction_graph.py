@@ -1,67 +1,85 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-if __name__ == "__main__":
-    dt_us = np.array([100, 80, 60, 40, 30, 25, 20, 10])
+N_INITIAL = 50000
 
-    zeeman_survivors = np.array([
-        46062,
-        44993,
-        44797,
-        44253,
-        44126,
-        43955,
-        43959,
-        43914,
-    ])
+# Combined fixed-survivor scan + zoom-in scan
+dt_us = np.array([
+    5.0,
+    7.5,
+    10.0,
+    12.5,
+    15.0,
+    20.0,
+    25.0,
+    30.0,
+    40.0,
+    60.0,
+    80.0,
+    100.0,
+])
 
-    N_initial = 50000
+n_survivors = np.array([
+    28340,  # 5 us
+    28283,  # 7.5 us
+    28069,  # 10 us
+    27954,  # 12.5 us
+    28156,  # 15 us
+    28374,  # 20 us
+    28143,  # 25 us
+    28050,  # 30 us
+    28285,  # 40 us
+    28281,  # 60 us
+    28896,  # 80 us
+    29837,  # 100 us
+])
 
-    survival_fraction = zeeman_survivors / N_initial
-    survival_percent = 100 * survival_fraction
+survival_fraction = n_survivors / N_INITIAL
 
+# Binomial sampling uncertainty
+survival_error = np.sqrt(
+    survival_fraction * (1.0 - survival_fraction) / N_INITIAL
+)
 
-    # Sort by increasing dt for plotting
-    order = np.argsort(dt_us)
+chosen_dt = 40.0
 
-    dt_us = dt_us[order]
-    zeeman_survivors = zeeman_survivors[order]
-    survival_percent = survival_percent[order]
+# Mean of the visually converged region
+converged_mask = dt_us <= 60.0
+plateau_mean = np.mean(survival_fraction[converged_mask])
 
+fig, ax = plt.subplots(figsize=(8, 5))
 
-    fig, ax = plt.subplots(figsize=(7, 4.5))
+ax.errorbar(
+    dt_us,
+    survival_fraction,
+    yerr=survival_error,
+    fmt="o",
+    capsize=4,
+    label="Simulation results",
+)
 
-    ax.plot(
-        dt_us,
-        survival_percent,
-        marker="o",
-        linewidth=1.8,
-    )
+ax.axhline(
+    plateau_mean,
+    linestyle="--",
+    linewidth=1.8,
+    label="Mean for $dt \\leq 60\\,\\mu$s",
+)
 
-    ax.axvline(
-        15.9,
-        linestyle="--",
-        linewidth=1.5,
-        label=r"Gaussian lower bound: $15.9\,\mu$s",
-    )
+ax.axvline(
+    chosen_dt,
+    linestyle=":",
+    linewidth=2,
+    label="Chosen timestep: $40\\,\\mu$s",
+)
 
-    ax.legend()
+ax.set_xlabel("Zeeman timestep $dt$ [$\\mu$s]", fontsize=14)
+ax.set_ylabel("Zeeman survivor fraction", fontsize=14)
+ax.set_title("Zeeman timestep convergence", fontsize=17)
 
-    p = zeeman_survivors / N_initial
-    sigma_p = np.sqrt(p * (1 - p) / N_initial)
+ax.tick_params(axis="both", labelsize=12)
+ax.grid(alpha=0.3)
+ax.legend(fontsize=11)
 
-    ax.errorbar(
-        dt_us,
-        100 * p,
-        yerr=100 * sigma_p,
-        marker="o",
-        capsize=3,
-    )
-
-    ax.set_xlabel(r"Zeeman timestep $dt_Z$ [$\mu$s]")
-    ax.set_ylabel("Zeeman survival fraction [%]")
-
-    ax.grid(alpha=0.3)
-
-    fig.tight_layout()
-    plt.show()
+plt.tight_layout()
+plt.savefig("zeeman_dt_convergence.png", dpi=350)
+plt.show()
