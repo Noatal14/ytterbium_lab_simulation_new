@@ -232,5 +232,5 @@ _2d_mot_sim_config = {
 # =================
 _3d_mot_sim_config = {
     "t_max": 25e-3,
-    "dt": 8e-6,
+    "dt": 1e-5,
 }
