@@ -222,26 +222,17 @@ def mot_extract_survivors(res_list):
 
         z >= Geometry.CAPTURE_MIN_Z  (= DPS_START_Z + DPS_LENGTH)
 
-    while still moving toward the science chamber (vz > 0). The DPS radius
-    (Geometry.DPS_RADIUS = 1.5mm) is already enforced as a hard wall by the
-    apparatus zones (see lab_setup/zones.py), so simply surviving to this
-    z-plane already means the atom physically threaded that bottleneck -- this
-    ties "captured" to the one aperture the proposal actually dimensions,
-    instead of an arbitrary disk unconnected to any stated geometry.
+    while still moving toward the science chamber (vz > 0).
 
     Parameters
     ----------
     res_list : list
-        List of simulation results. Each result is expected to contain
-        res.y with shape (6, N_timesteps), where the state is
-
-            [x, y, z, vx, vy, vz].
+        List of simulation results.
 
     Returns
     -------
     survivor_states : np.ndarray
-        Array with shape (N_survivors, 6), containing the state of each
-        captured particle at its first point past the DPS.
+        Array with shape (N_survivors, 6).
 
     survivor_indices : list[int]
         Indices of the captured particles in the original res_list.
@@ -253,8 +244,10 @@ def mot_extract_survivors(res_list):
         z_traj = res.y[2, :]
         vz_traj = res.y[5, :]
 
-        # Find the first sampled point past the DPS, still moving forward.
-        crossed_indices = np.where((z_traj >= Geometry.CAPTURE_MIN_Z) & (vz_traj > 0))[0]
+        crossed_indices = np.where(
+            (z_traj >= Geometry.CAPTURE_MIN_Z) &
+            (vz_traj > 0)
+        )[0]
 
         if len(crossed_indices) == 0:
             continue
@@ -263,25 +256,13 @@ def mot_extract_survivors(res_list):
         survivor_states.append(res.y[:, idx].copy())
         survivor_indices.append(i)
 
+
     if len(survivor_states) == 0:
-        return np.empty((0, 6)), []
+        return np.empty((0, 6)), 0, []
 
-    return np.array(survivor_states), survivor_indices
+    count = len(survivor_states)
 
-def _2d_mot_success_count(res_list):
-    """
-    Count the number of successful particles that reach the target region.
-    See `mot_extract_survivors` for the definition of "successful".
-    """
-    success_count = 0
-    for res in res_list:
-        z_traj = res.y[2, :]
-        vz_traj = res.y[5, :]
-        crossed = np.where((z_traj >= Geometry.CAPTURE_MIN_Z) & (vz_traj > 0))[0]
-        if len(crossed) > 0:
-            success_count += 1
-
-    return success_count
+    return np.array(survivor_states), count, survivor_indices
 
 def extract_trajectory_data(results):
     """
@@ -303,3 +284,66 @@ def extract_trajectory_data(results):
         }
         for res in results
     ]
+
+def diagnose_mot_capture(res_list):
+    """
+    Compare the current 2D-MOT capture criterion with an explicit
+    forward-crossing criterion.
+
+    Current criterion:
+        There exists a sampled point with
+            z >= CAPTURE_MIN_Z and vz > 0.
+
+    Crossing criterion:
+        There exists a pair of consecutive sampled points satisfying
+            z[i] < CAPTURE_MIN_Z <= z[i+1].
+
+    This function is diagnostic only and does not change the definition
+    of MOT capture.
+    """
+    z_capture = Geometry.CAPTURE_MIN_Z
+
+    current_indices = []
+    crossing_indices = []
+
+    for i, res in enumerate(res_list):
+        z = res.y[2, :]
+        vz = res.y[5, :]
+
+        # Current criterion
+        current = np.any(
+            (z >= z_capture) &
+            (vz > 0)
+        )
+
+        # Explicit forward crossing of the capture plane
+        crossing = np.any(
+            (z[:-1] < z_capture) &
+            (z[1:] >= z_capture)
+        )
+
+        if current:
+            current_indices.append(i)
+
+        if crossing:
+            crossing_indices.append(i)
+
+    current_set = set(current_indices)
+    crossing_set = set(crossing_indices)
+
+    current_only = sorted(current_set - crossing_set)
+    crossing_only = sorted(crossing_set - current_set)
+
+    print("\n===== MOT CAPTURE DIAGNOSTIC =====")
+    print(f"Current criterion:   {len(current_indices)}")
+    print(f"Crossing criterion:  {len(crossing_indices)}")
+    print(f"Current only:        {len(current_only)}")
+    print(f"Crossing only:       {len(crossing_only)}")
+    print("==================================\n")
+
+    return {
+        "current_indices": current_indices,
+        "crossing_indices": crossing_indices,
+        "current_only": current_only,
+        "crossing_only": crossing_only,
+    }
