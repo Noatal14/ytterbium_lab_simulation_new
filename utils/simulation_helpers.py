@@ -1,5 +1,5 @@
 import numpy as np
-from atomsmltr.simulation.simulator import ScipyIVP_3D
+from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from config import ZEEMAN_BEAM_DIR, Geometry
 
 def run_simulation(
@@ -7,7 +7,7 @@ def run_simulation(
         config = None, 
         u0 = None, 
         time_points = None, 
-        sim_function = ScipyIVP_3D,
+        sim_function = ScipyIVP_3DCustom,
         npools = 0
     ):
     sim = sim_function(config)
@@ -22,14 +22,15 @@ def run_multiple_atoms_simulation(
         config = None, 
         u0 = None, 
         time_points = None, 
-        sim_function = ScipyIVP_3D,
-        npools = 0
+        sim_function = ScipyIVP_3DCustom,
+        npools = 0,
+        chunksize=1,
     ):
     sim = sim_function(config)
     sim.rng = np.random.default_rng(seed_idx)
     sim.u0_list = u0
 
-    res = sim.run(time_points, npools=npools, verbose=True)
+    res = sim.run(time_points, npools=npools, verbose=True, chunksize=chunksize)
     return res, sim
 
 def entry_initial_condition(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):

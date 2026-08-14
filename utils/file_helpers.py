@@ -2,7 +2,6 @@ import csv
 import json
 from pathlib import Path
 import numpy as np
-from atomsmltr.simulation.simulator import ScipyIVP_3D
 from typing import Any
 
 def _json_default(obj):

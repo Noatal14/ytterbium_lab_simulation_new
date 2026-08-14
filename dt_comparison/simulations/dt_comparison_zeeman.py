@@ -6,7 +6,7 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 import numpy as np
-from atomsmltr.simulation.simulator import ScipyIVP_3D
+from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from config import Geometry, zeeman_sim_config, zeeman_configs
 from dt_comparison.RK4StCustomDt import RK4StCustomDt
 from dt_comparison.simulations.parse_simulation_result import parse_results, is_transmitted_zeeman
@@ -72,7 +72,7 @@ def sim(
             config=config,
             u0=[u0],
             time_points=time_points,
-            sim_function=ScipyIVP_3D,
+            sim_function=ScipyIVP_3DCustom,
         )
 
         worker = partial(

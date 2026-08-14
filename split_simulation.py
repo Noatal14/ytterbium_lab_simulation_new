@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 
-from atomsmltr.simulation.simulator import ScipyIVP_3D
+from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from utils.RK4StCustom import RK4StCustom
 
 from lab_setup.config_builder import build_base_config
@@ -90,6 +90,13 @@ def parse_args():
     )
 
     parser.add_argument(
+        "--chunksize",
+        type=int,
+        default=1,
+        help="Chunk size used by multiprocessing Pool",
+    )
+
+    parser.add_argument(
         "--dt",
         type=float,
         default=zeeman_sim_config["dt"],
@@ -110,6 +117,16 @@ def parse_args():
         help="File used to save/load fixed Zeeman survivor states",
     )
 
+    parser.add_argument(
+        "--max_survivors",
+        type=int,
+        default=None,
+        help=(
+            "Maximum number of saved Zeeman survivors to use in the MOT. "
+            "Useful for benchmarks. If omitted, all survivors are used."
+        ),
+    )
+
     return parser.parse_args()
 
 
@@ -128,6 +145,7 @@ def zeeman_simulation(
     stochastic=True,
     dt=zeeman_sim_config["dt"],
     collimation_angle_deg=collimation_angle_deg,
+    chunksize=1,
 ):
     atom, config = build_base_config(
         atom_species="Yb171",
@@ -166,7 +184,7 @@ def zeeman_simulation(
         for r0, v0 in zip(r0_arr, v0_arr)
     ]
 
-    sim_func = RK4StCustom if stochastic else ScipyIVP_3D
+    sim_func = RK4StCustom if stochastic else ScipyIVP_3DCustom
 
     res, _ = run_multiple_atoms_simulation(
         config=config,
@@ -175,6 +193,7 @@ def zeeman_simulation(
         sim_function=sim_func,
         npools=npools,
         seed_idx=42,
+        chunksize=chunksize,
     )
 
     survivor_states, survivor_indices = zeeman_extract_survivors(
@@ -199,6 +218,7 @@ def mot_simulation(
     npools=8,
     stochastic=True,
     dt=_2d_mot_sim_config["dt"],
+    chunksize=1,
 ):
     N = len(survivor_states)
 
@@ -234,7 +254,7 @@ def mot_simulation(
         dt,
     )
 
-    sim_func = RK4StCustom if stochastic else ScipyIVP_3D
+    sim_func = RK4StCustom if stochastic else ScipyIVP_3DCustom
 
     res, _ = run_multiple_atoms_simulation(
         config=config,
@@ -243,8 +263,9 @@ def mot_simulation(
         sim_function=sim_func,
         npools=npools,
         seed_idx=42,
+        chunksize=chunksize,
     )
-    
+
     mot_survivor_states, count, _ = mot_extract_survivors(res)
 
     return res, count, mot_survivor_states
@@ -260,6 +281,7 @@ def mot_3d_simulation(
     gravity_enabled=True,
     npools=8,
     dt=_3d_mot_sim_config["dt"],
+    chunksize=1,
 ):
     N = len(survivor_states)
 
@@ -297,9 +319,10 @@ def mot_3d_simulation(
         config=config,
         u0=u0_list,
         time_points=time_points,
-        sim_function=ScipyIVP_3D,
+        sim_function=ScipyIVP_3DCustom,
         npools=npools,
         seed_idx=42,
+        chunksize=chunksize,
     )
 
     final_states = (
@@ -321,8 +344,11 @@ def run_both(
     npools=8,
     stochastic=True,
     dt=zeeman_sim_config["dt"],
+    chunksize=1,
 ):
     print("Running Zeeman phase simulation...")
+    print(f"npools = {npools}")
+    print(f"chunksize = {chunksize}")
 
     _, survivors, _ = zeeman_simulation(
         N_particles=N,
@@ -334,6 +360,7 @@ def run_both(
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
         dt=dt,
+        chunksize=chunksize,
     )
 
     print("Zeeman phase simulation ended")
@@ -349,6 +376,7 @@ def run_both(
         magnet_radius=_2d_mot_magnet_radius,
         stochastic=stochastic,
         npools=npools,
+        chunksize=chunksize,
     )
 
     print(f"Success count: {success_count}")
@@ -367,7 +395,8 @@ def run_both(
         f"N_initial={N} "
         f"N_zeeman_survivors={n_survivors} "
         f"N_mot_success={success_count} "
-        f"mot_given_zeeman_efficiency={efficiency:.8f}"
+        f"mot_given_zeeman_efficiency={efficiency:.8f} "
+        f"chunksize={chunksize}"
     )
 
 
@@ -382,6 +411,7 @@ def generate_and_save_zeeman_survivors(
     npools,
     stochastic=True,
     zeeman_dt=4e-5,
+    chunksize=1,
 ):
     print("========================================")
     print("GENERATING FIXED ZEEMAN SURVIVOR ENSEMBLE")
@@ -392,6 +422,7 @@ def generate_and_save_zeeman_survivors(
     print(f"cutoff angle = {collimation_angle_deg} deg")
     print(f"stochastic = {int(stochastic)}")
     print(f"npools = {npools}")
+    print(f"chunksize = {chunksize}")
 
     _, survivors, _ = zeeman_simulation(
         N_particles=N,
@@ -403,6 +434,7 @@ def generate_and_save_zeeman_survivors(
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
         dt=zeeman_dt,
+        chunksize=chunksize,
     )
 
     survivors = np.asarray(survivors)
@@ -425,7 +457,8 @@ def generate_and_save_zeeman_survivors(
         f"N_initial={N} "
         f"N_zeeman_survivors={len(survivors)} "
         f"zeeman_dt={zeeman_dt:.8e} "
-        f"cutoff_angle_deg={collimation_angle_deg}"
+        f"cutoff_angle_deg={collimation_angle_deg} "
+        f"chunksize={chunksize}"
     )
 
     return survivors
@@ -437,14 +470,20 @@ def generate_and_save_zeeman_survivors(
 
 def run_mot_from_saved_survivors(
     survivors_file,
-    mot_dt_us,
+    mot_dt,
     npools=8,
     stochastic=True,
+    chunksize=1,
+    max_survivors=None,
 ):
     survivor_states = np.load(survivors_file)
 
+    # For benchmarking we want to run exactly the same subset of
+    # Zeeman survivors for every chunksize.
+    if max_survivors is not None:
+        survivor_states = survivor_states[:max_survivors]
+
     n_survivors = len(survivor_states)
-    mot_dt = mot_dt_us * 1e-6
 
     print("========================================")
     print("2D MOT TIMESTEP TEST")
@@ -452,10 +491,11 @@ def run_mot_from_saved_survivors(
 
     print(f"Survivors file = {survivors_file}")
     print(f"N_zeeman_survivors = {n_survivors}")
-    print(f"MOT dt = {mot_dt_us:g} us")
     print(f"MOT dt = {mot_dt:.8e} s")
     print(f"stochastic = {int(stochastic)}")
     print(f"npools = {npools}")
+    print(f"chunksize = {chunksize}")
+    print(f"max_survivors = {max_survivors}")
 
     if n_survivors == 0:
         print("No Zeeman survivors — MOT simulation skipped.")
@@ -470,6 +510,7 @@ def run_mot_from_saved_survivors(
         stochastic=stochastic,
         npools=npools,
         dt=mot_dt,
+        chunksize=chunksize,
     )
 
     efficiency = success_count / n_survivors
@@ -479,10 +520,11 @@ def run_mot_from_saved_survivors(
 
     print(
         f"MOT_DT_RESULT "
-        f"dt_us={mot_dt_us:g} "
+        f"dt={mot_dt:.8e} "
         f"N_zeeman_survivors={n_survivors} "
         f"N_mot_success={success_count} "
-        f"mot_given_zeeman_efficiency={efficiency:.8f}"
+        f"mot_given_zeeman_efficiency={efficiency:.8f} "
+        f"chunksize={chunksize}"
     )
 
 
@@ -498,6 +540,9 @@ if __name__ == "__main__":
     npools = args.npools
     stochastic = bool(args.stochastic)
     zeeman_dt = args.dt
+    chunksize = args.chunksize
+    mot_dt = args.mot_dt_us * 1e-6
+    max_survivors = args.max_survivors
 
     if args.mode == "both":
         run_both(
@@ -506,6 +551,7 @@ if __name__ == "__main__":
             npools=npools,
             stochastic=stochastic,
             dt=zeeman_dt,
+            chunksize=chunksize,
         )
 
     elif args.mode == "generate_zeeman_survivors":
@@ -516,12 +562,15 @@ if __name__ == "__main__":
             npools=npools,
             stochastic=stochastic,
             zeeman_dt=zeeman_dt,
+            chunksize=chunksize,
         )
 
     elif args.mode == "mot_from_survivors":
         run_mot_from_saved_survivors(
             survivors_file=args.survivors_file,
-            mot_dt_us=args.mot_dt_us,
+            mot_dt=mot_dt,
             npools=npools,
             stochastic=stochastic,
+            chunksize=chunksize,
+            max_survivors=max_survivors,
         )

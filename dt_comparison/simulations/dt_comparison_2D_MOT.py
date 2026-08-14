@@ -18,7 +18,7 @@ import multiprocessing as mp
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from atomsmltr.simulation.simulator import ScipyIVP_3D
+from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from dt_comparison.RK4StCustomDt import RK4StCustomDt
 from dt_comparison.simulations.parse_simulation_result import parse_results
 from lab_setup.config_builder import build_2dmot_config
@@ -68,7 +68,7 @@ def sim(
         print(f"Running dt = {dt:.2e} s")
         time_points, n_timepoints = generate_timepoints(t_max, dt)
 
-        _, deterministic_y, det_sim = run_simulation(config=config, u0=u0, time_points=time_points, sim_function=ScipyIVP_3D)
+        _, deterministic_y, det_sim = run_simulation(config=config, u0=u0, time_points=time_points, sim_function=ScipyIVP_3DCustom)
 
         worker = partial(
             run_simulation,
