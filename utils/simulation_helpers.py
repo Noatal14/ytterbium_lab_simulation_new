@@ -27,6 +27,8 @@ def run_multiple_atoms_simulation(
         chunksize=1,
     ):
     sim = sim_function(config)
+    sim.seed_idx = seed_idx
+
     sim.rng = np.random.default_rng(seed_idx)
     sim.u0_list = u0
 
