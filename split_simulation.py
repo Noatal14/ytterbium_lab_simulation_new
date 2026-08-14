@@ -15,7 +15,6 @@ from lab_setup.zones import (
 from thermal_beam import generate_thermal_beam_state
 
 from utils.simulation_helpers import (
-    diagnose_mot_capture,
     run_multiple_atoms_simulation,
     generate_timepoints,
     zeeman_extract_survivors,
@@ -245,9 +244,7 @@ def mot_simulation(
         npools=npools,
         seed_idx=42,
     )
-
-    diagnose_mot_capture(res)
-
+    
     mot_survivor_states, count, _ = mot_extract_survivors(res)
 
     return res, count, mot_survivor_states
