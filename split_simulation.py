@@ -343,7 +343,8 @@ def run_both(
     collimation_angle_deg=collimation_angle_deg,
     npools=8,
     stochastic=True,
-    dt=zeeman_sim_config["dt"],
+    zeeman_dt=zeeman_sim_config["dt"],
+    mot_dt=_2d_mot_sim_config["dt"],
     chunksize=1,
 ):
     print("Running Zeeman phase simulation...")
@@ -359,7 +360,7 @@ def run_both(
         stochastic=stochastic,
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
-        dt=dt,
+        dt=zeeman_dt,
         chunksize=chunksize,
     )
 
@@ -377,6 +378,7 @@ def run_both(
         stochastic=stochastic,
         npools=npools,
         chunksize=chunksize,
+        dt=mot_dt
     )
 
     print(f"Success count: {success_count}")
@@ -550,7 +552,8 @@ if __name__ == "__main__":
             collimation_angle_deg=cutoff_angle,
             npools=npools,
             stochastic=stochastic,
-            dt=zeeman_dt,
+            zeeman_dt=zeeman_dt,
+            mot_dt=mot_dt,
             chunksize=chunksize,
         )
 

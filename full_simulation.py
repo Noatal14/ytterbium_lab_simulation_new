@@ -1,6 +1,6 @@
 import numpy as np
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
-from dt_comparison.RK4StCustomDt import RK4StCustomDt
+from utils.RK4StCustom import RK4StCustom
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
 from thermal_beam import generate_thermal_beam_state
@@ -49,7 +49,7 @@ def simulation(
 
     u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
 
-    sim_func = RK4StCustomDt if stochastic else ScipyIVP_3DCustom
+    sim_func = RK4StCustom if stochastic else ScipyIVP_3DCustom
 
     res, sim =run_multiple_atoms_simulation(
         config=config,
