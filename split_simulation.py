@@ -34,6 +34,7 @@ from config import (
     _2d_mot_laser_config,
     _2d_mot_magnet_radius,
     zeeman_field_config,
+    seed
 )
 
 
@@ -171,7 +172,7 @@ def zeeman_simulation(
         collimation_angle_deg=collimation_angle_deg,
         m=atom.mass,
         distance_m=zeeman_sim_config["start_distance"],
-        seed=42,
+        seed=seed,
     )
 
     time_points, _ = generate_timepoints(
@@ -192,7 +193,7 @@ def zeeman_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
-        seed_idx=42,
+        seed_idx=seed,
         chunksize=chunksize,
     )
 
@@ -262,7 +263,7 @@ def mot_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
-        seed_idx=42,
+        seed_idx=seed,
         chunksize=chunksize,
     )
 
@@ -321,7 +322,7 @@ def mot_3d_simulation(
         time_points=time_points,
         sim_function=ScipyIVP_3DCustom,
         npools=npools,
-        seed_idx=42,
+        seed_idx=seed,
         chunksize=chunksize,
     )
 

@@ -8,6 +8,7 @@ from config import (
     _2d_mot_magnet_radius,
     zeeman_sim_config,
     collimation_angle_deg,
+    seed
 )
 from pathlib import Path
 from utils.file_helpers import (
@@ -54,7 +55,7 @@ def run_zeeman(npools=8):
         "N_zeeman_survivors": len(survivors),
         "zeeman_dt": zeeman_sim_config["dt"],
         "collimation_angle_deg": collimation_angle_deg,
-        "seed": 42,
+        "seed": seed,
     }
 
     save_path = Path("data")
@@ -155,7 +156,7 @@ def optimize_mot(
         f"angle{collimation_angle_deg}"
     )
 
-    sampler = optuna.samplers.TPESampler(seed=42)
+    sampler = optuna.samplers.TPESampler(seed=seed)
 
     study = optuna.create_study(
         study_name=study_name,

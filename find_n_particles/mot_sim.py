@@ -1,10 +1,10 @@
 import argparse
-
+from config import _2d_mot_sim_config
 from split_simulation import mot_simulation
 from pathlib import Path
 from utils.file_helpers import read_data_json, save_file_json
 
-MOT_DT = 8e-6
+MOT_DT = _2d_mot_sim_config["dt"]  # Use the MOT dt from the config file
 
 def parse_args():
     parser = argparse.ArgumentParser()

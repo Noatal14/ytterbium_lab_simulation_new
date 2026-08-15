@@ -197,7 +197,7 @@ mot_3d_laser_config = {
 
 F_scale = 3.141895058426422e-20
 
-N_particles = 1000
+N_particles = 50000
 
 collimation_angle_deg = 1.5
 
@@ -224,7 +224,7 @@ zeeman_sim_config = {
 # =================
 _2d_mot_sim_config = {
     "t_max": 25e-3,
-    "dt": 8e-6,
+    "dt": 1e-5,
     "start_distance": 0.100,
 }
 

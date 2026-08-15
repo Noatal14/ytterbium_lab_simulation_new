@@ -1,7 +1,7 @@
 from config import YB171_MASS_KG, Geometry, collimation_angle_deg
 import numpy as np
 import scipy.constants as csts
-from atomsmltr.atoms import Ytterbium
+from config import seed
 
 def _microtube_alpha(beta):
     numerator = 1 - 2 * beta**3 + (2 * beta**2 - 1) * np.sqrt(1 + beta**2)
@@ -99,7 +99,7 @@ def generate_thermal_beam_state(
     collimation_angle_deg=collimation_angle_deg,
     m=None,
     distance_m=None,
-    seed=42
+    seed=seed
 ):
     """
     Generate the position and velocity arrays for a collection of atoms (thermal source),

@@ -1,9 +1,9 @@
 import numpy as np
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
-from config import ZEEMAN_BEAM_DIR, Geometry
+from config import ZEEMAN_BEAM_DIR, Geometry, seed
 
 def run_simulation(
-        seed_idx = 42, 
+        seed_idx = seed, 
         config = None, 
         u0 = None, 
         time_points = None, 
@@ -18,7 +18,7 @@ def run_simulation(
     return seed_idx, res.y, sim
 
 def run_multiple_atoms_simulation(
-        seed_idx = 42, 
+        seed_idx = seed, 
         config = None, 
         u0 = None, 
         time_points = None, 

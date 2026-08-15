@@ -6,7 +6,7 @@ from lab_setup.zones import get_entire_apparatus_zone
 from thermal_beam import generate_thermal_beam_state
 from utils.file_helpers import save_file_json
 from utils.simulation_helpers import mot_extract_survivors, run_multiple_atoms_simulation, generate_timepoints
-from config import full_sim_config, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius, zeeman_field_config
+from config import full_sim_config, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius, zeeman_field_config, seed
 
 # Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
 
@@ -42,7 +42,7 @@ def simulation(
         m=atom.mass,
         distance_m=full_sim_config["start_distance"],
         collimation_angle_deg=1.3,
-        seed=42
+        seed=seed
     )
 
     time_points, _ = generate_timepoints(full_sim_config["t_max"], full_sim_config["dt"])
