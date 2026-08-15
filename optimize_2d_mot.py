@@ -8,6 +8,7 @@ from config import (
     N_particles,
     collimation_angle_deg,
     seed,
+    _2d_mot_sim_config
 )
 
 from utils.file_helpers import update_json_file
@@ -22,7 +23,7 @@ ZEEMAN_SURVIVORS_FILE = (
     "data/production_zeeman_survivors_50k_dt40us.npy"
 )
 
-MOT_DT = 10e-6
+MOT_DT = _2d_mot_sim_config["dt"]  # seconds
 CHUNKSIZE = 1
 
 
