@@ -1,23 +1,34 @@
 import argparse
+from pathlib import Path
+
+import numpy as np
 import optuna
+
 from config import (
     N_particles,
-    zeeman_field_config,
-    zeeman_laser_config,
-    _2d_mot_laser_config,
-    _2d_mot_magnet_radius,
-    zeeman_sim_config,
     collimation_angle_deg,
-    seed
+    seed,
 )
-from pathlib import Path
-from utils.file_helpers import (
-    read_data_json,
-    save_file_json,
-    update_json_file,
-)
-from split_simulation import zeeman_simulation, mot_simulation
 
+from utils.file_helpers import update_json_file
+from split_simulation import mot_simulation
+
+
+# ============================================================
+# Fixed production inputs
+# ============================================================
+
+ZEEMAN_SURVIVORS_FILE = (
+    "data/production_zeeman_survivors_50k_dt40us.npy"
+)
+
+MOT_DT = 10e-6
+CHUNKSIZE = 1
+
+
+# ============================================================
+# Command-line arguments
+# ============================================================
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -26,65 +37,71 @@ def parse_args():
         "--npools",
         type=int,
         default=8,
-        help="Number of worker processes",
+        help="Number of worker processes used for each MOT simulation",
     )
 
     parser.add_argument(
-        "--run_zeeman",
-        action="store_true",
+        "--n_trials",
+        type=int,
+        default=50,
+        help="Number of Optuna trials",
     )
 
     return parser.parse_args()
 
 
-def run_zeeman(npools=8):
-    print("Running Zeeman phase simulation...")
+# ============================================================
+# Run one MOT parameter point
+# ============================================================
 
-    _, survivors, _ = zeeman_simulation(
-        N_particles=N_particles,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
-        stochastic=False,
-        npools=npools,
-    )
+def run_mot(
+    s0,
+    detuning_gamma,
+    magnet_radius,
+    npools=8,
+):
+    """
+    Run one stochastic 2D-MOT simulation using the fixed production
+    Zeeman-survivor ensemble.
 
-    metadata = {
-        "N_initial": N_particles,
-        "N_zeeman_survivors": len(survivors),
-        "zeeman_dt": zeeman_sim_config["dt"],
-        "collimation_angle_deg": collimation_angle_deg,
-        "seed": seed,
-    }
+    Parameters
+    ----------
+    s0 : float
+        MOT saturation parameter.
 
-    save_path = Path("data")
-    save_path.mkdir(parents=True, exist_ok=True)
+    detuning_gamma : float
+        MOT detuning in units of Gamma.
 
-    save_file_json(
-        save_path / "zeeman_survivors_states.json",
-        survivors,
-    )
+    magnet_radius : float
+        Effective magnet radius in meters.
 
-    save_file_json(
-        save_path / "metadata.json",
-        metadata,
-    )
+    npools : int
+        Number of multiprocessing workers.
 
+    Returns
+    -------
+    success_count : int
+        Number of Zeeman-surviving atoms successfully captured by the MOT.
+    """
 
-def run_mot(s0, detuning_gamma, magnet_radius, npools=8):
-    path = "data/zeeman_survivors_states.json"
+    survivors = np.load(ZEEMAN_SURVIVORS_FILE)
 
-    survivors = read_data_json(path)
+    n_survivors = len(survivors)
 
-    print(
-        f"Running MOT phase simulation "
-        f"s0={s0}, "
-        f"detuning_gamma={detuning_gamma}, "
-        f"magnet_radius={magnet_radius}..."
-    )
+    print()
+    print("========================================")
+    print("2D MOT OPTIMIZATION TRIAL")
+    print("========================================")
+    print(f"s0 = {s0}")
+    print(f"detuning_gamma = {detuning_gamma}")
+    print(f"magnet_radius = {magnet_radius}")
+    print(f"N_zeeman_survivors = {n_survivors}")
+    print(f"MOT dt = {MOT_DT:.2e} s")
+    print(f"npools = {npools}")
+    print(f"chunksize = {CHUNKSIZE}")
+    print("========================================")
 
-    _, success_count, mot_survivor_states = mot_simulation(
+    _, success_count, _ = mot_simulation(
         survivor_states=survivors,
         _2d_mot_config={
             "s0": s0,
@@ -92,30 +109,69 @@ def run_mot(s0, detuning_gamma, magnet_radius, npools=8):
             "swap_polarization": False,
         },
         magnet_radius=magnet_radius,
-        stochastic=False,
+        stochastic=True,
         npools=npools,
+        dt=MOT_DT,
+        chunksize=CHUNKSIZE,
     )
 
-    print(f"Success count: {success_count}")
+    mot_given_zeeman_efficiency = (
+        success_count / n_survivors
+        if n_survivors > 0
+        else np.nan
+    )
 
+    total_efficiency = (
+        success_count / 50000
+    )
+
+    print()
+    print(f"Success count = {success_count}")
+    print(
+        f"MOT given Zeeman efficiency = "
+        f"{mot_given_zeeman_efficiency:.8f}"
+    )
+    print(
+        f"Total efficiency = "
+        f"{total_efficiency:.8f}"
+    )
+
+    # Save a human-readable record in addition to the Optuna database.
     data_to_push = {
-        "s0": s0,
-        "detuning_gamma": detuning_gamma,
-        "magnet_radius": magnet_radius,
-        "success_count": success_count,
+        "s0": float(s0),
+        "detuning_gamma": float(detuning_gamma),
+        "magnet_radius": float(magnet_radius),
+        "success_count": int(success_count),
+        "mot_given_zeeman_efficiency": float(
+            mot_given_zeeman_efficiency
+        ),
+        "total_efficiency": float(total_efficiency),
     }
 
     save_path = Path("data")
-    save_path.mkdir(parents=True, exist_ok=True)
+    save_path.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    key = (
+        f"s0_{s0:.8f}_"
+        f"detuning_gamma_{detuning_gamma:.8f}_"
+        f"magnet_radius_{magnet_radius:.8f}"
+    )
 
     update_json_file(
-        save_path / "mot_summary.json",
-        f"s0_{s0}_detuning_gamma_{detuning_gamma}_magnet_radius_{magnet_radius}",
+        save_path / "mot_optimization_summary.json",
+        key,
         data_to_push,
     )
 
     return success_count
 
+
+# ============================================================
+# Optuna optimization
+# ============================================================
 
 def optimize_mot(
     s0_range,
@@ -124,20 +180,27 @@ def optimize_mot(
     n_trials=50,
     npools=8,
 ):
+    """
+    Optimize the 2D-MOT parameters using Optuna.
+    """
+
     def objective(trial):
         s0 = trial.suggest_float(
             "s0",
-            *s0_range,
+            s0_range[0],
+            s0_range[1],
         )
 
         detuning_gamma = trial.suggest_float(
             "detuning_gamma",
-            *detuning_gamma_range,
+            detuning_gamma_range[0],
+            detuning_gamma_range[1],
         )
 
         magnet_radius = trial.suggest_float(
             "magnet_radius",
-            *magnet_radius_range,
+            magnet_radius_range[0],
+            magnet_radius_range[1],
         )
 
         success_count = run_mot(
@@ -147,16 +210,28 @@ def optimize_mot(
             npools=npools,
         )
 
+        print(
+            f"OPTUNA_RESULT "
+            f"trial={trial.number} "
+            f"s0={s0:.8f} "
+            f"detuning_gamma={detuning_gamma:.8f} "
+            f"magnet_radius={magnet_radius:.8f} "
+            f"success_count={success_count}"
+        )
+
         return success_count
 
     study_name = (
-        f"mot_opt_"
-        f"N{N_particles}_"
-        f"zsdt{zeeman_sim_config['dt']}_"
+        "mot_opt_"
+        "N50000_"
+        "zeeman_dt40us_"
+        "mot_dt10us_"
         f"angle{collimation_angle_deg}"
     )
 
-    sampler = optuna.samplers.TPESampler(seed=seed)
+    sampler = optuna.samplers.TPESampler(
+        seed=seed,
+    )
 
     study = optuna.create_study(
         study_name=study_name,
@@ -171,34 +246,98 @@ def optimize_mot(
         n_trials=n_trials,
     )
 
-    print("\n==============================")
+    print()
+    print("==============================")
     print("MOT optimization finished")
     print("==============================")
 
-    print(f"Best success count: {study.best_value}")
+    print(
+        f"Best success count: "
+        f"{study.best_value}"
+    )
 
-    print("\nBest parameters:")
-    print(f"s0             = {study.best_params['s0']}")
-    print(f"detuning_gamma = {study.best_params['detuning_gamma']}")
-    print(f"magnet_radius  = {study.best_params['magnet_radius']}")
+    print()
+    print("Best parameters:")
+    print(
+        f"s0             = "
+        f"{study.best_params['s0']}"
+    )
+    print(
+        f"detuning_gamma = "
+        f"{study.best_params['detuning_gamma']}"
+    )
+    print(
+        f"magnet_radius  = "
+        f"{study.best_params['magnet_radius']}"
+    )
 
     return study
 
 
+# ============================================================
+# Main
+# ============================================================
+
 if __name__ == "__main__":
     args = parse_args()
 
-    BOUNDS_DETUNING = (-2, -0.6)
-    BOUNDS_MAGNET_RADIUS = (0.045, 0.054)
-    BOUNDS_S0 = (0.8, 2.0)
+    # Search ranges
+    BOUNDS_S0 = (
+        0.8,
+        2.0,
+    )
 
-    if args.run_zeeman:
-        run_zeeman(npools=args.npools)
+    BOUNDS_DETUNING = (
+        -2.0,
+        -0.6,
+    )
+
+    BOUNDS_MAGNET_RADIUS = (
+        0.045,
+        0.054,
+    )
+
+    # Sanity check before starting an expensive optimization.
+    if not Path(ZEEMAN_SURVIVORS_FILE).exists():
+        raise FileNotFoundError(
+            f"Fixed Zeeman survivor file not found: "
+            f"{ZEEMAN_SURVIVORS_FILE}"
+        )
+
+    survivors = np.load(
+        ZEEMAN_SURVIVORS_FILE,
+        mmap_mode="r",
+    )
+
+    print("========================================")
+    print("2D MOT OPTIMIZATION")
+    print("========================================")
+    print(
+        f"Zeeman survivor file = "
+        f"{ZEEMAN_SURVIVORS_FILE}"
+    )
+    print(
+        f"N_zeeman_survivors = "
+        f"{len(survivors)}"
+    )
+    print(
+        f"MOT dt = "
+        f"{MOT_DT:.2e} s"
+    )
+    print(
+        f"n_trials = "
+        f"{args.n_trials}"
+    )
+    print(
+        f"npools = "
+        f"{args.npools}"
+    )
+    print("========================================")
 
     study = optimize_mot(
         s0_range=BOUNDS_S0,
         detuning_gamma_range=BOUNDS_DETUNING,
         magnet_radius_range=BOUNDS_MAGNET_RADIUS,
-        n_trials=50,
+        n_trials=args.n_trials,
         npools=args.npools,
     )
