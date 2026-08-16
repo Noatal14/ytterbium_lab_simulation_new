@@ -210,7 +210,7 @@ def optimize_mot_fixed_s0(
 
     study = optuna.create_study(
         study_name=study_name,
-        storage="sqlite:///mot_optimization_fixed_s0.db",
+        storage=f"sqlite:///mot_optimization_fixed_s0_{s0_tag}.db",
         direction="maximize",
         sampler=sampler,
         load_if_exists=True,
