@@ -87,20 +87,10 @@ class Geometry:
     DPS_LENGTH = 0.070
     DPS_RADIUS = 0.0015
     DPS_START_Z = 0.1445
-
-    # "Capture" (reaching the 3D-MOT capture region, proposal Sec. 2.1.3) is
-    # defined as an atom that survives past the differential-pumping stage
-    # (DPS) still moving toward the science chamber. The DPS bore (radius
-    # DPS_RADIUS=1.5mm) is already enforced as a hard wall by the apparatus
-    # zones, so surviving to this z-plane means the atom has physically
-    # threaded that bottleneck -- unlike the previous arbitrary capture disk
-    # (z=0.500m, r=5mm), which had no stated basis in the proposal.
-    CAPTURE_MIN_Z = DPS_START_Z + DPS_LENGTH
     
-    # Assumed 3D MOT center:
-    # currently chosen as the midpoint of the post-DPS science region.
-    # The proposal does not specify the exact axial MOT position.
-    SCIENCE_REGION_CENTER_Z = 0.5 * (CAPTURE_MIN_Z + SCIENCE_ARM_TOTAL_LENGTH)
+    CAPTURE_MIN_Z = DPS_START_Z + DPS_LENGTH
+
+    SCIENCE_REGION_CENTER_Z = 0.413
     MOT_3D_CENTER = (0.0, 0.0, SCIENCE_REGION_CENTER_Z)
 
     SCIENCE_ARM_3_LENGTH = 0.510 - (DPS_LENGTH + SCIENCE_ARM_1_LENGTH)

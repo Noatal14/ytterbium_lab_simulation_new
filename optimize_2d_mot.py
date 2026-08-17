@@ -227,6 +227,7 @@ def optimize_mot(
         "N50000_"
         "zeeman_dt40us_"
         "mot_dt10us_"
+        "s0max1p5_"
         f"angle{collimation_angle_deg}"
     )
 
@@ -236,7 +237,7 @@ def optimize_mot(
 
     study = optuna.create_study(
         study_name=study_name,
-        storage="sqlite:///mot_optimization.db",
+        storage="sqlite:///mot_optimization_s0max1p5.db",
         direction="maximize",
         sampler=sampler,
         load_if_exists=True,
@@ -285,7 +286,7 @@ if __name__ == "__main__":
     # Search ranges
     BOUNDS_S0 = (
         0.8,
-        2.0,
+        1.5,
     )
 
     BOUNDS_DETUNING = (
