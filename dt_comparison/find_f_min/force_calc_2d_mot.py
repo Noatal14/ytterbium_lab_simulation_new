@@ -6,7 +6,7 @@ from config import YB171_ISAT_MW_CM2, Geometry, BLUE_LASER_WAVELENGTH_M, BLUE_LA
 from lab_setup.config_builder import build_2dmot_config
 from atomsmltr.simulation.simulator import RK4St
 
-good_A = 0.8
+good_A = 0
 
 def _get_force_vec(
         position: np.ndarray,

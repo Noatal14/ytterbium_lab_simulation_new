@@ -468,10 +468,6 @@ def get_optimal_dt_zeeman(
     cooling_end_delta_v=2.0,
     cooling_monotonic_fraction=0.9,
     cooling_end_consecutive_windows=3,
-    force_margin_factor=2.0,
-    aggregate_percentile=5.0,
-    N_min=15,
-    safety_factor=1.0,
 ):
     y_path = (
         "dt_comparison/"
