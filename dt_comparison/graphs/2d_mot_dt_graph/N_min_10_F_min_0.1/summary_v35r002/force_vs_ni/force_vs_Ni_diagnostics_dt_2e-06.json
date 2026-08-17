@@ -1,0 +1,10 @@
+{
+  "total_points": 2308,
+  "important_points": 2105,
+  "bad_points": 240,
+  "bad_fraction": 0.11401425178147269,
+  "min_Ni_among_important": 3.8415332412263625,
+  "median_Ni_among_important": 25.80726305737284,
+  "percentile_5_Ni_among_important": 7.303729083760896,
+  "F_scale": 3.143817362206074e-20
+}

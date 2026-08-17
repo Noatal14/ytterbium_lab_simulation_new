@@ -9,12 +9,12 @@ from atomsmltr.simulation import Configuration
 
 # Import all component builders from Steps 1-8
 from atom_species import create_atom
-from lab_setup.laser_setup import setup_2dmot_lasers
+from lab_setup.laser_setup_2d_mot import setup_2dmot_lasers
 from lab_setup.zeeman_laser_setup import setup_zeeman_laser
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
-from lab_setup.mag_field_custom import CustomQuadrupole
+from lab_setup.mag_field_2d_mot import CustomQuadrupole
 from lab_setup.mag_field_Zeeman import ZeemanSlowerField
-from lab_setup.mag_field_builtin import get_builtin_3dmot_magnetic_field
+from lab_setup._3d_mot_mag_field import get_builtin_3dmot_magnetic_field
 from lab_setup.gravity import get_gravity_force
 from lab_setup.zones import get_2dmot_chamber_only_zone, get_zeeman_only_zone
 from config import Geometry, zeeman_laser_config, _2d_mot_laser_config, mot_3d_laser_config, _3d_mot_gradient_G_cm, zeeman_field_config
