@@ -1,0 +1,116 @@
+# Calibration of N_min for the Stochastic Scattering Model
+
+This file contains the calibration used to choose \(N_{\min}\), the minimum expected number of photon-scattering events per timestep for which the Gaussian approximation is considered sufficiently accurate.
+
+For each value of \(N\), the velocity kick obtained from the exact Poisson-based scattering model was compared with the Gaussian approximation.
+
+The quantities reported are:
+
+- `N` — expected number of photon-scattering events during one timestep.
+- `dv_det` — deterministic velocity change associated with \(N\) scattering events.
+- `mean_diff` — mean absolute difference between the velocity kicks obtained from the Poisson and Gaussian models.
+- `eta` — relative difference between the two models, defined as the mean difference normalized by the deterministic velocity change:
+
+\[
+\eta(N)
+=
+\frac{\langle |\Delta v_{\mathrm{Poisson}}-\Delta v_{\mathrm{Gaussian}}| \rangle}
+{\Delta v_{\mathrm{det}}}.
+\]
+
+As \(N\) increases, the Poisson distribution becomes better approximated by a Gaussian distribution, and therefore \(\eta\) decreases.
+
+For example:
+
+- \(N=10\): \(\eta \approx 2.99\%\)
+- \(N=15\): \(\eta \approx 1.99\%\)
+- \(N=20\): \(\eta \approx 1.49\%\)
+- \(N=30\): \(\eta \approx 0.99\%\)
+
+Based on this comparison, we chose
+
+\[
+N_{\min}=15,
+\]
+
+corresponding to an average relative discrepancy of approximately \(2\%\) between the Poisson and Gaussian descriptions.
+
+This value is used as the validity threshold for applying the Gaussian approximation in the stochastic simulation.
+
+# 2D MOT Laser Force vs. Velocity
+
+This file contains the optical force produced by the two counter-propagating 2D MOT laser beams as a function of the atom's velocity.
+
+The calculation was performed at a fixed position:
+
+\[
+\mathbf{r} = (0.015,\,0,\,0)\ \mathrm{m}.
+\]
+
+For each velocity, the force contribution from each beam was calculated separately:
+
+- `F+` — force magnitude produced by the laser beam propagating in the positive direction.
+- `F-` — force magnitude produced by the laser beam propagating in the negative direction.
+- `F_plus_norm` — `F+` normalized by the characteristic 2D MOT force scale, `F_scale`.
+- `F_minus_norm` — `F-` normalized by `F_scale`.
+- `A` — a measure of the asymmetry between the forces produced by the two counter-propagating beams:
+
+\[
+A = \frac{|F_+ - F_-|}{F_+ + F_-}.
+\]
+
+A value of \(A \approx 0\) indicates that the two beams produce forces of similar magnitude, while \(A \approx 1\) indicates that one beam dominates over the other.
+
+The main purpose of these calculations is to compare the magnitude of the two force contributions over the relevant velocity range and identify when one of them becomes negligible.
+
+This information was used in determining which force contributions can be neglected when estimating the relevant force scale for the stochastic 2D MOT timestep analysis.
+
+v= 1 m/s | A=0.049 | F+=5.702e-21 N | F-=6.294e-21 NF_plus_norm=0.181 | F_minus_norm=0.200 | 
+v= 2 m/s | A=0.094 | F+=5.630e-21 N | F-=6.800e-21 NF_plus_norm=0.179 | F_minus_norm=0.216 | 
+v= 3 m/s | A=0.129 | F+=5.708e-21 N | F-=7.399e-21 NF_plus_norm=0.182 | F_minus_norm=0.236 | 
+v= 4 m/s | A=0.148 | F+=5.939e-21 N | F-=8.006e-21 NF_plus_norm=0.189 | F_minus_norm=0.255 | 
+v= 5 m/s | A=0.145 | F+=6.331e-21 N | F-=8.483e-21 NF_plus_norm=0.202 | F_minus_norm=0.270 | 
+v= 6 m/s | A=0.114 | F+=6.899e-21 N | F-=8.676e-21 NF_plus_norm=0.220 | F_minus_norm=0.276 | 
+v= 7 m/s | A=0.051 | F+=7.658e-21 N | F-=8.488e-21 NF_plus_norm=0.244 | F_minus_norm=0.270 | 
+v= 8 m/s | A=0.041 | F+=8.626e-21 N | F-=7.940e-21 NF_plus_norm=0.275 | F_minus_norm=0.253 | 
+v= 9 m/s | A=0.156 | F+=9.804e-21 N | F-=7.157e-21 NF_plus_norm=0.312 | F_minus_norm=0.228 | 
+v=10 m/s | A=0.279 | F+=1.116e-20 N | F-=6.287e-21 NF_plus_norm=0.355 | F_minus_norm=0.200 | 
+v=11 m/s | A=0.396 | F+=1.259e-20 N | F-=5.445e-21 NF_plus_norm=0.401 | F_minus_norm=0.173 | 
+v=12 m/s | A=0.496 | F+=1.391e-20 N | F-=4.690e-21 NF_plus_norm=0.443 | F_minus_norm=0.149 | 
+v=13 m/s | A=0.572 | F+=1.485e-20 N | F-=4.042e-21 NF_plus_norm=0.473 | F_minus_norm=0.129 | 
+v=14 m/s | A=0.625 | F+=1.517e-20 N | F-=3.499e-21 NF_plus_norm=0.483 | F_minus_norm=0.111 | 
+v=15 m/s | A=0.658 | F+=1.477e-20 N | F-=3.047e-21 NF_plus_norm=0.470 | F_minus_norm=0.097 | 
+v=16 m/s | A=0.675 | F+=1.377e-20 N | F-=2.672e-21 NF_plus_norm=0.438 | F_minus_norm=0.085 | 
+v=17 m/s | A=0.681 | F+=1.243e-20 N | F-=2.360e-21 NF_plus_norm=0.396 | F_minus_norm=0.075 | 
+v=18 m/s | A=0.679 | F+=1.100e-20 N | F-=2.099e-21 NF_plus_norm=0.350 | F_minus_norm=0.067 | 
+v=19 m/s | A=0.674 | F+=9.663e-21 N | F-=1.880e-21 NF_plus_norm=0.308 | F_minus_norm=0.060 | 
+v=20 m/s | A=0.668 | F+=8.508e-21 N | F-=1.693e-21 NF_plus_norm=0.271 | F_minus_norm=0.054 | 
+v=21 m/s | A=0.663 | F+=7.564e-21 N | F-=1.534e-21 NF_plus_norm=0.241 | F_minus_norm=0.049 | 
+v=22 m/s | A=0.660 | F+=6.826e-21 N | F-=1.398e-21 NF_plus_norm=0.217 | F_minus_norm=0.044 | 
+v=23 m/s | A=0.662 | F+=6.279e-21 N | F-=1.279e-21 NF_plus_norm=0.200 | F_minus_norm=0.041 | 
+v=24 m/s | A=0.668 | F+=5.906e-21 N | F-=1.176e-21 NF_plus_norm=0.188 | F_minus_norm=0.037 | 
+v=25 m/s | A=0.680 | F+=5.692e-21 N | F-=1.085e-21 NF_plus_norm=0.181 | F_minus_norm=0.035 | 
+v=26 m/s | A=0.697 | F+=5.631e-21 N | F-=1.005e-21 NF_plus_norm=0.179 | F_minus_norm=0.032 | 
+v=27 m/s | A=0.719 | F+=5.719e-21 N | F-=9.344e-22 NF_plus_norm=0.182 | F_minus_norm=0.030 | 
+v=28 m/s | A=0.745 | F+=5.958e-21 N | F-=8.712e-22 NF_plus_norm=0.190 | F_minus_norm=0.028 | 
+v=29 m/s | A=0.772 | F+=6.344e-21 N | F-=8.145e-22 NF_plus_norm=0.202 | F_minus_norm=0.026 | 
+v=30 m/s | A=0.800 | F+=6.863e-21 N | F-=7.636e-22 NF_plus_norm=0.218 | F_minus_norm=0.024 | 
+v=31 m/s | A=0.825 | F+=7.469e-21 N | F-=7.175e-22 NF_plus_norm=0.238 | F_minus_norm=0.023 | 
+v=32 m/s | A=0.845 | F+=8.069e-21 N | F-=6.758e-22 NF_plus_norm=0.257 | F_minus_norm=0.022 | 
+v=33 m/s | A=0.861 | F+=8.522e-21 N | F-=6.378e-22 NF_plus_norm=0.271 | F_minus_norm=0.020 | 
+v=34 m/s | A=0.870 | F+=8.675e-21 N | F-=6.031e-22 NF_plus_norm=0.276 | F_minus_norm=0.019 | 
+v=35 m/s | A=0.873 | F+=8.443e-21 N | F-=5.713e-22 NF_plus_norm=0.269 | F_minus_norm=0.018 | 
+v=36 m/s | A=0.871 | F+=7.862e-21 N | F-=5.421e-22 NF_plus_norm=0.250 | F_minus_norm=0.017 | 
+v=37 m/s | A=0.864 | F+=7.062e-21 N | F-=5.152e-22 NF_plus_norm=0.225 | F_minus_norm=0.016 | 
+v=38 m/s | A=0.853 | F+=6.191e-21 N | F-=4.904e-22 NF_plus_norm=0.197 | F_minus_norm=0.016 | 
+v=39 m/s | A=0.839 | F+=5.356e-21 N | F-=4.674e-22 NF_plus_norm=0.170 | F_minus_norm=0.015 | 
+v=40 m/s | A=0.824 | F+=4.613e-21 N | F-=4.461e-22 NF_plus_norm=0.147 | F_minus_norm=0.014 | 
+v=41 m/s | A=0.806 | F+=3.977e-21 N | F-=4.263e-22 NF_plus_norm=0.127 | F_minus_norm=0.014 | 
+v=42 m/s | A=0.788 | F+=3.444e-21 N | F-=4.079e-22 NF_plus_norm=0.110 | F_minus_norm=0.013 | 
+v=43 m/s | A=0.770 | F+=3.002e-21 N | F-=3.907e-22 NF_plus_norm=0.096 | F_minus_norm=0.012 | 
+v=44 m/s | A=0.751 | F+=2.634e-21 N | F-=3.746e-22 NF_plus_norm=0.084 | F_minus_norm=0.012 | 
+v=45 m/s | A=0.733 | F+=2.329e-21 N | F-=3.595e-22 NF_plus_norm=0.074 | F_minus_norm=0.011 | 
+v=46 m/s | A=0.714 | F+=2.073e-21 N | F-=3.454e-22 NF_plus_norm=0.066 | F_minus_norm=0.011 | 
+v=47 m/s | A=0.697 | F+=1.857e-21 N | F-=3.321e-22 NF_plus_norm=0.059 | F_minus_norm=0.011 | 
+v=48 m/s | A=0.679 | F+=1.675e-21 N | F-=3.196e-22 NF_plus_norm=0.053 | F_minus_norm=0.010 | 
+v=49 m/s | A=0.663 | F+=1.518e-21 N | F-=3.078e-22 NF_plus_norm=0.048 | F_minus_norm=0.010 |

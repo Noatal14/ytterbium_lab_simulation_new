@@ -161,7 +161,7 @@ def zeeman_extract_survivors(
                     break
 
         # =====================================================
-        # Stochastic: RK4StCustomDt / SimRes
+        # Stochastic: RK4StCustom / SimRes
         # =====================================================
         else:
             if res.y.shape[1] < 2:

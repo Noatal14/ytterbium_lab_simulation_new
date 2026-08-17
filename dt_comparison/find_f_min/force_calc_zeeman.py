@@ -26,7 +26,7 @@ def run_zeeman_sim_and_save_data(
     survivors_y = [zeeman_traj[i].y for i in surv_idx]
     survivors_t = [zeeman_traj[i].t for i in surv_idx]
 
-    save_dir = "dt_comparison/find_f_min/zeeman_sim_data"
+    save_dir = "dt_comparison/data/zeeman_sim_data"
     save_path = Path(save_dir)
 
     save_file_json(save_path / f"survivors_y.json", survivors_y)
@@ -471,14 +471,14 @@ def get_optimal_dt_zeeman(
 ):
     y_path = (
         "dt_comparison/"
-        "find_f_min/"
+        "data/"
         "zeeman_sim_data/"
         f"survivors_y.json"
     )
 
     t_path = (
         "dt_comparison/"
-        "find_f_min/"
+        "data/"
         "zeeman_sim_data/"
         f"survivors_t.json"
     )
