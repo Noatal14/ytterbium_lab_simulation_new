@@ -1,0 +1,583 @@
+{
+  "s0_1.10000000_detuning_gamma_-1.47564383_magnet_radius_0.05355643": {
+    "s0": 1.1,
+    "detuning_gamma": -1.4756438336136926,
+    "magnet_radius": 0.05355642875768925,
+    "success_count": 418,
+    "mot_given_zeeman_efficiency": 0.014790700965995541
+  },
+  "s0_1.10000000_detuning_gamma_-0.97520848_magnet_radius_0.05038793": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9752084814640329,
+    "magnet_radius": 0.05038792635777333,
+    "success_count": 581,
+    "mot_given_zeeman_efficiency": 0.02055836665369237
+  },
+  "s0_1.10000000_detuning_gamma_-1.78157390_magnet_radius_0.04640395": {
+    "s0": 1.1,
+    "detuning_gamma": -1.7815739033805889,
+    "magnet_radius": 0.04640395068302582,
+    "success_count": 64,
+    "mot_given_zeeman_efficiency": 0.002264604932592619
+  },
+  "s0_1.10000000_detuning_gamma_-1.91868294_magnet_radius_0.05279559": {
+    "s0": 1.1,
+    "detuning_gamma": -1.9186829429645207,
+    "magnet_radius": 0.05279558531197442,
+    "success_count": 9,
+    "mot_given_zeeman_efficiency": 0.000318460068645837
+  },
+  "s0_1.10000000_detuning_gamma_-1.15843898_magnet_radius_0.05137265": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1584389835595077,
+    "magnet_radius": 0.05137265320016441,
+    "success_count": 611,
+    "mot_given_zeeman_efficiency": 0.02161990021584516
+  },
+  "s0_1.10000000_detuning_gamma_-1.97118171_magnet_radius_0.05372919": {
+    "s0": 1.1,
+    "detuning_gamma": -1.9711817079858767,
+    "magnet_radius": 0.053729188669457945,
+    "success_count": 1,
+    "mot_given_zeeman_efficiency": 3.538445207175967e-05
+  },
+  "s0_1.10000000_detuning_gamma_-0.83458030_magnet_radius_0.04691105": {
+    "s0": 1.1,
+    "detuning_gamma": -0.8345803028794097,
+    "magnet_radius": 0.046911051996104486,
+    "success_count": 451,
+    "mot_given_zeeman_efficiency": 0.01595838788436361
+  },
+  "s0_1.10000000_detuning_gamma_-1.74544505_magnet_radius_0.04665064": {
+    "s0": 1.1,
+    "detuning_gamma": -1.7454450459100592,
+    "magnet_radius": 0.0466506405886809,
+    "success_count": 82,
+    "mot_given_zeeman_efficiency": 0.0029015250698842926
+  },
+  "s0_1.10000000_detuning_gamma_-1.57406086_magnet_radius_0.04972281": {
+    "s0": 1.1,
+    "detuning_gamma": -1.5740608598566472,
+    "magnet_radius": 0.04972280788469014,
+    "success_count": 293,
+    "mot_given_zeeman_efficiency": 0.010367644457025583
+  },
+  "s0_1.10000000_detuning_gamma_-1.39527697_magnet_radius_0.04762106": {
+    "s0": 1.1,
+    "detuning_gamma": -1.395276973901038,
+    "magnet_radius": 0.04762106226178238,
+    "success_count": 375,
+    "mot_given_zeeman_efficiency": 0.013269169526909876
+  },
+  "s0_1.10000000_detuning_gamma_-1.14385283_magnet_radius_0.04505397": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1438528316165546,
+    "magnet_radius": 0.04505397464660235,
+    "success_count": 389,
+    "mot_given_zeeman_efficiency": 0.013764551855914511
+  },
+  "s0_1.10000000_detuning_gamma_-0.90630934_magnet_radius_0.05075818": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9063093440549174,
+    "magnet_radius": 0.050758183738140616,
+    "success_count": 559,
+    "mot_given_zeeman_efficiency": 0.019779908708113653
+  },
+  "s0_1.10000000_detuning_gamma_-0.63422548_magnet_radius_0.05104297": {
+    "s0": 1.1,
+    "detuning_gamma": -0.6342254799678961,
+    "magnet_radius": 0.05104296947447959,
+    "success_count": 468,
+    "mot_given_zeeman_efficiency": 0.016559923569583523
+  },
+  "s0_1.10000000_detuning_gamma_-1.13446104_magnet_radius_0.04925993": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1344610356199154,
+    "magnet_radius": 0.049259929067663695,
+    "success_count": 583,
+    "mot_given_zeeman_efficiency": 0.02062913555783589
+  },
+  "s0_1.10000000_detuning_gamma_-1.23341846_magnet_radius_0.04855572": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2334184625014344,
+    "magnet_radius": 0.04855572189860579,
+    "success_count": 507,
+    "mot_given_zeeman_efficiency": 0.01793991720038215
+  },
+  "s0_1.10000000_detuning_gamma_-1.18503975_magnet_radius_0.05198147": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1850397519009712,
+    "magnet_radius": 0.05198146534159861,
+    "success_count": 596,
+    "mot_given_zeeman_efficiency": 0.021089133434768762
+  },
+  "s0_1.10000000_detuning_gamma_-1.29398597_magnet_radius_0.05178775": {
+    "s0": 1.1,
+    "detuning_gamma": -1.29398596674259,
+    "magnet_radius": 0.05178774965280791,
+    "success_count": 581,
+    "mot_given_zeeman_efficiency": 0.02055836665369237
+  },
+  "s0_1.10000000_detuning_gamma_-1.04787872_magnet_radius_0.05207467": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0478787194421955,
+    "magnet_radius": 0.05207467293776633,
+    "success_count": 572,
+    "mot_given_zeeman_efficiency": 0.02023990658504653
+  },
+  "s0_1.10000000_detuning_gamma_-0.74148417_magnet_radius_0.05221436": {
+    "s0": 1.1,
+    "detuning_gamma": -0.7414841708330233,
+    "magnet_radius": 0.05221436359828303,
+    "success_count": 496,
+    "mot_given_zeeman_efficiency": 0.017550688227592797
+  },
+  "s0_1.10000000_detuning_gamma_-1.31410519_magnet_radius_0.05151815": {
+    "s0": 1.1,
+    "detuning_gamma": -1.31410519419317,
+    "magnet_radius": 0.05151815400526597,
+    "success_count": 567,
+    "mot_given_zeeman_efficiency": 0.02006298432468773
+  },
+  "s0_1.10000000_detuning_gamma_-1.54251287_magnet_radius_0.05291450": {
+    "s0": 1.1,
+    "detuning_gamma": -1.542512871456517,
+    "magnet_radius": 0.05291450120022277,
+    "success_count": 336,
+    "mot_given_zeeman_efficiency": 0.01188917589611125
+  },
+  "s0_1.10000000_detuning_gamma_-1.13534201_magnet_radius_0.04946437": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1353420132967547,
+    "magnet_radius": 0.04946437180952743,
+    "success_count": 594,
+    "mot_given_zeeman_efficiency": 0.021018364530625243
+  },
+  "s0_1.10000000_detuning_gamma_-1.10667345_magnet_radius_0.04981236": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1066734540567045,
+    "magnet_radius": 0.04981235616097639,
+    "success_count": 599,
+    "mot_given_zeeman_efficiency": 0.021195286790984043
+  },
+  "s0_1.10000000_detuning_gamma_-1.04610462_magnet_radius_0.05004528": {
+    "s0": 1.1,
+    "detuning_gamma": -1.046104623399742,
+    "magnet_radius": 0.050045280434849695,
+    "success_count": 606,
+    "mot_given_zeeman_efficiency": 0.02144297795548636
+  },
+  "s0_1.10000000_detuning_gamma_-1.05566818_magnet_radius_0.04853708": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0556681795348435,
+    "magnet_radius": 0.048537082198235715,
+    "success_count": 544,
+    "mot_given_zeeman_efficiency": 0.01924914192703726
+  },
+  "s0_1.10000000_detuning_gamma_-0.83695229_magnet_radius_0.05023921": {
+    "s0": 1.1,
+    "detuning_gamma": -0.8369522902000696,
+    "magnet_radius": 0.050239214981814516,
+    "success_count": 525,
+    "mot_given_zeeman_efficiency": 0.018576837337673825
+  },
+  "s0_1.10000000_detuning_gamma_-0.99504746_magnet_radius_0.04851178": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9950474554507619,
+    "magnet_radius": 0.04851178244980347,
+    "success_count": 537,
+    "mot_given_zeeman_efficiency": 0.01900145076253494
+  },
+  "s0_1.10000000_detuning_gamma_-1.30408045_magnet_radius_0.05116954": {
+    "s0": 1.1,
+    "detuning_gamma": -1.3040804489448066,
+    "magnet_radius": 0.05116954147316041,
+    "success_count": 573,
+    "mot_given_zeeman_efficiency": 0.020275291037118292
+  },
+  "s0_1.10000000_detuning_gamma_-0.91110929_magnet_radius_0.05013615": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9111092939800021,
+    "magnet_radius": 0.05013614971349442,
+    "success_count": 563,
+    "mot_given_zeeman_efficiency": 0.019921446516400692
+  },
+  "s0_1.10000000_detuning_gamma_-1.38459490_magnet_radius_0.05291814": {
+    "s0": 1.1,
+    "detuning_gamma": -1.3845949012072014,
+    "magnet_radius": 0.05291813661551902,
+    "success_count": 517,
+    "mot_given_zeeman_efficiency": 0.018293761721099748
+  },
+  "s0_1.10000000_detuning_gamma_-0.71528601_magnet_radius_0.04930861": {
+    "s0": 1.1,
+    "detuning_gamma": -0.7152860106125662,
+    "magnet_radius": 0.0493086118052118,
+    "success_count": 491,
+    "mot_given_zeeman_efficiency": 0.017373765967233997
+  },
+  "s0_1.10000000_detuning_gamma_-1.21048807_magnet_radius_0.05080227": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2104880694495603,
+    "magnet_radius": 0.05080227104715321,
+    "success_count": 600,
+    "mot_given_zeeman_efficiency": 0.0212306712430558
+  },
+  "s0_1.10000000_detuning_gamma_-1.03314437_magnet_radius_0.05076878": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0331443691276272,
+    "magnet_radius": 0.05076878147242118,
+    "success_count": 593,
+    "mot_given_zeeman_efficiency": 0.020982980078553485
+  },
+  "s0_1.10000000_detuning_gamma_-1.41594271_magnet_radius_0.04991052": {
+    "s0": 1.1,
+    "detuning_gamma": -1.415942713581312,
+    "magnet_radius": 0.049910518633271964,
+    "success_count": 443,
+    "mot_given_zeeman_efficiency": 0.015675312267789534
+  },
+  "s0_1.10000000_detuning_gamma_-1.20821270_magnet_radius_0.05057231": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2082126987981472,
+    "magnet_radius": 0.050572314387979905,
+    "success_count": 605,
+    "mot_given_zeeman_efficiency": 0.0214075935034146
+  },
+  "s0_1.10000000_detuning_gamma_-1.22585142_magnet_radius_0.05048981": {
+    "s0": 1.1,
+    "detuning_gamma": -1.225851424361299,
+    "magnet_radius": 0.050489812040418525,
+    "success_count": 599,
+    "mot_given_zeeman_efficiency": 0.021195286790984043
+  },
+  "s0_1.10000000_detuning_gamma_-0.93451471_magnet_radius_0.05141352": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9345147134031686,
+    "magnet_radius": 0.05141352095089523,
+    "success_count": 559,
+    "mot_given_zeeman_efficiency": 0.019779908708113653
+  },
+  "s0_1.10000000_detuning_gamma_-1.52221513_magnet_radius_0.05245009": {
+    "s0": 1.1,
+    "detuning_gamma": -1.5222151253243241,
+    "magnet_radius": 0.052450085335117864,
+    "success_count": 377,
+    "mot_given_zeeman_efficiency": 0.013339938431053395
+  },
+  "s0_1.10000000_detuning_gamma_-1.67253958_magnet_radius_0.05339907": {
+    "s0": 1.1,
+    "detuning_gamma": -1.672539578917527,
+    "magnet_radius": 0.05339906655356904,
+    "success_count": 140,
+    "mot_given_zeeman_efficiency": 0.004953823290046354
+  },
+  "s0_1.10000000_detuning_gamma_-1.25342453_magnet_radius_0.05085087": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2534245341572756,
+    "magnet_radius": 0.05085087175756009,
+    "success_count": 587,
+    "mot_given_zeeman_efficiency": 0.020770673366122927
+  },
+  "s0_1.10000000_detuning_gamma_-1.37182448_magnet_radius_0.04807395": {
+    "s0": 1.1,
+    "detuning_gamma": -1.3718244805512119,
+    "magnet_radius": 0.04807395085441943,
+    "success_count": 395,
+    "mot_given_zeeman_efficiency": 0.013976858568345069
+  },
+  "s0_1.10000000_detuning_gamma_-1.09712242_magnet_radius_0.04977470": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0971224218930495,
+    "magnet_radius": 0.049774700913021976,
+    "success_count": 602,
+    "mot_given_zeeman_efficiency": 0.02130144014719932
+  },
+  "s0_1.10000000_detuning_gamma_-1.07909331_magnet_radius_0.05044703": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0790933121979507,
+    "magnet_radius": 0.05044703480251132,
+    "success_count": 605,
+    "mot_given_zeeman_efficiency": 0.0214075935034146
+  },
+  "s0_1.10000000_detuning_gamma_-0.97582917_magnet_radius_0.04907956": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9758291680852491,
+    "magnet_radius": 0.04907956132555727,
+    "success_count": 566,
+    "mot_given_zeeman_efficiency": 0.020027599872615973
+  },
+  "s0_1.10000000_detuning_gamma_-1.09233770_magnet_radius_0.05053825": {
+    "s0": 1.1,
+    "detuning_gamma": -1.092337704554918,
+    "magnet_radius": 0.050538253532196015,
+    "success_count": 612,
+    "mot_given_zeeman_efficiency": 0.021655284667916917
+  },
+  "s0_1.10000000_detuning_gamma_-0.82479005_magnet_radius_0.05043184": {
+    "s0": 1.1,
+    "detuning_gamma": -0.8247900502577773,
+    "magnet_radius": 0.05043183671377331,
+    "success_count": 520,
+    "mot_given_zeeman_efficiency": 0.01839991507731503
+  },
+  "s0_1.10000000_detuning_gamma_-1.18231620_magnet_radius_0.05137894": {
+    "s0": 1.1,
+    "detuning_gamma": -1.182316200660155,
+    "magnet_radius": 0.051378939918208244,
+    "success_count": 608,
+    "mot_given_zeeman_efficiency": 0.021513746859629878
+  },
+  "s0_1.10000000_detuning_gamma_-1.48034566_magnet_radius_0.05150370": {
+    "s0": 1.1,
+    "detuning_gamma": -1.4803456611931285,
+    "magnet_radius": 0.051503699544751584,
+    "success_count": 420,
+    "mot_given_zeeman_efficiency": 0.01486146987013906
+  },
+  "s0_1.10000000_detuning_gamma_-1.16683296_magnet_radius_0.05112825": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1668329625940765,
+    "magnet_radius": 0.0511282537189593,
+    "success_count": 618,
+    "mot_given_zeeman_efficiency": 0.021867591380347474
+  },
+  "s0_1.10000000_detuning_gamma_-1.14278096_magnet_radius_0.05124644": {
+    "s0": 1.1,
+    "detuning_gamma": -1.142780961498577,
+    "magnet_radius": 0.05124643943966472,
+    "success_count": 613,
+    "mot_given_zeeman_efficiency": 0.021690669119988678
+  },
+  "s0_1.10000000_detuning_gamma_-1.15797987_magnet_radius_0.05119749": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1579798680576836,
+    "magnet_radius": 0.051197493527834835,
+    "success_count": 613,
+    "mot_given_zeeman_efficiency": 0.021690669119988678
+  },
+  "s0_1.10000000_detuning_gamma_-1.14636626_magnet_radius_0.05125255": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1463662572639186,
+    "magnet_radius": 0.05125254787025147,
+    "success_count": 612,
+    "mot_given_zeeman_efficiency": 0.021655284667916917
+  },
+  "s0_1.10000000_detuning_gamma_-1.16011298_magnet_radius_0.05252125": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1601129785558282,
+    "magnet_radius": 0.05252124871195553,
+    "success_count": 583,
+    "mot_given_zeeman_efficiency": 0.02062913555783589
+  },
+  "s0_1.10000000_detuning_gamma_-1.27482215_magnet_radius_0.05178246": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2748221508062958,
+    "magnet_radius": 0.05178245824791176,
+    "success_count": 585,
+    "mot_given_zeeman_efficiency": 0.020699904461979408
+  },
+  "s0_1.10000000_detuning_gamma_-1.33993129_magnet_radius_0.05116718": {
+    "s0": 1.1,
+    "detuning_gamma": -1.3399312868925086,
+    "magnet_radius": 0.051167178522001804,
+    "success_count": 556,
+    "mot_given_zeeman_efficiency": 0.019673755351898376
+  },
+  "s0_1.10000000_detuning_gamma_-1.01068722_magnet_radius_0.05176385": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0106872192061076,
+    "magnet_radius": 0.05176385242157544,
+    "success_count": 568,
+    "mot_given_zeeman_efficiency": 0.020098368776759492
+  },
+  "s0_1.10000000_detuning_gamma_-1.89015266_magnet_radius_0.05111522": {
+    "s0": 1.1,
+    "detuning_gamma": -1.8901526610465074,
+    "magnet_radius": 0.05111521550268075,
+    "success_count": 46,
+    "mot_given_zeeman_efficiency": 0.0016276847953009448
+  },
+  "s0_1.10000000_detuning_gamma_-1.12862315_magnet_radius_0.04596822": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1286231508763798,
+    "magnet_radius": 0.04596822356142659,
+    "success_count": 409,
+    "mot_given_zeeman_efficiency": 0.014472240897349704
+  },
+  "s0_1.10000000_detuning_gamma_-0.95802265_magnet_radius_0.05212715": {
+    "s0": 1.1,
+    "detuning_gamma": -0.9580226460016149,
+    "magnet_radius": 0.05212714985222099,
+    "success_count": 552,
+    "mot_given_zeeman_efficiency": 0.019532217543611338
+  },
+  "s0_1.10000000_detuning_gamma_-1.08601288_magnet_radius_0.05340320": {
+    "s0": 1.1,
+    "detuning_gamma": -1.086012882807905,
+    "magnet_radius": 0.053403204164221015,
+    "success_count": 539,
+    "mot_given_zeeman_efficiency": 0.01907221966667846
+  },
+  "s0_1.10000000_detuning_gamma_-0.86237449_magnet_radius_0.05171209": {
+    "s0": 1.1,
+    "detuning_gamma": -0.862374494424121,
+    "magnet_radius": 0.05171208566141519,
+    "success_count": 534,
+    "mot_given_zeeman_efficiency": 0.018895297406319664
+  },
+  "s0_1.10000000_detuning_gamma_-1.17342166_magnet_radius_0.05137865": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1734216552462182,
+    "magnet_radius": 0.051378654505840816,
+    "success_count": 609,
+    "mot_given_zeeman_efficiency": 0.02154913131170164
+  },
+  "s0_1.10000000_detuning_gamma_-1.15173671_magnet_radius_0.05111677": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1517367071155318,
+    "magnet_radius": 0.051116770591460726,
+    "success_count": 613,
+    "mot_given_zeeman_efficiency": 0.021690669119988678
+  },
+  "s0_1.10000000_detuning_gamma_-1.12582232_magnet_radius_0.05089205": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1258223231506361,
+    "magnet_radius": 0.050892048545419115,
+    "success_count": 616,
+    "mot_given_zeeman_efficiency": 0.021796822476203955
+  },
+  "s0_1.10000000_detuning_gamma_-1.13047921_magnet_radius_0.05093126": {
+    "s0": 1.1,
+    "detuning_gamma": -1.130479207413356,
+    "magnet_radius": 0.05093125744328077,
+    "success_count": 619,
+    "mot_given_zeeman_efficiency": 0.021902975832419236
+  },
+  "s0_1.10000000_detuning_gamma_-1.25292454_magnet_radius_0.05092260": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2529245350590508,
+    "magnet_radius": 0.05092259611517805,
+    "success_count": 588,
+    "mot_given_zeeman_efficiency": 0.020806057818194685
+  },
+  "s0_1.10000000_detuning_gamma_-1.03737218_magnet_radius_0.05021817": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0373721823227195,
+    "magnet_radius": 0.0502181696943249,
+    "success_count": 604,
+    "mot_given_zeeman_efficiency": 0.02137220905134284
+  },
+  "s0_1.10000000_detuning_gamma_-1.10224424_magnet_radius_0.05062962": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1022442393846181,
+    "magnet_radius": 0.05062961578074168,
+    "success_count": 615,
+    "mot_given_zeeman_efficiency": 0.021761438024132197
+  },
+  "s0_1.10000000_detuning_gamma_-1.20806047_magnet_radius_0.05240513": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2080604712716094,
+    "magnet_radius": 0.052405127773187565,
+    "success_count": 582,
+    "mot_given_zeeman_efficiency": 0.020593751105764127
+  },
+  "s0_1.10000000_detuning_gamma_-1.33975160_magnet_radius_0.04955624": {
+    "s0": 1.1,
+    "detuning_gamma": -1.339751595510565,
+    "magnet_radius": 0.04955623740372363,
+    "success_count": 490,
+    "mot_given_zeeman_efficiency": 0.01733838151516224
+  },
+  "s0_1.10000000_detuning_gamma_-1.00310961_magnet_radius_0.05193997": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0031096050103376,
+    "magnet_radius": 0.05193997436488324,
+    "success_count": 564,
+    "mot_given_zeeman_efficiency": 0.019956830968472453
+  },
+  "s0_1.10000000_detuning_gamma_-1.11038316_magnet_radius_0.05074558": {
+    "s0": 1.1,
+    "detuning_gamma": -1.110383161761835,
+    "magnet_radius": 0.05074557960182842,
+    "success_count": 612,
+    "mot_given_zeeman_efficiency": 0.021655284667916917
+  },
+  "s0_1.10000000_detuning_gamma_-1.07158728_magnet_radius_0.05107144": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0715872820858046,
+    "magnet_radius": 0.051071444032875946,
+    "success_count": 600,
+    "mot_given_zeeman_efficiency": 0.0212306712430558
+  },
+  "s0_1.10000000_detuning_gamma_-1.13179153_magnet_radius_0.05062963": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1317915291016196,
+    "magnet_radius": 0.05062962664042489,
+    "success_count": 614,
+    "mot_given_zeeman_efficiency": 0.021726053572060436
+  },
+  "s0_1.10000000_detuning_gamma_-1.15521914_magnet_radius_0.05064216": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1552191402405754,
+    "magnet_radius": 0.05064216065255326,
+    "success_count": 615,
+    "mot_given_zeeman_efficiency": 0.021761438024132197
+  },
+  "s0_1.10000000_detuning_gamma_-1.27614752_magnet_radius_0.05012683": {
+    "s0": 1.1,
+    "detuning_gamma": -1.276147524252023,
+    "magnet_radius": 0.0501268255282546,
+    "success_count": 553,
+    "mot_given_zeeman_efficiency": 0.019567601995683095
+  },
+  "s0_1.10000000_detuning_gamma_-1.19653613_magnet_radius_0.05064545": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1965361345854109,
+    "magnet_radius": 0.0506454505401164,
+    "success_count": 607,
+    "mot_given_zeeman_efficiency": 0.02147836240755812
+  },
+  "s0_1.10000000_detuning_gamma_-1.22915797_magnet_radius_0.05163842": {
+    "s0": 1.1,
+    "detuning_gamma": -1.2291579703365891,
+    "magnet_radius": 0.0516384212909889,
+    "success_count": 591,
+    "mot_given_zeeman_efficiency": 0.020912211174409966
+  },
+  "s0_1.10000000_detuning_gamma_-1.12857807_magnet_radius_0.04994884": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1285780701715957,
+    "magnet_radius": 0.04994883673341619,
+    "success_count": 611,
+    "mot_given_zeeman_efficiency": 0.02161990021584516
+  },
+  "s0_1.10000000_detuning_gamma_-1.02586472_magnet_radius_0.04906712": {
+    "s0": 1.1,
+    "detuning_gamma": -1.0258647245117423,
+    "magnet_radius": 0.049067120398791575,
+    "success_count": 572,
+    "mot_given_zeeman_efficiency": 0.02023990658504653
+  },
+  "s0_1.10000000_detuning_gamma_-1.42993224_magnet_radius_0.05033684": {
+    "s0": 1.1,
+    "detuning_gamma": -1.4299322383186628,
+    "magnet_radius": 0.05033684173692577,
+    "success_count": 444,
+    "mot_given_zeeman_efficiency": 0.015710696719861292
+  },
+  "s0_1.10000000_detuning_gamma_-1.16948714_magnet_radius_0.05095844": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1694871426452995,
+    "magnet_radius": 0.05095844410831606,
+    "success_count": 618,
+    "mot_given_zeeman_efficiency": 0.021867591380347474
+  },
+  "s0_1.10000000_detuning_gamma_-1.16874397_magnet_radius_0.05088545": {
+    "s0": 1.1,
+    "detuning_gamma": -1.1687439688125112,
+    "magnet_radius": 0.05088545234278284,
+    "success_count": 617,
+    "mot_given_zeeman_efficiency": 0.021832206928275717
+  }
+}
