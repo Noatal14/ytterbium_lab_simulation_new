@@ -1,7 +1,7 @@
 import numpy as np
 from atomsmltr.environment.lasers.beams import LaserBeam
 from atomsmltr.environment.lasers.polarization import CircularLeft, CircularRight
-from config import BLUE_TRANSITION, YB171_ISAT_MW_CM2, Geometry
+from config import BLUE_TRANSITION, BLUE_SATURATION_INTENSITY_MW_CM2, Geometry
 
 class EllipticalLaserBeam(LaserBeam):
     """
@@ -89,13 +89,13 @@ def setup_2dmot_lasers(s0=10.0, detuning_gamma=-1.0, atom_species_name="Yb171", 
     -------
     list of EllipticalLaserBeam
     """
-    wavelength = BLUE_TRANSITION.wavelength
+    wavelength = BLUE_TRANSITION.wavelength_m
         
     # Calculate I_sat in pure SI units (W/m^2)
     # 1 mW/cm^2 = 10 W/m^2
     # Hardcoding to YB171_ISAT for now or generalized if passed
     # but a proper physics derivation can be used if I_sat isn't provided directly
-    isat_W_m2 = YB171_ISAT_MW_CM2 * 10.0 
+    isat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0 
     
     # Peak intensity based on s0 parameter
     target_peak_intensity = s0 * isat_W_m2
@@ -107,8 +107,8 @@ def setup_2dmot_lasers(s0=10.0, detuning_gamma=-1.0, atom_species_name="Yb171", 
     # for BOTH X-directed and Y-directed beams. Therefore wx=19mm always produces
     # a 19mm-wide beam along Lab Z, and wy=5mm produces 5mm in the other transverse axis.
     # This has been confirmed by evaluating the actual intensity profile at specific lab points.
-    wx = Geometry.MOT_WX  # Semi-major: always along Lab Z due to frame mapping
-    wy = Geometry.MOT_WY   # Semi-minor: transverse (Lab Y for X-beams, Lab X for Y-beams)
+    wx = Geometry.MOT_2D_BEAM_WAIST_X_M  # Semi-major: always along Lab Z due to frame mapping
+    wy = Geometry.MOT_2D_BEAM_WAIST_Y_M   # Semi-minor: transverse (Lab Y for X-beams, Lab X for Y-beams)
 
     beams = []
     
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         
         # Test 1: Check power scaling
         b1 = mot_beams[0]
-        expected_I0 = s0_val * (YB171_ISAT_MW_CM2 * 10.0)
+        expected_I0 = s0_val * (BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0)
         actual_I0 = 2 * b1.power / (np.pi * b1.wx * b1.wy)
         print(f"   -> Requested Peak Intensity: {expected_I0:.2f} W/m²")
         print(f"   -> Actual Peak Intensity: {actual_I0:.2f} W/m²")

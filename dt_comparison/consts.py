@@ -1,3 +1,3 @@
-from config import F_scale
+from config import FORCE_SCALE_N
 
-F_scale = F_scale
+F_scale = FORCE_SCALE_N

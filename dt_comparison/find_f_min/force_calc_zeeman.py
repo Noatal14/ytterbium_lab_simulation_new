@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.cm import ScalarMappable
 from matplotlib.ticker import ScalarFormatter
-from config import YB171_MASS_KG, ZEEMAN_BEAM_DIR, _2d_mot_laser_config, zeeman_laser_config, zeeman_field_config, _2d_mot_magnet_radius
+from config import YB171_MASS_KG, ZEEMAN_BEAM_DIRECTION, MOT_2D_LASER_CONFIG, ZEEMAN_LASER_CONFIG, ZEEMAN_FIELD_CONFIG, MOT_2D_MAGNET_RADIUS_M
 from dt_comparison.consts import F_scale
 from split_simulation import zeeman_simulation
 from utils.file_helpers import read_data_json, save_file_json
@@ -17,9 +17,9 @@ def run_zeeman_sim_and_save_data(
     zeeman_traj, _, surv_idx = zeeman_simulation(
         N_particles=N_particles,
         _2d_mot_config={ "s0": s0, "detuning_gamma": detuning_gamma },
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
+        zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
         stochastic=False
     )
 
@@ -488,14 +488,14 @@ def get_optimal_dt_zeeman(
 
     selected_indices, selected_velocities = select_representative_atoms_by_velocity(
         y_list,
-        -ZEEMAN_BEAM_DIR,
+        -ZEEMAN_BEAM_DIRECTION,
         bin_width=5.0,
     )
 
     y_list = [y_list[i] for i in selected_indices]
     t_list = [t_list[i] for i in selected_indices]
 
-    trajectories = extract_cooling_trajectory_inputs(y_list, -ZEEMAN_BEAM_DIR)
+    trajectories = extract_cooling_trajectory_inputs(y_list, -ZEEMAN_BEAM_DIRECTION)
 
     cooling_windows = []
 

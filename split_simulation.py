@@ -1,3 +1,10 @@
+"""Production workflow for the Zeeman-slower and 2D-MOT stages.
+
+This module is the main user-facing entry point for the active simulation
+workflow: generate thermal-beam atoms, propagate them through the Zeeman
+slower, save or reuse survivors, and then run the 2D MOT capture stage.
+"""
+
 import argparse
 from pathlib import Path
 
@@ -22,19 +29,18 @@ from utils.simulation_helpers import (
 )
 
 from config import (
-    Geometry,
-    ZEEMAN_BEAM_DIR,
-    N_particles,
-    zeeman_sim_config,
-    _2d_mot_sim_config,
-    _3d_mot_sim_config,
-    mot_3d_laser_config,
-    collimation_angle_deg,
-    zeeman_laser_config,
-    _2d_mot_laser_config,
-    _2d_mot_magnet_radius,
-    zeeman_field_config,
-    seed
+    DEFAULT_NUM_PARTICLES,
+    DEFAULT_NUM_POOLS,
+    ZEEMAN_SIM_CONFIG,
+    MOT_2D_SIM_CONFIG,
+    MOT_3D_SIM_CONFIG,
+    MOT_3D_LASER_CONFIG,
+    COLLIMATION_ANGLE_DEG,
+    ZEEMAN_LASER_CONFIG,
+    MOT_2D_LASER_CONFIG,
+    MOT_2D_MAGNET_RADIUS_M,
+    ZEEMAN_FIELD_CONFIG,
+    DEFAULT_RANDOM_SEED,
 )
 
 
@@ -64,21 +70,21 @@ def parse_args():
     parser.add_argument(
         "--n_atoms",
         type=int,
-        default=N_particles,
+        default=DEFAULT_NUM_PARTICLES,
         help="Number of initial atoms to simulate",
     )
 
     parser.add_argument(
         "--cutoff_angle_deg",
         type=float,
-        default=collimation_angle_deg,
+        default=COLLIMATION_ANGLE_DEG,
         help="Cutoff angle for the thermal beam in degrees",
     )
 
     parser.add_argument(
         "--npools",
         type=int,
-        default=8,
+        default=DEFAULT_NUM_POOLS,
         help="Number of worker processes",
     )
 
@@ -100,7 +106,7 @@ def parse_args():
     parser.add_argument(
         "--dt",
         type=float,
-        default=zeeman_sim_config["dt"],
+        default=ZEEMAN_SIM_CONFIG["dt_s"],
         help="Zeeman timestep in seconds",
     )
 
@@ -137,15 +143,15 @@ def parse_args():
 
 def zeeman_simulation(
     N_particles=1000,
-    _2d_mot_config=_2d_mot_laser_config,
-    zeeman_config=zeeman_laser_config,
-    zeeman_field_config=zeeman_field_config,
-    magnet_radius=_2d_mot_magnet_radius,
+    _2d_mot_config=MOT_2D_LASER_CONFIG,
+    zeeman_config=ZEEMAN_LASER_CONFIG,
+    zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+    magnet_radius=MOT_2D_MAGNET_RADIUS_M,
     gravity_enabled=True,
-    npools=8,
+    npools=DEFAULT_NUM_POOLS,
     stochastic=True,
-    dt=zeeman_sim_config["dt"],
-    collimation_angle_deg=collimation_angle_deg,
+    dt=ZEEMAN_SIM_CONFIG["dt_s"],
+    collimation_angle_deg=COLLIMATION_ANGLE_DEG,
     chunksize=1,
 ):
     atom, config = build_base_config(
@@ -163,7 +169,7 @@ def zeeman_simulation(
         zeeman_config=zeeman_config,
 
         zones=get_zeeman_only_zone(
-            cutoff_distance=zeeman_sim_config["cutoff_distance"]
+            cutoff_distance=ZEEMAN_SIM_CONFIG["cutoff_distance_m"]
         ),
     )
 
@@ -171,12 +177,12 @@ def zeeman_simulation(
         N=N_particles,
         collimation_angle_deg=collimation_angle_deg,
         m=atom.mass,
-        distance_m=zeeman_sim_config["start_distance"],
-        seed=seed,
+        distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
+        seed=DEFAULT_RANDOM_SEED,
     )
 
     time_points, _ = generate_timepoints(
-        zeeman_sim_config["t_max"],
+        ZEEMAN_SIM_CONFIG["t_max_s"],
         dt,
     )
 
@@ -193,13 +199,13 @@ def zeeman_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
-        seed_idx=seed,
+        seed_idx=DEFAULT_RANDOM_SEED,
         chunksize=chunksize,
     )
 
     survivor_states, survivor_indices = zeeman_extract_survivors(
         res,
-        zeeman_sim_config["cutoff_distance"],
+        ZEEMAN_SIM_CONFIG["cutoff_distance_m"],
     )
 
     return res, survivor_states, survivor_indices
@@ -211,14 +217,14 @@ def zeeman_simulation(
 
 def mot_simulation(
     survivor_states,
-    _2d_mot_config=_2d_mot_laser_config,
-    zeeman_config=zeeman_laser_config,
-    zeeman_field_config=zeeman_field_config,
-    magnet_radius=_2d_mot_magnet_radius,
+    _2d_mot_config=MOT_2D_LASER_CONFIG,
+    zeeman_config=ZEEMAN_LASER_CONFIG,
+    zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+    magnet_radius=MOT_2D_MAGNET_RADIUS_M,
     gravity_enabled=True,
-    npools=8,
+    npools=DEFAULT_NUM_POOLS,
     stochastic=True,
-    dt=_2d_mot_sim_config["dt"],
+    dt=MOT_2D_SIM_CONFIG["dt_s"],
     chunksize=1,
 ):
     N = len(survivor_states)
@@ -251,7 +257,7 @@ def mot_simulation(
     ]
 
     time_points, _ = generate_timepoints(
-        _2d_mot_sim_config["t_max"],
+        MOT_2D_SIM_CONFIG["t_max_s"],
         dt,
     )
 
@@ -263,7 +269,7 @@ def mot_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
-        seed_idx=seed,
+        seed_idx=DEFAULT_RANDOM_SEED,
         chunksize=chunksize,
     )
 
@@ -278,10 +284,10 @@ def mot_simulation(
 
 def mot_3d_simulation(
     survivor_states,
-    _3d_mot_config=mot_3d_laser_config,
+    _3d_mot_config=MOT_3D_LASER_CONFIG,
     gravity_enabled=True,
-    npools=8,
-    dt=_3d_mot_sim_config["dt"],
+    npools=DEFAULT_NUM_POOLS,
+    dt=MOT_3D_SIM_CONFIG["dt_s"],
     chunksize=1,
 ):
     N = len(survivor_states)
@@ -297,10 +303,10 @@ def mot_3d_simulation(
         include_3dmot=False,
 
         gravity_enabled=gravity_enabled,
-        magnet_radius=_2d_mot_magnet_radius,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
 
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
 
         zones=get_entire_apparatus_zone(),
         _3d_mot_config=_3d_mot_config,
@@ -312,7 +318,7 @@ def mot_3d_simulation(
     ]
 
     time_points, _ = generate_timepoints(
-        _3d_mot_sim_config["t_max"],
+        MOT_3D_SIM_CONFIG["t_max_s"],
         dt,
     )
 
@@ -322,7 +328,7 @@ def mot_3d_simulation(
         time_points=time_points,
         sim_function=ScipyIVP_3DCustom,
         npools=npools,
-        seed_idx=seed,
+        seed_idx=DEFAULT_RANDOM_SEED,
         chunksize=chunksize,
     )
 
@@ -341,11 +347,11 @@ def mot_3d_simulation(
 
 def run_both(
     N=500,
-    collimation_angle_deg=collimation_angle_deg,
-    npools=8,
+    collimation_angle_deg=COLLIMATION_ANGLE_DEG,
+    npools=DEFAULT_NUM_POOLS,
     stochastic=True,
-    zeeman_dt=zeeman_sim_config["dt"],
-    mot_dt=_2d_mot_sim_config["dt"],
+    zeeman_dt=ZEEMAN_SIM_CONFIG["dt_s"],
+    mot_dt=MOT_2D_SIM_CONFIG["dt_s"],
     chunksize=1,
 ):
     print("Running Zeeman phase simulation...")
@@ -354,10 +360,10 @@ def run_both(
 
     _, survivors, _ = zeeman_simulation(
         N_particles=N,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
+        zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
         stochastic=stochastic,
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
@@ -374,8 +380,8 @@ def run_both(
 
     _, success_count, _ = mot_simulation(
         survivor_states=survivors,
-        _2d_mot_config=_2d_mot_laser_config,
-        magnet_radius=_2d_mot_magnet_radius,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
         stochastic=stochastic,
         npools=npools,
         chunksize=chunksize,
@@ -429,10 +435,10 @@ def generate_and_save_zeeman_survivors(
 
     _, survivors, _ = zeeman_simulation(
         N_particles=N,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
+        zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
         stochastic=stochastic,
         collimation_angle_deg=collimation_angle_deg,
         npools=npools,
@@ -474,7 +480,7 @@ def generate_and_save_zeeman_survivors(
 def run_mot_from_saved_survivors(
     survivors_file,
     mot_dt,
-    npools=8,
+    npools=DEFAULT_NUM_POOLS,
     stochastic=True,
     chunksize=1,
     max_survivors=None,
@@ -506,10 +512,10 @@ def run_mot_from_saved_survivors(
 
     _, success_count, _ = mot_simulation(
         survivor_states=survivor_states,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
+        zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
         stochastic=stochastic,
         npools=npools,
         dt=mot_dt,

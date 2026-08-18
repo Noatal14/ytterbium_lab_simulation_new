@@ -1,14 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import constants as csts
-from config import BLUE_LASER_WAVELENGTH_M
+from config import BLUE_TRANSITION
 from dt_comparison.consts import F_scale
 from dt_comparison.find_f_min.force_calc_2d_mot import calc_f_min_2d_mot
 
 def calc_dt(
     F_min,
     F_scale,
-    wavelength=BLUE_LASER_WAVELENGTH_M,
+    wavelength=BLUE_TRANSITION.wavelength_m,
     N_min = 15,
     safety_factor = 1.5,
 ):

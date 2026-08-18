@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from dt_comparison.consts import F_scale
 from scipy import constants as csts
-from config import YB171_ISAT_MW_CM2, Geometry, BLUE_LASER_WAVELENGTH_M, BLUE_LASER_GAMMA_HZ
+from config import BLUE_SATURATION_INTENSITY_MW_CM2, Geometry, BLUE_TRANSITION
 from lab_setup.config_builder import build_2dmot_config
 from atomsmltr.simulation.simulator import RK4St
 
@@ -83,10 +83,10 @@ def calc_f_min_2d_mot(
     results = []
 
     for v in range(velocity_range[0], velocity_range[1], 1):
-        F_plus_vec = sim.get_force(np.array([0, Geometry.MOT_WY, 0, -v, 0, 0]))[0]
+        F_plus_vec = sim.get_force(np.array([0, Geometry.MOT_2D_BEAM_WAIST_Y_M, 0, -v, 0, 0]))[0]
         F_plus = np.linalg.norm(F_plus_vec)
 
-        F_minus_vec = sim.get_force(np.array([0, Geometry.MOT_WY, 0, v, 0, 0]))[0]
+        F_minus_vec = sim.get_force(np.array([0, Geometry.MOT_2D_BEAM_WAIST_Y_M, 0, v, 0, 0]))[0]
         F_minus = np.linalg.norm(F_minus_vec)
 
         A = abs(F_minus - F_plus) / (F_minus + F_plus)

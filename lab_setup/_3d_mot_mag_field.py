@@ -32,7 +32,7 @@ class Ideal3DQuadrupole(MagneticField):
         return f"Ideal 3D Quadrupole Field (G={self.gradient:.2f} T/m, origin={self.origin})"
 
 
-def get_builtin_3dmot_magnetic_field(gradient_G_cm=10.0, origin=Geometry.MOT_3D_CENTER):
+def get_builtin_3dmot_magnetic_field(gradient_G_cm=10.0, origin=Geometry.MOT_3D_CENTER_M):
     """
     Create an ideal 3D MOT quadrupole field centered at `origin`.
     """

@@ -35,8 +35,8 @@ def create_yb171():
     g_effective = BLUE_TRANSITION.lande_g * 1.5
 
     main_transition = J0J1Transition(
-        wavelength=BLUE_TRANSITION.wavelength,
-        Gamma=BLUE_TRANSITION.gamma,
+        wavelength=BLUE_TRANSITION.wavelength_m,
+        Gamma=BLUE_TRANSITION.gamma_rad_s,
         lande_factor=g_effective,
         tag="399",
     )
@@ -44,8 +44,8 @@ def create_yb171():
 
     # 556nm Intercombination Line (F=1/2 -> F=3/2)
     green_transition = J0J1Transition(
-        wavelength=GREEN_TRANSITION.wavelength,
-        Gamma=GREEN_TRANSITION.gamma,
+        wavelength=GREEN_TRANSITION.wavelength_m,
+        Gamma=GREEN_TRANSITION.gamma_rad_s,
         lande_factor=GREEN_TRANSITION.lande_g * 1.5, # Same 1.5 correction factor for J0->J1 model
         tag="556",
     )

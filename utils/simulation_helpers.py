@@ -1,9 +1,9 @@
 import numpy as np
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
-from config import ZEEMAN_BEAM_DIR, Geometry, seed
+from config import ZEEMAN_BEAM_DIRECTION, Geometry, DEFAULT_RANDOM_SEED
 
 def run_simulation(
-        seed_idx = seed, 
+        seed_idx = DEFAULT_RANDOM_SEED, 
         config = None, 
         u0 = None, 
         time_points = None, 
@@ -18,7 +18,7 @@ def run_simulation(
     return seed_idx, res.y, sim
 
 def run_multiple_atoms_simulation(
-        seed_idx = seed, 
+        seed_idx = DEFAULT_RANDOM_SEED, 
         config = None, 
         u0 = None, 
         time_points = None, 
@@ -144,7 +144,7 @@ def zeeman_extract_survivors(
                 for state_event in event_states:
 
                     r_event = state_event[:3]
-                    proj_event = r_event @ ZEEMAN_BEAM_DIR
+                    proj_event = r_event @ ZEEMAN_BEAM_DIRECTION
 
                     if np.isclose(
                         proj_event,
@@ -173,8 +173,8 @@ def zeeman_extract_survivors(
             r_before = state_before[:3]
             r_after = state_after[:3]
 
-            p_before = r_before @ ZEEMAN_BEAM_DIR
-            p_after = r_after @ ZEEMAN_BEAM_DIR
+            p_before = r_before @ ZEEMAN_BEAM_DIRECTION
+            p_after = r_after @ ZEEMAN_BEAM_DIRECTION
 
             # Did this RK4 step cross the inner cutoff plane?
             if not (
@@ -198,14 +198,14 @@ def zeeman_extract_survivors(
 
             # Distance from the Zeeman beam axis.
             axial_point = (
-                (r_cutoff @ ZEEMAN_BEAM_DIR)
-                * ZEEMAN_BEAM_DIR
+                (r_cutoff @ ZEEMAN_BEAM_DIRECTION)
+                * ZEEMAN_BEAM_DIRECTION
             )
 
             rho = np.linalg.norm(r_cutoff - axial_point)
 
             # Must cross through the physical opening of Arm 1.
-            if rho <= Geometry.ZEEMAN_ARM_1_RADIUS + radial_tolerance:
+            if rho <= Geometry.ZEEMAN_ARM_1_RADIUS_M + radial_tolerance:
                 survivor_states.append(state_cutoff)
                 survivor_indices.append(i)
 
@@ -248,7 +248,7 @@ def mot_extract_survivors(res_list):
         vz_traj = res.y[5, :]
 
         crossed_indices = np.where(
-            (z_traj >= Geometry.CAPTURE_MIN_Z) &
+            (z_traj >= Geometry.CAPTURE_MIN_Z_M) &
             (vz_traj > 0)
         )[0]
 

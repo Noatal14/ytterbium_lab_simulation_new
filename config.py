@@ -1,124 +1,224 @@
-import numpy as np
-from scipy import constants as csts
+"""Central configuration for the Yb-171 cold-atom simulation.
+
+This module is the single source of truth for the simulation's physical
+constants, atomic properties, apparatus geometry, operating parameters,
+and numerical defaults.
+
+Conventions
+-----------
+- SI units are used by default.
+- Non-SI units are written explicitly in variable names.
+- Module-level configuration values use UPPER_SNAKE_CASE.
+- Dataclass attributes and dictionary keys use snake_case.
+- Transition linewidths ``gamma_rad_s`` are angular frequencies in rad/s.
+- Laser detunings ``detuning_gamma`` are dimensionless and expressed in units
+  of the corresponding transition linewidth Gamma.
+- Lengths are in meters, times in seconds, forces in newtons, and angles in
+  degrees unless the name explicitly states otherwise.
+- Stage-specific names use the order ZEEMAN, MOT_2D, MOT_3D.
+- Simulation code should import parameters from this module instead of
+  duplicating values or introducing magic numbers elsewhere in the project.
+
+When a laboratory or simulation parameter changes, update it here first.
+"""
+
 from dataclasses import dataclass
 
-# Physical Constants & Conversions
-_MU_B_OVER_H_KHZ_PER_G = (csts.value("Bohr magneton") / csts.h * 1e-4 * 1e-3) # μ_B/h in kHz/G ≈ 1399.6
-AMU_KG = csts.m_u               # 1 amu in kg
-K_B = 1.380649e-23                       # Boltzmann constant (J/K)
+import numpy as np
+from scipy import constants as csts
 
-@dataclass
+
+# =============================================================================
+# 1. Physical constants and unit conversions
+# =============================================================================
+
+MU_B_OVER_H_KHZ_PER_G = (
+    csts.value("Bohr magneton") / csts.h * 1e-4 * 1e-3
+)  # mu_B / h in kHz/G, approximately 1399.6
+
+AMU_KG = csts.m_u
+BOLTZMANN_CONSTANT_J_K = csts.k
+
+
+# =============================================================================
+# 2. Atomic species and optical transitions
+# =============================================================================
+
+@dataclass(frozen=True)
 class Atom:
+    """Atomic-species parameters used by the simulation."""
+
     name: str
     mass_kg: float
     mass_amu: float
 
-@dataclass
+
+@dataclass(frozen=True)
 class Transition:
-    wavelength: float
-    gamma: float
+    """Optical-transition parameters used by the simulation."""
+
+    wavelength_m: float
+    gamma_rad_s: float
     lande_g: float
 
 
-def saturation_intensity_W_m2(transition: Transition) -> float:
-    """Return the saturation intensity in SI units for a transition."""
-    lifetime_s = 1.0 / transition.gamma
-    return np.pi * csts.h * csts.c / (3.0 * transition.wavelength**3 * lifetime_s)
+def saturation_intensity_w_m2(transition: Transition) -> float:
+    """Return the saturation intensity of ``transition`` in W/m^2."""
 
-# ============================================================
-# Yb-171 physical constants
-# ============================================================
+    lifetime_s = 1.0 / transition.gamma_rad_s
+    return (
+        np.pi
+        * csts.h
+        * csts.c
+        / (3.0 * transition.wavelength_m**3 * lifetime_s)
+    )
+
+
+# Yb-171 atomic properties
 YB171_NAME = "Yb171"
-YB171_MASS_AMU = 170.936331515          # atomic mass in amu
-YB171_MASS_KG = YB171_MASS_AMU * AMU_KG  # Yb-171 mass in kg
+YB171_MASS_AMU = 170.936331515
+YB171_MASS_KG = YB171_MASS_AMU * AMU_KG
 
-BLUE_LASER_WAVELENGTH_M = 398.9108443e-9     # transition wavelength (m)
-BLUE_LASER_GAMMA_HZ = 2 * np.pi * 29.13e6    # linewidth Γ (rad/s)
-BLUE_LASER_LANDE_G = 965.0 / _MU_B_OVER_H_KHZ_PER_G  # ≈ 0.6895
-
-# 556 nm intercombination line (1S0 F=1/2 -> 3P1 F=3/2)
-GREEN_LASER_WAVELENGTH_M = 555.8016e-9    # transition wavelength (m)
-GREEN_LASER_GAMMA_HZ = 2 * np.pi * 182.2e3  # linewidth Γ (rad/s)
-GREEN_LASER_LANDE_G = 965.0 / _MU_B_OVER_H_KHZ_PER_G #Checkckkckckk
-
-YB171_ISAT_MW_CM2 = 59.97  # saturation intensity (mW/cm²)
-
-YB171 = Atom(name=YB171_NAME, mass_kg=YB171_MASS_KG, mass_amu=YB171_MASS_AMU)
-BLUE_TRANSITION = Transition(wavelength=BLUE_LASER_WAVELENGTH_M, gamma=BLUE_LASER_GAMMA_HZ, lande_g=BLUE_LASER_LANDE_G)
-GREEN_TRANSITION = Transition(wavelength=GREEN_LASER_WAVELENGTH_M, gamma=GREEN_LASER_GAMMA_HZ, lande_g=GREEN_LASER_LANDE_G)
-
-BLUE_SATURATION_INTENSITY_W_M2 = saturation_intensity_W_m2(BLUE_TRANSITION)
-GREEN_SATURATION_INTENSITY_W_M2 = saturation_intensity_W_m2(GREEN_TRANSITION)
-GREEN_ISAT_MW_CM2 = GREEN_SATURATION_INTENSITY_W_M2 / 10.0
+YB171 = Atom(
+    name=YB171_NAME,
+    mass_kg=YB171_MASS_KG,
+    mass_amu=YB171_MASS_AMU,
+)
 
 
-# ============================================================
-# Geometry Config
-# ============================================================
+# 399 nm blue transition
+BLUE_TRANSITION_WAVELENGTH_M = 398.9108443e-9
+BLUE_TRANSITION_GAMMA_RAD_S = 2 * np.pi * 29.13e6
+BLUE_TRANSITION_LANDE_G = 965.0 / MU_B_OVER_H_KHZ_PER_G
+
+BLUE_TRANSITION = Transition(
+    wavelength_m=BLUE_TRANSITION_WAVELENGTH_M,
+    gamma_rad_s=BLUE_TRANSITION_GAMMA_RAD_S,
+    lande_g=BLUE_TRANSITION_LANDE_G,
+)
+
+# Reference saturation intensity used by the project.
+# Keep this value explicit rather than silently replacing it with the value
+# calculated from the transition parameters.
+BLUE_SATURATION_INTENSITY_MW_CM2 = 59.97
+
+# Derived value retained as a useful consistency check.
+BLUE_CALCULATED_SATURATION_INTENSITY_W_M2 = saturation_intensity_w_m2(
+    BLUE_TRANSITION
+)
+BLUE_CALCULATED_SATURATION_INTENSITY_MW_CM2 = (
+    BLUE_CALCULATED_SATURATION_INTENSITY_W_M2 / 10.0
+)
+
+
+# 556 nm green intercombination line: 1S0 F=1/2 -> 3P1 F=3/2
+GREEN_TRANSITION_WAVELENGTH_M = 555.8016e-9
+GREEN_TRANSITION_GAMMA_RAD_S = 2 * np.pi * 182.2e3
+GREEN_TRANSITION_LANDE_G = 965.0 / MU_B_OVER_H_KHZ_PER_G
+
+GREEN_TRANSITION = Transition(
+    wavelength_m=GREEN_TRANSITION_WAVELENGTH_M,
+    gamma_rad_s=GREEN_TRANSITION_GAMMA_RAD_S,
+    lande_g=GREEN_TRANSITION_LANDE_G,
+)
+
+GREEN_SATURATION_INTENSITY_W_M2 = saturation_intensity_w_m2(GREEN_TRANSITION)
+GREEN_SATURATION_INTENSITY_MW_CM2 = GREEN_SATURATION_INTENSITY_W_M2 / 10.0
+
+
+# =============================================================================
+# 3. Apparatus geometry
+# =============================================================================
 
 class Geometry:
-    Z_AXIS = (0, 0, 1)
+    """Fixed geometric parameters of the experimental apparatus."""
 
-    MOT_CHAMBER_LENGTH = 0.04   
-    MOT_CHAMBER_RADIUS = 0.015
-    MOT_CHAMBER_ORIGIN = (0, 0, -MOT_CHAMBER_LENGTH / 2)
+    Z_AXIS = (0.0, 0.0, 1.0)
 
-    MOT_WX = 19e-3
-    MOT_WY = 5e-3
+    # 2D-MOT chamber and beams
+    MOT_2D_CHAMBER_LENGTH_M = 0.04
+    MOT_2D_CHAMBER_RADIUS_M = 0.015
+    MOT_2D_CHAMBER_ORIGIN_M = (
+        0.0,
+        0.0,
+        -MOT_2D_CHAMBER_LENGTH_M / 2,
+    )
 
-    ZEEMAN_ARM_ANGLE_DEG = 25
+    MOT_2D_BEAM_WAIST_X_M = 19e-3
+    MOT_2D_BEAM_WAIST_Y_M = 5e-3
+
+    # Zeeman-slower arm
+    ZEEMAN_ARM_ANGLE_DEG = 25.0
     ZEEMAN_ARM_ANGLE_RAD = np.radians(ZEEMAN_ARM_ANGLE_DEG)
 
-    ZEEMAN_ARM_1_LENGTH = 0.378
-    ZEEMAN_ARM_1_RADIUS = 0.008
-    ZEEMAN_ARM_1_SHORT_LENGTH = 0.10
-    ZEEMAN_ARM_1_EXTENDED_LENGTH = 0.12
+    ZEEMAN_ARM_1_LENGTH_M = 0.378
+    ZEEMAN_ARM_1_RADIUS_M = 0.008
+    ZEEMAN_ARM_1_SHORT_LENGTH_M = 0.10
+    ZEEMAN_ARM_1_EXTENDED_LENGTH_M = 0.12
 
-    ZEEMAN_ARM_2_LENGTH = 0.0237
-    ZEEMAN_ARM_2_RADIUS = 0.0035
+    ZEEMAN_ARM_2_LENGTH_M = 0.0237
+    ZEEMAN_ARM_2_RADIUS_M = 0.0035
 
-    ZEEMAN_ARM_3_LENGTH = 0.060
-    ZEEMAN_ARM_3_RADIUS = 0.0174
+    ZEEMAN_ARM_3_LENGTH_M = 0.060
+    ZEEMAN_ARM_3_RADIUS_M = 0.0174
 
-    SCIENCE_ARM_1_LENGTH = 0.1445
-    SCIENCE_ARM_1_RADIUS = 0.008
-    SCIENCE_ARM_TOTAL_LENGTH = 0.510
+    ZEEMAN_LASER_WAIST_M = 7e-3
+    ZEEMAN_START_DISTANCE_M = 0.314
 
-    DPS_LENGTH = 0.070
-    DPS_RADIUS = 0.0015
-    DPS_START_Z = 0.1445
-    
-    CAPTURE_MIN_Z = DPS_START_Z + DPS_LENGTH
+    # Science arm and differential-pumping stage
+    SCIENCE_ARM_1_LENGTH_M = 0.1445
+    SCIENCE_ARM_1_RADIUS_M = 0.008
+    SCIENCE_ARM_TOTAL_LENGTH_M = 0.510
 
-    SCIENCE_REGION_CENTER_Z = 0.413
-    MOT_3D_CENTER = (0.0, 0.0, SCIENCE_REGION_CENTER_Z)
+    DPS_LENGTH_M = 0.070
+    DPS_RADIUS_M = 0.0015
+    DPS_START_Z_M = SCIENCE_ARM_1_LENGTH_M
 
-    SCIENCE_ARM_3_LENGTH = 0.510 - (DPS_LENGTH + SCIENCE_ARM_1_LENGTH)
-    SCIENCE_ARM_3_RADIUS = 0.008
+    CAPTURE_MIN_Z_M = DPS_START_Z_M + DPS_LENGTH_M
 
-    R_TUBE = 130e-6  # [m] microtube radius
-    L_TUBE = 9e-3    # [m] microtube length
+    SCIENCE_REGION_CENTER_Z_M = 0.413
+    MOT_3D_CENTER_M = (0.0, 0.0, SCIENCE_REGION_CENTER_Z_M)
 
-    ZEEMAN_LASER_WAIST = 7e-3
+    SCIENCE_ARM_3_LENGTH_M = (
+        SCIENCE_ARM_TOTAL_LENGTH_M
+        - DPS_LENGTH_M
+        - SCIENCE_ARM_1_LENGTH_M
+    )
+    SCIENCE_ARM_3_RADIUS_M = 0.008
 
-    ZEEMAN_START_DISTANCRE = 0.314
-
-ZEEMAN_BEAM_DIR = np.array([0, -np.sin(Geometry.ZEEMAN_ARM_ANGLE_RAD), -np.cos(Geometry.ZEEMAN_ARM_ANGLE_RAD)])
-
-
-# ============================================================
-# Oven / atomic beam parameters
-# ============================================================
-
-oven_temperature = 400.0  # C
-
-# ============================================================
-# Magnetic Field Config
-# ============================================================
+    # Oven microtubes
+    OVEN_MICROTUBE_RADIUS_M = 130e-6
+    OVEN_MICROTUBE_LENGTH_M = 9e-3
 
 
+ZEEMAN_BEAM_DIRECTION = np.array(
+    [
+        0.0,
+        -np.sin(Geometry.ZEEMAN_ARM_ANGLE_RAD),
+        -np.cos(Geometry.ZEEMAN_ARM_ANGLE_RAD),
+    ]
+)
 
-zeeman_configs = {
+
+# =============================================================================
+# 4. Oven and atomic-beam source
+# =============================================================================
+
+OVEN_TEMPERATURE_C = 400.0
+COLLIMATION_ANGLE_DEG = 1.5
+
+
+# =============================================================================
+# 5. Zeeman slower
+# =============================================================================
+
+# Stored Zeeman-magnet profiles.
+# Each profile contains:
+#   [magnet radii (m), longitudinal positions (m), tilt angles (deg)]
+#
+# The existing string keys are intentionally preserved because they identify
+# the available precomputed magnet configurations.
+ZEEMAN_MAGNET_PROFILES = {
     "50": [[0.0175355339059327,0.0175355339059327,0.0175355339059327,0.0201891263330892,0.0176198150316935,0.0175355339059327,0.0178252116597853,0.0175355339059327,0.01754638149051,0.018188011709049,0.0197122927636358,0.022296638617251,0.0251670309427908,0.0247091061118729,0.0216820328250508,0.019343574511782,0.0178558361000801,0.0178317326245773,0.0214866085051259,0.0190852362243728], [-0.02,-0.0123431457505076,-0.0043283476349881,0.00452259112729557,0.0128092170413323,0.0209589166209663,0.0290349308376656,0.036691785087158,0.0443766827227191,0.0523293953149637,0.0607300318872457,0.0718739594443776,0.087109698880217,0.109271202386712,0.12312177253889,0.134175289343433,0.143558975477972,0.152351584947448,0.16117297602231,0.17], [288.23907593143105,269.99999130604459,231.20851661314464,205.66573759422005,191.566216890318,199.80639369069763,189.45722700868535,186.842762302471,190.24665380464114,194.5495445590673,203.4154977796957,190.9065911787898,157.83247603598079,53.866206270109672,34.263325417042829,27.596822871144276,33.942170542634386,64.9810662840316,36.71946009392861,115.2878123276525]],
     "55": [[0.0175355339059327,0.0175355339059327,0.0175355339059327,0.0202921836779558,0.0176720650122377,0.0175355339059327,0.0178344468893825,0.0175355339059327,0.0175774441999051,0.0183832994322672,0.0200357215486009,0.0220410636982943,0.0240741692707045,0.0232762434870512,0.0215496627296997,0.019837855546007,0.0181187019754439,0.0179743404203282,0.0216476776527127,0.0189601759508474], [-0.02,-0.0123386387885244,-0.00432356249232071,0.00454899096213416,0.0128293795707265,0.0209521408734517,0.0290407736145295,0.0367206867405812,0.0444649105374399,0.0525594330483901,0.0616811365594675,0.0742368929959859,0.0866543441553316,0.110665225466408,0.120821309507405,0.133749057138564,0.143736348234211,0.152477795979166,0.161241596526142,0.17], [288.40297738749285,270.00036664730504,231.16155025596998,206.73696312177117,190.76461288099631,199.82927932617827,189.79362605688237,187.1333117274024,191.64402136087273,197.293214814076,199.88109313881174,172.70835580590506,173.32026806949582,29.736256553159155,59.989721381127524,30.110549566403883,30.979153981697991,65.518370251504237,32.562461420282922,114.23352631504174]],
     "60": [[0.0175355339059327,0.0175355339059327,0.0175355339059327,0.0202206675962712,0.0176756959096795,0.0175355339059327,0.0177932945286768,0.0175594228805767,0.0177662191739873,0.018691424546654,0.0202153390784334,0.0217980319109497,0.0237799352619598,0.0234822684288386,0.0213101088233756,0.0197347638431659,0.0180509140194739,0.017770416527836,0.0199061629306322,0.0187418933545711], [-0.02,-0.0123431457505076,-0.00432538246755054,0.00455205064096358,0.0128423127291997,0.0209675954329335,0.029055111528933,0.0367838459434434,0.044606152175033,0.0527893781861377,0.0621221980526206,0.0741587621628456,0.0855118099114713,0.110070172703332,0.120863332049955,0.13261740932286,0.143281089981193,0.15212996372935,0.161107508754229,0.17], [288.23908678434378,270.00000017890261,230.74705171093785,206.85254775709461,190.98556147268641,199.6346683484347,189.90642553675085,188.33263627260897,192.63773488775814,196.87356529556303,194.94329938112688,171.92464498149539,181.84571359671017,30.614709416141075,49.461574277732183,37.353980865191104,28.805252970082556,57.356618032938442,40.353115157511766,117.32193716225727]],
@@ -141,86 +241,100 @@ zeeman_configs = {
     "55_2": [[0.017535533905932734,0.017535533905932734,0.017535533905932734,0.017535533905932734,0.01809118628045343,0.017884920287673387,0.017535533905932734,0.017582045670600108,0.017535533905932734,0.01763851719446884,0.018309793625463183,0.020120378327149732,0.023997120907637889,0.024826382694020394,0.020429843469936159,0.018943942378589478,0.019361942376558434,0.022416344189335836,0.017535533905932734,0.018048085175181566], [-0.025,-0.016309787894111714,-0.0086529336446193334,-0.000769095342407822,0.008143305477068,0.016859964291665589,0.02523513031120599,0.033467642405032832,0.0414799814823675,0.049474987859565417,0.057707949272690268,0.066372547601337109,0.07736082940402926,0.10821122987063761,0.12103933532965465,0.12934019327324017,0.13826632240711303,0.14706668483260127,0.15590201966843034,0.165], [312.99066990634992,288.23901123149903,269.9999505132181,208.15523621132712,221.40185966656165,199.3862978013475,199.34800668822507,194.47194781434979,192.05209608667133,193.9234094496785,200.02193796188195,213.11504776895143,217.67093062516068,23.200442653089144,7.335272538596131,37.116087296312642,59.429282965522646,62.258833438737355,33.055148961276323,144.99398052004159]],
 }
 
-radii, positions, tilt_angles = zeeman_configs["80"]
+ACTIVE_ZEEMAN_MAGNET_PROFILE = "80"
 
-zeeman_field_config = { 
-    "radii": radii, 
-    "positions": positions, 
-    "tilt_angles": tilt_angles 
+(
+    ZEEMAN_MAGNET_RADII_M,
+    ZEEMAN_MAGNET_POSITIONS_M,
+    ZEEMAN_MAGNET_TILT_ANGLES_DEG,
+) = ZEEMAN_MAGNET_PROFILES[ACTIVE_ZEEMAN_MAGNET_PROFILE]
+
+ZEEMAN_FIELD_CONFIG = {
+    "radii_m": ZEEMAN_MAGNET_RADII_M,
+    "positions_m": ZEEMAN_MAGNET_POSITIONS_M,
+    "tilt_angles_deg": ZEEMAN_MAGNET_TILT_ANGLES_DEG,
 }
 
-_2d_mot_magnet_radius = 0.053
-
-_3d_mot_gradient_G_cm = 10.0
-
-# ============================================================
-# Laser Config
-# ============================================================
-
-_2d_mot_laser_config = {
-    "s0": 1.4,
-    "detuning_gamma": -1.47,
-    "swap_polarization": False
-}
-
-zeeman_laser_config = {
+ZEEMAN_LASER_CONFIG = {
     "s0": 3.0,
     "detuning_gamma": -13.75,
 }
 
-mot_3d_laser_config = { 
-    "center_position": Geometry.MOT_3D_CENTER,
+ZEEMAN_SIM_CONFIG = {
+    "t_max_s": 20e-3,
+    "dt_s": 4e-5,
+    "start_distance_m": 0.450,
+    "cutoff_distance_m": 0.100,
+}
+
+
+# =============================================================================
+# 6. 2D MOT
+# =============================================================================
+
+MOT_2D_MAGNET_RADIUS_M = 0.053
+
+MOT_2D_LASER_CONFIG = {
+    "s0": 1.4,
+    "detuning_gamma": -1.47,
+    "swap_polarization": False,
+}
+
+MOT_2D_SIM_CONFIG = {
+    "t_max_s": 25e-3,
+    "dt_s": 1e-5,
+    "start_distance_m": 0.100,
+}
+
+# Global force scale used across the simulation pipeline.
+# This is the authoritative normalization constant and is not limited to the
+# 2D-MOT stage.
+FORCE_SCALE_N = 3.141895058426422e-20
+
+
+# =============================================================================
+# 7. 3D MOT
+# =============================================================================
+
+MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM = 10.0
+
+MOT_3D_LASER_CONFIG = {
+    "center_position_m": Geometry.MOT_3D_CENTER_M,
     "399": {
         "enabled": True,
         "s0": 0.5,
         "detuning_gamma": -1.0,
-        "waist": 0.01,
+        "waist_m": 0.01,
     },
     "556": {
         "enabled": True,
         "s0": 5.0,
         "detuning_gamma": -10.0,
-        "waist": 0.015,
+        "waist_m": 0.015,
     },
 }
 
-
-F_scale = 3.141895058426422e-20
-
-N_particles = 50000
-
-collimation_angle_deg = 1.5
-
-seed = 42
-
-# Full sim config
-# ===============
-full_sim_config = {
-    "dt": 1e-5,
-    "t_max": 25e-3,
-    "start_distance": 0.450,
+MOT_3D_SIM_CONFIG = {
+    "t_max_s": 25e-3,
+    "dt_s": 1e-5,
 }
 
-# Zeeman sim config
-# =================
-zeeman_sim_config = {
-    "t_max": 20e-3,
-    "dt": 4e-5,
-    "start_distance": 0.450,
-    "cutoff_distance": 0.100,
+
+# =============================================================================
+# 8. Full-pipeline simulation
+# =============================================================================
+
+FULL_SIM_CONFIG = {
+    "dt_s": 1e-5,
+    "t_max_s": 25e-3,
+    "start_distance_m": 0.450,
 }
 
-# 2D MOT sim config
-# =================
-_2d_mot_sim_config = {
-    "t_max": 25e-3,
-    "dt": 1e-5,
-    "start_distance": 0.100,
-}
 
-# 3D MOT sim config
-# =================
-_3d_mot_sim_config = {
-    "t_max": 25e-3,
-    "dt": 1e-5,
-}
+# =============================================================================
+# 9. Runtime defaults
+# =============================================================================
+
+DEFAULT_NUM_PARTICLES = 50_000
+DEFAULT_RANDOM_SEED = 42
+DEFAULT_NUM_POOLS = 8

@@ -1,3 +1,11 @@
+"""Run the 2D-MOT Optuna optimization workflow for fixed Zeeman-survivor inputs.
+
+This script is the main parameter-search workflow for the 2D MOT stage using a
+precomputed Zeeman-survivor ensemble. It is intentionally a thin production
+wrapper around the simulation helpers and keeps the underlying physics and
+numerical algorithms unchanged.
+"""
+
 import argparse
 from pathlib import Path
 
@@ -5,10 +13,12 @@ import numpy as np
 import optuna
 
 from config import (
-    N_particles,
-    collimation_angle_deg,
-    seed,
-    _2d_mot_sim_config
+    DEFAULT_NUM_PARTICLES,
+    DEFAULT_NUM_POOLS,
+    COLLIMATION_ANGLE_DEG,
+    DEFAULT_RANDOM_SEED,
+    MOT_2D_SIM_CONFIG,
+    ZEEMAN_SIM_CONFIG,
 )
 
 from utils.file_helpers import update_json_file
@@ -22,9 +32,24 @@ from split_simulation import mot_simulation
 ZEEMAN_SURVIVORS_FILE = (
     "data/production_zeeman_survivors_50k_dt40us.npy"
 )
+# This total-efficiency denominator must match the initial ensemble used to
+# generate ZEEMAN_SURVIVORS_FILE.
+ZEEMAN_SURVIVORS_INITIAL_NUM_PARTICLES = 50_000
 
-MOT_DT = _2d_mot_sim_config["dt"]  # seconds
+MOT_DT = MOT_2D_SIM_CONFIG["dt_s"]  # seconds
 CHUNKSIZE = 1
+
+
+def build_study_name(s0_range, detuning_gamma_range, magnet_radius_range):
+    """Build a study name from actual runtime values instead of fragile literals."""
+    return (
+        "mot_opt_"
+        f"N{DEFAULT_NUM_PARTICLES}_"
+        f"zeeman_dt{ZEEMAN_SIM_CONFIG['dt_s'] * 1e6:.0f}us_"
+        f"mot_dt{MOT_DT * 1e6:.0f}us_"
+        f"s0max{max(s0_range):.3f}_"
+        f"angle{COLLIMATION_ANGLE_DEG}"
+    )
 
 
 # ============================================================
@@ -37,7 +62,7 @@ def parse_args():
     parser.add_argument(
         "--npools",
         type=int,
-        default=8,
+        default=DEFAULT_NUM_POOLS,
         help="Number of worker processes used for each MOT simulation",
     )
 
@@ -59,7 +84,7 @@ def run_mot(
     s0,
     detuning_gamma,
     magnet_radius,
-    npools=8,
+    npools=DEFAULT_NUM_POOLS,
 ):
     """
     Run one stochastic 2D-MOT simulation using the fixed production
@@ -123,7 +148,7 @@ def run_mot(
     )
 
     total_efficiency = (
-        success_count / 50000
+        success_count / ZEEMAN_SURVIVORS_INITIAL_NUM_PARTICLES
     )
 
     print()
@@ -179,7 +204,7 @@ def optimize_mot(
     detuning_gamma_range,
     magnet_radius_range,
     n_trials=50,
-    npools=8,
+    npools=DEFAULT_NUM_POOLS,
 ):
     """
     Optimize the 2D-MOT parameters using Optuna.
@@ -222,17 +247,14 @@ def optimize_mot(
 
         return success_count
 
-    study_name = (
-        "mot_opt_"
-        "N50000_"
-        "zeeman_dt40us_"
-        "mot_dt10us_"
-        "s0max1p5_"
-        f"angle{collimation_angle_deg}"
+    study_name = build_study_name(
+        s0_range=s0_range,
+        detuning_gamma_range=detuning_gamma_range,
+        magnet_radius_range=magnet_radius_range,
     )
 
     sampler = optuna.samplers.TPESampler(
-        seed=seed,
+        seed=DEFAULT_RANDOM_SEED,
     )
 
     study = optuna.create_study(

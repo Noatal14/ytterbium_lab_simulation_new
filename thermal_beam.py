@@ -1,7 +1,6 @@
-from config import YB171_MASS_KG, Geometry, collimation_angle_deg
+from config import YB171_MASS_KG, Geometry, COLLIMATION_ANGLE_DEG, OVEN_TEMPERATURE_C, DEFAULT_RANDOM_SEED
 import numpy as np
 import scipy.constants as csts
-from config import seed
 
 def _microtube_alpha(beta):
     numerator = 1 - 2 * beta**3 + (2 * beta**2 - 1) * np.sqrt(1 + beta**2)
@@ -95,11 +94,11 @@ def sample_microtube_angles(N, r_tube, L_tube, rng, theta_max=np.pi / 2):
 
 def generate_thermal_beam_state(
     N=1000,
-    T_C=400.0,
-    collimation_angle_deg=collimation_angle_deg,
+    T_C=OVEN_TEMPERATURE_C,
+    collimation_angle_deg=COLLIMATION_ANGLE_DEG,
     m=None,
     distance_m=None,
-    seed=seed
+    seed=DEFAULT_RANDOM_SEED
 ):
     """
     Generate the position and velocity arrays for a collection of atoms (thermal source),
@@ -189,8 +188,8 @@ def generate_thermal_beam_state(
     # of the downstream apertures (see geometric_acceptance_angle_deg).
     theta, phi, included_fraction = sample_microtube_angles(
         N=N,
-        r_tube=Geometry.R_TUBE,
-        L_tube=Geometry.L_TUBE,
+        r_tube=Geometry.OVEN_MICROTUBE_RADIUS_M,
+        L_tube=Geometry.OVEN_MICROTUBE_LENGTH_M,
         rng=rng,
         theta_max=np.radians(collimation_angle_deg)
     )

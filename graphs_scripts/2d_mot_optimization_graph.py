@@ -1,219 +1,230 @@
+from pathlib import Path
+
 import numpy as np
 import matplotlib.pyplot as plt
 
+from utils.file_helpers import read_data_json
+
 
 # ============================================================
-# Current Optuna results
+# Input data
 # ============================================================
 
-s0 = np.array([
-    1.24944814,
-    1.51839018,
-    0.86970033,
-    1.64968709,
-    1.79893117,
-    1.02008541,
-    1.31833402,
-    0.96739263,
-    1.34728398,
-    1.41708133,
-    1.94183900,
-    1.91874841,
-    1.98245358,
-    1.99722762,
-    1.76657543,
-    1.73678155,
-    1.66636990,
-    1.81496873,
-    1.56255655,
-    1.80439119,
-    1.84604372,
-    1.71637923,
-    1.58089286,
-    1.85553671,
-    1.72088617,
-    1.85675635,
-    1.50802615,
-    1.67165513,
-    1.18384709,
-    1.60792615,
-    1.89393332,
-    1.72535911,
-    1.79121497,
-    1.50815101,
-    1.67588341,
-    1.44379861,
-    1.72622742,
-    1.80835323,
-    1.61133197,
-])
-
-detuning = np.array([
-    -0.66899997,
-    -1.78157390,
-    -0.78735340,
-    -1.97118171,
-    -1.70272525,
-    -1.57406086,
-    -1.59227920,
-    -1.59099749,
-    -0.90075365,
-    -1.17061960,
-    -1.21760874,
-    -0.62024896,
-    -1.20760376,
-    -1.24663067,
-    -1.25523916,
-    -1.40204277,
-    -1.00809059,
-    -1.34381269,
-    -1.40797663,
-    -1.42599072,
-    -1.41630555,
-    -1.40962203,
-    -1.44828320,
-    -0.99112519,
-    -1.08691604,
-    -1.77669940,
-    -1.32321023,
-    -1.51810393,
-    -1.34434388,
-    -1.11893987,
-    -1.66874924,
-    -1.04001912,
-    -1.12292952,
-    -0.77264906,
-    -1.49504912,
-    -1.32688365,
-    -1.87375633,
-    -0.90880052,
-    -1.66862357,
-])
-
-magnet_radius = np.array([
-    0.05158795,
-    0.04640395,
-    0.05041004,
-    0.05372919,
-    0.04663642,
-    0.04972281,
-    0.05050668,
-    0.04829726,
-    0.04679706,
-    0.04541805,
-    0.05372583,
-    0.05340860,
-    0.05384491,
-    0.05242742,
-    0.05221764,
-    0.05190863,
-    0.05212322,
-    0.05131765,
-    0.04933160,
-    0.05100521,
-    0.04825390,
-    0.05116954,
-    0.05087052,
-    0.05111186,
-    0.04954321,
-    0.05003718,
-    0.05293737,
-    0.04862167,
-    0.05300866,
-    0.05124886,
-    0.05167680,
-    0.04926665,
-    0.05062645,
-    0.05132024,
-    0.04995513,
-    0.04905625,
-    0.04734225,
-    0.05021676,
-    0.04966237,
-])
-
-success_count = np.array([
-    512,
-    202,
-    474,
-    93,
-    389,
-    256,
-    409,
-    162,
-    509,
-    468,
-    609,
-    593,
-    604,
-    653,
-    648,
-    698,
-    625,
-    709,
-    619,
-    724,
-    637,
-    719,
-    677,
-    654,
-    701,
-    445,
-    631,
-    556,
-    562,
-    662,
-    610,
-    680,
-    690,
-    572,
-    636,
-    615,
-    218,
-    643,
-    451,
-])
+RESULTS_FILE = Path(
+    "data/mot_optimization_s0max1p5_summary.json"
+)
 
 N_ZEEMAN_SURVIVORS = 28261
 
-capture_efficiency = (
-    100 * success_count / N_ZEEMAN_SURVIVORS
-)
-
 
 # ============================================================
-# Plot
+# Load Optuna results
 # ============================================================
 
-fig, ax = plt.subplots(figsize=(9, 6))
+def load_optimization_results(results_file=RESULTS_FILE):
+    """
+    Load the constrained 3-parameter 2D MOT optimization results.
 
-scatter = ax.scatter(
-    s0,
-    detuning,
-    c=capture_efficiency,
-    cmap="coolwarm",
-    s=120,
-    edgecolors="black",
-)
+    Returns
+    -------
+    s0 : np.ndarray
+        Saturation parameter values.
 
-# Write magnet radius next to each point, in mm
-for x, y, r in zip(s0, detuning, magnet_radius):
-    ax.annotate(
-        f"{1000*r:.1f} mm",
-        (x, y),
-        xytext=(6, 6),
-        textcoords="offset points",
-        fontsize=8,
+    detuning : np.ndarray
+        Detuning values in units of Gamma.
+
+    magnet_radius : np.ndarray
+        Magnet radius values in meters.
+
+    success_count : np.ndarray
+        Number of successfully captured MOT atoms.
+    """
+
+    if not Path(results_file).exists():
+        raise FileNotFoundError(
+            f"Optimization results file not found: "
+            f"{results_file}"
+        )
+
+    data = read_data_json(results_file)
+
+    results = list(data.values())
+
+    s0 = np.array(
+        [
+            result["s0"]
+            for result in results
+        ],
+        dtype=float,
     )
 
-cbar = plt.colorbar(scatter, ax=ax)
-cbar.set_label("MOT capture efficiency (%)")
+    detuning = np.array(
+        [
+            result["detuning_gamma"]
+            for result in results
+        ],
+        dtype=float,
+    )
 
-ax.set_xlabel(r"$s_0$")
-ax.set_ylabel(r"Detuning $\Delta/\Gamma$")
-ax.set_title("Preliminary 2D MOT optimization results")
+    magnet_radius = np.array(
+        [
+            result["magnet_radius"]
+            for result in results
+        ],
+        dtype=float,
+    )
 
-ax.grid(alpha=0.25)
+    success_count = np.array(
+        [
+            result["success_count"]
+            for result in results
+        ],
+        dtype=int,
+    )
 
-plt.tight_layout()
-plt.show()
+    return (
+        s0,
+        detuning,
+        magnet_radius,
+        success_count,
+    )
+
+
+# ============================================================
+# Main
+# ============================================================
+
+if __name__ == "__main__":
+
+    (
+        s0,
+        detuning,
+        magnet_radius,
+        success_count,
+    ) = load_optimization_results()
+
+    capture_efficiency = (
+        100
+        * success_count
+        / N_ZEEMAN_SURVIVORS
+    )
+
+    print(
+        f"Loaded {len(success_count)} completed trials"
+    )
+
+    # ========================================================
+    # Best trial
+    # ========================================================
+
+    best_idx = np.argmax(
+        capture_efficiency
+    )
+
+    print()
+    print("Best trial:")
+    print(
+        f"s0 = {s0[best_idx]:.4f}"
+    )
+    print(
+        f"detuning = {detuning[best_idx]:.4f}"
+    )
+    print(
+        f"magnet radius = "
+        f"{1000 * magnet_radius[best_idx]:.2f} mm"
+    )
+    print(
+        f"capture efficiency = "
+        f"{capture_efficiency[best_idx]:.3f}%"
+    )
+
+    # ========================================================
+    # Plot
+    # ========================================================
+
+    fig, ax = plt.subplots(
+        figsize=(9, 6)
+    )
+
+    scatter = ax.scatter(
+        s0,
+        detuning,
+        c=capture_efficiency,
+        cmap="coolwarm",
+        s=120,
+        edgecolors="black",
+    )
+
+    # Mark best trial
+    ax.scatter(
+        s0[best_idx],
+        detuning[best_idx],
+        marker="*",
+        s=350,
+        facecolors="none",
+        edgecolors="black",
+        linewidths=2.0,
+        zorder=5,
+        label=(
+            f"Best trial: "
+            f"{capture_efficiency[best_idx]:.2f}%\n"
+            f"$s_0$ = {s0[best_idx]:.3f}\n"
+            f"$\\Delta/\\Gamma$ = "
+            f"{detuning[best_idx]:.3f}\n"
+            f"Magnet radius = "
+            f"{1000 * magnet_radius[best_idx]:.2f} mm"
+        ),
+    )
+
+    cbar = plt.colorbar(
+        scatter,
+        ax=ax,
+    )
+
+    cbar.set_label(
+        "MOT capture efficiency (%)"
+    )
+
+    ax.set_xlabel(
+        r"$s_0$"
+    )
+
+    ax.set_ylabel(
+        r"Detuning $\Delta/\Gamma$"
+    )
+
+    ax.set_title(
+        r"2D MOT optimization results "
+        r"($s_0 \leq 1.5$)"
+    )
+
+    ax.grid(
+        alpha=0.25
+    )
+
+    ax.legend()
+
+    plt.tight_layout()
+
+    # ============================================================
+    # Save figure
+    # ============================================================
+
+    output_dir = Path("graphs/mot_optimization")
+    output_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    output_file = output_dir / "mot_optimization_s0max1p5.png"
+
+    fig.savefig(
+        output_file,
+        dpi=300,
+        bbox_inches="tight",
+    )
+
+    print(f"Figure saved to: {output_file}")
+
+    plt.show()
+    plt.show()

@@ -1,7 +1,7 @@
 import numpy as np
 from atomsmltr.environment.lasers.beams import LaserBeam
 from atomsmltr.environment.lasers.polarization import CircularRight, CircularLeft
-from config import BLUE_TRANSITION, YB171_ISAT_MW_CM2, Geometry
+from config import BLUE_TRANSITION, BLUE_SATURATION_INTENSITY_MW_CM2, Geometry
 
 class CircularGaussianBeam(LaserBeam):
     """
@@ -107,17 +107,17 @@ def setup_zeeman_laser(s0=3.0, detuning_gamma=-13.75, atom_species_name="Yb171",
     list of CircularGaussianBeam
     """
 
-    wavelength = BLUE_TRANSITION.wavelength
+    wavelength = BLUE_TRANSITION.wavelength_m
     
     # Calculate I_sat in pure SI units (W/m^2)
-    isat_W_m2 = YB171_ISAT_MW_CM2 * 10.0 
+    isat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0 
     
     # Peak intensity based on s0 parameter
     target_peak_intensity = s0 * isat_W_m2
     
     # 2. Geometry
     # 1/e^2 waist is 7mm based on the provided diameter of 14mm
-    waist = Geometry.ZEEMAN_LASER_WAIST
+    waist = Geometry.ZEEMAN_LASER_WAIST_M
     
     # Direction: Angle of 25 degrees with the positive Z axis, in the ZY plane
     # Coming from (+Z, +Y) and pointing towards (-Z, -Y).
@@ -141,7 +141,7 @@ def setup_zeeman_laser(s0=3.0, detuning_gamma=-13.75, atom_species_name="Yb171",
         polarization=pol_obj,
         tag="Zeeman_Laser"
     )
-    beam.detuning = detuning_gamma * BLUE_TRANSITION.gamma  # Setting detuning directly as an attribute
+    beam.detuning = detuning_gamma * BLUE_TRANSITION.gamma_rad_s  # Setting detuning directly as an attribute
     beam.set_power_from_peak_I(target_peak_intensity)
 
     return [beam]

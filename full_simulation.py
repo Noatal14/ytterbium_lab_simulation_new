@@ -1,22 +1,41 @@
+"""Simpler full-pipeline simulation entry point for the apparatus.
+
+This script is a convenience wrapper for a broader end-to-end run. The
+production workflow remains in split_simulation.py, which is the clearer and
+more explicit starting point for new users.
+"""
+
 import numpy as np
+
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from utils.RK4StCustom import RK4StCustom
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
 from thermal_beam import generate_thermal_beam_state
-from utils.file_helpers import save_file_json
-from utils.simulation_helpers import mot_extract_survivors, run_multiple_atoms_simulation, generate_timepoints
-from config import full_sim_config, zeeman_laser_config, _2d_mot_laser_config, _2d_mot_magnet_radius, zeeman_field_config, seed
+from utils.simulation_helpers import (
+    mot_extract_survivors,
+    run_multiple_atoms_simulation,
+    generate_timepoints,
+)
+from config import (
+    FULL_SIM_CONFIG,
+    DEFAULT_NUM_POOLS,
+    ZEEMAN_LASER_CONFIG,
+    MOT_2D_LASER_CONFIG,
+    MOT_2D_MAGNET_RADIUS_M,
+    ZEEMAN_FIELD_CONFIG,
+    DEFAULT_RANDOM_SEED,
+)
 
 # Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
 
 def simulation(
         N_particles=1000,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
-        npools=8,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
+        zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
+        npools=DEFAULT_NUM_POOLS,
         stochastic=True
     ):
 
@@ -40,12 +59,12 @@ def simulation(
     r0_arr, v0_arr, beam_info = generate_thermal_beam_state(
         N=N_particles,
         m=atom.mass,
-        distance_m=full_sim_config["start_distance"],
+        distance_m=FULL_SIM_CONFIG["start_distance_m"],
         collimation_angle_deg=1.3,
-        seed=seed
+        seed=DEFAULT_RANDOM_SEED
     )
 
-    time_points, _ = generate_timepoints(full_sim_config["t_max"], full_sim_config["dt"])
+    time_points, _ = generate_timepoints(FULL_SIM_CONFIG["t_max_s"], FULL_SIM_CONFIG["dt_s"])
 
     u0_list = [np.concatenate((r0, v0)) for r0, v0 in zip(r0_arr, v0_arr)]
 
@@ -66,12 +85,12 @@ def simulation(
 if __name__ == "__main__":
     success_count = simulation(
         N_particles=1000,
-        _2d_mot_config=_2d_mot_laser_config,
-        zeeman_config=zeeman_laser_config,
-        zeeman_field_config=zeeman_field_config,
-        magnet_radius=_2d_mot_magnet_radius,
+        _2d_mot_config=MOT_2D_LASER_CONFIG,
+        zeeman_config=ZEEMAN_LASER_CONFIG,
+        zeeman_field_config=ZEEMAN_FIELD_CONFIG,
+        magnet_radius=MOT_2D_MAGNET_RADIUS_M,
         stochastic=False,
-        npools=8,
+        npools=DEFAULT_NUM_POOLS,
     )
 
     print(f"Success Count: {success_count}")

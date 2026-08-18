@@ -1,15 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from thermal_beam import microtube_intensity_theta, sample_microtube_angles
-from config import Geometry, collimation_angle_deg
+from config import Geometry, COLLIMATION_ANGLE_DEG
 
-MAX_DEG = collimation_angle_deg
+MAX_DEG = COLLIMATION_ANGLE_DEG
 
 def verify_microtube_distribution():
     print("Testing microtube distribution...")
     
-    r_tube = Geometry.R_TUBE
-    L_tube = Geometry.L_TUBE
+    r_tube = Geometry.OVEN_MICROTUBE_RADIUS_M
+    L_tube = Geometry.OVEN_MICROTUBE_LENGTH_M
     beta = 2 * r_tube / L_tube
     theta_c = np.arctan(beta)
     

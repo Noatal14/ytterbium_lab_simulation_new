@@ -1,7 +1,7 @@
 import numpy as np
 from lab_setup.zeeman_laser_setup import CircularGaussianBeam
 from atomsmltr.environment.lasers.polarization import CircularRight
-from config import BLUE_TRANSITION, GREEN_TRANSITION, BLUE_SATURATION_INTENSITY_W_M2, GREEN_SATURATION_INTENSITY_W_M2
+from config import BLUE_TRANSITION, GREEN_TRANSITION, BLUE_CALCULATED_SATURATION_INTENSITY_W_M2, GREEN_SATURATION_INTENSITY_W_M2
 
 def setup_3dmot_lasers(
     center_position=(0.0, 0.0, 0.0),
@@ -26,7 +26,7 @@ def setup_3dmot_lasers(
     del detuning_gamma_399, detuning_gamma_556, atom_species_name
 
     center_position = np.asarray(center_position, dtype=float)
-    peak_intensity_399 = s0_399 * BLUE_SATURATION_INTENSITY_W_M2
+    peak_intensity_399 = s0_399 * BLUE_CALCULATED_SATURATION_INTENSITY_W_M2
     peak_intensity_556 = s0_556 * GREEN_SATURATION_INTENSITY_W_M2
 
     beams = []
@@ -62,7 +62,7 @@ def setup_3dmot_lasers(
         if enabled_399:
             beams.append(
                 make_beam(
-                    wavelength=BLUE_TRANSITION.wavelength,
+                    wavelength=BLUE_TRANSITION.wavelength_m,
                     waist=waist_399,
                     peak_intensity=peak_intensity_399,
                     direction=direction,
@@ -73,7 +73,7 @@ def setup_3dmot_lasers(
         if enabled_556:
             beams.append(
                 make_beam(
-                    wavelength=GREEN_TRANSITION.wavelength,
+                    wavelength=GREEN_TRANSITION.wavelength_m,
                     waist=waist_556,
                     peak_intensity=peak_intensity_556,
                     direction=direction,

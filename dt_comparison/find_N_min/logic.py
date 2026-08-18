@@ -9,7 +9,7 @@ from config import BLUE_TRANSITION, YB171_MASS_KG
 def coupled_poisson_gaussian_eta(N, n_samples=100_000, seed=0):
     rng = np.random.default_rng(seed)
 
-    k = 2.0 * np.pi / BLUE_TRANSITION.wavelength
+    k = 2.0 * np.pi / BLUE_TRANSITION.wavelength_m
     v_rec = csts.hbar * k / YB171_MASS_KG
 
     # -------------------------
