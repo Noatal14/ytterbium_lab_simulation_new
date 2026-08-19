@@ -5,4 +5,9 @@ venv/
 .idea/
 .vscode/
 .DS_Store
-**/data/
+*.db
+*.db-shm
+*.db-wal
+data/*.npy
+data/zeeman_survivors_states.json
+dt_comparison/data/

@@ -13,7 +13,6 @@ import numpy as np
 import optuna
 
 from config import (
-    DEFAULT_NUM_PARTICLES,
     DEFAULT_NUM_POOLS,
     COLLIMATION_ANGLE_DEG,
     DEFAULT_RANDOM_SEED,
@@ -44,7 +43,7 @@ def build_study_name(s0_range, detuning_gamma_range, magnet_radius_range):
     """Build a study name from actual runtime values instead of fragile literals."""
     return (
         "mot_opt_"
-        f"N{DEFAULT_NUM_PARTICLES}_"
+        f"N{ZEEMAN_SURVIVORS_INITIAL_NUM_PARTICLES}_"
         f"zeeman_dt{ZEEMAN_SIM_CONFIG['dt_s'] * 1e6:.0f}us_"
         f"mot_dt{MOT_DT * 1e6:.0f}us_"
         f"s0max{max(s0_range):.3f}_"

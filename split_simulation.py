@@ -270,9 +270,8 @@ def mot_simulation(
         time_points=time_points,
         sim_function=sim_func,
         npools=npools,
-        seed_idx=DEFAULT_RANDOM_SEED,
+        seed_idx=seed,
         chunksize=chunksize,
-        seed_idx=DEFAULT_RANDOM_SEED,
     )
 
     mot_survivor_states, count, _ = mot_extract_survivors(res)
@@ -421,7 +420,7 @@ def generate_and_save_zeeman_survivors(
     collimation_angle_deg,
     npools,
     stochastic=True,
-    zeeman_dt=4e-5,
+    zeeman_dt=ZEEMAN_SIM_CONFIG["dt_s"],
     chunksize=1,
 ):
     print("========================================")

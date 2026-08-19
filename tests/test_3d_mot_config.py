@@ -25,6 +25,11 @@ def _unique_directions(beams):
     return {tuple(np.round(d, 12)) for d in directions}
 
 
+def _resolved_profile(name):
+    """Return an isolated copy of a configured experimental profile."""
+    return copy.deepcopy(MOT_3D_CONFIGURATIONS[name])
+
+
 def test_active_3d_mot_profile_is_registered():
     assert ACTIVE_MOT_3D_CONFIGURATION in MOT_3D_CONFIGURATIONS
     profile = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
@@ -33,10 +38,12 @@ def test_active_3d_mot_profile_is_registered():
 
 
 def test_angled_concentric_geometry_is_correct():
-    profile = MOT_3D_CONFIGURATIONS["angled_concentric"]
+    profile = _resolved_profile("angled_concentric")
     assert profile["beam_layout"] == "angled_xz_y"
     theta = float(profile["xz_angle_from_z_deg"])
-    beams = setup_3dmot_lasers(center_position=(0.0, 0.0, 0.0), profile_name="angled_concentric")
+    beams = setup_3dmot_lasers(
+        mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
+    )
 
     unique_dirs = _unique_directions(beams)
     assert len(unique_dirs) == 6
@@ -64,7 +71,10 @@ def test_angled_concentric_geometry_is_correct():
 
 
 def test_angled_sequential_has_separated_blue_and_green_centers():
-    beams = setup_3dmot_lasers(mot_3d_config=MOT_3D_CONFIGURATIONS["angled_sequential"], center_position=(0.0, 0.0, 0.0))
+    beams = setup_3dmot_lasers(
+        mot_3d_config=_resolved_profile("angled_sequential"),
+        center_position=(0.0, 0.0, 0.0),
+    )
     blue_beams = [beam for beam in beams if "3DMOT_399_" in beam.tag]
     green_beams = [beam for beam in beams if "3DMOT_556_" in beam.tag]
 
@@ -78,9 +88,11 @@ def test_angled_sequential_has_separated_blue_and_green_centers():
 
 
 def test_five_beam_gravity_removes_upper_x_beam_only():
-    profile = MOT_3D_CONFIGURATIONS["five_beam_gravity"]
+    profile = _resolved_profile("five_beam_gravity")
     assert profile["beam_layout"] == "orthogonal_minus_upper_x"
-    beams = setup_3dmot_lasers(center_position=(0.0, 0.0, 0.0), profile_name="five_beam_gravity")
+    beams = setup_3dmot_lasers(
+        mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
+    )
     directions = _unique_directions(beams)
 
     assert len(directions) == 5
@@ -94,14 +106,18 @@ def test_five_beam_gravity_removes_upper_x_beam_only():
     assert (-1.0, 0.0, 0.0) not in directions
 
     profile["beam_components"]["+Y"]["399_enabled"] = False
-    beams = setup_3dmot_lasers(center_position=(0.0, 0.0, 0.0), profile_name="five_beam_gravity")
+    beams = setup_3dmot_lasers(
+        mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
+    )
     assert not any("3DMOT_399_+Y" in beam.tag for beam in beams)
     assert any("3DMOT_556_+Y" in beam.tag for beam in beams)
-    profile["beam_components"]["+Y"]["399_enabled"] = True
 
 
 def test_active_angled_profile_emits_expected_vectors():
-    beams = setup_3dmot_lasers(center_position=(0.0, 0.0, 0.0), profile_name="angled_concentric")
+    beams = setup_3dmot_lasers(
+        mot_3d_config=_resolved_profile("angled_concentric"),
+        center_position=(0.0, 0.0, 0.0),
+    )
     directions = {tuple(np.round(_normalize(beam.direction), 8)) for beam in beams}
     assert (0.5, 0.0, 0.8660254) in directions
     assert (-0.5, 0.0, 0.8660254) in directions
@@ -146,7 +162,7 @@ def test_annular_beam_peak_intensity_matches_target():
 
 
 def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():
-    mot_cfg = copy.deepcopy(MOT_3D_CONFIGURATIONS["angled_concentric"])
+    mot_cfg = _resolved_profile("angled_concentric")
     mot_cfg["399"]["s0"] = 1.25
     mot_cfg["399"]["waist_m"] = 0.02
     mot_cfg["556"]["s0"] = 7.0

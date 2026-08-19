@@ -13,7 +13,6 @@ import optuna
 
 from config import (
     COLLIMATION_ANGLE_DEG,
-    DEFAULT_NUM_PARTICLES,
     DEFAULT_NUM_POOLS,
     DEFAULT_RANDOM_SEED,
     MOT_2D_SIM_CONFIG,
@@ -220,7 +219,7 @@ def optimize_mot_fixed_s0(
     study_name = (
         "mot_opt_fixed_s0_"
         f"s0_{s0_tag}_"
-        f"N{DEFAULT_NUM_PARTICLES}_"
+        f"N{ZEEMAN_SURVIVORS_INITIAL_NUM_PARTICLES}_"
         f"zeeman_dt{ZEEMAN_SIM_CONFIG['dt_s'] * 1e6:.0f}us_"
         f"mot_dt{MOT_DT * 1e6:.0f}us_"
         f"angle{COLLIMATION_ANGLE_DEG}"

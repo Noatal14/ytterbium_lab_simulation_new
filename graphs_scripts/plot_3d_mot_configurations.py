@@ -28,7 +28,11 @@ import numpy as np
 from matplotlib.lines import Line2D
 
 from config import MOT_3D_CONFIGURATIONS
-from lab_setup.laser_setup_3d import _beam_profile_center, _get_beam_directions
+from lab_setup.laser_setup_3d import (
+    _beam_profile_center,
+    _get_beam_directions,
+    _validate_profile,
+)
 
 
 BLUE_COLOR = "tab:blue"
@@ -328,6 +332,7 @@ def _print_profile_summary(name, profile, directions):
 
 
 def plot_configuration(name, profile, beam_length_m):
+    _validate_profile(profile)
     directions = _get_beam_directions(profile)
     _print_profile_summary(name, profile, directions)
 

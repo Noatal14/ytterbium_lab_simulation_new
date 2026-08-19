@@ -25,6 +25,7 @@ from config import (
     MOT_2D_MAGNET_RADIUS_M,
     ZEEMAN_FIELD_CONFIG,
     DEFAULT_RANDOM_SEED,
+    COLLIMATION_ANGLE_DEG
 )
 
 # Note: If r0_arr is generated at distance=0.378 instead of 0.314, atoms would start *outside* the slower and enter it. This is physically fine.
@@ -60,7 +61,7 @@ def simulation(
         N=N_particles,
         m=atom.mass,
         distance_m=FULL_SIM_CONFIG["start_distance_m"],
-        collimation_angle_deg=1.3,
+        collimation_angle_deg=COLLIMATION_ANGLE_DEG,
         seed=DEFAULT_RANDOM_SEED
     )
 
@@ -95,5 +96,4 @@ if __name__ == "__main__":
 
     print(f"Success Count: {success_count}")
     print("\\nTesting complete. Data saved.")
-
 

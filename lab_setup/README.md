@@ -52,9 +52,9 @@ The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_
 
 - `angled_concentric`: two xz axes at ±30° from z, one y axis, blue 399-nm annular/donut component plus green 556-nm central component
 - `angled_sequential`: the same angled geometry, but with blue and green cooling regions separated along z by a configurable provisional offset
-- `five_beam_gravity`: orthogonal geometry with the beam that would propagate in the downward -x direction removed; gravity still acts along -x, while the remaining +x beam propagates upward and can oppose gravity
+- `five_beam_gravity`: orthogonal geometry with the beam whose source would be above the MOT removed; gravity remains controlled independently and acts along -x
 
-The final experimental geometry is still under investigation, so the ring size, blue/green separation, and per-direction wavelength choices are kept as numeric provisional defaults rather than `None`. This keeps each profile runnable, directly editable, and easy to scan or optimize without changing the simulation logic.
+The final experimental geometry is still under investigation. Ring dimensions, blue/green separation, and five-beam wavelength choices therefore use clearly labeled provisional numerical values in `config.py`. This keeps every profile runnable so the values can be explored and selected through simulation; they should not be interpreted as finalized experimental parameters.
 
 ### `mag_field_2d_mot.py`
 

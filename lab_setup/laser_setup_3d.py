@@ -146,10 +146,75 @@ def _get_beam_directions(profile):
     raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
 
 
+def _validate_profile(profile):
+    """Reject incomplete or internally inconsistent 3D-MOT profiles."""
+    required = {"beam_layout", "center_position_m", "399", "556"}
+    missing = sorted(required.difference(profile))
+    if missing:
+        raise ValueError(f"3D-MOT profile is missing required keys: {missing}")
+
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    if center.shape != (3,) or not np.all(np.isfinite(center)):
+        raise ValueError("3D-MOT center_position_m must be a finite 3-vector.")
+
+    layout = profile["beam_layout"]
+    if layout == "angled_xz_y":
+        angle = profile.get("xz_angle_from_z_deg")
+        if angle is None or not 0.0 < float(angle) < 90.0:
+            raise ValueError(
+                "Angled 3D-MOT profiles require 0 < xz_angle_from_z_deg < 90."
+            )
+
+    separation = profile.get("blue_green_center_separation_m", 0.0)
+    if separation is None:
+        raise ValueError(
+            "Set blue_green_center_separation_m in config.py before using "
+            "the angled_sequential 3D-MOT profile."
+        )
+    if float(separation) < 0.0:
+        raise ValueError("blue_green_center_separation_m must be non-negative.")
+
+    for wavelength_key in ("399", "556"):
+        component = profile[wavelength_key]
+        for key in ("enabled", "s0", "detuning_gamma", "waist_m", "profile"):
+            if key not in component:
+                raise ValueError(
+                    f"3D-MOT {wavelength_key} component is missing '{key}'."
+                )
+        if float(component["waist_m"]) <= 0.0:
+            raise ValueError(f"3D-MOT {wavelength_key} waist_m must be positive.")
+
+    blue = profile["399"]
+    if blue["enabled"] and blue["profile"] == "annular":
+        for key in ("ring_radius_m", "ring_width_m"):
+            value = blue.get(key)
+            if value is None:
+                raise ValueError(
+                    f"Set 399.{key} in config.py before using the annular "
+                    "3D-MOT profile."
+                )
+            if float(value) <= 0.0:
+                raise ValueError(f"399.{key} must be positive.")
+
+    if layout == "orthogonal_minus_upper_x":
+        components = profile.get("beam_components")
+        if not isinstance(components, dict):
+            raise ValueError("five_beam_gravity requires beam_components.")
+        for axis_tag, _ in _five_beam_gravity_directions():
+            axis = components.get(axis_tag)
+            if not isinstance(axis, dict):
+                raise ValueError(f"Missing beam_components entry for {axis_tag}.")
+            for key in ("399_enabled", "556_enabled"):
+                if axis.get(key) not in (True, False):
+                    raise ValueError(
+                        f"Choose True or False for beam_components.{axis_tag}."
+                        f"{key} before using five_beam_gravity."
+                    )
+
+
 def _beam_profile_center(profile, wavelength_key, base_center):
     base_center = np.asarray(base_center, dtype=float)
-    center_override = profile.get("center_position_m", base_center)
-    center = np.asarray(center_override, dtype=float)
+    center = base_center
     if profile.get("blue_green_center_separation_m", 0.0) == 0.0:
         return center.copy()
     if wavelength_key == "399":
@@ -159,7 +224,7 @@ def _beam_profile_center(profile, wavelength_key, base_center):
     return center + np.array([0.0, 0.0, offset])
 
 
-def setup_3dmot_lasers(mot_3d_config=None, center_position=(0.0, 0.0, 0.0), profile_name=None):
+def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=None):
     """Build the active 3D-MOT beam geometry from a selected profile config.
 
     Detuning is intentionally not applied here. The selected profile is passed in
@@ -184,6 +249,9 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=(0.0, 0.0, 0.0), prof
             )
 
     profile = mot_3d_config
+    _validate_profile(profile)
+    if center_position is None:
+        center_position = profile["center_position_m"]
     center_position = np.asarray(center_position, dtype=float)
     blue_sat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0
     peak_intensity_399 = profile["399"]["s0"] * blue_sat_W_m2
@@ -195,7 +263,17 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=(0.0, 0.0, 0.0), prof
     # produces opposite helicity in the lab frame.
     polarization = CircularRight()
 
-    def make_beam(wavelength, waist, peak_intensity, direction, tag, beam_center, profile_kind, ring_radius=None, ring_width=None):
+    def make_beam(
+        wavelength,
+        waist,
+        peak_intensity,
+        direction,
+        tag,
+        beam_center,
+        profile_kind,
+        ring_radius=None,
+        ring_width=None,
+    ):
         beam_cls = AnnularGaussianBeam if profile_kind == "annular" else CircularGaussianBeam
         beam_kwargs = dict(
             wavelength=wavelength,
@@ -220,35 +298,40 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=(0.0, 0.0, 0.0), prof
         beam_556_cfg = profile.get("556", {})
         axis_components = profile.get("beam_components", {}).get(axis_tag, {})
 
-        if axis_components.get("399_enabled", beam_399_cfg.get("enabled", True)):
+        enabled_399 = axis_components.get(
+            "399_enabled", beam_399_cfg.get("enabled", True)
+        )
+        enabled_556 = axis_components.get(
+            "556_enabled", beam_556_cfg.get("enabled", True)
+        )
+
+        if enabled_399:
             beam_center = _beam_profile_center(profile, "399", center_position)
             beams.append(
                 make_beam(
                     wavelength=BLUE_TRANSITION.wavelength_m,
-                    waist=beam_399_cfg.get("waist_m", 0.01),
+                    waist=beam_399_cfg["waist_m"],
                     peak_intensity=peak_intensity_399,
                     direction=direction,
                     tag=f"3DMOT_399_{axis_tag}",
                     beam_center=beam_center,
-                    profile_kind=beam_399_cfg.get("profile", "gaussian"),
-                    ring_radius=beam_399_cfg.get("ring_radius_m", 2.5e-3),
-                    ring_width=beam_399_cfg.get("ring_width_m", 1.0e-3),
+                    profile_kind=beam_399_cfg["profile"],
+                    ring_radius=beam_399_cfg.get("ring_radius_m"),
+                    ring_width=beam_399_cfg.get("ring_width_m"),
                 )
             )
 
-        if axis_components.get("556_enabled", beam_556_cfg.get("enabled", True)):
+        if enabled_556:
             beam_center = _beam_profile_center(profile, "556", center_position)
             beams.append(
                 make_beam(
                     wavelength=GREEN_TRANSITION.wavelength_m,
-                    waist=beam_556_cfg.get("waist_m", 0.015),
+                    waist=beam_556_cfg["waist_m"],
                     peak_intensity=peak_intensity_556,
                     direction=direction,
                     tag=f"3DMOT_556_{axis_tag}",
                     beam_center=beam_center,
-                    profile_kind=beam_556_cfg.get("profile", "gaussian"),
-                    ring_radius=beam_399_cfg.get("ring_radius_m", 2.5e-3),
-                    ring_width=beam_399_cfg.get("ring_width_m", 1.0e-3),
+                    profile_kind=beam_556_cfg["profile"],
                 )
             )
 

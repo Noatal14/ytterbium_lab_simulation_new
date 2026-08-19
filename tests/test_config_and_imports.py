@@ -1,5 +1,7 @@
 import importlib
 
+import numpy as np
+
 import config
 
 
@@ -29,3 +31,36 @@ def test_main_active_modules_import_cleanly():
 def test_active_config_names_match_main_workflow():
     split_simulation = importlib.import_module("split_simulation")
     assert split_simulation.DEFAULT_NUM_PARTICLES == config.DEFAULT_NUM_PARTICLES
+
+
+def test_mot_simulation_forwards_requested_seed(monkeypatch):
+    split_simulation = importlib.import_module("split_simulation")
+    captured = {}
+
+    monkeypatch.setattr(
+        split_simulation,
+        "build_base_config",
+        lambda **kwargs: (None, object()),
+    )
+
+    def fake_run_multiple_atoms_simulation(**kwargs):
+        captured["seed_idx"] = kwargs["seed_idx"]
+        return [], None
+
+    monkeypatch.setattr(
+        split_simulation,
+        "run_multiple_atoms_simulation",
+        fake_run_multiple_atoms_simulation,
+    )
+    monkeypatch.setattr(
+        split_simulation,
+        "mot_extract_survivors",
+        lambda results: (np.empty((0, 6)), 0, []),
+    )
+
+    split_simulation.mot_simulation(
+        survivor_states=np.zeros((1, 6)),
+        seed=137,
+    )
+
+    assert captured["seed_idx"] == 137

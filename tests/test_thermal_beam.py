@@ -1,9 +1,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from thermal_beam import microtube_intensity_theta, sample_microtube_angles
+from thermal_beam import (
+    generate_thermal_beam_state,
+    microtube_intensity_theta,
+    sample_microtube_angles,
+)
 from config import Geometry, COLLIMATION_ANGLE_DEG
 
 MAX_DEG = COLLIMATION_ANGLE_DEG
+
+
+def test_small_thermal_beam_is_finite_and_reproducible():
+    positions_1, velocities_1, info_1 = generate_thermal_beam_state(N=8, seed=123)
+    positions_2, velocities_2, info_2 = generate_thermal_beam_state(N=8, seed=123)
+
+    assert positions_1.shape == (8, 3)
+    assert velocities_1.shape == (8, 3)
+    assert np.all(np.isfinite(positions_1))
+    assert np.all(np.isfinite(velocities_1))
+    assert np.array_equal(positions_1, positions_2)
+    assert np.array_equal(velocities_1, velocities_2)
+    assert info_1 == info_2
 
 def verify_microtube_distribution():
     print("Testing microtube distribution...")

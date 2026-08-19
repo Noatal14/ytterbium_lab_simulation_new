@@ -1,4 +1,11 @@
-from config import YB171_MASS_KG, Geometry, COLLIMATION_ANGLE_DEG, OVEN_TEMPERATURE_C, DEFAULT_RANDOM_SEED
+from config import (
+    COLLIMATION_ANGLE_DEG,
+    DEFAULT_RANDOM_SEED,
+    Geometry,
+    OVEN_TEMPERATURE_C,
+    YB171_MASS_KG,
+    ZEEMAN_SIM_CONFIG,
+)
 import numpy as np
 import scipy.constants as csts
 
@@ -97,7 +104,7 @@ def generate_thermal_beam_state(
     T_C=OVEN_TEMPERATURE_C,
     collimation_angle_deg=COLLIMATION_ANGLE_DEG,
     m=None,
-    distance_m=None,
+    distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
     seed=DEFAULT_RANDOM_SEED
 ):
     """
@@ -120,13 +127,12 @@ def generate_thermal_beam_state(
     v_spread : float
         Velocity spread for the 'Atomic Zeeman beam' in m/s (default: 5.0).
     collimation_angle_deg : float, optional
-        Angular divergence constraint for collimated beams in degrees. If None
-        (default), it is derived from `Geometry` as the tightest half-angle that
-        geometrically clears every downstream vacuum-tube aperture between the
-        source and the origin (see `geometric_acceptance_angle_deg`), rather than
-        an arbitrary fixed cutoff.
+        Angular divergence constraint for collimated beams in degrees.
     m : float, optional
         Mass of the atom in kg. Defaults to Ytterbium mass.
+    distance_m : float, optional
+        Source distance from the origin. Defaults to the configured Zeeman
+        simulation start distance.
 
     Returns
     -------
