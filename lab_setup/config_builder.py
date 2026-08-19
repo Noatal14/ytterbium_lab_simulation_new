@@ -17,7 +17,15 @@ from lab_setup.mag_field_Zeeman import ZeemanSlowerField
 from lab_setup._3d_mot_mag_field import get_builtin_3dmot_magnetic_field
 from lab_setup.gravity import get_gravity_force
 from lab_setup.zones import get_2dmot_chamber_only_zone, get_zeeman_only_zone
-from config import Geometry, ZEEMAN_LASER_CONFIG, MOT_2D_LASER_CONFIG, MOT_3D_LASER_CONFIG, MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM, ZEEMAN_FIELD_CONFIG
+from config import (
+    Geometry,
+    ZEEMAN_LASER_CONFIG,
+    MOT_2D_LASER_CONFIG,
+    MOT_3D_LASER_CONFIG,
+    MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
+    ZEEMAN_FIELD_CONFIG,
+    MOT_2D_MAGNET_RADIUS_M,
+)
 
 def build_base_config(
     atom_species="Yb171",
@@ -33,15 +41,15 @@ def build_base_config(
 
     # Magnetic field configurations
     zeeman_field_config=ZEEMAN_FIELD_CONFIG,
-    magnet_radius=0.06,
+    magnet_radius=MOT_2D_MAGNET_RADIUS_M,
     _3d_mot_gradient_G_cm=MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
 
     gravity_enabled=False,
     zones=None,
 ):
     """
-    Configuration Factory for 2DMOT Simulation.
-    Creates an `Atom` and an `Environment` configured with dynamic parameters.
+    Central configuration factory for the Zeeman, 2D-MOT, 3D-MOT,
+    gravity, and boundary-condition environment.
 
     Defaults:
         - Atom: 'Yb171'
@@ -88,9 +96,8 @@ def build_base_config(
     # --- 4. 3D MOT Lasers Config ---
     if include_3dmot:
         mot3d_beams = setup_3dmot_lasers(
-            s0_399=_3d_mot_config["399"]["s0"], detuning_gamma_399=_3d_mot_config["399"]["detuning_gamma"], waist_399=_3d_mot_config["399"]["waist_m"], enabled_399=_3d_mot_config["399"]["enabled"],
-            s0_556=_3d_mot_config["556"]["s0"], detuning_gamma_556=_3d_mot_config["556"]["detuning_gamma"], waist_556=_3d_mot_config["556"]["waist_m"], enabled_556=_3d_mot_config["556"]["enabled"],
-            atom_species_name=atom_name
+            mot_3d_config=_3d_mot_config,
+            center_position=_3d_mot_config.get("center_position_m", Geometry.MOT_3D_CENTER_M),
         )
     else:
         mot3d_beams = []
@@ -167,7 +174,7 @@ def build_base_config(
 def build_2dmot_config(
     s0=MOT_2D_LASER_CONFIG["s0"],
     detuning_gamma=MOT_2D_LASER_CONFIG["detuning_gamma"],
-    magnet_radius=0.055,
+    magnet_radius=MOT_2D_MAGNET_RADIUS_M,
 ):
     """Build a configuration that contains only the 2D MOT components."""
     atom, config = build_base_config(
@@ -192,7 +199,7 @@ def build_2dmot_config(
 def build_zeeman_config(
     s0_zeeman=ZEEMAN_LASER_CONFIG["s0"],
     detuning_gamma_zeeman=ZEEMAN_LASER_CONFIG["detuning_gamma"],
-    magnet_radius=0.055,
+    magnet_radius=MOT_2D_MAGNET_RADIUS_M,
     gravity_enabled=False,
     radii=None,
     positions=None,

@@ -1,83 +1,254 @@
 import numpy as np
 from lab_setup.zeeman_laser_setup import CircularGaussianBeam
 from atomsmltr.environment.lasers.polarization import CircularRight
-from config import BLUE_TRANSITION, GREEN_TRANSITION, BLUE_CALCULATED_SATURATION_INTENSITY_W_M2, GREEN_SATURATION_INTENSITY_W_M2
+from config import (
+    ACTIVE_MOT_3D_CONFIGURATION,
+    MOT_3D_CONFIGURATIONS,
+    BLUE_TRANSITION,
+    GREEN_TRANSITION,
+    BLUE_SATURATION_INTENSITY_MW_CM2,
+    GREEN_SATURATION_INTENSITY_W_M2,
+)
 
-def setup_3dmot_lasers(
-    center_position=(0.0, 0.0, 0.0),
-    s0_399=0.5,
-    detuning_gamma_399=-1.0,
-    waist_399=0.01,
-    enabled_399=True,
-    s0_556=5.0,
-    detuning_gamma_556=-10.0,
-    waist_556=0.015,
-    enabled_556=True,
-    atom_species_name="Yb171"
-):
+
+class AnnularGaussianBeam(CircularGaussianBeam):
+    """A provisional annular beam profile for the blue MOT beam.
+
+    The projected intensity is a Gaussian ring about the propagation axis.
+    This is intentionally a project-side approximation until the final
+    experimental beam shape is established.
     """
-    Set up the proposal-grounded 3D MOT beam geometry.
 
-    The proposal describes the 3D MOT as three orthogonal pairs of
-    counter-propagating beams and later adds a 556 nm narrow-line core MOT.
-    We therefore build six orthogonal beam directions (±X, ±Y, ±Z), with
-    optional overlapping 399 nm and 556 nm beams on each axis.
-    """
-    del detuning_gamma_399, detuning_gamma_556, atom_species_name
+    def __init__(
+        self,
+        wavelength=399e-9,
+        waist=1e-3,
+        power=1e-3,
+        waist_position=None,
+        direction=None,
+        direction_type="vector",
+        polarization=None,
+        tag=None,
+        ring_radius=1e-3,
+        ring_width=1e-3,
+        **kwargs,
+    ):
+        self.ring_radius = float(ring_radius)
+        self.ring_width = float(ring_width)
+        if self.ring_radius <= 0.0:
+            raise ValueError("ring_radius must be positive.")
+        if self.ring_width <= 0.0:
+            raise ValueError("ring_width must be positive.")
+        self._peak_intensity = float(power)
+        super().__init__(
+            wavelength=wavelength,
+            waist=waist,
+            power=power,
+            waist_position=waist_position,
+            direction=direction,
+            direction_type=direction_type,
+            polarization=polarization,
+            tag=tag,
+            **kwargs,
+        )
 
-    center_position = np.asarray(center_position, dtype=float)
-    peak_intensity_399 = s0_399 * BLUE_CALCULATED_SATURATION_INTENSITY_W_M2
-    peak_intensity_556 = s0_556 * GREEN_SATURATION_INTENSITY_W_M2
+    @property
+    def type(self):
+        return "Annular Gaussian Beam"
 
-    beams = []
+    @property
+    def disp_type(self):
+        return "Annular beam"
 
-    beam_axes = [
-        ("+X", (1.0, 0.0, 0.0)),
-        ("-X", (-1.0, 0.0, 0.0)),
-        ("+Y", (0.0, 1.0, 0.0)),
-        ("-Y", (0.0, -1.0, 0.0)),
-        ("+Z", (0.0, 0.0, 1.0)),
-        ("-Z", (0.0, 0.0, -1.0)),
+    @staticmethod
+    def _intensity_func(self, position):
+        position_laser = self._convert_coordinates_to_laser_frame(position)
+        x_laser, y_laser, z_laser = position_laser.T
+        rho_laser = np.sqrt(x_laser**2 + y_laser**2)
+        ring_intensity = np.exp(
+            -2.0 * (rho_laser - self.ring_radius) ** 2 / self.ring_width**2
+        )
+        # The annular Gaussian is defined with its peak at rho = ring_radius.
+        # The requested peak intensity must therefore be the multiplicative
+        # factor in the profile, not an approximate ring-area formula.
+        peak_intensity = float(getattr(self, "_peak_intensity", self.power))
+        intensity = peak_intensity * ring_intensity
+        return intensity.T
+
+    def set_power_from_peak_I(self, target_I0):
+        if target_I0 < 0.0:
+            raise ValueError("target peak intensity must be non-negative.")
+        self._peak_intensity = float(target_I0)
+        # Keep a positive power value for atomsmltr compatibility, but the
+        # actual beam intensity is controlled by the stored peak intensity.
+        self.power = max(
+            float(target_I0) * (np.pi * self.ring_width**2) / 2.0,
+            np.finfo(float).tiny,
+        )
+
+
+def _normalize_vector(vec):
+    vec = np.asarray(vec, dtype=float)
+    norm = np.linalg.norm(vec)
+    if norm == 0.0:
+        raise ValueError("Direction vector must be non-zero.")
+    return vec / norm
+
+
+def _orthogonal_counterpropagating_directions():
+    return [
+        ("+X", _normalize_vector((1.0, 0.0, 0.0))),
+        ("-X", _normalize_vector((-1.0, 0.0, 0.0))),
+        ("+Y", _normalize_vector((0.0, 1.0, 0.0))),
+        ("-Y", _normalize_vector((0.0, -1.0, 0.0))),
+        ("+Z", _normalize_vector((0.0, 0.0, 1.0))),
+        ("-Z", _normalize_vector((0.0, 0.0, -1.0))),
     ]
+
+
+def _angled_xz_y_directions(theta_deg):
+    theta = np.deg2rad(float(theta_deg))
+    s = np.sin(theta)
+    c = np.cos(theta)
+    return [
+        ("+XZ_1", _normalize_vector((s, 0.0, c))),
+        ("-XZ_1", _normalize_vector((-s, 0.0, -c))),
+        ("+XZ_2", _normalize_vector((-s, 0.0, c))),
+        ("-XZ_2", _normalize_vector((s, 0.0, -c))),
+        ("+Y", _normalize_vector((0.0, 1.0, 0.0))),
+        ("-Y", _normalize_vector((0.0, -1.0, 0.0))),
+    ]
+
+
+def _five_beam_gravity_directions():
+    # Gravity acts along -x, but source position and propagation direction are not
+    # the same quantity. A laser source physically above the MOT can still
+    # propagate downward (-x), while the remaining upward beam is the +x
+    # propagation direction that opposes gravity.
+    return [
+        ("+X", _normalize_vector((1.0, 0.0, 0.0))),
+        ("+Y", _normalize_vector((0.0, 1.0, 0.0))),
+        ("-Y", _normalize_vector((0.0, -1.0, 0.0))),
+        ("+Z", _normalize_vector((0.0, 0.0, 1.0))),
+        ("-Z", _normalize_vector((0.0, 0.0, -1.0))),
+    ]
+
+
+def _get_beam_directions(profile):
+    layout = profile.get("beam_layout", "orthogonal_counterpropagating")
+    if layout == "orthogonal_counterpropagating":
+        return _orthogonal_counterpropagating_directions()
+    if layout == "angled_xz_y":
+        theta_deg = float(profile.get("xz_angle_from_z_deg", 30.0))
+        return _angled_xz_y_directions(theta_deg)
+    if layout == "orthogonal_minus_upper_x":
+        return _five_beam_gravity_directions()
+    raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
+
+
+def _beam_profile_center(profile, wavelength_key, base_center):
+    base_center = np.asarray(base_center, dtype=float)
+    center_override = profile.get("center_position_m", base_center)
+    center = np.asarray(center_override, dtype=float)
+    if profile.get("blue_green_center_separation_m", 0.0) == 0.0:
+        return center.copy()
+    if wavelength_key == "399":
+        offset = -0.5 * profile["blue_green_center_separation_m"]
+    else:
+        offset = 0.5 * profile["blue_green_center_separation_m"]
+    return center + np.array([0.0, 0.0, offset])
+
+
+def setup_3dmot_lasers(mot_3d_config=None, center_position=(0.0, 0.0, 0.0), profile_name=None):
+    """Build the active 3D-MOT beam geometry from a selected profile config.
+
+    Detuning is intentionally not applied here. The selected profile is passed in
+    from the configuration layer, where atom-light coupling and detuning are set
+    in the atomsmltr configuration object.
+    """
+    if mot_3d_config is None:
+        if profile_name is None:
+            profile_name = ACTIVE_MOT_3D_CONFIGURATION
+        mot_3d_config = MOT_3D_CONFIGURATIONS.get(profile_name)
+        if mot_3d_config is None:
+            available = ", ".join(sorted(MOT_3D_CONFIGURATIONS))
+            raise ValueError(
+                f"Unknown 3D-MOT profile '{profile_name}'. Available profiles: {available}"
+            )
+    elif profile_name is not None:
+        selected_profile = MOT_3D_CONFIGURATIONS.get(profile_name)
+        if selected_profile is not None and selected_profile is not mot_3d_config:
+            raise ValueError(
+                "Selected 3D-MOT profile object and profile_name disagree; "
+                "pass one authoritative profile config only."
+            )
+
+    profile = mot_3d_config
+    center_position = np.asarray(center_position, dtype=float)
+    blue_sat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0
+    peak_intensity_399 = profile["399"]["s0"] * blue_sat_W_m2
+    peak_intensity_556 = profile["556"]["s0"] * GREEN_SATURATION_INTENSITY_W_M2
+    beam_axes = _get_beam_directions(profile)
 
     # Because atomsmltr defines circular polarization in each beam's own
     # propagation frame, using the same handedness on a counter-propagating pair
     # produces opposite helicity in the lab frame.
     polarization = CircularRight()
 
-    def make_beam(wavelength, waist, peak_intensity, direction, tag):
-        beam = CircularGaussianBeam(
+    def make_beam(wavelength, waist, peak_intensity, direction, tag, beam_center, profile_kind, ring_radius=None, ring_width=None):
+        beam_cls = AnnularGaussianBeam if profile_kind == "annular" else CircularGaussianBeam
+        beam_kwargs = dict(
             wavelength=wavelength,
             waist=waist,
-            waist_position=center_position,
+            waist_position=beam_center,
             direction_type="vector",
             direction=direction,
             polarization=polarization,
             tag=tag,
         )
+        if profile_kind == "annular":
+            beam_kwargs["ring_radius"] = ring_radius
+            beam_kwargs["ring_width"] = ring_width
+        beam = beam_cls(**beam_kwargs)
+        beam.profile_kind = profile_kind
         beam.set_power_from_peak_I(peak_intensity)
         return beam
 
+    beams = []
     for axis_tag, direction in beam_axes:
-        if enabled_399:
+        beam_399_cfg = profile.get("399", {})
+        beam_556_cfg = profile.get("556", {})
+        axis_components = profile.get("beam_components", {}).get(axis_tag, {})
+
+        if axis_components.get("399_enabled", beam_399_cfg.get("enabled", True)):
+            beam_center = _beam_profile_center(profile, "399", center_position)
             beams.append(
                 make_beam(
                     wavelength=BLUE_TRANSITION.wavelength_m,
-                    waist=waist_399,
+                    waist=beam_399_cfg.get("waist_m", 0.01),
                     peak_intensity=peak_intensity_399,
                     direction=direction,
                     tag=f"3DMOT_399_{axis_tag}",
+                    beam_center=beam_center,
+                    profile_kind=beam_399_cfg.get("profile", "gaussian"),
+                    ring_radius=beam_399_cfg.get("ring_radius_m", 2.5e-3),
+                    ring_width=beam_399_cfg.get("ring_width_m", 1.0e-3),
                 )
             )
 
-        if enabled_556:
+        if axis_components.get("556_enabled", beam_556_cfg.get("enabled", True)):
+            beam_center = _beam_profile_center(profile, "556", center_position)
             beams.append(
                 make_beam(
                     wavelength=GREEN_TRANSITION.wavelength_m,
-                    waist=waist_556,
+                    waist=beam_556_cfg.get("waist_m", 0.015),
                     peak_intensity=peak_intensity_556,
                     direction=direction,
                     tag=f"3DMOT_556_{axis_tag}",
+                    beam_center=beam_center,
+                    profile_kind=beam_556_cfg.get("profile", "gaussian"),
+                    ring_radius=beam_399_cfg.get("ring_radius_m", 2.5e-3),
+                    ring_width=beam_399_cfg.get("ring_width_m", 1.0e-3),
                 )
             )
 

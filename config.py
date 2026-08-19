@@ -298,21 +298,114 @@ FORCE_SCALE_N = 3.141895058426422e-20
 
 MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM = 10.0
 
-MOT_3D_LASER_CONFIG = {
-    "center_position_m": Geometry.MOT_3D_CENTER_M,
-    "399": {
-        "enabled": True,
-        "s0": 0.5,
-        "detuning_gamma": -1.0,
-        "waist_m": 0.01,
+# Some 3D-MOT geometry parameters are provisional because the final
+# experimental configuration is still under investigation. They are kept
+# as numeric defaults so each profile remains directly runnable and easy
+# to modify or optimize.
+MOT_3D_CONFIGURATIONS = {
+    "orthogonal_counterpropagating": {
+        "description": "Three orthogonal counter-propagating beam pairs with the current baseline geometry.",
+        "beam_layout": "orthogonal_counterpropagating",
+        "center_position_m": Geometry.MOT_3D_CENTER_M,
+        "399": {
+            "enabled": True,
+            "s0": 0.5,
+            "detuning_gamma": -1.0,
+            "waist_m": 0.01,
+            "profile": "gaussian",
+        },
+        "556": {
+            "enabled": True,
+            "s0": 5.0,
+            "detuning_gamma": -10.0,
+            "waist_m": 0.015,
+            "profile": "gaussian",
+        },
     },
-    "556": {
-        "enabled": True,
-        "s0": 5.0,
-        "detuning_gamma": -10.0,
-        "waist_m": 0.015,
+    "angled_concentric": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis, with the blue annular beam coaxial with the green central beam.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "center_position_m": Geometry.MOT_3D_CENTER_M,
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+            "enabled": True,
+            "s0": 0.5,
+            "detuning_gamma": -1.0,
+            "waist_m": 0.01,
+            "profile": "annular",
+            # Provisional ring parameters kept explicit so the ring geometry is
+            # configurable without guessing a final experimental value.
+            "ring_radius_m": 2.5e-3,  # Provisional — final experimental value TBD
+            "ring_width_m": 1.0e-3,   # Provisional — final experimental value TBD
+        },
+        "556": {
+            "enabled": True,
+            "s0": 5.0,
+            "detuning_gamma": -10.0,
+            "waist_m": 0.015,
+            "profile": "gaussian",
+        },
+    },
+    "angled_sequential": {
+        "description": "Same angled xz+y beam geometry as the concentric case, but with the blue and green cooling regions separated along z.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "center_position_m": Geometry.MOT_3D_CENTER_M,
+        # Provisional value kept explicit and configurable; blue is upstream of green
+        # along +z, so the atom sees blue first and green later.
+        "blue_green_center_separation_m": 5.0e-3,  # Provisional — final experimental separation TBD
+        "399": {
+            "enabled": True,
+            "s0": 0.5,
+            "detuning_gamma": -1.0,
+            "waist_m": 0.01,
+            "profile": "gaussian",
+        },
+        "556": {
+            "enabled": True,
+            "s0": 5.0,
+            "detuning_gamma": -10.0,
+            "waist_m": 0.015,
+            "profile": "gaussian",
+        },
+    },
+    "five_beam_gravity": {
+        "description": "Orthogonal 3D MOT minus the beam propagating in -x; gravity acts along -x, but the missing propagation direction is the downward beam, not the physical source location.",
+        "beam_layout": "orthogonal_minus_upper_x",
+        "gravity_axis": "x",
+        "center_position_m": Geometry.MOT_3D_CENTER_M,
+        "beam_components": {
+            "+X": {"399_enabled": True,  # Provisional — final experimental choice TBD
+                   "556_enabled": True},
+            "+Y": {"399_enabled": True,  # Provisional — final experimental choice TBD
+                   "556_enabled": True},
+            "-Y": {"399_enabled": True,  # Provisional — final experimental choice TBD
+                   "556_enabled": True},
+            "+Z": {"399_enabled": True,  # Provisional — final experimental choice TBD
+                   "556_enabled": True},
+            "-Z": {"399_enabled": True,  # Provisional — final experimental choice TBD
+                   "556_enabled": True},
+        },
+        "399": {
+            "enabled": True,
+            "s0": 0.5,
+            "detuning_gamma": -1.0,
+            "waist_m": 0.01,
+            "profile": "gaussian",
+        },
+        "556": {
+            "enabled": True,
+            "s0": 5.0,
+            "detuning_gamma": -10.0,
+            "waist_m": 0.015,
+            "profile": "gaussian",
+        },
     },
 }
+
+ACTIVE_MOT_3D_CONFIGURATION = "orthogonal_counterpropagating"
+MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,

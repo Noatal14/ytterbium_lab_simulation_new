@@ -10,6 +10,75 @@ from utils.file_helpers import read_data_json
 
 N_ZEEMAN_SURVIVORS = 28261
 
+def largest_rectangle_in_mask(mask, x_grid, y_grid):
+    """
+    Find the largest axis-aligned rectangle fully contained
+    inside a boolean 2D mask.
+
+    Returns
+    -------
+    x_min, x_max, y_min, y_max
+    """
+    rows, cols = mask.shape
+
+    heights = np.zeros(cols, dtype=int)
+
+    best_area = 0
+    best_bounds = None
+
+    for row in range(rows):
+
+        # Histogram of consecutive True cells ending at this row
+        heights = np.where(
+            mask[row],
+            heights + 1,
+            0,
+        )
+
+        stack = []
+
+        for col in range(cols + 1):
+
+            current_height = (
+                heights[col]
+                if col < cols
+                else 0
+            )
+
+            start = col
+
+            while stack and stack[-1][1] > current_height:
+
+                start_idx, height = stack.pop()
+
+                width = col - start_idx
+                area = height * width
+
+                if area > best_area:
+
+                    best_area = area
+
+                    row_bottom = row
+                    row_top = row - height + 1
+
+                    col_left = start_idx
+                    col_right = col - 1
+
+                    best_bounds = (
+                        x_grid[col_left],
+                        x_grid[col_right],
+                        y_grid[row_top],
+                        y_grid[row_bottom],
+                    )
+
+                start = start_idx
+
+            stack.append(
+                (start, current_height)
+            )
+
+    return best_bounds
+
 
 # ============================================================
 # Plot fixed-s0 optimization
@@ -266,34 +335,29 @@ def plot_fixed_s0_optimization(
     )
 
     # ========================================================
-    # Extract 98% region bounds
+    # Largest rectangular region fully inside high-efficiency region
     # ========================================================
 
     if np.any(high_efficiency_mask):
 
-        region_detuning = (
-            X[high_efficiency_mask]
+        rectangle_bounds = largest_rectangle_in_mask(
+            high_efficiency_mask,
+            x_grid,
+            y_grid,
         )
 
-        region_radius = (
-            Y[high_efficiency_mask]
-        )
+        if rectangle_bounds is None:
+            raise RuntimeError(
+                "Could not determine a rectangular "
+                "high-efficiency region."
+            )
 
-        detuning_min = (
-            region_detuning.min()
-        )
-
-        detuning_max = (
-            region_detuning.max()
-        )
-
-        radius_min = (
-            region_radius.min()
-        )
-
-        radius_max = (
-            region_radius.max()
-        )
+        (
+            detuning_min,
+            detuning_max,
+            radius_min,
+            radius_max,
+        ) = rectangle_bounds
 
     else:
 
@@ -338,14 +402,30 @@ def plot_fixed_s0_optimization(
             efficiency_surface,
         )
 
-        ax.contour(
-            X,
-            Y,
-            contour_surface,
-            levels=[region_threshold],
-            linewidths=2.5,
-            zorder=4,
-        )
+        # --------------------------------------------------------
+        # High-efficiency rectangular operating region
+        # --------------------------------------------------------
+
+        if np.any(high_efficiency_mask):
+
+            from matplotlib.patches import Rectangle
+
+            rectangle = Rectangle(
+                (detuning_min, radius_min),
+                detuning_max - detuning_min,
+                radius_max - radius_min,
+                fill=False,
+                linewidth=2.5,
+                edgecolor="purple",
+                linestyle="-",
+                zorder=4,
+                label=(
+                    f"{100 * region_fraction:.0f}% "
+                    "high-efficiency operating region"
+                ),
+            )
+
+            ax.add_patch(rectangle)
 
     # --------------------------------------------------------
     # Best measured trial
@@ -378,7 +458,7 @@ def plot_fixed_s0_optimization(
         )
 
         region_text = (
-            f"{region_percent:.0f}% high-efficiency region\n"
+            f"{region_percent:.0f}% high-efficiency operating range\n"
             f"$\\Delta/\\Gamma$: "
             f"{detuning_min:.3f} to {detuning_max:.3f}\n"
             f"Magnet radius: "
@@ -597,7 +677,12 @@ if __name__ == "__main__":
         1.1,
         1.2,
         1.3,
+        1.35,
+        1.37,
         1.4,
+        1.42,
+        1.45,
+        1.47,
         1.5,
         1.6,
     ]
@@ -628,7 +713,7 @@ if __name__ == "__main__":
             output_dir
             / (
                 "fixed_s0_optimization_"
-                f"{s0:.1f}.png"
+                f"{s0:.2f}.png"
             )
         )
 

@@ -48,6 +48,14 @@ Builds the Zeeman slower beam. It sets the beam direction, waist, polarization, 
 
 Builds 3D MOT laser beams for the final capture region when applicable.
 
+The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
+
+- `angled_concentric`: two xz axes at ±30° from z, one y axis, blue 399-nm annular/donut component plus green 556-nm central component
+- `angled_sequential`: the same angled geometry, but with blue and green cooling regions separated along z by a configurable provisional offset
+- `five_beam_gravity`: orthogonal geometry with the beam that would propagate in the downward -x direction removed; gravity still acts along -x, while the remaining +x beam propagates upward and can oppose gravity
+
+The final experimental geometry is still under investigation, so the ring size, blue/green separation, and per-direction wavelength choices are kept as numeric provisional defaults rather than `None`. This keeps each profile runnable, directly editable, and easy to scan or optimize without changing the simulation logic.
+
 ### `mag_field_2d_mot.py`
 
 Defines the 2D MOT quadrupole magnetic field model. This uses a custom permanent-magnet field representation that matches the simulation geometry.

@@ -226,6 +226,7 @@ def mot_simulation(
     stochastic=True,
     dt=MOT_2D_SIM_CONFIG["dt_s"],
     chunksize=1,
+    seed=DEFAULT_RANDOM_SEED,
 ):
     N = len(survivor_states)
 
@@ -271,6 +272,7 @@ def mot_simulation(
         npools=npools,
         seed_idx=DEFAULT_RANDOM_SEED,
         chunksize=chunksize,
+        seed_idx=DEFAULT_RANDOM_SEED,
     )
 
     mot_survivor_states, count, _ = mot_extract_survivors(res)
@@ -300,7 +302,7 @@ def mot_3d_simulation(
 
         include_zeeman=True,
         include_2d_mot=True,
-        include_3dmot=False,
+        include_3dmot=True,
 
         gravity_enabled=gravity_enabled,
         magnet_radius=MOT_2D_MAGNET_RADIUS_M,
