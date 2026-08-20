@@ -1,0 +1,200 @@
+{
+  "configuration": {
+    "s0": 1.4,
+    "detuning_gamma": -1.161,
+    "magnet_radius": 0.05017,
+    "N_zeeman_survivors": 28261,
+    "mot_dt_s": 1e-05
+  },
+  "results": [
+    {
+      "seed": 1030,
+      "success_count": 698,
+      "capture_efficiency": 0.02469834754608825,
+      "capture_efficiency_percent": 2.469834754608825
+    },
+    {
+      "seed": 1031,
+      "success_count": 638,
+      "capture_efficiency": 0.022575280421782667,
+      "capture_efficiency_percent": 2.257528042178267
+    },
+    {
+      "seed": 1032,
+      "success_count": 642,
+      "capture_efficiency": 0.022716818230069706,
+      "capture_efficiency_percent": 2.2716818230069706
+    },
+    {
+      "seed": 1033,
+      "success_count": 692,
+      "capture_efficiency": 0.024486040833657692,
+      "capture_efficiency_percent": 2.4486040833657694
+    },
+    {
+      "seed": 1034,
+      "success_count": 682,
+      "capture_efficiency": 0.024132196312940096,
+      "capture_efficiency_percent": 2.4132196312940097
+    },
+    {
+      "seed": 1035,
+      "success_count": 676,
+      "capture_efficiency": 0.023919889600509538,
+      "capture_efficiency_percent": 2.391988960050954
+    },
+    {
+      "seed": 1036,
+      "success_count": 639,
+      "capture_efficiency": 0.02261066487385443,
+      "capture_efficiency_percent": 2.2610664873854427
+    },
+    {
+      "seed": 1037,
+      "success_count": 681,
+      "capture_efficiency": 0.024096811860868334,
+      "capture_efficiency_percent": 2.4096811860868335
+    },
+    {
+      "seed": 1038,
+      "success_count": 693,
+      "capture_efficiency": 0.02452142528572945,
+      "capture_efficiency_percent": 2.452142528572945
+    },
+    {
+      "seed": 1039,
+      "success_count": 634,
+      "capture_efficiency": 0.02243374261349563,
+      "capture_efficiency_percent": 2.243374261349563
+    },
+    {
+      "seed": 1040,
+      "success_count": 658,
+      "capture_efficiency": 0.02328296946321786,
+      "capture_efficiency_percent": 2.328296946321786
+    },
+    {
+      "seed": 1041,
+      "success_count": 666,
+      "capture_efficiency": 0.023566045079791938,
+      "capture_efficiency_percent": 2.3566045079791937
+    },
+    {
+      "seed": 1042,
+      "success_count": 664,
+      "capture_efficiency": 0.02349527617564842,
+      "capture_efficiency_percent": 2.3495276175648416
+    },
+    {
+      "seed": 1043,
+      "success_count": 669,
+      "capture_efficiency": 0.02367219843600722,
+      "capture_efficiency_percent": 2.3672198436007217
+    },
+    {
+      "seed": 1044,
+      "success_count": 654,
+      "capture_efficiency": 0.023141431654930822,
+      "capture_efficiency_percent": 2.314143165493082
+    },
+    {
+      "seed": 1045,
+      "success_count": 681,
+      "capture_efficiency": 0.024096811860868334,
+      "capture_efficiency_percent": 2.4096811860868335
+    },
+    {
+      "seed": 1046,
+      "success_count": 647,
+      "capture_efficiency": 0.022893740490428506,
+      "capture_efficiency_percent": 2.2893740490428507
+    },
+    {
+      "seed": 1047,
+      "success_count": 685,
+      "capture_efficiency": 0.024238349669155373,
+      "capture_efficiency_percent": 2.4238349669155372
+    },
+    {
+      "seed": 1048,
+      "success_count": 638,
+      "capture_efficiency": 0.022575280421782667,
+      "capture_efficiency_percent": 2.257528042178267
+    },
+    {
+      "seed": 1049,
+      "success_count": 661,
+      "capture_efficiency": 0.02338912281943314,
+      "capture_efficiency_percent": 2.338912281943314
+    },
+    {
+      "seed": 1050,
+      "success_count": 677,
+      "capture_efficiency": 0.023955274052581296,
+      "capture_efficiency_percent": 2.3955274052581297
+    },
+    {
+      "seed": 1051,
+      "success_count": 679,
+      "capture_efficiency": 0.024026042956724815,
+      "capture_efficiency_percent": 2.4026042956724813
+    },
+    {
+      "seed": 1052,
+      "success_count": 665,
+      "capture_efficiency": 0.02353066062772018,
+      "capture_efficiency_percent": 2.353066062772018
+    },
+    {
+      "seed": 1053,
+      "success_count": 653,
+      "capture_efficiency": 0.023106047202859064,
+      "capture_efficiency_percent": 2.3106047202859066
+    },
+    {
+      "seed": 1054,
+      "success_count": 664,
+      "capture_efficiency": 0.02349527617564842,
+      "capture_efficiency_percent": 2.3495276175648416
+    },
+    {
+      "seed": 1055,
+      "success_count": 694,
+      "capture_efficiency": 0.02455680973780121,
+      "capture_efficiency_percent": 2.455680973780121
+    },
+    {
+      "seed": 1056,
+      "success_count": 670,
+      "capture_efficiency": 0.02370758288807898,
+      "capture_efficiency_percent": 2.370758288807898
+    },
+    {
+      "seed": 1057,
+      "success_count": 658,
+      "capture_efficiency": 0.02328296946321786,
+      "capture_efficiency_percent": 2.328296946321786
+    },
+    {
+      "seed": 1058,
+      "success_count": 710,
+      "capture_efficiency": 0.025122960970949366,
+      "capture_efficiency_percent": 2.5122960970949366
+    },
+    {
+      "seed": 1059,
+      "success_count": 675,
+      "capture_efficiency": 0.023884505148437776,
+      "capture_efficiency_percent": 2.3884505148437776
+    }
+  ],
+  "statistics": {
+    "n_completed_seeds": 30,
+    "mean_capture_efficiency": 0.02364035242914263,
+    "mean_capture_efficiency_percent": 2.3640352429142633,
+    "std_capture_efficiency": 0.0006988703427212884,
+    "std_capture_efficiency_percent": 0.06988703427212883,
+    "sem_capture_efficiency": 0.00012759568382660535,
+    "sem_capture_efficiency_percent": 0.012759568382660534
+  }
+}
