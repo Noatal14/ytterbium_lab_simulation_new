@@ -24,7 +24,6 @@ def run_multiple_atoms_simulation(
         time_points = None, 
         sim_function = ScipyIVP_3DCustom,
         npools = 0,
-        chunksize=1,
     ):
     sim = sim_function(config)
     sim.seed_idx = seed_idx
@@ -32,7 +31,7 @@ def run_multiple_atoms_simulation(
     sim.rng = np.random.default_rng(seed_idx)
     sim.u0_list = u0
 
-    res = sim.run(time_points, npools=npools, verbose=True, chunksize=chunksize)
+    res = sim.run(time_points, npools=npools, verbose=True)
     return res, sim
 
 def entry_initial_condition(v0=50.0, r0=0.10, angle_deg=25.0, pos_offset=(0.0, 0.0, 0.0), angle_offset=(0.0, 0.0)):

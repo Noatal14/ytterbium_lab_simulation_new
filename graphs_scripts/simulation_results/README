@@ -1,1 +1,0 @@
-This folder contains the data used to validate the split simulation approach. The results are compared against Simulation 3 from the previous project, which models the complete apparatus in a single end-to-end simulation, to ensure that separating the Zeeman slower and 2D MOT simulations does not introduce significant discrepancies.

@@ -311,14 +311,14 @@ MOT_3D_CONFIGURATIONS = {
             "enabled": True,
             "s0": 0.5,
             "detuning_gamma": -1.0,
-            "waist_m": 0.01,
+            "waist_m": 0.015,
             "profile": "gaussian",
         },
         "556": {
             "enabled": True,
             "s0": 5.0,
             "detuning_gamma": -10.0,
-            "waist_m": 0.015,
+            "waist_m": 0.01,
             "profile": "gaussian",
         },
     },
@@ -332,7 +332,7 @@ MOT_3D_CONFIGURATIONS = {
             "enabled": True,
             "s0": 0.5,
             "detuning_gamma": -1.0,
-            "waist_m": 0.01,
+            "waist_m": 0.015,
             "profile": "annular",
             # Provisional ring parameters kept explicit so the ring geometry is
             # configurable without guessing a final experimental value.
@@ -343,7 +343,7 @@ MOT_3D_CONFIGURATIONS = {
             "enabled": True,
             "s0": 5.0,
             "detuning_gamma": -10.0,
-            "waist_m": 0.015,
+            "waist_m": 0.01,
             "profile": "gaussian",
         },
     },
@@ -359,46 +359,48 @@ MOT_3D_CONFIGURATIONS = {
             "enabled": True,
             "s0": 0.5,
             "detuning_gamma": -1.0,
-            "waist_m": 0.01,
+            "waist_m": 0.015,
             "profile": "gaussian",
         },
         "556": {
             "enabled": True,
             "s0": 5.0,
             "detuning_gamma": -10.0,
-            "waist_m": 0.015,
+            "waist_m": 0.01,
             "profile": "gaussian",
         },
     },
     "five_beam_gravity": {
-        "description": "Orthogonal 3D MOT minus the beam propagating in -x; gravity acts along -x, but the missing propagation direction is the downward beam, not the physical source location.",
-        "beam_layout": "orthogonal_minus_upper_x",
+        "description": "Five-beam 3D MOT with the -x beam removed. The two counter-propagating axes in the yz plane are mutually orthogonal and rotated by 45 degrees from the atomic +z transport axis.",
+        "beam_layout": "rotated_yz_minus_upper_x",
         "gravity_axis": "x",
+        "transport_axis": "z",
+        "in_plane_rotation_deg": 45.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "beam_components": {
             "+X": {"399_enabled": True,  # Provisional — final experimental choice TBD
                    "556_enabled": True},
-            "+Y": {"399_enabled": True,  # Provisional — final experimental choice TBD
+            "+YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
                    "556_enabled": True},
-            "-Y": {"399_enabled": True,  # Provisional — final experimental choice TBD
+            "-YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
                    "556_enabled": True},
-            "+Z": {"399_enabled": True,  # Provisional — final experimental choice TBD
+            "+YZ_2": {"399_enabled": True,  # Provisional — final experimental choice TBD
                    "556_enabled": True},
-            "-Z": {"399_enabled": True,  # Provisional — final experimental choice TBD
+            "-YZ_2": {"399_enabled": True,  # Provisional — final experimental choice TBD
                    "556_enabled": True},
         },
         "399": {
             "enabled": True,
             "s0": 0.5,
             "detuning_gamma": -1.0,
-            "waist_m": 0.01,
+            "waist_m": 0.015,
             "profile": "gaussian",
         },
         "556": {
             "enabled": True,
             "s0": 5.0,
             "detuning_gamma": -10.0,
-            "waist_m": 0.015,
+            "waist_m": 0.01,
             "profile": "gaussian",
         },
     },
@@ -410,6 +412,15 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
+}
+
+# Provisional operational definition of 3D-MOT capture. These values are
+# intentionally centralized here so they can be tuned against simulation and
+# experiment without changing the stage implementation.
+MOT_3D_CAPTURE_CONFIG = {
+    "capture_radius_m": 5e-3,
+    "minimum_residence_time_s": 5e-3,
+    "maximum_final_speed_m_s": 1.0,
 }
 
 

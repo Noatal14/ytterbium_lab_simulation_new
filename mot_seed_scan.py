@@ -14,7 +14,8 @@ from pathlib import Path
 import numpy as np
 
 from config import MOT_2D_SIM_CONFIG
-from split_simulation import mot_simulation
+from mot_2d_simulation import mot_simulation
+from utils.data_paths import SEED_SCAN_DIR, production_zeeman_states_file
 from utils.file_helpers import save_file_json
 
 
@@ -22,11 +23,8 @@ from utils.file_helpers import save_file_json
 # Fixed production input
 # ============================================================
 
-ZEEMAN_SURVIVORS_FILE = (
-    "data/production_zeeman_survivors_50k_dt40us.npy"
-)
+ZEEMAN_SURVIVORS_FILE = production_zeeman_states_file()
 
-CHUNKSIZE = 1
 
 
 # ============================================================
@@ -81,7 +79,7 @@ def parse_args():
     parser.add_argument(
         "--output",
         type=str,
-        default="data/mot_seed_scan.json",
+        default=str(SEED_SCAN_DIR / "mot_seed_scan.json"),
         help="Output JSON file",
     )
 
@@ -130,7 +128,6 @@ def run_one_seed(
         stochastic=True,
         npools=npools,
         dt=MOT_2D_SIM_CONFIG["dt_s"],
-        chunksize=CHUNKSIZE,
         seed=seed,
     )
 

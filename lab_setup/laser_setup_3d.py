@@ -125,12 +125,18 @@ def _five_beam_gravity_directions():
     # the same quantity. A laser source physically above the MOT can still
     # propagate downward (-x), while the remaining upward beam is the +x
     # propagation direction that opposes gravity.
+    #
+    # The other two counter-propagating axes lie in the yz plane, perpendicular
+    # to gravity. They are rotated by 45 degrees from the atomic +z transport
+    # axis. The axes remain mutually orthogonal, but no beam is parallel or
+    # antiparallel to the atomic transport direction.
+    diagonal = 1.0 / np.sqrt(2.0)
     return [
         ("+X", _normalize_vector((1.0, 0.0, 0.0))),
-        ("+Y", _normalize_vector((0.0, 1.0, 0.0))),
-        ("-Y", _normalize_vector((0.0, -1.0, 0.0))),
-        ("+Z", _normalize_vector((0.0, 0.0, 1.0))),
-        ("-Z", _normalize_vector((0.0, 0.0, -1.0))),
+        ("+YZ_1", _normalize_vector((0.0, diagonal, diagonal))),
+        ("-YZ_1", _normalize_vector((0.0, -diagonal, -diagonal))),
+        ("+YZ_2", _normalize_vector((0.0, -diagonal, diagonal))),
+        ("-YZ_2", _normalize_vector((0.0, diagonal, -diagonal))),
     ]
 
 
@@ -141,7 +147,7 @@ def _get_beam_directions(profile):
     if layout == "angled_xz_y":
         theta_deg = float(profile.get("xz_angle_from_z_deg", 30.0))
         return _angled_xz_y_directions(theta_deg)
-    if layout == "orthogonal_minus_upper_x":
+    if layout == "rotated_yz_minus_upper_x":
         return _five_beam_gravity_directions()
     raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
 
@@ -196,7 +202,7 @@ def _validate_profile(profile):
             if float(value) <= 0.0:
                 raise ValueError(f"399.{key} must be positive.")
 
-    if layout == "orthogonal_minus_upper_x":
+    if layout == "rotated_yz_minus_upper_x":
         components = profile.get("beam_components")
         if not isinstance(components, dict):
             raise ValueError("five_beam_gravity requires beam_components.")

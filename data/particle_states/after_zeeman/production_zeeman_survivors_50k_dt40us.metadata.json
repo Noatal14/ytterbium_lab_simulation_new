@@ -1,0 +1,36 @@
+{
+  "state_file": "production_zeeman_survivors_50k_dt40us.npy",
+  "purpose": "Accepted fixed Zeeman-survivor ensemble used as input for production 2D-MOT optimization and stochastic seed scans",
+  "stage": "after_zeeman",
+  "accepted_project_data": true,
+  "shape": [
+    28261,
+    6
+  ],
+  "dtype": "float64",
+  "column_order": [
+    "x_m",
+    "y_m",
+    "z_m",
+    "vx_m_s",
+    "vy_m_s",
+    "vz_m_s"
+  ],
+  "sha256": "f7f7968c976bdb82c8ce193373309eb6a97a0e672bd850ffa7ee582cba5ce119",
+  "generated_on": "Technion Zeus HPC cluster",
+  "generated_at": "2026-08-15T11:56:00+03:00",
+  "generation": {
+    "initial_particle_count": 50000,
+    "survivor_count": 28261,
+    "zeeman_timestep_s": 0.00004,
+    "stochastic": true,
+    "random_seed": 42,
+    "collimation_angle_deg": 1.5,
+    "npools": 80,
+    "python_entry_point": "split_simulation.py",
+    "mode": "generate_zeeman_survivors",
+    "pbs_script": "~/generate_production_zeeman_survivors.pbs",
+    "code_commit": null
+  },
+  "provenance_note": "The PBS command and output file establish the run parameters, shape, dtype, timestamp, and checksum. The command did not print the Git commit. Repository chronology suggests commit 57db8ffb8b77852e5e02ce1f8a9cf04f24a1cdc5, but this is not recorded as authoritative. The omitted seed and collimation arguments resolved to defaults 42 and 1.5 in the code version current immediately before the run."
+}

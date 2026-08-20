@@ -11,7 +11,7 @@ from utils.file_helpers import read_data_json
 # ============================================================
 
 RESULTS_FILE = Path(
-    "data/mot_optimization_s0max1p5_summary.json"
+    "data/optimization/mot_optimization_s0max1p5_summary.json"
 )
 
 N_ZEEMAN_SURVIVORS = 28261

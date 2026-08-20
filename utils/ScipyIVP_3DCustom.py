@@ -11,7 +11,6 @@ class ScipyIVP_3DCustom(ScipyIVP_3D):
         u0_list: list = None,
         npools: int = 0,
         verbose: bool = False,
-        chunksize: int = 1
     ) -> list:
         """Runs a batch of simulations from a list of initial conditions
 
@@ -68,13 +67,13 @@ class ScipyIVP_3DCustom(ScipyIVP_3D):
                 Nmax = len(self.u0_list)
                 res_list = []
                 with Pool(npools) as p, tqdm(total=Nmax) as pbar:
-                    for res in p.imap(map_fun, self.u0_list, chunksize=chunksize):
+                    for res in p.imap(map_fun, self.u0_list):
                         pbar.update()
                         pbar.refresh()
                         res_list.append(res)
             else:
                 with Pool(npools) as p:
-                    res_list = p.map(map_fun, self.u0_list, chunksize=chunksize)
+                    res_list = list(p.imap(map_fun, self.u0_list))
         else:
             res_list = []
             u0_list = tqdm(self.u0_list) if verbose else self.u0_list

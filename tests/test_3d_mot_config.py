@@ -89,28 +89,41 @@ def test_angled_sequential_has_separated_blue_and_green_centers():
 
 def test_five_beam_gravity_removes_upper_x_beam_only():
     profile = _resolved_profile("five_beam_gravity")
-    assert profile["beam_layout"] == "orthogonal_minus_upper_x"
+    assert profile["beam_layout"] == "rotated_yz_minus_upper_x"
     beams = setup_3dmot_lasers(
         mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
     )
     directions = _unique_directions(beams)
 
     assert len(directions) == 5
+    diagonal = np.round(np.sqrt(0.5), 12)
     assert set(directions) == {
         (1.0, 0.0, 0.0),
-        (0.0, 1.0, 0.0),
-        (0.0, -1.0, 0.0),
-        (0.0, 0.0, 1.0),
-        (0.0, 0.0, -1.0),
+        (0.0, diagonal, diagonal),
+        (0.0, -diagonal, -diagonal),
+        (0.0, -diagonal, diagonal),
+        (0.0, diagonal, -diagonal),
     }
     assert (-1.0, 0.0, 0.0) not in directions
 
-    profile["beam_components"]["+Y"]["399_enabled"] = False
+    positive_z_axes = [
+        np.asarray(direction)
+        for direction in directions
+        if np.isclose(direction[2], diagonal)
+    ]
+    assert len(positive_z_axes) == 2
+    assert all(
+        np.isclose(_axis_angle_deg(direction), 45.0)
+        for direction in positive_z_axes
+    )
+    assert np.isclose(np.dot(positive_z_axes[0], positive_z_axes[1]), 0.0)
+
+    profile["beam_components"]["+YZ_1"]["399_enabled"] = False
     beams = setup_3dmot_lasers(
         mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
     )
-    assert not any("3DMOT_399_+Y" in beam.tag for beam in beams)
-    assert any("3DMOT_556_+Y" in beam.tag for beam in beams)
+    assert not any("3DMOT_399_+YZ_1" in beam.tag for beam in beams)
+    assert any("3DMOT_556_+YZ_1" in beam.tag for beam in beams)
 
 
 def test_active_angled_profile_emits_expected_vectors():

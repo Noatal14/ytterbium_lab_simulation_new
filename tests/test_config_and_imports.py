@@ -16,7 +16,9 @@ def test_authoritative_force_scale_and_defaults_are_exposed():
 def test_main_active_modules_import_cleanly():
     modules = [
         "split_simulation",
-        "full_simulation",
+        "zeeman_simulation",
+        "mot_2d_simulation",
+        "mot_3d_simulation",
         "optimize_2d_mot",
         "optimize_2d_mot_fixed_s0",
         "thermal_beam",
@@ -34,11 +36,11 @@ def test_active_config_names_match_main_workflow():
 
 
 def test_mot_simulation_forwards_requested_seed(monkeypatch):
-    split_simulation = importlib.import_module("split_simulation")
+    mot_2d_simulation = importlib.import_module("mot_2d_simulation")
     captured = {}
 
     monkeypatch.setattr(
-        split_simulation,
+        mot_2d_simulation,
         "build_base_config",
         lambda **kwargs: (None, object()),
     )
@@ -48,17 +50,17 @@ def test_mot_simulation_forwards_requested_seed(monkeypatch):
         return [], None
 
     monkeypatch.setattr(
-        split_simulation,
+        mot_2d_simulation,
         "run_multiple_atoms_simulation",
         fake_run_multiple_atoms_simulation,
     )
     monkeypatch.setattr(
-        split_simulation,
+        mot_2d_simulation,
         "mot_extract_survivors",
         lambda results: (np.empty((0, 6)), 0, []),
     )
 
-    split_simulation.mot_simulation(
+    mot_2d_simulation.mot_simulation(
         survivor_states=np.zeros((1, 6)),
         seed=137,
     )

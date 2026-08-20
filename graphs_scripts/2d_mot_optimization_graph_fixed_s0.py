@@ -608,7 +608,7 @@ def plot_fixed_s0_optimization(
 
 def load_fixed_s0_results(
     s0,
-    data_dir="data",
+    data_dir="data/optimization",
 ):
     """
     Load fixed-s0 optimization results from the JSON summary.
@@ -722,7 +722,7 @@ if __name__ == "__main__":
             detuning=detuning,
             magnet_radius=magnet_radius,
             success_count=success_count,
-            region_fraction=0.99,
+            region_fraction=0.98,
             region_density_threshold=0.15,
             save_path=save_path,
         )

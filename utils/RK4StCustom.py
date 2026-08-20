@@ -194,7 +194,6 @@ class RK4StCustom(RK4St):
         u0_list: list = None,
         npools: int = 0,
         verbose: bool = False,
-        chunksize: int = 1,
     ) -> list:
         """
         Run a batch of stochastic trajectories.
@@ -206,7 +205,6 @@ class RK4StCustom(RK4St):
 
         - the worker that evaluates it,
         - npools,
-        - chunksize,
         - multiprocessing scheduling.
 
         In the parallel case, the simulator object and time grid are
@@ -268,7 +266,6 @@ class RK4StCustom(RK4St):
                     for res in p.imap(
                         _worker_integrate,
                         tasks,
-                        chunksize=chunksize,
                     ):
 
                         res_list.append(res)
@@ -283,11 +280,7 @@ class RK4StCustom(RK4St):
                     initargs=(self, t),
                 ) as p:
 
-                    res_list = p.map(
-                        _worker_integrate,
-                        tasks,
-                        chunksize=chunksize,
-                    )
+                    res_list = list(p.imap(_worker_integrate, tasks))
 
         # ----------------------------------------------------
         # Serial execution

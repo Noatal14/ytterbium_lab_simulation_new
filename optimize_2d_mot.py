@@ -21,22 +21,20 @@ from config import (
 )
 
 from utils.file_helpers import update_json_file
-from split_simulation import mot_simulation
+from mot_2d_simulation import mot_simulation
+from utils.data_paths import OPTIMIZATION_DIR, production_zeeman_states_file
 
 
 # ============================================================
 # Fixed production inputs
 # ============================================================
 
-ZEEMAN_SURVIVORS_FILE = (
-    "data/production_zeeman_survivors_50k_dt40us.npy"
-)
+ZEEMAN_SURVIVORS_FILE = production_zeeman_states_file()
 # This total-efficiency denominator must match the initial ensemble used to
 # generate ZEEMAN_SURVIVORS_FILE.
 ZEEMAN_SURVIVORS_INITIAL_NUM_PARTICLES = 50_000
 
 MOT_DT = MOT_2D_SIM_CONFIG["dt_s"]  # seconds
-CHUNKSIZE = 1
 
 
 def build_study_name(s0_range, detuning_gamma_range, magnet_radius_range):
@@ -123,7 +121,6 @@ def run_mot(
     print(f"N_zeeman_survivors = {n_survivors}")
     print(f"MOT dt = {MOT_DT:.2e} s")
     print(f"npools = {npools}")
-    print(f"chunksize = {CHUNKSIZE}")
     print("========================================")
 
     _, success_count, _ = mot_simulation(
@@ -137,7 +134,6 @@ def run_mot(
         stochastic=True,
         npools=npools,
         dt=MOT_DT,
-        chunksize=CHUNKSIZE,
     )
 
     mot_given_zeeman_efficiency = (
@@ -173,7 +169,7 @@ def run_mot(
         "total_efficiency": float(total_efficiency),
     }
 
-    save_path = Path("data")
+    save_path = OPTIMIZATION_DIR
     save_path.mkdir(
         parents=True,
         exist_ok=True,
@@ -256,9 +252,10 @@ def optimize_mot(
         seed=DEFAULT_RANDOM_SEED,
     )
 
+    OPTIMIZATION_DIR.mkdir(parents=True, exist_ok=True)
     study = optuna.create_study(
         study_name=study_name,
-        storage="sqlite:///mot_optimization_s0max1p5.db",
+        storage=f"sqlite:///{OPTIMIZATION_DIR}/mot_optimization_s0max1p5.db",
         direction="maximize",
         sampler=sampler,
         load_if_exists=True,
