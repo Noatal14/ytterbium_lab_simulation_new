@@ -111,17 +111,17 @@ defaults. Avoid unexplained constants in simulation scripts.
 
 The production workflow is deliberately split into three stages:
 
-1. `zeeman_simulation.py`
+1. `simulations/zeeman.py`
    - generates a new thermal-beam ensemble;
    - propagates it through the Zeeman stage;
    - saves the Zeeman survivor states.
 
-2. `mot_2d_simulation.py`
+2. `simulations/mot_2d.py`
    - loads any compatible saved `(N, 6)` particle-state array;
    - runs the 2D-MOT stage;
    - saves states that reach the downstream capture region for use by the 3D MOT.
 
-3. `mot_3d_simulation.py`
+3. `simulations/mot_3d.py`
    - loads a saved particle-state ensemble;
    - runs the provisional 3D-MOT configuration;
    - applies the configured capture criterion;
@@ -133,10 +133,10 @@ Particle states use SI units and the column order:
 x, y, z, vx, vy, vz
 ```
 
-`split_simulation.py` is a thin compatibility layer for older combined commands
-and external Zeus workflows. New code should import the appropriate stage module
-directly. `dt_comparison/` is an archive of numerical investigations and is not
-the normal production entry point.
+`simulations/pipeline.py` retains the former combined workflow. New code should
+import the appropriate stage module directly. `studies/` contains research
+workflows built on those stages, while `dt_comparison/` is an archive of numerical
+investigations and is not the normal production entry point.
 
 ## 5. Running the stages locally
 
@@ -144,9 +144,9 @@ Set up Python 3.12 and the local `atomsmltr` package as described in `README.md`
 The default stage sequence is:
 
 ```bash
-python zeeman_simulation.py
-python mot_2d_simulation.py
-python mot_3d_simulation.py
+python -m simulations.zeeman
+python -m simulations.mot_2d
+python -m simulations.mot_3d
 ```
 
 Each script exposes `--help`. Before a large run, verify the input and output
@@ -226,7 +226,7 @@ Photon-scattering recoil is stochastic. Small differences between nearby
 configurations may therefore reflect random realization noise rather than a
 meaningful physical difference.
 
-`mot_seed_scan.py` repeats the same physical 2D-MOT configuration with different
+`python -m studies.mot_seed_scan` repeats the same physical 2D-MOT configuration with different
 random seeds. Use the resulting distribution of captured counts or efficiencies
 to estimate stochastic uncertainty. Report this uncertainty when comparing close
 optimization points or defining a robust near-optimal region.

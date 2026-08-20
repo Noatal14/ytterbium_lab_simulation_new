@@ -27,11 +27,8 @@ current priorities that cannot be inferred safely from code alone.
 ## Repository structure
 
 - `config.py` — the single source of truth for physical constants, atomic parameters, geometry, laser settings, magnetic-field configuration, and runtime defaults.
-- `zeeman_simulation.py` — generates a thermal beam, runs the Zeeman stage, and saves its survivors.
-- `mot_2d_simulation.py` — loads saved states, runs the 2D MOT, and saves states for the 3D MOT.
-- `mot_3d_simulation.py` — runs the 3D MOT, applies the capture criterion, and saves captured states and a summary.
-- `split_simulation.py` — a thin compatibility wrapper for older combined commands and imports.
-- `optimize_2d_mot.py` — Optuna-based optimization of 2D MOT parameters using saved Zeeman-survivor states.
+- `simulations/` — stage engines for the thermal beam, Zeeman slower, 2D MOT, 3D MOT, and the compatibility pipeline.
+- `studies/` — research workflows that use the stage engines for optimization and stochastic-seed analysis.
 - `lab_setup/` — apparatus modeling: laser setup, magnetic-field setup, zones, gravity, and config assembly.
 - `utils/` — shared numerical helper functions, time-grid generation, and simulation utilities.
 - `graphs_scripts/` — plotting and graph-generation scripts for analysis and publication output.
@@ -62,7 +59,7 @@ an ensemble that can be inspected, reused, or replaced before running the next.
 ### 1) Generate and save Zeeman survivors
 
 ```bash
-python zeeman_simulation.py --n_atoms 50000 --output data/particle_states/after_zeeman/zeeman_survivors.npy
+python -m simulations.zeeman --n_atoms 50000 --output data/particle_states/after_zeeman/zeeman_survivors.npy
 ```
 
 This stage always starts from a newly generated thermal beam.
@@ -70,7 +67,7 @@ This stage always starts from a newly generated thermal beam.
 ### 2) Run the 2D MOT from saved states
 
 ```bash
-python mot_2d_simulation.py --input data/particle_states/after_zeeman/zeeman_survivors.npy --output data/particle_states/after_2d_mot/mot_2d_survivors.npy
+python -m simulations.mot_2d --input data/particle_states/after_zeeman/zeeman_survivors.npy --output data/particle_states/after_2d_mot/mot_2d_survivors.npy
 ```
 
 Any compatible `(N, 6)` state array may be supplied as the input.
@@ -78,7 +75,7 @@ Any compatible `(N, 6)` state array may be supplied as the input.
 ### 3) Run the 3D MOT and calculate capture
 
 ```bash
-python mot_3d_simulation.py --input data/particle_states/after_2d_mot/mot_2d_survivors.npy
+python -m simulations.mot_3d --input data/particle_states/after_2d_mot/mot_2d_survivors.npy
 ```
 
 The 3D stage saves the captured states and a JSON summary containing the capture
@@ -89,16 +86,16 @@ and file-path options.
 
 For a new user, the recommended entry points are the three stage scripts:
 
-- `zeeman_simulation.py`
-- `mot_2d_simulation.py`
-- `mot_3d_simulation.py`
+- `python -m simulations.zeeman`
+- `python -m simulations.mot_2d`
+- `python -m simulations.mot_3d`
 
-`split_simulation.py` remains available so existing Zeus commands do not need
-to change immediately.
+The former combined workflow is available as `python -m simulations.pipeline`.
+Existing Zeus PBS commands must be updated to the package-based entry points.
 
 ## Optimization
 
-`optimize_2d_mot.py` is an Optuna-based parameter search for the 2D MOT. It expects a fixed Zeeman-survivor dataset, then scans over values such as:
+`python -m studies.optimize_2d_mot` runs the Optuna-based parameter search for the 2D MOT. It expects a fixed Zeeman-survivor dataset, then scans over values such as:
 
 - `s0` (saturation parameter)
 - `detuning_gamma`
@@ -106,7 +103,7 @@ to change immediately.
 
 It reads the precomputed survivor file and maximizes a capture/success metric for the MOT stage. The script stores optimization summaries under `data/optimization/`; repeated-seed uncertainty results are grouped under `data/optimization/seed_scan/`.
 
-The fixed-s0 companion script, `optimize_2d_mot_fixed_s0.py`, runs the same idea while holding one MOT parameter fixed and optimizing the others.
+The fixed-s0 companion, `python -m studies.optimize_2d_mot_fixed_s0`, runs the same idea while holding one MOT parameter fixed and optimizing the others.
 
 ## Outputs and data
 

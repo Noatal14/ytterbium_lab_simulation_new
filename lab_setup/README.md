@@ -12,7 +12,7 @@ The apparatus model is broken into the following conceptual components:
 - optional 3D MOT field and lasers
 - gravity and simulation boundary conditions
 
-Thermal-beam initial conditions are generated separately in `thermal_beam.py`.
+Thermal-beam initial conditions are generated separately in `simulations/thermal_beam.py`.
 
 These parts are assembled by `config_builder.py` into an atomsmltr `Configuration` object.
 
@@ -76,7 +76,7 @@ Provides the constant gravity force object used by the simulation environment wh
 
 The project does not hardcode a single monolithic environment. Instead, `build_base_config(...)` assembles a configuration object from modular pieces:
 
-- atomic species from `atom_species.py`
+- atomic species from `lab_setup/atom_species.py`
 - laser beams from the laser setup modules
 - magnetic fields from the field modules
 - gravity from `gravity.py`

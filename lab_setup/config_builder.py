@@ -8,7 +8,7 @@ dynamic simulation Environment. Avoids hardcoded static configurations.
 from atomsmltr.simulation import Configuration
 
 # Import all component builders from Steps 1-8
-from atom_species import create_atom
+from lab_setup.atom_species import create_atom
 from lab_setup.laser_setup_2d_mot import setup_2dmot_lasers
 from lab_setup.zeeman_laser_setup import setup_zeeman_laser
 from lab_setup.laser_setup_3d import setup_3dmot_lasers

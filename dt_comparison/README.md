@@ -21,4 +21,4 @@ The code here was used to investigate how different timestep choices, force norm
 
 This directory may not follow the same config refactor conventions as the main production code. Its scripts are historical and exploratory by design.
 
-Do not treat `dt_comparison/` as the canonical workflow. For active simulation and reproducible production runs, start from the root workflow in `split_simulation.py` and the central configuration in `config.py`.
+Do not treat `dt_comparison/` as the canonical workflow. For active simulation and reproducible production runs, use the stage modules under `simulations/` and the central configuration in `config.py`.

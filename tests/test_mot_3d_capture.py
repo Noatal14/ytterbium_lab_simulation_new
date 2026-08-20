@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from mot_3d_simulation import extract_3d_mot_captured
+from simulations.mot_3d import extract_3d_mot_captured
 
 
 def make_trajectory(positions, velocities, times):

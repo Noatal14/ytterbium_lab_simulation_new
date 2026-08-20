@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from thermal_beam import (
+from simulations.thermal_beam import (
     generate_thermal_beam_state,
     microtube_intensity_theta,
     sample_microtube_angles,

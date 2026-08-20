@@ -36,9 +36,9 @@ them to ordinary Git history. Historical optimization summaries are stored in
 ## Stage commands
 
 ```bash
-python zeeman_simulation.py
-python mot_2d_simulation.py
-python mot_3d_simulation.py
+python -m simulations.zeeman
+python -m simulations.mot_2d
+python -m simulations.mot_3d
 ```
 
 Each command accepts ``--input`` and/or ``--output`` options when a non-default

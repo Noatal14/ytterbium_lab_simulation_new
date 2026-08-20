@@ -15,13 +15,15 @@ def test_authoritative_force_scale_and_defaults_are_exposed():
 
 def test_main_active_modules_import_cleanly():
     modules = [
-        "split_simulation",
-        "zeeman_simulation",
-        "mot_2d_simulation",
-        "mot_3d_simulation",
-        "optimize_2d_mot",
-        "optimize_2d_mot_fixed_s0",
-        "thermal_beam",
+        "simulations.pipeline",
+        "simulations.zeeman",
+        "simulations.mot_2d",
+        "simulations.mot_3d",
+        "simulations.thermal_beam",
+        "studies.optimize_2d_mot",
+        "studies.optimize_2d_mot_fixed_s0",
+        "studies.mot_seed_scan",
+        "lab_setup.atom_species",
         "lab_setup.config_builder",
     ]
 
@@ -31,12 +33,12 @@ def test_main_active_modules_import_cleanly():
 
 
 def test_active_config_names_match_main_workflow():
-    split_simulation = importlib.import_module("split_simulation")
-    assert split_simulation.DEFAULT_NUM_PARTICLES == config.DEFAULT_NUM_PARTICLES
+    pipeline = importlib.import_module("simulations.pipeline")
+    assert pipeline.DEFAULT_NUM_PARTICLES == config.DEFAULT_NUM_PARTICLES
 
 
 def test_mot_simulation_forwards_requested_seed(monkeypatch):
-    mot_2d_simulation = importlib.import_module("mot_2d_simulation")
+    mot_2d_simulation = importlib.import_module("simulations.mot_2d")
     captured = {}
 
     monkeypatch.setattr(

@@ -6,7 +6,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.ticker import ScalarFormatter
 from config import YB171_MASS_KG, ZEEMAN_BEAM_DIRECTION, MOT_2D_LASER_CONFIG, ZEEMAN_LASER_CONFIG, ZEEMAN_FIELD_CONFIG, MOT_2D_MAGNET_RADIUS_M
 from dt_comparison.consts import F_scale
-from zeeman_simulation import zeeman_simulation
+from simulations.zeeman import zeeman_simulation
 from utils.file_helpers import read_data_json, save_file_json
 
 def run_zeeman_sim_and_save_data(
