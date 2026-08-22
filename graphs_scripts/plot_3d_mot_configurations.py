@@ -8,9 +8,8 @@ used by ``lab_setup.laser_setup_3d``.
 
 Run from the repository root, for example:
 
-    python plot_3d_mot_configurations.py
-    python plot_3d_mot_configurations.py --config angled_concentric
-    python plot_3d_mot_configurations.py --save --no-show
+    python -m graphs_scripts.plot_3d_mot_configurations
+    python -m graphs_scripts.plot_3d_mot_configurations --config angled_concentric
 
 Coordinates are shown in millimeters relative to the configured 3D-MOT center.
 The beam surfaces are schematic: their transverse size comes from the configured
@@ -61,20 +60,10 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--save",
-        action="store_true",
-        help="Save each figure as a PNG.",
-    )
-    parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("graphs/3d_mot_configurations"),
-        help="Directory used with --save.",
-    )
-    parser.add_argument(
-        "--no-show",
-        action="store_true",
-        help="Do not open interactive plot windows.",
+        default=Path("graphs/mot_3d_configurations"),
+        help="Directory for the generated PNG files.",
     )
     return parser.parse_args()
 
@@ -477,28 +466,18 @@ def main():
     else:
         config_names = [args.config]
 
-    if args.save:
-        args.output_dir.mkdir(parents=True, exist_ok=True)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    figures = []
     for name in config_names:
         fig = plot_configuration(
             name,
             MOT_3D_CONFIGURATIONS[name],
             beam_length_m,
         )
-        figures.append(fig)
-
-        if args.save:
-            output_path = args.output_dir / f"3d_mot_{name}.png"
-            fig.savefig(output_path, dpi=220, bbox_inches="tight")
-            print(f"Saved: {output_path}")
-
-    if not args.no_show:
-        plt.show()
-    else:
-        for fig in figures:
-            plt.close(fig)
+        output_path = args.output_dir / f"3d_mot_{name}.png"
+        fig.savefig(output_path, dpi=220, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved: {output_path}")
 
 
 if __name__ == "__main__":

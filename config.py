@@ -272,11 +272,11 @@ ZEEMAN_SIM_CONFIG = {
 # 6. 2D MOT
 # =============================================================================
 
-MOT_2D_MAGNET_RADIUS_M = 0.053
+MOT_2D_MAGNET_RADIUS_M = 0.0517
 
 MOT_2D_LASER_CONFIG = {
     "s0": 1.4,
-    "detuning_gamma": -1.47,
+    "detuning_gamma": -1.161,
     "swap_polarization": False,
 }
 
