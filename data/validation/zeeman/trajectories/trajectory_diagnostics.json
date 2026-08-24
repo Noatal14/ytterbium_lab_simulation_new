@@ -1,0 +1,89 @@
+{
+  "purpose": "small deterministic on-axis Zeeman trajectory diagnostic",
+  "interpretation": "These mean-force trajectories are a physics diagnostic, not a statistical capture-efficiency estimate. Production runs remain stochastic and multi-seed.",
+  "configuration": {
+    "initial_speeds_m_s": [
+      250.0,
+      290.0,
+      310.0,
+      330.0,
+      350.0
+    ],
+    "dt_s": 4e-05,
+    "t_max_s": 0.02,
+    "start_distance_m": 0.45,
+    "cutoff_distance_m": 0.1,
+    "slowed_exit_speed_threshold_m_s": 80.0,
+    "laser": {
+      "s0": 3.0,
+      "detuning_gamma": -13.75
+    }
+  },
+  "trajectories": [
+    {
+      "requested_initial_speed_m_s": 250.0,
+      "actual_initial_axial_speed_m_s": 250.0,
+      "final_axial_speed_m_s": 48.568365387838405,
+      "minimum_axial_speed_m_s": 48.568365387838405,
+      "closest_distance_from_mot_m": 0.10019557927266154,
+      "axial_speed_at_exit_or_closest_point_m_s": 48.55158955698462,
+      "maximum_radial_displacement_mm": 0.0311380750800092,
+      "reached_cutoff_plane": true,
+      "slowed_below_exit_threshold": true,
+      "solver_success": true,
+      "solver_message": "A termination event occurred."
+    },
+    {
+      "requested_initial_speed_m_s": 290.0,
+      "actual_initial_axial_speed_m_s": 289.99999999999994,
+      "final_axial_speed_m_s": 48.584174974274056,
+      "minimum_axial_speed_m_s": 48.584174974274056,
+      "closest_distance_from_mot_m": 0.10090363314358582,
+      "axial_speed_at_exit_or_closest_point_m_s": 48.506296767597476,
+      "maximum_radial_displacement_mm": 0.02824315200000052,
+      "reached_cutoff_plane": true,
+      "slowed_below_exit_threshold": true,
+      "solver_success": true,
+      "solver_message": "A termination event occurred."
+    },
+    {
+      "requested_initial_speed_m_s": 310.0,
+      "actual_initial_axial_speed_m_s": 309.99999999999994,
+      "final_axial_speed_m_s": 48.64523396526431,
+      "minimum_axial_speed_m_s": 48.64523396526431,
+      "closest_distance_from_mot_m": 0.10104165411047575,
+      "axial_speed_at_exit_or_closest_point_m_s": 48.55562263055848,
+      "maximum_radial_displacement_mm": 0.02730955892000124,
+      "reached_cutoff_plane": true,
+      "slowed_below_exit_threshold": true,
+      "solver_success": true,
+      "solver_message": "A termination event occurred."
+    },
+    {
+      "requested_initial_speed_m_s": 330.0,
+      "actual_initial_axial_speed_m_s": 329.99999999999994,
+      "final_axial_speed_m_s": 288.2750231543603,
+      "minimum_axial_speed_m_s": 288.2750231543603,
+      "closest_distance_from_mot_m": 0.10651667118313525,
+      "axial_speed_at_exit_or_closest_point_m_s": 288.19759728306263,
+      "maximum_radial_displacement_mm": 0.00615073238361832,
+      "reached_cutoff_plane": true,
+      "slowed_below_exit_threshold": false,
+      "solver_success": true,
+      "solver_message": "A termination event occurred."
+    },
+    {
+      "requested_initial_speed_m_s": 350.0,
+      "actual_initial_axial_speed_m_s": 349.99999999999994,
+      "final_axial_speed_m_s": 348.66775893316003,
+      "minimum_axial_speed_m_s": 348.66775893316003,
+      "closest_distance_from_mot_m": 0.1005491364836447,
+      "axial_speed_at_exit_or_closest_point_m_s": 348.664973837357,
+      "maximum_radial_displacement_mm": 0.004903325000000002,
+      "reached_cutoff_plane": true,
+      "slowed_below_exit_threshold": false,
+      "solver_success": true,
+      "solver_message": "A termination event occurred."
+    }
+  ]
+}

@@ -8,9 +8,13 @@ data/
 │   ├── after_zeeman/   # input ensembles for the 2D MOT
 │   ├── after_2d_mot/   # input ensembles for the 3D MOT
 │   └── after_3d_mot/   # captured states and 3D capture summaries
-└── optimization/
-    ├── *.json          # accepted Optuna result summaries
-    └── seed_scan/      # repeated-seed uncertainty results
+├── optimization/
+│   ├── *.json          # accepted Optuna result summaries
+│   └── seed_scan/      # repeated-seed uncertainty results
+└── validation/
+    └── zeeman/         # pre-production field/resonance audit
+        ├── trajectories/ # deterministic single-particle diagnostics
+        └── capture_velocity_scan/ # ideal on-axis capture boundary
 ```
 
 The three state directories are created automatically when a stage saves an
@@ -39,6 +43,9 @@ them to ordinary Git history. Historical optimization summaries are stored in
 python -m simulations.zeeman
 python -m simulations.mot_2d
 python -m simulations.mot_3d
+python -m studies.validate_zeeman_configuration
+python -m studies.diagnose_zeeman_trajectories
+python -m studies.scan_zeeman_capture_velocity
 ```
 
 Each command accepts ``--input`` and/or ``--output`` options when a non-default

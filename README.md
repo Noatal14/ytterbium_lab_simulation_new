@@ -58,6 +58,33 @@ an ensemble that can be inspected, reused, or replaced before running the next.
 
 ### 1) Generate and save Zeeman survivors
 
+Before generating a survivor ensemble, validate the active field, laser,
+polarization, and resonance conventions:
+
+```bash
+python -m studies.validate_zeeman_configuration
+```
+
+This writes a JSON audit and a four-panel diagnostic plot under
+`data/validation/zeeman/`. A `REVIEW_REQUIRED` result must be understood before
+starting convergence or production runs.
+
+Then inspect a few deterministic, on-axis trajectories around the expected
+capture velocity:
+
+```bash
+python -m studies.diagnose_zeeman_trajectories
+```
+
+This is a fast local physics diagnostic, not an estimate of capture efficiency.
+It stores its report and plot under `data/validation/zeeman/trajectories/`.
+
+To bracket the ideal on-axis capture velocity more precisely, run:
+
+```bash
+python -m studies.scan_zeeman_capture_velocity
+```
+
 ```bash
 python -m simulations.zeeman --n_atoms 50000 --output data/particle_states/after_zeeman/zeeman_survivors.npy
 ```

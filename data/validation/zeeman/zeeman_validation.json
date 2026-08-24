@@ -1,0 +1,67 @@
+{
+  "status": "REVIEW_REQUIRED",
+  "base_git_commit": "ea5cd53fa028442570ac641c0faca22030eb66f8",
+  "working_tree_was_dirty": true,
+  "active_magnet_profile": "active",
+  "include_2d_mot_field": true,
+  "configuration": {
+    "magnet_ring_count": 20,
+    "magnet_position_min_m": -0.025,
+    "magnet_position_max_m": 0.16,
+    "laser_s0": 3.0,
+    "laser_detuning_gamma": -13.75,
+    "laser_detuning_MHz": -400.5375,
+    "laser_waist_m": 0.007,
+    "estimated_laser_power_W": 0.13847496390529823,
+    "simulation_start_distance_m": 0.45,
+    "simulation_cutoff_distance_m": 0.1
+  },
+  "directions": {
+    "atom": [
+      -0.0,
+      0.42261826174069944,
+      0.9063077870366499
+    ],
+    "laser": [
+      0.0,
+      -0.42261826174069944,
+      -0.9063077870366499
+    ],
+    "dot_product": -1.0
+  },
+  "targets": {
+    "entry_speed_m_s": 310.0,
+    "exit_speed_m_s": 50.0,
+    "endpoint_tolerance_m_s": 20.0
+  },
+  "diagnostics": {
+    "entry_dominant_resonant_speed_m_s": 319.0480751950061,
+    "exit_dominant_resonant_speed_m_s": 97.45785499471114,
+    "dominant_resonance_rmse_vs_ideal_m_s": 9.812048122825486,
+    "dominant_resonance_nonincreasing_fraction": 0.9405405405405406,
+    "field_norm_min_G": 1.3046979983649445,
+    "field_norm_max_G": 540.4839216840674,
+    "maximum_transverse_field_G": 17.277181966272423,
+    "median_dominant_polarization_weight": 0.9999802151379934,
+    "maximum_scattering_acceleration_m_s2": 401650.51682602905,
+    "required_constant_acceleration_m_s2": 292500.0,
+    "required_to_max_acceleration_ratio": 0.7282450482360352
+  },
+  "checks": {
+    "magnet_arrays_have_equal_length": true,
+    "magnet_profile_has_20_rings": true,
+    "magnet_positions_are_strictly_increasing": true,
+    "magnet_values_are_finite": true,
+    "magnet_radii_are_positive": true,
+    "laser_is_antiparallel_to_atoms": true,
+    "laser_detuning_is_red": true,
+    "sampled_field_is_finite": true,
+    "polarization_is_normalized": true,
+    "entry_resonance_matches_target": true,
+    "exit_resonance_matches_target": false,
+    "required_deceleration_is_below_maximum": true
+  },
+  "warnings": [
+    "Dominant resonant speed at the last magnet ring differs from the target by +47.46 m/s."
+  ]
+}
