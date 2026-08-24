@@ -14,7 +14,8 @@ data/
 └── validation/
     └── zeeman/         # pre-production field/resonance audit
         ├── trajectories/ # deterministic single-particle diagnostics
-        └── capture_velocity_scan/ # ideal on-axis capture boundary
+        ├── capture_velocity_scan/ # ideal on-axis capture boundary
+        └── stochastic_convergence/ # multi-seed RK4 timestep checks
 ```
 
 The three state directories are created automatically when a stage saves an

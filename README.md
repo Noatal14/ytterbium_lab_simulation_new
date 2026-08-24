@@ -85,6 +85,24 @@ To bracket the ideal on-axis capture velocity more precisely, run:
 python -m studies.scan_zeeman_capture_velocity
 ```
 
+Before a new production ensemble, validate the stochastic RK4 timestep with
+several shared seeds. Each cluster task must write a separate result file:
+
+```bash
+python -m studies.zeeman_stochastic_convergence run \
+  --n-atoms 5000 --dt-us 40 --seed 1000 --npools 80
+```
+
+After all timestep/seed jobs finish, aggregate them with:
+
+```bash
+python -m studies.zeeman_stochastic_convergence summarize
+```
+
+The summary reports the mean and 95% across-seed interval for every timestep,
+plus same-seed comparisons against the finest timestep. The convergence jobs
+must use a committed, clean working tree.
+
 ```bash
 python -m simulations.zeeman --n_atoms 50000 --output data/particle_states/after_zeeman/zeeman_survivors.npy
 ```
