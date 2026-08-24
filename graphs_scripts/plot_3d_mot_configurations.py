@@ -9,7 +9,7 @@ used by ``lab_setup.laser_setup_3d``.
 Run from the repository root, for example:
 
     python -m graphs_scripts.plot_3d_mot_configurations
-    python -m graphs_scripts.plot_3d_mot_configurations --config angled_concentric
+    python -m graphs_scripts.plot_3d_mot_configurations --config angled_donut
 
 Coordinates are shown in millimeters relative to the configured 3D-MOT center.
 The beam surfaces are schematic: their transverse size comes from the configured
@@ -143,18 +143,26 @@ def _component_center(profile, wavelength_key):
     )
 
 
+def _intensity_alpha(relative_intensity):
+    """Map normalized intensity to opacity while keeping weak regions visible."""
+    return 0.015 + 0.14 * float(np.clip(relative_intensity, 0.0, 1.0))
+
+
 def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
-    """Draw a schematic Gaussian beam as a translucent cylinder."""
-    x, y, z = _cylinder_surface(source, center, radius_m)
-    ax.plot_surface(
-        x * MM_PER_M,
-        y * MM_PER_M,
-        z * MM_PER_M,
-        color=color,
-        alpha=0.11,
-        linewidth=0,
-        shade=False,
-    )
+    """Draw Gaussian intensity shells whose opacity follows local intensity."""
+    for radius_fraction in np.linspace(1.5, 0.15, 6):
+        radius = radius_fraction * radius_m
+        relative_intensity = np.exp(-2.0 * radius_fraction**2)
+        x, y, z = _cylinder_surface(source, center, radius)
+        ax.plot_surface(
+            x * MM_PER_M,
+            y * MM_PER_M,
+            z * MM_PER_M,
+            color=color,
+            alpha=_intensity_alpha(relative_intensity),
+            linewidth=0,
+            shade=False,
+        )
 
     segment = np.vstack([source, center]) * MM_PER_M
     ax.plot(
@@ -177,35 +185,38 @@ def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
     )
 
 
-def _draw_annular_beam(
+def _draw_donut_beam(
     ax,
     source,
     center,
     direction,
     ring_radius_m,
     ring_width_m,
+    inner_cutoff_radius_m,
     color,
 ):
-    """Draw an annular beam as two coaxial shells plus the ring cross-section."""
-    inner_radius = max(ring_radius_m - ring_width_m, ring_radius_m * 0.15)
-    outer_radius = ring_radius_m + ring_width_m
-
-    for radius in (inner_radius, outer_radius):
+    """Draw a hard-centered Gaussian ring using intensity-dependent opacity."""
+    outer_radius = ring_radius_m + 2.0 * ring_width_m
+    radii = np.linspace(outer_radius, inner_cutoff_radius_m, 7)
+    for radius in radii:
+        relative_intensity = np.exp(
+            -2.0 * (radius - ring_radius_m) ** 2 / ring_width_m**2
+        )
         x, y, z = _cylinder_surface(source, center, radius)
         ax.plot_surface(
             x * MM_PER_M,
             y * MM_PER_M,
             z * MM_PER_M,
             color=color,
-            alpha=0.09,
+            alpha=_intensity_alpha(relative_intensity),
             linewidth=0,
             shade=False,
         )
 
-    for radius, width in (
-        (inner_radius, 1.0),
-        (ring_radius_m, 2.4),
-        (outer_radius, 1.0),
+    for radius, width, linestyle in (
+        (inner_cutoff_radius_m, 1.8, "--"),
+        (ring_radius_m, 2.4, "-"),
+        (outer_radius, 0.8, ":"),
     ):
         circle = _circle_points(center, direction, radius) * MM_PER_M
         ax.plot(
@@ -214,7 +225,8 @@ def _draw_annular_beam(
             circle[:, 2],
             color=color,
             linewidth=width,
-            alpha=0.9,
+            alpha=0.9 if radius == ring_radius_m else 0.6,
+            linestyle=linestyle,
         )
 
     segment = np.vstack([source, center]) * MM_PER_M
@@ -223,8 +235,8 @@ def _draw_annular_beam(
         segment[:, 1],
         segment[:, 2],
         color=color,
-        linewidth=1.4,
-        alpha=0.75,
+        linewidth=1.0,
+        alpha=0.35,
     )
 
     arrow_start = source + 0.68 * (center - source)
@@ -267,6 +279,71 @@ def _draw_coordinate_reference(ax, origin, scale_m):
     )
     gravity_label = origin + gravity * 0.92 * scale_m
     ax.text(*(gravity_label * MM_PER_M), "gravity", color="black", fontsize=9)
+
+
+def _normalized_radial_intensity(cfg, radius_m):
+    """Return the configured transverse intensity normalized to its peak."""
+    if cfg.get("profile", "gaussian") == "donut":
+        intensity = np.exp(
+            -2.0
+            * (radius_m - float(cfg["ring_radius_m"])) ** 2
+            / float(cfg["ring_width_m"]) ** 2
+        )
+        return np.where(
+            radius_m < float(cfg["inner_cutoff_radius_m"]),
+            0.0,
+            intensity,
+        )
+    return np.exp(-2.0 * radius_m**2 / float(cfg["waist_m"]) ** 2)
+
+
+def _draw_radial_profiles(ax, blue_cfg, green_cfg):
+    """Show an exact transverse cut so nested beams remain interpretable."""
+    characteristic_radii = [
+        1.5 * float(blue_cfg["waist_m"]),
+        1.5 * float(green_cfg["waist_m"]),
+    ]
+    if blue_cfg.get("profile") == "donut":
+        characteristic_radii.append(
+            float(blue_cfg["ring_radius_m"])
+            + 2.0 * float(blue_cfg["ring_width_m"])
+        )
+    radius_m = np.linspace(0.0, max(characteristic_radii), 600)
+
+    for cfg, color, label in (
+        (blue_cfg, BLUE_COLOR, "399 nm"),
+        (green_cfg, GREEN_COLOR, "556 nm"),
+    ):
+        intensity = _normalized_radial_intensity(cfg, radius_m)
+        ax.plot(radius_m * MM_PER_M, intensity, color=color, linewidth=2.5, label=label)
+        ax.fill_between(
+            radius_m * MM_PER_M,
+            0.0,
+            intensity,
+            color=color,
+            alpha=0.15,
+        )
+
+    if blue_cfg.get("profile") == "donut":
+        cutoff_mm = float(blue_cfg["inner_cutoff_radius_m"]) * MM_PER_M
+        ax.axvspan(0.0, cutoff_mm, color=BLUE_COLOR, alpha=0.06)
+        ax.axvline(cutoff_mm, color=BLUE_COLOR, linestyle="--", linewidth=1.2)
+        ax.text(
+            0.5 * cutoff_mm,
+            0.52,
+            "blue intensity\nexactly zero",
+            color=BLUE_COLOR,
+            ha="center",
+            va="center",
+            fontsize=9,
+        )
+
+    ax.set_title("Transverse intensity profile")
+    ax.set_xlabel("radius from beam axis [mm]")
+    ax.set_ylabel("normalized intensity")
+    ax.set_ylim(-0.03, 1.08)
+    ax.grid(alpha=0.25)
+    ax.legend()
 
 
 def _set_equal_3d_limits(ax, points_mm, padding=1.12):
@@ -327,8 +404,9 @@ def plot_configuration(name, profile, beam_length_m):
 
     absolute_center = np.asarray(profile["center_position_m"], dtype=float)
 
-    fig = plt.figure(figsize=(10, 9))
-    ax = fig.add_subplot(111, projection="3d")
+    fig = plt.figure(figsize=(16, 8))
+    ax = fig.add_subplot(121, projection="3d")
+    profile_ax = fig.add_subplot(122)
 
     points_for_limits = [np.zeros(3)]
     relative_origin = np.zeros(3)
@@ -340,6 +418,7 @@ def plot_configuration(name, profile, beam_length_m):
 
     blue_cfg = profile.get("399", {})
     green_cfg = profile.get("556", {})
+    _draw_radial_profiles(profile_ax, blue_cfg, green_cfg)
 
     for axis_tag, direction in directions:
         direction = np.asarray(direction, dtype=float)
@@ -359,16 +438,18 @@ def plot_configuration(name, profile, beam_length_m):
             source = component_center - direction * beam_length_m
             profile_kind = cfg.get("profile", "gaussian")
 
-            if profile_kind == "annular":
+            if profile_kind == "donut":
                 ring_radius = float(cfg["ring_radius_m"])
                 ring_width = float(cfg["ring_width_m"])
-                _draw_annular_beam(
+                inner_cutoff_radius = float(cfg["inner_cutoff_radius_m"])
+                _draw_donut_beam(
                     ax,
                     source,
                     component_center,
                     direction,
                     ring_radius,
                     ring_width,
+                    inner_cutoff_radius,
                     color,
                 )
                 display_radius = ring_radius + ring_width
@@ -430,6 +511,14 @@ def plot_configuration(name, profile, beam_length_m):
         Line2D(
             [0],
             [0],
+            color="0.4",
+            lw=6,
+            alpha=0.25,
+            label="opacity indicates relative intensity",
+        ),
+        Line2D(
+            [0],
+            [0],
             marker="*",
             color="black",
             linestyle="None",
@@ -439,10 +528,8 @@ def plot_configuration(name, profile, beam_length_m):
     ]
     ax.legend(handles=legend_handles, loc="upper left")
 
-    ax.set_title(
-        f"3D-MOT configuration: {name}\n"
-        "(geometry visualization; beam length is schematic)"
-    )
+    fig.suptitle(f"3D-MOT configuration: {name}", fontsize=16)
+    ax.set_title("Geometry (opacity indicates intensity; length is schematic)")
     ax.set_xlabel("x relative to MOT center [mm]\n(gravity is -x)")
     ax.set_ylabel("y relative to MOT center [mm]")
     ax.set_zlabel("z relative to MOT center [mm]\n(atoms propagate +z)")

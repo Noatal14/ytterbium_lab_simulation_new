@@ -50,9 +50,9 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
-- `angled_concentric`: two xz axes at ±30° from z, one y axis, blue 399-nm annular/donut component plus green 556-nm central component
+- `angled_donut`: two xz axes at ±30° from z, one y axis, a blue 399-nm Gaussian-ring component with a completely dark central aperture, plus a coaxial green 556-nm Gaussian component
 - `angled_sequential`: the same angled geometry, but with blue and green cooling regions separated along z by a configurable provisional offset
-- `five_beam_gravity`: five-beam geometry with the `-x` beam removed; the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
+- `five_beam_gravity`: five-beam geometry with the `-x` beam removed; every direction combines a blue 399-nm donut with a coaxial green 556-nm Gaussian, and the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
 
 The final experimental geometry is still under investigation. Ring dimensions, blue/green separation, and five-beam wavelength choices therefore use clearly labeled provisional numerical values in `config.py`. This keeps every profile runnable so the values can be explored and selected through simulation; they should not be interpreted as finalized experimental parameters.
 

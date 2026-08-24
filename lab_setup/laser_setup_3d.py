@@ -11,12 +11,12 @@ from config import (
 )
 
 
-class AnnularGaussianBeam(CircularGaussianBeam):
-    """A provisional annular beam profile for the blue MOT beam.
+class DonutGaussianBeam(CircularGaussianBeam):
+    """A Gaussian-ring beam with a completely dark central aperture.
 
-    The projected intensity is a Gaussian ring about the propagation axis.
-    This is intentionally a project-side approximation until the final
-    experimental beam shape is established.
+    Outside the configured central cutoff, the projected intensity is a
+    Gaussian ring about the propagation axis. Inside the cutoff radius the
+    intensity is exactly zero.
     """
 
     def __init__(
@@ -31,14 +31,20 @@ class AnnularGaussianBeam(CircularGaussianBeam):
         tag=None,
         ring_radius=1e-3,
         ring_width=1e-3,
+        inner_cutoff_radius=0.5e-3,
         **kwargs,
     ):
         self.ring_radius = float(ring_radius)
         self.ring_width = float(ring_width)
+        self.inner_cutoff_radius = float(inner_cutoff_radius)
         if self.ring_radius <= 0.0:
             raise ValueError("ring_radius must be positive.")
         if self.ring_width <= 0.0:
             raise ValueError("ring_width must be positive.")
+        if not 0.0 < self.inner_cutoff_radius < self.ring_radius:
+            raise ValueError(
+                "inner_cutoff_radius must be positive and smaller than ring_radius."
+            )
         self._peak_intensity = float(power)
         super().__init__(
             wavelength=wavelength,
@@ -68,11 +74,12 @@ class AnnularGaussianBeam(CircularGaussianBeam):
         ring_intensity = np.exp(
             -2.0 * (rho_laser - self.ring_radius) ** 2 / self.ring_width**2
         )
-        # The annular Gaussian is defined with its peak at rho = ring_radius.
+        # The donut Gaussian is defined with its peak at rho = ring_radius.
         # The requested peak intensity must therefore be the multiplicative
         # factor in the profile, not an approximate ring-area formula.
         peak_intensity = float(getattr(self, "_peak_intensity", self.power))
         intensity = peak_intensity * ring_intensity
+        intensity = np.where(rho_laser < self.inner_cutoff_radius, 0.0, intensity)
         return intensity.T
 
     def set_power_from_peak_I(self, target_I0):
@@ -93,17 +100,6 @@ def _normalize_vector(vec):
     if norm == 0.0:
         raise ValueError("Direction vector must be non-zero.")
     return vec / norm
-
-
-def _orthogonal_counterpropagating_directions():
-    return [
-        ("+X", _normalize_vector((1.0, 0.0, 0.0))),
-        ("-X", _normalize_vector((-1.0, 0.0, 0.0))),
-        ("+Y", _normalize_vector((0.0, 1.0, 0.0))),
-        ("-Y", _normalize_vector((0.0, -1.0, 0.0))),
-        ("+Z", _normalize_vector((0.0, 0.0, 1.0))),
-        ("-Z", _normalize_vector((0.0, 0.0, -1.0))),
-    ]
 
 
 def _angled_xz_y_directions(theta_deg):
@@ -141,9 +137,7 @@ def _five_beam_gravity_directions():
 
 
 def _get_beam_directions(profile):
-    layout = profile.get("beam_layout", "orthogonal_counterpropagating")
-    if layout == "orthogonal_counterpropagating":
-        return _orthogonal_counterpropagating_directions()
+    layout = profile.get("beam_layout")
     if layout == "angled_xz_y":
         theta_deg = float(profile.get("xz_angle_from_z_deg", 30.0))
         return _angled_xz_y_directions(theta_deg)
@@ -189,18 +183,27 @@ def _validate_profile(profile):
                 )
         if float(component["waist_m"]) <= 0.0:
             raise ValueError(f"3D-MOT {wavelength_key} waist_m must be positive.")
+        if component["profile"] not in {"gaussian", "donut"}:
+            raise ValueError(
+                f"Unsupported 3D-MOT {wavelength_key} profile "
+                f"'{component['profile']}'."
+            )
 
     blue = profile["399"]
-    if blue["enabled"] and blue["profile"] == "annular":
-        for key in ("ring_radius_m", "ring_width_m"):
+    if blue["enabled"] and blue["profile"] == "donut":
+        for key in ("ring_radius_m", "ring_width_m", "inner_cutoff_radius_m"):
             value = blue.get(key)
             if value is None:
                 raise ValueError(
-                    f"Set 399.{key} in config.py before using the annular "
+                    f"Set 399.{key} in config.py before using the donut "
                     "3D-MOT profile."
                 )
             if float(value) <= 0.0:
                 raise ValueError(f"399.{key} must be positive.")
+        if float(blue["inner_cutoff_radius_m"]) >= float(blue["ring_radius_m"]):
+            raise ValueError(
+                "399.inner_cutoff_radius_m must be smaller than 399.ring_radius_m."
+            )
 
     if layout == "rotated_yz_minus_upper_x":
         components = profile.get("beam_components")
@@ -279,8 +282,9 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         profile_kind,
         ring_radius=None,
         ring_width=None,
+        inner_cutoff_radius=None,
     ):
-        beam_cls = AnnularGaussianBeam if profile_kind == "annular" else CircularGaussianBeam
+        beam_cls = DonutGaussianBeam if profile_kind == "donut" else CircularGaussianBeam
         beam_kwargs = dict(
             wavelength=wavelength,
             waist=waist,
@@ -290,9 +294,10 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             polarization=polarization,
             tag=tag,
         )
-        if profile_kind == "annular":
+        if profile_kind == "donut":
             beam_kwargs["ring_radius"] = ring_radius
             beam_kwargs["ring_width"] = ring_width
+            beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
         beam = beam_cls(**beam_kwargs)
         beam.profile_kind = profile_kind
         beam.set_power_from_peak_I(peak_intensity)
@@ -324,6 +329,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     profile_kind=beam_399_cfg["profile"],
                     ring_radius=beam_399_cfg.get("ring_radius_m"),
                     ring_width=beam_399_cfg.get("ring_width_m"),
+                    inner_cutoff_radius=beam_399_cfg.get("inner_cutoff_radius_m"),
                 )
             )
 

@@ -34,11 +34,12 @@ def test_active_3d_mot_profile_is_registered():
     assert ACTIVE_MOT_3D_CONFIGURATION in MOT_3D_CONFIGURATIONS
     profile = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
     assert "beam_layout" in profile
-    assert len(MOT_3D_CONFIGURATIONS) >= 4
+    assert len(MOT_3D_CONFIGURATIONS) == 3
+    assert "orthogonal_counterpropagating" not in MOT_3D_CONFIGURATIONS
 
 
-def test_angled_concentric_geometry_is_correct():
-    profile = _resolved_profile("angled_concentric")
+def test_angled_donut_geometry_is_correct():
+    profile = _resolved_profile("angled_donut")
     assert profile["beam_layout"] == "angled_xz_y"
     theta = float(profile["xz_angle_from_z_deg"])
     beams = setup_3dmot_lasers(
@@ -61,7 +62,7 @@ def test_angled_concentric_geometry_is_correct():
     green_beams = [beam for beam in beams if "3DMOT_556_" in beam.tag]
     assert len(blue_beams) == 6
     assert len(green_beams) == 6
-    assert all(getattr(beam, "profile_kind", "gaussian") == "annular" for beam in blue_beams)
+    assert all(getattr(beam, "profile_kind", "gaussian") == "donut" for beam in blue_beams)
     assert all(getattr(beam, "profile_kind", "gaussian") == "gaussian" for beam in green_beams)
 
     beam_by_tag = {beam.tag: _normalize(beam.direction) for beam in beams}
@@ -118,6 +119,17 @@ def test_five_beam_gravity_removes_upper_x_beam_only():
     )
     assert np.isclose(np.dot(positive_z_axes[0], positive_z_axes[1]), 0.0)
 
+    blue_beams = [beam for beam in beams if "3DMOT_399_" in beam.tag]
+    green_beams = [beam for beam in beams if "3DMOT_556_" in beam.tag]
+    assert len(blue_beams) == 5
+    assert len(green_beams) == 5
+    assert all(beam.profile_kind == "donut" for beam in blue_beams)
+    assert all(beam.profile_kind == "gaussian" for beam in green_beams)
+    assert all(
+        np.allclose(blue.waist_position, green.waist_position)
+        for blue, green in zip(blue_beams, green_beams)
+    )
+
     profile["beam_components"]["+YZ_1"]["399_enabled"] = False
     beams = setup_3dmot_lasers(
         mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
@@ -128,7 +140,7 @@ def test_five_beam_gravity_removes_upper_x_beam_only():
 
 def test_active_angled_profile_emits_expected_vectors():
     beams = setup_3dmot_lasers(
-        mot_3d_config=_resolved_profile("angled_concentric"),
+        mot_3d_config=_resolved_profile("angled_donut"),
         center_position=(0.0, 0.0, 0.0),
     )
     directions = {tuple(np.round(_normalize(beam.direction), 8)) for beam in beams}
@@ -140,34 +152,36 @@ def test_active_angled_profile_emits_expected_vectors():
     assert (0.0, -1.0, 0.0) in directions
 
 
-def test_annular_beam_peak_intensity_matches_target():
-    from lab_setup.laser_setup_3d import AnnularGaussianBeam
+def test_donut_beam_has_target_peak_and_completely_dark_center():
+    from lab_setup.laser_setup_3d import DonutGaussianBeam
 
-    beam = AnnularGaussianBeam(
+    beam = DonutGaussianBeam(
         wavelength=399e-9,
         waist=1e-3,
         power=1e-3,
         polarization=CircularRight(),
         ring_radius=2.5e-3,
         ring_width=1.0e-3,
+        inner_cutoff_radius=1.5e-3,
     )
     target_I0 = 7.5e5
     beam.set_power_from_peak_I(target_I0)
     rho = np.linspace(0.0, 5e-3, 1001)
     intensity = np.array([beam._intensity_func(beam, np.array([[x, 0.0, 0.0]])).item() for x in rho])
     assert intensity[np.argmin(np.abs(rho - beam.ring_radius))] == pytest.approx(target_I0, rel=1e-8)
-    assert intensity[0] < intensity[np.argmin(np.abs(rho - beam.ring_radius))]
+    assert np.all(intensity[rho < beam.inner_cutoff_radius] == 0.0)
+    assert intensity[np.argmin(np.abs(rho - beam.ring_radius))] > 0.0
 
-    invalid = AnnularGaussianBeam
+    invalid = DonutGaussianBeam
     try:
-        invalid(ring_radius=0.0, ring_width=1e-3, polarization=CircularRight())
+        invalid(ring_radius=0.0, ring_width=1e-3, inner_cutoff_radius=0.5e-3, polarization=CircularRight())
     except ValueError:
         pass
     else:
         raise AssertionError("Expected ValueError for non-positive ring_radius")
 
     try:
-        invalid(ring_radius=1e-3, ring_width=0.0, polarization=CircularRight())
+        invalid(ring_radius=1e-3, ring_width=0.0, inner_cutoff_radius=0.5e-3, polarization=CircularRight())
     except ValueError:
         pass
     else:
@@ -175,7 +189,7 @@ def test_annular_beam_peak_intensity_matches_target():
 
 
 def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():
-    mot_cfg = _resolved_profile("angled_concentric")
+    mot_cfg = _resolved_profile("angled_donut")
     mot_cfg["399"]["s0"] = 1.25
     mot_cfg["399"]["waist_m"] = 0.02
     mot_cfg["556"]["s0"] = 7.0
@@ -192,7 +206,8 @@ def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():
 
 def test_config_builder_applies_detuning_in_atom_light_coupling():
     test_cfg = {
-        "beam_layout": "orthogonal_counterpropagating",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
         "center_position_m": (0.0, 0.0, 0.413),
         "399": {"enabled": True, "s0": 0.5, "detuning_gamma": -2.0, "waist_m": 0.01, "profile": "gaussian"},
         "556": {"enabled": True, "s0": 5.0, "detuning_gamma": -2.0, "waist_m": 0.015, "profile": "gaussian"},
