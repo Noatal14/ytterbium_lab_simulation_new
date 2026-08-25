@@ -1,3 +1,4 @@
+import copy
 import multiprocessing as mp
 import numpy as np
 
@@ -267,15 +268,26 @@ class RK4StCustom(RK4St):
 
         if npools:
 
+            # The parent simulator owns the full input batch and, for paired
+            # studies, one explicit SeedSequence per trajectory.  Neither is
+            # needed by the worker-local simulator: each task already carries
+            # its own initial state and seed.  Passing ``self`` directly as a
+            # Pool initializer argument made Python 3.14 serialize the entire
+            # batch once per worker, which could leave a 120-process job using
+            # only one CPU for several minutes before integration began.
+            worker_sim = copy.copy(self)
+            worker_sim.u0_list = []
+            worker_sim.trajectory_seed_sequences = None
+
             if verbose:
 
                 res_list = []
 
-                with Pool(
+                with tqdm(total=N) as pbar, Pool(
                     npools,
                     initializer=_init_worker,
-                    initargs=(self, t),
-                ) as p, tqdm(total=N) as pbar:
+                    initargs=(worker_sim, t),
+                ) as p:
 
                     for res in p.imap(
                         _worker_integrate,
@@ -291,7 +303,7 @@ class RK4StCustom(RK4St):
                 with Pool(
                     npools,
                     initializer=_init_worker,
-                    initargs=(self, t),
+                    initargs=(worker_sim, t),
                 ) as p:
 
                     res_list = list(p.imap(_worker_integrate, tasks))
