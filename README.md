@@ -140,15 +140,20 @@ Existing Zeus PBS commands must be updated to the package-based entry points.
 
 ## Optimization
 
-`python -m studies.optimize_2d_mot` runs the Optuna-based parameter search for the 2D MOT. It expects a fixed Zeeman-survivor dataset, then scans over values such as:
+Before optimization, validate the 2D-MOT timestep with
+`python -m studies.mot_2d_timestep_convergence`. The production optimizer is
+`python -m studies.optimize_2d_mot_joint`; it jointly scans:
 
 - `s0` (saturation parameter)
 - `detuning_gamma`
 - magnet radius
 
-It reads the precomputed survivor file and maximizes a capture/success metric for the MOT stage. The script stores optimization summaries under `data/optimization/`; repeated-seed uncertainty results are grouped under `data/optimization/seed_scan/`.
+Every trial uses the same per-seed Zeeman production ensembles, deterministic
+particle subsets, and MOT seeds. Candidate comparisons are therefore paired.
+Screening results are stored under `data/optimization/mot_2d/`.
 
-The fixed-s0 companion, `python -m studies.optimize_2d_mot_fixed_s0`, runs the same idea while holding one MOT parameter fixed and optimizing the others.
+The older `studies.optimize_2d_mot` and fixed-`s0` scripts are retained only for
+historical reproducibility and are not the recommended production workflow.
 
 ## Outputs and data
 

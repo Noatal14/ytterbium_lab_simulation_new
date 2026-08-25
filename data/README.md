@@ -9,9 +9,10 @@ data/
 │   ├── after_2d_mot/   # input ensembles for the 3D MOT
 │   └── after_3d_mot/   # captured states and 3D capture summaries
 ├── optimization/
-│   ├── *.json          # accepted Optuna result summaries
+│   ├── mot_2d/         # paired joint 2D-MOT optimization campaigns
 │   └── seed_scan/      # repeated-seed uncertainty results
 └── validation/
+    ├── mot_2d/         # timestep and numerical checks for the 2D MOT
     └── zeeman/         # pre-production field/resonance audit
         ├── trajectories/ # deterministic single-particle diagnostics
         ├── capture_velocity_scan/ # ideal on-axis capture boundary
@@ -50,6 +51,8 @@ python -m simulations.mot_3d
 python -m studies.validate_zeeman_configuration
 python -m studies.diagnose_zeeman_trajectories
 python -m studies.scan_zeeman_capture_velocity
+python -m studies.mot_2d_timestep_convergence --help
+python -m studies.optimize_2d_mot_joint --help
 ```
 
 Each command accepts ``--input`` and/or ``--output`` options when a non-default

@@ -9,8 +9,10 @@ AFTER_ZEEMAN_DIR = PARTICLE_STATES_DIR / "after_zeeman"
 AFTER_2D_MOT_DIR = PARTICLE_STATES_DIR / "after_2d_mot"
 AFTER_3D_MOT_DIR = PARTICLE_STATES_DIR / "after_3d_mot"
 OPTIMIZATION_DIR = DATA_DIR / "optimization"
+MOT_2D_OPTIMIZATION_DIR = OPTIMIZATION_DIR / "mot_2d"
 SEED_SCAN_DIR = OPTIMIZATION_DIR / "seed_scan"
 VALIDATION_DIR = DATA_DIR / "validation"
+MOT_2D_VALIDATION_DIR = VALIDATION_DIR / "mot_2d"
 ZEEMAN_VALIDATION_DIR = VALIDATION_DIR / "zeeman"
 ZEEMAN_TRAJECTORY_VALIDATION_DIR = ZEEMAN_VALIDATION_DIR / "trajectories"
 ZEEMAN_CAPTURE_SCAN_DIR = ZEEMAN_VALIDATION_DIR / "capture_velocity_scan"
@@ -35,6 +37,13 @@ def production_zeeman_states_file():
     if LEGACY_PRODUCTION_ZEEMAN_STATES_FILE.exists():
         return LEGACY_PRODUCTION_ZEEMAN_STATES_FILE
     return PRODUCTION_ZEEMAN_STATES_FILE
+
+
+def production_zeeman_ensemble_files(directory=AFTER_ZEEMAN_DIR):
+    """Return the accepted per-seed Zeeman production ensembles in seed order."""
+    return sorted(
+        Path(directory).glob("production_zeeman_n50000_dt40us_seed*.npy")
+    )
 
 
 def load_particle_states(path):

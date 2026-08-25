@@ -201,10 +201,15 @@ and generation parameters.
 
 ## 7. 2D-MOT optimization
 
-The project contains both:
+The current production strategy uses
+`python -m studies.optimize_2d_mot_joint` to optimize `s0`, detuning, and magnet
+radius simultaneously. Fixed-`s0` scripts are historical and should not be used
+for the new campaign. First validate the 2D-MOT timestep with
+`python -m studies.mot_2d_timestep_convergence`.
 
-- a joint optimization over `s0`, detuning, and magnet radius;
-- fixed-`s0` optimizations over detuning and magnet radius.
+All candidate points must use the same Zeeman production ensembles, the same
+particle subsets, and the same MOT seeds. Use cheap paired screening first and
+reserve full ensembles and adaptive confidence-interval stopping for finalists.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:
@@ -226,7 +231,10 @@ Photon-scattering recoil is stochastic. Small differences between nearby
 configurations may therefore reflect random realization noise rather than a
 meaningful physical difference.
 
-`python -m studies.mot_seed_scan` repeats the same physical 2D-MOT configuration with different
+`python -m studies.mot_seed_scan` is a legacy single-ensemble uncertainty check.
+For final conclusions, repeat the same physical 2D-MOT configuration across
+the accepted per-seed Zeeman production ensembles and matching MOT seeds. The
+legacy command repeats the configuration with different
 random seeds. Use the resulting distribution of captured counts or efficiencies
 to estimate stochastic uncertainty. Report this uncertainty when comparing close
 optimization points or defining a robust near-optimal region.
