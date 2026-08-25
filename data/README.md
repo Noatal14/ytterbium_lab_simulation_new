@@ -33,6 +33,9 @@ physical configuration, timestep, solver/stochastic mode, particle count, and
 seed. If an older file lacks some of this information, record the unknown fields
 explicitly rather than inferring them.
 
+The Zeeman production command creates this adjacent metadata automatically,
+including runtime, software versions, and a SHA-256 hash of the saved ``.npy``.
+
 GitHub rejects individual files larger than 100 MB. If future state ensembles
 approach that size, use Git LFS or documented external storage instead of adding
 them to ordinary Git history. Historical optimization summaries are stored in

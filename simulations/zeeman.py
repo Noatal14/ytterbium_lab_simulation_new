@@ -1,10 +1,18 @@
 """Run the Zeeman-slower stage from a generated thermal beam."""
 
 import argparse
+import hashlib
+import platform
+import subprocess
+import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 import numpy as np
+import atomsmltr
 
 from config import (
+    ACTIVE_ZEEMAN_MAGNET_PROFILE,
     COLLIMATION_ANGLE_DEG,
     DEFAULT_NUM_PARTICLES,
     DEFAULT_NUM_POOLS,
@@ -21,6 +29,7 @@ from simulations.thermal_beam import generate_thermal_beam_state
 from utils.RK4StCustom import RK4StCustom
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from utils.data_paths import DEFAULT_ZEEMAN_STATES_FILE, save_particle_states
+from utils.file_helpers import save_file_json
 from utils.simulation_helpers import (
     generate_timepoints,
     run_multiple_atoms_simulation,
@@ -83,12 +92,108 @@ def zeeman_simulation(
     return results, survivor_states, survivor_indices
 
 
+def _git_commit():
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _tracked_worktree_is_dirty():
+    try:
+        return subprocess.run(
+            ["git", "diff", "--quiet", "HEAD", "--"],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode != 0
+    except OSError:
+        return None
+
+
+def _sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _resolved_run_parameters(simulation_kwargs):
+    return {
+        "n_initial_atoms": int(
+            simulation_kwargs.get("N_particles", DEFAULT_NUM_PARTICLES)
+        ),
+        "seed": int(simulation_kwargs.get("seed", DEFAULT_RANDOM_SEED)),
+        "dt_s": float(simulation_kwargs.get("dt", ZEEMAN_SIM_CONFIG["dt_s"])),
+        "npools": int(simulation_kwargs.get("npools", DEFAULT_NUM_POOLS)),
+        "stochastic": bool(simulation_kwargs.get("stochastic", True)),
+        "gravity_enabled": bool(simulation_kwargs.get("gravity_enabled", True)),
+        "collimation_angle_deg": float(
+            simulation_kwargs.get("collimation_angle_deg", COLLIMATION_ANGLE_DEG)
+        ),
+        "magnet_radius_m": float(
+            simulation_kwargs.get("magnet_radius", MOT_2D_MAGNET_RADIUS_M)
+        ),
+        "zeeman_laser_config": simulation_kwargs.get(
+            "zeeman_config", ZEEMAN_LASER_CONFIG
+        ),
+        "zeeman_field_config": simulation_kwargs.get(
+            "zeeman_field_config", ZEEMAN_FIELD_CONFIG
+        ),
+        "mot_2d_laser_config": simulation_kwargs.get(
+            "_2d_mot_config", MOT_2D_LASER_CONFIG
+        ),
+        "zeeman_sim_config": ZEEMAN_SIM_CONFIG,
+        "active_zeeman_magnet_profile": ACTIVE_ZEEMAN_MAGNET_PROFILE,
+    }
+
+
+def write_zeeman_metadata(output_path, survivors, simulation_kwargs, elapsed_seconds):
+    """Write provenance metadata adjacent to a reusable survivor ensemble."""
+    output_path = Path(output_path)
+    parameters = _resolved_run_parameters(simulation_kwargs)
+    n_initial = parameters["n_initial_atoms"]
+    metadata = {
+        "kind": "zeeman_survivor_ensemble",
+        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "output_file": output_path.name,
+        "output_sha256": _sha256(output_path),
+        "state_layout": ["x_m", "y_m", "z_m", "vx_m_s", "vy_m_s", "vz_m_s"],
+        "shape": list(np.asarray(survivors).shape),
+        "dtype": str(np.asarray(survivors).dtype),
+        "n_survivors": int(len(survivors)),
+        "survival_fraction": float(len(survivors) / n_initial),
+        "elapsed_seconds": float(elapsed_seconds),
+        "parameters": parameters,
+        "software": {
+            "git_commit": _git_commit(),
+            "tracked_worktree_was_dirty": _tracked_worktree_is_dirty(),
+            "python_version": platform.python_version(),
+            "atomsmltr_version": getattr(atomsmltr, "__version__", None),
+            "numpy_version": np.__version__,
+            "host": platform.node(),
+        },
+    }
+    metadata_path = output_path.with_suffix(".json")
+    save_file_json(metadata_path, metadata)
+    return metadata_path
+
+
 def run_and_save_zeeman(output_file, **simulation_kwargs):
-    """Run Zeeman and save only the reusable survivor states."""
+    """Run Zeeman and save reusable survivors with adjacent provenance metadata."""
+    started = time.time()
     _, survivors, _ = zeeman_simulation(**simulation_kwargs)
     output_path = save_particle_states(output_file, survivors)
+    elapsed_seconds = time.time() - started
+    metadata_path = write_zeeman_metadata(
+        output_path, survivors, simulation_kwargs, elapsed_seconds
+    )
     print(f"Zeeman survivors: {len(survivors)}")
     print(f"Saved states to: {output_path}")
+    print(f"Saved metadata to: {metadata_path}")
     return np.asarray(survivors)
 
 
