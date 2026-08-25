@@ -1,0 +1,25 @@
+{
+  "kind": "zeeman_stochastic_convergence_single_run",
+  "base_git_commit": "ec5030fe48bd6d9d5724b80a40009962fff35b18",
+  "working_tree_was_dirty": true,
+  "host": "n127",
+  "configuration": {
+    "n_atoms": 5000,
+    "dt_s": 1.9999999999999998e-05,
+    "dt_us": 20.0,
+    "seed": 1001,
+    "npools": 80,
+    "collimation_angle_deg": 1.5,
+    "stochastic": true
+  },
+  "result": {
+    "n_survivors": 2990,
+    "survival_fraction": 0.598,
+    "survival_percent": 59.8,
+    "binomial_wilson_95_ci_fraction": [
+      0.5843395476160711,
+      0.6115099828026977
+    ],
+    "elapsed_seconds": 448.3395051956177
+  }
+}

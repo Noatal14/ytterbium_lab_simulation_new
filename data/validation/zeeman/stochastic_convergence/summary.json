@@ -1,0 +1,95 @@
+{
+  "kind": "zeeman_stochastic_convergence_summary",
+  "n_run_files": 9,
+  "groups": [
+    {
+      "n_atoms": 5000,
+      "dt_s": 1.9999999999999998e-05,
+      "dt_us": 20.0,
+      "seeds": [
+        1000,
+        1001,
+        1002
+      ],
+      "n_seeds": 3,
+      "mean_survival_fraction": 0.5934666666666666,
+      "mean_survival_percent": 59.34666666666666,
+      "sample_std_fraction": 0.0049409850569834225,
+      "sem_fraction": 0.0028526790527112975,
+      "student_t_95_ci_fraction": [
+        0.5811925793534192,
+        0.605740753979914
+      ]
+    },
+    {
+      "n_atoms": 5000,
+      "dt_s": 3.9999999999999996e-05,
+      "dt_us": 40.0,
+      "seeds": [
+        1000,
+        1001,
+        1002
+      ],
+      "n_seeds": 3,
+      "mean_survival_fraction": 0.5938666666666667,
+      "mean_survival_percent": 59.38666666666666,
+      "sample_std_fraction": 0.003607399802258308,
+      "sem_fraction": 0.002082733246908437,
+      "student_t_95_ci_fraction": [
+        0.5849053887765161,
+        0.6028279445568172
+      ]
+    },
+    {
+      "n_atoms": 5000,
+      "dt_s": 7.999999999999999e-05,
+      "dt_us": 80.0,
+      "seeds": [
+        1000,
+        1001,
+        1002
+      ],
+      "n_seeds": 3,
+      "mean_survival_fraction": 0.6096,
+      "mean_survival_percent": 60.96,
+      "sample_std_fraction": 0.003746998799039026,
+      "sem_fraction": 0.0021633307652783864,
+      "student_t_95_ci_fraction": [
+        0.6002919389774239,
+        0.6189080610225761
+      ]
+    }
+  ],
+  "paired_comparisons_to_finest_dt": [
+    {
+      "dt_s": 3.9999999999999996e-05,
+      "reference_dt_s": 1.9999999999999998e-05,
+      "shared_seeds": [
+        1000,
+        1001,
+        1002
+      ],
+      "paired_differences_fraction": [
+        -0.0005999999999999339,
+        -0.00039999999999995595,
+        0.0022000000000000908
+      ],
+      "mean_paired_difference_fraction": 0.00040000000000006697
+    },
+    {
+      "dt_s": 7.999999999999999e-05,
+      "reference_dt_s": 1.9999999999999998e-05,
+      "shared_seeds": [
+        1000,
+        1001,
+        1002
+      ],
+      "paired_differences_fraction": [
+        0.018400000000000083,
+        0.012800000000000034,
+        0.017200000000000104
+      ],
+      "mean_paired_difference_fraction": 0.016133333333333406
+    }
+  ]
+}

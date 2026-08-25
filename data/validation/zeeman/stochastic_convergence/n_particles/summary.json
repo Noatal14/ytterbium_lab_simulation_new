@@ -1,0 +1,71 @@
+{
+  "kind": "zeeman_stochastic_convergence_summary",
+  "n_run_files": 15,
+  "scan_axis": "n_atoms",
+  "groups": [
+    {
+      "n_atoms": 10000,
+      "dt_s": 3.9999999999999996e-05,
+      "dt_us": 40.0,
+      "seeds": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004
+      ],
+      "n_seeds": 5,
+      "mean_survival_fraction": 0.5920599999999999,
+      "mean_survival_percent": 59.20599999999999,
+      "sample_std_fraction": 0.005305468876546178,
+      "sem_fraction": 0.002372677812093339,
+      "student_t_95_ci_fraction": [
+        0.585472390302402,
+        0.5986476096975979
+      ]
+    },
+    {
+      "n_atoms": 2000,
+      "dt_s": 3.9999999999999996e-05,
+      "dt_us": 40.0,
+      "seeds": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004
+      ],
+      "n_seeds": 5,
+      "mean_survival_fraction": 0.596,
+      "mean_survival_percent": 59.599999999999994,
+      "sample_std_fraction": 0.007976528066771927,
+      "sem_fraction": 0.003567211796347402,
+      "student_t_95_ci_fraction": [
+        0.5860958322688274,
+        0.6059041677311725
+      ]
+    },
+    {
+      "n_atoms": 5000,
+      "dt_s": 3.9999999999999996e-05,
+      "dt_us": 40.0,
+      "seeds": [
+        2000,
+        2001,
+        2002,
+        2003,
+        2004
+      ],
+      "n_seeds": 5,
+      "mean_survival_fraction": 0.5929599999999999,
+      "mean_survival_percent": 59.29599999999999,
+      "sample_std_fraction": 0.010700841088437852,
+      "sem_fraction": 0.0047855616180339745,
+      "student_t_95_ci_fraction": [
+        0.579673150869987,
+        0.6062468491300128
+      ]
+    }
+  ],
+  "paired_comparisons_to_finest_dt": []
+}
