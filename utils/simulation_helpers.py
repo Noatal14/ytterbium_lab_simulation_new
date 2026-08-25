@@ -24,9 +24,11 @@ def run_multiple_atoms_simulation(
         time_points = None, 
         sim_function = ScipyIVP_3DCustom,
         npools = 0,
+        trajectory_seed_sequences = None,
     ):
     sim = sim_function(config)
     sim.seed_idx = seed_idx
+    sim.trajectory_seed_sequences = trajectory_seed_sequences
 
     sim.rng = np.random.default_rng(seed_idx)
     sim.u0_list = u0

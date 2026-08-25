@@ -234,11 +234,25 @@ class RK4StCustom(RK4St):
             42,
         )
 
-        seed_sequence = np.random.SeedSequence(
-            master_seed
+        explicit_sequences = getattr(
+            self,
+            "trajectory_seed_sequences",
+            None,
         )
 
-        child_sequences = seed_sequence.spawn(N)
+        if explicit_sequences is None:
+            seed_sequence = np.random.SeedSequence(
+                master_seed
+            )
+            child_sequences = seed_sequence.spawn(N)
+        else:
+            child_sequences = list(explicit_sequences)
+            if len(child_sequences) != N:
+                raise ValueError(
+                    "trajectory_seed_sequences must contain one seed "
+                    f"sequence per trajectory ({N}), got "
+                    f"{len(child_sequences)}."
+                )
 
         tasks = list(
             zip(
