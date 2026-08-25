@@ -1,0 +1,21 @@
+{
+  "kind": "mot_2d_timestep_convergence_single_run",
+  "configuration": {
+    "dt_s": 5e-06,
+    "dt_us": 5.0,
+    "ensemble_index": 0,
+    "zeeman_seed": 3000,
+    "mot_seed": 4000,
+    "n_input": 2000,
+    "npools": 80,
+    "s0": 1.4,
+    "detuning_gamma": -1.161,
+    "magnet_radius_m": 0.0517
+  },
+  "result": {
+    "captured": 36,
+    "conditional_efficiency": 0.018,
+    "estimated_total_efficiency": 0.010618559999999999,
+    "elapsed_seconds": 337.20289063453674
+  }
+}

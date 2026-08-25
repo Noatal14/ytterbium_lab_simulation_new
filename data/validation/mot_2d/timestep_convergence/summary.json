@@ -1,0 +1,77 @@
+{
+  "groups": [
+    {
+      "dt_s": 5e-06,
+      "dt_us": 5.0,
+      "n_replicates": 3,
+      "mean_conditional_efficiency": 0.0205,
+      "conditional_95_ci": [
+        0.010799132120947241,
+        0.03020086787905276
+      ],
+      "conditional_95_ci_half_width": 0.00970086787905276,
+      "mean_estimated_total_efficiency": 0.012125586666666665,
+      "estimated_total_95_ci": [
+        0.006351468067879157,
+        0.017899705265454174
+      ],
+      "estimated_total_95_ci_half_width": 0.005774118598787508
+    },
+    {
+      "dt_s": 1e-05,
+      "dt_us": 10.0,
+      "n_replicates": 3,
+      "mean_conditional_efficiency": 0.022166666666666668,
+      "conditional_95_ci": [
+        0.010231597796070706,
+        0.03410173553726263
+      ],
+      "conditional_95_ci_half_width": 0.011935068870595962,
+      "mean_estimated_total_efficiency": 0.013113413333333332,
+      "estimated_total_95_ci": [
+        0.0059941692963375775,
+        0.020232657370329088
+      ],
+      "estimated_total_95_ci_half_width": 0.007119244036995755
+    },
+    {
+      "dt_s": 2e-05,
+      "dt_us": 20.0,
+      "n_replicates": 3,
+      "mean_conditional_efficiency": 0.020666666666666667,
+      "conditional_95_ci": [
+        0.01754086192697878,
+        0.023792471406354553
+      ],
+      "conditional_95_ci_half_width": 0.003125804739687886,
+      "mean_estimated_total_efficiency": 0.012223246666666666,
+      "estimated_total_95_ci": [
+        0.01032343419043918,
+        0.014123059142894153
+      ],
+      "estimated_total_95_ci_half_width": 0.0018998124762274876
+    }
+  ],
+  "paired_comparisons_to_finest_dt": [
+    {
+      "dt_s": 1e-05,
+      "reference_dt_s": 5e-06,
+      "paired_differences_fraction": [
+        -0.0009999999999999974,
+        -0.0020000000000000018,
+        0.008
+      ],
+      "mean_paired_difference_fraction": 0.001666666666666667
+    },
+    {
+      "dt_s": 2e-05,
+      "reference_dt_s": 5e-06,
+      "paired_differences_fraction": [
+        0.0015000000000000013,
+        -0.0030000000000000027,
+        0.0020000000000000018
+      ],
+      "mean_paired_difference_fraction": 0.00016666666666666682
+    }
+  ]
+}
