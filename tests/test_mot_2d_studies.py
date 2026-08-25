@@ -9,6 +9,12 @@ from utils.mot_2d_study import (
 )
 
 
+def test_joint_screening_respects_experimental_magnet_clearance():
+    from studies.optimize_2d_mot_joint import BOUNDS_MAGNET_RADIUS_M
+
+    assert BOUNDS_MAGNET_RADIUS_M == (0.049, 0.056)
+
+
 def test_student_interval_requires_replicates():
     mean, low, high, half_width = student_mean_interval([0.25])
     assert mean == 0.25
