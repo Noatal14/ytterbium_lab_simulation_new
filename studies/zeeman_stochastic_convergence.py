@@ -149,6 +149,9 @@ def paired_differences(records, reference_dt_s=None):
     """Compare each timestep with the finest timestep using matching seeds."""
     if not records:
         return []
+    particle_counts = {int(row["configuration"]["n_atoms"]) for row in records}
+    if len(particle_counts) != 1:
+        return []
     if reference_dt_s is None:
         reference_dt_s = min(row["configuration"]["dt_s"] for row in records)
     by_dt_seed = {
@@ -194,8 +197,52 @@ def load_records(input_dir):
     return records
 
 
-def plot_summary(summaries, output_file):
-    dt_us = np.array([row["dt_us"] for row in summaries])
+def infer_scan_axis(summaries):
+    """Identify whether a result collection scans timestep or particle count."""
+    timesteps = {row["dt_s"] for row in summaries}
+    particle_counts = {row["n_atoms"] for row in summaries}
+    if len(timesteps) > 1 and len(particle_counts) == 1:
+        return "dt"
+    if len(particle_counts) > 1 and len(timesteps) == 1:
+        return "n_atoms"
+    raise ValueError(
+        "A summary must vary exactly one of dt or n_atoms; use separate input directories."
+    )
+
+
+def reproducibility_comparison(first, second):
+    """Compare the scientific outputs of two nominally identical runs."""
+    keys = ("n_atoms", "dt_s", "seed")
+    same_configuration = all(
+        first["configuration"][key] == second["configuration"][key] for key in keys
+    )
+    first_result = first["result"]
+    second_result = second["result"]
+    same_survivors = first_result["n_survivors"] == second_result["n_survivors"]
+    same_fraction = first_result["survival_fraction"] == second_result["survival_fraction"]
+    return {
+        "same_configuration": same_configuration,
+        "same_survivor_count": same_survivors,
+        "same_survival_fraction": same_fraction,
+        "reproducible": bool(same_configuration and same_survivors and same_fraction),
+        "first_n_survivors": int(first_result["n_survivors"]),
+        "second_n_survivors": int(second_result["n_survivors"]),
+    }
+
+
+def plot_summary(summaries, output_file, scan_axis="auto"):
+    if scan_axis == "auto":
+        scan_axis = infer_scan_axis(summaries)
+    if scan_axis == "dt":
+        x_values = np.array([row["dt_us"] for row in summaries])
+        x_label = "RK4 timestep [us]"
+        title = "Stochastic Zeeman timestep convergence (95% t interval)"
+    elif scan_axis == "n_atoms":
+        x_values = np.array([row["n_atoms"] for row in summaries])
+        x_label = "initial atom count per seed"
+        title = "Zeeman particle-count convergence (95% t interval)"
+    else:
+        raise ValueError("scan_axis must be 'auto', 'dt', or 'n_atoms'.")
     means = np.array([row["mean_survival_percent"] for row in summaries])
     low = np.array(
         [
@@ -215,10 +262,11 @@ def plot_summary(summaries, output_file):
     )
     errors = np.vstack((means - low, high - means))
     fig, axis = plt.subplots(figsize=(8, 5.5))
-    axis.errorbar(dt_us, means, yerr=errors, marker="o", capsize=5)
-    axis.set_xlabel("RK4 timestep [us]")
+    order = np.argsort(x_values)
+    axis.errorbar(x_values[order], means[order], yerr=errors[:, order], marker="o", capsize=5)
+    axis.set_xlabel(x_label)
     axis.set_ylabel("mean Zeeman survival [%]")
-    axis.set_title("Stochastic Zeeman timestep convergence (95% t interval)")
+    axis.set_title(title)
     axis.grid(alpha=0.25)
     fig.tight_layout()
     output_path = Path(output_file)
@@ -245,6 +293,12 @@ def parse_args():
     summarize_parser.add_argument(
         "--plot", type=Path, default=ZEEMAN_CONVERGENCE_DIR / "summary.png"
     )
+    summarize_parser.add_argument(
+        "--scan-axis", choices=("auto", "dt", "n_atoms"), default="auto"
+    )
+    compare_parser = subparsers.add_parser("compare-repeats")
+    compare_parser.add_argument("first", type=Path)
+    compare_parser.add_argument("second", type=Path)
     return parser.parse_args()
 
 
@@ -259,6 +313,14 @@ def main():
             args.n_atoms, args.dt_us * 1e-6, args.seed, args.npools, output
         )
         return
+    if args.command == "compare-repeats":
+        first = json.loads(args.first.read_text(encoding="utf-8"))
+        second = json.loads(args.second.read_text(encoding="utf-8"))
+        comparison = reproducibility_comparison(first, second)
+        print(json.dumps(comparison, indent=2))
+        if not comparison["reproducible"]:
+            raise SystemExit(1)
+        return
     records = load_records(args.input_dir)
     if not records:
         raise FileNotFoundError(f"No run_*.json files found in {args.input_dir}")
@@ -266,11 +328,12 @@ def main():
     report = {
         "kind": "zeeman_stochastic_convergence_summary",
         "n_run_files": len(records),
+        "scan_axis": infer_scan_axis(summaries),
         "groups": summaries,
         "paired_comparisons_to_finest_dt": paired_differences(records),
     }
     save_file_json(args.output, report)
-    plot_summary(summaries, args.plot)
+    plot_summary(summaries, args.plot, args.scan_axis)
     print(f"Summary: {args.output}")
     print(f"Plot:    {args.plot}")
 

@@ -1,7 +1,9 @@
 import numpy as np
 
 from studies.zeeman_stochastic_convergence import (
+    infer_scan_axis,
     paired_differences,
+    reproducibility_comparison,
     summarize_records,
     wilson_interval,
 )
@@ -37,3 +39,20 @@ def test_paired_difference_matches_common_seed_runs():
     comparison = paired_differences(rows)[0]
     assert comparison["shared_seeds"] == [1, 2]
     assert np.isclose(comparison["mean_paired_difference_fraction"], 0.02)
+
+
+def test_particle_count_scan_is_identified_and_not_paired_as_dt_scan():
+    rows = [_record(4e-5, 1, 0.50, 2000), _record(4e-5, 1, 0.51, 5000)]
+    summaries = summarize_records(rows)
+    assert infer_scan_axis(summaries) == "n_atoms"
+    assert paired_differences(rows) == []
+
+
+def test_repeat_comparison_ignores_runtime_but_requires_same_scientific_result():
+    first = _record(4e-5, 1000, 0.6)
+    second = _record(4e-5, 1000, 0.6)
+    first["result"]["n_survivors"] = 3000
+    second["result"]["n_survivors"] = 3000
+    first["result"]["elapsed_seconds"] = 10
+    second["result"]["elapsed_seconds"] = 20
+    assert reproducibility_comparison(first, second)["reproducible"] is True
