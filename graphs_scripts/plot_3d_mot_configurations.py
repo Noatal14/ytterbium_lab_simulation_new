@@ -13,7 +13,7 @@ Run from the repository root, for example:
 
 Coordinates are shown in millimeters relative to the configured 3D-MOT center.
 The beam surfaces are schematic: their transverse size comes from the configured
-waist/ring parameters, while the displayed longitudinal beam length is chosen
+waist and cutoff parameters, while the displayed longitudinal beam length is chosen
 only for visualization.
 """
 
@@ -190,18 +190,15 @@ def _draw_donut_beam(
     source,
     center,
     direction,
-    ring_radius_m,
-    ring_width_m,
+    waist_m,
     inner_cutoff_radius_m,
     color,
 ):
-    """Draw a hard-centered Gaussian ring using intensity-dependent opacity."""
-    outer_radius = ring_radius_m + 2.0 * ring_width_m
+    """Draw a Gaussian beam whose central disk is removed by a hard mask."""
+    outer_radius = max(1.5 * waist_m, inner_cutoff_radius_m)
     radii = np.linspace(outer_radius, inner_cutoff_radius_m, 7)
     for radius in radii:
-        relative_intensity = np.exp(
-            -2.0 * (radius - ring_radius_m) ** 2 / ring_width_m**2
-        )
+        relative_intensity = np.exp(-2.0 * radius**2 / waist_m**2)
         x, y, z = _cylinder_surface(source, center, radius)
         ax.plot_surface(
             x * MM_PER_M,
@@ -214,8 +211,7 @@ def _draw_donut_beam(
         )
 
     for radius, width, linestyle in (
-        (inner_cutoff_radius_m, 1.8, "--"),
-        (ring_radius_m, 2.4, "-"),
+        (inner_cutoff_radius_m, 2.4, "--"),
         (outer_radius, 0.8, ":"),
     ):
         circle = _circle_points(center, direction, radius) * MM_PER_M
@@ -225,7 +221,7 @@ def _draw_donut_beam(
             circle[:, 2],
             color=color,
             linewidth=width,
-            alpha=0.9 if radius == ring_radius_m else 0.6,
+            alpha=0.9 if radius == inner_cutoff_radius_m else 0.6,
             linestyle=linestyle,
         )
 
@@ -284,11 +280,7 @@ def _draw_coordinate_reference(ax, origin, scale_m):
 def _normalized_radial_intensity(cfg, radius_m):
     """Return the configured transverse intensity normalized to its peak."""
     if cfg.get("profile", "gaussian") == "donut":
-        intensity = np.exp(
-            -2.0
-            * (radius_m - float(cfg["ring_radius_m"])) ** 2
-            / float(cfg["ring_width_m"]) ** 2
-        )
+        intensity = np.exp(-2.0 * radius_m**2 / float(cfg["waist_m"]) ** 2)
         return np.where(
             radius_m < float(cfg["inner_cutoff_radius_m"]),
             0.0,
@@ -304,10 +296,7 @@ def _draw_radial_profiles(ax, blue_cfg, green_cfg):
         1.5 * float(green_cfg["waist_m"]),
     ]
     if blue_cfg.get("profile") == "donut":
-        characteristic_radii.append(
-            float(blue_cfg["ring_radius_m"])
-            + 2.0 * float(blue_cfg["ring_width_m"])
-        )
+        characteristic_radii.append(float(blue_cfg["inner_cutoff_radius_m"]))
     radius_m = np.linspace(0.0, max(characteristic_radii), 600)
 
     for cfg, color, label in (
@@ -439,20 +428,20 @@ def plot_configuration(name, profile, beam_length_m):
             profile_kind = cfg.get("profile", "gaussian")
 
             if profile_kind == "donut":
-                ring_radius = float(cfg["ring_radius_m"])
-                ring_width = float(cfg["ring_width_m"])
                 inner_cutoff_radius = float(cfg["inner_cutoff_radius_m"])
                 _draw_donut_beam(
                     ax,
                     source,
                     component_center,
                     direction,
-                    ring_radius,
-                    ring_width,
+                    float(cfg["waist_m"]),
                     inner_cutoff_radius,
                     color,
                 )
-                display_radius = ring_radius + ring_width
+                display_radius = max(
+                    1.5 * float(cfg["waist_m"]),
+                    inner_cutoff_radius,
+                )
             else:
                 waist = float(cfg["waist_m"])
                 _draw_gaussian_beam(

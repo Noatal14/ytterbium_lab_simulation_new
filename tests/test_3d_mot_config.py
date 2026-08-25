@@ -40,6 +40,9 @@ def test_active_3d_mot_profile_is_registered():
 
 def test_angled_donut_geometry_is_correct():
     profile = _resolved_profile("angled_donut")
+    assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.01)
+    assert "ring_radius_m" not in profile["399"]
+    assert "ring_width_m" not in profile["399"]
     assert profile["beam_layout"] == "angled_xz_y"
     theta = float(profile["xz_angle_from_z_deg"])
     beams = setup_3dmot_lasers(
@@ -90,6 +93,7 @@ def test_angled_sequential_has_separated_blue_and_green_centers():
 
 def test_five_beam_gravity_removes_upper_x_beam_only():
     profile = _resolved_profile("five_beam_gravity")
+    assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.01)
     assert profile["beam_layout"] == "rotated_yz_minus_upper_x"
     beams = setup_3dmot_lasers(
         mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
@@ -152,7 +156,7 @@ def test_active_angled_profile_emits_expected_vectors():
     assert (0.0, -1.0, 0.0) in directions
 
 
-def test_donut_beam_has_target_peak_and_completely_dark_center():
+def test_donut_is_an_unmodified_gaussian_with_a_hard_central_cutoff():
     from lab_setup.laser_setup_3d import DonutGaussianBeam
 
     beam = DonutGaussianBeam(
@@ -160,32 +164,25 @@ def test_donut_beam_has_target_peak_and_completely_dark_center():
         waist=1e-3,
         power=1e-3,
         polarization=CircularRight(),
-        ring_radius=2.5e-3,
-        ring_width=1.0e-3,
-        inner_cutoff_radius=1.5e-3,
+        inner_cutoff_radius=1.0e-3,
     )
     target_I0 = 7.5e5
     beam.set_power_from_peak_I(target_I0)
     rho = np.linspace(0.0, 5e-3, 1001)
     intensity = np.array([beam._intensity_func(beam, np.array([[x, 0.0, 0.0]])).item() for x in rho])
-    assert intensity[np.argmin(np.abs(rho - beam.ring_radius))] == pytest.approx(target_I0, rel=1e-8)
     assert np.all(intensity[rho < beam.inner_cutoff_radius] == 0.0)
-    assert intensity[np.argmin(np.abs(rho - beam.ring_radius))] > 0.0
+    outside = rho >= beam.inner_cutoff_radius
+    expected = target_I0 * np.exp(-2.0 * rho[outside] ** 2 / beam.waist**2)
+    assert np.allclose(intensity[outside], expected)
+    assert intensity[np.flatnonzero(outside)[0]] > intensity[np.flatnonzero(outside)[-1]]
 
     invalid = DonutGaussianBeam
     try:
-        invalid(ring_radius=0.0, ring_width=1e-3, inner_cutoff_radius=0.5e-3, polarization=CircularRight())
+        invalid(inner_cutoff_radius=0.0, polarization=CircularRight())
     except ValueError:
         pass
     else:
-        raise AssertionError("Expected ValueError for non-positive ring_radius")
-
-    try:
-        invalid(ring_radius=1e-3, ring_width=0.0, inner_cutoff_radius=0.5e-3, polarization=CircularRight())
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("Expected ValueError for non-positive ring_width")
+        raise AssertionError("Expected ValueError for non-positive cutoff radius")
 
 
 def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():

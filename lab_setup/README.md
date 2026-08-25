@@ -50,11 +50,11 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
-- `angled_donut`: two xz axes at ±30° from z, one y axis, a blue 399-nm Gaussian-ring component with a completely dark central aperture, plus a coaxial green 556-nm Gaussian component
+- `angled_donut`: two xz axes at ±30° from z, one y axis, a blue 399-nm Gaussian whose central 10-mm-radius disk is blocked completely, plus a coaxial green 556-nm Gaussian component
 - `angled_sequential`: the same angled geometry, but with blue and green cooling regions separated along z by a configurable provisional offset
-- `five_beam_gravity`: five-beam geometry with the `-x` beam removed; every direction combines a blue 399-nm donut with a coaxial green 556-nm Gaussian, and the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
+- `five_beam_gravity`: five-beam geometry with the `-x` beam removed; every direction combines the same center-blocked blue 399-nm Gaussian with a coaxial green 556-nm Gaussian, and the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
 
-The final experimental geometry is still under investigation. Ring dimensions, blue/green separation, and five-beam wavelength choices therefore use clearly labeled provisional numerical values in `config.py`. This keeps every profile runnable so the values can be explored and selected through simulation; they should not be interpreted as finalized experimental parameters.
+The final experimental geometry is still under investigation. The blue/green separation and five-beam wavelength choices therefore use clearly labeled provisional numerical values in `config.py`. The 10-mm blue cutoff radius reflects the clarified mirror geometry; the remaining provisional values should not be interpreted as finalized experimental parameters.
 
 ### `mag_field_2d_mot.py`
 

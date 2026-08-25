@@ -12,11 +12,11 @@ from config import (
 
 
 class DonutGaussianBeam(CircularGaussianBeam):
-    """A Gaussian-ring beam with a completely dark central aperture.
+    """A regular Gaussian beam with a completely blocked central aperture.
 
-    Outside the configured central cutoff, the projected intensity is a
-    Gaussian ring about the propagation axis. Inside the cutoff radius the
-    intensity is exactly zero.
+    The optical Gaussian is unchanged outside ``inner_cutoff_radius``. Inside
+    that radius its intensity is exactly zero, representing the experimental
+    beam after its center is removed by the mirror arrangement.
     """
 
     def __init__(
@@ -29,23 +29,12 @@ class DonutGaussianBeam(CircularGaussianBeam):
         direction_type="vector",
         polarization=None,
         tag=None,
-        ring_radius=1e-3,
-        ring_width=1e-3,
         inner_cutoff_radius=0.5e-3,
         **kwargs,
     ):
-        self.ring_radius = float(ring_radius)
-        self.ring_width = float(ring_width)
         self.inner_cutoff_radius = float(inner_cutoff_radius)
-        if self.ring_radius <= 0.0:
-            raise ValueError("ring_radius must be positive.")
-        if self.ring_width <= 0.0:
-            raise ValueError("ring_width must be positive.")
-        if not 0.0 < self.inner_cutoff_radius < self.ring_radius:
-            raise ValueError(
-                "inner_cutoff_radius must be positive and smaller than ring_radius."
-            )
-        self._peak_intensity = float(power)
+        if self.inner_cutoff_radius <= 0.0:
+            raise ValueError("inner_cutoff_radius must be positive.")
         super().__init__(
             wavelength=wavelength,
             waist=waist,
@@ -60,38 +49,20 @@ class DonutGaussianBeam(CircularGaussianBeam):
 
     @property
     def type(self):
-        return "Annular Gaussian Beam"
+        return "Center-blocked Gaussian Beam"
 
     @property
     def disp_type(self):
-        return "Annular beam"
+        return "Center-blocked beam"
 
     @staticmethod
     def _intensity_func(self, position):
         position_laser = self._convert_coordinates_to_laser_frame(position)
-        x_laser, y_laser, z_laser = position_laser.T
+        x_laser, y_laser, _ = position_laser.T
         rho_laser = np.sqrt(x_laser**2 + y_laser**2)
-        ring_intensity = np.exp(
-            -2.0 * (rho_laser - self.ring_radius) ** 2 / self.ring_width**2
-        )
-        # The donut Gaussian is defined with its peak at rho = ring_radius.
-        # The requested peak intensity must therefore be the multiplicative
-        # factor in the profile, not an approximate ring-area formula.
-        peak_intensity = float(getattr(self, "_peak_intensity", self.power))
-        intensity = peak_intensity * ring_intensity
+        intensity = CircularGaussianBeam._intensity_func(self, position)
         intensity = np.where(rho_laser < self.inner_cutoff_radius, 0.0, intensity)
-        return intensity.T
-
-    def set_power_from_peak_I(self, target_I0):
-        if target_I0 < 0.0:
-            raise ValueError("target peak intensity must be non-negative.")
-        self._peak_intensity = float(target_I0)
-        # Keep a positive power value for atomsmltr compatibility, but the
-        # actual beam intensity is controlled by the stored peak intensity.
-        self.power = max(
-            float(target_I0) * (np.pi * self.ring_width**2) / 2.0,
-            np.finfo(float).tiny,
-        )
+        return intensity
 
 
 def _normalize_vector(vec):
@@ -191,18 +162,11 @@ def _validate_profile(profile):
 
     blue = profile["399"]
     if blue["enabled"] and blue["profile"] == "donut":
-        for key in ("ring_radius_m", "ring_width_m", "inner_cutoff_radius_m"):
-            value = blue.get(key)
-            if value is None:
-                raise ValueError(
-                    f"Set 399.{key} in config.py before using the donut "
-                    "3D-MOT profile."
-                )
-            if float(value) <= 0.0:
-                raise ValueError(f"399.{key} must be positive.")
-        if float(blue["inner_cutoff_radius_m"]) >= float(blue["ring_radius_m"]):
+        cutoff = blue.get("inner_cutoff_radius_m")
+        if cutoff is None or float(cutoff) <= 0.0:
             raise ValueError(
-                "399.inner_cutoff_radius_m must be smaller than 399.ring_radius_m."
+                "Set a positive 399.inner_cutoff_radius_m in config.py before "
+                "using the center-blocked Gaussian 3D-MOT profile."
             )
 
     if layout == "rotated_yz_minus_upper_x":
@@ -280,8 +244,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         tag,
         beam_center,
         profile_kind,
-        ring_radius=None,
-        ring_width=None,
         inner_cutoff_radius=None,
     ):
         beam_cls = DonutGaussianBeam if profile_kind == "donut" else CircularGaussianBeam
@@ -295,8 +257,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             tag=tag,
         )
         if profile_kind == "donut":
-            beam_kwargs["ring_radius"] = ring_radius
-            beam_kwargs["ring_width"] = ring_width
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
         beam = beam_cls(**beam_kwargs)
         beam.profile_kind = profile_kind
@@ -327,8 +287,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     tag=f"3DMOT_399_{axis_tag}",
                     beam_center=beam_center,
                     profile_kind=beam_399_cfg["profile"],
-                    ring_radius=beam_399_cfg.get("ring_radius_m"),
-                    ring_width=beam_399_cfg.get("ring_width_m"),
                     inner_cutoff_radius=beam_399_cfg.get("inner_cutoff_radius_m"),
                 )
             )

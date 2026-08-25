@@ -305,7 +305,7 @@ MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM = 10.0
 # to modify or optimize.
 MOT_3D_CONFIGURATIONS = {
     "angled_donut": {
-        "description": "Two xz axes at +/-30 degrees from z plus a y axis, with a hard-centered blue donut coaxial with the green Gaussian beam.",
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis, with a blue Gaussian beam blocked to exactly zero inside a 10 mm radius and coaxial with the green Gaussian beam.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
@@ -316,11 +316,10 @@ MOT_3D_CONFIGURATIONS = {
             "detuning_gamma": -1.0,
             "waist_m": 0.015,
             "profile": "donut",
-            # Provisional ring parameters kept explicit so the ring geometry is
-            # configurable without guessing a final experimental value.
-            "ring_radius_m": 2.5e-3,  # Provisional — final experimental value TBD
-            "ring_width_m": 1.0e-3,   # Provisional — final experimental value TBD
-            "inner_cutoff_radius_m": 1.5e-3,  # Exactly zero intensity inside this radius
+            # The experimental mirrors remove the center of an otherwise
+            # ordinary Gaussian beam; the intensity jumps from exactly zero to
+            # the unmodified Gaussian tail at this radius.
+            "inner_cutoff_radius_m": 0.01,
         },
         "556": {
             "enabled": True,
@@ -354,7 +353,7 @@ MOT_3D_CONFIGURATIONS = {
         },
     },
     "five_beam_gravity": {
-        "description": "Five-beam 3D MOT with the -x beam removed. Each direction combines a hard-centered blue donut with a coaxial green Gaussian beam; the two axes in the yz plane are mutually orthogonal and rotated by 45 degrees from atomic +z.",
+        "description": "Five-beam 3D MOT with the -x beam removed. Each direction combines a center-blocked blue Gaussian with a coaxial green Gaussian; the two axes in the yz plane are mutually orthogonal and rotated by 45 degrees from atomic +z.",
         "beam_layout": "rotated_yz_minus_upper_x",
         "gravity_axis": "x",
         "transport_axis": "z",
@@ -378,10 +377,7 @@ MOT_3D_CONFIGURATIONS = {
             "detuning_gamma": -1.0,
             "waist_m": 0.015,
             "profile": "donut",
-            # Provisional dimensions, shared with the angled donut concept.
-            "ring_radius_m": 2.5e-3,
-            "ring_width_m": 1.0e-3,
-            "inner_cutoff_radius_m": 1.5e-3,
+            "inner_cutoff_radius_m": 0.01,
         },
         "556": {
             "enabled": True,
