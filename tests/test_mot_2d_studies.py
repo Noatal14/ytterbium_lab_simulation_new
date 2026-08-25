@@ -30,9 +30,12 @@ def test_replicate_summary_reports_conditional_and_total_uncertainty():
 
 
 def test_load_production_ensembles_uses_ordered_fixed_subsets(tmp_path):
-    for seed, size in [(3001, 5), (3000, 4)]:
+    for seed, size in [(3001, 20), (3000, 20)]:
         path = tmp_path / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
-        np.save(path, np.full((size, 6), seed, dtype=float))
+        states = np.column_stack(
+            (np.arange(size), np.full((size, 5), seed, dtype=float))
+        )
+        np.save(path, states)
         path.with_suffix(".json").write_text(
             json.dumps(
                 {
@@ -42,6 +45,16 @@ def test_load_production_ensembles_uses_ordered_fixed_subsets(tmp_path):
             ),
             encoding="utf-8",
         )
-    ensembles = load_production_ensembles(2, 3, directory=tmp_path)
+    ensembles = load_production_ensembles(2, 5, directory=tmp_path)
+    repeated = load_production_ensembles(2, 5, directory=tmp_path)
     assert [row["zeeman_seed"] for row in ensembles] == [3000, 3001]
-    assert [len(row["states"]) for row in ensembles] == [3, 3]
+    assert [len(row["states"]) for row in ensembles] == [5, 5]
+    assert all(
+        row["selection_method"] == "deterministic_random_without_replacement"
+        for row in ensembles
+    )
+    assert all(
+        np.array_equal(first["states"], second["states"])
+        for first, second in zip(ensembles, repeated)
+    )
+    assert not np.array_equal(ensembles[0]["states"][:, 0], np.arange(5))

@@ -32,17 +32,31 @@ def load_production_ensembles(
         states = np.load(path, mmap_mode="r")
         if states.ndim != 2 or states.shape[1] != 6:
             raise ValueError(f"Invalid particle-state shape in {path}: {states.shape}")
-        if particles_per_ensemble is not None:
-            states = states[:particles_per_ensemble]
         metadata_path = path.with_suffix(".json")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        zeeman_seed = int(metadata["parameters"]["seed"])
+        n_available = len(states)
+        subset_seed = 100_000 + zeeman_seed
+        if particles_per_ensemble is not None and particles_per_ensemble < n_available:
+            rng = np.random.default_rng(subset_seed)
+            selected_indices = np.sort(
+                rng.choice(n_available, size=particles_per_ensemble, replace=False)
+            )
+            states = states[selected_indices]
+            selection_method = "deterministic_random_without_replacement"
+        else:
+            states = np.asarray(states)
+            selection_method = "all_particles"
         ensembles.append(
             {
                 "path": path,
-                "zeeman_seed": int(metadata["parameters"]["seed"]),
+                "zeeman_seed": zeeman_seed,
                 "n_initial_zeeman": int(metadata["parameters"]["n_initial_atoms"]),
                 "zeeman_survival_fraction": float(metadata["survival_fraction"]),
                 "states": np.asarray(states),
+                "n_available": n_available,
+                "selection_method": selection_method,
+                "subset_seed": subset_seed,
             }
         )
     return ensembles
