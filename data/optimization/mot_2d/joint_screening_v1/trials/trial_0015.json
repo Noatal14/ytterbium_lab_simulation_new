@@ -1,0 +1,71 @@
+{
+  "kind": "mot_2d_joint_optimization_trial",
+  "trial_number": 15,
+  "parameters": {
+    "s0": 1.2079703133513298,
+    "detuning_gamma": -0.8814015564233972,
+    "magnet_radius": 0.05210981480165078
+  },
+  "design": {
+    "dt_s": 1e-05,
+    "n_ensembles": 3,
+    "particles_per_ensemble": 2000,
+    "mot_seed_start": 4000
+  },
+  "replicates": [
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3000.npy",
+      "zeeman_seed": 3000,
+      "mot_seed": 4000,
+      "n_available": 29496,
+      "selection_method": "deterministic_random_without_replacement",
+      "subset_seed": 103000,
+      "n_input": 2000,
+      "captured": 40,
+      "conditional_efficiency": 0.02,
+      "estimated_total_efficiency": 0.0117984,
+      "elapsed_seconds": 354.49106216430664
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3001.npy",
+      "zeeman_seed": 3001,
+      "mot_seed": 4001,
+      "n_available": 29605,
+      "selection_method": "deterministic_random_without_replacement",
+      "subset_seed": 103001,
+      "n_input": 2000,
+      "captured": 38,
+      "conditional_efficiency": 0.019,
+      "estimated_total_efficiency": 0.011249899999999998,
+      "elapsed_seconds": 358.03050541877747
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3002.npy",
+      "zeeman_seed": 3002,
+      "mot_seed": 4002,
+      "n_available": 29610,
+      "selection_method": "deterministic_random_without_replacement",
+      "subset_seed": 103002,
+      "n_input": 2000,
+      "captured": 32,
+      "conditional_efficiency": 0.016,
+      "estimated_total_efficiency": 0.0094752,
+      "elapsed_seconds": 353.3697669506073
+    }
+  ],
+  "statistics": {
+    "n_replicates": 3,
+    "mean_conditional_efficiency": 0.018333333333333333,
+    "conditional_95_ci": [
+      0.01316218832079107,
+      0.023504478345875594
+    ],
+    "conditional_95_ci_half_width": 0.005171145012542263,
+    "mean_estimated_total_efficiency": 0.010841166666666666,
+    "estimated_total_95_ci": [
+      0.007824588975491684,
+      0.013857744357841647
+    ],
+    "estimated_total_95_ci_half_width": 0.0030165776911749817
+  }
+}

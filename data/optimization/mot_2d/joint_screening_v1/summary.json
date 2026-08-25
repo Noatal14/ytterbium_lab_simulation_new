@@ -1,0 +1,31 @@
+{
+  "kind": "mot_2d_joint_optimization_summary",
+  "study_name": "mot_2d_joint_screening_v1",
+  "n_finished_trials": 20,
+  "best_value": 0.022333333333333334,
+  "best_parameters": {
+    "s0": 1.2908138167756318,
+    "detuning_gamma": -0.8882391337876094,
+    "magnet_radius": 0.046986884354690936
+  },
+  "design": {
+    "dt_s": 1e-05,
+    "n_ensembles": 3,
+    "particles_per_ensemble": 2000,
+    "mot_seed_start": 4000,
+    "bounds": {
+      "s0": [
+        0.8,
+        1.5
+      ],
+      "detuning_gamma": [
+        -2.0,
+        -0.6
+      ],
+      "magnet_radius_m": [
+        0.045,
+        0.054
+      ]
+    }
+  }
+}
