@@ -21,6 +21,22 @@ def test_joint_followup_uses_updated_experimental_bounds():
     assert BOUNDS_MAGNET_RADIUS_M == (0.045, 0.051)
 
 
+def test_joint_optimizer_accepts_refinement_bounds():
+    from studies.optimize_2d_mot_joint import parse_args
+
+    args = parse_args(
+        [
+            "--s0-bounds", "1.4", "1.5",
+            "--detuning-bounds", "-1.32", "-1.10",
+            "--magnet-radius-bounds-m", "0.0488", "0.0506",
+        ]
+    )
+
+    assert args.s0_bounds == [1.4, 1.5]
+    assert args.detuning_bounds == [-1.32, -1.10]
+    assert args.magnet_radius_bounds_m == [0.0488, 0.0506]
+
+
 def test_student_interval_requires_replicates():
     mean, low, high, half_width = student_mean_interval([0.25])
     assert mean == 0.25

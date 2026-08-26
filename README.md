@@ -151,6 +151,9 @@ Before optimization, validate the 2D-MOT timestep with
 Every trial uses the same per-seed Zeeman production ensembles, deterministic
 particle subsets, and MOT seeds. Candidate comparisons are therefore paired.
 Screening results are stored under `data/optimization/mot_2d/`.
+The optimizer accepts narrower follow-up domains through `--s0-bounds`,
+`--detuning-bounds`, and `--magnet-radius-bounds-m`. Always use a new study
+name and output directory when changing bounds or the statistical design.
 
 The older `studies.optimize_2d_mot` and fixed-`s0` scripts are retained only for
 historical reproducibility and are not the recommended production workflow.

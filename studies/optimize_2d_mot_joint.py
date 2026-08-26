@@ -81,6 +81,17 @@ def evaluate_configuration(
 
 
 def optimize_mot(args):
+    bounds_s0 = tuple(args.s0_bounds)
+    bounds_detuning = tuple(args.detuning_bounds)
+    bounds_radius = tuple(args.magnet_radius_bounds_m)
+    for label, bounds in (
+        ("s0", bounds_s0),
+        ("detuning", bounds_detuning),
+        ("magnet radius", bounds_radius),
+    ):
+        if len(bounds) != 2 or bounds[0] >= bounds[1]:
+            raise ValueError(f"Invalid {label} bounds: {bounds}")
+
     ensembles = load_production_ensembles(
         max_ensembles=args.n_ensembles,
         particles_per_ensemble=args.particles_per_ensemble,
@@ -91,12 +102,12 @@ def optimize_mot(args):
 
     def objective(trial):
         parameters = {
-            "s0": trial.suggest_float("s0", *BOUNDS_S0),
+            "s0": trial.suggest_float("s0", *bounds_s0),
             "detuning_gamma": trial.suggest_float(
-                "detuning_gamma", *BOUNDS_DETUNING
+                "detuning_gamma", *bounds_detuning
             ),
             "magnet_radius": trial.suggest_float(
-                "magnet_radius", *BOUNDS_MAGNET_RADIUS_M
+                "magnet_radius", *bounds_radius
             ),
         }
         evaluation = evaluate_configuration(
@@ -177,9 +188,9 @@ def optimize_mot(args):
             "particles_per_ensemble": args.particles_per_ensemble,
             "mot_seed_start": args.mot_seed_start,
             "bounds": {
-                "s0": BOUNDS_S0,
-                "detuning_gamma": BOUNDS_DETUNING,
-                "magnet_radius_m": BOUNDS_MAGNET_RADIUS_M,
+                "s0": bounds_s0,
+                "detuning_gamma": bounds_detuning,
+                "magnet_radius_m": bounds_radius,
             },
         },
     }
@@ -188,7 +199,7 @@ def optimize_mot(args):
     return study
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-trials", type=int, default=50)
     parser.add_argument("--n-ensembles", type=int, default=3)
@@ -196,6 +207,27 @@ def parse_args():
     parser.add_argument("--mot-seed-start", type=int, default=4000)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
+    parser.add_argument(
+        "--s0-bounds",
+        type=float,
+        nargs=2,
+        metavar=("MIN", "MAX"),
+        default=BOUNDS_S0,
+    )
+    parser.add_argument(
+        "--detuning-bounds",
+        type=float,
+        nargs=2,
+        metavar=("MIN", "MAX"),
+        default=BOUNDS_DETUNING,
+    )
+    parser.add_argument(
+        "--magnet-radius-bounds-m",
+        type=float,
+        nargs=2,
+        metavar=("MIN", "MAX"),
+        default=BOUNDS_MAGNET_RADIUS_M,
+    )
     parser.add_argument(
         "--study-name",
         default="mot_2d_joint_pareto_v3_radius45to51mm",
@@ -207,7 +239,7 @@ def parse_args():
             / "joint_pareto_v3_radius45to51mm"
         ),
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":

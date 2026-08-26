@@ -225,6 +225,10 @@ for the new campaign. First validate the 2D-MOT timestep with
 All candidate points must use the same Zeeman production ensembles, the same
 particle subsets, and the same MOT seeds. Use cheap paired screening first and
 reserve full ensembles and adaptive confidence-interval stopping for finalists.
+The joint optimizer accepts explicit refinement domains through
+`--s0-bounds`, `--detuning-bounds`, and `--magnet-radius-bounds-m`. A changed
+domain, particle count, or ensemble count must use a new study name and output
+directory rather than continuing an incompatible SQLite study.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:
