@@ -71,6 +71,7 @@ def test_main_active_modules_import_cleanly():
         "simulations.thermal_beam",
         "studies.optimize_2d_mot",
         "studies.optimize_2d_mot_joint",
+        "studies.validate_2d_mot_candidates",
         "studies.mot_2d_timestep_convergence",
         "studies.optimize_2d_mot_fixed_s0",
         "studies.mot_seed_scan",

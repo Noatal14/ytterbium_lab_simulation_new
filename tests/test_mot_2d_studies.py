@@ -37,6 +37,34 @@ def test_joint_optimizer_accepts_refinement_bounds():
     assert args.magnet_radius_bounds_m == [0.0488, 0.0506]
 
 
+def test_candidate_validation_reports_paired_noninferiority():
+    from studies.validate_2d_mot_candidates import paired_comparison
+
+    def result(name, efficiencies):
+        return {
+            "name": name,
+            "evaluation": {
+                "replicates": [
+                    {
+                        "zeeman_seed": 3000 + index,
+                        "mot_seed": 6000 + index,
+                        "n_input": 10_000,
+                        "subset_seed": 103_000 + index,
+                        "conditional_efficiency": efficiency,
+                    }
+                    for index, efficiency in enumerate(efficiencies)
+                ]
+            },
+        }
+
+    reference = result("maximum_capture", [0.0255, 0.0256, 0.0254])
+    candidate = result("low_power", [0.0252, 0.0253, 0.0251])
+    comparison = paired_comparison(candidate, reference)
+
+    assert np.isclose(comparison["mean_paired_difference_fraction"], -0.0003)
+    assert comparison["passes_noninferiority_at_95_percent"]
+
+
 def test_student_interval_requires_replicates():
     mean, low, high, half_width = student_mean_interval([0.25])
     assert mean == 0.25

@@ -229,6 +229,11 @@ The joint optimizer accepts explicit refinement domains through
 `--s0-bounds`, `--detuning-bounds`, and `--magnet-radius-bounds-m`. A changed
 domain, particle count, or ensemble count must use a new study name and output
 directory rather than continuing an incompatible SQLite study.
+Shortlisted operating points are validated with
+`python -m studies.validate_2d_mot_candidates`. This stage uses fresh MOT seeds,
+larger subsets, and aligned replicates, and it reports paired confidence
+intervals against the maximum-capture candidate. Do not select a lower-power
+candidate from raw mean efficiencies alone.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:

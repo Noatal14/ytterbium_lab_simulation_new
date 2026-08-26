@@ -154,6 +154,10 @@ Screening results are stored under `data/optimization/mot_2d/`.
 The optimizer accepts narrower follow-up domains through `--s0-bounds`,
 `--detuning-bounds`, and `--magnet-radius-bounds-m`. Always use a new study
 name and output directory when changing bounds or the statistical design.
+After screening and refinement, `python -m studies.validate_2d_mot_candidates`
+compares the shortlisted power/capture trade-offs on larger paired samples with
+fresh MOT seeds. Its summary reports confidence intervals for the paired
+efficiency differences and a 0.05-percentage-point noninferiority check.
 
 The older `studies.optimize_2d_mot` and fixed-`s0` scripts are retained only for
 historical reproducibility and are not the recommended production workflow.
