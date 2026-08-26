@@ -75,6 +75,36 @@ def test_candidate_validation_accepts_array_index():
     assert args.npools == 200
 
 
+def test_robustness_grid_has_one_center_and_expected_steps():
+    from studies.validate_2d_mot_robustness import (
+        CENTER_INDEX,
+        OFFSETS,
+        SELECTED_PARAMETERS,
+        point_definition,
+    )
+
+    assert len(OFFSETS) == 27
+    center = point_definition(CENTER_INDEX)
+    assert center["offset_steps"] == {
+        "s0": 0,
+        "detuning_gamma": 0,
+        "magnet_radius": 0,
+    }
+    assert center["parameters"] == SELECTED_PARAMETERS
+
+    upper = point_definition(26)
+    assert upper["offset_steps"] == {
+        "s0": 1,
+        "detuning_gamma": 1,
+        "magnet_radius": 1,
+    }
+    assert np.isclose(
+        upper["parameters"]["magnet_radius"]
+        - SELECTED_PARAMETERS["magnet_radius"],
+        0.01e-3,
+    )
+
+
 def test_student_interval_requires_replicates():
     mean, low, high, half_width = student_mean_interval([0.25])
     assert mean == 0.25

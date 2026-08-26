@@ -237,6 +237,10 @@ candidate from raw mean efficiencies alone.
 For Zeus, the three candidates may run as a PBS array using distinct
 `--candidate-index` values. Array tasks write separate JSON files; only run
 `--summarize-only` after all three complete, so no tasks race on `summary.json`.
+The next robustness stage uses `python -m studies.validate_2d_mot_robustness`
+on all 27 combinations of the selected setting and one control step in either
+direction. Its familywise conclusion must use the Bonferroni-adjusted intervals
+in the summary, not 26 uncorrected pointwise 95% intervals.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:

@@ -161,6 +161,10 @@ efficiency differences and a 0.05-percentage-point noninferiority check.
 Independent candidates can run concurrently through `--candidate-index 0`,
 `1`, or `2`. After all candidate files exist, use `--summarize-only` to create
 the shared paired-comparison summary without concurrent writes.
+Local setting robustness is evaluated by
+`python -m studies.validate_2d_mot_robustness`. It scans the full 3x3x3 box at
+one provisional control step around the selected candidate and reports both
+ordinary paired intervals and Bonferroni-adjusted simultaneous 95% intervals.
 
 The older `studies.optimize_2d_mot` and fixed-`s0` scripts are retained only for
 historical reproducibility and are not the recommended production workflow.

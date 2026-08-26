@@ -72,6 +72,7 @@ def test_main_active_modules_import_cleanly():
         "studies.optimize_2d_mot",
         "studies.optimize_2d_mot_joint",
         "studies.validate_2d_mot_candidates",
+        "studies.validate_2d_mot_robustness",
         "studies.mot_2d_timestep_convergence",
         "studies.optimize_2d_mot_fixed_s0",
         "studies.mot_seed_scan",
