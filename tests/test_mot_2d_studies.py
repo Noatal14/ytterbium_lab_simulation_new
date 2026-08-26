@@ -63,6 +63,7 @@ def test_candidate_validation_reports_paired_noninferiority():
 
     assert np.isclose(comparison["mean_paired_difference_fraction"], -0.0003)
     assert comparison["passes_noninferiority_at_95_percent"]
+    json.dumps(comparison)
 
 
 def test_candidate_validation_accepts_array_index():

@@ -69,9 +69,10 @@ def student_mean_interval(values, confidence=0.95):
     if len(values) < 2:
         return mean, None, None, None
     std = float(np.std(values, ddof=1))
-    sem = std / np.sqrt(len(values))
+    sem = float(std / np.sqrt(len(values)))
     critical = float(student_t.ppf(0.5 + confidence / 2.0, len(values) - 1))
-    return mean, mean - critical * sem, mean + critical * sem, critical * sem
+    half_width = float(critical * sem)
+    return mean, mean - half_width, mean + half_width, half_width
 
 
 def summarize_replicates(replicates):

@@ -74,7 +74,7 @@ def paired_comparison(candidate, reference, confidence=0.95):
         "paired_95_ci_fraction": [low, high],
         "paired_95_ci_half_width_fraction": half_width,
         "noninferiority_margin_fraction": NONINFERIORITY_MARGIN_FRACTION,
-        "passes_noninferiority_at_95_percent": (
+        "passes_noninferiority_at_95_percent": bool(
             low is not None and low >= -NONINFERIORITY_MARGIN_FRACTION
         ),
     }
