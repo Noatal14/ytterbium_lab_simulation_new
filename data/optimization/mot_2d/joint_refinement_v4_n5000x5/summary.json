@@ -1,0 +1,102 @@
+{
+  "kind": "mot_2d_joint_optimization_summary",
+  "study_name": "mot_2d_joint_refinement_v4_n5000x5",
+  "objectives": [
+    "maximize_mean_conditional_efficiency",
+    "minimize_s0"
+  ],
+  "n_registered_trials": 24,
+  "n_finished_trials": 24,
+  "pareto_front": [
+    {
+      "trial_number": 23,
+      "mean_conditional_efficiency": 0.025119999999999996,
+      "s0": 1.4002059650703738,
+      "parameters": {
+        "s0": 1.4002059650703738,
+        "detuning_gamma": -1.2715634597019043,
+        "magnet_radius": 0.04893059328633894
+      }
+    },
+    {
+      "trial_number": 14,
+      "mean_conditional_efficiency": 0.0252,
+      "s0": 1.406396065094575,
+      "parameters": {
+        "s0": 1.406396065094575,
+        "detuning_gamma": -1.2649574246365067,
+        "magnet_radius": 0.049182660723946614
+      }
+    },
+    {
+      "trial_number": 21,
+      "mean_conditional_efficiency": 0.025320000000000002,
+      "s0": 1.4315311995384283,
+      "parameters": {
+        "s0": 1.4315311995384283,
+        "detuning_gamma": -1.2766068125522456,
+        "magnet_radius": 0.04925533943156866
+      }
+    },
+    {
+      "trial_number": 15,
+      "mean_conditional_efficiency": 0.025480000000000003,
+      "s0": 1.4318286250124808,
+      "parameters": {
+        "s0": 1.4318286250124808,
+        "detuning_gamma": -1.2847881534418586,
+        "magnet_radius": 0.04918508443553798
+      }
+    },
+    {
+      "trial_number": 1,
+      "mean_conditional_efficiency": 0.025519999999999998,
+      "s0": 1.4598658484197036,
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.049080790136605164
+      }
+    },
+    {
+      "trial_number": 4,
+      "mean_conditional_efficiency": 0.0258,
+      "s0": 1.483244264080042,
+      "parameters": {
+        "s0": 1.483244264080042,
+        "detuning_gamma": -1.2732853956507793,
+        "magnet_radius": 0.049127284940972786
+      }
+    },
+    {
+      "trial_number": 11,
+      "mean_conditional_efficiency": 0.025840000000000002,
+      "s0": 1.4932290341911787,
+      "parameters": {
+        "s0": 1.4932290341911787,
+        "detuning_gamma": -1.2326140031998183,
+        "magnet_radius": 0.049418961579403425
+      }
+    }
+  ],
+  "design": {
+    "dt_s": 1e-05,
+    "n_ensembles": 5,
+    "particles_per_ensemble": 5000,
+    "mot_seed_start": 5000,
+    "bounds": {
+      "s0": [
+        1.4,
+        1.5
+      ],
+      "detuning_gamma": [
+        -1.32,
+        -1.1
+      ],
+      "magnet_radius_m": [
+        0.0488,
+        0.0506
+      ]
+    }
+  }
+}
