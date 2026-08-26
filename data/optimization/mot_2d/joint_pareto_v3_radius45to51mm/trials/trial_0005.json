@@ -1,0 +1,72 @@
+{
+  "kind": "mot_2d_joint_optimization_trial",
+  "trial_number": 5,
+  "parameters": {
+    "s0": 1.4183404509853432,
+    "detuning_gamma": -1.3370304299283235,
+    "magnet_radius": 0.04814853858979343
+  },
+  "design": {
+    "dt_s": 1e-05,
+    "n_ensembles": 3,
+    "particles_per_ensemble": 2000,
+    "mot_seed_start": 4000
+  },
+  "batch_elapsed_seconds": 289.9095025062561,
+  "replicates": [
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3000.npy",
+      "zeeman_seed": 3000,
+      "mot_seed": 4000,
+      "n_available": 29496,
+      "selection_method": "deterministic_random_without_replacement",
+      "subset_seed": 103000,
+      "n_input": 2000,
+      "captured": 53,
+      "conditional_efficiency": 0.0265,
+      "estimated_total_efficiency": 0.01563288,
+      "batch_elapsed_seconds": 289.9095025062561
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3001.npy",
+      "zeeman_seed": 3001,
+      "mot_seed": 4001,
+      "n_available": 29605,
+      "selection_method": "deterministic_random_without_replacement",
+      "subset_seed": 103001,
+      "n_input": 2000,
+      "captured": 39,
+      "conditional_efficiency": 0.0195,
+      "estimated_total_efficiency": 0.01154595,
+      "batch_elapsed_seconds": 289.9095025062561
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3002.npy",
+      "zeeman_seed": 3002,
+      "mot_seed": 4002,
+      "n_available": 29610,
+      "selection_method": "deterministic_random_without_replacement",
+      "subset_seed": 103002,
+      "n_input": 2000,
+      "captured": 39,
+      "conditional_efficiency": 0.0195,
+      "estimated_total_efficiency": 0.0115479,
+      "batch_elapsed_seconds": 289.9095025062561
+    }
+  ],
+  "statistics": {
+    "n_replicates": 3,
+    "mean_conditional_efficiency": 0.021833333333333333,
+    "conditional_95_ci": [
+      0.011793810297251255,
+      0.03187285636941541
+    ],
+    "conditional_95_ci_half_width": 0.010039523036082078,
+    "mean_estimated_total_efficiency": 0.012908910000000001,
+    "estimated_total_95_ci": [
+      0.007048761021351609,
+      0.018769058978648393
+    ],
+    "estimated_total_95_ci_half_width": 0.005860148978648392
+  }
+}

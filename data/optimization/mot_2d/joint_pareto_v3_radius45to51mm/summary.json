@@ -1,0 +1,82 @@
+{
+  "kind": "mot_2d_joint_optimization_summary",
+  "study_name": "mot_2d_joint_pareto_v3_radius45to51mm",
+  "objectives": [
+    "maximize_mean_conditional_efficiency",
+    "minimize_s0"
+  ],
+  "n_registered_trials": 50,
+  "n_finished_trials": 50,
+  "pareto_front": [
+    {
+      "trial_number": 31,
+      "mean_conditional_efficiency": 0.022833333333333334,
+      "s0": 1.400448758332066,
+      "parameters": {
+        "s0": 1.400448758332066,
+        "detuning_gamma": -1.2648565581097078,
+        "magnet_radius": 0.05014342454653776
+      }
+    },
+    {
+      "trial_number": 11,
+      "mean_conditional_efficiency": 0.023000000000000003,
+      "s0": 1.4007629510765427,
+      "parameters": {
+        "s0": 1.4007629510765427,
+        "detuning_gamma": -0.8569527217847894,
+        "magnet_radius": 0.04939919006642712
+      }
+    },
+    {
+      "trial_number": 32,
+      "mean_conditional_efficiency": 0.02316666666666667,
+      "s0": 1.4231722623352248,
+      "parameters": {
+        "s0": 1.4231722623352248,
+        "detuning_gamma": -1.3018483281462625,
+        "magnet_radius": 0.05037440276345986
+      }
+    },
+    {
+      "trial_number": 30,
+      "mean_conditional_efficiency": 0.023500000000000004,
+      "s0": 1.4238435275949577,
+      "parameters": {
+        "s0": 1.4238435275949577,
+        "detuning_gamma": -1.2929267879392377,
+        "magnet_radius": 0.050113369771481356
+      }
+    },
+    {
+      "trial_number": 34,
+      "mean_conditional_efficiency": 0.024499999999999997,
+      "s0": 1.4602755691905325,
+      "parameters": {
+        "s0": 1.4602755691905325,
+        "detuning_gamma": -1.2105275456029294,
+        "magnet_radius": 0.04989972663475404
+      }
+    }
+  ],
+  "design": {
+    "dt_s": 1e-05,
+    "n_ensembles": 3,
+    "particles_per_ensemble": 2000,
+    "mot_seed_start": 4000,
+    "bounds": {
+      "s0": [
+        1.4,
+        1.5
+      ],
+      "detuning_gamma": [
+        -1.55,
+        -0.85
+      ],
+      "magnet_radius_m": [
+        0.045,
+        0.051
+      ]
+    }
+  }
+}
