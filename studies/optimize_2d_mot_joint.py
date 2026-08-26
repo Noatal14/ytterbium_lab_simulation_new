@@ -19,11 +19,11 @@ from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 
-# Follow-up bounds after the broad v1/v2 screens.  The v2 optimum reached both
-# the upper s0 boundary and the 49 mm radius boundary.  Updated experimental
-# information permits a 45 mm radius, so this boundary-follow-up deliberately
-# expands s0 and searches the newly feasible low-radius region.
-BOUNDS_S0 = (1.2, 2.5)
+# Follow-up bounds after the broad v1/v2 screens.  Updated experimental
+# information permits a 45 mm radius.  The available laser power limits s0 to
+# approximately 1.5, so the follow-up treats lower power as a second objective
+# instead of inventing an arbitrary penalty for using the upper boundary.
+BOUNDS_S0 = (0.8, 1.5)
 BOUNDS_DETUNING = (-1.55, -0.85)
 BOUNDS_MAGNET_RADIUS_M = (0.045, 0.051)
 
@@ -126,12 +126,15 @@ def optimize_mot(args):
             f"magnet_radius={parameters['magnet_radius']:.8f} "
             f"mean_conditional_percent={100 * value:.6f}"
         )
-        return value
+        # Preserve the physical trade-off instead of forcing one arbitrary
+        # compromise: maximize capture while independently minimizing the
+        # required laser saturation parameter.
+        return value, parameters["s0"]
 
     study = optuna.create_study(
         study_name=args.study_name,
         storage=f"sqlite:///{output_dir / 'joint_screening.db'}",
-        direction="maximize",
+        directions=["maximize", "minimize"],
         sampler=optuna.samplers.TPESampler(seed=DEFAULT_RANDOM_SEED),
         # The three paired replicates share one worker pool and complete as a
         # single batch. Pruning after a partial replicate would require
@@ -140,12 +143,33 @@ def optimize_mot(args):
         load_if_exists=True,
     )
     study.optimize(objective, n_trials=args.n_trials)
+    complete_trials = [
+        trial
+        for trial in study.trials
+        if trial.state == optuna.trial.TrialState.COMPLETE
+    ]
+    pareto_trials = sorted(
+        study.best_trials,
+        key=lambda trial: (trial.params["s0"], -trial.values[0]),
+    )
     summary = {
         "kind": "mot_2d_joint_optimization_summary",
         "study_name": args.study_name,
-        "n_finished_trials": len(study.trials),
-        "best_value": float(study.best_value),
-        "best_parameters": study.best_params,
+        "objectives": [
+            "maximize_mean_conditional_efficiency",
+            "minimize_s0",
+        ],
+        "n_registered_trials": len(study.trials),
+        "n_finished_trials": len(complete_trials),
+        "pareto_front": [
+            {
+                "trial_number": trial.number,
+                "mean_conditional_efficiency": float(trial.values[0]),
+                "s0": float(trial.values[1]),
+                "parameters": trial.params,
+            }
+            for trial in pareto_trials
+        ],
         "design": {
             "dt_s": args.dt,
             "n_ensembles": len(ensembles),
@@ -173,13 +197,13 @@ def parse_args():
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
     parser.add_argument(
         "--study-name",
-        default="mot_2d_joint_boundary_followup_v3_radius45to51mm",
+        default="mot_2d_joint_pareto_v3_radius45to51mm",
     )
     parser.add_argument(
         "--output-dir",
         default=str(
             MOT_2D_OPTIMIZATION_DIR
-            / "joint_boundary_followup_v3_radius45to51mm"
+            / "joint_pareto_v3_radius45to51mm"
         ),
     )
     return parser.parse_args()
