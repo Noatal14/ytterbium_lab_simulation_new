@@ -1,0 +1,139 @@
+{
+  "kind": "mot_2d_candidate_validation_summary",
+  "source_study": "joint_refinement_v4_n5000x5",
+  "design": {
+    "n_ensembles": 10,
+    "particles_per_ensemble": 10000,
+    "mot_seed_start": 6000,
+    "dt_s": 1e-05,
+    "npools": 200,
+    "paired_design": true
+  },
+  "completed_candidates": [
+    {
+      "name": "maximum_capture",
+      "source_trial": 11,
+      "parameters": {
+        "s0": 1.4932290341911787,
+        "detuning_gamma": -1.2326140031998183,
+        "magnet_radius": 0.049418961579403425
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.026129999999999997,
+        "conditional_95_ci": [
+          0.025319227107476572,
+          0.02694077289252342
+        ],
+        "conditional_95_ci_half_width": 0.0008107728925234257,
+        "mean_estimated_total_efficiency": 0.015466398400000001,
+        "estimated_total_95_ci": [
+          0.01497669886458338,
+          0.01595609793541662
+        ],
+        "estimated_total_95_ci_half_width": 0.0004896995354166212
+      },
+      "batch_elapsed_seconds": 1348.8401391506195
+    },
+    {
+      "name": "intermediate_power",
+      "source_trial": 1,
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.02611,
+        "conditional_95_ci": [
+          0.025081360878861092,
+          0.02713863912113891
+        ],
+        "conditional_95_ci_half_width": 0.0010286391211389086,
+        "mean_estimated_total_efficiency": 0.0154548682,
+        "estimated_total_95_ci": [
+          0.014834306799721626,
+          0.016075429600278374
+        ],
+        "estimated_total_95_ci_half_width": 0.0006205614002783736
+      },
+      "batch_elapsed_seconds": 1269.7645585536957
+    },
+    {
+      "name": "low_power_near_optimum",
+      "source_trial": 15,
+      "parameters": {
+        "s0": 1.4318286250124808,
+        "detuning_gamma": -1.2847881534418586,
+        "magnet_radius": 0.04918508443553798
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.025759999999999998,
+        "conditional_95_ci": [
+          0.02481025313206789,
+          0.026709746867932108
+        ],
+        "conditional_95_ci_half_width": 0.0009497468679321081,
+        "mean_estimated_total_efficiency": 0.015247610200000001,
+        "estimated_total_95_ci": [
+          0.014674625123979095,
+          0.015820595276020907
+        ],
+        "estimated_total_95_ci_half_width": 0.000572985076020907
+      },
+      "batch_elapsed_seconds": 1395.0524299144745
+    }
+  ],
+  "paired_comparisons_to_maximum_capture": [
+    {
+      "candidate": "intermediate_power",
+      "reference": "maximum_capture",
+      "paired_differences_fraction": [
+        -0.00040000000000000105,
+        0.0001999999999999988,
+        -0.0005999999999999998,
+        0.00020000000000000226,
+        -0.00030000000000000165,
+        0.0003999999999999976,
+        0.0,
+        0.0007999999999999986,
+        0.0001999999999999988,
+        -0.0006999999999999992
+      ],
+      "mean_paired_difference_fraction": -2.0000000000000574e-05,
+      "paired_95_ci_fraction": [
+        -0.0003585686823290997,
+        0.0003185686823290985
+      ],
+      "paired_95_ci_half_width_fraction": 0.0003385686823290991,
+      "noninferiority_margin_fraction": 0.0005,
+      "passes_noninferiority_at_95_percent": true
+    },
+    {
+      "candidate": "low_power_near_optimum",
+      "reference": "maximum_capture",
+      "paired_differences_fraction": [
+        -0.0005999999999999998,
+        -0.0005999999999999998,
+        -0.0007999999999999986,
+        -9.99999999999994e-05,
+        -0.00040000000000000105,
+        0.0003999999999999976,
+        -0.0002999999999999982,
+        0.0003999999999999976,
+        -0.0006999999999999992,
+        -0.0009999999999999974
+      ],
+      "mean_paired_difference_fraction": -0.00036999999999999983,
+      "paired_95_ci_fraction": [
+        -0.0007123264964455153,
+        -2.767350355448433e-05
+      ],
+      "paired_95_ci_half_width_fraction": 0.0003423264964455155,
+      "noninferiority_margin_fraction": 0.0005,
+      "passes_noninferiority_at_95_percent": false
+    }
+  ]
+}
