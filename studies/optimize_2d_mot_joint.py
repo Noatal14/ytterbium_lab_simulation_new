@@ -21,9 +21,10 @@ from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 
 # Follow-up bounds after the broad v1/v2 screens.  Updated experimental
 # information permits a 45 mm radius.  The available laser power limits s0 to
-# approximately 1.5, so the follow-up treats lower power as a second objective
-# instead of inventing an arbitrary penalty for using the upper boundary.
-BOUNDS_S0 = (0.8, 1.5)
+# approximately 1.5, while s0=1.4 is known to be available.  Search only this
+# experimentally relevant interval and retain the power/capture trade-off
+# instead of spending trials on powers that would never be selected.
+BOUNDS_S0 = (1.4, 1.5)
 BOUNDS_DETUNING = (-1.55, -0.85)
 BOUNDS_MAGNET_RADIUS_M = (0.045, 0.051)
 

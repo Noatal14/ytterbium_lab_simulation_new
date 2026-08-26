@@ -16,7 +16,7 @@ def test_joint_followup_uses_updated_experimental_bounds():
         BOUNDS_S0,
     )
 
-    assert BOUNDS_S0 == (0.8, 1.5)
+    assert BOUNDS_S0 == (1.4, 1.5)
     assert BOUNDS_DETUNING == (-1.55, -0.85)
     assert BOUNDS_MAGNET_RADIUS_M == (0.045, 0.051)
 
