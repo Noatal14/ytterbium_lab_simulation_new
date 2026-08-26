@@ -12,7 +12,7 @@ class CircularGaussianBeam(LaserBeam):
     """
     def __init__(
         self,
-        wavelength=399e-9,
+        wavelength=BLUE_TRANSITION.wavelength_m,
         waist=7e-3,
         power=1e-3,
         waist_position=None,

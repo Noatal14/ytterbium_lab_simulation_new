@@ -89,3 +89,9 @@ The project does not hardcode a single monolithic environment. Instead, `build_b
 - spatial constraints from `zones.py`
 
 That configuration is then passed to the atomsmltr simulation engine for integration.
+
+## Atomic-data source and conventions
+
+The Yb-171 mass and the 399-nm and 556-nm transition constants in `config.py` follow the tabulated Yb-171 reference data of Kroeze, Kristensen, and Pucher (2026). This includes the vacuum wavelengths, natural linewidths, saturation intensities, electronic `g_J` values, and the measured F=3/2 Zeeman coefficients.
+
+The `Transition.lande_g` field stores the excited-state hyperfine `g_F`, obtained from the tabulated Zeeman coefficient `mu_B g_F / h`. The atomsmltr `J0J1Transition` approximation instead has excited model states with magnetic quantum numbers ±1. To reproduce the physical stretched-state shifts for F=3/2, `atom_species.py` therefore passes `(3/2)g_F` to that model. The tabulated `g_J` values are retained in `config.py` for provenance and consistency checks, but are not substituted directly for `g_F`.

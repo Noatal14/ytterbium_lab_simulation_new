@@ -55,7 +55,11 @@ class Atom:
 
 @dataclass(frozen=True)
 class Transition:
-    """Optical-transition parameters used by the simulation."""
+    """Optical-transition parameters used by the simulation.
+
+    ``lande_g`` is the excited-state hyperfine factor ``g_F`` for the
+    F=3/2 level.  It is not the electronic ``g_J`` factor.
+    """
 
     wavelength_m: float
     gamma_rad_s: float
@@ -89,7 +93,12 @@ YB171 = Atom(
 # 399 nm blue transition
 BLUE_TRANSITION_WAVELENGTH_M = 398.9108443e-9
 BLUE_TRANSITION_GAMMA_RAD_S = 2 * np.pi * 29.13e6
-BLUE_TRANSITION_LANDE_G = 965.0 / MU_B_OVER_H_KHZ_PER_G
+BLUE_TRANSITION_LANDE_G_J = 1.035
+BLUE_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G = 965.0
+BLUE_TRANSITION_LANDE_G = (
+    BLUE_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G
+    / MU_B_OVER_H_KHZ_PER_G
+)
 
 BLUE_TRANSITION = Transition(
     wavelength_m=BLUE_TRANSITION_WAVELENGTH_M,
@@ -112,9 +121,14 @@ BLUE_CALCULATED_SATURATION_INTENSITY_MW_CM2 = (
 
 
 # 556 nm green intercombination line: 1S0 F=1/2 -> 3P1 F=3/2
-GREEN_TRANSITION_WAVELENGTH_M = 555.8016e-9
-GREEN_TRANSITION_GAMMA_RAD_S = 2 * np.pi * 182.2e3
-GREEN_TRANSITION_LANDE_G = 965.0 / MU_B_OVER_H_KHZ_PER_G
+GREEN_TRANSITION_WAVELENGTH_M = 555.80068663e-9
+GREEN_TRANSITION_GAMMA_RAD_S = 2 * np.pi * 182.4e3
+GREEN_TRANSITION_LANDE_G_J = 1.492820
+GREEN_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G = 1392.674
+GREEN_TRANSITION_LANDE_G = (
+    GREEN_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G
+    / MU_B_OVER_H_KHZ_PER_G
+)
 
 GREEN_TRANSITION = Transition(
     wavelength_m=GREEN_TRANSITION_WAVELENGTH_M,

@@ -5,6 +5,55 @@ import numpy as np
 import config
 
 
+def test_yb171_reference_atomic_constants():
+    assert np.isclose(config.YB171_MASS_AMU, 170.936331515, rtol=0.0, atol=1e-12)
+
+    assert np.isclose(config.BLUE_TRANSITION.wavelength_m, 398.9108443e-9)
+    assert np.isclose(
+        config.BLUE_TRANSITION.gamma_rad_s,
+        2 * np.pi * 29.13e6,
+    )
+    assert np.isclose(
+        config.BLUE_TRANSITION.lande_g * config.MU_B_OVER_H_KHZ_PER_G,
+        965.0,
+    )
+
+    assert np.isclose(config.GREEN_TRANSITION.wavelength_m, 555.80068663e-9)
+    assert np.isclose(
+        config.GREEN_TRANSITION.gamma_rad_s,
+        2 * np.pi * 182.4e3,
+    )
+    assert np.isclose(
+        config.GREEN_TRANSITION.lande_g * config.MU_B_OVER_H_KHZ_PER_G,
+        1392.674,
+    )
+    assert np.isclose(config.GREEN_SATURATION_INTENSITY_W_M2, 1.3885, rtol=5e-4)
+
+
+def test_yb171_j0j1_model_uses_stretched_state_zeeman_shift():
+    from lab_setup.atom_species import create_yb171
+
+    atom = create_yb171()
+    assert np.isclose(
+        atom.trans["399"].lande_factor,
+        1.5 * config.BLUE_TRANSITION.lande_g,
+    )
+    assert np.isclose(
+        atom.trans["556"].lande_factor,
+        1.5 * config.GREEN_TRANSITION.lande_g,
+    )
+    assert np.isclose(
+        atom.trans["399"].lande_factor,
+        config.BLUE_TRANSITION_LANDE_G_J,
+        rtol=1e-2,
+    )
+    assert np.isclose(
+        atom.trans["556"].lande_factor,
+        config.GREEN_TRANSITION_LANDE_G_J,
+        rtol=1e-3,
+    )
+
+
 def test_authoritative_force_scale_and_defaults_are_exposed():
     assert hasattr(config, "FORCE_SCALE_N")
     assert isinstance(config.FORCE_SCALE_N, float)

@@ -11,7 +11,14 @@ class EllipticalLaserBeam(LaserBeam):
     The semi-minor axis is `wx` and the semi-major axis is `wy`
     in the beam's local frame.
     """
-    def __init__(self, wavelength=399e-9, wx=1e-3, wy=1e-3, power=1e-3, **kwargs):
+    def __init__(
+        self,
+        wavelength=BLUE_TRANSITION.wavelength_m,
+        wx=1e-3,
+        wy=1e-3,
+        power=1e-3,
+        **kwargs,
+    ):
         self._wx = wx
         self._wy = wy
         # Set waist to wx just to satisfy base class properties if asked

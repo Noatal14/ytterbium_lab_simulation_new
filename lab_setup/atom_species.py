@@ -4,16 +4,23 @@ lab_setup/atom_species.py — Atomic species creation.
 Defines the Yb-171 atom with the broad (1S0 F=1/2 → 1P1 F=3/2) transition.
 Uses atomSmltr's Atom and J0J1Transition classes.
 
-NOTE: The J0J1Transition model approximates the hyperfine F=1/2→F=3/2
-cycling transition as a simple J=0→J=1 system. This is standard practice
-and captures the essential MOT physics. The Landé factor is set to g_F of
-the excited F=3/2 state (ground state J=0 has negligible Zeeman shift).
+NOTE: The J0J1Transition model approximates each hyperfine F=1/2→F=3/2
+transition as a simple J=0→J=1 system.  Its model states have m=0,±1,
+whereas the physical stretched excited states have m_F=±3/2.  Therefore the
+factor passed to the model is (3/2)g_F, using the measured F=3/2 Zeeman
+coefficient.  This is distinct from the electronic g_J value.
 """
 
 import numpy as np
 from scipy import constants as csts
 from atomsmltr.atoms import Atom, J0J1Transition, Ytterbium, Strontium
 from config import YB171, BLUE_TRANSITION, GREEN_TRANSITION
+
+
+def _j0j1_effective_lande_factor(transition):
+    """Map the physical F=3/2 ``g_F`` to the model's m=±1 states."""
+
+    return 1.5 * transition.lande_g
 
 def create_yb171():
     """
@@ -32,7 +39,7 @@ def create_yb171():
     # Real transition is F=1/2 -> F=3/2 with max shift 1.5 * g_F.
     # Model has max shift 1.0 * g_model.
     # So we set g_model = 1.5 * g_F to match the force strength.
-    g_effective = BLUE_TRANSITION.lande_g * 1.5
+    g_effective = _j0j1_effective_lande_factor(BLUE_TRANSITION)
 
     main_transition = J0J1Transition(
         wavelength=BLUE_TRANSITION.wavelength_m,
@@ -46,7 +53,7 @@ def create_yb171():
     green_transition = J0J1Transition(
         wavelength=GREEN_TRANSITION.wavelength_m,
         Gamma=GREEN_TRANSITION.gamma_rad_s,
-        lande_factor=GREEN_TRANSITION.lande_g * 1.5, # Same 1.5 correction factor for J0->J1 model
+        lande_factor=_j0j1_effective_lande_factor(GREEN_TRANSITION),
         tag="556",
     )
     atom.add_transition(green_transition)
