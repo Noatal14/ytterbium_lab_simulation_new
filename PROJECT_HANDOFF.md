@@ -1,6 +1,6 @@
 # Project handoff: Yb-171 laser-cooling simulation
 
-Last updated: 2026-08-19
+Last updated: 2026-08-26
 
 ## 1. Purpose and scientific context
 
@@ -200,6 +200,21 @@ leave a required downstream input only on Zeus without recording its location
 and generation parameters.
 
 ## 7. 2D-MOT optimization
+
+The authoritative scientific and statistical plan for the active campaign is
+[`docs/2D_MOT_OPTIMIZATION_PLAN.md`](docs/2D_MOT_OPTIMIZATION_PLAN.md). Read it
+before changing search bounds, particle/seed budgets, stopping rules, objective
+definitions, or the interpretation of a result.
+
+The experimental control resolutions required for the final near-optimality
+claim have not yet been confirmed. The plan contains provisional placeholders
+for `s0`, detuning, and magnet radius; do not present them as measured apparatus
+capabilities.
+
+The campaign has three required outcomes: high conditional capture among Zeeman
+survivors, repeatability across independent particles/seeds, and robustness to
+realistic laboratory parameter-setting uncertainty. A high Optuna value alone
+does not satisfy the campaign goal.
 
 The current production strategy uses
 `python -m studies.optimize_2d_mot_joint` to optimize `s0`, detuning, and magnet
