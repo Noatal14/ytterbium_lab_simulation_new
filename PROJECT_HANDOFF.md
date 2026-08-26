@@ -234,6 +234,9 @@ Shortlisted operating points are validated with
 larger subsets, and aligned replicates, and it reports paired confidence
 intervals against the maximum-capture candidate. Do not select a lower-power
 candidate from raw mean efficiencies alone.
+For Zeus, the three candidates may run as a PBS array using distinct
+`--candidate-index` values. Array tasks write separate JSON files; only run
+`--summarize-only` after all three complete, so no tasks race on `summary.json`.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:

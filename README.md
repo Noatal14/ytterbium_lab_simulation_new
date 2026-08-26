@@ -158,6 +158,9 @@ After screening and refinement, `python -m studies.validate_2d_mot_candidates`
 compares the shortlisted power/capture trade-offs on larger paired samples with
 fresh MOT seeds. Its summary reports confidence intervals for the paired
 efficiency differences and a 0.05-percentage-point noninferiority check.
+Independent candidates can run concurrently through `--candidate-index 0`,
+`1`, or `2`. After all candidate files exist, use `--summarize-only` to create
+the shared paired-comparison summary without concurrent writes.
 
 The older `studies.optimize_2d_mot` and fixed-`s0` scripts are retained only for
 historical reproducibility and are not the recommended production workflow.

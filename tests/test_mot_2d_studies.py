@@ -65,6 +65,15 @@ def test_candidate_validation_reports_paired_noninferiority():
     assert comparison["passes_noninferiority_at_95_percent"]
 
 
+def test_candidate_validation_accepts_array_index():
+    from studies.validate_2d_mot_candidates import parse_args
+
+    args = parse_args(["--candidate-index", "2", "--npools", "200"])
+
+    assert args.candidate_index == 2
+    assert args.npools == 200
+
+
 def test_student_interval_requires_replicates():
     mean, low, high, half_width = student_mean_interval([0.25])
     assert mean == 0.25

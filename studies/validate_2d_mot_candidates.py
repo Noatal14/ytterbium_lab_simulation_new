@@ -8,6 +8,7 @@ random realizations used to shortlist the candidates.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
@@ -127,8 +128,16 @@ def run_validation(args):
         "paired_design": True,
     }
 
+    candidates = CANDIDATES
+    if args.candidate_index is not None:
+        if not 0 <= args.candidate_index < len(CANDIDATES):
+            raise ValueError(
+                f"candidate-index must be between 0 and {len(CANDIDATES) - 1}."
+            )
+        candidates = (CANDIDATES[args.candidate_index],)
+
     results = []
-    for candidate in CANDIDATES:
+    for candidate in candidates:
         parameters = {
             key: candidate[key]
             for key in ("s0", "detuning_gamma", "magnet_radius")
@@ -151,7 +160,11 @@ def run_validation(args):
         }
         results.append(result)
         save_file_json(output_dir / f"{candidate['name']}.json", result)
-        save_file_json(output_dir / "summary.json", build_summary(results, design))
+        # Array tasks write distinct candidate files.  A separate summarize-only
+        # invocation combines them after all tasks finish, avoiding a shared-file
+        # race between concurrent jobs.
+        if args.candidate_index is None:
+            save_file_json(output_dir / "summary.json", build_summary(results, design))
         print(
             "MOT_2D_CANDIDATE_RESULT "
             f"name={candidate['name']} "
@@ -162,6 +175,24 @@ def run_validation(args):
     return build_summary(results, design)
 
 
+def summarize_saved_results(output_dir):
+    """Combine independently written array-task results in candidate order."""
+    output_dir = Path(output_dir)
+    results = []
+    for candidate in CANDIDATES:
+        path = output_dir / f"{candidate['name']}.json"
+        if not path.exists():
+            raise FileNotFoundError(f"Missing candidate result: {path}")
+        results.append(json.loads(path.read_text(encoding="utf-8")))
+
+    design = results[0]["design"]
+    if any(result["design"] != design for result in results[1:]):
+        raise ValueError("Candidate result files do not share one paired design.")
+    summary = build_summary(results, design)
+    save_file_json(output_dir / "summary.json", summary)
+    return summary
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-ensembles", type=int, default=10)
@@ -169,6 +200,16 @@ def parse_args(argv=None):
     parser.add_argument("--mot-seed-start", type=int, default=6000)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
+    parser.add_argument(
+        "--candidate-index",
+        type=int,
+        help="Run only one candidate (0-2), for use in a PBS array.",
+    )
+    parser.add_argument(
+        "--summarize-only",
+        action="store_true",
+        help="Combine existing candidate JSON files without running simulations.",
+    )
     parser.add_argument(
         "--output-dir",
         default=str(
@@ -179,4 +220,9 @@ def parse_args(argv=None):
 
 
 if __name__ == "__main__":
-    run_validation(parse_args())
+    arguments = parse_args()
+    if arguments.summarize_only:
+        summary = summarize_saved_results(arguments.output_dir)
+        print(json.dumps(summary, indent=2))
+    else:
+        run_validation(arguments)
