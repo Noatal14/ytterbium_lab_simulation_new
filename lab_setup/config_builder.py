@@ -115,6 +115,7 @@ def build_base_config(
             get_builtin_3dmot_magnetic_field(
                 gradient_G_cm=_3d_mot_gradient_G_cm,
                 origin=_3d_mot_config["center_position_m"],
+                strong_axis=_3d_mot_config.get("magnetic_strong_axis", "z"),
             )
         )
 

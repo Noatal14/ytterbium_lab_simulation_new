@@ -1,6 +1,7 @@
 import numpy as np
 from lab_setup.zeeman_laser_setup import CircularGaussianBeam
-from atomsmltr.environment.lasers.polarization import CircularRight
+from lab_setup.laser_setup_2d_mot import EllipticalLaserBeam
+from atomsmltr.environment.lasers.polarization import CircularLeft, CircularRight
 from config import (
     ACTIVE_MOT_3D_CONFIGURATION,
     MOT_3D_CONFIGURATIONS,
@@ -136,6 +137,10 @@ def _validate_profile(profile):
                 "Angled 3D-MOT profiles require 0 < xz_angle_from_z_deg < 90."
             )
 
+    strong_axis = profile.get("magnetic_strong_axis", "z")
+    if strong_axis not in {"x", "y", "z"}:
+        raise ValueError("3D-MOT magnetic_strong_axis must be x, y, or z.")
+
     separation = profile.get("blue_green_center_separation_m", 0.0)
     if separation is None:
         raise ValueError(
@@ -147,17 +152,39 @@ def _validate_profile(profile):
 
     for wavelength_key in ("399", "556"):
         component = profile[wavelength_key]
-        for key in ("enabled", "s0", "detuning_gamma", "waist_m", "profile"):
+        for key in ("enabled", "s0", "profile"):
             if key not in component:
                 raise ValueError(
                     f"3D-MOT {wavelength_key} component is missing '{key}'."
                 )
-        if float(component["waist_m"]) <= 0.0:
-            raise ValueError(f"3D-MOT {wavelength_key} waist_m must be positive.")
-        if component["profile"] not in {"gaussian", "donut"}:
+        if "detuning_gamma" not in component:
+            raise ValueError(
+                f"3D-MOT {wavelength_key} component is missing 'detuning_gamma'."
+            )
+        if component["profile"] not in {"gaussian", "donut", "elliptical"}:
             raise ValueError(
                 f"Unsupported 3D-MOT {wavelength_key} profile "
                 f"'{component['profile']}'."
+            )
+        if component["profile"] == "elliptical":
+            for key in ("waist_short_m", "waist_long_m"):
+                if float(component.get(key, 0.0)) <= 0.0:
+                    raise ValueError(
+                        f"3D-MOT {wavelength_key} {key} must be positive."
+                    )
+        elif float(component.get("waist_m", 0.0)) <= 0.0:
+            raise ValueError(f"3D-MOT {wavelength_key} waist_m must be positive.")
+
+        polarization_by_axis = component.get("polarization_by_axis", {})
+        invalid_polarizations = {
+            axis_tag: handedness
+            for axis_tag, handedness in polarization_by_axis.items()
+            if handedness not in {"left", "right"}
+        }
+        if invalid_polarizations:
+            raise ValueError(
+                "3D-MOT polarization_by_axis values must be 'left' or 'right': "
+                f"{invalid_polarizations}"
             )
 
     blue = profile["399"]
@@ -188,6 +215,9 @@ def _validate_profile(profile):
 def _beam_profile_center(profile, wavelength_key, base_center):
     base_center = np.asarray(base_center, dtype=float)
     center = base_center
+    wavelength_cfg = profile.get(wavelength_key, {})
+    if "center_offset_m" in wavelength_cfg:
+        return center + np.asarray(wavelength_cfg["center_offset_m"], dtype=float)
     if profile.get("blue_green_center_separation_m", 0.0) == 0.0:
         return center.copy()
     if wavelength_key == "399":
@@ -195,6 +225,19 @@ def _beam_profile_center(profile, wavelength_key, base_center):
     else:
         offset = 0.5 * profile["blue_green_center_separation_m"]
     return center + np.array([0.0, 0.0, offset])
+
+
+def _beam_polarization(wavelength_config, axis_tag):
+    handedness = wavelength_config.get("polarization_by_axis", {}).get(
+        axis_tag, "right"
+    )
+    if handedness == "right":
+        return CircularRight()
+    if handedness == "left":
+        return CircularLeft()
+    raise ValueError(
+        f"Unsupported circular polarization '{handedness}' for axis {axis_tag}."
+    )
 
 
 def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=None):
@@ -231,11 +274,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
     peak_intensity_556 = profile["556"]["s0"] * GREEN_SATURATION_INTENSITY_W_M2
     beam_axes = _get_beam_directions(profile)
 
-    # Because atomsmltr defines circular polarization in each beam's own
-    # propagation frame, using the same handedness on a counter-propagating pair
-    # produces opposite helicity in the lab frame.
-    polarization = CircularRight()
-
     def make_beam(
         wavelength,
         waist,
@@ -244,9 +282,17 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         tag,
         beam_center,
         profile_kind,
+        polarization,
         inner_cutoff_radius=None,
+        waist_short=None,
+        waist_long=None,
     ):
-        beam_cls = DonutGaussianBeam if profile_kind == "donut" else CircularGaussianBeam
+        if profile_kind == "donut":
+            beam_cls = DonutGaussianBeam
+        elif profile_kind == "elliptical":
+            beam_cls = EllipticalLaserBeam
+        else:
+            beam_cls = CircularGaussianBeam
         beam_kwargs = dict(
             wavelength=wavelength,
             waist=waist,
@@ -258,6 +304,10 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         )
         if profile_kind == "donut":
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
+        elif profile_kind == "elliptical":
+            beam_kwargs.pop("waist")
+            beam_kwargs["wx"] = waist_short
+            beam_kwargs["wy"] = waist_long
         beam = beam_cls(**beam_kwargs)
         beam.profile_kind = profile_kind
         beam.set_power_from_peak_I(peak_intensity)
@@ -281,13 +331,16 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             beams.append(
                 make_beam(
                     wavelength=BLUE_TRANSITION.wavelength_m,
-                    waist=beam_399_cfg["waist_m"],
+                    waist=beam_399_cfg.get("waist_m", 0.01),
                     peak_intensity=peak_intensity_399,
                     direction=direction,
                     tag=f"3DMOT_399_{axis_tag}",
                     beam_center=beam_center,
                     profile_kind=beam_399_cfg["profile"],
+                    polarization=_beam_polarization(beam_399_cfg, axis_tag),
                     inner_cutoff_radius=beam_399_cfg.get("inner_cutoff_radius_m"),
+                    waist_short=beam_399_cfg.get("waist_short_m"),
+                    waist_long=beam_399_cfg.get("waist_long_m"),
                 )
             )
 
@@ -302,6 +355,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     tag=f"3DMOT_556_{axis_tag}",
                     beam_center=beam_center,
                     profile_kind=beam_556_cfg["profile"],
+                    polarization=_beam_polarization(beam_556_cfg, axis_tag),
                 )
             )
 

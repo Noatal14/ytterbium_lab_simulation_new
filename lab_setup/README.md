@@ -51,10 +51,16 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
 - `angled_donut`: two xz axes at ±30° from z, one y axis, a blue 399-nm Gaussian whose central 10-mm-radius disk is blocked completely, plus a coaxial green 556-nm Gaussian component
-- `angled_sequential`: the same angled geometry, but with blue and green cooling regions separated along z by a configurable provisional offset
+- `angled_sequential`: the Plotkin-Swing crossed-beam scheme: a six-beam 556-nm MOT and two elliptical 399-nm slowing beams at 45 degrees, crossing 1 cm upstream of the MOT
 - `five_beam_gravity`: five-beam geometry with the `-x` beam removed; every direction combines the same center-blocked blue 399-nm Gaussian with a coaxial green 556-nm Gaussian, and the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
 
-The final experimental geometry is still under investigation. The blue/green separation and five-beam wavelength choices therefore use clearly labeled provisional numerical values in `config.py`. The 10-mm blue cutoff radius reflects the clarified mirror geometry; the remaining provisional values should not be interpreted as finalized experimental parameters.
+For `angled_sequential`, parameter provenance is intentionally separated:
+
+- **Directly reported by Plotkin-Swing et al. (2020):** two 399-nm crossed slowing beams; 45-degree beam angle relative to the atomic beam; crossing point 10 mm before the MOT center; 1/e^2 short-axis width of 1.5 mm; long ellipse axis oriented perpendicular to the top-down view and sized to match the MOT-beam height; optimized crossed-beam saturation parameter `sX = 0.3`; and crossed-beam detuning of approximately -42 MHz.
+- **Geometry and sign-convention deductions used by this implementation:** atoms propagate along lab `+z`, so both slowing beams have negative `z` propagation components; their transverse components are opposite; the ellipse long axis maps to lab `y`; its 10-mm waist follows from the approximately 2-cm MOT diameter used in the paper; the 556-nm MOT uses the same two orthogonal axes in the `xz` plane plus the `y` axis; and, for the configured field convention, the quadrupole strong axis is `y` with right-handed circular polarization on the `xz` pairs and left-handed circular polarization on the `y` pair. Force tests verify slowing, transverse cancellation, and restoring behavior on both sides of all three axes.
+- **Provisional optimization defaults:** the blue detuning is stored as `-1.45 Gamma` as a convenient seed rather than a fixed reproduction of the paper; the green values `s0 = 5`, `detuning_gamma = -10`, and `waist_m = 10 mm` are temporary defaults because the paper does not establish them as the experimental operating point used by this project. The current 3D-MOT gradient of 10 G/cm is also provisional.
+
+The configuration plot shows separate short-axis and long-axis intensity cuts for the elliptical 399-nm beams. The other experimental concepts retain their own explicit configurable defaults; values from one profile must not be treated as finalized parameters for another.
 
 ### `mag_field_2d_mot.py`
 

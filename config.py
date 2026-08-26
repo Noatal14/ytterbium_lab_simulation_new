@@ -330,19 +330,30 @@ MOT_3D_CONFIGURATIONS = {
         },
     },
     "angled_sequential": {
-        "description": "Same angled xz+y beam geometry as the concentric case, but with the blue and green cooling regions separated along z.",
+        "description": "Plotkin-Swing et al. crossed-beam slower: a six-beam 556-nm MOT plus two 399-nm beams crossing 1 cm upstream at 45 degrees.",
         "beam_layout": "angled_xz_y",
-        "xz_angle_from_z_deg": 30.0,
+        "xz_angle_from_z_deg": 45.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
-        # Provisional value kept explicit and configurable; blue is upstream of green
-        # along +z, so the atom sees blue first and green later.
-        "blue_green_center_separation_m": 5.0e-3,  # Provisional — final experimental separation TBD
+        # The third MOT-beam axis is y, so the quadrupole's strong axis must
+        # be y for the standard 2:1 gradient and helicity arrangement.
+        "magnetic_strong_axis": "y",
+        "beam_components": {
+            "+XZ_1": {"399_enabled": False, "556_enabled": True},
+            "-XZ_1": {"399_enabled": True, "556_enabled": True},
+            "+XZ_2": {"399_enabled": False, "556_enabled": True},
+            "-XZ_2": {"399_enabled": True, "556_enabled": True},
+            "+Y": {"399_enabled": False, "556_enabled": True},
+            "-Y": {"399_enabled": False, "556_enabled": True},
+        },
         "399": {
             "enabled": True,
-            "s0": 0.5,
-            "detuning_gamma": -1.0,
-            "waist_m": 0.015,
-            "profile": "gaussian",
+            "s0": 0.3,
+            # Initial optimization seed in units of the 399-nm linewidth Gamma.
+            "detuning_gamma": -1.45,
+            "center_offset_m": (0.0, 0.0, -10.0e-3),
+            "profile": "elliptical",
+            "waist_short_m": 1.5e-3,
+            "waist_long_m": 10.0e-3,
         },
         "556": {
             "enabled": True,
@@ -350,6 +361,17 @@ MOT_3D_CONFIGURATIONS = {
             "detuning_gamma": -10.0,
             "waist_m": 0.01,
             "profile": "gaussian",
+            "center_offset_m": (0.0, 0.0, 0.0),
+            # Required by the sign convention of the configured quadrupole
+            # field to make the green MOT restoring along x, y, and z.
+            "polarization_by_axis": {
+                "+XZ_1": "right",
+                "-XZ_1": "right",
+                "+XZ_2": "right",
+                "-XZ_2": "right",
+                "+Y": "left",
+                "-Y": "left",
+            },
         },
     },
     "five_beam_gravity": {

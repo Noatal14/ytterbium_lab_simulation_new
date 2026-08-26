@@ -185,6 +185,47 @@ def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
     )
 
 
+def _draw_elliptical_beam(ax, source, center, direction, short_m, long_m, color):
+    """Draw the crossed slower with its long axis along lab y."""
+    direction = np.asarray(direction, dtype=float)
+    direction /= np.linalg.norm(direction)
+    long_axis = np.array([0.0, 1.0, 0.0])
+    short_axis = np.cross(long_axis, direction)
+    short_axis /= np.linalg.norm(short_axis)
+
+    t = np.linspace(0.0, 1.0, 14)
+    phi = np.linspace(0.0, 2.0 * np.pi, 36)
+    tt, pp = np.meshgrid(t, phi, indexing="ij")
+    centers = source[None, None, :] + tt[..., None] * (
+        center - source
+    )[None, None, :]
+    points = centers + (
+        short_m * np.cos(pp)[..., None] * short_axis[None, None, :]
+        + long_m * np.sin(pp)[..., None] * long_axis[None, None, :]
+    )
+    ax.plot_surface(
+        points[..., 0] * MM_PER_M,
+        points[..., 1] * MM_PER_M,
+        points[..., 2] * MM_PER_M,
+        color=color,
+        alpha=0.11,
+        linewidth=0,
+        shade=False,
+    )
+    segment = np.vstack([source, center]) * MM_PER_M
+    ax.plot(*segment.T, color=color, linewidth=1.8, alpha=0.85)
+
+    arrow_start = source + 0.68 * (center - source)
+    arrow_length = 0.22 * np.linalg.norm(center - source)
+    ax.quiver(
+        *(arrow_start * MM_PER_M),
+        *(direction * arrow_length * MM_PER_M),
+        color=color,
+        arrow_length_ratio=0.28,
+        linewidth=1.2,
+    )
+
+
 def _draw_donut_beam(
     ax,
     source,
@@ -277,7 +318,7 @@ def _draw_coordinate_reference(ax, origin, scale_m):
     ax.text(*(gravity_label * MM_PER_M), "gravity", color="black", fontsize=9)
 
 
-def _normalized_radial_intensity(cfg, radius_m):
+def _normalized_radial_intensity(cfg, radius_m, waist_m=None):
     """Return the configured transverse intensity normalized to its peak."""
     if cfg.get("profile", "gaussian") == "donut":
         intensity = np.exp(-2.0 * radius_m**2 / float(cfg["waist_m"]) ** 2)
@@ -286,31 +327,66 @@ def _normalized_radial_intensity(cfg, radius_m):
             0.0,
             intensity,
         )
-    return np.exp(-2.0 * radius_m**2 / float(cfg["waist_m"]) ** 2)
+    waist = waist_m or cfg.get("waist_m", cfg.get("waist_short_m"))
+    return np.exp(-2.0 * radius_m**2 / float(waist) ** 2)
 
 
 def _draw_radial_profiles(ax, blue_cfg, green_cfg):
     """Show an exact transverse cut so nested beams remain interpretable."""
+    blue_is_elliptical = blue_cfg.get("profile") == "elliptical"
     characteristic_radii = [
-        1.5 * float(blue_cfg["waist_m"]),
+        1.5
+        * float(
+            blue_cfg.get(
+                "waist_m",
+                blue_cfg.get("waist_long_m", blue_cfg.get("waist_short_m")),
+            )
+        ),
         1.5 * float(green_cfg["waist_m"]),
     ]
     if blue_cfg.get("profile") == "donut":
         characteristic_radii.append(float(blue_cfg["inner_cutoff_radius_m"]))
     radius_m = np.linspace(0.0, max(characteristic_radii), 600)
 
-    for cfg, color, label in (
-        (blue_cfg, BLUE_COLOR, "399 nm"),
-        (green_cfg, GREEN_COLOR, "556 nm"),
-    ):
-        intensity = _normalized_radial_intensity(cfg, radius_m)
-        ax.plot(radius_m * MM_PER_M, intensity, color=color, linewidth=2.5, label=label)
+    profiles = [(green_cfg, GREEN_COLOR, "556 nm", None, "-")]
+    if blue_is_elliptical:
+        profiles.extend(
+            [
+                (
+                    blue_cfg,
+                    BLUE_COLOR,
+                    "399 nm short-axis cut (1.5 mm waist)",
+                    float(blue_cfg["waist_short_m"]),
+                    "-",
+                ),
+                (
+                    blue_cfg,
+                    BLUE_COLOR,
+                    "399 nm long-axis cut (10 mm waist)",
+                    float(blue_cfg["waist_long_m"]),
+                    "--",
+                ),
+            ]
+        )
+    else:
+        profiles.append((blue_cfg, BLUE_COLOR, "399 nm radial cut", None, "-"))
+
+    for cfg, color, label, waist_m, linestyle in profiles:
+        intensity = _normalized_radial_intensity(cfg, radius_m, waist_m=waist_m)
+        ax.plot(
+            radius_m * MM_PER_M,
+            intensity,
+            color=color,
+            linewidth=2.5,
+            linestyle=linestyle,
+            label=label,
+        )
         ax.fill_between(
             radius_m * MM_PER_M,
             0.0,
             intensity,
             color=color,
-            alpha=0.15,
+            alpha=0.08 if blue_is_elliptical else 0.15,
         )
 
     if blue_cfg.get("profile") == "donut":
@@ -327,8 +403,8 @@ def _draw_radial_profiles(ax, blue_cfg, green_cfg):
             fontsize=9,
         )
 
-    ax.set_title("Transverse intensity profile")
-    ax.set_xlabel("radius from beam axis [mm]")
+    ax.set_title("Transverse intensity cuts")
+    ax.set_xlabel("distance from beam axis along indicated cut [mm]")
     ax.set_ylabel("normalized intensity")
     ax.set_ylim(-0.03, 1.08)
     ax.grid(alpha=0.25)
@@ -442,6 +518,19 @@ def plot_configuration(name, profile, beam_length_m):
                     1.5 * float(cfg["waist_m"]),
                     inner_cutoff_radius,
                 )
+            elif profile_kind == "elliptical":
+                short_m = float(cfg["waist_short_m"])
+                long_m = float(cfg["waist_long_m"])
+                _draw_elliptical_beam(
+                    ax,
+                    source,
+                    component_center,
+                    direction,
+                    short_m,
+                    long_m,
+                    color,
+                )
+                display_radius = max(short_m, long_m)
             else:
                 waist = float(cfg["waist_m"])
                 _draw_gaussian_beam(
