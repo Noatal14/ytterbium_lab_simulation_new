@@ -19,11 +19,13 @@ from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 
-BOUNDS_S0 = (0.8, 1.5)
-BOUNDS_DETUNING = (-2.0, -0.6)
-# Experimental installation constraint: radii below 49 mm do not leave enough
-# physical clearance. Keep the full feasible interval in the screening search.
-BOUNDS_MAGNET_RADIUS_M = (0.049, 0.056)
+# Follow-up bounds after the broad v1/v2 screens.  The v2 optimum reached both
+# the upper s0 boundary and the 49 mm radius boundary.  Updated experimental
+# information permits a 45 mm radius, so this boundary-follow-up deliberately
+# expands s0 and searches the newly feasible low-radius region.
+BOUNDS_S0 = (1.2, 2.5)
+BOUNDS_DETUNING = (-1.55, -0.85)
+BOUNDS_MAGNET_RADIUS_M = (0.045, 0.051)
 
 
 def evaluate_configuration(
@@ -170,11 +172,15 @@ def parse_args():
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
     parser.add_argument(
-        "--study-name", default="mot_2d_joint_screening_v2_radius49to56mm"
+        "--study-name",
+        default="mot_2d_joint_boundary_followup_v3_radius45to51mm",
     )
     parser.add_argument(
         "--output-dir",
-        default=str(MOT_2D_OPTIMIZATION_DIR / "joint_screening_v2_radius49to56mm"),
+        default=str(
+            MOT_2D_OPTIMIZATION_DIR
+            / "joint_boundary_followup_v3_radius45to51mm"
+        ),
     )
     return parser.parse_args()
 

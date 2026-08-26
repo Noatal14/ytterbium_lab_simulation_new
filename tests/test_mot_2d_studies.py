@@ -9,10 +9,16 @@ from utils.mot_2d_study import (
 )
 
 
-def test_joint_screening_respects_experimental_magnet_clearance():
-    from studies.optimize_2d_mot_joint import BOUNDS_MAGNET_RADIUS_M
+def test_joint_followup_uses_updated_experimental_bounds():
+    from studies.optimize_2d_mot_joint import (
+        BOUNDS_DETUNING,
+        BOUNDS_MAGNET_RADIUS_M,
+        BOUNDS_S0,
+    )
 
-    assert BOUNDS_MAGNET_RADIUS_M == (0.049, 0.056)
+    assert BOUNDS_S0 == (1.2, 2.5)
+    assert BOUNDS_DETUNING == (-1.55, -0.85)
+    assert BOUNDS_MAGNET_RADIUS_M == (0.045, 0.051)
 
 
 def test_student_interval_requires_replicates():
