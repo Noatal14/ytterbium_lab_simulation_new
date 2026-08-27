@@ -135,6 +135,12 @@ Recheck finalists at the finer 2D-MOT timestep of 5 microseconds. The 10
 microsecond timestep is the accepted screening choice, not an excuse to skip the
 final numerical cross-check.
 
+The selected setting subsequently passed the production prediction target at
+10 microseconds using 20 independent Zeeman/MOT seed pairs. The final timestep
+confirmation must reuse those exact 20 ensembles and MOT seeds at 5
+microseconds. Treat the timestep as equivalent only if the paired 95% interval
+for `5 us - 10 us` lies entirely within +/-0.05 percentage points.
+
 ## Stage 4: establish near-optimality within experimental resolution
 
 The desired optimization claim uses a tolerance of:
@@ -209,6 +215,13 @@ laboratory domain. It is not an assumption-free mathematical proof over every
 real-valued parameter combination.
 
 ## Stage 5: production prediction
+
+Status as of 2026-08-27: **passed at the 10-microsecond production timestep.**
+For the selected parameters, 20 independent ensembles give a mean conditional
+capture of 2.568102%. For 10,000,000 Zeeman survivors, the model predicts
+256,810 captured atoms, with a 95% prediction range of 252,372 to 261,248
+atoms (2.523720% to 2.612484%). The prediction half-width is 0.044382
+percentage points, below the predeclared 0.05-percentage-point target.
 
 Run the locked finalists across all accepted independent Zeeman ensembles. Add
 new Zeeman/MOT seeds adaptively until the predictive target for a new equivalent

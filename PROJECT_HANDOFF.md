@@ -259,6 +259,15 @@ and summarize after each batch.  Stop only when the reported 95% prediction for
 a new run of 10,000,000 Zeeman survivors has a half-width no larger than 0.05
 percentage points; otherwise add another five independent ensembles.
 
+The production-prediction stopping rule passed on 2026-08-27 with 20
+independent ensembles. At the selected setting (`s0=1.45986585`, detuning
+`-1.28567590 Gamma`, magnet radius `49.08079014 mm`), the 10-us simulation
+predicts 256,810 captures per 10,000,000 Zeeman survivors, with a model-based
+95% range of 252,372 to 261,248 and a half-width of 0.044382 percentage points.
+This result is conditional on entering the 2D MOT as a Zeeman survivor. Before
+calling the numerical result final, run the paired 5-us confirmation with
+`python -m studies.confirm_2d_mot_final_timestep`.
+
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:
 

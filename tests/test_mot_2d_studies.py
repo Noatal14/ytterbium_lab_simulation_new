@@ -4,6 +4,7 @@ import numpy as np
 
 from utils.mot_2d_study import (
     load_production_ensembles,
+    prediction_for_new_run,
     student_mean_interval,
     summarize_replicates,
 )
@@ -149,6 +150,18 @@ def test_replicate_summary_reports_conditional_and_total_uncertainty():
     assert np.isclose(result["mean_conditional_efficiency"], 0.21)
     assert np.isclose(result["mean_estimated_total_efficiency"], 0.105)
     assert result["conditional_95_ci_half_width"] > 0
+
+
+def test_prediction_for_new_run_reports_count_and_interval():
+    replicates = [
+        {"conditional_efficiency": value} for value in (0.024, 0.025, 0.026, 0.0255)
+    ]
+    result = prediction_for_new_run(replicates, reporting_survivors=1_000_000)
+
+    assert result["reporting_zeeman_survivors"] == 1_000_000
+    assert result["expected_captured_atoms"] == 25_125
+    assert result["predicted_95_interval_fraction"][0] < 0.025125
+    assert result["predicted_95_interval_fraction"][1] > 0.025125
 
 
 def test_load_production_ensembles_uses_ordered_fixed_subsets(tmp_path):

@@ -12,15 +12,16 @@ import argparse
 import json
 from pathlib import Path
 
-import numpy as np
-from scipy.stats import t as student_t
-
 from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
 from studies.optimize_2d_mot_joint import evaluate_configuration
 from studies.validate_2d_mot_robustness import SELECTED_PARAMETERS
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.file_helpers import save_file_json
-from utils.mot_2d_study import load_production_ensembles, summarize_replicates
+from utils.mot_2d_study import (
+    load_production_ensembles,
+    prediction_for_new_run,
+    summarize_replicates,
+)
 
 
 DEFAULT_OUTPUT_DIR = MOT_2D_OPTIMIZATION_DIR / "production_prediction_v8"
@@ -79,35 +80,7 @@ def summarize(output_dir, baseline_file=BASELINE_CENTER_FILE):
         replicates.append(row)
     replicates.sort(key=lambda row: row["zeeman_seed"])
     statistics = summarize_replicates(replicates)
-    efficiencies = np.asarray(
-        [row["conditional_efficiency"] for row in replicates], dtype=float
-    )
-    mean = float(np.mean(efficiencies))
-    if len(efficiencies) < 2:
-        prediction = None
-    else:
-        between_run_sem = float(
-            np.std(efficiencies, ddof=1) / np.sqrt(len(efficiencies))
-        )
-        future_counting_sem = float(np.sqrt(mean * (1.0 - mean) / REPORTING_SURVIVORS))
-        combined_sem = float(np.sqrt(between_run_sem**2 + future_counting_sem**2))
-        critical = float(student_t.ppf(0.975, len(efficiencies) - 1))
-        half_width = float(critical * combined_sem)
-        prediction = {
-            "reporting_zeeman_survivors": REPORTING_SURVIVORS,
-            "expected_conditional_efficiency": mean,
-            "expected_captured_atoms": int(round(mean * REPORTING_SURVIVORS)),
-            "predicted_95_interval_fraction": [
-                max(0.0, mean - half_width),
-                min(1.0, mean + half_width),
-            ],
-            "predicted_95_half_width_fraction": half_width,
-            "predicted_95_half_width_percentage_points": 100 * half_width,
-            "method": (
-                "Student-t uncertainty of the estimated mean combined with "
-                "binomial counting noise for a new 10,000,000-survivor run"
-            ),
-        }
+    prediction = prediction_for_new_run(replicates, REPORTING_SURVIVORS)
     summary = {
         "kind": "mot_2d_production_prediction_summary",
         "parameters": SELECTED_PARAMETERS,

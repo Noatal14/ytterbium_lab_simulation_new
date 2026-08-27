@@ -105,3 +105,33 @@ def summarize_replicates(replicates):
         "estimated_total_95_ci": [t_low, t_high],
         "estimated_total_95_ci_half_width": t_half,
     }
+
+
+def prediction_for_new_run(replicates, reporting_survivors=10_000_000):
+    """Predict capture in a new large run from independent replicate results."""
+    efficiencies = np.asarray(
+        [row["conditional_efficiency"] for row in replicates], dtype=float
+    )
+    if len(efficiencies) < 2:
+        return None
+    mean = float(np.mean(efficiencies))
+    between_run_sem = float(np.std(efficiencies, ddof=1) / np.sqrt(len(efficiencies)))
+    future_counting_sem = float(np.sqrt(mean * (1.0 - mean) / reporting_survivors))
+    combined_sem = float(np.sqrt(between_run_sem**2 + future_counting_sem**2))
+    critical = float(student_t.ppf(0.975, len(efficiencies) - 1))
+    half_width = float(critical * combined_sem)
+    return {
+        "reporting_zeeman_survivors": int(reporting_survivors),
+        "expected_conditional_efficiency": mean,
+        "expected_captured_atoms": int(round(mean * reporting_survivors)),
+        "predicted_95_interval_fraction": [
+            max(0.0, mean - half_width),
+            min(1.0, mean + half_width),
+        ],
+        "predicted_95_half_width_fraction": half_width,
+        "predicted_95_half_width_percentage_points": 100 * half_width,
+        "method": (
+            "Student-t uncertainty of the estimated mean combined with "
+            f"binomial counting noise for a new {reporting_survivors:,}-survivor run"
+        ),
+    }
