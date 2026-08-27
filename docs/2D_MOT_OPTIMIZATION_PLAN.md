@@ -154,6 +154,23 @@ solver validation should use exact Poisson sampling in the low-`Ni` regime and
 the Gaussian approximation only where it is justified, then repeat the paired
 timestep comparison and finalist checks.
 
+That diagnostic was completed on three independent 2,000-particle ensembles.
+Across all lasers, 95.1738% of laser-step evaluations had `Ni < 15`, accounting
+for 14.3490% of the expected photons. For captured trajectories the corresponding
+photon fraction was 8.7943%; for non-captured trajectories it was 17.2808%.
+The four 2D-MOT beams individually received about 9.0%-13.1% of their expected
+photons from `Ni < 15` evaluations, while the residual Zeeman laser received
+99.18% of its expected photons there (and contributed 5.008% of the combined
+expected photons). The low-count regime is therefore materially present and
+cannot be dismissed by counting only high-force steps.
+
+`RK4StHybridCustom` implements the next validation model. Below `Ni = 15`, it
+samples an exact Poisson absorption count and the isotropic recoil directions of
+the same spontaneous-emission events. At and above 15 it retains the fast
+Gaussian approximation. Use `python -m studies.validate_2d_mot_hybrid_timestep`
+to screen 2.5, 5, and 10 microseconds on identical input ensembles before
+launching a larger confirmation.
+
 ## Stage 4: establish near-optimality within experimental resolution
 
 The desired optimization claim uses a tolerance of:

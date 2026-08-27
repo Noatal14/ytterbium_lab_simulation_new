@@ -275,10 +275,15 @@ stochastic solver. That solver uses `Ni = scattering_rate * dt` and Gaussian
 photon-count fluctuations per laser and step, so smaller steps can invalidate
 the approximation. First run
 `python -m studies.diagnose_2d_mot_photon_counts` at 5 microseconds to quantify
-the low-`Ni` regime on the selected configuration. Then validate a hybrid
-Poisson/Gaussian recoil implementation, repeat the paired timestep check, and
-recheck the selected point and close competitors before making the final
-production claim.
+the low-`Ni` regime on the selected configuration. The completed diagnostic
+found that `Ni < 15` evaluations contribute 14.3490% of all expected photons,
+8.7943% on captured trajectories, and 17.2808% on non-captured trajectories.
+This is material. `RK4StHybridCustom` now samples exact Poisson absorption and
+isotropic emission recoil below `Ni = 15`, while retaining the Gaussian
+approximation at higher counts. Screen 2.5, 5, and 10 microseconds with
+`python -m studies.validate_2d_mot_hybrid_timestep`, then perform a larger
+paired confirmation and recheck the selected point and close competitors before
+making the final production claim.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:
