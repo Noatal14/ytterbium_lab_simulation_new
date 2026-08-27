@@ -26,9 +26,15 @@ def test_joint_optimizer_accepts_refinement_bounds():
 
     args = parse_args(
         [
-            "--s0-bounds", "1.4", "1.5",
-            "--detuning-bounds", "-1.32", "-1.10",
-            "--magnet-radius-bounds-m", "0.0488", "0.0506",
+            "--s0-bounds",
+            "1.4",
+            "1.5",
+            "--detuning-bounds",
+            "-1.32",
+            "-1.10",
+            "--magnet-radius-bounds-m",
+            "0.0488",
+            "0.0506",
         ]
     )
 
@@ -99,8 +105,7 @@ def test_robustness_grid_has_one_center_and_expected_steps():
         "magnet_radius": 1,
     }
     assert np.isclose(
-        upper["parameters"]["magnet_radius"]
-        - SELECTED_PARAMETERS["magnet_radius"],
+        upper["parameters"]["magnet_radius"] - SELECTED_PARAMETERS["magnet_radius"],
         0.01e-3,
     )
 
@@ -112,8 +117,12 @@ def test_robustness_followup_accepts_all_particles_and_fixed_correction():
         [
             "--summarize-only",
             "--all-particles",
-            "--summary-point-indices", "13", "7", "8",
-            "--familywise-comparisons", "26",
+            "--summary-point-indices",
+            "13",
+            "7",
+            "8",
+            "--familywise-comparisons",
+            "26",
         ]
     )
 
@@ -171,3 +180,26 @@ def test_load_production_ensembles_uses_ordered_fixed_subsets(tmp_path):
         for first, second in zip(ensembles, repeated)
     )
     assert not np.array_equal(ensembles[0]["states"][:, 0], np.arange(5))
+
+
+def test_load_production_ensembles_can_select_explicit_seed_order(tmp_path):
+    for seed in (3000, 3001, 3002):
+        path = tmp_path / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
+        np.save(path, np.full((4, 6), seed, dtype=float))
+        path.with_suffix(".json").write_text(
+            json.dumps(
+                {
+                    "parameters": {"seed": seed, "n_initial_atoms": 50000},
+                    "survival_fraction": 4 / 50000,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    ensembles = load_production_ensembles(
+        particles_per_ensemble=None,
+        directory=tmp_path,
+        zeeman_seeds=[3002, 3000],
+    )
+
+    assert [row["zeeman_seed"] for row in ensembles] == [3002, 3000]

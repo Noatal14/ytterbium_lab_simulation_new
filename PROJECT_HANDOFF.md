@@ -245,6 +245,20 @@ If only ambiguous robustness points are repeated, use all available survivors
 and keep `--familywise-comparisons 26`. Do not reduce the correction count after
 inspecting which points failed the original simultaneous analysis.
 
+Zeus worker processes can take several minutes to reach full CPU utilization.
+Within the 600-core project quota, prefer a few long-lived jobs that each run
+several seeds or parameter points sequentially over many short array tasks.  For
+workloads that scale well to 200 processes, the current practical default is
+three concurrent 200-core workers.  Preserve each completed seed or point in a
+separate result file so an interrupted worker can resume safely.
+
+After local robustness passes, extend the final conditional-capture prediction
+with `python -m studies.validate_2d_mot_production`.  Add independent Zeeman
+ensembles in batches of five, run the locked 2D-MOT setting on all survivors,
+and summarize after each batch.  Stop only when the reported 95% prediction for
+a new run of 10,000,000 Zeeman survivors has a half-width no larger than 0.05
+percentage points; otherwise add another five independent ensembles.
+
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:
 

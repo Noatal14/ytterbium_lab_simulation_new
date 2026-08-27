@@ -30,10 +30,20 @@ BOUNDS_MAGNET_RADIUS_M = (0.045, 0.051)
 
 
 def evaluate_configuration(
-    s0, detuning_gamma, magnet_radius, ensembles, mot_seed_start, npools, dt_s,
+    s0,
+    detuning_gamma,
+    magnet_radius,
+    ensembles,
+    mot_seed_start,
+    npools,
+    dt_s,
+    mot_seeds=None,
 ):
     """Evaluate one point on fixed paired replicates and return its summary."""
-    mot_seeds = [mot_seed_start + index for index in range(len(ensembles))]
+    if mot_seeds is None:
+        mot_seeds = [mot_seed_start + index for index in range(len(ensembles))]
+    if len(mot_seeds) != len(ensembles):
+        raise ValueError("Provide exactly one MOT seed per Zeeman ensemble.")
     started = time.time()
     grouped_results = mot_simulation_paired_ensembles(
         survivor_state_ensembles=[row["states"] for row in ensembles],
@@ -103,12 +113,8 @@ def optimize_mot(args):
     def objective(trial):
         parameters = {
             "s0": trial.suggest_float("s0", *bounds_s0),
-            "detuning_gamma": trial.suggest_float(
-                "detuning_gamma", *bounds_detuning
-            ),
-            "magnet_radius": trial.suggest_float(
-                "magnet_radius", *bounds_radius
-            ),
+            "detuning_gamma": trial.suggest_float("detuning_gamma", *bounds_detuning),
+            "magnet_radius": trial.suggest_float("magnet_radius", *bounds_radius),
         }
         evaluation = evaluate_configuration(
             **parameters,
@@ -234,10 +240,7 @@ def parse_args(argv=None):
     )
     parser.add_argument(
         "--output-dir",
-        default=str(
-            MOT_2D_OPTIMIZATION_DIR
-            / "joint_pareto_v3_radius45to51mm"
-        ),
+        default=str(MOT_2D_OPTIMIZATION_DIR / "joint_pareto_v3_radius45to51mm"),
     )
     return parser.parse_args(argv)
 

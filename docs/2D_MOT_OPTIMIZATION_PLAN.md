@@ -214,6 +214,19 @@ Run the locked finalists across all accepted independent Zeeman ensembles. Add
 new Zeeman/MOT seeds adaptively until the predictive target for a new equivalent
 run is met.
 
+The current campaign starts this adaptive extension with five new independent
+Zeeman ensembles.  After combining them with the ten accepted ensembles, apply
+the predeclared stopping rule.  Combine uncertainty in the estimated mean with
+the counting noise expected in a new run of 10,000,000 Zeeman survivors.  If
+that 95% prediction has a half-width greater than 0.05 percentage points, add
+another batch of five; do not keep running merely to reach an arbitrary round
+seed count.
+
+On Zeus, scheduler and multiprocessing startup are material.  Use three
+long-lived 200-core workers within the 600-core quota, and let each worker run
+multiple assigned seeds sequentially.  Save every seed independently so that a
+partial batch remains reusable.
+
 The particle count and seed count have different roles:
 
 ```text

@@ -11,7 +11,10 @@ from utils.data_paths import production_zeeman_ensemble_files
 
 
 def load_production_ensembles(
-    max_ensembles=None, particles_per_ensemble=None, directory=None
+    max_ensembles=None,
+    particles_per_ensemble=None,
+    directory=None,
+    zeeman_seeds=None,
 ):
     """Load the same deterministic particle subsets for every parameter point."""
     paths = (
@@ -19,6 +22,18 @@ def load_production_ensembles(
         if directory is None
         else production_zeeman_ensemble_files(directory)
     )
+    if zeeman_seeds is not None:
+        requested = [int(seed) for seed in zeeman_seeds]
+        by_seed = {}
+        for path in paths:
+            metadata = json.loads(path.with_suffix(".json").read_text(encoding="utf-8"))
+            by_seed[int(metadata["parameters"]["seed"])] = path
+        missing = [seed for seed in requested if seed not in by_seed]
+        if missing:
+            raise FileNotFoundError(
+                f"Missing Zeeman production ensembles for seeds: {missing}"
+            )
+        paths = [by_seed[seed] for seed in requested]
     if max_ensembles is not None:
         paths = paths[:max_ensembles]
     if not paths:
