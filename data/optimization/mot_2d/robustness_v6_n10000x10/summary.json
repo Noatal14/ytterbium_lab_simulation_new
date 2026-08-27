@@ -1,0 +1,877 @@
+{
+  "kind": "mot_2d_local_robustness_summary",
+  "selected_parameters": {
+    "s0": 1.4598658484197036,
+    "detuning_gamma": -1.285675899102664,
+    "magnet_radius": 0.049080790136605164
+  },
+  "control_steps": {
+    "s0": 0.01,
+    "detuning_gamma": 0.01,
+    "magnet_radius": 1e-05
+  },
+  "center_point_index": 13,
+  "n_points": 27,
+  "n_comparisons": 26,
+  "familywise_confidence": 0.95,
+  "per_comparison_bonferroni_confidence": 0.9980769230769231,
+  "noninferiority_margin_fraction": 0.0005,
+  "center_statistics": {
+    "n_replicates": 10,
+    "mean_conditional_efficiency": 0.02606,
+    "conditional_95_ci": [
+      0.025280585539352602,
+      0.026839414460647398
+    ],
+    "conditional_95_ci_half_width": 0.0007794144606473966,
+    "mean_estimated_total_efficiency": 0.0154252308,
+    "estimated_total_95_ci": [
+      0.01494961410799057,
+      0.01590084749200943
+    ],
+    "estimated_total_95_ci_half_width": 0.0004756166920094299
+  },
+  "comparisons_to_center": [
+    {
+      "point_index": 0,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": -1,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00022000000000000006,
+        "confidence_interval_fraction": [
+          -0.00033082261533675376,
+          -0.00010917738466324638
+        ],
+        "confidence_interval_half_width_fraction": 0.00011082261533675368
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00022000000000000006,
+        "confidence_interval_fraction": [
+          -0.00043181125521008136,
+          -8.188744789918768e-06
+        ],
+        "confidence_interval_half_width_fraction": 0.0002118112552100813
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 1,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": -1,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00017999999999999996,
+        "confidence_interval_fraction": [
+          -0.0003182200857654576,
+          -4.17799142345423e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00013822008576545766
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00017999999999999996,
+        "confidence_interval_fraction": [
+          -0.00044417504921955464,
+          8.41750492195547e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00026417504921955466
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 2,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": -1,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00019999999999999982,
+        "confidence_interval_fraction": [
+          -0.00034307138119413287,
+          -5.692861880586677e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00014307138119413305
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00019999999999999982,
+        "confidence_interval_fraction": [
+          -0.00047344715465597867,
+          7.344715465597903e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00027344715465597885
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 3,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": 0,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -9.99999999999994e-05,
+        "confidence_interval_fraction": [
+          -0.00020116674383609663,
+          1.1667438360978412e-06
+        ],
+        "confidence_interval_half_width_fraction": 0.00010116674383609724
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -9.99999999999994e-05,
+        "confidence_interval_fraction": [
+          -0.00029335633735340914,
+          9.335633735341038e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00019335633735340977
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 4,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": 0,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00012000000000000031,
+        "confidence_interval_fraction": [
+          -0.00022556733426391633,
+          -1.4432665736084288e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00010556733426391603
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00012000000000000031,
+        "confidence_interval_fraction": [
+          -0.00032176702662788207,
+          8.176702662788144e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00020176702662788175
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 5,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": 0,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00018000000000000063,
+        "confidence_interval_fraction": [
+          -0.00028556733426391735,
+          -7.443266573608394e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00010556733426391669
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00018000000000000063,
+        "confidence_interval_fraction": [
+          -0.00038176702662788363,
+          2.1767026627882364e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.000201767026627883
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 6,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": 1,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00013999999999999985,
+        "confidence_interval_fraction": [
+          -0.0003158737279314142,
+          3.587372793141446e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.0001758737279314143
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00013999999999999985,
+        "confidence_interval_fraction": [
+          -0.00047614109320947195,
+          0.00019614109320947228
+        ],
+        "confidence_interval_half_width_fraction": 0.00033614109320947213
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 7,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": 1,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00015999999999999971,
+        "confidence_interval_fraction": [
+          -0.0003483622260498317,
+          2.8362226049832292e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.000188362226049832
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00015999999999999971,
+        "confidence_interval_fraction": [
+          -0.000520009907838263,
+          0.0002000099078382635
+        ],
+        "confidence_interval_half_width_fraction": 0.0003600099078382632
+      },
+      "passes_0p05_pp_margin_simultaneously": false
+    },
+    {
+      "point_index": 8,
+      "offset_steps": {
+        "s0": -1,
+        "detuning_gamma": 1,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4498658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.0001399999999999995,
+        "confidence_interval_fraction": [
+          -0.00032836222604983186,
+          4.836222604983286e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00018836222604983236
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.0001399999999999995,
+        "confidence_interval_fraction": [
+          -0.0005000099078382634,
+          0.00022000990783826438
+        ],
+        "confidence_interval_half_width_fraction": 0.0003600099078382639
+      },
+      "passes_0p05_pp_margin_simultaneously": false
+    },
+    {
+      "point_index": 9,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": -1,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00012999999999999955,
+        "confidence_interval_fraction": [
+          -0.0002987797667451347,
+          3.877976674513561e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00016877976674513516
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00012999999999999955,
+        "confidence_interval_fraction": [
+          -0.0004525826618485845,
+          0.00019258266184858536
+        ],
+        "confidence_interval_half_width_fraction": 0.0003225826618485849
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 10,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": -1,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -0.00012999999999999955,
+        "confidence_interval_fraction": [
+          -0.0002847186143829735,
+          2.4718614382974443e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.000154718614382974
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -0.00012999999999999955,
+        "confidence_interval_fraction": [
+          -0.00042570809006123366,
+          0.00016570809006123452
+        ],
+        "confidence_interval_half_width_fraction": 0.0002957080900612341
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 11,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": -1,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": -8.99999999999998e-05,
+        "confidence_interval_fraction": [
+          -0.00024618170712084977,
+          6.618170712085016e-05
+        ],
+        "confidence_interval_half_width_fraction": 0.00015618170712084997
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": -8.99999999999998e-05,
+        "confidence_interval_fraction": [
+          -0.0003885044462774861,
+          0.00020850444627748652
+        ],
+        "confidence_interval_half_width_fraction": 0.0002985044462774863
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 12,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": 0,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 3.0000000000000512e-05,
+        "confidence_interval_fraction": [
+          -4.578132707183217e-05,
+          0.0001057813270718332
+        ],
+        "confidence_interval_half_width_fraction": 7.578132707183268e-05
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 3.0000000000000512e-05,
+        "confidence_interval_fraction": [
+          -0.00011483810871811473,
+          0.00017483810871811575
+        ],
+        "confidence_interval_half_width_fraction": 0.00014483810871811524
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 14,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": 0,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 0.0,
+        "confidence_interval_fraction": [
+          -5.840864678680809e-05,
+          5.840864678680809e-05
+        ],
+        "confidence_interval_half_width_fraction": 5.840864678680809e-05
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 0.0,
+        "confidence_interval_fraction": [
+          -0.00011163433342051016,
+          0.00011163433342051016
+        ],
+        "confidence_interval_half_width_fraction": 0.00011163433342051016
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 15,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": 1,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 2.0000000000000225e-05,
+        "confidence_interval_fraction": [
+          -9.082261533675393e-05,
+          0.00013082261533675437
+        ],
+        "confidence_interval_half_width_fraction": 0.00011082261533675416
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 2.0000000000000225e-05,
+        "confidence_interval_fraction": [
+          -0.00019181125521008197,
+          0.0002318112552100824
+        ],
+        "confidence_interval_half_width_fraction": 0.0002118112552100822
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 16,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": 1,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 4.000000000000045e-05,
+        "confidence_interval_fraction": [
+          -7.778674831729733e-05,
+          0.00015778674831729825
+        ],
+        "confidence_interval_half_width_fraction": 0.00011778674831729779
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 4.000000000000045e-05,
+        "confidence_interval_fraction": [
+          -0.0001851215506184384,
+          0.0002651215506184393
+        ],
+        "confidence_interval_half_width_fraction": 0.00022512155061843887
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 17,
+      "offset_steps": {
+        "s0": 0,
+        "detuning_gamma": 1,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4598658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 3.0000000000000512e-05,
+        "confidence_interval_fraction": [
+          -9.640221355326984e-05,
+          0.00015640221355327086
+        ],
+        "confidence_interval_half_width_fraction": 0.00012640221355327035
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 3.0000000000000512e-05,
+        "confidence_interval_fraction": [
+          -0.000211587977622575,
+          0.000271587977622576
+        ],
+        "confidence_interval_half_width_fraction": 0.0002415879776225755
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 18,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": -1,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 1.0000000000000287e-05,
+        "confidence_interval_fraction": [
+          -0.00018209845317065538,
+          0.00020209845317065598
+        ],
+        "confidence_interval_half_width_fraction": 0.00019209845317065568
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 1.0000000000000287e-05,
+        "confidence_interval_fraction": [
+          -0.00035715082356026494,
+          0.00037715082356026554
+        ],
+        "confidence_interval_half_width_fraction": 0.00036715082356026524
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 19,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": -1,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 2.0000000000000225e-05,
+        "confidence_interval_fraction": [
+          -0.00015780293074183578,
+          0.0001978029307418362
+        ],
+        "confidence_interval_half_width_fraction": 0.000177802930741836
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 2.0000000000000225e-05,
+        "confidence_interval_fraction": [
+          -0.00031982830874385137,
+          0.0003598283087438518
+        ],
+        "confidence_interval_half_width_fraction": 0.0003398283087438516
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 20,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": -1,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.295675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 0.0,
+        "confidence_interval_fraction": [
+          -0.0001652046008915284,
+          0.0001652046008915284
+        ],
+        "confidence_interval_half_width_fraction": 0.0001652046008915284
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 0.0,
+        "confidence_interval_fraction": [
+          -0.0003157495766995329,
+          0.0003157495766995329
+        ],
+        "confidence_interval_half_width_fraction": 0.0003157495766995329
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 21,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": 0,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 0.00012000000000000031,
+        "confidence_interval_fraction": [
+          3.8786072391279336e-05,
+          0.00020121392760872128
+        ],
+        "confidence_interval_half_width_fraction": 8.121392760872098e-05
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 0.00012000000000000031,
+        "confidence_interval_fraction": [
+          -3.522124157666291e-05,
+          0.00027522124157666354
+        ],
+        "confidence_interval_half_width_fraction": 0.00015522124157666322
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 22,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": 0,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 9.000000000000015e-05,
+        "confidence_interval_fraction": [
+          -2.043824064088581e-06,
+          0.0001820438240640889
+        ],
+        "confidence_interval_half_width_fraction": 9.204382406408874e-05
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 9.000000000000015e-05,
+        "confidence_interval_fraction": [
+          -8.59200308538901e-05,
+          0.0002659200308538904
+        ],
+        "confidence_interval_half_width_fraction": 0.00017592003085389025
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 23,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": 0,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.285675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 9.00000000000005e-05,
+        "confidence_interval_fraction": [
+          1.1274619496864655e-05,
+          0.00016872538050313632
+        ],
+        "confidence_interval_half_width_fraction": 7.872538050313584e-05
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 9.00000000000005e-05,
+        "confidence_interval_fraction": [
+          -6.046497152761443e-05,
+          0.00024046497152761543
+        ],
+        "confidence_interval_half_width_fraction": 0.00015046497152761492
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 24,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": 1,
+        "magnet_radius": -1
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.04907079013660516
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 0.00017999999999999996,
+        "confidence_interval_fraction": [
+          5.026792186959699e-05,
+          0.0003097320781304029
+        ],
+        "confidence_interval_half_width_fraction": 0.00012973207813040297
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 0.00017999999999999996,
+        "confidence_interval_fraction": [
+          -6.79522273167274e-05,
+          0.0004279522273167273
+        ],
+        "confidence_interval_half_width_fraction": 0.00024795222731672736
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 25,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": 1,
+        "magnet_radius": 0
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.049080790136605164
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 0.00016000000000000007,
+        "confidence_interval_fraction": [
+          6.343417761336324e-05,
+          0.0002565658223866369
+        ],
+        "confidence_interval_half_width_fraction": 9.656582238663682e-05
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 0.00016000000000000007,
+        "confidence_interval_fraction": [
+          -2.4562762645107358e-05,
+          0.0003445627626451075
+        ],
+        "confidence_interval_half_width_fraction": 0.00018456276264510742
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    },
+    {
+      "point_index": 26,
+      "offset_steps": {
+        "s0": 1,
+        "detuning_gamma": 1,
+        "magnet_radius": 1
+      },
+      "parameters": {
+        "s0": 1.4698658484197036,
+        "detuning_gamma": -1.275675899102664,
+        "magnet_radius": 0.04909079013660517
+      },
+      "ordinary_95": {
+        "confidence": 0.95,
+        "mean_difference_fraction": 0.00016000000000000007,
+        "confidence_interval_fraction": [
+          5.771535765474772e-05,
+          0.0002622846423452524
+        ],
+        "confidence_interval_half_width_fraction": 0.00010228464234525235
+      },
+      "simultaneous_95_familywise": {
+        "confidence": 0.9980769230769231,
+        "mean_difference_fraction": 0.00016000000000000007,
+        "confidence_interval_fraction": [
+          -3.549293632918837e-05,
+          0.0003554929363291885
+        ],
+        "confidence_interval_half_width_fraction": 0.00019549293632918844
+      },
+      "passes_0p05_pp_margin_simultaneously": true
+    }
+  ],
+  "all_points_pass_simultaneous_margin": false,
+  "design": {
+    "n_ensembles": 10,
+    "particles_per_ensemble": 10000,
+    "mot_seed_start": 7000,
+    "dt_s": 1e-05,
+    "npools": 200,
+    "paired_design": true
+  }
+}
