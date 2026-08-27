@@ -241,6 +241,9 @@ The next robustness stage uses `python -m studies.validate_2d_mot_robustness`
 on all 27 combinations of the selected setting and one control step in either
 direction. Its familywise conclusion must use the Bonferroni-adjusted intervals
 in the summary, not 26 uncorrected pointwise 95% intervals.
+If only ambiguous robustness points are repeated, use all available survivors
+and keep `--familywise-comparisons 26`. Do not reduce the correction count after
+inspecting which points failed the original simultaneous analysis.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:

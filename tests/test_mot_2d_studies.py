@@ -105,6 +105,23 @@ def test_robustness_grid_has_one_center_and_expected_steps():
     )
 
 
+def test_robustness_followup_accepts_all_particles_and_fixed_correction():
+    from studies.validate_2d_mot_robustness import parse_args
+
+    args = parse_args(
+        [
+            "--summarize-only",
+            "--all-particles",
+            "--summary-point-indices", "13", "7", "8",
+            "--familywise-comparisons", "26",
+        ]
+    )
+
+    assert args.all_particles
+    assert args.summary_point_indices == [13, 7, 8]
+    assert args.familywise_comparisons == 26
+
+
 def test_student_interval_requires_replicates():
     mean, low, high, half_width = student_mean_interval([0.25])
     assert mean == 0.25

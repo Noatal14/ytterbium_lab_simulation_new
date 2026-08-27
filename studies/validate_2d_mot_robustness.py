@@ -75,10 +75,20 @@ def paired_interval(point, center, confidence):
     }
 
 
-def build_summary(points):
-    center = points[CENTER_INDEX]
+def build_summary(points, familywise_comparisons=None):
+    center = next(
+        (point for point in points if point["point_index"] == CENTER_INDEX),
+        None,
+    )
+    if center is None:
+        raise ValueError(f"Point {CENTER_INDEX} is required as the center reference.")
     comparisons_count = len(points) - 1
-    simultaneous_confidence = 1.0 - 0.05 / comparisons_count
+    correction_count = familywise_comparisons or comparisons_count
+    if correction_count < comparisons_count or correction_count < 1:
+        raise ValueError(
+            "familywise_comparisons must cover every reported comparison."
+        )
+    simultaneous_confidence = 1.0 - 0.05 / correction_count
     comparisons = []
     for point in points:
         if point["point_index"] == CENTER_INDEX:
@@ -107,6 +117,7 @@ def build_summary(points):
         "center_point_index": CENTER_INDEX,
         "n_points": len(points),
         "n_comparisons": comparisons_count,
+        "familywise_correction_comparisons": correction_count,
         "familywise_confidence": 0.95,
         "per_comparison_bonferroni_confidence": simultaneous_confidence,
         "noninferiority_margin_fraction": NONINFERIORITY_MARGIN_FRACTION,
@@ -120,9 +131,12 @@ def build_summary(points):
 
 def run_point(args):
     definition = point_definition(args.point_index)
+    particles_per_ensemble = (
+        None if args.all_particles else args.particles_per_ensemble
+    )
     ensembles = load_production_ensembles(
         max_ensembles=args.n_ensembles,
-        particles_per_ensemble=args.particles_per_ensemble,
+        particles_per_ensemble=particles_per_ensemble,
     )
     if len(ensembles) != args.n_ensembles:
         raise ValueError(
@@ -130,7 +144,8 @@ def run_point(args):
         )
     design = {
         "n_ensembles": len(ensembles),
-        "particles_per_ensemble": args.particles_per_ensemble,
+        "particles_per_ensemble": particles_per_ensemble,
+        "uses_all_available_particles": args.all_particles,
         "mot_seed_start": args.mot_seed_start,
         "dt_s": args.dt,
         "npools": args.npools,
@@ -162,10 +177,14 @@ def run_point(args):
     return result
 
 
-def summarize_saved_points(output_dir):
+def summarize_saved_points(
+    output_dir, point_indices=None, familywise_comparisons=None
+):
     output_dir = Path(output_dir)
     points = []
-    for index in range(len(OFFSETS)):
+    if point_indices is None:
+        point_indices = range(len(OFFSETS))
+    for index in point_indices:
         path = output_dir / f"point_{index:02d}.json"
         if not path.exists():
             raise FileNotFoundError(f"Missing robustness result: {path}")
@@ -173,7 +192,9 @@ def summarize_saved_points(output_dir):
     design = points[0]["design"]
     if any(point["design"] != design for point in points[1:]):
         raise ValueError("Robustness files do not share one paired design.")
-    summary = build_summary(points)
+    summary = build_summary(
+        points, familywise_comparisons=familywise_comparisons
+    )
     summary["design"] = design
     save_file_json(output_dir / "summary.json", summary)
     return summary
@@ -185,12 +206,28 @@ def parse_args(argv=None):
     parser.add_argument("--summarize-only", action="store_true")
     parser.add_argument("--n-ensembles", type=int, default=10)
     parser.add_argument("--particles-per-ensemble", type=int, default=10_000)
+    parser.add_argument(
+        "--all-particles",
+        action="store_true",
+        help="Use every available survivor in each Zeeman ensemble.",
+    )
     parser.add_argument("--mot-seed-start", type=int, default=7000)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
     parser.add_argument(
         "--output-dir",
         default=str(MOT_2D_OPTIMIZATION_DIR / "robustness_v6_n10000x10"),
+    )
+    parser.add_argument(
+        "--summary-point-indices",
+        type=int,
+        nargs="+",
+        help="Subset of point files to combine; must include the center.",
+    )
+    parser.add_argument(
+        "--familywise-comparisons",
+        type=int,
+        help="Number of comparisons used in the Bonferroni correction.",
     )
     args = parser.parse_args(argv)
     if not args.summarize_only and args.point_index is None:
@@ -201,6 +238,15 @@ def parse_args(argv=None):
 if __name__ == "__main__":
     arguments = parse_args()
     if arguments.summarize_only:
-        print(json.dumps(summarize_saved_points(arguments.output_dir), indent=2))
+        print(
+            json.dumps(
+                summarize_saved_points(
+                    arguments.output_dir,
+                    point_indices=arguments.summary_point_indices,
+                    familywise_comparisons=arguments.familywise_comparisons,
+                ),
+                indent=2,
+            )
+        )
     else:
         run_point(arguments)
