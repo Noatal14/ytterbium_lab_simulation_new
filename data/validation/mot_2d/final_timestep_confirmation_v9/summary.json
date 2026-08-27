@@ -1,0 +1,312 @@
+{
+  "kind": "mot_2d_final_timestep_confirmation",
+  "parameters": {
+    "s0": 1.4598658484197036,
+    "detuning_gamma": -1.285675899102664,
+    "magnet_radius": 0.049080790136605164
+  },
+  "fine_dt_s": 5e-06,
+  "baseline_dt_s": 1e-05,
+  "paired_seed_count": 20,
+  "equivalence_margin_fraction": 0.0005,
+  "paired_difference_fine_minus_baseline": {
+    "mean_fraction": 0.0006010619499612896,
+    "confidence_95_fraction": [
+      0.0003247361335911367,
+      0.0008773877663314425
+    ],
+    "confidence_95_half_width_fraction": 0.0002763258163701529
+  },
+  "timestep_equivalence_passes": false,
+  "fine_timestep_statistics": {
+    "n_replicates": 20,
+    "mean_conditional_efficiency": 0.026282083144256535,
+    "conditional_95_ci": [
+      0.025819322025064532,
+      0.026744844263448538
+    ],
+    "conditional_95_ci_half_width": 0.00046276111919200106,
+    "mean_estimated_total_efficiency": 0.015568000000000002,
+    "estimated_total_95_ci": [
+      0.01528523742009389,
+      0.015850762579906114
+    ],
+    "estimated_total_95_ci_half_width": 0.0002827625799061123
+  },
+  "fine_timestep_prediction_for_new_run": {
+    "reporting_zeeman_survivors": 10000000,
+    "expected_conditional_efficiency": 0.026282083144256535,
+    "expected_captured_atoms": 262821,
+    "predicted_95_interval_fraction": [
+      0.0258073634618775,
+      0.02675680282663557
+    ],
+    "predicted_95_half_width_fraction": 0.0004747196823790326,
+    "predicted_95_half_width_percentage_points": 0.047471968237903256,
+    "method": "Student-t uncertainty of the estimated mean combined with binomial counting noise for a new 10,000,000-survivor run"
+  },
+  "prediction_precision_target_fraction": 0.0005,
+  "fine_timestep_prediction_precision_passes": true,
+  "replicates": [
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3000.npy",
+      "zeeman_seed": 3000,
+      "mot_seed": 8000,
+      "n_available": 29496,
+      "selection_method": "all_particles",
+      "subset_seed": 103000,
+      "n_input": 29496,
+      "captured": 770,
+      "conditional_efficiency": 0.02610523460808245,
+      "estimated_total_efficiency": 0.015399999999999999,
+      "batch_elapsed_seconds": 2679.3129608631134
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3001.npy",
+      "zeeman_seed": 3001,
+      "mot_seed": 8001,
+      "n_available": 29605,
+      "selection_method": "all_particles",
+      "subset_seed": 103001,
+      "n_input": 29605,
+      "captured": 789,
+      "conditional_efficiency": 0.026650903563587233,
+      "estimated_total_efficiency": 0.01578,
+      "batch_elapsed_seconds": 2729.2709877490997
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3002.npy",
+      "zeeman_seed": 3002,
+      "mot_seed": 8002,
+      "n_available": 29610,
+      "selection_method": "all_particles",
+      "subset_seed": 103002,
+      "n_input": 29610,
+      "captured": 787,
+      "conditional_efficiency": 0.026578858493752112,
+      "estimated_total_efficiency": 0.01574,
+      "batch_elapsed_seconds": 2711.7686417102814
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3003.npy",
+      "zeeman_seed": 3003,
+      "mot_seed": 8003,
+      "n_available": 29651,
+      "selection_method": "all_particles",
+      "subset_seed": 103003,
+      "n_input": 29651,
+      "captured": 769,
+      "conditional_efficiency": 0.025935044349263095,
+      "estimated_total_efficiency": 0.01538,
+      "batch_elapsed_seconds": 2679.3129608631134
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3004.npy",
+      "zeeman_seed": 3004,
+      "mot_seed": 8004,
+      "n_available": 29702,
+      "selection_method": "all_particles",
+      "subset_seed": 103004,
+      "n_input": 29702,
+      "captured": 788,
+      "conditional_efficiency": 0.026530199986532894,
+      "estimated_total_efficiency": 0.01576,
+      "batch_elapsed_seconds": 2729.2709877490997
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3005.npy",
+      "zeeman_seed": 3005,
+      "mot_seed": 8005,
+      "n_available": 29588,
+      "selection_method": "all_particles",
+      "subset_seed": 103005,
+      "n_input": 29588,
+      "captured": 863,
+      "conditional_efficiency": 0.02916722995809112,
+      "estimated_total_efficiency": 0.01726,
+      "batch_elapsed_seconds": 2711.7686417102814
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3006.npy",
+      "zeeman_seed": 3006,
+      "mot_seed": 8006,
+      "n_available": 29614,
+      "selection_method": "all_particles",
+      "subset_seed": 103006,
+      "n_input": 29614,
+      "captured": 766,
+      "conditional_efficiency": 0.02586614439116634,
+      "estimated_total_efficiency": 0.01532,
+      "batch_elapsed_seconds": 2679.3129608631134
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3007.npy",
+      "zeeman_seed": 3007,
+      "mot_seed": 8007,
+      "n_available": 29585,
+      "selection_method": "all_particles",
+      "subset_seed": 103007,
+      "n_input": 29585,
+      "captured": 782,
+      "conditional_efficiency": 0.026432313672469156,
+      "estimated_total_efficiency": 0.01564,
+      "batch_elapsed_seconds": 2729.2709877490997
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3008.npy",
+      "zeeman_seed": 3008,
+      "mot_seed": 8008,
+      "n_available": 29688,
+      "selection_method": "all_particles",
+      "subset_seed": 103008,
+      "n_input": 29688,
+      "captured": 756,
+      "conditional_efficiency": 0.025464834276475345,
+      "estimated_total_efficiency": 0.01512,
+      "batch_elapsed_seconds": 2711.7686417102814
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3009.npy",
+      "zeeman_seed": 3009,
+      "mot_seed": 8009,
+      "n_available": 29403,
+      "selection_method": "all_particles",
+      "subset_seed": 103009,
+      "n_input": 29403,
+      "captured": 744,
+      "conditional_efficiency": 0.025303540455055607,
+      "estimated_total_efficiency": 0.01488,
+      "batch_elapsed_seconds": 2679.3129608631134
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3010.npy",
+      "zeeman_seed": 3010,
+      "mot_seed": 8010,
+      "n_available": 29679,
+      "selection_method": "all_particles",
+      "subset_seed": 103010,
+      "n_input": 29679,
+      "captured": 794,
+      "conditional_efficiency": 0.026752922942147647,
+      "estimated_total_efficiency": 0.01588,
+      "batch_elapsed_seconds": 2729.2709877490997
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3011.npy",
+      "zeeman_seed": 3011,
+      "mot_seed": 8011,
+      "n_available": 29538,
+      "selection_method": "all_particles",
+      "subset_seed": 103011,
+      "n_input": 29538,
+      "captured": 736,
+      "conditional_efficiency": 0.024917055995666598,
+      "estimated_total_efficiency": 0.014719999999999999,
+      "batch_elapsed_seconds": 2711.7686417102814
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3012.npy",
+      "zeeman_seed": 3012,
+      "mot_seed": 8012,
+      "n_available": 29533,
+      "selection_method": "all_particles",
+      "subset_seed": 103012,
+      "n_input": 29533,
+      "captured": 744,
+      "conditional_efficiency": 0.025192157925033015,
+      "estimated_total_efficiency": 0.014879999999999999,
+      "batch_elapsed_seconds": 2021.0832405090332
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3013.npy",
+      "zeeman_seed": 3013,
+      "mot_seed": 8013,
+      "n_available": 29486,
+      "selection_method": "all_particles",
+      "subset_seed": 103013,
+      "n_input": 29486,
+      "captured": 734,
+      "conditional_efficiency": 0.02489316963982907,
+      "estimated_total_efficiency": 0.01468,
+      "batch_elapsed_seconds": 1992.5086271762848
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3014.npy",
+      "zeeman_seed": 3014,
+      "mot_seed": 8014,
+      "n_available": 29651,
+      "selection_method": "all_particles",
+      "subset_seed": 103014,
+      "n_input": 29651,
+      "captured": 802,
+      "conditional_efficiency": 0.027047991636032512,
+      "estimated_total_efficiency": 0.01604,
+      "batch_elapsed_seconds": 1390.135163784027
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3015.npy",
+      "zeeman_seed": 3015,
+      "mot_seed": 8015,
+      "n_available": 29653,
+      "selection_method": "all_particles",
+      "subset_seed": 103015,
+      "n_input": 29653,
+      "captured": 784,
+      "conditional_efficiency": 0.026439146123495093,
+      "estimated_total_efficiency": 0.01568,
+      "batch_elapsed_seconds": 2021.0832405090332
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3016.npy",
+      "zeeman_seed": 3016,
+      "mot_seed": 8016,
+      "n_available": 29605,
+      "selection_method": "all_particles",
+      "subset_seed": 103016,
+      "n_input": 29605,
+      "captured": 813,
+      "conditional_efficiency": 0.02746157743624388,
+      "estimated_total_efficiency": 0.01626,
+      "batch_elapsed_seconds": 1992.5086271762848
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3017.npy",
+      "zeeman_seed": 3017,
+      "mot_seed": 8017,
+      "n_available": 29751,
+      "selection_method": "all_particles",
+      "subset_seed": 103017,
+      "n_input": 29751,
+      "captured": 774,
+      "conditional_efficiency": 0.026015932237571846,
+      "estimated_total_efficiency": 0.015479999999999999,
+      "batch_elapsed_seconds": 1390.135163784027
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3018.npy",
+      "zeeman_seed": 3018,
+      "mot_seed": 8018,
+      "n_available": 29829,
+      "selection_method": "all_particles",
+      "subset_seed": 103018,
+      "n_input": 29829,
+      "captured": 806,
+      "conditional_efficiency": 0.027020684568708302,
+      "estimated_total_efficiency": 0.01612,
+      "batch_elapsed_seconds": 2021.0832405090332
+    },
+    {
+      "ensemble_file": "production_zeeman_n50000_dt40us_seed3019.npy",
+      "zeeman_seed": 3019,
+      "mot_seed": 8019,
+      "n_available": 29652,
+      "selection_method": "all_particles",
+      "subset_seed": 103019,
+      "n_input": 29652,
+      "captured": 767,
+      "conditional_efficiency": 0.025866720625927424,
+      "estimated_total_efficiency": 0.01534,
+      "batch_elapsed_seconds": 1992.5086271762848
+    }
+  ]
+}
