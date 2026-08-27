@@ -264,9 +264,21 @@ independent ensembles. At the selected setting (`s0=1.45986585`, detuning
 `-1.28567590 Gamma`, magnet radius `49.08079014 mm`), the 10-us simulation
 predicts 256,810 captures per 10,000,000 Zeeman survivors, with a model-based
 95% range of 252,372 to 261,248 and a half-width of 0.044382 percentage points.
-This result is conditional on entering the 2D MOT as a Zeeman survivor. Before
-calling the numerical result final, run the paired 5-us confirmation with
-`python -m studies.confirm_2d_mot_final_timestep`.
+This result is conditional on entering the 2D MOT as a Zeeman survivor. The
+paired 5-us confirmation has now been run: its mean capture is 2.628208%, and
+the paired `5 us - 10 us` difference is +0.060106 percentage points with a 95%
+interval of [+0.032474, +0.087739] percentage points. It therefore fails the
+predeclared +/-0.05-percentage-point timestep-equivalence criterion.
+
+Do not respond by blindly reducing the timestep in the existing Gaussian
+stochastic solver. That solver uses `Ni = scattering_rate * dt` and Gaussian
+photon-count fluctuations per laser and step, so smaller steps can invalidate
+the approximation. First run
+`python -m studies.diagnose_2d_mot_photon_counts` at 5 microseconds to quantify
+the low-`Ni` regime on the selected configuration. Then validate a hybrid
+Poisson/Gaussian recoil implementation, repeat the paired timestep check, and
+recheck the selected point and close competitors before making the final
+production claim.
 
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:

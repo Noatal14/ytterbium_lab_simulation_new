@@ -41,6 +41,7 @@ def mot_simulation(
     stochastic=True,
     dt=MOT_2D_SIM_CONFIG["dt_s"],
     seed=DEFAULT_RANDOM_SEED,
+    stochastic_sim_function=RK4StCustom,
 ):
     """Propagate saved states through the 2D MOT and return its survivors."""
     if len(survivor_states) == 0:
@@ -58,7 +59,7 @@ def mot_simulation(
         zones=get_entire_apparatus_zone(),
     )
     time_points, _ = generate_timepoints(MOT_2D_SIM_CONFIG["t_max_s"], dt)
-    simulation_function = RK4StCustom if stochastic else ScipyIVP_3DCustom
+    simulation_function = stochastic_sim_function if stochastic else ScipyIVP_3DCustom
     results, _ = run_multiple_atoms_simulation(
         config=simulation_config,
         u0=[np.asarray(state).copy() for state in survivor_states],
@@ -82,6 +83,7 @@ def mot_simulation_paired_ensembles(
     npools=DEFAULT_NUM_POOLS,
     stochastic=True,
     dt=MOT_2D_SIM_CONFIG["dt_s"],
+    stochastic_sim_function=RK4StCustom,
 ):
     """Run paired ensembles through one shared config and worker pool.
 
@@ -97,7 +99,9 @@ def mot_simulation_paired_ensembles(
     arrays = [np.asarray(states) for states in survivor_state_ensembles]
     for states in arrays:
         if states.ndim != 2 or states.shape[1] != 6:
-            raise ValueError(f"Expected particle states with shape (N, 6), got {states.shape}")
+            raise ValueError(
+                f"Expected particle states with shape (N, 6), got {states.shape}"
+            )
 
     _, simulation_config = build_base_config(
         atom_species="Yb171",
@@ -112,7 +116,7 @@ def mot_simulation_paired_ensembles(
         zones=get_entire_apparatus_zone(),
     )
     time_points, _ = generate_timepoints(MOT_2D_SIM_CONFIG["t_max_s"], dt)
-    simulation_function = RK4StCustom if stochastic else ScipyIVP_3DCustom
+    simulation_function = stochastic_sim_function if stochastic else ScipyIVP_3DCustom
 
     initial_states = []
     trajectory_seed_sequences = []
@@ -132,9 +136,7 @@ def mot_simulation_paired_ensembles(
         sim_function=simulation_function,
         npools=npools,
         seed_idx=seeds[0] if seeds else DEFAULT_RANDOM_SEED,
-        trajectory_seed_sequences=(
-            trajectory_seed_sequences if stochastic else None
-        ),
+        trajectory_seed_sequences=(trajectory_seed_sequences if stochastic else None),
     )
 
     ensemble_results = []

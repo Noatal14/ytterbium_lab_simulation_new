@@ -167,3 +167,39 @@ def test_paired_mot_batch_preserves_per_ensemble_rng_streams(monkeypatch):
         np.array_equal(a.generate_state(8), b.generate_state(8))
         for a, b in zip(actual, expected)
     )
+
+
+def test_paired_mot_batch_forwards_stochastic_simulator(monkeypatch):
+    mot_2d_simulation = importlib.import_module("simulations.mot_2d")
+    captured = {}
+    diagnostic_simulator = object()
+
+    monkeypatch.setattr(
+        mot_2d_simulation,
+        "build_base_config",
+        lambda **kwargs: (None, object()),
+    )
+
+    def fake_run_multiple_atoms_simulation(**kwargs):
+        captured.update(kwargs)
+        return [object()], None
+
+    monkeypatch.setattr(
+        mot_2d_simulation,
+        "run_multiple_atoms_simulation",
+        fake_run_multiple_atoms_simulation,
+    )
+    monkeypatch.setattr(
+        mot_2d_simulation,
+        "mot_extract_survivors",
+        lambda results: (np.empty((0, 6)), 0, []),
+    )
+
+    mot_2d_simulation.mot_simulation_paired_ensembles(
+        survivor_state_ensembles=[np.zeros((1, 6))],
+        seeds=[4000],
+        npools=0,
+        stochastic_sim_function=diagnostic_simulator,
+    )
+
+    assert captured["sim_function"] is diagnostic_simulator

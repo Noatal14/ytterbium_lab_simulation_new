@@ -136,10 +136,23 @@ microsecond timestep is the accepted screening choice, not an excuse to skip the
 final numerical cross-check.
 
 The selected setting subsequently passed the production prediction target at
-10 microseconds using 20 independent Zeeman/MOT seed pairs. The final timestep
-confirmation must reuse those exact 20 ensembles and MOT seeds at 5
-microseconds. Treat the timestep as equivalent only if the paired 95% interval
-for `5 us - 10 us` lies entirely within +/-0.05 percentage points.
+10 microseconds using 20 independent Zeeman/MOT seed pairs. Repeating those
+exact 20 pairs at 5 microseconds produced a paired difference of +0.060106
+percentage points, with a 95% interval from +0.032474 to +0.087739 percentage
+points. Therefore 5 and 10 microseconds are not equivalent at the predeclared
++/-0.05-percentage-point tolerance.
+
+The library's current stochastic solver samples Gaussian recoil fluctuations
+with expected photon count `Ni = scattering_rate * dt` for each laser and time
+step. A smaller timestep is not automatically more physical when `Ni` becomes
+too small for that approximation. Before choosing the production timestep, run
+`python -m studies.diagnose_2d_mot_photon_counts` at 5 microseconds. It reports,
+separately for every laser and for captured/non-captured trajectories, both the
+fraction of evaluations below the provisional `Ni = 15` threshold and the
+fraction of expected photon impulse contributed by those evaluations. The next
+solver validation should use exact Poisson sampling in the low-`Ni` regime and
+the Gaussian approximation only where it is justified, then repeat the paired
+timestep comparison and finalist checks.
 
 ## Stage 4: establish near-optimality within experimental resolution
 
