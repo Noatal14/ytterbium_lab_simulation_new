@@ -1,0 +1,147 @@
+{
+  "kind": "mot_2d_hybrid_timestep_screening",
+  "parameters": {
+    "s0": 1.4598658484197036,
+    "detuning_gamma": -1.285675899102664,
+    "magnet_radius": 0.049080790136605164
+  },
+  "solver": {
+    "name": "RK4StHybridCustom",
+    "poisson_below_expected_photons": 15.0,
+    "gaussian_at_or_above_expected_photons": 15.0
+  },
+  "design": {
+    "timesteps_s": [
+      2.5e-06
+    ],
+    "zeeman_seeds": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004,
+      3005,
+      3006,
+      3007,
+      3008,
+      3009
+    ],
+    "mot_seeds": [
+      8000,
+      8001,
+      8002,
+      8003,
+      8004,
+      8005,
+      8006,
+      8007,
+      8008,
+      8009
+    ],
+    "particles_per_ensemble": 10000,
+    "npools": 200
+  },
+  "replicates": [
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3000,
+      "mot_seed": 8000,
+      "n_input": 10000,
+      "captured": 249,
+      "conditional_efficiency": 0.0249,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3001,
+      "mot_seed": 8001,
+      "n_input": 10000,
+      "captured": 267,
+      "conditional_efficiency": 0.0267,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3002,
+      "mot_seed": 8002,
+      "n_input": 10000,
+      "captured": 273,
+      "conditional_efficiency": 0.0273,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3003,
+      "mot_seed": 8003,
+      "n_input": 10000,
+      "captured": 267,
+      "conditional_efficiency": 0.0267,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3004,
+      "mot_seed": 8004,
+      "n_input": 10000,
+      "captured": 257,
+      "conditional_efficiency": 0.0257,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3005,
+      "mot_seed": 8005,
+      "n_input": 10000,
+      "captured": 271,
+      "conditional_efficiency": 0.0271,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3006,
+      "mot_seed": 8006,
+      "n_input": 10000,
+      "captured": 251,
+      "conditional_efficiency": 0.0251,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3007,
+      "mot_seed": 8007,
+      "n_input": 10000,
+      "captured": 275,
+      "conditional_efficiency": 0.0275,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3008,
+      "mot_seed": 8008,
+      "n_input": 10000,
+      "captured": 271,
+      "conditional_efficiency": 0.0271,
+      "batch_elapsed_seconds": 4541.584457874298
+    },
+    {
+      "dt_s": 2.5e-06,
+      "dt_us": 2.5,
+      "zeeman_seed": 3009,
+      "mot_seed": 8009,
+      "n_input": 10000,
+      "captured": 239,
+      "conditional_efficiency": 0.0239,
+      "batch_elapsed_seconds": 4541.584457874298
+    }
+  ],
+  "paired_comparisons_to_finest_dt": []
+}
