@@ -1,0 +1,63 @@
+{
+  "kind": "mot_2d_hybrid_timestep_screening",
+  "parameters": {
+    "s0": 1.4598658484197036,
+    "detuning_gamma": -1.285675899102664,
+    "magnet_radius": 0.049080790136605164
+  },
+  "solver": {
+    "name": "RK4StHybridCustom",
+    "poisson_below_expected_photons": 15.0,
+    "gaussian_at_or_above_expected_photons": 15.0
+  },
+  "design": {
+    "timesteps_s": [
+      6.25e-07
+    ],
+    "zeeman_seeds": [
+      3004,
+      3005,
+      3006
+    ],
+    "mot_seeds": [
+      8004,
+      8005,
+      8006
+    ],
+    "particles_per_ensemble": 10000,
+    "npools": 200
+  },
+  "replicates": [
+    {
+      "dt_s": 6.25e-07,
+      "dt_us": 0.625,
+      "zeeman_seed": 3004,
+      "mot_seed": 8004,
+      "n_input": 10000,
+      "captured": 254,
+      "conditional_efficiency": 0.0254,
+      "batch_elapsed_seconds": 5868.204916715622
+    },
+    {
+      "dt_s": 6.25e-07,
+      "dt_us": 0.625,
+      "zeeman_seed": 3005,
+      "mot_seed": 8005,
+      "n_input": 10000,
+      "captured": 288,
+      "conditional_efficiency": 0.0288,
+      "batch_elapsed_seconds": 5868.204916715622
+    },
+    {
+      "dt_s": 6.25e-07,
+      "dt_us": 0.625,
+      "zeeman_seed": 3006,
+      "mot_seed": 8006,
+      "n_input": 10000,
+      "captured": 245,
+      "conditional_efficiency": 0.0245,
+      "batch_elapsed_seconds": 5868.204916715622
+    }
+  ],
+  "paired_comparisons_to_finest_dt": []
+}
