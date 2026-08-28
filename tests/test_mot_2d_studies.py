@@ -36,12 +36,18 @@ def test_joint_optimizer_accepts_refinement_bounds():
             "--magnet-radius-bounds-m",
             "0.0488",
             "0.0506",
+            "--stochastic-solver",
+            "hybrid",
+            "--sampler-seed",
+            "137",
         ]
     )
 
     assert args.s0_bounds == [1.4, 1.5]
     assert args.detuning_bounds == [-1.32, -1.10]
     assert args.magnet_radius_bounds_m == [0.0488, 0.0506]
+    assert args.stochastic_solver == "hybrid"
+    assert args.sampler_seed == 137
 
 
 def test_candidate_validation_reports_paired_noninferiority():

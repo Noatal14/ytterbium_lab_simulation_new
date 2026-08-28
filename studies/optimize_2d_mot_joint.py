@@ -16,6 +16,7 @@ import optuna
 from config import DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED, MOT_2D_SIM_CONFIG
 from simulations.mot_2d import mot_simulation_paired_ensembles
 from utils.RK4StCustom import RK4StCustom
+from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
@@ -112,6 +113,9 @@ def optimize_mot(args):
     output_dir = Path(args.output_dir)
     trials_dir = output_dir / "trials"
     trials_dir.mkdir(parents=True, exist_ok=True)
+    stochastic_sim_function = (
+        RK4StHybridCustom if args.stochastic_solver == "hybrid" else RK4StCustom
+    )
 
     def objective(trial):
         parameters = {
@@ -125,6 +129,7 @@ def optimize_mot(args):
             mot_seed_start=args.mot_seed_start,
             npools=args.npools,
             dt_s=args.dt,
+            stochastic_sim_function=stochastic_sim_function,
         )
         payload = {
             "kind": "mot_2d_joint_optimization_trial",
@@ -135,6 +140,7 @@ def optimize_mot(args):
                 "n_ensembles": len(ensembles),
                 "particles_per_ensemble": args.particles_per_ensemble,
                 "mot_seed_start": args.mot_seed_start,
+                "stochastic_solver": stochastic_sim_function.__name__,
             },
             **evaluation,
         }
@@ -156,7 +162,7 @@ def optimize_mot(args):
         study_name=args.study_name,
         storage=f"sqlite:///{output_dir / 'joint_screening.db'}",
         directions=["maximize", "minimize"],
-        sampler=optuna.samplers.TPESampler(seed=DEFAULT_RANDOM_SEED),
+        sampler=optuna.samplers.TPESampler(seed=args.sampler_seed),
         # The three paired replicates share one worker pool and complete as a
         # single batch. Pruning after a partial replicate would require
         # rebuilding that expensive pool, so it is deliberately disabled.
@@ -196,6 +202,8 @@ def optimize_mot(args):
             "n_ensembles": len(ensembles),
             "particles_per_ensemble": args.particles_per_ensemble,
             "mot_seed_start": args.mot_seed_start,
+            "stochastic_solver": stochastic_sim_function.__name__,
+            "sampler_seed": args.sampler_seed,
             "bounds": {
                 "s0": bounds_s0,
                 "detuning_gamma": bounds_detuning,
@@ -214,8 +222,14 @@ def parse_args(argv=None):
     parser.add_argument("--n-ensembles", type=int, default=3)
     parser.add_argument("--particles-per-ensemble", type=int, default=2000)
     parser.add_argument("--mot-seed-start", type=int, default=4000)
+    parser.add_argument("--sampler-seed", type=int, default=DEFAULT_RANDOM_SEED)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
+    parser.add_argument(
+        "--stochastic-solver",
+        choices=("gaussian", "hybrid"),
+        default="gaussian",
+    )
     parser.add_argument(
         "--s0-bounds",
         type=float,
