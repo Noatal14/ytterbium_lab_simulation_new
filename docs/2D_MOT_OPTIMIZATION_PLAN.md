@@ -171,6 +171,20 @@ Gaussian approximation. Use `python -m studies.validate_2d_mot_hybrid_timestep`
 to screen 2.5, 5, and 10 microseconds on identical input ensembles before
 launching a larger confirmation.
 
+The follow-up campaign found no monotonic capture trend from 5 down to 0.3125
+microseconds; adjacent comparisons were dominated by uncoupled Monte Carlo
+recoil noise. Repeated 1.25-versus-0.625 batches gave mean differences of
++0.054 and +0.047 percentage points, while 0.625 versus 0.3125 gave -0.067
+percentage points with a 95% interval that included zero. Continuing to halve
+the timestep would therefore spend rapidly increasing compute on the random
+realization rather than resolve a clear numerical trend.
+
+Use 1.25 microseconds as the efficient working timestep for candidate screening
+and local refinement. Recheck finalists at 0.625 microseconds, which is the
+production timestep. Retain the completed 0.3125-microsecond run as a sensitivity
+check on the final recommendation; do not recursively halve the timestep unless
+a future comparison shows a reproducible monotonic numerical bias.
+
 ## Stage 4: establish near-optimality within experimental resolution
 
 The desired optimization claim uses a tolerance of:

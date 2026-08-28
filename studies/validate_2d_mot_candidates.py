@@ -11,8 +11,9 @@ import argparse
 import json
 from pathlib import Path
 
-from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
+from config import DEFAULT_NUM_POOLS
 from studies.optimize_2d_mot_joint import evaluate_configuration
+from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
@@ -20,6 +21,7 @@ from utils.mot_2d_study import load_production_ensembles, student_mean_interval
 
 SOURCE_STUDY = "joint_refinement_v4_n5000x5"
 NONINFERIORITY_MARGIN_FRACTION = 0.0005  # 0.05 percentage points
+HYBRID_WORKING_DT_S = 1.25e-6
 
 CANDIDATES = (
     {
@@ -85,8 +87,7 @@ def build_summary(results, design):
     if len(results) > 1:
         reference = results[0]
         comparisons.extend(
-            paired_comparison(candidate, reference)
-            for candidate in results[1:]
+            paired_comparison(candidate, reference) for candidate in results[1:]
         )
     return {
         "kind": "mot_2d_candidate_validation_summary",
@@ -98,9 +99,7 @@ def build_summary(results, design):
                 "source_trial": row["source_trial"],
                 "parameters": row["parameters"],
                 "statistics": row["evaluation"]["statistics"],
-                "batch_elapsed_seconds": row["evaluation"][
-                    "batch_elapsed_seconds"
-                ],
+                "batch_elapsed_seconds": row["evaluation"]["batch_elapsed_seconds"],
             }
             for row in results
         ],
@@ -126,6 +125,7 @@ def run_validation(args):
         "dt_s": args.dt,
         "npools": args.npools,
         "paired_design": True,
+        "stochastic_solver": RK4StHybridCustom.__name__,
     }
 
     candidates = CANDIDATES
@@ -139,8 +139,7 @@ def run_validation(args):
     results = []
     for candidate in candidates:
         parameters = {
-            key: candidate[key]
-            for key in ("s0", "detuning_gamma", "magnet_radius")
+            key: candidate[key] for key in ("s0", "detuning_gamma", "magnet_radius")
         }
         evaluation = evaluate_configuration(
             **parameters,
@@ -148,6 +147,7 @@ def run_validation(args):
             mot_seed_start=args.mot_seed_start,
             npools=args.npools,
             dt_s=args.dt,
+            stochastic_sim_function=RK4StHybridCustom,
         )
         result = {
             "kind": "mot_2d_candidate_validation_result",
@@ -197,9 +197,9 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-ensembles", type=int, default=10)
     parser.add_argument("--particles-per-ensemble", type=int, default=10_000)
-    parser.add_argument("--mot-seed-start", type=int, default=6000)
+    parser.add_argument("--mot-seed-start", type=int, default=9000)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
-    parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])
+    parser.add_argument("--dt", type=float, default=HYBRID_WORKING_DT_S)
     parser.add_argument(
         "--candidate-index",
         type=int,
@@ -213,7 +213,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--output-dir",
         default=str(
-            MOT_2D_OPTIMIZATION_DIR / "candidate_validation_v5_n10000x10"
+            MOT_2D_OPTIMIZATION_DIR / "candidate_recheck_hybrid_v17_n10000x10_dt1p25us"
         ),
     )
     return parser.parse_args(argv)

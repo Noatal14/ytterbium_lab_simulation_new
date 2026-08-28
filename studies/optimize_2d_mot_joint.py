@@ -15,6 +15,7 @@ import optuna
 
 from config import DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED, MOT_2D_SIM_CONFIG
 from simulations.mot_2d import mot_simulation_paired_ensembles
+from utils.RK4StCustom import RK4StCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
@@ -38,6 +39,7 @@ def evaluate_configuration(
     npools,
     dt_s,
     mot_seeds=None,
+    stochastic_sim_function=RK4StCustom,
 ):
     """Evaluate one point on fixed paired replicates and return its summary."""
     if mot_seeds is None:
@@ -57,6 +59,7 @@ def evaluate_configuration(
         stochastic=True,
         npools=npools,
         dt=dt_s,
+        stochastic_sim_function=stochastic_sim_function,
     )
     batch_elapsed = time.time() - started
 

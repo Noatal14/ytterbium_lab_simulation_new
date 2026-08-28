@@ -285,6 +285,14 @@ approximation at higher counts. Screen 2.5, 5, and 10 microseconds with
 paired confirmation and recheck the selected point and close competitors before
 making the final production claim.
 
+The completed hybrid follow-up did not show monotonic capture convergence from
+5 to 0.3125 microseconds; the adjacent differences were dominated by uncoupled
+Monte Carlo recoil noise. The practical locked protocol is therefore 1.25
+microseconds for candidate screening/refinement, 0.625 microseconds for finalist
+and production runs, and the existing 0.3125-microsecond result as a sensitivity
+check. Do not continue halving the timestep without evidence of a reproducible
+monotonic numerical bias.
+
 Do not interpret only the highest Optuna trial. The desired scientific output is
 a recommendation that includes:
 

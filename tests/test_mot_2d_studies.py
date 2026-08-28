@@ -82,6 +82,16 @@ def test_candidate_validation_accepts_array_index():
     assert args.npools == 200
 
 
+def test_candidate_recheck_defaults_to_hybrid_working_design():
+    from studies.validate_2d_mot_candidates import parse_args
+
+    args = parse_args([])
+
+    assert np.isclose(args.dt, 1.25e-6)
+    assert args.mot_seed_start == 9000
+    assert "candidate_recheck_hybrid" in args.output_dir
+
+
 def test_robustness_grid_has_one_center_and_expected_steps():
     from studies.validate_2d_mot_robustness import (
         CENTER_INDEX,
