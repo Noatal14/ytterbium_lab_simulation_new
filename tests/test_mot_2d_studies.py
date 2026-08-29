@@ -141,6 +141,27 @@ def test_final_sensitivity_separates_power_response_from_local_tuning():
     assert np.isclose(args.particles_per_ensemble, 2_000)
 
 
+def test_sensitivity_confirmation_has_only_two_actionable_candidates():
+    from studies.validate_2d_mot_sensitivity_candidates import (
+        CANDIDATES,
+        FINAL_DT_S,
+        parse_args,
+    )
+
+    assert [candidate["name"] for candidate in CANDIDATES] == [
+        "shifted_tuning_selected_s0",
+        "shifted_tuning_s0_1p5",
+    ]
+    assert CANDIDATES[0]["detuning_gamma"] == CANDIDATES[1]["detuning_gamma"]
+    assert CANDIDATES[0]["magnet_radius"] == CANDIDATES[1]["magnet_radius"]
+    assert CANDIDATES[1]["s0"] == 1.5
+    assert np.isclose(FINAL_DT_S, 0.625e-6)
+
+    args = parse_args(["--candidate-index", "1", "--npools", "200"])
+    assert args.candidate_index == 1
+    assert args.npools == 200
+
+
 def test_robustness_grid_has_one_center_and_expected_steps():
     from studies.validate_2d_mot_robustness import (
         CENTER_INDEX,
