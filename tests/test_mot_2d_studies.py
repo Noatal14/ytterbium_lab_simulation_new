@@ -111,6 +111,36 @@ def test_hybrid_finalists_include_anchor_and_refinement_points():
     assert args.npools == 200
 
 
+def test_final_sensitivity_separates_power_response_from_local_tuning():
+    from studies.validate_2d_mot_final_sensitivity import (
+        POINTS,
+        REFERENCE_INDEX,
+        REFERENCE_PARAMETERS,
+        parse_args,
+    )
+
+    local_points = [
+        point for point in POINTS if point["scan_axis"] == "detuning_radius_grid"
+    ]
+    power_points = [
+        point for point in POINTS if point["scan_axis"] == "s0_response"
+    ]
+
+    assert len(POINTS) == 13
+    assert len(local_points) == 9
+    assert len(power_points) == 4
+    assert POINTS[REFERENCE_INDEX]["parameters"] == REFERENCE_PARAMETERS
+    assert {point["parameters"]["s0"] for point in local_points} == {
+        REFERENCE_PARAMETERS["s0"]
+    }
+    assert max(point["parameters"]["s0"] for point in POINTS) == 1.5
+
+    args = parse_args(["--point-index", "12", "--npools", "200"])
+    assert args.point_index == 12
+    assert args.npools == 200
+    assert np.isclose(args.particles_per_ensemble, 2_000)
+
+
 def test_robustness_grid_has_one_center_and_expected_steps():
     from studies.validate_2d_mot_robustness import (
         CENTER_INDEX,
