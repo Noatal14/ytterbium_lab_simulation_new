@@ -162,6 +162,47 @@ def test_sensitivity_confirmation_has_only_two_actionable_candidates():
     assert args.npools == 200
 
 
+def test_final_production_prediction_uses_conservative_variance():
+    from studies.run_2d_mot_final_production import final_prediction, parse_args
+
+    replicates = [
+        {
+            "n_input": 30_000,
+            "captured": captured,
+            "conditional_efficiency": captured / 30_000,
+            "estimated_total_efficiency": captured / 60_000,
+        }
+        for captured in (720, 750, 780, 810)
+    ]
+    prediction = final_prediction(replicates)
+
+    assert prediction["simulated_zeeman_survivors"] == 120_000
+    assert prediction["simulated_captured_atoms"] == 3_060
+    assert prediction["selected_mean_variance"] >= prediction["binomial_mean_variance"]
+    assert prediction["selected_mean_variance"] >= 0
+    assert prediction["predicted_95_captured_atoms_interval"][0] < 255_000
+    assert prediction["predicted_95_captured_atoms_interval"][1] > 255_000
+
+    args = parse_args(
+        [
+            "--zeeman-seeds",
+            "3000",
+            "3001",
+            "--s0",
+            "1.5",
+            "--detuning-gamma",
+            "-1.2",
+            "--magnet-radius-mm",
+            "49.3",
+            "--npools",
+            "200",
+        ]
+    )
+    assert args.zeeman_seeds == [3000, 3001]
+    assert args.s0 == 1.5
+    assert args.magnet_radius_mm == 49.3
+
+
 def test_robustness_grid_has_one_center_and_expected_steps():
     from studies.validate_2d_mot_robustness import (
         CENTER_INDEX,
