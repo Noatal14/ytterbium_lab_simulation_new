@@ -98,6 +98,19 @@ def test_candidate_recheck_defaults_to_hybrid_working_design():
     assert "candidate_recheck_hybrid" in args.output_dir
 
 
+def test_hybrid_finalists_include_anchor_and_refinement_points():
+    from studies.validate_2d_mot_hybrid_finalists import FINALISTS, parse_args
+
+    assert [row["name"] for row in FINALISTS] == [
+        "validated_anchor",
+        "overnight_maximum",
+        "overnight_lower_power",
+    ]
+    args = parse_args(["--finalist-index", "1", "--npools", "200"])
+    assert args.finalist_index == 1
+    assert args.npools == 200
+
+
 def test_robustness_grid_has_one_center_and_expected_steps():
     from studies.validate_2d_mot_robustness import (
         CENTER_INDEX,
