@@ -1,0 +1,74 @@
+{
+  "kind": "mot_2d_joint_optimization_summary",
+  "study_name": "mot2d_hybrid_refinement_v18_worker2",
+  "objectives": [
+    "maximize_mean_conditional_efficiency",
+    "minimize_s0"
+  ],
+  "n_registered_trials": 24,
+  "n_finished_trials": 24,
+  "pareto_front": [
+    {
+      "trial_number": 16,
+      "mean_conditional_efficiency": 0.0251,
+      "s0": 1.4604973280060072,
+      "parameters": {
+        "s0": 1.4604973280060072,
+        "detuning_gamma": -1.3148981011061567,
+        "magnet_radius": 0.0497447597557764
+      }
+    },
+    {
+      "trial_number": 23,
+      "mean_conditional_efficiency": 0.025799999999999997,
+      "s0": 1.464805692423944,
+      "parameters": {
+        "s0": 1.464805692423944,
+        "detuning_gamma": -1.2472496131706081,
+        "magnet_radius": 0.049251758580300224
+      }
+    },
+    {
+      "trial_number": 3,
+      "mean_conditional_efficiency": 0.0261,
+      "s0": 1.4686630600409352,
+      "parameters": {
+        "s0": 1.4686630600409352,
+        "detuning_gamma": -1.2915063698572626,
+        "magnet_radius": 0.04957705205100849
+      }
+    },
+    {
+      "trial_number": 14,
+      "mean_conditional_efficiency": 0.026599999999999995,
+      "s0": 1.4783335897789283,
+      "parameters": {
+        "s0": 1.4783335897789283,
+        "detuning_gamma": -1.266190052852422,
+        "magnet_radius": 0.04917200547795998
+      }
+    }
+  ],
+  "design": {
+    "dt_s": 1.25e-06,
+    "n_ensembles": 5,
+    "particles_per_ensemble": 2000,
+    "mot_seed_start": 10000,
+    "stochastic_solver": "RK4StHybridCustom",
+    "sampler_seed": 11002,
+    "bounds": {
+      "s0": [
+        1.46,
+        1.5
+      ],
+      "detuning_gamma": [
+        -1.32,
+        -1.15
+      ],
+      "magnet_radius_m": [
+        0.049,
+        0.0498
+      ]
+    }
+  }
+}

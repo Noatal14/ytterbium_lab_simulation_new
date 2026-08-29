@@ -1,0 +1,161 @@
+{
+  "kind": "mot_2d_hybrid_finalist_confirmation_summary",
+  "source_study": "hybrid_refinement_v18",
+  "design": {
+    "n_ensembles": 10,
+    "particles_per_ensemble": 10000,
+    "mot_seed_start": 12000,
+    "dt_s": 6.25e-07,
+    "npools": 200,
+    "paired_design": true,
+    "stochastic_solver": "RK4StHybridCustom"
+  },
+  "completed_finalists": [
+    {
+      "name": "validated_anchor",
+      "origin": "candidate_recheck_hybrid_v17 maximum_capture",
+      "parameters": {
+        "s0": 1.4932290341911787,
+        "detuning_gamma": -1.2326140031998183,
+        "magnet_radius": 0.049418961579403425
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.026890000000000004,
+        "conditional_95_ci": [
+          0.025614581070870526,
+          0.028165418929129483
+        ],
+        "conditional_95_ci_half_width": 0.0012754189291294773,
+        "mean_estimated_total_efficiency": 0.015916312199999998,
+        "estimated_total_95_ci": [
+          0.015154291637302558,
+          0.016678332762697437
+        ],
+        "estimated_total_95_ci_half_width": 0.0007620205626974397
+      },
+      "batch_elapsed_seconds": 18020.595157146454
+    },
+    {
+      "name": "overnight_maximum",
+      "origin": "hybrid_refinement_v18 worker0 trial16",
+      "parameters": {
+        "s0": 1.4918021,
+        "detuning_gamma": -1.1733592,
+        "magnet_radius": 0.049719911
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.02595,
+        "conditional_95_ci": [
+          0.025290689087015608,
+          0.026609310912984394
+        ],
+        "conditional_95_ci_half_width": 0.0006593109129843913,
+        "mean_estimated_total_efficiency": 0.0153599816,
+        "estimated_total_95_ci": [
+          0.014955502717993731,
+          0.01576446048200627
+        ],
+        "estimated_total_95_ci_half_width": 0.0004044788820062684
+      },
+      "batch_elapsed_seconds": 17796.6265103817
+    },
+    {
+      "name": "overnight_lower_power",
+      "origin": "hybrid_refinement_v18 worker1 trial15",
+      "parameters": {
+        "s0": 1.474497,
+        "detuning_gamma": -1.1840645,
+        "magnet_radius": 0.049217614
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.02712,
+        "conditional_95_ci": [
+          0.02617529543396237,
+          0.028064704566037626
+        ],
+        "conditional_95_ci_half_width": 0.0009447045660376282,
+        "mean_estimated_total_efficiency": 0.0160526724,
+        "estimated_total_95_ci": [
+          0.01548067582749734,
+          0.016624668972502657
+        ],
+        "estimated_total_95_ci_half_width": 0.0005719965725026577
+      },
+      "batch_elapsed_seconds": 17946.286874771118
+    }
+  ],
+  "all_pairwise_comparisons": [
+    {
+      "candidate": "overnight_maximum",
+      "reference": "validated_anchor",
+      "paired_differences_fraction": [
+        -0.0016000000000000007,
+        0.0009999999999999974,
+        -0.0009000000000000015,
+        -0.0011999999999999997,
+        -0.00030000000000000165,
+        -0.004399999999999998,
+        0.0003999999999999976,
+        -0.0017999999999999995,
+        -0.0006999999999999992,
+        9.99999999999994e-05
+      ],
+      "mean_paired_difference_fraction": -0.0009400000000000005,
+      "paired_95_ci_fraction": [
+        -0.002014994178865092,
+        0.00013499417886509075
+      ],
+      "paired_95_ci_half_width_fraction": 0.0010749941788650913,
+      "decision_margin_fraction": 0.0005
+    },
+    {
+      "candidate": "overnight_lower_power",
+      "reference": "validated_anchor",
+      "paired_differences_fraction": [
+        -0.0011000000000000003,
+        0.0026999999999999975,
+        9.99999999999994e-05,
+        -0.0005999999999999998,
+        -0.0005999999999999998,
+        -0.0022000000000000006,
+        0.0020999999999999977,
+        0.0010000000000000009,
+        0.0006999999999999992,
+        0.0001999999999999988
+      ],
+      "mean_paired_difference_fraction": 0.0002299999999999993,
+      "paired_95_ci_fraction": [
+        -0.0008224637408577717,
+        0.0012824637408577703
+      ],
+      "paired_95_ci_half_width_fraction": 0.001052463740857771,
+      "decision_margin_fraction": 0.0005
+    },
+    {
+      "candidate": "overnight_lower_power",
+      "reference": "overnight_maximum",
+      "paired_differences_fraction": [
+        0.0005000000000000004,
+        0.0017000000000000001,
+        0.0010000000000000009,
+        0.0005999999999999998,
+        -0.0002999999999999982,
+        0.002199999999999997,
+        0.0017000000000000001,
+        0.0028000000000000004,
+        0.0013999999999999985,
+        9.99999999999994e-05
+      ],
+      "mean_paired_difference_fraction": 0.0011699999999999998,
+      "paired_95_ci_fraction": [
+        0.0004772150100943566,
+        0.001862784989905643
+      ],
+      "paired_95_ci_half_width_fraction": 0.0006927849899056432,
+      "decision_margin_fraction": 0.0005
+    }
+  ]
+}

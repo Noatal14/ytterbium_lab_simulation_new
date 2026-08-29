@@ -1,0 +1,94 @@
+{
+  "kind": "mot_2d_joint_optimization_summary",
+  "study_name": "mot2d_hybrid_refinement_v18_worker0",
+  "objectives": [
+    "maximize_mean_conditional_efficiency",
+    "minimize_s0"
+  ],
+  "n_registered_trials": 24,
+  "n_finished_trials": 24,
+  "pareto_front": [
+    {
+      "trial_number": 13,
+      "mean_conditional_efficiency": 0.0254,
+      "s0": 1.460305975042343,
+      "parameters": {
+        "s0": 1.460305975042343,
+        "detuning_gamma": -1.180837312824211,
+        "magnet_radius": 0.049472045245189875
+      }
+    },
+    {
+      "trial_number": 4,
+      "mean_conditional_efficiency": 0.026500000000000003,
+      "s0": 1.460429819167506,
+      "parameters": {
+        "s0": 1.460429819167506,
+        "detuning_gamma": -1.2298084573518837,
+        "magnet_radius": 0.04977142260166969
+      }
+    },
+    {
+      "trial_number": 15,
+      "mean_conditional_efficiency": 0.026600000000000002,
+      "s0": 1.4807142831925326,
+      "parameters": {
+        "s0": 1.4807142831925326,
+        "detuning_gamma": -1.2080733550931322,
+        "magnet_radius": 0.04953388305274704
+      }
+    },
+    {
+      "trial_number": 8,
+      "mean_conditional_efficiency": 0.026799999999999997,
+      "s0": 1.4819802410886989,
+      "parameters": {
+        "s0": 1.4819802410886989,
+        "detuning_gamma": -1.2251296151486089,
+        "magnet_radius": 0.04946402979386753
+      }
+    },
+    {
+      "trial_number": 7,
+      "mean_conditional_efficiency": 0.026899999999999997,
+      "s0": 1.486277423005179,
+      "parameters": {
+        "s0": 1.486277423005179,
+        "detuning_gamma": -1.1511847345728698,
+        "magnet_radius": 0.049559014255273454
+      }
+    },
+    {
+      "trial_number": 16,
+      "mean_conditional_efficiency": 0.027699999999999995,
+      "s0": 1.491802067334449,
+      "parameters": {
+        "s0": 1.491802067334449,
+        "detuning_gamma": -1.1733591700899464,
+        "magnet_radius": 0.049719910539633594
+      }
+    }
+  ],
+  "design": {
+    "dt_s": 1.25e-06,
+    "n_ensembles": 5,
+    "particles_per_ensemble": 2000,
+    "mot_seed_start": 10000,
+    "stochastic_solver": "RK4StHybridCustom",
+    "sampler_seed": 11000,
+    "bounds": {
+      "s0": [
+        1.46,
+        1.5
+      ],
+      "detuning_gamma": [
+        -1.32,
+        -1.15
+      ],
+      "magnet_radius_m": [
+        0.049,
+        0.0498
+      ]
+    }
+  }
+}
