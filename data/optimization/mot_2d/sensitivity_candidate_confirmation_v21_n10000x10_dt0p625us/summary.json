@@ -1,0 +1,154 @@
+{
+  "kind": "mot_2d_sensitivity_candidate_confirmation_summary",
+  "reference": {
+    "name": "overnight_lower_power",
+    "parameters": {
+      "s0": 1.474497,
+      "detuning_gamma": -1.1840645,
+      "magnet_radius": 0.049217614
+    },
+    "statistics": {
+      "n_replicates": 10,
+      "mean_conditional_efficiency": 0.02712,
+      "conditional_95_ci": [
+        0.02617529543396237,
+        0.028064704566037626
+      ],
+      "conditional_95_ci_half_width": 0.0009447045660376282,
+      "mean_estimated_total_efficiency": 0.0160526724,
+      "estimated_total_95_ci": [
+        0.01548067582749734,
+        0.016624668972502657
+      ],
+      "estimated_total_95_ci_half_width": 0.0005719965725026577
+    }
+  },
+  "candidates": [
+    {
+      "name": "shifted_tuning_selected_s0",
+      "parameters": {
+        "s0": 1.474497,
+        "detuning_gamma": -1.2040645,
+        "magnet_radius": 0.049317614
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.0269,
+        "conditional_95_ci": [
+          0.025726000729189187,
+          0.028073999270810814
+        ],
+        "conditional_95_ci_half_width": 0.001173999270810814,
+        "mean_estimated_total_efficiency": 0.0159218694,
+        "estimated_total_95_ci": [
+          0.015223824194651167,
+          0.016619914605348833
+        ],
+        "estimated_total_95_ci_half_width": 0.0006980452053488339
+      }
+    },
+    {
+      "name": "shifted_tuning_s0_1p5",
+      "parameters": {
+        "s0": 1.5,
+        "detuning_gamma": -1.2040645,
+        "magnet_radius": 0.049317614
+      },
+      "statistics": {
+        "n_replicates": 10,
+        "mean_conditional_efficiency": 0.026850000000000002,
+        "conditional_95_ci": [
+          0.02585348047025346,
+          0.027846519529746545
+        ],
+        "conditional_95_ci_half_width": 0.0009965195297465433,
+        "mean_estimated_total_efficiency": 0.015892624600000002,
+        "estimated_total_95_ci": [
+          0.015294025910081882,
+          0.01649122328991812
+        ],
+        "estimated_total_95_ci_half_width": 0.0005985986899181195
+      }
+    }
+  ],
+  "paired_comparisons": [
+    {
+      "candidate": "shifted_tuning_selected_s0",
+      "reference": "overnight_lower_power",
+      "paired_differences_fraction": [
+        0.0011999999999999997,
+        -0.0026999999999999975,
+        0.00040000000000000105,
+        0.0,
+        0.0005999999999999998,
+        0.002100000000000001,
+        -0.0017000000000000001,
+        -0.0007999999999999986,
+        -0.0014999999999999979,
+        0.00020000000000000226
+      ],
+      "mean_paired_difference_fraction": -0.000219999999999999,
+      "paired_95_ci_fraction": [
+        -0.001259280072051312,
+        0.0008192800720513138
+      ],
+      "paired_95_ci_half_width_fraction": 0.001039280072051313,
+      "decision_margin_fraction": 0.0005
+    },
+    {
+      "candidate": "shifted_tuning_s0_1p5",
+      "reference": "overnight_lower_power",
+      "paired_differences_fraction": [
+        -0.00030000000000000165,
+        -0.0006999999999999992,
+        0.0005999999999999998,
+        0.00040000000000000105,
+        0.0002999999999999982,
+        0.00040000000000000105,
+        0.0006999999999999992,
+        -0.001899999999999999,
+        -0.0023,
+        9.99999999999994e-05
+      ],
+      "mean_paired_difference_fraction": -0.0002700000000000001,
+      "paired_95_ci_fraction": [
+        -0.0010248437273708852,
+        0.0004848437273708849
+      ],
+      "paired_95_ci_half_width_fraction": 0.000754843727370885,
+      "decision_margin_fraction": 0.0005
+    },
+    {
+      "candidate": "shifted_tuning_s0_1p5",
+      "reference": "shifted_tuning_selected_s0",
+      "paired_differences_fraction": [
+        -0.0015000000000000013,
+        0.0019999999999999983,
+        0.0001999999999999988,
+        0.00040000000000000105,
+        -0.00030000000000000165,
+        -0.0017000000000000001,
+        0.0023999999999999994,
+        -0.0011000000000000003,
+        -0.0008000000000000021,
+        -0.00010000000000000286
+      ],
+      "mean_paired_difference_fraction": -5.0000000000001087e-05,
+      "paired_95_ci_fraction": [
+        -0.0010338866769214437,
+        0.0009338866769214416
+      ],
+      "paired_95_ci_half_width_fraction": 0.0009838866769214427,
+      "decision_margin_fraction": 0.0005
+    }
+  ],
+  "design": {
+    "n_ensembles": 10,
+    "particles_per_ensemble": 10000,
+    "mot_seed_start": 12000,
+    "dt_s": 6.25e-07,
+    "npools": 200,
+    "paired_design": true,
+    "stochastic_solver": "RK4StHybridCustom"
+  }
+}
