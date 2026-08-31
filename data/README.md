@@ -37,6 +37,12 @@ explicitly rather than inferring them.
 The Zeeman production command creates this adjacent metadata automatically,
 including runtime, software versions, and a SHA-256 hash of the saved ``.npy``.
 
+The accepted final 2D-MOT production replay should use
+``--save-survivor-states``. It writes one downstream ``(N, 6)`` state array per
+Zeeman/MOT seed pair under
+``data/particle_states/after_2d_mot/final_production_v22/`` so 3D-MOT studies do
+not need to rerun the 2D stage.
+
 GitHub rejects individual files larger than 100 MB. If future state ensembles
 approach that size, use Git LFS or documented external storage instead of adding
 them to ordinary Git history. Historical optimization summaries are stored in

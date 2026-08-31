@@ -41,6 +41,7 @@ def evaluate_configuration(
     dt_s,
     mot_seeds=None,
     stochastic_sim_function=RK4StCustom,
+    include_survivor_states=False,
 ):
     """Evaluate one point on fixed paired replicates and return its summary."""
     if mot_seeds is None:
@@ -65,8 +66,9 @@ def evaluate_configuration(
     batch_elapsed = time.time() - started
 
     replicates = []
+    survivor_state_ensembles = []
     for index, (ensemble, result) in enumerate(zip(ensembles, grouped_results)):
-        _, captured, _ = result
+        _, captured, survivor_states = result
         mot_seed = mot_seeds[index]
         n_input = len(ensemble["states"])
         conditional = captured / n_input
@@ -87,11 +89,16 @@ def evaluate_configuration(
                 "batch_elapsed_seconds": float(batch_elapsed),
             }
         )
-    return {
+        if include_survivor_states:
+            survivor_state_ensembles.append(np.asarray(survivor_states))
+    evaluation = {
         "batch_elapsed_seconds": float(batch_elapsed),
         "replicates": replicates,
         "statistics": summarize_replicates(replicates),
     }
+    if include_survivor_states:
+        evaluation["survivor_state_ensembles"] = survivor_state_ensembles
+    return evaluation
 
 
 def optimize_mot(args):

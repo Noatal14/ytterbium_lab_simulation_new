@@ -20,6 +20,7 @@ from config import DEFAULT_NUM_POOLS
 from studies.optimize_2d_mot_joint import evaluate_configuration
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
+from utils.data_paths import AFTER_2D_MOT_DIR, save_particle_states
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 
@@ -29,6 +30,7 @@ MOT_SEED_OFFSET = 15_000
 REPORTING_SURVIVORS = 10_000_000
 TARGET_HALF_WIDTH_FRACTION = 0.0005  # 0.05 percentage points
 DEFAULT_OUTPUT_DIR = MOT_2D_OPTIMIZATION_DIR / "final_production_v22"
+DEFAULT_STATES_DIR = AFTER_2D_MOT_DIR / "final_production_v22"
 
 
 def parameters_from_args(args):
@@ -54,10 +56,12 @@ def run_seeds(args):
         npools=args.npools,
         dt_s=FINAL_DT_S,
         stochastic_sim_function=RK4StHybridCustom,
+        include_survivor_states=args.save_survivor_states,
     )
+    survivor_state_ensembles = evaluation.pop("survivor_state_ensembles", None)
     output_dir = Path(args.output_dir) / "replicates"
     output_dir.mkdir(parents=True, exist_ok=True)
-    for row in evaluation["replicates"]:
+    for index, row in enumerate(evaluation["replicates"]):
         payload = {
             "kind": "mot_2d_final_production_replicate",
             "parameters": parameters,
@@ -72,6 +76,30 @@ def run_seeds(args):
         }
         path = output_dir / f"zeeman_seed{row['zeeman_seed']}.json"
         save_file_json(path, payload)
+        if survivor_state_ensembles is not None:
+            states_dir = Path(args.states_dir)
+            states_path = states_dir / (
+                f"mot_2d_survivors_zeeman_seed{row['zeeman_seed']}"
+                f"_mot_seed{row['mot_seed']}.npy"
+            )
+            save_particle_states(states_path, survivor_state_ensembles[index])
+            save_file_json(
+                states_path.with_suffix(".json"),
+                {
+                    "kind": "mot_2d_final_survivor_ensemble",
+                    "source_zeeman_ensemble": row["ensemble_file"],
+                    "zeeman_seed": row["zeeman_seed"],
+                    "mot_seed": row["mot_seed"],
+                    "n_input": row["n_input"],
+                    "n_survivors": row["captured"],
+                    "state_layout": [
+                        "x_m", "y_m", "z_m", "vx_m_s", "vy_m_s", "vz_m_s"
+                    ],
+                    "parameters": parameters,
+                    "design": payload["design"],
+                },
+            )
+            print(f"Saved 2D-MOT survivor states to: {states_path}")
         print(
             "MOT_2D_FINAL_PRODUCTION_RESULT "
             f"zeeman_seed={row['zeeman_seed']} mot_seed={row['mot_seed']} "
@@ -196,6 +224,12 @@ def parse_args(argv=None):
     parser.add_argument("--summarize-only", action="store_true")
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    parser.add_argument(
+        "--save-survivor-states",
+        action="store_true",
+        help="Save each captured (N, 6) ensemble for downstream 3D-MOT studies.",
+    )
+    parser.add_argument("--states-dir", default=str(DEFAULT_STATES_DIR))
     args = parser.parse_args(argv)
     if not args.summarize_only:
         missing = [

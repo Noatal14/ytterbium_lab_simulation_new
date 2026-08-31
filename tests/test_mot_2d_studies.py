@@ -50,6 +50,22 @@ def test_joint_optimizer_accepts_refinement_bounds():
     assert args.sampler_seed == 137
 
 
+def test_final_production_can_save_downstream_states():
+    from studies.run_2d_mot_final_production import parse_args
+
+    args = parse_args(
+        [
+            "--zeeman-seeds", "3000",
+            "--s0", "1.474497",
+            "--detuning-gamma", "-1.1840645",
+            "--magnet-radius-mm", "49.217614",
+            "--save-survivor-states",
+        ]
+    )
+    assert args.save_survivor_states
+    assert "after_2d_mot/final_production_v22" in args.states_dir
+
+
 def test_hybrid_finalists_include_anchor_and_refinement_points():
     from studies.validate_2d_mot_hybrid_finalists import FINALISTS, parse_args
 
