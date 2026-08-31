@@ -22,6 +22,45 @@ def test_small_thermal_beam_is_finite_and_reproducible():
     assert np.array_equal(velocities_1, velocities_2)
     assert info_1 == info_2
 
+
+def test_full_angular_thermal_beam_has_no_flux_truncation():
+    positions, velocities, info = generate_thermal_beam_state(
+        N=256,
+        collimation_angle_deg=None,
+        seed=321,
+    )
+
+    assert np.all(np.isfinite(positions))
+    assert np.all(np.isfinite(velocities))
+    assert info["collimation_angle_deg"] is None
+    assert np.isclose(info["emission_included_flux_fraction"], 1.0)
+    assert "full forward hemisphere" in info["description"]
+    speeds = np.linalg.norm(velocities, axis=1)
+    assert np.max(speeds) < 2_000.0
+
+
+def test_broadening_increases_typical_emission_angle():
+    _, narrow_velocities, _ = generate_thermal_beam_state(
+        N=10_000, collimation_angle_deg=None, seed=55
+    )
+    _, broad_velocities, info = generate_thermal_beam_state(
+        N=10_000,
+        collimation_angle_deg=None,
+        angular_broadening_factor=3.0,
+        seed=55,
+    )
+    axis = np.array(
+        [0.0, np.sin(Geometry.ZEEMAN_ARM_ANGLE_RAD), np.cos(Geometry.ZEEMAN_ARM_ANGLE_RAD)]
+    )
+    narrow_cos = narrow_velocities @ axis / np.linalg.norm(narrow_velocities, axis=1)
+    broad_cos = broad_velocities @ axis / np.linalg.norm(broad_velocities, axis=1)
+    narrow_angles = np.arccos(np.clip(narrow_cos, -1, 1))
+    broad_angles = np.arccos(np.clip(broad_cos, -1, 1))
+    assert np.mean(broad_angles < np.radians(1.0)) < np.mean(
+        narrow_angles < np.radians(1.0)
+    )
+    assert info["angular_broadening_factor"] == 3.0
+
 def verify_microtube_distribution():
     print("Testing microtube distribution...")
     

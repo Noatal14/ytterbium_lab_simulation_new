@@ -79,11 +79,17 @@ def sample_microtube_angles(N, r_tube, L_tube, rng, theta_max=np.pi / 2):
     so callers can tell how aggressive the truncation is, instead of silently
     renormalizing the sampled distribution as if nothing were cut.
     """
-    theta_grid = np.linspace(1e-9, theta_max, 5000)
+    if not 0 < theta_max <= np.pi / 2:
+        raise ValueError("theta_max must be in (0, pi/2]")
+
+    # Avoid evaluating tan(pi/2) exactly while retaining the complete forward
+    # hemisphere when no angular cutoff is requested.
+    integration_limit = min(theta_max, np.pi / 2 - 1e-9)
+    theta_grid = np.linspace(1e-9, integration_limit, 5000)
     weights = microtube_intensity_theta(theta_grid, r_tube, L_tube) * np.sin(theta_grid)
     truncated_mass = np.trapezoid(weights, theta_grid)
 
-    full_grid = np.linspace(1e-9, np.pi / 2, 5000)
+    full_grid = np.linspace(1e-9, np.pi / 2 - 1e-9, 5000)
     full_weights = microtube_intensity_theta(full_grid, r_tube, L_tube) * np.sin(full_grid)
     full_mass = np.trapezoid(full_weights, full_grid)
     included_fraction = float(truncated_mass / full_mass)
@@ -103,6 +109,7 @@ def generate_thermal_beam_state(
     N=1000,
     T_C=OVEN_TEMPERATURE_C,
     collimation_angle_deg=COLLIMATION_ANGLE_DEG,
+    angular_broadening_factor=1.0,
     m=None,
     distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
     seed=DEFAULT_RANDOM_SEED
@@ -126,8 +133,14 @@ def generate_thermal_beam_state(
         Target final velocity for the 'Atomic Zeeman beam' in m/s (default: 50.0).
     v_spread : float
         Velocity spread for the 'Atomic Zeeman beam' in m/s (default: 5.0).
-    collimation_angle_deg : float, optional
-        Angular divergence constraint for collimated beams in degrees.
+    collimation_angle_deg : float or None, optional
+        Angular divergence constraint in degrees. Pass ``None`` to sample the
+        complete transmitted forward-hemisphere distribution and let the
+        apparatus geometry reject atoms outside its acceptance.
+    angular_broadening_factor : float, optional
+        Factor by which to broaden the transparent-flow divergence. This is
+        implemented with an effective tube length ``L / factor`` and the
+        sampled PDF is renormalized, so the total source flux is unchanged.
     m : float, optional
         Mass of the atom in kg. Defaults to Ytterbium mass.
     distance_m : float, optional
@@ -144,6 +157,8 @@ def generate_thermal_beam_state(
     
     if m is None:
         m = YB171_MASS_KG
+    if angular_broadening_factor < 1.0:
+        raise ValueError("angular_broadening_factor must be at least 1")
 
     angle_deg = Geometry.ZEEMAN_ARM_ANGLE_DEG
     alpha = np.radians(angle_deg)
@@ -189,29 +204,56 @@ def generate_thermal_beam_state(
     x4 = rng.normal(0, sigma, N)
     v_L_arr = np.sqrt(x1**2 + x2**2 + x3**2 + x4**2)
     
-    # Transparent-flow microtube angular intensity distribution
-    # We cap theta at the collimation angle to simulate the physical acceptance
-    # of the downstream apertures (see geometric_acceptance_angle_deg).
+    # Transparent-flow microtube angular intensity distribution. The standard
+    # production ensembles use a computational angular cutoff. A value of None
+    # deliberately removes that shortcut for an end-to-end flux estimate.
+    theta_max = (
+        np.pi / 2
+        if collimation_angle_deg is None
+        else np.radians(collimation_angle_deg)
+    )
     theta, phi, included_fraction = sample_microtube_angles(
         N=N,
         r_tube=Geometry.OVEN_MICROTUBE_RADIUS_M,
-        L_tube=Geometry.OVEN_MICROTUBE_LENGTH_M,
+        L_tube=(
+            Geometry.OVEN_MICROTUBE_LENGTH_M / angular_broadening_factor
+        ),
         rng=rng,
-        theta_max=np.radians(collimation_angle_deg)
+        theta_max=theta_max,
     )
-    v_T1_arr = v_L_arr * np.tan(theta) * np.cos(phi)
-    v_T2_arr = v_L_arr * np.tan(theta) * np.sin(phi)
+    if collimation_angle_deg is None:
+        # For the full hemisphere, interpret the effusive v^3 sample as the
+        # total speed and resolve it into a direction. The legacy small-angle
+        # path below treats it as axial speed; that approximation is harmless
+        # at 1.5 degrees but would diverge through tan(theta) near 90 degrees.
+        speed_arr = v_L_arr
+        v_axial_arr = speed_arr * np.cos(theta)
+        v_T1_arr = speed_arr * np.sin(theta) * np.cos(phi)
+        v_T2_arr = speed_arr * np.sin(theta) * np.sin(phi)
+    else:
+        v_axial_arr = v_L_arr
+        v_T1_arr = v_L_arr * np.tan(theta) * np.cos(phi)
+        v_T2_arr = v_L_arr * np.tan(theta) * np.sin(phi)
     
     # Transform from local beam frame (u_T1, u_T2, u_L) to lab frame (X, Y, Z)
     v_vecs = (v_T1_arr[:, None] * u_T1 + 
                 v_T2_arr[:, None] * u_T2 + 
-                v_L_arr[:, None] * u_L)
+                v_axial_arr[:, None] * u_L)
     
-    info["description"] = f"Microcapillary thermal beam (transparent-flow angular distribution), sigma={collimation_angle_deg} deg)"
+    angular_description = (
+        "full forward hemisphere"
+        if collimation_angle_deg is None
+        else f"cutoff={collimation_angle_deg} deg"
+    )
+    info["description"] = (
+        "Microcapillary thermal beam (transparent-flow angular distribution), "
+        + angular_description
+    )
     info["collimation_angle_deg"] = collimation_angle_deg
+    info["angular_broadening_factor"] = float(angular_broadening_factor)
     info["emission_included_flux_fraction"] = included_fraction
-    info["mean_axial_velocity"] = float(np.mean(v_L_arr))
-    info["std_axial_velocity"] = float(np.std(v_L_arr))
+    info["mean_axial_velocity"] = float(np.mean(v_axial_arr))
+    info["std_axial_velocity"] = float(np.std(v_axial_arr))
     info["most_probable_velocity_theory"] = np.sqrt(3 * csts.k * T_K / m)
 
     return r_vecs, v_vecs, info

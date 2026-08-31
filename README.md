@@ -109,6 +109,22 @@ python -m simulations.zeeman --n_atoms 50000 --output data/particle_states/after
 
 This stage always starts from a newly generated thermal beam.
 
+The standard command uses the configured angular cutoff for efficient MOT
+optimization. For an absolute source-to-Zeeman flux estimate, sample the full
+forward distribution instead:
+
+```bash
+python -m studies.full_thermal_zeeman_flux run --n-atoms 50000 --seed 9000 --npools 150
+python -m studies.full_thermal_zeeman_flux summarize
+```
+
+The full-angle study defaults to the conservative threefold divergence
+broadening used by the source design estimate. Its summary scales the simulated
+Zeeman survival fraction by the
+Yb-171 oven flux calculated from the configured source geometry and operating
+temperature. Do not multiply a full-angle survival fraction by an input flux
+that has already been restricted to the 2D-MOT geometric acceptance.
+
 ### 2) Run the 2D MOT from saved states
 
 ```bash

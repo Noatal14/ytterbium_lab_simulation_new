@@ -220,6 +220,8 @@ ZEEMAN_BEAM_DIRECTION = np.array(
 
 OVEN_TEMPERATURE_C = 400.0
 COLLIMATION_ANGLE_DEG = 1.5
+OVEN_MICROTUBE_COUNT = 350
+YB171_NATURAL_ABUNDANCE = 0.143
 
 
 # =============================================================================

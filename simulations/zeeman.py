@@ -48,6 +48,7 @@ def zeeman_simulation(
     stochastic=True,
     dt=ZEEMAN_SIM_CONFIG["dt_s"],
     collimation_angle_deg=COLLIMATION_ANGLE_DEG,
+    angular_broadening_factor=1.0,
     seed=DEFAULT_RANDOM_SEED,
 ):
     """Generate a thermal beam and return the states that survive Zeeman."""
@@ -68,6 +69,7 @@ def zeeman_simulation(
     r0_arr, v0_arr, _ = generate_thermal_beam_state(
         N=N_particles,
         collimation_angle_deg=collimation_angle_deg,
+        angular_broadening_factor=angular_broadening_factor,
         m=atom.mass,
         distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
         seed=seed,
@@ -122,6 +124,9 @@ def _sha256(path):
 
 
 def _resolved_run_parameters(simulation_kwargs):
+    collimation_angle_deg = simulation_kwargs.get(
+        "collimation_angle_deg", COLLIMATION_ANGLE_DEG
+    )
     return {
         "n_initial_atoms": int(
             simulation_kwargs.get("N_particles", DEFAULT_NUM_PARTICLES)
@@ -131,8 +136,14 @@ def _resolved_run_parameters(simulation_kwargs):
         "npools": int(simulation_kwargs.get("npools", DEFAULT_NUM_POOLS)),
         "stochastic": bool(simulation_kwargs.get("stochastic", True)),
         "gravity_enabled": bool(simulation_kwargs.get("gravity_enabled", True)),
-        "collimation_angle_deg": float(
-            simulation_kwargs.get("collimation_angle_deg", COLLIMATION_ANGLE_DEG)
+        "collimation_angle_deg": (
+            None
+            if collimation_angle_deg is None
+            else float(collimation_angle_deg)
+        ),
+        "full_angular_distribution": collimation_angle_deg is None,
+        "angular_broadening_factor": float(
+            simulation_kwargs.get("angular_broadening_factor", 1.0)
         ),
         "magnet_radius_m": float(
             simulation_kwargs.get("magnet_radius", MOT_2D_MAGNET_RADIUS_M)
@@ -202,6 +213,15 @@ def parse_args():
     parser.add_argument("--n_atoms", type=int, default=DEFAULT_NUM_PARTICLES)
     parser.add_argument("--output", default=str(DEFAULT_ZEEMAN_STATES_FILE))
     parser.add_argument("--cutoff_angle_deg", type=float, default=COLLIMATION_ANGLE_DEG)
+    parser.add_argument(
+        "--full-angular-distribution",
+        action="store_true",
+        help=(
+            "Sample the complete forward microtube distribution and let the "
+            "apparatus geometry determine acceptance. Overrides --cutoff_angle_deg."
+        ),
+    )
+    parser.add_argument("--angular-broadening-factor", type=float, default=1.0)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--stochastic", type=int, choices=[0, 1], default=1)
     parser.add_argument("--dt", type=float, default=ZEEMAN_SIM_CONFIG["dt_s"])
@@ -214,7 +234,10 @@ if __name__ == "__main__":
     run_and_save_zeeman(
         args.output,
         N_particles=args.n_atoms,
-        collimation_angle_deg=args.cutoff_angle_deg,
+        collimation_angle_deg=(
+            None if args.full_angular_distribution else args.cutoff_angle_deg
+        ),
+        angular_broadening_factor=args.angular_broadening_factor,
         npools=args.npools,
         stochastic=bool(args.stochastic),
         dt=args.dt,
