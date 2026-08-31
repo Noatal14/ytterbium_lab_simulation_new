@@ -1,0 +1,28 @@
+{
+  "kind": "mot_2d_final_production_replicate",
+  "parameters": {
+    "s0": 1.474497,
+    "detuning_gamma": -1.1840645,
+    "magnet_radius": 0.049217614
+  },
+  "design": {
+    "dt_s": 6.25e-07,
+    "stochastic_solver": "RK4StHybridCustom",
+    "uses_all_available_particles": true,
+    "mot_seed_offset": 15000,
+    "npools": 150
+  },
+  "replicate": {
+    "ensemble_file": "production_zeeman_n50000_dt40us_seed3007.npy",
+    "zeeman_seed": 3007,
+    "mot_seed": 18007,
+    "n_available": 29585,
+    "selection_method": "all_particles",
+    "subset_seed": 103007,
+    "n_input": 29585,
+    "captured": 840,
+    "conditional_efficiency": 0.028392766604698326,
+    "estimated_total_efficiency": 0.0168,
+    "batch_elapsed_seconds": 17282.49231314659
+  }
+}
