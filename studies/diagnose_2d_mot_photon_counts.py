@@ -9,7 +9,6 @@ from config import DEFAULT_NUM_POOLS
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
 from simulations.mot_2d import mot_simulation_paired_ensembles
-from studies.validate_2d_mot_robustness import SELECTED_PARAMETERS
 from utils.RK4StPhotonDiagnosticCustom import (
     PHOTON_COUNT_THRESHOLDS,
     RK4StPhotonDiagnosticCustom,
@@ -22,6 +21,11 @@ from utils.simulation_helpers import mot_extract_survivors
 
 
 DEFAULT_OUTPUT = MOT_2D_VALIDATION_DIR / "photon_count_diagnostics_v10.json"
+SELECTED_PARAMETERS = {
+    "s0": 1.4598658484197036,
+    "detuning_gamma": -1.285675899102664,
+    "magnet_radius": 0.049080790136605164,
+}
 
 
 def merge_statistics(target, source):

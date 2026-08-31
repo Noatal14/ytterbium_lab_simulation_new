@@ -154,11 +154,9 @@ For a new user, the recommended entry points are the three stage scripts:
 The former combined workflow is available as `python -m simulations.pipeline`.
 Existing Zeus PBS commands must be updated to the package-based entry points.
 
-## Optimization
+## Completed optimization workflow
 
-Before optimization, validate the 2D-MOT timestep with
-`python -m studies.mot_2d_timestep_convergence`. The production optimizer is
-`python -m studies.optimize_2d_mot_joint`; it jointly scans:
+The retained joint optimizer, `python -m studies.optimize_2d_mot_joint`, scans:
 
 - `s0` (saturation parameter)
 - `detuning_gamma`
@@ -166,27 +164,49 @@ Before optimization, validate the 2D-MOT timestep with
 
 Every trial uses the same per-seed Zeeman production ensembles, deterministic
 particle subsets, and MOT seeds. Candidate comparisons are therefore paired.
-Screening results are stored under `data/optimization/mot_2d/`.
+Accepted optimization results are stored under `data/optimization/mot_2d/`.
 The optimizer accepts narrower follow-up domains through `--s0-bounds`,
 `--detuning-bounds`, and `--magnet-radius-bounds-m`. Always use a new study
 name and output directory when changing bounds or the statistical design.
-After screening and refinement, `python -m studies.validate_2d_mot_candidates`
-compares the shortlisted power/capture trade-offs on larger paired samples with
-fresh MOT seeds. Its summary reports confidence intervals for the paired
-efficiency differences and a 0.05-percentage-point noninferiority check.
-Independent candidates can run concurrently through `--candidate-index 0`,
-`1`, or `2`. After all candidate files exist, use `--summarize-only` to create
-the shared paired-comparison summary without concurrent writes.
-Local setting robustness is evaluated by
-`python -m studies.validate_2d_mot_robustness`. It scans the full 3x3x3 box at
-one provisional control step around the selected candidate and reports both
-ordinary paired intervals and Bonferroni-adjusted simultaneous 95% intervals.
-Ambiguous points can be repeated with `--all-particles`; targeted summaries may
-use `--summary-point-indices` while retaining the original multiplicity penalty
-through `--familywise-comparisons`.
+The superseded screening, fixed-`s0`, candidate-validation, and robustness
+scripts were removed after the campaign closed. Git history retains them if an
+old result ever needs to be reconstructed. The retained scripts reproduce the
+accepted hybrid refinement, finalist, sensitivity, and final-production chain.
 
-The older `studies.optimize_2d_mot` and fixed-`s0` scripts are retained only for
-historical reproducibility and are not the recommended production workflow.
+### Final 2D-MOT recommendation
+
+The conditional 2D-MOT optimization campaign is complete. The locked nominal
+setting is:
+
+```text
+s0:             1.474497
+detuning:       -1.1840645 Gamma
+magnet radius:  49.217614 mm
+solver:         RK4StHybridCustom
+production dt:  0.625 us
+```
+
+The final production dataset contains 20 independent Zeeman/MOT ensemble pairs,
+592,319 simulated Zeeman survivors, and 15,840 captured atoms. The pooled
+conditional capture efficiency is 2.6742347%. For a reporting input of
+10,000,000 Zeeman survivors, the expected capture is 267,423 atoms and the 95%
+prediction range is 263,195-271,652 atoms (2.6319496%-2.7165198%). The prediction
+half-width is 0.042285 percentage points, so the predeclared 0.05-percentage-point
+stopping rule passed.
+
+Local sensitivity checks found nearby settings with statistically unresolved
+differences at the available sample size. In particular, shifting to detuning
+`-1.2040645 Gamma` and radius `49.317614 mm` changed the paired mean by only
+-0.022 percentage points at the selected `s0`; using `s0=1.5` there changed it
+by -0.027 percentage points. These results support a practically tolerant local
+neighborhood, but their intervals are wider than the strict +/-0.05-point
+equivalence margin and should not be presented as proof that every point in a
+continuous box is equivalent.
+
+The final source-to-apparatus flux campaign is separate. It samples the full
+thermal angular distribution, estimates the Zeeman-survival fraction, and then
+applies the already measured conditional 2D-MOT prediction; it does not reopen
+the completed 2D-MOT optimization.
 
 ## Outputs and data
 

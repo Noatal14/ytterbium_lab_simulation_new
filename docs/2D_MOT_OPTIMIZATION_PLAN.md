@@ -45,16 +45,17 @@ leave the region. If no such interior point exists, the result is not yet a
 robust laboratory recommendation even if it is the highest simulated point.
 
 The desired final result is a robust operating point or joint parameter region,
-not necessarily a single sharp maximum. For a reporting reference of ten
-million Zeeman survivors, the target statement has the following form:
+not necessarily a single sharp maximum. The completed production result for a
+reporting reference of ten million Zeeman survivors is:
 
 ```text
 For the recommended 2D-MOT settings and 10,000,000 Zeeman survivors,
-a new equivalent run has 95% predicted probability of capturing between
-240,000 and 250,000 atoms.
+a new equivalent run is predicted to capture 267,423 atoms, with a 95%
+prediction range of 263,195 to 271,652 atoms.
 
-Expected conditional capture efficiency: 2.45%
-Target prediction half-width: 0.05 percentage points
+Expected conditional capture efficiency: 2.6742347%
+Achieved prediction half-width: 0.042285 percentage points
+Target prediction half-width:   0.05 percentage points (PASS)
 ```
 
 The value `10,000,000` is a reporting reference chosen for communicating the
@@ -260,24 +261,51 @@ real-valued parameter combination.
 
 ## Stage 5: production prediction
 
-Status as of 2026-08-27: **passed at the 10-microsecond production timestep.**
-For the selected parameters, 20 independent ensembles give a mean conditional
-capture of 2.568102%. For 10,000,000 Zeeman survivors, the model predicts
-256,810 captured atoms, with a 95% prediction range of 252,372 to 261,248
-atoms (2.523720% to 2.612484%). The prediction half-width is 0.044382
-percentage points, below the predeclared 0.05-percentage-point target.
+Status as of 2026-08-31: **complete; stopping rule passed.**
 
-Run the locked finalists across all accepted independent Zeeman ensembles. Add
-new Zeeman/MOT seeds adaptively until the predictive target for a new equivalent
-run is met.
+The locked production setting is:
 
-The current campaign starts this adaptive extension with five new independent
-Zeeman ensembles.  After combining them with the ten accepted ensembles, apply
-the predeclared stopping rule.  Combine uncertainty in the estimated mean with
-the counting noise expected in a new run of 10,000,000 Zeeman survivors.  If
-that 95% prediction has a half-width greater than 0.05 percentage points, add
-another batch of five; do not keep running merely to reach an arbitrary round
-seed count.
+```text
+s0:             1.474497
+detuning_gamma: -1.1840645
+magnet_radius:  0.049217614 m = 49.217614 mm
+solver:         RK4StHybridCustom
+dt:             0.625 microseconds
+```
+
+The final dataset uses all available particles from 20 independent Zeeman/MOT
+ensemble pairs: 592,319 Zeeman survivors were simulated and 15,840 were
+captured. The pooled conditional efficiency is 2.6742346607%.
+
+For a new equivalent input of 10,000,000 Zeeman survivors:
+
+```text
+expected captured atoms: 267,423
+95% prediction range:    263,195 to 271,652 atoms
+efficiency range:        2.6319496% to 2.7165198%
+95% half-width:          0.042285 percentage points
+stopping target:         <= 0.05 percentage points (PASS)
+```
+
+The prediction combines the binomial counting variance expected in a future
+10,000,000-particle run with uncertainty in the estimated mean. The latter is
+chosen conservatively as the larger of the pooled-binomial estimate and the
+empirical between-ensemble estimate. In the final data the pooled-binomial term
+was larger, so the normal 1.96 critical value was used.
+
+The local sensitivity confirmation evaluated the most actionable shifted point,
+`detuning=-1.2040645 Gamma` and `radius=49.317614 mm`, at the selected `s0` and
+at `s0=1.5`. Their mean conditional captures were 2.690% and 2.685%, compared
+with 2.712% for the nominal point in the matched confirmation sample. Paired
+mean differences were -0.022 and -0.027 percentage points. The corresponding
+95% intervals, [-0.125928, +0.081928] and [-0.102484, +0.048484] percentage
+points, remain wider than the strict +/-0.05-point equivalence margin. The
+observed local response is therefore practically flat in its means, but the
+data do not prove simultaneous equivalence of every continuous setting in a
+parameter box.
+
+No further 2D-MOT optimization, timestep, sensitivity, or conditional
+production runs are required under the present model and apparatus constraints.
 
 On Zeus, scheduler and multiprocessing startup are material.  Use three
 long-lived 200-core workers within the 600-core quota, and let each worker run
@@ -320,10 +348,12 @@ After the conditional 2D-MOT recommendation is locked:
 
 1. Generate the full unfiltered thermal distribution.
 2. Run the Zeeman slower.
-3. Run the locked 2D MOT on its survivors.
-4. Save the 2D-MOT survivors for the 3D-MOT campaign.
-5. Estimate end-to-end transmission from the oven and convert it to laboratory
-   flux/count predictions using a clearly stated time interval.
+3. Estimate the physical Zeeman-survivor flux from the simulated survival
+   fraction and the Yb-171 oven flux.
+4. Apply the already completed conditional 2D-MOT prediction to that flux; do
+   not rerun the 2D MOT merely for this conversion.
+5. Report the expected oven-to-Zeeman and oven-to-2D-MOT atom fluxes with their
+   uncertainty intervals.
 
 Keep the conditional 2D-MOT result and the end-to-end oven result separate. They
 have different denominators and answer different experimental questions.

@@ -216,11 +216,10 @@ survivors, repeatability across independent particles/seeds, and robustness to
 realistic laboratory parameter-setting uncertainty. A high Optuna value alone
 does not satisfy the campaign goal.
 
-The current production strategy uses
-`python -m studies.optimize_2d_mot_joint` to optimize `s0`, detuning, and magnet
-radius simultaneously. Fixed-`s0` scripts are historical and should not be used
-for the new campaign. First validate the 2D-MOT timestep with
-`python -m studies.mot_2d_timestep_convergence`.
+The completed campaign used `python -m studies.optimize_2d_mot_joint` to
+optimize `s0`, detuning, and magnet radius simultaneously. Superseded fixed-`s0`,
+candidate-validation, robustness, and early production scripts were removed
+after closure; Git history retains them for historical reconstruction.
 
 All candidate points must use the same Zeeman production ensembles, the same
 particle subsets, and the same MOT seeds. Use cheap paired screening first and
@@ -229,21 +228,10 @@ The joint optimizer accepts explicit refinement domains through
 `--s0-bounds`, `--detuning-bounds`, and `--magnet-radius-bounds-m`. A changed
 domain, particle count, or ensemble count must use a new study name and output
 directory rather than continuing an incompatible SQLite study.
-Shortlisted operating points are validated with
-`python -m studies.validate_2d_mot_candidates`. This stage uses fresh MOT seeds,
-larger subsets, and aligned replicates, and it reports paired confidence
-intervals against the maximum-capture candidate. Do not select a lower-power
-candidate from raw mean efficiencies alone.
-For Zeus, the three candidates may run as a PBS array using distinct
-`--candidate-index` values. Array tasks write separate JSON files; only run
-`--summarize-only` after all three complete, so no tasks race on `summary.json`.
-The next robustness stage uses `python -m studies.validate_2d_mot_robustness`
-on all 27 combinations of the selected setting and one control step in either
-direction. Its familywise conclusion must use the Bonferroni-adjusted intervals
-in the summary, not 26 uncorrected pointwise 95% intervals.
-If only ambiguous robustness points are repeated, use all available survivors
-and keep `--familywise-comparisons 26`. Do not reduce the correction count after
-inspecting which points failed the original simultaneous analysis.
+The retained result chain is the Pareto scan, hybrid refinement, finalist
+confirmation, local sensitivity checks, and final production prediction. Treat
+the saved JSON summaries as authoritative; do not rerun removed historical
+stages unless the scientific objective changes.
 
 Zeus worker processes can take several minutes to reach full CPU utilization.
 Within the 600-core project quota, prefer a few long-lived jobs that each run
@@ -252,23 +240,25 @@ workloads that scale well to 200 processes, the current practical default is
 three concurrent 200-core workers.  Preserve each completed seed or point in a
 separate result file so an interrupted worker can resume safely.
 
-After local robustness passes, extend the final conditional-capture prediction
-with `python -m studies.validate_2d_mot_production`.  Add independent Zeeman
-ensembles in batches of five, run the locked 2D-MOT setting on all survivors,
-and summarize after each batch.  Stop only when the reported 95% prediction for
-a new run of 10,000,000 Zeeman survivors has a half-width no larger than 0.05
-percentage points; otherwise add another five independent ensembles.
+The final conditional-capture prediction was produced with
+`python -m studies.run_2d_mot_final_production`. Its stopping rule required the
+95% prediction for 10,000,000 Zeeman survivors to have a half-width no larger
+than 0.05 percentage points.
 
-The production-prediction stopping rule passed on 2026-08-27 with 20
-independent ensembles. At the selected setting (`s0=1.45986585`, detuning
-`-1.28567590 Gamma`, magnet radius `49.08079014 mm`), the 10-us simulation
-predicts 256,810 captures per 10,000,000 Zeeman survivors, with a model-based
-95% range of 252,372 to 261,248 and a half-width of 0.044382 percentage points.
-This result is conditional on entering the 2D MOT as a Zeeman survivor. The
-paired 5-us confirmation has now been run: its mean capture is 2.628208%, and
-the paired `5 us - 10 us` difference is +0.060106 percentage points with a 95%
-interval of [+0.032474, +0.087739] percentage points. It therefore fails the
-predeclared +/-0.05-percentage-point timestep-equivalence criterion.
+The final production-prediction stopping rule passed on 2026-08-31 with 20
+independent ensembles. The locked setting is `s0=1.474497`, detuning
+`-1.1840645 Gamma`, and magnet radius `49.217614 mm`, using
+`RK4StHybridCustom` at `dt=0.625 us`. Across 592,319 Zeeman survivors, 15,840
+were captured. For 10,000,000 Zeeman survivors, the model predicts 267,423
+captures, with a 95% prediction range of 263,195 to 271,652 and a half-width of
+0.042285 percentage points. This result is conditional on entering the 2D MOT
+as a Zeeman survivor and is the authoritative final conditional prediction.
+
+The prediction interval combines future binomial capture-counting variance with
+the larger of the pooled-binomial and empirical between-ensemble uncertainty in
+the estimated mean. The pooled-binomial term controlled in the final dataset,
+so the calculation used the large-sample 1.96 critical value. The result passed
+the predeclared maximum half-width of 0.05 percentage points.
 
 Do not respond by blindly reducing the timestep in the existing Gaussian
 stochastic solver. That solver uses `Ni = scattering_rate * dt` and Gaussian
@@ -302,6 +292,21 @@ a recommendation that includes:
 - dependence on available laser intensity;
 - regions achieving, for example, 98-99% of the predicted maximum.
 
+The completed local sensitivity confirmation compared the nominal point with
+detuning `-1.2040645 Gamma`, radius `49.317614 mm`, at both `s0=1.474497` and
+`s0=1.5`. Their paired mean changes relative to the nominal point were -0.022
+and -0.027 percentage points, respectively. The associated 95% intervals were
+[-0.125928, +0.081928] and [-0.102484, +0.048484] percentage points. Treat these
+as evidence that the local mean response is not sharply degraded, not as a
+strict simultaneous equivalence proof over an entire continuous parameter box.
+
+The 2D-MOT optimization, timestep investigation, sensitivity campaign, and
+conditional production prediction are closed. Do not launch more 2D-MOT
+optimization or timestep runs unless the apparatus constraints, physical model,
+or scientific objective changes. The only active final task is the separate
+full-thermal Zeeman-flux prediction; it will convert the locked conditional
+2D-MOT result into an end-to-end oven-to-2D-MOT flux estimate.
+
 Optuna studies may use SQLite storage so a study can continue across jobs. Avoid
 allowing multiple jobs to create or initialize the same SQLite database at the
 same time; this previously caused a race. Confirm storage paths and initialization
@@ -313,13 +318,9 @@ Photon-scattering recoil is stochastic. Small differences between nearby
 configurations may therefore reflect random realization noise rather than a
 meaningful physical difference.
 
-`python -m studies.mot_seed_scan` is a legacy single-ensemble uncertainty check.
-For final conclusions, repeat the same physical 2D-MOT configuration across
-the accepted per-seed Zeeman production ensembles and matching MOT seeds. The
-legacy command repeats the configuration with different
-random seeds. Use the resulting distribution of captured counts or efficiencies
-to estimate stochastic uncertainty. Report this uncertainty when comparing close
-optimization points or defining a robust near-optimal region.
+Final conclusions use the accepted per-seed Zeeman production ensembles and
+matching MOT seeds. The removed legacy single-ensemble seed scan is not part of
+the accepted uncertainty analysis.
 
 ## 9. Zeus HPC workflow
 

@@ -51,8 +51,9 @@ python -m simulations.mot_3d
 python -m studies.validate_zeeman_configuration
 python -m studies.diagnose_zeeman_trajectories
 python -m studies.scan_zeeman_capture_velocity
-python -m studies.mot_2d_timestep_convergence --help
 python -m studies.optimize_2d_mot_joint --help
+python -m studies.run_2d_mot_final_production --help
+python -m studies.full_thermal_zeeman_flux --help
 ```
 
 Each command accepts ``--input`` and/or ``--output`` options when a non-default

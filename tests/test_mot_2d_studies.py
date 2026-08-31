@@ -50,54 +50,6 @@ def test_joint_optimizer_accepts_refinement_bounds():
     assert args.sampler_seed == 137
 
 
-def test_candidate_validation_reports_paired_noninferiority():
-    from studies.validate_2d_mot_candidates import paired_comparison
-
-    def result(name, efficiencies):
-        return {
-            "name": name,
-            "evaluation": {
-                "replicates": [
-                    {
-                        "zeeman_seed": 3000 + index,
-                        "mot_seed": 6000 + index,
-                        "n_input": 10_000,
-                        "subset_seed": 103_000 + index,
-                        "conditional_efficiency": efficiency,
-                    }
-                    for index, efficiency in enumerate(efficiencies)
-                ]
-            },
-        }
-
-    reference = result("maximum_capture", [0.0255, 0.0256, 0.0254])
-    candidate = result("low_power", [0.0252, 0.0253, 0.0251])
-    comparison = paired_comparison(candidate, reference)
-
-    assert np.isclose(comparison["mean_paired_difference_fraction"], -0.0003)
-    assert comparison["passes_noninferiority_at_95_percent"]
-    json.dumps(comparison)
-
-
-def test_candidate_validation_accepts_array_index():
-    from studies.validate_2d_mot_candidates import parse_args
-
-    args = parse_args(["--candidate-index", "2", "--npools", "200"])
-
-    assert args.candidate_index == 2
-    assert args.npools == 200
-
-
-def test_candidate_recheck_defaults_to_hybrid_working_design():
-    from studies.validate_2d_mot_candidates import parse_args
-
-    args = parse_args([])
-
-    assert np.isclose(args.dt, 1.25e-6)
-    assert args.mot_seed_start == 9000
-    assert "candidate_recheck_hybrid" in args.output_dir
-
-
 def test_hybrid_finalists_include_anchor_and_refinement_points():
     from studies.validate_2d_mot_hybrid_finalists import FINALISTS, parse_args
 
@@ -201,56 +153,6 @@ def test_final_production_prediction_uses_conservative_variance():
     assert args.zeeman_seeds == [3000, 3001]
     assert args.s0 == 1.5
     assert args.magnet_radius_mm == 49.3
-
-
-def test_robustness_grid_has_one_center_and_expected_steps():
-    from studies.validate_2d_mot_robustness import (
-        CENTER_INDEX,
-        OFFSETS,
-        SELECTED_PARAMETERS,
-        point_definition,
-    )
-
-    assert len(OFFSETS) == 27
-    center = point_definition(CENTER_INDEX)
-    assert center["offset_steps"] == {
-        "s0": 0,
-        "detuning_gamma": 0,
-        "magnet_radius": 0,
-    }
-    assert center["parameters"] == SELECTED_PARAMETERS
-
-    upper = point_definition(26)
-    assert upper["offset_steps"] == {
-        "s0": 1,
-        "detuning_gamma": 1,
-        "magnet_radius": 1,
-    }
-    assert np.isclose(
-        upper["parameters"]["magnet_radius"] - SELECTED_PARAMETERS["magnet_radius"],
-        0.01e-3,
-    )
-
-
-def test_robustness_followup_accepts_all_particles_and_fixed_correction():
-    from studies.validate_2d_mot_robustness import parse_args
-
-    args = parse_args(
-        [
-            "--summarize-only",
-            "--all-particles",
-            "--summary-point-indices",
-            "13",
-            "7",
-            "8",
-            "--familywise-comparisons",
-            "26",
-        ]
-    )
-
-    assert args.all_particles
-    assert args.summary_point_indices == [13, 7, 8]
-    assert args.familywise_comparisons == 26
 
 
 def test_student_interval_requires_replicates():

@@ -8,8 +8,6 @@ from pathlib import Path
 
 from config import DEFAULT_NUM_POOLS
 from simulations.mot_2d import mot_simulation_paired_ensembles
-from studies.validate_2d_mot_production import MOT_SEED_OFFSET
-from studies.validate_2d_mot_robustness import SELECTED_PARAMETERS
 from utils.RK4StHybridCustom import (
     DEFAULT_POISSON_THRESHOLD,
     RK4StHybridCustom,
@@ -20,6 +18,12 @@ from utils.mot_2d_study import load_production_ensembles, student_mean_interval
 
 
 DEFAULT_OUTPUT = MOT_2D_VALIDATION_DIR / "hybrid_timestep_screening_v11.json"
+MOT_SEED_OFFSET = 5000
+SELECTED_PARAMETERS = {
+    "s0": 1.4598658484197036,
+    "detuning_gamma": -1.285675899102664,
+    "magnet_radius": 0.049080790136605164,
+}
 
 
 def run_screening(args):
