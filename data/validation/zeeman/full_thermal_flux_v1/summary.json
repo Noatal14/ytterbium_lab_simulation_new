@@ -1,0 +1,1038 @@
+{
+  "kind": "full_thermal_zeeman_flux_summary",
+  "angular_distribution": "complete broadened microtube forward hemisphere",
+  "angular_broadening_factor": 3.0,
+  "n_runs": 100,
+  "total_initial_atoms": 5000000,
+  "total_zeeman_survivors": 17168,
+  "pooled_zeeman_survival_fraction": 0.0034336,
+  "exact_binomial_95_ci_fraction": [
+    0.0033825144439270463,
+    0.003485261928468946
+  ],
+  "estimated_yb171_oven_flux_s": 73863403904265.52,
+  "estimated_zeeman_survivor_flux_s": 253617383645.6861,
+  "estimated_zeeman_survivor_flux_95_ci_s": [
+    249844030583.7955,
+    257433309534.66113
+  ],
+  "oven_flux_calculation": {
+    "temperature_c": 400.0,
+    "temperature_k": 673.15,
+    "vapor_pressure_pa": 0.09987598933187676,
+    "number_density_m3": 1.0746473237630558e+19,
+    "mean_thermal_speed_m_s": 288.7525876762755,
+    "microtube_count": 350,
+    "microtube_radius_m": 0.00013,
+    "microtube_length_m": 0.009,
+    "angular_transmission_fraction": 0.03583082464454023,
+    "all_yb_flux_per_tube_s": 1475792285799.511,
+    "all_yb_total_flux_s": 516527300029828.9,
+    "yb171_natural_abundance": 0.143,
+    "yb171_total_flux_s": 73863403904265.52,
+    "denominator_note": "Total transmitted Yb-171 flux before downstream geometric acceptance; pair with a full-angular-distribution simulation."
+  },
+  "runs": [
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9000.json",
+      "seed": 9000,
+      "n_initial_atoms": 50000,
+      "n_survivors": 152,
+      "survival_fraction": 0.00304,
+      "elapsed_seconds": 123.00098657608032,
+      "output_sha256": "b9398a9767cc2a9fd9fc2b8b5a0f01c0d58e375ac01ff060d5ed949d7b64f16b",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9001.json",
+      "seed": 9001,
+      "n_initial_atoms": 50000,
+      "n_survivors": 155,
+      "survival_fraction": 0.0031,
+      "elapsed_seconds": 123.31437993049622,
+      "output_sha256": "20516cd3838911f0b1c3b0193e95cd4c4eb10f1d54b6616532e926ab99869871",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9002.json",
+      "seed": 9002,
+      "n_initial_atoms": 50000,
+      "n_survivors": 202,
+      "survival_fraction": 0.00404,
+      "elapsed_seconds": 127.61627697944641,
+      "output_sha256": "acafd3a88441ba6d48464d9f86f627c3dc377c11a3aa0a162fba4be28be7acd3",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9003.json",
+      "seed": 9003,
+      "n_initial_atoms": 50000,
+      "n_survivors": 198,
+      "survival_fraction": 0.00396,
+      "elapsed_seconds": 126.67240953445435,
+      "output_sha256": "ebd63a2ac744efd709987bc7be199359566d161963e60ca92b6d50199888cd99",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9004.json",
+      "seed": 9004,
+      "n_initial_atoms": 50000,
+      "n_survivors": 174,
+      "survival_fraction": 0.00348,
+      "elapsed_seconds": 126.55484795570374,
+      "output_sha256": "6dfdeac80aa452dc80c6f660ac31157e47a98bce53bf70de7ec087eae99a3574",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9005.json",
+      "seed": 9005,
+      "n_initial_atoms": 50000,
+      "n_survivors": 161,
+      "survival_fraction": 0.00322,
+      "elapsed_seconds": 124.60363721847534,
+      "output_sha256": "166e97c0192ad64daab80e98268057c4b38d9f732924d4ab0b64fa4eeab8ab76",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9006.json",
+      "seed": 9006,
+      "n_initial_atoms": 50000,
+      "n_survivors": 173,
+      "survival_fraction": 0.00346,
+      "elapsed_seconds": 123.74847316741943,
+      "output_sha256": "7bce2855defb29ef03377e2f2249fdec9a1cbcc7b03973b8901045075817e12f",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9007.json",
+      "seed": 9007,
+      "n_initial_atoms": 50000,
+      "n_survivors": 191,
+      "survival_fraction": 0.00382,
+      "elapsed_seconds": 125.66365599632263,
+      "output_sha256": "3d329a4a9a6db4344064757adf9aa1eccc376aa10916588a918f406eb8701e45",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9008.json",
+      "seed": 9008,
+      "n_initial_atoms": 50000,
+      "n_survivors": 152,
+      "survival_fraction": 0.00304,
+      "elapsed_seconds": 120.93532872200012,
+      "output_sha256": "290e1fdf10a2e9815b4363a4f4bd75066a476cf8085019a1d0934e6644eedf83",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9009.json",
+      "seed": 9009,
+      "n_initial_atoms": 50000,
+      "n_survivors": 150,
+      "survival_fraction": 0.003,
+      "elapsed_seconds": 118.55114340782166,
+      "output_sha256": "05d9bcc14efd25bb8d7734b5c907e2a2051c8749067a9e28dd677305e121bcb7",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9010.json",
+      "seed": 9010,
+      "n_initial_atoms": 50000,
+      "n_survivors": 167,
+      "survival_fraction": 0.00334,
+      "elapsed_seconds": 121.76612305641174,
+      "output_sha256": "c627dabe462d1ed21dd672e55241d1ba96bec70daf5cd4e92677f7a89e52b8dc",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9011.json",
+      "seed": 9011,
+      "n_initial_atoms": 50000,
+      "n_survivors": 174,
+      "survival_fraction": 0.00348,
+      "elapsed_seconds": 120.3727331161499,
+      "output_sha256": "efc1aef088b67731dfc99d4a71640bec2c7c7763e9ee359be7104258396fc465",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9012.json",
+      "seed": 9012,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 121.30037903785706,
+      "output_sha256": "77685b2da685ae5bb929b8b25b295782d1fd80957e6453be1b5e7ed3212c8c6f",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9013.json",
+      "seed": 9013,
+      "n_initial_atoms": 50000,
+      "n_survivors": 177,
+      "survival_fraction": 0.00354,
+      "elapsed_seconds": 117.5687358379364,
+      "output_sha256": "97de0ae902e51be0f985ead067e3272a8235779c9bedd7d9df95dedb4e6e5476",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9014.json",
+      "seed": 9014,
+      "n_initial_atoms": 50000,
+      "n_survivors": 187,
+      "survival_fraction": 0.00374,
+      "elapsed_seconds": 122.42757797241211,
+      "output_sha256": "c7ab9186db8431ba7c0c328d25ce8609920ad1aff2a1c39d3e1649d6182446ad",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9015.json",
+      "seed": 9015,
+      "n_initial_atoms": 50000,
+      "n_survivors": 159,
+      "survival_fraction": 0.00318,
+      "elapsed_seconds": 121.0482349395752,
+      "output_sha256": "e37e0148405f3757fb9ed5bdbcf1da0ef636c626f20fb76cf5eb734c7e4d0915",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9016.json",
+      "seed": 9016,
+      "n_initial_atoms": 50000,
+      "n_survivors": 184,
+      "survival_fraction": 0.00368,
+      "elapsed_seconds": 118.96008682250977,
+      "output_sha256": "1ddd8fff2be1fa4790a2da5ee806bd4b7c2106a5e4587b6230ef3e49902c88f5",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9017.json",
+      "seed": 9017,
+      "n_initial_atoms": 50000,
+      "n_survivors": 167,
+      "survival_fraction": 0.00334,
+      "elapsed_seconds": 111.46482825279236,
+      "output_sha256": "9950aff5521c98608b8ee992184615fb336cbdfd11b4c87ebfe3c39b3b231639",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9018.json",
+      "seed": 9018,
+      "n_initial_atoms": 50000,
+      "n_survivors": 163,
+      "survival_fraction": 0.00326,
+      "elapsed_seconds": 116.4129478931427,
+      "output_sha256": "34e2569af0d0eb627273fdb5269b370817db4873a3fbc0dfc0def6cb3f307d7c",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9019.json",
+      "seed": 9019,
+      "n_initial_atoms": 50000,
+      "n_survivors": 156,
+      "survival_fraction": 0.00312,
+      "elapsed_seconds": 119.65218043327332,
+      "output_sha256": "5ce6c9a602830813eb5f49e3244a0deef739033642d6f906a36b681323d8a72a",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9020.json",
+      "seed": 9020,
+      "n_initial_atoms": 50000,
+      "n_survivors": 175,
+      "survival_fraction": 0.0035,
+      "elapsed_seconds": 118.65523672103882,
+      "output_sha256": "4b56010ae3f6552678a3a475c3aac03290d287e62890cce56e1601a67ba4432a",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9021.json",
+      "seed": 9021,
+      "n_initial_atoms": 50000,
+      "n_survivors": 211,
+      "survival_fraction": 0.00422,
+      "elapsed_seconds": 102.01574373245239,
+      "output_sha256": "1379a9396564555fca1bf589191b188f7736aec3281bd6734cd2ac6ee93c59c8",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9022.json",
+      "seed": 9022,
+      "n_initial_atoms": 50000,
+      "n_survivors": 176,
+      "survival_fraction": 0.00352,
+      "elapsed_seconds": 115.89063692092896,
+      "output_sha256": "85c15715b672666d3df922b6350b7a119abadde200d006d51a977dd22821a296",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9023.json",
+      "seed": 9023,
+      "n_initial_atoms": 50000,
+      "n_survivors": 189,
+      "survival_fraction": 0.00378,
+      "elapsed_seconds": 118.19111847877502,
+      "output_sha256": "7d4ea0c48b60e872af94b310fd423ce07605a52d06de4ffc1910cd717bf23bc6",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9024.json",
+      "seed": 9024,
+      "n_initial_atoms": 50000,
+      "n_survivors": 159,
+      "survival_fraction": 0.00318,
+      "elapsed_seconds": 119.14921021461487,
+      "output_sha256": "71b03c6e55fd5b368e58b20ce37268dd38bba48ecbf00c9f830eabb287003708",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9025.json",
+      "seed": 9025,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 101.41844391822815,
+      "output_sha256": "1be8eba34a5b45225e792e54defe47c2a8314a5a0f19fd20de7278ba1427d93e",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9026.json",
+      "seed": 9026,
+      "n_initial_atoms": 50000,
+      "n_survivors": 171,
+      "survival_fraction": 0.00342,
+      "elapsed_seconds": 118.629390001297,
+      "output_sha256": "39e0f3de6e2353e78a661ce39076087f7d6dd43c6ad813aad147896c81db6953",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9027.json",
+      "seed": 9027,
+      "n_initial_atoms": 50000,
+      "n_survivors": 140,
+      "survival_fraction": 0.0028,
+      "elapsed_seconds": 119.59580206871033,
+      "output_sha256": "7f5a0bd982807936d2dffc7c7db4fcb65066f82516c1aa689881d072f7ed3028",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9028.json",
+      "seed": 9028,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 117.6372275352478,
+      "output_sha256": "d12cf1c96ad46941e6e4213c9b0c60a1d1eaa26a0a7c2ea1fefd29f4a5982b7d",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9029.json",
+      "seed": 9029,
+      "n_initial_atoms": 50000,
+      "n_survivors": 164,
+      "survival_fraction": 0.00328,
+      "elapsed_seconds": 98.92169523239136,
+      "output_sha256": "5a40b1da2b2b55020a68877e0e3754e8dd314314a568b36289fc811c1c7c2a74",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9030.json",
+      "seed": 9030,
+      "n_initial_atoms": 50000,
+      "n_survivors": 165,
+      "survival_fraction": 0.0033,
+      "elapsed_seconds": 117.3601176738739,
+      "output_sha256": "3d0c115f2e55e53c40b685013ba96d5c1399859c0e3de9bfed3fc441cd558984",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9031.json",
+      "seed": 9031,
+      "n_initial_atoms": 50000,
+      "n_survivors": 167,
+      "survival_fraction": 0.00334,
+      "elapsed_seconds": 117.17249751091003,
+      "output_sha256": "fbfabbb614013e0d08a090372c30732a7c0c280dfa06f8760ebfc125193dd96d",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9032.json",
+      "seed": 9032,
+      "n_initial_atoms": 50000,
+      "n_survivors": 178,
+      "survival_fraction": 0.00356,
+      "elapsed_seconds": 114.59439182281494,
+      "output_sha256": "3e5824db011077fa6735902dc76caabae6a5822ca547f09ac0076c64cc4035bb",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9033.json",
+      "seed": 9033,
+      "n_initial_atoms": 50000,
+      "n_survivors": 198,
+      "survival_fraction": 0.00396,
+      "elapsed_seconds": 102.32997584342957,
+      "output_sha256": "fbf3a6f7bafd5203ff497f3643f52ba2492035e0ee2efcf93141fe276c3e4dba",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9034.json",
+      "seed": 9034,
+      "n_initial_atoms": 50000,
+      "n_survivors": 179,
+      "survival_fraction": 0.00358,
+      "elapsed_seconds": 110.35263395309448,
+      "output_sha256": "f545e403d641aab256cab3e8e66a4cbacbcd2e2dc4ab46f9ce69184c23050a11",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9035.json",
+      "seed": 9035,
+      "n_initial_atoms": 50000,
+      "n_survivors": 189,
+      "survival_fraction": 0.00378,
+      "elapsed_seconds": 111.32726335525513,
+      "output_sha256": "7c70ff77b82df942b5598a262931729683b7a982f4c1bd0f5937eadf8730c44e",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9036.json",
+      "seed": 9036,
+      "n_initial_atoms": 50000,
+      "n_survivors": 196,
+      "survival_fraction": 0.00392,
+      "elapsed_seconds": 115.45943593978882,
+      "output_sha256": "35a8a3910cb6680f3987ca655d3c71f70e44aa2224d4143fbeba23b9715d96f8",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9037.json",
+      "seed": 9037,
+      "n_initial_atoms": 50000,
+      "n_survivors": 172,
+      "survival_fraction": 0.00344,
+      "elapsed_seconds": 99.2155749797821,
+      "output_sha256": "1920628e206d944777c6537572c23c06eed382f87e6eb29cac7919bef5df22bd",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9038.json",
+      "seed": 9038,
+      "n_initial_atoms": 50000,
+      "n_survivors": 177,
+      "survival_fraction": 0.00354,
+      "elapsed_seconds": 109.39360785484314,
+      "output_sha256": "74be6746ecae9674a0c38fa4aabbbb669010698c165c18c3c4241f6211b5a1b3",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9039.json",
+      "seed": 9039,
+      "n_initial_atoms": 50000,
+      "n_survivors": 174,
+      "survival_fraction": 0.00348,
+      "elapsed_seconds": 114.60325503349304,
+      "output_sha256": "f042a029cee294726a78585169bb2a81b19e1c46d721f4b235ce8508869a4052",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9040.json",
+      "seed": 9040,
+      "n_initial_atoms": 50000,
+      "n_survivors": 175,
+      "survival_fraction": 0.0035,
+      "elapsed_seconds": 112.27842831611633,
+      "output_sha256": "217e5b18733d7fccb57ee07c11dd47ab3824b3355ed40adaab33d89c1f2d269a",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9041.json",
+      "seed": 9041,
+      "n_initial_atoms": 50000,
+      "n_survivors": 171,
+      "survival_fraction": 0.00342,
+      "elapsed_seconds": 106.27927374839783,
+      "output_sha256": "eafe8c2ff9b6dfcc4e4d2e58b6a78d40d112e67104b40f927c34231fbceb8ac0",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9042.json",
+      "seed": 9042,
+      "n_initial_atoms": 50000,
+      "n_survivors": 166,
+      "survival_fraction": 0.00332,
+      "elapsed_seconds": 101.93215990066528,
+      "output_sha256": "eb6302e6dff420b59bd72a8648ac888a85a5ff8988bc97f4f3e8a0342e40aaa1",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9043.json",
+      "seed": 9043,
+      "n_initial_atoms": 50000,
+      "n_survivors": 177,
+      "survival_fraction": 0.00354,
+      "elapsed_seconds": 112.5068416595459,
+      "output_sha256": "f160e3cb0b24df40004cd483e0de033905f4396206de6dbfdc5c0bc23749f6b8",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9044.json",
+      "seed": 9044,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 111.22866582870483,
+      "output_sha256": "293f54df4d1962ff2afa8ab9c092a3762697e630172745403045d57bfdf77ba2",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9045.json",
+      "seed": 9045,
+      "n_initial_atoms": 50000,
+      "n_survivors": 182,
+      "survival_fraction": 0.00364,
+      "elapsed_seconds": 105.49391627311707,
+      "output_sha256": "e15ddf7c9982cda82008d8cb1641316a4420879e82ab10eb7b758c605e1cf04c",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9046.json",
+      "seed": 9046,
+      "n_initial_atoms": 50000,
+      "n_survivors": 184,
+      "survival_fraction": 0.00368,
+      "elapsed_seconds": 99.48132419586182,
+      "output_sha256": "19a1bdf8e57d6c7d49650167948b66dc30b2b44d665671f5be54da9d3f02a5f2",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9047.json",
+      "seed": 9047,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 108.83721137046814,
+      "output_sha256": "135efcd4b71312edbce3e9be1429cf5368aac994866d3d50fba79bf6a4971ecd",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9048.json",
+      "seed": 9048,
+      "n_initial_atoms": 50000,
+      "n_survivors": 166,
+      "survival_fraction": 0.00332,
+      "elapsed_seconds": 105.76274514198303,
+      "output_sha256": "cc60120303d553a4910000d2b87c7c2ddb130ea417b395bec32a29b6756a5943",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9049.json",
+      "seed": 9049,
+      "n_initial_atoms": 50000,
+      "n_survivors": 146,
+      "survival_fraction": 0.00292,
+      "elapsed_seconds": 108.13092136383057,
+      "output_sha256": "bf4252414db677c967b8c5575729809b0ad068e46e1f1302e1292dd52525f3ba",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9050.json",
+      "seed": 9050,
+      "n_initial_atoms": 50000,
+      "n_survivors": 174,
+      "survival_fraction": 0.00348,
+      "elapsed_seconds": 102.25960278511047,
+      "output_sha256": "291e006dcc81bb84ec5af685f5ae40ef6fd49b8cf355883fae6571935304cf2d",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9051.json",
+      "seed": 9051,
+      "n_initial_atoms": 50000,
+      "n_survivors": 183,
+      "survival_fraction": 0.00366,
+      "elapsed_seconds": 106.16331648826599,
+      "output_sha256": "67a45bb1810418eec55740e34aa73dd5e7e4cf6d668eab3e7012a76c146c2670",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9052.json",
+      "seed": 9052,
+      "n_initial_atoms": 50000,
+      "n_survivors": 165,
+      "survival_fraction": 0.0033,
+      "elapsed_seconds": 107.96057033538818,
+      "output_sha256": "6e1e2f2d1ed1f09d90f61eb4a78d39854327327f02b783ae2a8ebbd3ca85730f",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9053.json",
+      "seed": 9053,
+      "n_initial_atoms": 50000,
+      "n_survivors": 184,
+      "survival_fraction": 0.00368,
+      "elapsed_seconds": 103.97661209106445,
+      "output_sha256": "3fe14b1a7acd7c108ac6ec96035f31c654a419822dc932bc4f68aba1c6bb2de0",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9054.json",
+      "seed": 9054,
+      "n_initial_atoms": 50000,
+      "n_survivors": 160,
+      "survival_fraction": 0.0032,
+      "elapsed_seconds": 100.22141742706299,
+      "output_sha256": "0278dcca9bfe01f79003539572ae8b7699d57af486ca8dae6d8a146cdee94af9",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9055.json",
+      "seed": 9055,
+      "n_initial_atoms": 50000,
+      "n_survivors": 181,
+      "survival_fraction": 0.00362,
+      "elapsed_seconds": 106.85009932518005,
+      "output_sha256": "c8388ba4916d6f4209d492ea6bc331cee7b30289ebca47c1f6a22496729e206a",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9056.json",
+      "seed": 9056,
+      "n_initial_atoms": 50000,
+      "n_survivors": 192,
+      "survival_fraction": 0.00384,
+      "elapsed_seconds": 106.63290143013,
+      "output_sha256": "a2c8c32c6b6c90204cf849adfb2b65410145fab7bb91b39ae8f00e275d75ce6f",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9057.json",
+      "seed": 9057,
+      "n_initial_atoms": 50000,
+      "n_survivors": 181,
+      "survival_fraction": 0.00362,
+      "elapsed_seconds": 107.77719712257385,
+      "output_sha256": "ca9affb9582bbdac61350f01e810e92620de4f6478c544619c90289f6109f02e",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9058.json",
+      "seed": 9058,
+      "n_initial_atoms": 50000,
+      "n_survivors": 157,
+      "survival_fraction": 0.00314,
+      "elapsed_seconds": 99.37215924263,
+      "output_sha256": "2e029ba1df2d25a4ee37089f6dd96bdf3f0b708901f78c9cec9b0b6a205f8edb",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9059.json",
+      "seed": 9059,
+      "n_initial_atoms": 50000,
+      "n_survivors": 155,
+      "survival_fraction": 0.0031,
+      "elapsed_seconds": 110.02472567558289,
+      "output_sha256": "9e127bb46a6ac3c95a0f34b271e8d971a464e4b911729cffabc02e75cc6e7ef0",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9060.json",
+      "seed": 9060,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 109.42606496810913,
+      "output_sha256": "a3795d16d077dcff37fff4c2e70095dab6450b6b534e3de9de9fe1e0aa26a582",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9061.json",
+      "seed": 9061,
+      "n_initial_atoms": 50000,
+      "n_survivors": 170,
+      "survival_fraction": 0.0034,
+      "elapsed_seconds": 107.20515036582947,
+      "output_sha256": "4d21d99ee0695482c81cb90de9ba5a5643b0b514af830c0c411aee5253b55348",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9062.json",
+      "seed": 9062,
+      "n_initial_atoms": 50000,
+      "n_survivors": 180,
+      "survival_fraction": 0.0036,
+      "elapsed_seconds": 99.25017762184143,
+      "output_sha256": "f2179a7e599db30573a54f1c7e3b3c9492880c3bb2b47735f2889bf81c4478d4",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9063.json",
+      "seed": 9063,
+      "n_initial_atoms": 50000,
+      "n_survivors": 167,
+      "survival_fraction": 0.00334,
+      "elapsed_seconds": 107.59680342674255,
+      "output_sha256": "e4e9c6caaa158ba587fe4058d0991f0c05f613cfe160257e57956eddbfabde99",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9064.json",
+      "seed": 9064,
+      "n_initial_atoms": 50000,
+      "n_survivors": 147,
+      "survival_fraction": 0.00294,
+      "elapsed_seconds": 107.86816000938416,
+      "output_sha256": "7aad608604d410bf7688f1397096bcaf8934beb1ffb131d2014260837c5b8573",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9065.json",
+      "seed": 9065,
+      "n_initial_atoms": 50000,
+      "n_survivors": 162,
+      "survival_fraction": 0.00324,
+      "elapsed_seconds": 109.58135104179382,
+      "output_sha256": "56116e065e5ffbd2f690414d42d70df54a2692bc6f4e7f4fd0220e7b81e494af",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9066.json",
+      "seed": 9066,
+      "n_initial_atoms": 50000,
+      "n_survivors": 170,
+      "survival_fraction": 0.0034,
+      "elapsed_seconds": 100.71185398101807,
+      "output_sha256": "1e13640ed15b2825574c9178a793d9632de63482163665ab6d8c117a554305b5",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9067.json",
+      "seed": 9067,
+      "n_initial_atoms": 50000,
+      "n_survivors": 166,
+      "survival_fraction": 0.00332,
+      "elapsed_seconds": 102.63000011444092,
+      "output_sha256": "f73698aed3e34b956f392d15b0569a022a28c1c1c48c5bc3c7f496991c6259a4",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9068.json",
+      "seed": 9068,
+      "n_initial_atoms": 50000,
+      "n_survivors": 173,
+      "survival_fraction": 0.00346,
+      "elapsed_seconds": 104.3334231376648,
+      "output_sha256": "edde5f17505250b62d3ebea1f45af4795b9f9cc9b9fef51f0fa201e7729f4ead",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9069.json",
+      "seed": 9069,
+      "n_initial_atoms": 50000,
+      "n_survivors": 179,
+      "survival_fraction": 0.00358,
+      "elapsed_seconds": 104.45819234848022,
+      "output_sha256": "0da360c15cd3587e8b759be36f56bb06577c4d88206a6d0c16a1ce710a5c47cf",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9070.json",
+      "seed": 9070,
+      "n_initial_atoms": 50000,
+      "n_survivors": 193,
+      "survival_fraction": 0.00386,
+      "elapsed_seconds": 99.77453422546387,
+      "output_sha256": "35666db811709b7d33e850b0f08cd472e06aebd9e10f0ee9029ce11cd1fa3ce2",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9071.json",
+      "seed": 9071,
+      "n_initial_atoms": 50000,
+      "n_survivors": 156,
+      "survival_fraction": 0.00312,
+      "elapsed_seconds": 101.40139937400818,
+      "output_sha256": "a52ee4112379052693f1e2d20ae5671e386de583b44905c45a2419c4511237f4",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9072.json",
+      "seed": 9072,
+      "n_initial_atoms": 50000,
+      "n_survivors": 175,
+      "survival_fraction": 0.0035,
+      "elapsed_seconds": 103.3040099143982,
+      "output_sha256": "ab5861da0708669301ad7b5c3b1073262a0cc28c462b3b2a12e95810a24ab212",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9073.json",
+      "seed": 9073,
+      "n_initial_atoms": 50000,
+      "n_survivors": 178,
+      "survival_fraction": 0.00356,
+      "elapsed_seconds": 105.10020112991333,
+      "output_sha256": "725faa17544618222170a99098f7ec0c6a2cafafc8eb91324b09e5686da18404",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9074.json",
+      "seed": 9074,
+      "n_initial_atoms": 50000,
+      "n_survivors": 167,
+      "survival_fraction": 0.00334,
+      "elapsed_seconds": 99.10077810287476,
+      "output_sha256": "81fdaa94702b4963714ebf5cd986bb2eb8eac02e539f86d4d6febf623fee792a",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9075.json",
+      "seed": 9075,
+      "n_initial_atoms": 50000,
+      "n_survivors": 171,
+      "survival_fraction": 0.00342,
+      "elapsed_seconds": 100.93922209739685,
+      "output_sha256": "2bc01656f8db55a7934a630cb6d980fb61c04135212621205a1233601d616dd4",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9076.json",
+      "seed": 9076,
+      "n_initial_atoms": 50000,
+      "n_survivors": 187,
+      "survival_fraction": 0.00374,
+      "elapsed_seconds": 101.786057472229,
+      "output_sha256": "1d7603110d1db2a6b58a6085c28b22e681e7fa0e81b5e30c42d9c31181b83bc0",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9077.json",
+      "seed": 9077,
+      "n_initial_atoms": 50000,
+      "n_survivors": 161,
+      "survival_fraction": 0.00322,
+      "elapsed_seconds": 102.8899941444397,
+      "output_sha256": "737d35da1c34b525ef74e4295257b6d605a16e8b6306a456bc1e70a8051ffc78",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9078.json",
+      "seed": 9078,
+      "n_initial_atoms": 50000,
+      "n_survivors": 198,
+      "survival_fraction": 0.00396,
+      "elapsed_seconds": 101.99092054367065,
+      "output_sha256": "2c1fe94dca872fe83f3236df3851da45de9f4b5337de30933047bc2e9b61c309",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9079.json",
+      "seed": 9079,
+      "n_initial_atoms": 50000,
+      "n_survivors": 164,
+      "survival_fraction": 0.00328,
+      "elapsed_seconds": 98.82201051712036,
+      "output_sha256": "a0ba5e256c55c316b806e31c26ebd5a04b28a744b2fee5a19fc61502fb4dedeb",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9080.json",
+      "seed": 9080,
+      "n_initial_atoms": 50000,
+      "n_survivors": 181,
+      "survival_fraction": 0.00362,
+      "elapsed_seconds": 101.40551447868347,
+      "output_sha256": "b5250df75b90eb1fc59e00ae060c48ae17d861b0f5ec9721233bc8b2c3b7f0f4",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9081.json",
+      "seed": 9081,
+      "n_initial_atoms": 50000,
+      "n_survivors": 160,
+      "survival_fraction": 0.0032,
+      "elapsed_seconds": 99.84138083457947,
+      "output_sha256": "73582e3072b26a7533104354102cd6c7bf4bda858d282486f414e994646a00ed",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9082.json",
+      "seed": 9082,
+      "n_initial_atoms": 50000,
+      "n_survivors": 175,
+      "survival_fraction": 0.0035,
+      "elapsed_seconds": 97.87915396690369,
+      "output_sha256": "f2fe6a61ec90fc1645d2787dceb948ce38e68a5ea6b3e803dcb76abb5e434290",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9083.json",
+      "seed": 9083,
+      "n_initial_atoms": 50000,
+      "n_survivors": 167,
+      "survival_fraction": 0.00334,
+      "elapsed_seconds": 98.64117622375488,
+      "output_sha256": "bddec27165135b105badd6f7cba426815af0f26e35e5e6d59810086fff526e04",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9084.json",
+      "seed": 9084,
+      "n_initial_atoms": 50000,
+      "n_survivors": 168,
+      "survival_fraction": 0.00336,
+      "elapsed_seconds": 108.98286175727844,
+      "output_sha256": "88088fe69f585493067c68913456dabb3eb99ed6cf7313d9333cb5b63b2d0a10",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9085.json",
+      "seed": 9085,
+      "n_initial_atoms": 50000,
+      "n_survivors": 160,
+      "survival_fraction": 0.0032,
+      "elapsed_seconds": 103.27218985557556,
+      "output_sha256": "6df91d9398d3afa3a1f8f50930737a368fd366637857710bbb66412fc0066122",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9086.json",
+      "seed": 9086,
+      "n_initial_atoms": 50000,
+      "n_survivors": 175,
+      "survival_fraction": 0.0035,
+      "elapsed_seconds": 101.87887001037598,
+      "output_sha256": "6e07d307949ad21d153eb2eb1d2e5fce5c40e8fbf3f151d8d02bb8abbbfb6553",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9087.json",
+      "seed": 9087,
+      "n_initial_atoms": 50000,
+      "n_survivors": 148,
+      "survival_fraction": 0.00296,
+      "elapsed_seconds": 100.4616231918335,
+      "output_sha256": "e73985ac3a8100be33f9af7d60be67b56c9c56338b77965a6dae90c4277d1415",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9088.json",
+      "seed": 9088,
+      "n_initial_atoms": 50000,
+      "n_survivors": 174,
+      "survival_fraction": 0.00348,
+      "elapsed_seconds": 104.76840806007385,
+      "output_sha256": "742d7b0df986b8e547f89dadf3591d7b9adf63d701b43d86c79168b622bdf81f",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9089.json",
+      "seed": 9089,
+      "n_initial_atoms": 50000,
+      "n_survivors": 189,
+      "survival_fraction": 0.00378,
+      "elapsed_seconds": 101.58782863616943,
+      "output_sha256": "ce36f6e22f1ce23f5e0b1621f7d7f5562dfea9728aa34c8a0d206b73a9060e82",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9090.json",
+      "seed": 9090,
+      "n_initial_atoms": 50000,
+      "n_survivors": 166,
+      "survival_fraction": 0.00332,
+      "elapsed_seconds": 100.29492211341858,
+      "output_sha256": "bb8ee76b09a34e2551a6dffb93cd98d4afd2e63d1d48303950fd2401f04df510",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9091.json",
+      "seed": 9091,
+      "n_initial_atoms": 50000,
+      "n_survivors": 162,
+      "survival_fraction": 0.00324,
+      "elapsed_seconds": 97.56400394439697,
+      "output_sha256": "92291a8785c8ddb864082970be11994a48236877e48db170f471b168884ce31a",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9092.json",
+      "seed": 9092,
+      "n_initial_atoms": 50000,
+      "n_survivors": 154,
+      "survival_fraction": 0.00308,
+      "elapsed_seconds": 104.03718209266663,
+      "output_sha256": "c64005b378fa8400c82cbf5e2b13bb86609eee8a231ea5204dfd59052eed9bf3",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9093.json",
+      "seed": 9093,
+      "n_initial_atoms": 50000,
+      "n_survivors": 180,
+      "survival_fraction": 0.0036,
+      "elapsed_seconds": 103.53034257888794,
+      "output_sha256": "3dea94a3b4294b9303c737a46715884d9eb26354e07de7234112297ac1ceb1d8",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9094.json",
+      "seed": 9094,
+      "n_initial_atoms": 50000,
+      "n_survivors": 172,
+      "survival_fraction": 0.00344,
+      "elapsed_seconds": 102.84977412223816,
+      "output_sha256": "1a7010e0c9e5b14c916ab26da847deeb610e08f1b00c498d8c58a83c1ff88a51",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9095.json",
+      "seed": 9095,
+      "n_initial_atoms": 50000,
+      "n_survivors": 186,
+      "survival_fraction": 0.00372,
+      "elapsed_seconds": 99.95417141914368,
+      "output_sha256": "24306c84ad02308401ec1faf861878b0d9af2b252e64e91fa6f5aa32373ca9bb",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9096.json",
+      "seed": 9096,
+      "n_initial_atoms": 50000,
+      "n_survivors": 165,
+      "survival_fraction": 0.0033,
+      "elapsed_seconds": 101.84795308113098,
+      "output_sha256": "104c306fdeb5451bb556650d921ca60b60ed84e7352c3ca62ffe9d1520c6d09c",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9097.json",
+      "seed": 9097,
+      "n_initial_atoms": 50000,
+      "n_survivors": 155,
+      "survival_fraction": 0.0031,
+      "elapsed_seconds": 104.33532953262329,
+      "output_sha256": "1009a49ef5601912e06081d65145add7b1456f29144f942879e2903525fe9dff",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9098.json",
+      "seed": 9098,
+      "n_initial_atoms": 50000,
+      "n_survivors": 178,
+      "survival_fraction": 0.00356,
+      "elapsed_seconds": 102.1425142288208,
+      "output_sha256": "2ab5cf92668b77aac6673a5acec279e91f54cf3ecfe2c143d9db568852e8dddc",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    },
+    {
+      "metadata_file": "full_thermal_zeeman_n50000_seed9099.json",
+      "seed": 9099,
+      "n_initial_atoms": 50000,
+      "n_survivors": 160,
+      "survival_fraction": 0.0032,
+      "elapsed_seconds": 99.11658811569214,
+      "output_sha256": "fb8b70faf53567f68891c89589f112d86876555fe0a0c2e327562206f67e0c55",
+      "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2"
+    }
+  ],
+  "interpretation_note": "The interval includes Monte Carlo counting uncertainty only. Uncertainty in the physical oven model and apparatus is separate."
+}
