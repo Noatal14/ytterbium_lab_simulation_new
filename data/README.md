@@ -43,6 +43,12 @@ Zeeman/MOT seed pair under
 ``data/particle_states/after_2d_mot/final_production_v22/`` so 3D-MOT studies do
 not need to rerun the 2D stage.
 
+The completed full-source Zeeman campaign is stored under
+``data/validation/zeeman/full_thermal_flux_v1/``. It contains one survivor-state
+array and adjacent metadata file for each of 100 seeds, plus ``summary.json``.
+These files are the authoritative inputs for the final oven-to-Zeeman and
+oven-to-2D-MOT flux prediction.
+
 GitHub rejects individual files larger than 100 MB. If future state ensembles
 approach that size, use Git LFS or documented external storage instead of adding
 them to ordinary Git history. Historical optimization summaries are stored in

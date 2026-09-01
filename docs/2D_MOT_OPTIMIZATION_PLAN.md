@@ -68,8 +68,8 @@ validated as excluding atoms that do not survive the Zeeman stage. The resulting
 prefiltered Zeeman survival percentage must not be reported as the end-to-end
 survival percentage from the full oven flux.
 
-After the 2D-MOT settings are locked, a separate end-to-end production campaign
-will use the unfiltered thermal beam to predict total transmission from the oven.
+After the 2D-MOT settings were locked, the completed end-to-end campaign used
+the unfiltered thermal beam to predict total transmission from the oven.
 
 ## Adjustable parameters and current experimental constraints
 
@@ -344,7 +344,9 @@ simulation domain, experimental resolution, particle count, and seed count
 
 ## Stage 6: full unfiltered apparatus prediction
 
-After the conditional 2D-MOT recommendation is locked:
+Status as of 2026-09-01: **complete.**
+
+The completed campaign followed this procedure:
 
 1. Generate the full unfiltered thermal distribution.
 2. Run the Zeeman slower.
@@ -357,3 +359,39 @@ After the conditional 2D-MOT recommendation is locked:
 
 Keep the conditional 2D-MOT result and the end-to-end oven result separate. They
 have different denominators and answer different experimental questions.
+
+The production design and result were:
+
+```text
+thermal atoms simulated:           5,000,000
+independent batches:               100 x 50,000
+angular cutoff:                    none
+microtube divergence broadening:   3x
+Zeeman survivors:                  17,168
+Zeeman survival fraction:          0.343360%
+exact-binomial 95% interval:       0.338251%-0.348526%
+
+modeled Yb-171 oven flux:          7.38634e13 atoms/s
+expected Zeeman-survivor flux:     2.53617e11 atoms/s
+Zeeman flux 95% interval:          2.49844e11-2.57433e11 atoms/s
+
+conditional 2D-MOT efficiency:     2.6742347%
+total oven-to-2D-MOT efficiency:   0.00918225%
+expected 2D-MOT capture flux:      6.78232e9 atoms/s
+combined statistical 95% range:    6.63701e9-6.92764e9 atoms/s
+```
+
+For the combined interval, let `p_Z` be the full-angle Zeeman survival estimate
+and `p_M` the conditional 2D-MOT estimate. The total efficiency is `p_Z p_M`.
+Independent statistical variances are propagated with the first-order product
+formula
+
+```text
+Var(p_Z p_M) ~= p_M^2 Var(p_Z) + p_Z^2 Var(p_M)
+```
+
+with the small variance-product term included in the numerical calculation and
+a normal 1.96 critical value. This interval describes simulation sampling
+uncertainty. It does not include systematic uncertainty in the vapor-pressure
+correlation, oven temperature and geometry, natural abundance, or angular
+distribution model.

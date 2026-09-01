@@ -300,12 +300,25 @@ and -0.027 percentage points, respectively. The associated 95% intervals were
 as evidence that the local mean response is not sharply degraded, not as a
 strict simultaneous equivalence proof over an entire continuous parameter box.
 
-The 2D-MOT optimization, timestep investigation, sensitivity campaign, and
-conditional production prediction are closed. Do not launch more 2D-MOT
-optimization or timestep runs unless the apparatus constraints, physical model,
-or scientific objective changes. The only active final task is the separate
-full-thermal Zeeman-flux prediction; it will convert the locked conditional
-2D-MOT result into an end-to-end oven-to-2D-MOT flux estimate.
+The 2D-MOT optimization, timestep investigation, sensitivity campaign,
+conditional production prediction, and full-thermal Zeeman-flux prediction are
+closed. Do not launch more optimization or timestep runs unless the apparatus
+constraints, physical model, or scientific objective changes.
+
+The final full-source run used 5,000,000 Yb-171 atoms in 100 independent batches
+with no angular cutoff and the conservative 3x-broadened microtube distribution.
+It produced 17,168 Zeeman survivors: a pooled survival of 0.343360% with an
+exact-binomial 95% interval of 0.338251%-0.348526%. The variation between batch
+counts agrees with ordinary binomial sampling (observed count SD 13.24 versus
+13.08 expected), so there is no evidence of additional seed instability.
+
+At the modeled Yb-171 oven flux of `7.38634e13 atoms/s`, the predicted
+Zeeman-survivor flux is `2.53617e11 atoms/s` with a Monte Carlo 95% range of
+`2.49844e11`-`2.57433e11 atoms/s`. Applying the locked conditional 2D-MOT
+efficiency yields an oven-to-2D-MOT efficiency of 0.00918225% and an expected
+capture flux of `6.78232e9 atoms/s`. Independent statistical uncertainties from
+the Zeeman and 2D-MOT estimates give an approximate 95% range of
+`6.63701e9`-`6.92764e9 atoms/s`. Physical source-model systematics are separate.
 
 Optuna studies may use SQLite storage so a study can continue across jobs. Avoid
 allowing multiple jobs to create or initialize the same SQLite database at the

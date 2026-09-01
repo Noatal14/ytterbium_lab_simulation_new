@@ -208,6 +208,36 @@ thermal angular distribution, estimates the Zeeman-survival fraction, and then
 applies the already measured conditional 2D-MOT prediction; it does not reopen
 the completed 2D-MOT optimization.
 
+### Final oven-to-2D-MOT flux prediction
+
+The full-source campaign is also complete. It sampled 5,000,000 Yb-171 atoms
+from the complete forward microtube distribution with the conservative 3x
+angular broadening, split across 100 independent 50,000-particle seeds. A total
+of 17,168 atoms met the existing Zeeman-survivor criterion:
+
+```text
+Zeeman survival:          0.343360%
+exact binomial 95% range: 0.338251%-0.348526%
+```
+
+The source model predicts `7.38634e13` Yb-171 atoms/s leaving the 350-tube oven
+at 400 C. Therefore the expected Zeeman-survivor flux is `2.53617e11` atoms/s,
+with a Monte Carlo 95% range of `2.49844e11`-`2.57433e11` atoms/s.
+
+Applying the locked conditional 2D-MOT efficiency gives:
+
+```text
+oven-to-2D-MOT efficiency:       0.00918225%
+expected 2D-MOT capture flux:    6.78232e9 atoms/s
+approximate statistical 95% CI:  6.63701e9-6.92764e9 atoms/s
+```
+
+The combined interval propagates the independent Monte Carlo uncertainty in
+the full-angle Zeeman fraction and the accepted uncertainty in the conditional
+2D-MOT mean. It does not include systematic uncertainty in the vapor-pressure
+model, oven temperature, microtube geometry, isotopic abundance, or the assumed
+3x angular broadening.
+
 ## Outputs and data
 
 The project writes results into the `data/` directory.
