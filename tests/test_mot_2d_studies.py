@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import numpy as np
 
@@ -64,6 +65,46 @@ def test_final_production_can_save_downstream_states():
     )
     assert args.save_survivor_states
     assert "after_2d_mot/final_production_v22" in args.states_dir
+
+
+def test_joint_evaluation_returns_requested_survivor_states(monkeypatch):
+    import studies.optimize_2d_mot_joint as study
+
+    expected_states = np.ones((1, 6))
+
+    monkeypatch.setattr(
+        study,
+        "mot_simulation_paired_ensembles",
+        lambda **kwargs: [([], 1, expected_states)],
+    )
+
+    result = study.evaluate_configuration(
+        s0=1.474497,
+        detuning_gamma=-1.1840645,
+        magnet_radius=0.049217614,
+        ensembles=[
+            {
+                "path": Path("zeeman_seed3000.npy"),
+                "states": np.zeros((2, 6)),
+                "zeeman_seed": 3000,
+                "n_available": 2,
+                "selection_method": "all",
+                "subset_seed": None,
+                "zeeman_survival_fraction": 0.5,
+            }
+        ],
+        mot_seed_start=18_000,
+        mot_seeds=[18_000],
+        npools=1,
+        dt_s=0.625e-6,
+        include_survivor_states=True,
+    )
+
+    assert len(result["survivor_state_ensembles"]) == 1
+    np.testing.assert_array_equal(
+        result["survivor_state_ensembles"][0],
+        expected_states,
+    )
 
 
 def test_hybrid_finalists_include_anchor_and_refinement_points():

@@ -11,6 +11,7 @@ import json
 import time
 from pathlib import Path
 
+import numpy as np
 import optuna
 
 from config import DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED, MOT_2D_SIM_CONFIG
