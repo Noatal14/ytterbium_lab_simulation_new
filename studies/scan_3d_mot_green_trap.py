@@ -102,6 +102,15 @@ def run_scan(args):
         raise ValueError("Every green s0 value must be positive.")
     if any(value >= 0 for value in green_detunings):
         raise ValueError("This MOT scan requires red green-light detunings.")
+    blue_s0 = float(args.blue_s0)
+    blue_detuning = float(args.blue_detuning_gamma)
+    gradient = float(args.gradient_G_cm)
+    if args.operating_point_file:
+        selection = json.loads(Path(args.operating_point_file).read_text())
+        point = selection["best_point"]
+        blue_s0 = float(point["s0"])
+        blue_detuning = float(point["detuning_gamma"])
+        gradient = float(point["gradient_G_cm"])
 
     selected_states, input_files = load_shared_ensemble(
         args.input, max_atoms=args.max_atoms, seed=args.seed
@@ -126,8 +135,8 @@ def run_scan(args):
                 f"detuning={green_detuning:g} Gamma"
             )
             profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[args.profile])
-            profile["399"]["s0"] = FIXED_BLUE_S0
-            profile["399"]["detuning_gamma"] = FIXED_BLUE_DETUNING_GAMMA
+            profile["399"]["s0"] = blue_s0
+            profile["399"]["detuning_gamma"] = blue_detuning
             profile["556"]["s0"] = float(green_s0)
             profile["556"]["detuning_gamma"] = float(green_detuning)
             results, _ = mot_3d_simulation(
@@ -138,7 +147,7 @@ def run_scan(args):
                 dt=args.dt,
                 t_max=args.t_max,
                 seed=simulation_seed,
-                magnetic_gradient_G_cm=FIXED_GRADIENT_G_CM,
+                magnetic_gradient_G_cm=gradient,
             )
             analysis = analyze_results(results, time_points)
             exposure = blue_exposure_diagnostics(
@@ -146,13 +155,13 @@ def run_scan(args):
             )
             record = _scan_record(
                 args.profile,
-                FIXED_BLUE_DETUNING_GAMMA,
-                FIXED_BLUE_S0,
+                blue_detuning,
+                blue_s0,
                 analysis,
                 exposure,
             )
             record.update(
-                gradient_G_cm=FIXED_GRADIENT_G_CM,
+                gradient_G_cm=gradient,
                 green_s0=float(green_s0),
                 green_detuning_gamma=float(green_detuning),
             )
@@ -187,15 +196,15 @@ def run_scan(args):
         "selection_seed": int(args.seed),
         "simulation_seed": simulation_seed,
         "profiles": [args.profile],
-        "detuning_gamma_values": [FIXED_BLUE_DETUNING_GAMMA],
-        "s0_values": [FIXED_BLUE_S0],
+        "detuning_gamma_values": [blue_detuning],
+        "s0_values": [blue_s0],
         "parameter_pairs": [
             {
-                "s0": FIXED_BLUE_S0,
-                "detuning_gamma": FIXED_BLUE_DETUNING_GAMMA,
+                "s0": blue_s0,
+                "detuning_gamma": blue_detuning,
             }
         ],
-        "gradient_G_cm_values": [FIXED_GRADIENT_G_CM],
+        "gradient_G_cm_values": [gradient],
         "green_s0_values": [float(value) for value in green_s0_values],
         "green_detuning_gamma_values": [float(value) for value in green_detunings],
         "fixed_blue_light": True,
@@ -228,6 +237,14 @@ def parse_args(argv=None):
     )
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--profile", default="angled_sequential")
+    parser.add_argument("--blue-s0", type=float, default=FIXED_BLUE_S0)
+    parser.add_argument(
+        "--blue-detuning-gamma", type=float, default=FIXED_BLUE_DETUNING_GAMMA
+    )
+    parser.add_argument(
+        "--gradient-G-cm", type=float, default=FIXED_GRADIENT_G_CM
+    )
+    parser.add_argument("--operating-point-file")
     parser.add_argument(
         "--green-s0-values",
         nargs="+",

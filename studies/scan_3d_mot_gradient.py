@@ -84,6 +84,12 @@ def run_scan(args):
     if args.profile not in MOT_3D_CONFIGURATIONS:
         raise ValueError(f"Unknown 3D-MOT profile: {args.profile}")
     pairs = parse_parameter_pairs(args.parameter_pairs)
+    if args.parameter_points_file:
+        selection = json.loads(Path(args.parameter_points_file).read_text())
+        pairs = tuple(
+            (float(point["s0"]), float(point["detuning_gamma"]))
+            for point in selection["selected_points"]
+        )
     gradients = tuple(sorted(set(args.gradient_G_cm_values)))
     if not pairs or not gradients:
         raise ValueError("Parameter pairs and gradient values must not be empty.")
@@ -194,6 +200,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--parameter-pairs", nargs="+", default=list(DEFAULT_PARAMETER_PAIRS)
     )
+    parser.add_argument("--parameter-points-file")
     parser.add_argument(
         "--gradient-G-cm-values",
         nargs="+",

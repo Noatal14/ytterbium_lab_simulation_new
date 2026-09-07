@@ -188,6 +188,14 @@ and eligibility masks. `studies/merge_3d_mot_retention_shards.py` concatenates
 the disjoint masks first, then chooses the global peak cohort and performs the
 conditional lifetime fit. Never sum independently chosen shard retention
 curves, because their cohort peak times need not agree.
+The unattended remaining-configuration workflow is submitted by
+`studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
+gradient shards, merges and selects that point, runs the donut green scan, and
+in parallel performs blue -> top-five selection -> gradient -> best-point
+selection -> green for `five_beam_gravity`. PBS `afterok` dependencies prevent
+downstream work after a failed stage. Automatic choices are recorded in
+`data/validation/mot_3d/optimization/final_operating_points.json` but are not
+written into `config.py` without review.
 `studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
 are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not
