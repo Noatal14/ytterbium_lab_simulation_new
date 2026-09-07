@@ -299,7 +299,9 @@ MOT_2D_LASER_CONFIG = {
 
 MOT_2D_SIM_CONFIG = {
     "t_max_s": 25e-3,
-    "dt_s": 1e-5,
+    # Accepted hybrid-solver production timestep after convergence validation.
+    # All 2D-MOT entry points must read this value rather than duplicate it.
+    "dt_s": 0.625e-6,
     "start_distance_m": 0.100,
 }
 

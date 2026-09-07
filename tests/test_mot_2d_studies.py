@@ -117,6 +117,7 @@ def test_joint_evaluation_returns_requested_survivor_states(monkeypatch):
 
 
 def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
+    from config import MOT_2D_SIM_CONFIG
     from studies.mot_2d_s0_campaign import DT, create, parse_args
 
     output = tmp_path / "campaign"
@@ -128,7 +129,7 @@ def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
 
     manifest = json.loads((output / "campaign.json").read_text())
     assert manifest["s0_values"] == [1.3, 1.4]
-    assert manifest["fixed_design"]["dt_s"] == DT == 0.625e-6
+    assert manifest["fixed_design"]["dt_s"] == DT == MOT_2D_SIM_CONFIG["dt_s"]
     pbs = (output / "jobs" / "01_smoke.pbs").read_text()
     assert "--s0-index $PBS_ARRAY_INDEX" in pbs
 

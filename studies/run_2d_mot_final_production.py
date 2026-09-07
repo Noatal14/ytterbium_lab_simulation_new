@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 from scipy.stats import t as student_t
 
-from config import DEFAULT_NUM_POOLS
+from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
 from studies.optimize_2d_mot_joint import evaluate_configuration
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
@@ -25,7 +25,7 @@ from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 
 
-FINAL_DT_S = 0.625e-6
+FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
 MOT_SEED_OFFSET = 15_000
 REPORTING_SURVIVORS = 10_000_000
 TARGET_HALF_WIDTH_FRACTION = 0.0005  # 0.05 percentage points

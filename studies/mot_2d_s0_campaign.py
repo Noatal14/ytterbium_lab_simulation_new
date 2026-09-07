@@ -9,6 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from config import MOT_2D_SIM_CONFIG
 from studies.optimize_2d_mot_joint import BOUNDS_DETUNING, BOUNDS_MAGNET_RADIUS_M
 from studies.optimize_2d_mot_joint import evaluate_configuration
 from studies.run_2d_mot_final_production import summarize
@@ -16,7 +17,7 @@ from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
 
-DT = 0.625e-6
+DT = MOT_2D_SIM_CONFIG["dt_s"]
 TARGET = 0.0005
 D_RES = 0.01
 R_RES = 0.01e-3
