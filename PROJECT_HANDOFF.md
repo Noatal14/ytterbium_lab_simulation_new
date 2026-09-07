@@ -153,6 +153,13 @@ The scan additionally reports per-point 399-nm exposure diagnostics using the
 real beam profiles and lab-frame trajectories. The default exposure threshold
 is 1% of the summed peak intensity; this is a diagnostic threshold, not a
 capture criterion or laboratory-set parameter.
+For multi-node Zeus scans, use the scan's `--num-shards` and `--shard-index`
+options. The global seeded `--max-atoms` selection happens before deterministic
+strided sharding, and each shard receives a reproducible independent simulation
+seed. Shards must write to separate output directories.
+Merge completed shard directories with
+`studies/merge_3d_mot_blue_scan_shards.py`. Count metrics are exact sums;
+distribution outputs are deliberately labeled as summaries of shard medians.
 
 Particle states use SI units and the column order:
 

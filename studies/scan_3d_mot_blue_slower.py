@@ -43,6 +43,16 @@ def _finite_or_none(value):
     return float(value) if value is not None and np.isfinite(value) else None
 
 
+def select_particle_shard(states, num_shards, shard_index):
+    """Return one disjoint, deterministic strided shard of an ensemble."""
+    if num_shards <= 0:
+        raise ValueError("num_shards must be positive.")
+    if not 0 <= shard_index < num_shards:
+        raise ValueError("shard_index must satisfy 0 <= index < num_shards.")
+    indices = np.arange(len(states), dtype=int)[shard_index::num_shards]
+    return states[indices], indices
+
+
 def blue_exposure_diagnostics(results, profile, exposure_threshold_fraction):
     """Measure actual trajectory overlap with the configured 399-nm beams."""
     if not 0.0 < exposure_threshold_fraction <= 1.0:
@@ -225,8 +235,17 @@ def run_scan(args):
     if any(detuning >= 0 for detuning in detunings):
         raise ValueError("This slowing scan requires red detunings below zero.")
 
-    states, input_files = load_shared_ensemble(
+    selected_states, input_files = load_shared_ensemble(
         args.input, max_atoms=args.max_atoms, seed=args.seed
+    )
+    selected_particle_count = len(selected_states)
+    states, shard_indices = select_particle_shard(
+        selected_states, args.num_shards, args.shard_index
+    )
+    if not len(states):
+        raise ValueError("The selected shard contains no atoms.")
+    simulation_seed = int(
+        np.random.SeedSequence([args.seed, args.shard_index]).generate_state(1)[0]
     )
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     records = []
@@ -251,7 +270,7 @@ def run_scan(args):
                     npools=args.npools,
                     dt=args.dt,
                     t_max=args.t_max,
-                    seed=args.seed,
+                    seed=simulation_seed,
                 )
                 analysis = analyze_results(results, time_points)
                 exposure = blue_exposure_diagnostics(
@@ -298,7 +317,12 @@ def run_scan(args):
         "purpose": "screen 399-nm slowing parameters with all other 3D-MOT settings fixed",
         "input_files": [str(path) for path in input_files],
         "input_particle_count": int(len(states)),
-        "shared_seed": int(args.seed),
+        "selected_particle_count_before_sharding": int(selected_particle_count),
+        "num_shards": int(args.num_shards),
+        "shard_index": int(args.shard_index),
+        "selected_particle_indices": shard_indices.tolist(),
+        "selection_seed": int(args.seed),
+        "simulation_seed": simulation_seed,
         "profiles": list(args.profiles),
         "detuning_gamma_values": [float(value) for value in detunings],
         "s0_values": [float(value) for value in saturation_parameters],
@@ -362,6 +386,8 @@ def parse_args(argv=None):
         default=list(DEFAULT_SATURATION_PARAMETERS),
     )
     parser.add_argument("--max-atoms", type=int)
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
     parser.add_argument("--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"])

@@ -9,6 +9,7 @@ from utils.RK4StHybridCustom import RK4StHybridCustom
 from studies.scan_3d_mot_blue_slower import (
     _matrix,
     blue_exposure_diagnostics,
+    select_particle_shard,
     slowing_rank_key,
 )
 
@@ -32,6 +33,17 @@ def test_slowing_rank_prioritizes_capture_then_slow_count_then_speed():
         _record(-2.0, 0.3, slow=1, eligible=1, residence=1, speed=8.0),
     ]
     assert max(records, key=slowing_rank_key) is records[1]
+
+
+def test_particle_shards_are_disjoint_and_reconstruct_selected_ensemble():
+    states = np.arange(60).reshape(10, 6)
+    shards = [select_particle_shard(states, 3, index) for index in range(3)]
+    all_indices = np.concatenate([indices for _, indices in shards])
+
+    assert sorted(all_indices.tolist()) == list(range(10))
+    assert len(set(all_indices.tolist())) == len(states)
+    for shard_states, indices in shards:
+        np.testing.assert_array_equal(shard_states, states[indices])
 
 
 def test_scan_matrix_maps_sorted_physical_axes_to_rows_and_columns():

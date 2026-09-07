@@ -184,6 +184,11 @@ geometry, and capture settings remain fixed during this first-stage scan.
 The scan also measures actual trajectory overlap with the blue beams: the
 maximum relative intensity encountered, exposure time above 1% of the summed
 peak intensity, and the longitudinal velocity change during that exposure.
+Large scans can be split deterministically across independent PBS jobs with
+`--num-shards` and `--shard-index`. Apply `--max-atoms` before sharding so every
+job selects the same global subset and processes a disjoint strided portion.
+`studies.merge_3d_mot_blue_scan_shards` then sums all count metrics exactly and
+labels distribution summaries as shard-level approximations.
 
 ## Recommended entry point
 
