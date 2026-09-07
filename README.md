@@ -161,6 +161,18 @@ capture region, slowing below the speed threshold, continuous residence, and
 full capture eligibility, and summarizes closest approach, speed, and residence
 time. Use `--help` for local subsets, runtime settings, and output options.
 
+Before scanning the magnetic-field gradient, the blue-slower screening study
+varies only the 399-nm detuning (in Gamma) and saturation parameter while using
+the same input atoms and seed at every point:
+
+```bash
+python -m studies.scan_3d_mot_blue_slower --max-atoms 200
+```
+
+It saves CSV and JSON tables plus heatmaps under
+`data/validation/mot_3d/blue_slower_scan/`. The green-light, magnetic-field,
+geometry, and capture settings remain fixed during this first-stage scan.
+
 ## Recommended entry point
 
 For a new user, the recommended entry points are the three stage scripts:

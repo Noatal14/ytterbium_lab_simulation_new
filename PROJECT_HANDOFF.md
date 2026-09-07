@@ -138,6 +138,13 @@ The JSON diagnostics distinguish failure to enter the capture sphere from
 failure to slow or remain there long enough, and include distance, speed, and
 continuous-residence distributions.
 
+`studies/scan_3d_mot_blue_slower.py` performs the preceding first-stage slowing
+screen: it scans only 399-nm `s0` and detuning in Gamma on a shared ensemble and
+seed. Green-light, field, geometry, and capture settings remain fixed. Its CSV,
+JSON, and heatmaps rank points by capture, slowing, residence, and then median
+minimum speed; magnetic-gradient scans should be restricted to promising blue
+parameter regions found here.
+
 Particle states use SI units and the column order:
 
 ```text
