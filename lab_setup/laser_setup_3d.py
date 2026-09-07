@@ -66,6 +66,32 @@ class DonutGaussianBeam(CircularGaussianBeam):
         return intensity
 
 
+class OuterClippedGaussianBeam(CircularGaussianBeam):
+    """A Gaussian beam transmitted only inside a hard outer aperture."""
+
+    def __init__(self, *args, outer_cutoff_radius=0.5e-3, **kwargs):
+        self.outer_cutoff_radius = float(outer_cutoff_radius)
+        if self.outer_cutoff_radius <= 0.0:
+            raise ValueError("outer_cutoff_radius must be positive.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Outer-clipped Gaussian Beam"
+
+    @property
+    def disp_type(self):
+        return "Outer-clipped beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position_laser = self._convert_coordinates_to_laser_frame(position)
+        x_laser, y_laser, _ = position_laser.T
+        rho_laser = np.sqrt(x_laser**2 + y_laser**2)
+        intensity = CircularGaussianBeam._intensity_func(self, position)
+        return np.where(rho_laser < self.outer_cutoff_radius, intensity, 0.0)
+
+
 def _normalize_vector(vec):
     vec = np.asarray(vec, dtype=float)
     norm = np.linalg.norm(vec)
@@ -161,7 +187,12 @@ def _validate_profile(profile):
             raise ValueError(
                 f"3D-MOT {wavelength_key} component is missing 'detuning_gamma'."
             )
-        if component["profile"] not in {"gaussian", "donut", "elliptical"}:
+        if component["profile"] not in {
+            "gaussian",
+            "donut",
+            "elliptical",
+            "outer_clipped_gaussian",
+        }:
             raise ValueError(
                 f"Unsupported 3D-MOT {wavelength_key} profile "
                 f"'{component['profile']}'."
@@ -174,6 +205,14 @@ def _validate_profile(profile):
                     )
         elif float(component.get("waist_m", 0.0)) <= 0.0:
             raise ValueError(f"3D-MOT {wavelength_key} waist_m must be positive.")
+
+        if component["profile"] == "outer_clipped_gaussian":
+            cutoff = component.get("outer_cutoff_radius_m")
+            if cutoff is None or float(cutoff) <= 0.0:
+                raise ValueError(
+                    f"Set a positive {wavelength_key}.outer_cutoff_radius_m "
+                    "for an outer-clipped Gaussian beam."
+                )
 
         polarization_by_axis = component.get("polarization_by_axis", {})
         invalid_polarizations = {
@@ -284,11 +323,14 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         profile_kind,
         polarization,
         inner_cutoff_radius=None,
+        outer_cutoff_radius=None,
         waist_short=None,
         waist_long=None,
     ):
         if profile_kind == "donut":
             beam_cls = DonutGaussianBeam
+        elif profile_kind == "outer_clipped_gaussian":
+            beam_cls = OuterClippedGaussianBeam
         elif profile_kind == "elliptical":
             beam_cls = EllipticalLaserBeam
         else:
@@ -304,6 +346,8 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         )
         if profile_kind == "donut":
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
+        elif profile_kind == "outer_clipped_gaussian":
+            beam_kwargs["outer_cutoff_radius"] = outer_cutoff_radius
         elif profile_kind == "elliptical":
             beam_kwargs.pop("waist")
             beam_kwargs["wx"] = waist_short
@@ -356,6 +400,9 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     beam_center=beam_center,
                     profile_kind=beam_556_cfg["profile"],
                     polarization=_beam_polarization(beam_556_cfg, axis_tag),
+                    outer_cutoff_radius=beam_556_cfg.get(
+                        "outer_cutoff_radius_m"
+                    ),
                 )
             )
 

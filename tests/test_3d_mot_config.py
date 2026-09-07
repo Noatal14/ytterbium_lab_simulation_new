@@ -86,7 +86,13 @@ def test_angled_donut_geometry_is_correct():
     assert len(blue_beams) == 6
     assert len(green_beams) == 6
     assert all(getattr(beam, "profile_kind", "gaussian") == "donut" for beam in blue_beams)
-    assert all(getattr(beam, "profile_kind", "gaussian") == "gaussian" for beam in green_beams)
+    assert all(
+        getattr(beam, "profile_kind", "gaussian") == "outer_clipped_gaussian"
+        for beam in green_beams
+    )
+    assert profile["556"]["outer_cutoff_radius_m"] == pytest.approx(
+        profile["399"]["inner_cutoff_radius_m"]
+    )
 
     beam_by_tag = {beam.tag: _normalize(beam.direction) for beam in beams}
     assert np.allclose(beam_by_tag["3DMOT_399_+XZ_1"], -beam_by_tag["3DMOT_399_-XZ_1"])
@@ -110,8 +116,15 @@ def test_angled_sequential_matches_plotkin_swing_crossed_beam_geometry():
     assert np.allclose(green_center, (0.0, 0.0, 0.0))
 
     blue_directions = [_normalize(beam.direction) for beam in blue_beams]
+    expected_angle_deg = MOT_3D_CONFIGURATIONS["angled_donut"][
+        "xz_angle_from_z_deg"
+    ]
+    assert MOT_3D_CONFIGURATIONS["angled_sequential"][
+        "xz_angle_from_z_deg"
+    ] == pytest.approx(expected_angle_deg)
+    expected_z_component = -np.cos(np.radians(expected_angle_deg))
     assert all(
-        np.isclose(direction[2], -1.0 / np.sqrt(2.0))
+        np.isclose(direction[2], expected_z_component)
         for direction in blue_directions
     )
     assert np.isclose(blue_directions[0][0], -blue_directions[1][0])
@@ -278,6 +291,29 @@ def test_donut_is_an_unmodified_gaussian_with_a_hard_central_cutoff():
         pass
     else:
         raise AssertionError("Expected ValueError for non-positive cutoff radius")
+
+
+def test_angled_donut_green_and_blue_profiles_are_complementary():
+    profile = _resolved_profile("angled_donut")
+    beams = setup_3dmot_lasers(
+        mot_3d_config=profile,
+        center_position=(0.0, 0.0, 0.0),
+    )
+    blue = next(beam for beam in beams if beam.tag == "3DMOT_399_+Y")
+    green = next(beam for beam in beams if beam.tag == "3DMOT_556_+Y")
+    cutoff = profile["399"]["inner_cutoff_radius_m"]
+    assert green.outer_cutoff_radius == pytest.approx(cutoff)
+
+    inside = np.array([[0.5 * cutoff, 0.0, 0.0]])
+    boundary = np.array([[cutoff, 0.0, 0.0]])
+    outside = np.array([[1.5 * cutoff, 0.0, 0.0]])
+
+    assert blue.get_value(inside)[0] == 0.0
+    assert green.get_value(inside)[0] > 0.0
+    assert blue.get_value(boundary)[0] > 0.0
+    assert green.get_value(boundary)[0] == 0.0
+    assert blue.get_value(outside)[0] > 0.0
+    assert green.get_value(outside)[0] == 0.0
 
 
 def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():

@@ -342,13 +342,16 @@ MOT_3D_CONFIGURATIONS = {
             "s0": 5.0,
             "detuning_gamma": -10.0,
             "waist_m": 0.01,
-            "profile": "gaussian",
+            "profile": "outer_clipped_gaussian",
+            # The chamber walls transmit the green beam only inside the same
+            # radius at which the center-blocked blue beam begins.
+            "outer_cutoff_radius_m": 0.01,
         },
     },
     "angled_sequential": {
-        "description": "Plotkin-Swing et al. crossed-beam slower: a six-beam 556-nm MOT plus two 399-nm beams crossing 1 cm upstream at 45 degrees.",
+        "description": "Crossed-beam slower: a six-beam 556-nm MOT plus two 399-nm beams crossing 1 cm upstream, using the same +/-30-degree xz axes as angled_donut.",
         "beam_layout": "angled_xz_y",
-        "xz_angle_from_z_deg": 45.0,
+        "xz_angle_from_z_deg": 30.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         # The third MOT-beam axis is y, so the quadrupole's strong axis must
         # be y for the standard 2:1 gradient and helicity arrangement.

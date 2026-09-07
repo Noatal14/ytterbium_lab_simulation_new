@@ -185,6 +185,28 @@ def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
     )
 
 
+def _draw_outer_clipped_gaussian_beam(
+    ax, source, center, direction, waist_m, outer_cutoff_radius_m, color
+):
+    """Draw only the part of a Gaussian transmitted by the outer aperture."""
+    min_radius = min(0.15 * waist_m, 0.15 * outer_cutoff_radius_m)
+    for radius in np.linspace(outer_cutoff_radius_m, min_radius, 6):
+        relative_intensity = np.exp(-2.0 * radius**2 / waist_m**2)
+        x, y, z = _cylinder_surface(source, center, radius)
+        ax.plot_surface(
+            x * MM_PER_M,
+            y * MM_PER_M,
+            z * MM_PER_M,
+            color=color,
+            alpha=_intensity_alpha(relative_intensity),
+            linewidth=0,
+            shade=False,
+        )
+
+    segment = np.vstack([source, center]) * MM_PER_M
+    ax.plot(*segment.T, color=color, linewidth=1.8, alpha=0.85)
+
+
 def _draw_elliptical_beam(ax, source, center, direction, short_m, long_m, color):
     """Draw the crossed slower with its long axis along lab y."""
     direction = np.asarray(direction, dtype=float)
@@ -327,6 +349,13 @@ def _normalized_radial_intensity(cfg, radius_m, waist_m=None):
             0.0,
             intensity,
         )
+    if cfg.get("profile") == "outer_clipped_gaussian":
+        intensity = np.exp(-2.0 * radius_m**2 / float(cfg["waist_m"]) ** 2)
+        return np.where(
+            radius_m < float(cfg["outer_cutoff_radius_m"]),
+            intensity,
+            0.0,
+        )
     waist = waist_m or cfg.get("waist_m", cfg.get("waist_short_m"))
     return np.exp(-2.0 * radius_m**2 / float(waist) ** 2)
 
@@ -346,6 +375,8 @@ def _draw_radial_profiles(ax, blue_cfg, green_cfg):
     ]
     if blue_cfg.get("profile") == "donut":
         characteristic_radii.append(float(blue_cfg["inner_cutoff_radius_m"]))
+    if green_cfg.get("profile") == "outer_clipped_gaussian":
+        characteristic_radii.append(float(green_cfg["outer_cutoff_radius_m"]))
     radius_m = np.linspace(0.0, max(characteristic_radii), 600)
 
     profiles = [(green_cfg, GREEN_COLOR, "556 nm", None, "-")]
@@ -402,6 +433,16 @@ def _draw_radial_profiles(ax, blue_cfg, green_cfg):
             va="center",
             fontsize=9,
         )
+        if green_cfg.get("profile") == "outer_clipped_gaussian":
+            ax.text(
+                1.22 * cutoff_mm,
+                0.52,
+                "green intensity\nexactly zero",
+                color=GREEN_COLOR,
+                ha="center",
+                va="center",
+                fontsize=9,
+            )
 
     ax.set_title("Transverse intensity cuts")
     ax.set_xlabel("distance from beam axis along indicated cut [mm]")
@@ -518,6 +559,18 @@ def plot_configuration(name, profile, beam_length_m):
                     1.5 * float(cfg["waist_m"]),
                     inner_cutoff_radius,
                 )
+            elif profile_kind == "outer_clipped_gaussian":
+                outer_cutoff_radius = float(cfg["outer_cutoff_radius_m"])
+                _draw_outer_clipped_gaussian_beam(
+                    ax,
+                    source,
+                    component_center,
+                    direction,
+                    float(cfg["waist_m"]),
+                    outer_cutoff_radius,
+                    color,
+                )
+                display_radius = outer_cutoff_radius
             elif profile_kind == "elliptical":
                 short_m = float(cfg["waist_short_m"])
                 long_m = float(cfg["waist_long_m"])
