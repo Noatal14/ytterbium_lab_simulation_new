@@ -25,6 +25,7 @@ from config import (
 )
 from simulations.mot_3d import mot_3d_simulation
 from studies.compare_3d_mot_retention import analyze_results, load_shared_ensemble
+from utils.data_paths import AFTER_2D_MOT_DIR
 
 
 DEFAULT_OUTPUT_DIR = Path("data/validation/mot_3d/blue_slower_scan")
@@ -262,7 +263,7 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--input",
-        default="data/particle_states/after_2d_mot/final_ensemble_v23",
+        default=str(AFTER_2D_MOT_DIR / "final_ensemble_s0_1.47"),
     )
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--profiles", nargs="+", default=list(MOT_3D_CONFIGURATIONS))
