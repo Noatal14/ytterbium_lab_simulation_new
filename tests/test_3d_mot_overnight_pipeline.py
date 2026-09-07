@@ -24,3 +24,4 @@ def test_pipeline_generates_all_stages_and_dependency_submissions(tmp_path, monk
     assert "studies.merge_3d_mot_blue_scan_shards" in generated
     assert "studies.scan_3d_mot_green_trap" in generated
     assert "studies.scan_3d_mot_gradient" in generated
+    assert generated.count("--max-atoms 900") == 4

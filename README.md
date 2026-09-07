@@ -210,7 +210,8 @@ five-beam blue, gradient, and green scans. At most three 200-core
 nodes are requested concurrently. Selection occurs only after
 each three-shard merge, and the final provisional choices are written to
 `data/validation/mot_3d/optimization/final_operating_points.json`. The pipeline
-does not silently adopt those scan results into `config.py`.
+uses 900 shared input atoms (300 per shard) and does not silently adopt those
+scan results into `config.py`.
 
 ## Recommended entry point
 

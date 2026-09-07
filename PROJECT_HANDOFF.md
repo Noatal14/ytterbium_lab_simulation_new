@@ -195,7 +195,8 @@ in parallel performs blue -> top-five selection -> gradient -> best-point
 selection -> green for `five_beam_gravity`. PBS `afterok` dependencies prevent
 downstream work after a failed stage. Automatic choices are recorded in
 `data/validation/mot_3d/optimization/final_operating_points.json` but are not
-written into `config.py` without review.
+written into `config.py` without review. The overnight scans use 900 shared
+input atoms, split deterministically into three 300-atom shards.
 `studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
 are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not

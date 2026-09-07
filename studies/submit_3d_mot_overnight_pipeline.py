@@ -59,7 +59,7 @@ def submit_pipeline(work_dir):
         unique_blue_pairs=False,
     )
 
-    donut_green_root = DONUT / "green_scan_600"
+    donut_green_root = DONUT / "green_scan_900"
     donut_green_array = _write(
         work_dir / "donut_green_array.pbs",
         _header("mot3d_donut_green", array=True)
@@ -67,7 +67,7 @@ def submit_pipeline(work_dir):
     --input {INPUT} \\
     --profile angled_donut \\
     --operating-point-file {donut_gradient_selection} \\
-    --max-atoms 600 \\
+    --max-atoms 900 \\
     --num-shards 3 \\
     --shard-index "$PBS_ARRAY_INDEX" \\
     --npools 200 \\
@@ -90,14 +90,14 @@ python -m studies.select_3d_mot_scan_points \\
     )
     donut_finish_job = _submit(donut_green_finish, donut_green_job)
 
-    five_blue_root = FIVE / "blue_scan_600"
+    five_blue_root = FIVE / "blue_scan_900"
     five_blue_array = _write(
         work_dir / "five_blue_array.pbs",
         _header("mot3d_five_blue", array=True)
         + f"""python -m studies.scan_3d_mot_blue_slower \\
     --input {INPUT} \\
     --profiles five_beam_gravity \\
-    --max-atoms 600 \\
+    --max-atoms 900 \\
     --num-shards 3 \\
     --shard-index "$PBS_ARRAY_INDEX" \\
     --npools 200 \\
@@ -122,7 +122,7 @@ python -m studies.select_3d_mot_scan_points \\
     )
     five_blue_finish_job = _submit(five_blue_finish, five_blue_job)
 
-    five_gradient_root = FIVE / "gradient_scan_600"
+    five_gradient_root = FIVE / "gradient_scan_900"
     five_gradient_array = _write(
         work_dir / "five_gradient_array.pbs",
         _header("mot3d_five_gradient", array=True)
@@ -131,7 +131,7 @@ python -m studies.select_3d_mot_scan_points \\
     --profile five_beam_gravity \\
     --parameter-points-file {five_blue_root}/merged/selected_top5.json \\
     --gradient-G-cm-values 5 7.5 10 12.5 15 \\
-    --max-atoms 600 \\
+    --max-atoms 900 \\
     --num-shards 3 \\
     --shard-index "$PBS_ARRAY_INDEX" \\
     --npools 200 \\
@@ -152,7 +152,7 @@ python -m studies.select_3d_mot_scan_points \\
     )
     five_gradient_finish_job = _submit(five_gradient_finish, five_gradient_job)
 
-    five_green_root = FIVE / "green_scan_600"
+    five_green_root = FIVE / "green_scan_900"
     five_green_array = _write(
         work_dir / "five_green_array.pbs",
         _header("mot3d_five_green", array=True)
@@ -160,7 +160,7 @@ python -m studies.select_3d_mot_scan_points \\
     --input {INPUT} \\
     --profile five_beam_gravity \\
     --operating-point-file {five_gradient_root}/merged/selected_best.json \\
-    --max-atoms 600 \\
+    --max-atoms 900 \\
     --num-shards 3 \\
     --shard-index "$PBS_ARRAY_INDEX" \\
     --npools 200 \\
