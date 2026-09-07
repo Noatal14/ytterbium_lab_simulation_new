@@ -163,6 +163,14 @@ distribution outputs are deliberately labeled as summaries of shard medians.
 After a coarse pilot, prefer `--parameter-pairs S0:DETUNING_GAMMA ...` so the
 large validation run samples only the identified slowing ridge rather than the
 full Cartesian product.
+The targeted gradient validation selected the provisional operating point
+399-nm `s0=0.6`, detuning `-1.65 Gamma`, and `10 G/cm` for the next study stage.
+`studies/scan_3d_mot_green_trap.py` holds those values fixed and scans a
+provisional 556-nm `s0`/detuning grid for `angled_sequential`. This is an
+optimization result and study choice, not a laboratory-set constant; the
+configured green defaults remain unchanged until a result is explicitly
+adopted. The script uses the same deterministic three-shard workflow and merge
+format as the blue and gradient scans.
 `studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
 are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not

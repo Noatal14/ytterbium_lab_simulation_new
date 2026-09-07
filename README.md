@@ -193,6 +193,12 @@ by a pilot instead of rerunning the full Cartesian grid.
 labels distribution summaries as shard-level approximations.
 `studies.scan_3d_mot_gradient` scans the magnetic gradient only at selected
 399-nm parameter pairs while retaining the same sharding and merge format.
+After selecting a blue operating point and gradient,
+`studies.scan_3d_mot_green_trap` scans the provisional 556-nm saturation
+parameter and detuning while holding those earlier choices fixed. Its default
+grid includes the current provisional green configuration; it does not change
+the configuration or treat a scan winner as a laboratory-set value. The study
+uses the same deterministic particle sharding and shard merger.
 
 ## Recommended entry point
 

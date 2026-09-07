@@ -1,7 +1,9 @@
 from studies.merge_3d_mot_blue_scan_shards import merge_reports
 
 
-def _report(shard_index, entered, slow, speed, gradient=None):
+def _report(
+    shard_index, entered, slow, speed, gradient=None, green_point=None
+):
     row = {
         "profile": "angled_sequential",
         "detuning_gamma": -2.0,
@@ -19,6 +21,8 @@ def _report(shard_index, entered, slow, speed, gradient=None):
     }
     if gradient is not None:
         row["gradient_G_cm"] = gradient
+    if green_point is not None:
+        row["green_s0"], row["green_detuning_gamma"] = green_point
     return {
         "num_shards": 2,
         "shard_index": shard_index,
@@ -28,6 +32,10 @@ def _report(shard_index, entered, slow, speed, gradient=None):
         "input_particle_count": 5,
         "records": [row],
         "gradient_G_cm_values": [gradient] if gradient is not None else None,
+        "green_s0_values": [green_point[0]] if green_point is not None else None,
+        "green_detuning_gamma_values": (
+            [green_point[1]] if green_point is not None else None
+        ),
     }
 
 
@@ -48,3 +56,13 @@ def test_merge_reports_keeps_gradient_as_part_of_point_identity():
     )[0]
 
     assert row["gradient_G_cm"] == 7.5
+
+
+def test_merge_reports_keeps_green_parameters_as_part_of_point_identity():
+    kwargs = {"gradient": 10.0, "green_point": (5.0, -10.0)}
+    row = merge_reports(
+        [_report(0, 3, 1, 4.0, **kwargs), _report(1, 4, 2, 6.0, **kwargs)]
+    )[0]
+
+    assert row["green_s0"] == 5.0
+    assert row["green_detuning_gamma"] == -10.0

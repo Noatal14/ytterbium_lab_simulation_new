@@ -42,6 +42,8 @@ def merge_reports(reports):
         reports[0]["s0_values"],
         reports[0].get("parameter_pairs"),
         reports[0].get("gradient_G_cm_values"),
+        reports[0].get("green_s0_values"),
+        reports[0].get("green_detuning_gamma_values"),
     )
     if any(
         (
@@ -50,6 +52,8 @@ def merge_reports(reports):
             report["s0_values"],
             report.get("parameter_pairs"),
             report.get("gradient_G_cm_values"),
+            report.get("green_s0_values"),
+            report.get("green_detuning_gamma_values"),
         )
         != reference_grid
         for report in reports[1:]
@@ -65,6 +69,8 @@ def merge_reports(reports):
                     row["detuning_gamma"],
                     row["s0"],
                     row.get("gradient_G_cm"),
+                    row.get("green_s0"),
+                    row.get("green_detuning_gamma"),
                 ): row
                 for row in report["records"]
             }
@@ -83,6 +89,10 @@ def merge_reports(reports):
         }
         if key[3] is not None:
             row["gradient_G_cm"] = float(key[3])
+        if key[4] is not None:
+            row["green_s0"] = float(key[4])
+        if key[5] is not None:
+            row["green_detuning_gamma"] = float(key[5])
         for field in COUNT_FIELDS:
             row[field] = int(sum(item[field] for item in rows))
         for field in MEDIAN_FIELDS:
@@ -106,12 +116,19 @@ def merge_reports(reports):
 def run_merge(input_root, output_dir):
     input_root = Path(input_root)
     paths = sorted(input_root.glob("shard_*/blue_slower_scan.json"))
+    if not paths:
+        paths = sorted(input_root.glob("shard_*/green_trap_scan.json"))
     reports = [json.loads(path.read_text()) for path in paths]
     merged = merge_reports(reports)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = output_dir / "merged_blue_slower_scan.csv"
-    json_path = output_dir / "merged_blue_slower_scan.json"
+    output_stem = (
+        "merged_green_trap_scan"
+        if reports[0].get("green_s0_values") is not None
+        else "merged_blue_slower_scan"
+    )
+    csv_path = output_dir / f"{output_stem}.csv"
+    json_path = output_dir / f"{output_stem}.json"
     with csv_path.open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(merged[0]))
         writer.writeheader()
