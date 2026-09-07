@@ -1,7 +1,7 @@
 from studies.merge_3d_mot_blue_scan_shards import merge_reports
 
 
-def _report(shard_index, entered, slow, speed):
+def _report(shard_index, entered, slow, speed, gradient=None):
     row = {
         "profile": "angled_sequential",
         "detuning_gamma": -2.0,
@@ -17,6 +17,8 @@ def _report(shard_index, entered, slow, speed):
         "median_blue_exposure_time_s": 0.001,
         "median_delta_vz_during_blue_exposure_m_s": -10.0,
     }
+    if gradient is not None:
+        row["gradient_G_cm"] = gradient
     return {
         "num_shards": 2,
         "shard_index": shard_index,
@@ -25,6 +27,7 @@ def _report(shard_index, entered, slow, speed):
         "s0_values": [1.0],
         "input_particle_count": 5,
         "records": [row],
+        "gradient_G_cm_values": [gradient] if gradient is not None else None,
     }
 
 
@@ -37,3 +40,11 @@ def test_merge_reports_sums_counts_and_labels_shard_median_statistics():
     assert row["weighted_mean_of_shard_medians_minimum_speed_inside_m_s"] == 5.0
     assert row["minimum_shard_median_minimum_speed_inside_m_s"] == 4.0
     assert row["maximum_shard_median_minimum_speed_inside_m_s"] == 6.0
+
+
+def test_merge_reports_keeps_gradient_as_part_of_point_identity():
+    row = merge_reports(
+        [_report(0, 3, 1, 4.0, gradient=7.5), _report(1, 4, 2, 6.0, gradient=7.5)]
+    )[0]
+
+    assert row["gradient_G_cm"] == 7.5

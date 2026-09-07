@@ -163,6 +163,10 @@ distribution outputs are deliberately labeled as summaries of shard medians.
 After a coarse pilot, prefer `--parameter-pairs S0:DETUNING_GAMMA ...` so the
 large validation run samples only the identified slowing ridge rather than the
 full Cartesian product.
+`studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
+are the five 399-nm candidates selected from the 600-atom targeted scan and
+gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not
+laboratory-set values; the unchanged config default remains 10 G/cm.
 
 Particle states use SI units and the column order:
 

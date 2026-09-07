@@ -41,6 +41,7 @@ def merge_reports(reports):
         reports[0]["detuning_gamma_values"],
         reports[0]["s0_values"],
         reports[0].get("parameter_pairs"),
+        reports[0].get("gradient_G_cm_values"),
     )
     if any(
         (
@@ -48,6 +49,7 @@ def merge_reports(reports):
             report["detuning_gamma_values"],
             report["s0_values"],
             report.get("parameter_pairs"),
+            report.get("gradient_G_cm_values"),
         )
         != reference_grid
         for report in reports[1:]
@@ -58,7 +60,12 @@ def merge_reports(reports):
     for report in reports:
         by_report.append(
             {
-                (row["profile"], row["detuning_gamma"], row["s0"]): row
+                (
+                    row["profile"],
+                    row["detuning_gamma"],
+                    row["s0"],
+                    row.get("gradient_G_cm"),
+                ): row
                 for row in report["records"]
             }
         )
@@ -74,6 +81,8 @@ def merge_reports(reports):
             "s0": float(key[2]),
             "input_particle_count": int(weights.sum()),
         }
+        if key[3] is not None:
+            row["gradient_G_cm"] = float(key[3])
         for field in COUNT_FIELDS:
             row[field] = int(sum(item[field] for item in rows))
         for field in MEDIAN_FIELDS:

@@ -191,6 +191,8 @@ Use `--parameter-pairs S0:DETUNING_GAMMA ...` to validate only points selected
 by a pilot instead of rerunning the full Cartesian grid.
 `studies.merge_3d_mot_blue_scan_shards` then sums all count metrics exactly and
 labels distribution summaries as shard-level approximations.
+`studies.scan_3d_mot_gradient` scans the magnetic gradient only at selected
+399-nm parameter pairs while retaining the same sharding and merge format.
 
 ## Recommended entry point
 
