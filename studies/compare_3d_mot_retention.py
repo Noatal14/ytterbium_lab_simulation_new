@@ -36,7 +36,7 @@ from simulations.mot_3d import mot_3d_simulation
 from utils.data_paths import AFTER_2D_MOT_DIR, load_particle_states
 
 
-DEFAULT_INPUT = AFTER_2D_MOT_DIR / "final_ensemble_v23"
+DEFAULT_INPUT = AFTER_2D_MOT_DIR / "final_ensemble_s0_1.47"
 DEFAULT_OUTPUT_DIR = Path("data/validation/mot_3d/retention")
 DEFAULT_PROFILES = tuple(MOT_3D_CONFIGURATIONS)
 DEFAULT_MIN_LOSS_FRACTION = 0.10

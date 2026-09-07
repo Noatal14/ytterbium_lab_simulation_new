@@ -165,12 +165,15 @@ photons from `Ni < 15` evaluations, while the residual Zeeman laser received
 expected photons). The low-count regime is therefore materially present and
 cannot be dismissed by counting only high-force steps.
 
-`RK4StHybridCustom` implements the next validation model. Below `Ni = 15`, it
+`RK4StHybridCustom` is the accepted validation model. Below `Ni = 15`, it
 samples an exact Poisson absorption count and the isotropic recoil directions of
 the same spontaneous-emission events. At and above 15 it retains the fast
-Gaussian approximation. Use `python -m studies.validate_2d_mot_hybrid_timestep`
-to screen 2.5, 5, and 10 microseconds on identical input ensembles before
-launching a larger confirmation.
+Gaussian approximation. The one-off timestep script was removed after the
+completed validation results were saved under `data/validation/mot_2d/`.
+
+For a new experimentally available laser intensity, use the maintained
+`studies.mot_2d_s0_campaign` workflow rather than recreating those historical
+validation stages.
 
 The follow-up campaign found no monotonic capture trend from 5 down to 0.3125
 microseconds; adjacent comparisons were dominated by uncoupled Monte Carlo

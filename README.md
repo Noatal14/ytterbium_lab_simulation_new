@@ -24,6 +24,11 @@ New contributors should also read `PROJECT_HANDOFF.md`. It records the scientifi
 status, parameter categories, data-authority convention, Zeus workflow, and
 current priorities that cannot be inferred safely from code alone.
 
+To re-optimize detuning and magnet radius for one or more available 2D-MOT
+laser intensities, follow `docs/2D_MOT_S0_CAMPAIGN.md`. That maintained workflow
+includes its own smoke test, deterministic stage transitions, final uncertainty
+report, and export of survivor states for the 3D MOT.
+
 ## Repository structure
 
 - `config.py` — the single source of truth for physical constants, atomic parameters, geometry, laser settings, magnetic-field configuration, and runtime defaults.
@@ -278,7 +283,7 @@ New outputs are grouped under `data/particle_states/after_zeeman/`,
 `data/README.md` for the layout and file conventions.
 
 The fixed downstream ensemble for 3D-MOT studies is
-`data/particle_states/after_2d_mot/final_ensemble_v23/`: 20 validated `(N, 6)`
+`data/particle_states/after_2d_mot/final_ensemble_s0_1.47/`: 20 validated `(N, 6)`
 arrays containing all 15,840 states captured in the accepted final 2D-MOT
 production replay.
 

@@ -179,7 +179,7 @@ data/particle_states/after_3d_mot/
 ```
 
 The authoritative input ensemble for downstream 3D-MOT work is
-`data/particle_states/after_2d_mot/final_ensemble_v23/`. It contains 20 paired
+`data/particle_states/after_2d_mot/final_ensemble_s0_1.47/`. It contains 20 paired
 state arrays with layout `(x, y, z, vx, vy, vz)` in SI units, plus adjacent
 metadata. The replay validated all arrays as finite `float64` data with shape
 `(N, 6)` and reproduced 15,840 captures from 592,319 Zeeman survivors
@@ -285,20 +285,15 @@ the estimated mean. The pooled-binomial term controlled in the final dataset,
 so the calculation used the large-sample 1.96 critical value. The result passed
 the predeclared maximum half-width of 0.05 percentage points.
 
-Do not respond by blindly reducing the timestep in the existing Gaussian
-stochastic solver. That solver uses `Ni = scattering_rate * dt` and Gaussian
-photon-count fluctuations per laser and step, so smaller steps can invalidate
-the approximation. First run
-`python -m studies.diagnose_2d_mot_photon_counts` at 5 microseconds to quantify
-the low-`Ni` regime on the selected configuration. The completed diagnostic
+The retained generic diagnostic is
+`python -m studies.diagnose_2d_mot_photon_counts`. It established that the
+original Gaussian-only solver was not adequate in the low-photon-count regime:
 found that `Ni < 15` evaluations contribute 14.3490% of all expected photons,
 8.7943% on captured trajectories, and 17.2808% on non-captured trajectories.
 This is material. `RK4StHybridCustom` now samples exact Poisson absorption and
 isotropic emission recoil below `Ni = 15`, while retaining the Gaussian
-approximation at higher counts. Screen 2.5, 5, and 10 microseconds with
-`python -m studies.validate_2d_mot_hybrid_timestep`, then perform a larger
-paired confirmation and recheck the selected point and close competitors before
-making the final production claim.
+approximation at higher counts. The one-off timestep and finalist scripts used
+to establish this conclusion were removed after their JSON results were saved.
 
 The completed hybrid follow-up did not show monotonic capture convergence from
 5 to 0.3125 microseconds; the adjacent differences were dominated by uncoupled

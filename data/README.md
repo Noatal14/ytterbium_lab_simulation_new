@@ -39,7 +39,7 @@ including runtime, software versions, and a SHA-256 hash of the saved ``.npy``.
 
 The accepted final 2D-MOT production replay used ``--save-survivor-states``.
 Its authoritative downstream ensembles are stored under
-``data/particle_states/after_2d_mot/final_ensemble_v23/``. The directory
+``data/particle_states/after_2d_mot/final_ensemble_s0_1.47/``. The directory
 contains one ``(N, 6)`` state array and adjacent metadata file for each of the
 20 Zeeman/MOT seed pairs. Together they contain 15,840 captured states from
 592,319 Zeeman survivors and reproduce the locked conditional efficiency of
@@ -67,6 +67,7 @@ python -m studies.validate_zeeman_configuration
 python -m studies.diagnose_zeeman_trajectories
 python -m studies.scan_zeeman_capture_velocity
 python -m studies.optimize_2d_mot_joint --help
+python -m studies.mot_2d_s0_campaign --help
 python -m studies.run_2d_mot_final_production --help
 python -m studies.full_thermal_zeeman_flux --help
 ```
