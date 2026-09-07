@@ -60,6 +60,25 @@ def test_joint_optimizer_accepts_fixed_s0():
     assert args.stochastic_solver == "hybrid"
 
 
+def test_2d_mot_uses_hybrid_solver_by_default():
+    import inspect
+
+    from simulations.mot_2d import mot_simulation, mot_simulation_paired_ensembles
+    from studies.optimize_2d_mot_joint import evaluate_configuration, parse_args
+    from utils.RK4StHybridCustom import RK4StHybridCustom
+
+    assert inspect.signature(mot_simulation).parameters[
+        "stochastic_sim_function"
+    ].default is RK4StHybridCustom
+    assert inspect.signature(mot_simulation_paired_ensembles).parameters[
+        "stochastic_sim_function"
+    ].default is RK4StHybridCustom
+    assert inspect.signature(evaluate_configuration).parameters[
+        "stochastic_sim_function"
+    ].default is RK4StHybridCustom
+    assert parse_args([]).stochastic_solver == "hybrid"
+
+
 def test_final_production_can_save_downstream_states():
     from studies.run_2d_mot_final_production import parse_args
 

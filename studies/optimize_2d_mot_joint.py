@@ -41,7 +41,7 @@ def evaluate_configuration(
     npools,
     dt_s,
     mot_seeds=None,
-    stochastic_sim_function=RK4StCustom,
+    stochastic_sim_function=RK4StHybridCustom,
     include_survivor_states=False,
 ):
     """Evaluate one point on fixed paired replicates and return its summary."""
@@ -274,7 +274,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--stochastic-solver",
         choices=("gaussian", "hybrid"),
-        default="gaussian",
+        default="hybrid",
     )
     parser.add_argument(
         "--s0-bounds",
