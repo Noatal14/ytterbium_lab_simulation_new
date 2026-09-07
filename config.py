@@ -438,6 +438,7 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
+    "solver": "RK4StHybridCustom",
 }
 
 # Provisional operational definition of 3D-MOT capture. These values are

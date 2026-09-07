@@ -137,9 +137,11 @@ rejected fit must not be interpreted as a measured lifetime.
 The JSON diagnostics distinguish failure to enter the capture sphere from
 failure to slow or remain there long enough, and include distance, speed, and
 continuous-residence distributions.
-The 3D-MOT SciPy integrator sets `max_step=dt`. This is required for the 1.5 mm
-short-axis crossed beams: treating `dt` only as `t_eval` allows adaptive steps
-to skip the localized optical force and produces falsely ballistic trajectories.
+The 3D-MOT solver is selected centrally by `MOT_3D_SIM_CONFIG` and is currently
+`RK4StHybridCustom`. Its fixed grid uses `dt_s=1e-5 s`, which resolves the 1.5 mm
+short-axis crossed beams. The hybrid stochastic recoil model uses exact Poisson
+sampling at low expected scattering count and the Gaussian approximation at
+high count.
 
 `studies/scan_3d_mot_blue_slower.py` performs the preceding first-stage slowing
 screen: it scans only 399-nm `s0` and detuning in Gamma on a shared ensemble and

@@ -165,8 +165,10 @@ documented quality threshold. The JSON report also separates arrival into the
 capture region, slowing below the speed threshold, continuous residence, and
 full capture eligibility, and summarizes closest approach, speed, and residence
 time. Use `--help` for local subsets, runtime settings, and output options.
-The 3D-MOT integrator also uses the configured `dt` as its maximum internal
-step, so narrow slowing beams cannot be skipped between saved output samples.
+The 3D-MOT simulation uses the `RK4StHybridCustom` solver selected in
+`MOT_3D_SIM_CONFIG`. Its fixed time grid uses the configured `dt_s`, so narrow
+slowing beams cannot be skipped; low expected scattering counts use exact
+Poisson sampling instead of the high-count Gaussian approximation.
 
 Before scanning the magnetic-field gradient, the blue-slower screening study
 varies only the 399-nm detuning (in Gamma) and saturation parameter while using

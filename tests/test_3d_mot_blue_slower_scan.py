@@ -3,8 +3,9 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from config import MOT_3D_CONFIGURATIONS
+from config import MOT_3D_CONFIGURATIONS, MOT_3D_SIM_CONFIG
 import simulations.mot_3d as mot_3d
+from utils.RK4StHybridCustom import RK4StHybridCustom
 from studies.scan_3d_mot_blue_slower import (
     _matrix,
     blue_exposure_diagnostics,
@@ -77,17 +78,8 @@ def test_blue_exposure_diagnostics_uses_actual_beams_and_lab_trajectory():
     assert diagnostics["delta_vz_during_exposure_m_s"]["median"] == -2.0
 
 
-def test_3d_integrator_limits_internal_step_to_resolve_narrow_beams(monkeypatch):
-    class FakeIntegrator:
-        def __init__(self, config, **kwargs):
-            self.config = config
-            self.solve_ivp_args = kwargs
-
-    monkeypatch.setattr(mot_3d, "ScipyIVP_3DCustom", FakeIntegrator)
-    marker_config = object()
-    integrator = mot_3d._make_3d_integrator(
-        marker_config, maximum_step_s=1.0e-5
-    )
-
-    assert integrator.config is marker_config
-    assert integrator.solve_ivp_args["max_step"] == 1.0e-5
+def test_3d_solver_and_timestep_come_from_central_configuration():
+    assert MOT_3D_SIM_CONFIG["dt_s"] == 1.0e-5
+    assert MOT_3D_SIM_CONFIG["t_max_s"] == 25.0e-3
+    assert MOT_3D_SIM_CONFIG["solver"] == "RK4StHybridCustom"
+    assert mot_3d._configured_3d_solver() is RK4StHybridCustom

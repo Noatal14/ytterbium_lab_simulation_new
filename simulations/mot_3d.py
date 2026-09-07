@@ -1,7 +1,6 @@
 """Run the 3D-MOT stage and evaluate a configurable capture criterion."""
 
 import argparse
-from functools import partial
 
 import numpy as np
 
@@ -18,7 +17,7 @@ from config import (
 )
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
-from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
+from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import (
     DEFAULT_2D_MOT_STATES_FILE,
     DEFAULT_3D_MOT_STATES_FILE,
@@ -30,9 +29,16 @@ from utils.file_helpers import save_file_json
 from utils.simulation_helpers import generate_timepoints, run_multiple_atoms_simulation
 
 
-def _make_3d_integrator(config, maximum_step_s):
-    """Build an integrator that cannot step over narrow 3D-MOT beams."""
-    return ScipyIVP_3DCustom(config, max_step=maximum_step_s)
+MOT_3D_SOLVERS = {"RK4StHybridCustom": RK4StHybridCustom}
+
+
+def _configured_3d_solver():
+    """Resolve the 3D-MOT solver selected by the central configuration."""
+    solver_name = MOT_3D_SIM_CONFIG["solver"]
+    try:
+        return MOT_3D_SOLVERS[solver_name]
+    except KeyError as error:
+        raise ValueError(f"Unsupported 3D-MOT solver: {solver_name}") from error
 
 
 def _continuous_final_residence_time(time_points, inside_capture_region):
@@ -119,7 +125,7 @@ def mot_3d_simulation(
         config=simulation_config,
         u0=[np.asarray(state).copy() for state in survivor_states],
         time_points=time_points,
-        sim_function=partial(_make_3d_integrator, maximum_step_s=dt),
+        sim_function=_configured_3d_solver(),
         npools=npools,
         seed_idx=seed,
     )
