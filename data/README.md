@@ -37,11 +37,14 @@ explicitly rather than inferring them.
 The Zeeman production command creates this adjacent metadata automatically,
 including runtime, software versions, and a SHA-256 hash of the saved ``.npy``.
 
-The accepted final 2D-MOT production replay should use
-``--save-survivor-states``. It writes one downstream ``(N, 6)`` state array per
-Zeeman/MOT seed pair under
-``data/particle_states/after_2d_mot/final_production_v22/`` so 3D-MOT studies do
-not need to rerun the 2D stage.
+The accepted final 2D-MOT production replay used ``--save-survivor-states``.
+Its authoritative downstream ensembles are stored under
+``data/particle_states/after_2d_mot/final_ensemble_v23/``. The directory
+contains one ``(N, 6)`` state array and adjacent metadata file for each of the
+20 Zeeman/MOT seed pairs. Together they contain 15,840 captured states from
+592,319 Zeeman survivors and reproduce the locked conditional efficiency of
+2.6742347%. These are the fixed inputs for 3D-MOT studies; do not rerun the 2D
+stage merely to generate 3D-MOT input.
 
 The completed full-source Zeeman campaign is stored under
 ``data/validation/zeeman/full_thermal_flux_v1/``. It contains one survivor-state

@@ -247,6 +247,11 @@ New outputs are grouped under `data/particle_states/after_zeeman/`,
 `data/particle_states/after_3d_mot/`, and `data/optimization/`. See
 `data/README.md` for the layout and file conventions.
 
+The fixed downstream ensemble for 3D-MOT studies is
+`data/particle_states/after_2d_mot/final_ensemble_v23/`: 20 validated `(N, 6)`
+arrays containing all 15,840 states captured in the accepted final 2D-MOT
+production replay.
+
 The `graphs/` and `graphs_scripts/` directories are used for plotting and interpretation of these results.
 
 ## Reproducibility

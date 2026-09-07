@@ -160,6 +160,13 @@ data/particle_states/after_2d_mot/
 data/particle_states/after_3d_mot/
 ```
 
+The authoritative input ensemble for downstream 3D-MOT work is
+`data/particle_states/after_2d_mot/final_ensemble_v23/`. It contains 20 paired
+state arrays with layout `(x, y, z, vx, vy, vz)` in SI units, plus adjacent
+metadata. The replay validated all arrays as finite `float64` data with shape
+`(N, 6)` and reproduced 15,840 captures from 592,319 Zeeman survivors
+(2.6742347%).
+
 Accepted Optuna summaries and stochastic-seed results belong under:
 
 ```text
