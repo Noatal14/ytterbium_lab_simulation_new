@@ -154,6 +154,114 @@ def retention_from_masks(cohort_masks, continuation_masks=None):
     return instantaneous, peak_index, retained, np.flatnonzero(cohort)
 
 
+def _distribution_summary(values):
+    """Return compact, JSON-safe descriptive statistics for finite values."""
+    values = np.asarray(values, dtype=float)
+    values = values[np.isfinite(values)]
+    if values.size == 0:
+        return {
+            "count": 0,
+            "min": None,
+            "p10": None,
+            "median": None,
+            "p90": None,
+            "max": None,
+        }
+    return {
+        "count": int(values.size),
+        "min": float(values.min()),
+        "p10": float(np.percentile(values, 10)),
+        "median": float(np.median(values)),
+        "p90": float(np.percentile(values, 90)),
+        "max": float(values.max()),
+    }
+
+
+def _maximum_continuous_residence_s(times, inside):
+    """Return the longest continuously sampled interval inside the region."""
+    times = np.asarray(times, dtype=float)
+    inside = np.asarray(inside, dtype=bool)
+    longest = 0.0
+    start = None
+    for index, is_inside in enumerate(inside):
+        if is_inside and start is None:
+            start = index
+        if start is not None and (not is_inside or index == len(inside) - 1):
+            end = index if is_inside else index - 1
+            longest = max(longest, float(times[end] - times[start]))
+            start = None
+    return longest
+
+
+def capture_diagnostics(
+    results,
+    eligible_masks,
+    center_m,
+    capture_radius_m,
+    minimum_residence_time_s,
+    maximum_speed_m_s,
+):
+    """Explain whether atoms fail at arrival, slowing, or residence."""
+    center = np.asarray(center_m, dtype=float)
+    minimum_distances = []
+    speeds_at_closest_approach = []
+    minimum_speeds_inside = []
+    maximum_residence_times = []
+    entered_count = 0
+    slow_inside_count = 0
+    residence_met_count = 0
+
+    for trajectory in results:
+        times = np.asarray(trajectory.t, dtype=float)
+        states = np.asarray(trajectory.y, dtype=float)
+        if times.size == 0 or states.ndim != 2 or states.shape[0] < 6:
+            continue
+        sample_count = min(times.size, states.shape[1])
+        times = times[:sample_count]
+        states = states[:, :sample_count]
+        distances = np.linalg.norm(states[:3].T - center, axis=1)
+        speeds = np.linalg.norm(states[3:6].T, axis=1)
+        inside = distances <= capture_radius_m
+
+        closest_index = int(np.argmin(distances))
+        minimum_distances.append(distances[closest_index])
+        speeds_at_closest_approach.append(speeds[closest_index])
+        maximum_residence = _maximum_continuous_residence_s(times, inside)
+        maximum_residence_times.append(maximum_residence)
+        if inside.any():
+            entered_count += 1
+            minimum_speeds_inside.append(float(speeds[inside].min()))
+            slow_inside_count += int(np.any(speeds[inside] <= maximum_speed_m_s))
+        residence_met_count += int(
+            maximum_residence + np.finfo(float).eps >= minimum_residence_time_s
+        )
+
+    eligible_masks = np.asarray(eligible_masks, dtype=bool)
+    eligible_ever_count = int(np.any(eligible_masks, axis=1).sum())
+    total = int(len(results))
+    return {
+        "particle_count": total,
+        "entered_capture_region_count": entered_count,
+        "slow_inside_count": slow_inside_count,
+        "minimum_residence_met_count": residence_met_count,
+        "capture_eligible_ever_count": eligible_ever_count,
+        "fractions": {
+            "entered_capture_region": entered_count / total if total else 0.0,
+            "slow_inside": slow_inside_count / total if total else 0.0,
+            "minimum_residence_met": residence_met_count / total if total else 0.0,
+            "capture_eligible_ever": eligible_ever_count / total if total else 0.0,
+        },
+        "minimum_distance_to_center_m": _distribution_summary(minimum_distances),
+        "speed_at_closest_approach_m_s": _distribution_summary(
+            speeds_at_closest_approach
+        ),
+        "minimum_speed_inside_m_s": _distribution_summary(minimum_speeds_inside),
+        "maximum_continuous_residence_time_s": _distribution_summary(
+            maximum_residence_times
+        ),
+    }
+
+
 def _retention_model(elapsed_time_s, tau_s, plateau_count, initial_count):
     return plateau_count + (initial_count - plateau_count) * np.exp(
         -elapsed_time_s / tau_s
@@ -256,6 +364,14 @@ def analyze_results(results, time_points):
     )
     elapsed = np.asarray(time_points[peak_index:], dtype=float) - time_points[peak_index]
     fit = fit_retention_lifetime(elapsed, retained)
+    diagnostics = capture_diagnostics(
+        results,
+        eligible_masks,
+        Geometry.MOT_3D_CENTER_M,
+        MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
+        MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
+        MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
+    )
     return {
         "inside_counts": inside_masks.sum(axis=0),
         "capture_eligible_counts": eligible_counts,
@@ -268,6 +384,7 @@ def analyze_results(results, time_points):
         "retained_counts": retained,
         "elapsed_post_peak_s": elapsed,
         "fit": fit,
+        "diagnostics": diagnostics,
     }
 
 
@@ -281,6 +398,7 @@ def _json_ready_analysis(analysis):
         "retained_counts": analysis["retained_counts"].tolist(),
         "elapsed_post_peak_s": analysis["elapsed_post_peak_s"].tolist(),
         "fit": fit,
+        "diagnostics": analysis["diagnostics"],
     }
 
 
@@ -385,6 +503,14 @@ def run_study(args):
             else "n/a"
         )
         print(f"  peak={analysis['peak_count']} at {peak_time_text}; {tau_text}")
+        diagnostics = analysis["diagnostics"]
+        print(
+            "  diagnostics: "
+            f"entered={diagnostics['entered_capture_region_count']}/{len(states)}, "
+            f"slow inside={diagnostics['slow_inside_count']}, "
+            f"residence met={diagnostics['minimum_residence_met_count']}, "
+            f"capture-eligible ever={diagnostics['capture_eligible_ever_count']}"
+        )
         del results
         gc.collect()
 

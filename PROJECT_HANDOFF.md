@@ -134,6 +134,9 @@ and maximum-speed capture criteria, then counts only atoms that remain inside
 the sphere continuously. Its exponential-with-plateau `tau` is reported
 only when the observed decay passes explicit loss and fit-quality checks; a
 rejected fit must not be interpreted as a measured lifetime.
+The JSON diagnostics distinguish failure to enter the capture sphere from
+failure to slow or remain there long enough, and include distance, speed, and
+continuous-residence distributions.
 
 Particle states use SI units and the column order:
 

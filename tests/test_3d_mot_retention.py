@@ -3,11 +3,20 @@ from types import SimpleNamespace
 import numpy as np
 
 from studies.compare_3d_mot_retention import (
+    capture_diagnostics,
     capture_eligible_masks,
     fit_retention_lifetime,
     inside_capture_masks,
     retention_from_masks,
 )
+
+
+def _trajectory(times, x_positions, x_velocities):
+    zeros = np.zeros(len(times))
+    return SimpleNamespace(
+        t=np.asarray(times),
+        y=np.vstack([x_positions, zeros, zeros, x_velocities, zeros, zeros]),
+    )
 
 
 def test_inside_capture_masks_aligns_terminated_trajectories_to_shared_grid():
@@ -78,6 +87,38 @@ def test_capture_eligibility_rejects_fast_transit_and_requires_residence_time():
 
     assert eligible[0].tolist() == [False, False, False, False, False, True, True]
     assert not eligible[1].any()
+
+
+def test_capture_diagnostics_separates_arrival_speed_and_residence_failures():
+    times = np.arange(8, dtype=float) * 1.0e-3
+    results = [
+        _trajectory(times, np.full(8, 0.020), np.zeros(8)),
+        _trajectory(times, np.zeros(8), np.full(8, 2.0)),
+        _trajectory(times, np.array([0.010] * 5 + [0.0] * 3), np.zeros(8)),
+        _trajectory(times, np.zeros(8), np.zeros(8)),
+    ]
+    inside = inside_capture_masks(results, times, (0.0, 0.0, 0.0), 0.005)
+    eligible = capture_eligible_masks(
+        results, times, inside, minimum_residence_time_s=0.005, maximum_speed_m_s=1.0
+    )
+    diagnostics = capture_diagnostics(
+        results,
+        eligible,
+        center_m=(0.0, 0.0, 0.0),
+        capture_radius_m=0.005,
+        minimum_residence_time_s=0.005,
+        maximum_speed_m_s=1.0,
+    )
+
+    assert diagnostics["particle_count"] == 4
+    assert diagnostics["entered_capture_region_count"] == 3
+    assert diagnostics["slow_inside_count"] == 2
+    assert diagnostics["minimum_residence_met_count"] == 2
+    assert diagnostics["capture_eligible_ever_count"] == 1
+    assert diagnostics["minimum_speed_inside_m_s"]["count"] == 3
+    np.testing.assert_allclose(
+        diagnostics["maximum_continuous_residence_time_s"]["max"], 0.007
+    )
 
 
 def test_peak_cohort_uses_eligibility_but_retention_uses_spatial_presence():

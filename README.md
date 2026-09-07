@@ -156,8 +156,10 @@ maximum speed), follows only atoms that remain inside the sphere continuously,
 and writes a comparison plot plus a JSON report under
 `data/validation/mot_3d/retention/`. It reports an exponential lifetime `tau`
 only when the post-peak loss is sufficiently large and the fit passes the
-documented quality threshold. Use `--help` for local subsets, runtime settings,
-and output options.
+documented quality threshold. The JSON report also separates arrival into the
+capture region, slowing below the speed threshold, continuous residence, and
+full capture eligibility, and summarizes closest approach, speed, and residence
+time. Use `--help` for local subsets, runtime settings, and output options.
 
 ## Recommended entry point
 
