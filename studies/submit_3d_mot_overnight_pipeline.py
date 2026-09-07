@@ -106,7 +106,8 @@ python -m studies.select_3d_mot_scan_points \\
     --output-dir "{five_blue_root}/shard_${{PBS_ARRAY_INDEX}}"
 """,
     )
-    five_blue_job = _submit(five_blue_array)
+    # Keep the workflow within the agreed three-node/600-core envelope.
+    five_blue_job = _submit(five_blue_array, donut_finish_job)
     five_blue_finish = _write(
         work_dir / "five_blue_finish.pbs",
         _header("mot3d_five_blue_finish", walltime="00:30:00", ncpus=1, mem="4gb")

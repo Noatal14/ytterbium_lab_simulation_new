@@ -17,6 +17,7 @@ def test_pipeline_generates_all_stages_and_dependency_submissions(tmp_path, monk
     assert final_job == "job9"
     assert len(list(tmp_path.glob("*.pbs"))) == 9
     assert submitted[1][1] == "job1"
+    assert submitted[2][1] == "job2"
     assert submitted[4][1] == "job4"
     assert submitted[-1][1] == "job2:job8"
     generated = "\n".join(path.read_text() for path, _ in submitted)

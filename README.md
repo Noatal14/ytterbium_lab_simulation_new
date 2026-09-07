@@ -205,8 +205,9 @@ masks; `studies.merge_3d_mot_retention_shards` combines those masks before
 selecting the global peak cohort and fitting a lifetime. Per-shard peak curves
 must not be added directly because their peak times can differ.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
-optimization as a PBS dependency graph: donut green-light scan in parallel
-with five-beam blue, gradient, and green scans. Selection occurs only after
+optimization as a PBS dependency graph: a donut green-light scan followed by
+five-beam blue, gradient, and green scans. At most three 200-core
+nodes are requested concurrently. Selection occurs only after
 each three-shard merge, and the final provisional choices are written to
 `data/validation/mot_3d/optimization/final_operating_points.json`. The pipeline
 does not silently adopt those scan results into `config.py`.
