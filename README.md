@@ -38,6 +38,7 @@ report, and export of survivor states for the 3D MOT.
 - `utils/` — shared numerical helper functions, time-grid generation, and simulation utilities.
 - `graphs_scripts/` — plotting and graph-generation scripts for analysis and publication output.
 - `data/` — reference data, optimization summaries, and generated survivor ensembles.
+- `prompts/` — reusable prompts for AI-guided operation of established workflows.
 - `dt_comparison/` — archival exploratory work around timestep and stochastic/numerical investigations; not part of the normal production workflow.
 - `atomsmltr/` — a local vendored copy of the external `atomsmltr` library used by the project.
 
