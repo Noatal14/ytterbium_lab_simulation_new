@@ -40,9 +40,15 @@ def merge_reports(reports):
         reports[0]["profiles"],
         reports[0]["detuning_gamma_values"],
         reports[0]["s0_values"],
+        reports[0].get("parameter_pairs"),
     )
     if any(
-        (report["profiles"], report["detuning_gamma_values"], report["s0_values"])
+        (
+            report["profiles"],
+            report["detuning_gamma_values"],
+            report["s0_values"],
+            report.get("parameter_pairs"),
+        )
         != reference_grid
         for report in reports[1:]
     ):

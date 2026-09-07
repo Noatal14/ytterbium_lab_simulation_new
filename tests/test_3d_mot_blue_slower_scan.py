@@ -9,6 +9,7 @@ from utils.RK4StHybridCustom import RK4StHybridCustom
 from studies.scan_3d_mot_blue_slower import (
     _matrix,
     blue_exposure_diagnostics,
+    parse_parameter_pairs,
     select_particle_shard,
     slowing_rank_key,
 )
@@ -44,6 +45,12 @@ def test_particle_shards_are_disjoint_and_reconstruct_selected_ensemble():
     assert len(set(all_indices.tolist())) == len(states)
     for shard_states, indices in shards:
         np.testing.assert_array_equal(shard_states, states[indices])
+
+
+def test_explicit_parameter_pairs_preserve_only_requested_unique_points():
+    pairs = parse_parameter_pairs(["0.8:-1.75", "1.5:-2.5", "0.8:-1.75"])
+
+    assert pairs == ((0.8, -1.75), (1.5, -2.5))
 
 
 def test_scan_matrix_maps_sorted_physical_axes_to_rows_and_columns():

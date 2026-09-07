@@ -43,6 +43,22 @@ def _finite_or_none(value):
     return float(value) if value is not None and np.isfinite(value) else None
 
 
+def parse_parameter_pairs(values):
+    """Parse explicit ``S0:DETUNING_GAMMA`` scan points."""
+    pairs = []
+    for value in values or ():
+        try:
+            s0_text, detuning_text = value.split(":", maxsplit=1)
+            pair = (float(s0_text), float(detuning_text))
+        except (AttributeError, TypeError, ValueError) as error:
+            raise ValueError(
+                f"Invalid parameter pair '{value}'; use S0:DETUNING_GAMMA."
+            ) from error
+        if pair not in pairs:
+            pairs.append(pair)
+    return tuple(pairs)
+
+
 def select_particle_shard(states, num_shards, shard_index):
     """Return one disjoint, deterministic strided shard of an ensemble."""
     if num_shards <= 0:
@@ -176,7 +192,7 @@ def _matrix(records, profile, detunings, saturation_parameters, field):
 
 
 def plot_scan(records, profiles, detunings, saturation_parameters, output_path):
-    """Plot slowing count and median in-region speed for every profile."""
+    """Plot arbitrary slowing scan points for every profile."""
     fig, axes = plt.subplots(
         2,
         len(profiles),
@@ -185,36 +201,30 @@ def plot_scan(records, profiles, detunings, saturation_parameters, output_path):
         constrained_layout=True,
     )
     for column, profile in enumerate(profiles):
-        slow = _matrix(
-            records, profile, detunings, saturation_parameters, "slow_inside_count"
+        profile_records = [row for row in records if row["profile"] == profile]
+        x = [row["detuning_gamma"] for row in profile_records]
+        y = [row["s0"] for row in profile_records]
+        slow = [row["slow_inside_count"] for row in profile_records]
+        speed = [
+            row["median_minimum_speed_inside_m_s"]
+            if row["median_minimum_speed_inside_m_s"] is not None
+            else np.nan
+            for row in profile_records
+        ]
+        slow_image = axes[0, column].scatter(
+            x, y, c=slow, s=90, cmap="viridis", edgecolors="black"
         )
-        speed = _matrix(
-            records,
-            profile,
-            detunings,
-            saturation_parameters,
-            "median_minimum_speed_inside_m_s",
-        )
-        slow_image = axes[0, column].imshow(
-            slow, origin="lower", aspect="auto", interpolation="nearest"
-        )
-        speed_image = axes[1, column].imshow(
-            speed, origin="lower", aspect="auto", interpolation="nearest"
+        speed_image = axes[1, column].scatter(
+            x, y, c=speed, s=90, cmap="viridis_r", edgecolors="black"
         )
         axes[0, column].set_title(f"{profile}: atoms reaching <=1 m/s")
         axes[1, column].set_title(f"{profile}: median minimum speed")
         fig.colorbar(slow_image, ax=axes[0, column], label="atom count")
         fig.colorbar(speed_image, ax=axes[1, column], label="m/s")
         for row in range(2):
-            axes[row, column].set_xticks(
-                np.arange(len(detunings)), labels=[f"{value:g}" for value in detunings]
-            )
-            axes[row, column].set_yticks(
-                np.arange(len(saturation_parameters)),
-                labels=[f"{value:g}" for value in saturation_parameters],
-            )
             axes[row, column].set_xlabel("399-nm detuning [Gamma]")
             axes[row, column].set_ylabel("399-nm s0")
+            axes[row, column].grid(alpha=0.2)
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -225,15 +235,27 @@ def plot_scan(records, profiles, detunings, saturation_parameters, output_path):
 def run_scan(args):
     detunings = tuple(sorted(set(args.detuning_gamma_values)))
     saturation_parameters = tuple(sorted(set(args.s0_values)))
+    explicit_pairs = parse_parameter_pairs(args.parameter_pairs)
+    parameter_points = (
+        explicit_pairs
+        if explicit_pairs
+        else tuple(
+            (s0, detuning)
+            for s0 in saturation_parameters
+            for detuning in detunings
+        )
+    )
     unknown = sorted(set(args.profiles) - set(MOT_3D_CONFIGURATIONS))
     if unknown:
         raise ValueError(f"Unknown 3D-MOT profiles: {unknown}")
-    if not args.profiles or not detunings or not saturation_parameters:
+    if not args.profiles or not parameter_points:
         raise ValueError("Profiles, detunings, and s0 values must not be empty.")
-    if any(s0 <= 0 for s0 in saturation_parameters):
+    if any(s0 <= 0 for s0, _ in parameter_points):
         raise ValueError("Every s0 value must be positive.")
-    if any(detuning >= 0 for detuning in detunings):
+    if any(detuning >= 0 for _, detuning in parameter_points):
         raise ValueError("This slowing scan requires red detunings below zero.")
+    detunings = tuple(sorted({detuning for _, detuning in parameter_points}))
+    saturation_parameters = tuple(sorted({s0 for s0, _ in parameter_points}))
 
     selected_states, input_files = load_shared_ensemble(
         args.input, max_atoms=args.max_atoms, seed=args.seed
@@ -249,52 +271,51 @@ def run_scan(args):
     )
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     records = []
-    total_points = len(args.profiles) * len(detunings) * len(saturation_parameters)
+    total_points = len(args.profiles) * len(parameter_points)
     point = 0
 
     for profile_name in args.profiles:
-        for s0 in saturation_parameters:
-            for detuning in detunings:
-                point += 1
-                print(
-                    f"[{point}/{total_points}] {profile_name}: "
-                    f"399 s0={s0:g}, detuning={detuning:g} Gamma"
+        for s0, detuning in parameter_points:
+            point += 1
+            print(
+                f"[{point}/{total_points}] {profile_name}: "
+                f"399 s0={s0:g}, detuning={detuning:g} Gamma"
+            )
+            profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[profile_name])
+            profile["399"]["s0"] = float(s0)
+            profile["399"]["detuning_gamma"] = float(detuning)
+            results, _ = mot_3d_simulation(
+                states,
+                _3d_mot_config=profile,
+                gravity_enabled=not args.no_gravity,
+                npools=args.npools,
+                dt=args.dt,
+                t_max=args.t_max,
+                seed=simulation_seed,
+            )
+            analysis = analyze_results(results, time_points)
+            exposure = blue_exposure_diagnostics(
+                results, profile, args.exposure_threshold_fraction
+            )
+            record = _scan_record(
+                profile_name, detuning, s0, analysis, exposure
+            )
+            records.append(record)
+            print(
+                "  entered={entered_capture_region_count}, "
+                "slow={slow_inside_count}, residence={minimum_residence_met_count}, "
+                "eligible={capture_eligible_ever_count}, blue exposed="
+                "{blue_exposed_particle_count}, median v_min={speed}".format(
+                    **record,
+                    speed=(
+                        f"{record['median_minimum_speed_inside_m_s']:.3f} m/s"
+                        if record["median_minimum_speed_inside_m_s"] is not None
+                        else "n/a"
+                    ),
                 )
-                profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[profile_name])
-                profile["399"]["s0"] = float(s0)
-                profile["399"]["detuning_gamma"] = float(detuning)
-                results, _ = mot_3d_simulation(
-                    states,
-                    _3d_mot_config=profile,
-                    gravity_enabled=not args.no_gravity,
-                    npools=args.npools,
-                    dt=args.dt,
-                    t_max=args.t_max,
-                    seed=simulation_seed,
-                )
-                analysis = analyze_results(results, time_points)
-                exposure = blue_exposure_diagnostics(
-                    results, profile, args.exposure_threshold_fraction
-                )
-                record = _scan_record(
-                    profile_name, detuning, s0, analysis, exposure
-                )
-                records.append(record)
-                print(
-                    "  entered={entered_capture_region_count}, "
-                    "slow={slow_inside_count}, residence={minimum_residence_met_count}, "
-                    "eligible={capture_eligible_ever_count}, blue exposed="
-                    "{blue_exposed_particle_count}, median v_min={speed}".format(
-                        **record,
-                        speed=(
-                            f"{record['median_minimum_speed_inside_m_s']:.3f} m/s"
-                            if record["median_minimum_speed_inside_m_s"] is not None
-                            else "n/a"
-                        ),
-                    )
-                )
-                del results
-                gc.collect()
+            )
+            del results
+            gc.collect()
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -326,6 +347,11 @@ def run_scan(args):
         "profiles": list(args.profiles),
         "detuning_gamma_values": [float(value) for value in detunings],
         "s0_values": [float(value) for value in saturation_parameters],
+        "scan_mode": "explicit_pairs" if explicit_pairs else "cartesian_grid",
+        "parameter_pairs": [
+            {"s0": float(s0), "detuning_gamma": float(detuning)}
+            for s0, detuning in parameter_points
+        ],
         "fixed_magnetic_field": True,
         "fixed_green_light": True,
         "blue_exposure_threshold_fraction": float(
@@ -384,6 +410,14 @@ def parse_args(argv=None):
         nargs="+",
         type=float,
         default=list(DEFAULT_SATURATION_PARAMETERS),
+    )
+    parser.add_argument(
+        "--parameter-pairs",
+        nargs="+",
+        help=(
+            "Explicit S0:DETUNING_GAMMA points. When provided, the Cartesian "
+            "--s0-values/--detuning-gamma-values grid is not used."
+        ),
     )
     parser.add_argument("--max-atoms", type=int)
     parser.add_argument("--num-shards", type=int, default=1)

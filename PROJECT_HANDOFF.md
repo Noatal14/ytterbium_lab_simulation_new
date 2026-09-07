@@ -160,6 +160,9 @@ seed. Shards must write to separate output directories.
 Merge completed shard directories with
 `studies/merge_3d_mot_blue_scan_shards.py`. Count metrics are exact sums;
 distribution outputs are deliberately labeled as summaries of shard medians.
+After a coarse pilot, prefer `--parameter-pairs S0:DETUNING_GAMMA ...` so the
+large validation run samples only the identified slowing ridge rather than the
+full Cartesian product.
 
 Particle states use SI units and the column order:
 
