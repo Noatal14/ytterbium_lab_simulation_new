@@ -165,6 +165,8 @@ documented quality threshold. The JSON report also separates arrival into the
 capture region, slowing below the speed threshold, continuous residence, and
 full capture eligibility, and summarizes closest approach, speed, and residence
 time. Use `--help` for local subsets, runtime settings, and output options.
+The 3D-MOT integrator also uses the configured `dt` as its maximum internal
+step, so narrow slowing beams cannot be skipped between saved output samples.
 
 Before scanning the magnetic-field gradient, the blue-slower screening study
 varies only the 399-nm detuning (in Gamma) and saturation parameter while using
@@ -177,6 +179,9 @@ python -m studies.scan_3d_mot_blue_slower --max-atoms 200
 It saves CSV and JSON tables plus heatmaps under
 `data/validation/mot_3d/blue_slower_scan/`. The green-light, magnetic-field,
 geometry, and capture settings remain fixed during this first-stage scan.
+The scan also measures actual trajectory overlap with the blue beams: the
+maximum relative intensity encountered, exposure time above 1% of the summed
+peak intensity, and the longitudinal velocity change during that exposure.
 
 ## Recommended entry point
 

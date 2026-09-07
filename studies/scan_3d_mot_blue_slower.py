@@ -23,21 +23,84 @@ from config import (
     MOT_3D_CONFIGURATIONS,
     MOT_3D_SIM_CONFIG,
 )
+from lab_setup.laser_setup_3d import setup_3dmot_lasers
 from simulations.mot_3d import mot_3d_simulation
-from studies.compare_3d_mot_retention import analyze_results, load_shared_ensemble
+from studies.compare_3d_mot_retention import (
+    _distribution_summary,
+    analyze_results,
+    load_shared_ensemble,
+)
 from utils.data_paths import AFTER_2D_MOT_DIR
 
 
 DEFAULT_OUTPUT_DIR = Path("data/validation/mot_3d/blue_slower_scan")
 DEFAULT_DETUNINGS_GAMMA = (-1.0, -2.0, -3.0, -4.0, -5.0)
 DEFAULT_SATURATION_PARAMETERS = (0.3, 1.0, 3.0)
+DEFAULT_EXPOSURE_THRESHOLD_FRACTION = 0.01
 
 
 def _finite_or_none(value):
     return float(value) if value is not None and np.isfinite(value) else None
 
 
-def _scan_record(profile_name, detuning_gamma, s0, analysis):
+def blue_exposure_diagnostics(results, profile, exposure_threshold_fraction):
+    """Measure actual trajectory overlap with the configured 399-nm beams."""
+    if not 0.0 < exposure_threshold_fraction <= 1.0:
+        raise ValueError("exposure_threshold_fraction must be in (0, 1].")
+    blue_beams = [
+        beam for beam in setup_3dmot_lasers(profile) if "3DMOT_399_" in beam.tag
+    ]
+    if not blue_beams:
+        raise ValueError("The selected profile has no 399-nm beams.")
+    peak_sum = sum(
+        float(beam.get_value(np.asarray([beam.waist_position], dtype=float))[0])
+        for beam in blue_beams
+    )
+    if peak_sum <= 0.0:
+        raise ValueError("The summed 399-nm peak intensity must be positive.")
+
+    maximum_relative_intensities = []
+    exposure_times = []
+    delta_vz_during_exposure = []
+    exposed_count = 0
+    for trajectory in results:
+        times = np.asarray(trajectory.t, dtype=float)
+        states = np.asarray(trajectory.y, dtype=float)
+        if times.size == 0 or states.ndim != 2 or states.shape[0] < 6:
+            continue
+        sample_count = min(times.size, states.shape[1])
+        times = times[:sample_count]
+        states = states[:, :sample_count]
+        positions = states[:3].T
+        relative_intensity = sum(
+            np.asarray(beam.get_value(positions), dtype=float) for beam in blue_beams
+        ) / peak_sum
+        maximum_relative_intensities.append(float(relative_intensity.max()))
+        exposed = relative_intensity >= exposure_threshold_fraction
+        if not exposed.any():
+            continue
+        exposed_count += 1
+        exposed_indices = np.flatnonzero(exposed)
+        connected_intervals = exposed[:-1] & exposed[1:]
+        exposure_times.append(float(np.diff(times)[connected_intervals].sum()))
+        delta_vz_during_exposure.append(
+            float(states[5, exposed_indices[-1]] - states[5, exposed_indices[0]])
+        )
+
+    return {
+        "exposure_threshold_fraction": float(exposure_threshold_fraction),
+        "exposed_particle_count": exposed_count,
+        "maximum_relative_intensity": _distribution_summary(
+            maximum_relative_intensities
+        ),
+        "exposure_time_s": _distribution_summary(exposure_times),
+        "delta_vz_during_exposure_m_s": _distribution_summary(
+            delta_vz_during_exposure
+        ),
+    }
+
+
+def _scan_record(profile_name, detuning_gamma, s0, analysis, exposure):
     diagnostics = analysis["diagnostics"]
     return {
         "profile": profile_name,
@@ -62,6 +125,16 @@ def _scan_record(profile_name, detuning_gamma, s0, analysis):
         ),
         "p90_maximum_residence_time_s": _finite_or_none(
             diagnostics["maximum_continuous_residence_time_s"]["p90"]
+        ),
+        "blue_exposed_particle_count": exposure["exposed_particle_count"],
+        "median_maximum_blue_relative_intensity": _finite_or_none(
+            exposure["maximum_relative_intensity"]["median"]
+        ),
+        "median_blue_exposure_time_s": _finite_or_none(
+            exposure["exposure_time_s"]["median"]
+        ),
+        "median_delta_vz_during_blue_exposure_m_s": _finite_or_none(
+            exposure["delta_vz_during_exposure_m_s"]["median"]
         ),
     }
 
@@ -181,12 +254,18 @@ def run_scan(args):
                     seed=args.seed,
                 )
                 analysis = analyze_results(results, time_points)
-                record = _scan_record(profile_name, detuning, s0, analysis)
+                exposure = blue_exposure_diagnostics(
+                    results, profile, args.exposure_threshold_fraction
+                )
+                record = _scan_record(
+                    profile_name, detuning, s0, analysis, exposure
+                )
                 records.append(record)
                 print(
                     "  entered={entered_capture_region_count}, "
                     "slow={slow_inside_count}, residence={minimum_residence_met_count}, "
-                    "eligible={capture_eligible_ever_count}, median v_min={speed}".format(
+                    "eligible={capture_eligible_ever_count}, blue exposed="
+                    "{blue_exposed_particle_count}, median v_min={speed}".format(
                         **record,
                         speed=(
                             f"{record['median_minimum_speed_inside_m_s']:.3f} m/s"
@@ -225,6 +304,9 @@ def run_scan(args):
         "s0_values": [float(value) for value in saturation_parameters],
         "fixed_magnetic_field": True,
         "fixed_green_light": True,
+        "blue_exposure_threshold_fraction": float(
+            args.exposure_threshold_fraction
+        ),
         "dt_s": float(args.dt),
         "t_max_s": float(args.t_max),
         "ranking_priority": [
@@ -284,6 +366,11 @@ def parse_args(argv=None):
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
     parser.add_argument("--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"])
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
+    parser.add_argument(
+        "--exposure-threshold-fraction",
+        type=float,
+        default=DEFAULT_EXPOSURE_THRESHOLD_FRACTION,
+    )
     parser.add_argument("--no-gravity", action="store_true")
     return parser.parse_args(argv)
 

@@ -137,6 +137,9 @@ rejected fit must not be interpreted as a measured lifetime.
 The JSON diagnostics distinguish failure to enter the capture sphere from
 failure to slow or remain there long enough, and include distance, speed, and
 continuous-residence distributions.
+The 3D-MOT SciPy integrator sets `max_step=dt`. This is required for the 1.5 mm
+short-axis crossed beams: treating `dt` only as `t_eval` allows adaptive steps
+to skip the localized optical force and produces falsely ballistic trajectories.
 
 `studies/scan_3d_mot_blue_slower.py` performs the preceding first-stage slowing
 screen: it scans only 399-nm `s0` and detuning in Gamma on a shared ensemble and
@@ -144,6 +147,10 @@ seed. Green-light, field, geometry, and capture settings remain fixed. Its CSV,
 JSON, and heatmaps rank points by capture, slowing, residence, and then median
 minimum speed; magnetic-gradient scans should be restricted to promising blue
 parameter regions found here.
+The scan additionally reports per-point 399-nm exposure diagnostics using the
+real beam profiles and lab-frame trajectories. The default exposure threshold
+is 1% of the summed peak intensity; this is a diagnostic threshold, not a
+capture criterion or laboratory-set parameter.
 
 Particle states use SI units and the column order:
 

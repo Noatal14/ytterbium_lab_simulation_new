@@ -1,6 +1,7 @@
 """Run the 3D-MOT stage and evaluate a configurable capture criterion."""
 
 import argparse
+from functools import partial
 
 import numpy as np
 
@@ -27,6 +28,11 @@ from utils.data_paths import (
 )
 from utils.file_helpers import save_file_json
 from utils.simulation_helpers import generate_timepoints, run_multiple_atoms_simulation
+
+
+def _make_3d_integrator(config, maximum_step_s):
+    """Build an integrator that cannot step over narrow 3D-MOT beams."""
+    return ScipyIVP_3DCustom(config, max_step=maximum_step_s)
 
 
 def _continuous_final_residence_time(time_points, inside_capture_region):
@@ -113,7 +119,7 @@ def mot_3d_simulation(
         config=simulation_config,
         u0=[np.asarray(state).copy() for state in survivor_states],
         time_points=time_points,
-        sim_function=ScipyIVP_3DCustom,
+        sim_function=partial(_make_3d_integrator, maximum_step_s=dt),
         npools=npools,
         seed_idx=seed,
     )
