@@ -150,8 +150,8 @@ def test_angled_sequential_matches_plotkin_swing_crossed_beam_geometry():
     assert all(beam.wy == pytest.approx(10.0e-3) for beam in blue_beams)
 
     profile = MOT_3D_CONFIGURATIONS["angled_sequential"]
-    assert profile["399"]["s0"] == pytest.approx(0.3)
-    assert profile["399"]["detuning_gamma"] == pytest.approx(-1.45)
+    assert profile["399"]["s0"] == pytest.approx(0.6)
+    assert profile["399"]["detuning_gamma"] == pytest.approx(-1.65)
     assert "detuning_hz" not in profile["399"]
 
 

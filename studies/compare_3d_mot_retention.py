@@ -66,6 +66,16 @@ def load_shared_ensemble(input_path, max_atoms=None, seed=DEFAULT_RANDOM_SEED):
     return states, files
 
 
+def select_particle_shard(states, num_shards, shard_index):
+    """Return one deterministic strided shard and its global indices."""
+    if num_shards <= 0:
+        raise ValueError("num_shards must be positive.")
+    if not 0 <= shard_index < num_shards:
+        raise ValueError("shard_index must satisfy 0 <= shard_index < num_shards.")
+    indices = np.arange(len(states))[shard_index::num_shards]
+    return states[indices], indices
+
+
 def inside_capture_masks(results, time_points, center_m, capture_radius_m):
     """Return a particle-by-time mask for presence inside the capture sphere."""
     time_points = np.asarray(time_points, dtype=float)
@@ -344,6 +354,31 @@ def fit_retention_lifetime(
     }
 
 
+def analyze_masks(inside_masks, eligible_masks, time_points, diagnostics=None):
+    """Build a globally valid retention curve from particle masks."""
+    eligible_counts, peak_index, retained, cohort_indices = retention_from_masks(
+        eligible_masks, continuation_masks=inside_masks
+    )
+    elapsed = np.asarray(time_points[peak_index:], dtype=float) - time_points[peak_index]
+    fit = fit_retention_lifetime(elapsed, retained)
+    return {
+        "inside_counts": inside_masks.sum(axis=0),
+        "capture_eligible_counts": eligible_counts,
+        "peak_index": peak_index,
+        "peak_time_s": (
+            float(time_points[peak_index]) if eligible_counts[peak_index] else None
+        ),
+        "peak_count": int(eligible_counts[peak_index]),
+        "cohort_indices": cohort_indices,
+        "retained_counts": retained,
+        "elapsed_post_peak_s": elapsed,
+        "fit": fit,
+        "diagnostics": diagnostics,
+        "inside_masks": inside_masks,
+        "eligible_masks": eligible_masks,
+    }
+
+
 def analyze_results(results, time_points):
     """Build capture-eligible and peak-cohort retention curves for one profile."""
     inside_masks = inside_capture_masks(
@@ -359,11 +394,6 @@ def analyze_results(results, time_points):
         MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
         MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
     )
-    eligible_counts, peak_index, retained, cohort_indices = retention_from_masks(
-        eligible_masks, continuation_masks=inside_masks
-    )
-    elapsed = np.asarray(time_points[peak_index:], dtype=float) - time_points[peak_index]
-    fit = fit_retention_lifetime(elapsed, retained)
     diagnostics = capture_diagnostics(
         results,
         eligible_masks,
@@ -372,20 +402,7 @@ def analyze_results(results, time_points):
         MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
         MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
     )
-    return {
-        "inside_counts": inside_masks.sum(axis=0),
-        "capture_eligible_counts": eligible_counts,
-        "peak_index": peak_index,
-        "peak_time_s": (
-            float(time_points[peak_index]) if eligible_counts[peak_index] else None
-        ),
-        "peak_count": int(eligible_counts[peak_index]),
-        "cohort_indices": cohort_indices,
-        "retained_counts": retained,
-        "elapsed_post_peak_s": elapsed,
-        "fit": fit,
-        "diagnostics": diagnostics,
-    }
+    return analyze_masks(inside_masks, eligible_masks, time_points, diagnostics)
 
 
 def _json_ready_analysis(analysis):
@@ -469,10 +486,18 @@ def run_study(args):
     if args.dt <= 0 or args.t_max <= 0:
         raise ValueError("dt and t_max must be positive.")
 
-    states, input_files = load_shared_ensemble(
+    selected_states, input_files = load_shared_ensemble(
         args.input,
         max_atoms=args.max_atoms,
         seed=args.seed,
+    )
+    states, shard_indices = select_particle_shard(
+        selected_states, args.num_shards, args.shard_index
+    )
+    if not len(states):
+        raise ValueError("The selected shard contains no atoms.")
+    simulation_seed = int(
+        np.random.SeedSequence([args.seed, args.shard_index]).generate_state(1)[0]
     )
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     analyses = {}
@@ -487,7 +512,7 @@ def run_study(args):
             npools=args.npools,
             dt=args.dt,
             t_max=args.t_max,
-            seed=args.seed,
+            seed=simulation_seed,
         )
         analysis = analyze_results(results, time_points)
         analyses[profile_name] = analysis
@@ -519,13 +544,24 @@ def run_study(args):
     plot_path = output_dir / "retention_comparison.png"
     summary_path = output_dir / "retention_summary.json"
     plot_comparison(time_points, analyses, plot_path)
+    for profile_name, analysis in analyses.items():
+        np.savez_compressed(
+            output_dir / f"{profile_name}_retention_masks.npz",
+            inside_masks=analysis["inside_masks"],
+            eligible_masks=analysis["eligible_masks"],
+        )
 
     summary = {
         "purpose": "compare continuous retention of each profile's captured peak cohort",
         "input_files": [str(path) for path in input_files],
         "input_particle_count": int(len(states)),
+        "selected_particle_count_before_sharding": int(len(selected_states)),
+        "num_shards": int(args.num_shards),
+        "shard_index": int(args.shard_index),
+        "selected_particle_indices": shard_indices.tolist(),
         "profiles": list(args.profiles),
-        "shared_seed": int(args.seed),
+        "selection_seed": int(args.seed),
+        "simulation_seed": simulation_seed,
         "dt_s": float(args.dt),
         "t_max_s": float(args.t_max),
         "gravity_enabled": not args.no_gravity,
@@ -564,6 +600,8 @@ def parse_args(argv=None):
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--profiles", nargs="+", default=list(DEFAULT_PROFILES))
     parser.add_argument("--max-atoms", type=int)
+    parser.add_argument("--num-shards", type=int, default=1)
+    parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
     parser.add_argument("--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"])

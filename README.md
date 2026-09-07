@@ -199,6 +199,11 @@ parameter and detuning while holding those earlier choices fixed. Its default
 grid includes the current provisional green configuration; it does not change
 the configuration or treat a scan winner as a laboratory-set value. The study
 uses the same deterministic particle sharding and shard merger.
+The retention comparison likewise supports `--num-shards` and
+`--shard-index`. Each shard saves compressed spatial and capture-eligibility
+masks; `studies.merge_3d_mot_retention_shards` combines those masks before
+selecting the global peak cohort and fitting a lifetime. Per-shard peak curves
+must not be added directly because their peak times can differ.
 
 ## Recommended entry point
 

@@ -3,11 +3,13 @@ from types import SimpleNamespace
 import numpy as np
 
 from studies.compare_3d_mot_retention import (
+    analyze_masks,
     capture_diagnostics,
     capture_eligible_masks,
     fit_retention_lifetime,
     inside_capture_masks,
     retention_from_masks,
+    select_particle_shard,
 )
 
 
@@ -53,6 +55,27 @@ def test_retention_cohort_never_readds_atoms_that_leave_and_return():
     assert peak_index == 2
     assert cohort_indices.tolist() == [0, 1, 2]
     assert retained.tolist() == [3, 2, 1]
+
+
+def test_particle_shards_are_disjoint_and_cover_the_selected_ensemble():
+    states = np.arange(60).reshape(10, 6)
+    shards = [select_particle_shard(states, 3, index) for index in range(3)]
+
+    combined_indices = np.concatenate([indices for _, indices in shards])
+    assert sorted(combined_indices.tolist()) == list(range(10))
+    assert len(set(combined_indices.tolist())) == 10
+
+
+def test_global_peak_is_selected_after_masks_from_shards_are_combined():
+    first_eligible = np.array([[True, False, False], [True, False, False]])
+    second_eligible = np.array([[False, True, False]] * 3)
+    eligible = np.concatenate([first_eligible, second_eligible], axis=0)
+    inside = np.ones_like(eligible)
+
+    analysis = analyze_masks(inside, eligible, np.array([0.0, 1.0, 2.0]))
+
+    assert analysis["peak_index"] == 1
+    assert analysis["peak_count"] == 3
 
 
 def test_capture_eligibility_rejects_fast_transit_and_requires_residence_time():

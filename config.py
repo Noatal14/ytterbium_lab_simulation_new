@@ -368,9 +368,10 @@ MOT_3D_CONFIGURATIONS = {
         },
         "399": {
             "enabled": True,
-            "s0": 0.3,
-            # Initial optimization seed in units of the 399-nm linewidth Gamma.
-            "detuning_gamma": -1.45,
+            # Selected by the staged 600-particle blue/gradient scans; this is
+            # an optimization result, not a laboratory-set operating point.
+            "s0": 0.6,
+            "detuning_gamma": -1.65,
             "center_offset_m": (0.0, 0.0, -10.0e-3),
             "profile": "elliptical",
             "waist_short_m": 1.5e-3,

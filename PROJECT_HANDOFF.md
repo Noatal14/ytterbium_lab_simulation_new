@@ -171,6 +171,20 @@ optimization result and study choice, not a laboratory-set constant; the
 configured green defaults remain unchanged until a result is explicitly
 adopted. The script uses the same deterministic three-shard workflow and merge
 format as the blue and gradient scans.
+The coarse and fine green scans both retained the provisional 556-nm defaults
+`s0=5`, detuning `-10 Gamma`; the fine scan tied at five fully eligible atoms
+with `s0=8`, detuning `-15 Gamma` but won the predefined slowing tiebreaker
+(9 versus 8 slow atoms). The resulting staged study point is therefore blue
+`s0=0.6`, blue detuning `-1.65 Gamma`, green `s0=5`, green detuning
+`-10 Gamma`, and gradient `10 G/cm`. These remain optimization results rather
+than laboratory-set parameters.
+
+Full-ensemble retention runs may be deterministically split with the retention
+study's `--num-shards` and `--shard-index`. Each shard saves compressed inside
+and eligibility masks. `studies/merge_3d_mot_retention_shards.py` concatenates
+the disjoint masks first, then chooses the global peak cohort and performs the
+conditional lifetime fit. Never sum independently chosen shard retention
+curves, because their cohort peak times need not agree.
 `studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
 are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not
