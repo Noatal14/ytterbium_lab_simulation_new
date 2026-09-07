@@ -129,8 +129,9 @@ The production workflow is deliberately split into three stages:
 
 `studies/compare_3d_mot_retention.py` compares all 3D-MOT profiles using the
 same saved 2D-MOT survivor states. For each profile it defines a cohort at the
-instantaneous peak population inside the capture sphere, then counts only atoms
-that remain there continuously. Its exponential-with-plateau `tau` is reported
+peak population satisfying the configured radius, minimum continuous residence,
+and maximum-speed capture criteria, then counts only atoms that remain inside
+the sphere continuously. Its exponential-with-plateau `tau` is reported
 only when the observed decay passes explicit loss and fit-quality checks; a
 rejected fit must not be interpreted as a measured lifetime.
 

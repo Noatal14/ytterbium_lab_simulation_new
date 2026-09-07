@@ -150,9 +150,10 @@ To compare how the three provisional 3D-MOT profiles retain the same incoming
 python -m studies.compare_3d_mot_retention
 ```
 
-The study identifies each profile's peak population inside the configured
-capture sphere, follows only atoms that remain there continuously, and writes a
-comparison plot plus a JSON report under
+The study identifies each profile's peak population satisfying the complete
+operational capture criterion (radius, minimum continuous residence, and
+maximum speed), follows only atoms that remain inside the sphere continuously,
+and writes a comparison plot plus a JSON report under
 `data/validation/mot_3d/retention/`. It reports an exponential lifetime `tau`
 only when the post-peak loss is sufficiently large and the fit passes the
 documented quality threshold. Use `--help` for local subsets, runtime settings,
