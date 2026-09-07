@@ -107,12 +107,15 @@ def optimize_mot(args):
     bounds_detuning = tuple(args.detuning_bounds)
     bounds_radius = tuple(args.magnet_radius_bounds_m)
     for label, bounds in (
-        ("s0", bounds_s0),
         ("detuning", bounds_detuning),
         ("magnet radius", bounds_radius),
     ):
         if len(bounds) != 2 or bounds[0] >= bounds[1]:
             raise ValueError(f"Invalid {label} bounds: {bounds}")
+    if args.fixed_s0 is None and bounds_s0[0] >= bounds_s0[1]:
+        raise ValueError(f"Invalid s0 bounds: {bounds_s0}")
+    if args.fixed_s0 is not None and args.fixed_s0 <= 0:
+        raise ValueError("--fixed-s0 must be positive.")
 
     ensembles = load_production_ensembles(
         max_ensembles=args.n_ensembles,
@@ -127,7 +130,11 @@ def optimize_mot(args):
 
     def objective(trial):
         parameters = {
-            "s0": trial.suggest_float("s0", *bounds_s0),
+            "s0": (
+                float(args.fixed_s0)
+                if args.fixed_s0 is not None
+                else trial.suggest_float("s0", *bounds_s0)
+            ),
             "detuning_gamma": trial.suggest_float("detuning_gamma", *bounds_detuning),
             "magnet_radius": trial.suggest_float("magnet_radius", *bounds_radius),
         }
@@ -164,12 +171,13 @@ def optimize_mot(args):
         # Preserve the physical trade-off instead of forcing one arbitrary
         # compromise: maximize capture while independently minimizing the
         # required laser saturation parameter.
-        return value, parameters["s0"]
+        return value if args.fixed_s0 is not None else (value, parameters["s0"])
 
+    directions = ["maximize"] if args.fixed_s0 is not None else ["maximize", "minimize"]
     study = optuna.create_study(
         study_name=args.study_name,
         storage=f"sqlite:///{output_dir / 'joint_screening.db'}",
-        directions=["maximize", "minimize"],
+        directions=directions,
         sampler=optuna.samplers.TPESampler(seed=args.sampler_seed),
         # The three paired replicates share one worker pool and complete as a
         # single batch. Pruning after a partial replicate would require
@@ -183,28 +191,49 @@ def optimize_mot(args):
         for trial in study.trials
         if trial.state == optuna.trial.TrialState.COMPLETE
     ]
-    pareto_trials = sorted(
-        study.best_trials,
-        key=lambda trial: (trial.params["s0"], -trial.values[0]),
+    ranked_trials = sorted(
+        complete_trials,
+        key=lambda trial: (-trial.values[0], trial.number),
     )
     summary = {
         "kind": "mot_2d_joint_optimization_summary",
         "study_name": args.study_name,
-        "objectives": [
-            "maximize_mean_conditional_efficiency",
-            "minimize_s0",
-        ],
+        "objectives": (
+            ["maximize_mean_conditional_efficiency"]
+            if args.fixed_s0 is not None
+            else ["maximize_mean_conditional_efficiency", "minimize_s0"]
+        ),
+        "fixed_s0": args.fixed_s0,
         "n_registered_trials": len(study.trials),
         "n_finished_trials": len(complete_trials),
-        "pareto_front": [
+        "ranked_trials": [
             {
                 "trial_number": trial.number,
                 "mean_conditional_efficiency": float(trial.values[0]),
-                "s0": float(trial.values[1]),
-                "parameters": trial.params,
+                "parameters": {
+                    "s0": float(args.fixed_s0) if args.fixed_s0 is not None else float(trial.params["s0"]),
+                    "detuning_gamma": float(trial.params["detuning_gamma"]),
+                    "magnet_radius": float(trial.params["magnet_radius"]),
+                },
             }
-            for trial in pareto_trials
+            for trial in ranked_trials
         ],
+        "pareto_front": (
+            []
+            if args.fixed_s0 is not None
+            else [
+                {
+                    "trial_number": trial.number,
+                    "mean_conditional_efficiency": float(trial.values[0]),
+                    "s0": float(trial.values[1]),
+                    "parameters": trial.params,
+                }
+                for trial in sorted(
+                    study.best_trials,
+                    key=lambda item: (item.params["s0"], -item.values[0]),
+                )
+            ]
+        ),
         "design": {
             "dt_s": args.dt,
             "n_ensembles": len(ensembles),
@@ -213,7 +242,11 @@ def optimize_mot(args):
             "stochastic_solver": stochastic_sim_function.__name__,
             "sampler_seed": args.sampler_seed,
             "bounds": {
-                "s0": bounds_s0,
+                "s0": (
+                    [float(args.fixed_s0), float(args.fixed_s0)]
+                    if args.fixed_s0 is not None
+                    else bounds_s0
+                ),
                 "detuning_gamma": bounds_detuning,
                 "magnet_radius_m": bounds_radius,
             },
@@ -227,6 +260,11 @@ def optimize_mot(args):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-trials", type=int, default=50)
+    parser.add_argument(
+        "--fixed-s0",
+        type=float,
+        help="Hold s0 fixed and optimize only detuning and magnet radius.",
+    )
     parser.add_argument("--n-ensembles", type=int, default=3)
     parser.add_argument("--particles-per-ensemble", type=int, default=2000)
     parser.add_argument("--mot-seed-start", type=int, default=4000)

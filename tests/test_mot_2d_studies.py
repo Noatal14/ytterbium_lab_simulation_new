@@ -51,6 +51,15 @@ def test_joint_optimizer_accepts_refinement_bounds():
     assert args.sampler_seed == 137
 
 
+def test_joint_optimizer_accepts_fixed_s0():
+    from studies.optimize_2d_mot_joint import parse_args
+
+    args = parse_args(["--fixed-s0", "1.30", "--stochastic-solver", "hybrid"])
+
+    assert args.fixed_s0 == 1.30
+    assert args.stochastic_solver == "hybrid"
+
+
 def test_final_production_can_save_downstream_states():
     from studies.run_2d_mot_final_production import parse_args
 
@@ -107,68 +116,28 @@ def test_joint_evaluation_returns_requested_survivor_states(monkeypatch):
     )
 
 
-def test_hybrid_finalists_include_anchor_and_refinement_points():
-    from studies.validate_2d_mot_hybrid_finalists import FINALISTS, parse_args
+def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
+    from studies.mot_2d_s0_campaign import DT, create, parse_args
 
-    assert [row["name"] for row in FINALISTS] == [
-        "validated_anchor",
-        "overnight_maximum",
-        "overnight_lower_power",
-    ]
-    args = parse_args(["--finalist-index", "1", "--npools", "200"])
-    assert args.finalist_index == 1
-    assert args.npools == 200
+    output = tmp_path / "campaign"
+    args = parse_args([
+        "create", "--name", "test", "--s0", "1.3", "1.4",
+        "--output-dir", str(output),
+    ])
+    create(args)
 
-
-def test_final_sensitivity_separates_power_response_from_local_tuning():
-    from studies.validate_2d_mot_final_sensitivity import (
-        POINTS,
-        REFERENCE_INDEX,
-        REFERENCE_PARAMETERS,
-        parse_args,
-    )
-
-    local_points = [
-        point for point in POINTS if point["scan_axis"] == "detuning_radius_grid"
-    ]
-    power_points = [
-        point for point in POINTS if point["scan_axis"] == "s0_response"
-    ]
-
-    assert len(POINTS) == 13
-    assert len(local_points) == 9
-    assert len(power_points) == 4
-    assert POINTS[REFERENCE_INDEX]["parameters"] == REFERENCE_PARAMETERS
-    assert {point["parameters"]["s0"] for point in local_points} == {
-        REFERENCE_PARAMETERS["s0"]
-    }
-    assert max(point["parameters"]["s0"] for point in POINTS) == 1.5
-
-    args = parse_args(["--point-index", "12", "--npools", "200"])
-    assert args.point_index == 12
-    assert args.npools == 200
-    assert np.isclose(args.particles_per_ensemble, 2_000)
+    manifest = json.loads((output / "campaign.json").read_text())
+    assert manifest["s0_values"] == [1.3, 1.4]
+    assert manifest["fixed_design"]["dt_s"] == DT == 0.625e-6
+    pbs = (output / "jobs" / "01_smoke.pbs").read_text()
+    assert "--s0-index $PBS_ARRAY_INDEX" in pbs
 
 
-def test_sensitivity_confirmation_has_only_two_actionable_candidates():
-    from studies.validate_2d_mot_sensitivity_candidates import (
-        CANDIDATES,
-        FINAL_DT_S,
-        parse_args,
-    )
+def test_campaign_production_directory_preserves_readable_s0():
+    from studies.mot_2d_s0_campaign import label
 
-    assert [candidate["name"] for candidate in CANDIDATES] == [
-        "shifted_tuning_selected_s0",
-        "shifted_tuning_s0_1p5",
-    ]
-    assert CANDIDATES[0]["detuning_gamma"] == CANDIDATES[1]["detuning_gamma"]
-    assert CANDIDATES[0]["magnet_radius"] == CANDIDATES[1]["magnet_radius"]
-    assert CANDIDATES[1]["s0"] == 1.5
-    assert np.isclose(FINAL_DT_S, 0.625e-6)
-
-    args = parse_args(["--candidate-index", "1", "--npools", "200"])
-    assert args.candidate_index == 1
-    assert args.npools == 200
+    assert label(1.3) == "1.3"
+    assert label(1.474497) == "1.474497"
 
 
 def test_final_production_prediction_uses_conservative_variance():
