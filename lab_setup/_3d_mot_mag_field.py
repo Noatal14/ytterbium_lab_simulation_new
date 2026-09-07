@@ -26,7 +26,9 @@ class Ideal3DQuadrupole(MagneticField):
         self.strong_axis = strong_axis
 
     def _field_value_func(self, position):
-        relative_position = position - self.origin
+        position = np.asarray(position, dtype=float)
+        single_position = position.ndim == 1
+        relative_position = np.atleast_2d(position) - self.origin
 
         B = np.zeros_like(relative_position)
         B[:] = self.gradient * relative_position
@@ -35,7 +37,7 @@ class Ideal3DQuadrupole(MagneticField):
             -2.0 * self.gradient * relative_position[:, strong_axis_index]
         )
 
-        return B
+        return B[0] if single_position else B
 
     def gen_infostring_obj(self):
         return f"Ideal 3D Quadrupole Field (G={self.gradient:.2f} T/m, strong_axis={self.strong_axis}, origin={self.origin})"

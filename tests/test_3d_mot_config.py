@@ -58,6 +58,23 @@ def test_active_3d_mot_profile_is_registered():
     assert "orthogonal_counterpropagating" not in MOT_3D_CONFIGURATIONS
 
 
+def test_3d_mot_field_accepts_single_position_and_position_batch():
+    from lab_setup._3d_mot_mag_field import get_builtin_3dmot_magnetic_field
+
+    field = get_builtin_3dmot_magnetic_field(
+        gradient_G_cm=10.0,
+        origin=(0.0, 0.0, 0.0),
+        strong_axis="z",
+    )
+    position = np.array([1.0e-3, 2.0e-3, 3.0e-3])
+    single = field.get_value(position)
+    batch = field.get_value(position[np.newaxis, :])
+
+    assert single.shape == (3,)
+    assert batch.shape == (1, 3)
+    assert np.allclose(single, batch[0])
+
+
 def test_angled_donut_geometry_is_correct():
     profile = _resolved_profile("angled_donut")
     assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.01)

@@ -90,6 +90,7 @@ def mot_3d_simulation(
     gravity_enabled=True,
     npools=DEFAULT_NUM_POOLS,
     dt=MOT_3D_SIM_CONFIG["dt_s"],
+    t_max=MOT_3D_SIM_CONFIG["t_max_s"],
     seed=DEFAULT_RANDOM_SEED,
 ):
     """Propagate saved 2D-MOT states through the 3D-MOT stage."""
@@ -107,7 +108,7 @@ def mot_3d_simulation(
         zones=get_entire_apparatus_zone(),
         _3d_mot_config=_3d_mot_config,
     )
-    time_points, _ = generate_timepoints(MOT_3D_SIM_CONFIG["t_max_s"], dt)
+    time_points, _ = generate_timepoints(t_max, dt)
     results, _ = run_multiple_atoms_simulation(
         config=simulation_config,
         u0=[np.asarray(state).copy() for state in survivor_states],
@@ -151,6 +152,9 @@ def parse_args():
     parser.add_argument("--summary", default=str(DEFAULT_3D_MOT_SUMMARY_FILE))
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
+    parser.add_argument(
+        "--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"]
+    )
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
     return parser.parse_args()
 
@@ -163,5 +167,6 @@ if __name__ == "__main__":
         args.summary,
         npools=args.npools,
         dt=args.dt,
+        t_max=args.t_max,
         seed=args.seed,
     )

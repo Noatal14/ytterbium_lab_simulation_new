@@ -143,6 +143,21 @@ The 3D stage saves the captured states and a JSON summary containing the capture
 percentage and exact criterion. Run any stage with `--help` to see its numerical
 and file-path options.
 
+To compare how the three provisional 3D-MOT profiles retain the same incoming
+2D-MOT survivors, run:
+
+```bash
+python -m studies.compare_3d_mot_retention
+```
+
+The study identifies each profile's peak population inside the configured
+capture sphere, follows only atoms that remain there continuously, and writes a
+comparison plot plus a JSON report under
+`data/validation/mot_3d/retention/`. It reports an exponential lifetime `tau`
+only when the post-peak loss is sufficiently large and the fit passes the
+documented quality threshold. Use `--help` for local subsets, runtime settings,
+and output options.
+
 ## Recommended entry point
 
 For a new user, the recommended entry points are the three stage scripts:
