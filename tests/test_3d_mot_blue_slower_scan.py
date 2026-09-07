@@ -97,6 +97,24 @@ def test_blue_exposure_diagnostics_uses_actual_beams_and_lab_trajectory():
     assert diagnostics["delta_vz_during_exposure_m_s"]["median"] == -2.0
 
 
+def test_blue_exposure_diagnostics_normalizes_center_blocked_donut_at_ring():
+    profile = copy.deepcopy(MOT_3D_CONFIGURATIONS["angled_donut"])
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    cutoff = profile["399"]["inner_cutoff_radius_m"]
+    position = center + np.array([0.0, 1.01 * cutoff, 0.0])
+    trajectory = SimpleNamespace(
+        t=np.array([0.0]),
+        y=np.concatenate([position, np.zeros(3)]).reshape(6, 1),
+    )
+
+    diagnostics = blue_exposure_diagnostics(
+        [trajectory], profile, exposure_threshold_fraction=0.001
+    )
+
+    assert diagnostics["maximum_relative_intensity"]["max"] > 0.0
+    assert diagnostics["exposed_particle_count"] == 1
+
+
 def test_3d_solver_and_timestep_come_from_central_configuration():
     assert MOT_3D_SIM_CONFIG["dt_s"] == 1.0e-5
     assert MOT_3D_SIM_CONFIG["t_max_s"] == 25.0e-3

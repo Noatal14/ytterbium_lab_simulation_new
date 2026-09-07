@@ -153,6 +153,9 @@ The scan additionally reports per-point 399-nm exposure diagnostics using the
 real beam profiles and lab-frame trajectories. The default exposure threshold
 is 1% of the summed peak intensity; this is a diagnostic threshold, not a
 capture criterion or laboratory-set parameter.
+For center-blocked Gaussian beams, the normalization uses the physical ring
+maximum immediately outside the hard inner cutoff; the intentionally dark beam
+axis is not a valid peak-intensity reference.
 For multi-node Zeus scans, use the scan's `--num-shards` and `--shard-index`
 options. The global seeded `--max-atoms` selection happens before deterministic
 strided sharding, and each shard receives a reproducible independent simulation

@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from config import (
+    BLUE_SATURATION_INTENSITY_MW_CM2,
     DEFAULT_NUM_POOLS,
     DEFAULT_RANDOM_SEED,
     MOT_3D_CONFIGURATIONS,
@@ -78,10 +79,22 @@ def blue_exposure_diagnostics(results, profile, exposure_threshold_fraction):
     ]
     if not blue_beams:
         raise ValueError("The selected profile has no 399-nm beams.")
-    peak_sum = sum(
-        float(beam.get_value(np.asarray([beam.waist_position], dtype=float))[0])
-        for beam in blue_beams
-    )
+    if profile["399"].get("profile") == "donut":
+        # The beam axis is intentionally dark. The maximum is the unmodified
+        # Gaussian immediately outside the hard inner cutoff.
+        unblocked_peak = (
+            profile["399"]["s0"] * BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0
+        )
+        cutoff = profile["399"]["inner_cutoff_radius_m"]
+        waist = profile["399"]["waist_m"]
+        peak_sum = len(blue_beams) * unblocked_peak * np.exp(
+            -2.0 * cutoff**2 / waist**2
+        )
+    else:
+        peak_sum = sum(
+            float(beam.get_value(np.asarray([beam.waist_position], dtype=float))[0])
+            for beam in blue_beams
+        )
     if peak_sum <= 0.0:
         raise ValueError("The summed 399-nm peak intensity must be positive.")
 
