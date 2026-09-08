@@ -212,6 +212,11 @@ each three-shard merge, and the final provisional choices are written to
 `data/validation/mot_3d/optimization/final_operating_points.json`. The pipeline
 uses 900 shared input atoms (300 per shard) and does not silently adopt those
 scan results into `config.py`.
+The `five_beam_gravity` design uses `x` as the quadrupole strong axis. Its
+single upward `+x` direction contains only 556-nm light with helicity opposite to
+the paired `yz` beams; the 399-nm component is disabled on that unopposed axis
+to avoid a broad-line transverse kick. These are geometry and force-sign
+requirements, while its numerical operating point remains provisional.
 
 ## Recommended entry point
 

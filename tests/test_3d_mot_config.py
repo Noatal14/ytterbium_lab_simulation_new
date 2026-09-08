@@ -216,7 +216,7 @@ def test_crossed_blue_elliptical_intensity_in_lab_coordinates():
         assert long_value / peak == pytest.approx(expected_ratio, rel=1e-10)
 
 
-def test_five_beam_gravity_removes_upper_x_beam_only():
+def test_five_beam_gravity_uses_green_only_on_unpaired_x_direction():
     profile = _resolved_profile("five_beam_gravity")
     assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.01)
     assert profile["beam_layout"] == "rotated_yz_minus_upper_x"
@@ -250,14 +250,14 @@ def test_five_beam_gravity_removes_upper_x_beam_only():
 
     blue_beams = [beam for beam in beams if "3DMOT_399_" in beam.tag]
     green_beams = [beam for beam in beams if "3DMOT_556_" in beam.tag]
-    assert len(blue_beams) == 5
+    assert len(blue_beams) == 4
     assert len(green_beams) == 5
+    assert not any(beam.tag == "3DMOT_399_+X" for beam in blue_beams)
+    assert any(beam.tag == "3DMOT_556_+X" for beam in green_beams)
     assert all(beam.profile_kind == "donut" for beam in blue_beams)
     assert all(beam.profile_kind == "gaussian" for beam in green_beams)
-    assert all(
-        np.allclose(blue.waist_position, green.waist_position)
-        for blue, green in zip(blue_beams, green_beams)
-    )
+    assert profile["magnetic_strong_axis"] == "x"
+    assert profile["556"]["polarization_by_axis"]["+X"] == "left"
 
     profile["beam_components"]["+YZ_1"]["399_enabled"] = False
     beams = setup_3dmot_lasers(
@@ -265,6 +265,57 @@ def test_five_beam_gravity_removes_upper_x_beam_only():
     )
     assert not any("3DMOT_399_+YZ_1" in beam.tag for beam in beams)
     assert any("3DMOT_556_+YZ_1" in beam.tag for beam in beams)
+
+
+def _five_beam_single_wavelength_config(wavelength_key, gravity_enabled=False):
+    profile = _resolved_profile("five_beam_gravity")
+    other_key = "556" if wavelength_key == "399" else "399"
+    profile[other_key]["enabled"] = False
+    _, simulation_config = build_base_config(
+        include_2d_mot=False,
+        include_zeeman=False,
+        include_3dmot=True,
+        _3d_mot_config=profile,
+        gravity_enabled=gravity_enabled,
+        zones=[],
+    )
+    return profile, simulation_config
+
+
+def test_five_beam_blue_slows_without_an_unopposed_transverse_kick():
+    profile, simulation_config = _five_beam_single_wavelength_config("399")
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    position = center + np.array([0.0, 0.0, -15.0e-3])
+
+    force = _force_at(simulation_config, position, velocity=(0.0, 0.0, 12.0))
+
+    assert force[2] < 0.0
+    assert abs(force[0]) <= 1e-12 * abs(force[2]) + 1e-30
+    assert abs(force[1]) <= 1e-12 * abs(force[2]) + 1e-30
+
+
+@pytest.mark.parametrize("axis", [0, 1, 2])
+@pytest.mark.parametrize("displacement_sign", [-1.0, 1.0])
+def test_five_beam_green_force_with_gravity_is_restoring(axis, displacement_sign):
+    profile, simulation_config = _five_beam_single_wavelength_config(
+        "556", gravity_enabled=True
+    )
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    displacement = np.zeros(3)
+    displacement[axis] = displacement_sign * 0.5e-3
+
+    force = _force_at(simulation_config, center + displacement)
+
+    assert force[axis] * displacement[axis] < 0.0
+
+
+def test_global_wavelength_switch_disables_explicit_axis_components():
+    profile = _resolved_profile("five_beam_gravity")
+    profile["399"]["enabled"] = False
+
+    beams = setup_3dmot_lasers(profile)
+
+    assert not any("3DMOT_399_" in beam.tag for beam in beams)
 
 
 def test_active_angled_profile_emits_expected_vectors():

@@ -197,6 +197,17 @@ downstream work after a failed stage. Automatic choices are recorded in
 `data/validation/mot_3d/optimization/final_operating_points.json` but are not
 written into `config.py` without review. The overnight scans use 900 shared
 input atoms, split deterministically into three 300-atom shards.
+
+Physical force validation after the first five-beam scan found that the former
+`five_beam_gravity` setup was not a stable MOT: with strong axis `z`, its green
+force was anti-restoring along `z`, and the unopposed broad-line `+x` beam
+imparted a transverse acceleration orders of magnitude above gravity. The
+approved corrected design uses strong axis `x`, disables 399 nm on `+x`, and
+sets the green `+x` helicity to left while the paired `yz` beams remain right.
+Tests verify green restoring force on both sides of x, y, and z with gravity,
+plus blue longitudinal slowing and transverse cancellation. Five-beam scan
+results produced before this correction are invalid for optimization and must
+not be reused.
 `studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
 are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not

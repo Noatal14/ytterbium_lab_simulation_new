@@ -397,14 +397,19 @@ MOT_3D_CONFIGURATIONS = {
         },
     },
     "five_beam_gravity": {
-        "description": "Five-beam 3D MOT with the -x beam removed. Each direction combines a center-blocked blue Gaussian with a coaxial green Gaussian; the two axes in the yz plane are mutually orthogonal and rotated by 45 degrees from atomic +z.",
+        "description": "Five-beam gravity-assisted 556-nm MOT with the -x beam removed and strong magnetic axis x. Four center-blocked 399-nm beams lie on the paired yz axes; the unopposed +x direction is green only.",
         "beam_layout": "rotated_yz_minus_upper_x",
         "gravity_axis": "x",
         "transport_axis": "z",
+        # A five-beam gravity MOT is stable when its single-beam/gravity axis
+        # is also the quadrupole strong axis.
+        "magnetic_strong_axis": "x",
         "in_plane_rotation_deg": 45.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "beam_components": {
-            "+X": {"399_enabled": True,  # Provisional — final experimental choice TBD
+            # An unopposed broad-line beam would impart a transverse kick many
+            # orders of magnitude larger than gravity, so +X is green only.
+            "+X": {"399_enabled": False,
                    "556_enabled": True},
             "+YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
                    "556_enabled": True},
@@ -429,6 +434,15 @@ MOT_3D_CONFIGURATIONS = {
             "detuning_gamma": -10.0,
             "waist_m": 0.01,
             "profile": "gaussian",
+            # With strong axis x, the single upward beam requires the opposite
+            # helicity from the paired yz beams for stable force gradients.
+            "polarization_by_axis": {
+                "+X": "left",
+                "+YZ_1": "right",
+                "-YZ_1": "right",
+                "+YZ_2": "right",
+                "-YZ_2": "right",
+            },
         },
     },
 }

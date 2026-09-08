@@ -52,7 +52,14 @@ The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_
 
 - `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward
 - `angled_sequential`: the crossed-beam scheme: a six-beam 556-nm MOT and two elliptical 399-nm slowing beams using the same ±30-degree xz axes as `angled_donut`, crossing 1 cm upstream of the MOT
-- `five_beam_gravity`: five-beam geometry with the `-x` beam removed; every direction combines the same center-blocked blue 399-nm Gaussian with a coaxial green 556-nm Gaussian, and the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
+- `five_beam_gravity`: gravity-assisted five-beam 556-nm geometry with the
+  `-x` beam removed and the quadrupole strong axis along `x`. The unpaired
+  upward `+x` direction is green only, with opposite helicity; enabling an
+  unopposed broad-line 399-nm beam there would cause a large transverse kick.
+  Four center-blocked 399-nm beams and four green beams occupy the two paired
+  axes in the `yz` plane, rotated by 45° from atomic `+z`. Force tests verify
+  longitudinal blue slowing, transverse cancellation, and green restoring
+  force along all three lab axes including gravity.
 
 For `angled_sequential`, parameter provenance is intentionally separated:
 

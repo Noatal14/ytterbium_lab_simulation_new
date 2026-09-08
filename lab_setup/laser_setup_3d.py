@@ -363,11 +363,11 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         beam_556_cfg = profile.get("556", {})
         axis_components = profile.get("beam_components", {}).get(axis_tag, {})
 
-        enabled_399 = axis_components.get(
-            "399_enabled", beam_399_cfg.get("enabled", True)
+        enabled_399 = beam_399_cfg.get("enabled", True) and axis_components.get(
+            "399_enabled", True
         )
-        enabled_556 = axis_components.get(
-            "556_enabled", beam_556_cfg.get("enabled", True)
+        enabled_556 = beam_556_cfg.get("enabled", True) and axis_components.get(
+            "556_enabled", True
         )
 
         if enabled_399:
