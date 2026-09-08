@@ -217,6 +217,11 @@ single upward `+x` direction contains only 556-nm light with helicity opposite t
 the paired `yz` beams; the 399-nm component is disabled on that unopposed axis
 to avoid a broad-line transverse kick. These are geometry and force-sign
 requirements, while its numerical operating point remains provisional.
+After this force-sign correction, rerun only the five-beam staged optimization
+with `studies.submit_five_beam_reoptimization`. It writes to dedicated
+`force_corrected_900` directories so incompatible pre-correction scan results
+cannot be merged accidentally, then rebuilds `final_operating_points.json`
+using the already completed donut selection.
 
 ## Recommended entry point
 

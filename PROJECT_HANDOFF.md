@@ -208,6 +208,10 @@ Tests verify green restoring force on both sides of x, y, and z with gravity,
 plus blue longitudinal slowing and transverse cancellation. Five-beam scan
 results produced before this correction are invalid for optimization and must
 not be reused.
+`studies/submit_five_beam_reoptimization.py` submits the corrected five-beam
+blue -> gradient -> green chain for 900 atoms without rerunning the valid donut
+scan. Its dedicated `force_corrected_900` output paths prevent stale results
+from the former force geometry from entering the new merges.
 `studies/scan_3d_mot_gradient.py` is the second-stage scan. Its current defaults
 are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not
