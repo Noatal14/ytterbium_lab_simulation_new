@@ -238,6 +238,11 @@ polarization on both `xz` pairs, and left-handed polarization on the `y` pair
 for both wavelengths. Fixed tests verify the 556-nm restoring-force sign on
 both sides of x, y, and z for both angled profiles. All donut optimization
 results obtained before this correction are invalid and must be rerun.
+`studies/submit_angled_donut_reoptimization.py` performs that rerun as an
+isolated 900-atom, three-shard blue -> gradient -> green PBS dependency chain.
+Its `polarization_corrected_900` paths prevent stale pre-correction results from
+being merged, and its final summary preserves the valid force-corrected
+five-beam selection.
 
 Particle states use SI units and the column order:
 

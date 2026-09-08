@@ -240,6 +240,12 @@ polarization on the two `xz` pairs, and left-handed circular polarization on
 the `y` pair. Fixed force-regression tests require the 556-nm force to point
 back toward the center from both sides of every lab axis. Donut optimization
 results produced before this force-sign correction must be rerun before use.
+Use `studies.submit_angled_donut_reoptimization` for that rerun. It submits an
+isolated 900-atom, three-shard blue -> top-five -> gradient -> green dependency
+chain under `polarization_corrected_900` paths, then rebuilds the provisional
+summary while preserving the valid force-corrected five-beam selection. The
+green scan extends to `s0=30` and `-25 Gamma` because the invalid earlier winner
+was near the edge of the smaller grid.
 
 ## Recommended entry point
 
