@@ -326,6 +326,9 @@ MOT_3D_CONFIGURATIONS = {
         "description": "Two xz axes at +/-30 degrees from z plus a y axis, with a blue Gaussian beam blocked to exactly zero inside a 10 mm radius and coaxial with the green Gaussian beam.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
+        # The y beam is the third MOT axis, so y is the quadrupole strong axis
+        # for the configured 2:1 gradient convention.
+        "magnetic_strong_axis": "y",
         "magnetic_gradient_G_cm": 10.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "blue_green_center_separation_m": 0.0,
@@ -335,6 +338,14 @@ MOT_3D_CONFIGURATIONS = {
             "detuning_gamma": -5.0,
             "waist_m": 0.015,
             "profile": "donut",
+            "polarization_by_axis": {
+                "+XZ_1": "right",
+                "-XZ_1": "right",
+                "+XZ_2": "right",
+                "-XZ_2": "right",
+                "+Y": "left",
+                "-Y": "left",
+            },
             # The experimental mirrors remove the center of an otherwise
             # ordinary Gaussian beam; the intensity jumps from exactly zero to
             # the unmodified Gaussian tail at this radius.
@@ -346,6 +357,16 @@ MOT_3D_CONFIGURATIONS = {
             "detuning_gamma": -15.0,
             "waist_m": 0.01,
             "profile": "outer_clipped_gaussian",
+            # Required by the quadrupole sign convention for restoring force
+            # along all three lab axes.
+            "polarization_by_axis": {
+                "+XZ_1": "right",
+                "-XZ_1": "right",
+                "+XZ_2": "right",
+                "-XZ_2": "right",
+                "+Y": "left",
+                "-Y": "left",
+            },
             # The chamber walls transmit the green beam only inside the same
             # radius at which the center-blocked blue beam begins.
             "outer_cutoff_radius_m": 0.01,

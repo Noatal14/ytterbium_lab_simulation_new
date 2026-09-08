@@ -32,7 +32,11 @@ def _resolved_profile(name):
 
 
 def _single_wavelength_config(wavelength_key):
-    profile = _resolved_profile("angled_sequential")
+    return _profile_single_wavelength_config("angled_sequential", wavelength_key)
+
+
+def _profile_single_wavelength_config(profile_name, wavelength_key):
+    profile = _resolved_profile(profile_name)
     other_key = "556" if wavelength_key == "399" else "399"
     profile[other_key]["enabled"] = False
     _, simulation_config = build_base_config(
@@ -110,6 +114,15 @@ def test_angled_donut_geometry_is_correct():
     assert profile["556"]["outer_cutoff_radius_m"] == pytest.approx(
         profile["399"]["inner_cutoff_radius_m"]
     )
+    assert profile["magnetic_strong_axis"] == "y"
+    for wavelength in ("399", "556"):
+        polarizations = profile[wavelength]["polarization_by_axis"]
+        assert all(
+            polarizations[tag] == "right"
+            for tag in ("+XZ_1", "-XZ_1", "+XZ_2", "-XZ_2")
+        )
+        assert polarizations["+Y"] == "left"
+        assert polarizations["-Y"] == "left"
 
     beam_by_tag = {beam.tag: _normalize(beam.direction) for beam in beams}
     assert np.allclose(beam_by_tag["3DMOT_399_+XZ_1"], -beam_by_tag["3DMOT_399_-XZ_1"])
@@ -181,7 +194,9 @@ def test_crossed_blue_beam_transverse_forces_cancel_on_atomic_axis(z_offset_m):
 
 @pytest.mark.parametrize("axis", [0, 1, 2])
 @pytest.mark.parametrize("displacement_sign", [-1.0, 1.0])
-def test_green_mot_force_is_restoring_on_every_axis(axis, displacement_sign):
+def test_angled_sequential_green_force_is_restoring_on_every_axis(
+    axis, displacement_sign
+):
     profile, simulation_config = _single_wavelength_config("556")
     center = np.asarray(profile["center_position_m"], dtype=float)
     displacement = np.zeros(3)
@@ -190,6 +205,41 @@ def test_green_mot_force_is_restoring_on_every_axis(axis, displacement_sign):
     force = _force_at(simulation_config, center + displacement)
 
     assert force[axis] * displacement[axis] < 0.0
+
+
+@pytest.mark.parametrize("axis", [0, 1, 2])
+@pytest.mark.parametrize("displacement_sign", [-1.0, 1.0])
+def test_angled_donut_green_force_is_restoring_on_every_axis(
+    axis, displacement_sign
+):
+    profile, simulation_config = _profile_single_wavelength_config(
+        "angled_donut", "556"
+    )
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    displacement = np.zeros(3)
+    displacement[axis] = displacement_sign * 0.5e-3
+
+    force = _force_at(simulation_config, center + displacement)
+
+    assert force[axis] * displacement[axis] < 0.0
+
+
+@pytest.mark.parametrize("axis", [0, 1, 2])
+@pytest.mark.parametrize("velocity_sign", [-1.0, 1.0])
+def test_angled_donut_blue_shell_force_opposes_velocity(axis, velocity_sign):
+    profile, simulation_config = _profile_single_wavelength_config(
+        "angled_donut", "399"
+    )
+    position = np.asarray(profile["center_position_m"], dtype=float)
+    # This lab-frame point lies in the illuminated blue shell rather than the
+    # intentionally dark 10-mm core.
+    position += np.array([15.0e-3, 0.0, 0.0])
+    velocity = np.zeros(3)
+    velocity[axis] = velocity_sign * 10.0
+
+    force = _force_at(simulation_config, position, velocity)
+
+    assert force[axis] * velocity[axis] < 0.0
 
 
 def test_crossed_blue_elliptical_intensity_in_lab_coordinates():

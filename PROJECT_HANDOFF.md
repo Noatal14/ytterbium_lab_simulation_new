@@ -230,6 +230,15 @@ improve it. These values are simulation optimization results, never
 laboratory-set constants. Production 3D-MOT runs resolve the magnetic gradient
 from the selected profile unless an explicit override is supplied.
 
+Subsequent force validation found that the former `angled_donut` default
+(implicit strong axis `z` and right-handed polarization on every beam) was
+anti-restoring along lab `z`. Because its MOT axes are identical to those of
+`angled_sequential`, the corrected profile uses strong axis `y`, right-handed
+polarization on both `xz` pairs, and left-handed polarization on the `y` pair
+for both wavelengths. Fixed tests verify the 556-nm restoring-force sign on
+both sides of x, y, and z for both angled profiles. All donut optimization
+results obtained before this correction are invalid and must be rerun.
+
 Particle states use SI units and the column order:
 
 ```text

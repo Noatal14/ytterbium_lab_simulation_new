@@ -50,7 +50,7 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
-- `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward
+- `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward. Its quadrupole strong axis is `y`; both wavelengths use right-handed polarization on the xz pairs and left-handed polarization on the y pair. Force tests verify that the green core is restoring on both sides of all three lab axes
 - `angled_sequential`: the crossed-beam scheme: a six-beam 556-nm MOT and two elliptical 399-nm slowing beams using the same ±30-degree xz axes as `angled_donut`, crossing 1 cm upstream of the MOT
 - `five_beam_gravity`: gravity-assisted five-beam 556-nm geometry with the
   `-x` beam removed and the quadrupole strong axis along `x`. The unpaired

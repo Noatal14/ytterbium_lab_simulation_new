@@ -234,6 +234,12 @@ found 270/900 atoms capture-eligible at some time and a peak eligible
 population of 249. Its selected gradient and green detuning lie on scan
 boundaries, so the point remains provisional. Each profile supplies its own
 default magnetic gradient; command-line study overrides remain available.
+The `angled_donut` and `angled_sequential` layouts share the same three MOT
+axes, so both use quadrupole strong axis `y`, right-handed circular
+polarization on the two `xz` pairs, and left-handed circular polarization on
+the `y` pair. Fixed force-regression tests require the 556-nm force to point
+back toward the center from both sides of every lab axis. Donut optimization
+results produced before this force-sign correction must be rerun before use.
 
 ## Recommended entry point
 
