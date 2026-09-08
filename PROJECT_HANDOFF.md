@@ -217,6 +217,19 @@ are the five 399-nm candidates selected from the 600-atom targeted scan and
 gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not
 laboratory-set values; the unchanged config default remains 10 G/cm.
 
+The reviewed staged results are now adopted as provisional, profile-specific
+defaults in `config.py`. `angled_donut` uses blue `s0=1.2`, blue detuning
+`-5 Gamma`, green `s0=20`, green detuning `-15 Gamma`, and gradient `10 G/cm`.
+`angled_sequential` uses blue `s0=0.6`, blue detuning `-1.65 Gamma`, green
+`s0=5`, green detuning `-10 Gamma`, and gradient `10 G/cm`. The force-corrected
+`five_beam_gravity` uses blue `s0=1`, blue detuning `-2 Gamma`, green `s0=10`,
+green detuning `-20 Gamma`, and gradient `2.5 G/cm`; its 900-atom scan produced
+270 capture-eligible atoms and a peak population of 249. Because its chosen
+gradient and green detuning are scan-boundary values, further expansion may
+improve it. These values are simulation optimization results, never
+laboratory-set constants. Production 3D-MOT runs resolve the magnetic gradient
+from the selected profile unless an explicit override is supplied.
+
 Particle states use SI units and the column order:
 
 ```text

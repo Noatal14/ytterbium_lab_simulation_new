@@ -42,7 +42,7 @@ def build_base_config(
     # Magnetic field configurations
     zeeman_field_config=ZEEMAN_FIELD_CONFIG,
     magnet_radius=MOT_2D_MAGNET_RADIUS_M,
-    _3d_mot_gradient_G_cm=MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
+    _3d_mot_gradient_G_cm=None,
 
     gravity_enabled=False,
     zones=None,
@@ -111,6 +111,11 @@ def build_base_config(
         mag_fields.append(CustomQuadrupole(radius=radius))
 
     if include_3dmot:
+        if _3d_mot_gradient_G_cm is None:
+            _3d_mot_gradient_G_cm = _3d_mot_config.get(
+                "magnetic_gradient_G_cm",
+                MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
+            )
         mag_fields.append(
             get_builtin_3dmot_magnetic_field(
                 gradient_G_cm=_3d_mot_gradient_G_cm,

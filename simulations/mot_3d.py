@@ -105,11 +105,18 @@ def mot_3d_simulation(
     dt=MOT_3D_SIM_CONFIG["dt_s"],
     t_max=MOT_3D_SIM_CONFIG["t_max_s"],
     seed=DEFAULT_RANDOM_SEED,
-    magnetic_gradient_G_cm=MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
+    magnetic_gradient_G_cm=None,
 ):
     """Propagate saved 2D-MOT states through the 3D-MOT stage."""
     if len(survivor_states) == 0:
         return [], np.empty((0, 6))
+    resolved_gradient_G_cm = (
+        _3d_mot_config.get(
+            "magnetic_gradient_G_cm", MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM
+        )
+        if magnetic_gradient_G_cm is None
+        else magnetic_gradient_G_cm
+    )
     _, simulation_config = build_base_config(
         atom_species="Yb171",
         include_zeeman=True,
@@ -121,7 +128,7 @@ def mot_3d_simulation(
         zeeman_config=ZEEMAN_LASER_CONFIG,
         zones=get_entire_apparatus_zone(),
         _3d_mot_config=_3d_mot_config,
-        _3d_mot_gradient_G_cm=magnetic_gradient_G_cm,
+        _3d_mot_gradient_G_cm=resolved_gradient_G_cm,
     )
     time_points, _ = generate_timepoints(t_max, dt)
     results, _ = run_multiple_atoms_simulation(
@@ -151,7 +158,9 @@ def run_3d_mot_from_file(input_file, output_file, summary_file, **kwargs):
         "criterion": dict(MOT_3D_CAPTURE_CONFIG),
         "capture_center_m": list(Geometry.MOT_3D_CENTER_M),
         "magnetic_gradient_G_cm": float(
-            kwargs.get(
+            kwargs.get("magnetic_gradient_G_cm")
+            if kwargs.get("magnetic_gradient_G_cm") is not None
+            else kwargs.get("_3d_mot_config", MOT_3D_LASER_CONFIG).get(
                 "magnetic_gradient_G_cm",
                 MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
             )
@@ -180,7 +189,8 @@ def parse_args():
     parser.add_argument(
         "--magnetic-gradient-G-cm",
         type=float,
-        default=MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
+        default=None,
+        help="Override the selected profile's configured gradient in G/cm.",
     )
     return parser.parse_args()
 

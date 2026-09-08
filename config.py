@@ -326,12 +326,13 @@ MOT_3D_CONFIGURATIONS = {
         "description": "Two xz axes at +/-30 degrees from z plus a y axis, with a blue Gaussian beam blocked to exactly zero inside a 10 mm radius and coaxial with the green Gaussian beam.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
+        "magnetic_gradient_G_cm": 10.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "blue_green_center_separation_m": 0.0,
         "399": {
             "enabled": True,
-            "s0": 0.5,
-            "detuning_gamma": -1.0,
+            "s0": 1.2,
+            "detuning_gamma": -5.0,
             "waist_m": 0.015,
             "profile": "donut",
             # The experimental mirrors remove the center of an otherwise
@@ -341,8 +342,8 @@ MOT_3D_CONFIGURATIONS = {
         },
         "556": {
             "enabled": True,
-            "s0": 5.0,
-            "detuning_gamma": -10.0,
+            "s0": 20.0,
+            "detuning_gamma": -15.0,
             "waist_m": 0.01,
             "profile": "outer_clipped_gaussian",
             # The chamber walls transmit the green beam only inside the same
@@ -358,6 +359,7 @@ MOT_3D_CONFIGURATIONS = {
         # The third MOT-beam axis is y, so the quadrupole's strong axis must
         # be y for the standard 2:1 gradient and helicity arrangement.
         "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 10.0,
         "beam_components": {
             "+XZ_1": {"399_enabled": False, "556_enabled": True},
             "-XZ_1": {"399_enabled": True, "556_enabled": True},
@@ -404,6 +406,9 @@ MOT_3D_CONFIGURATIONS = {
         # A five-beam gravity MOT is stable when its single-beam/gravity axis
         # is also the quadrupole strong axis.
         "magnetic_strong_axis": "x",
+        # Selected by the force-corrected 900-particle staged scan. This is
+        # provisional and sits at the lower boundary of the scanned range.
+        "magnetic_gradient_G_cm": 2.5,
         "in_plane_rotation_deg": 45.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "beam_components": {
@@ -422,16 +427,16 @@ MOT_3D_CONFIGURATIONS = {
         },
         "399": {
             "enabled": True,
-            "s0": 0.5,
-            "detuning_gamma": -1.0,
+            "s0": 1.0,
+            "detuning_gamma": -2.0,
             "waist_m": 0.015,
             "profile": "donut",
             "inner_cutoff_radius_m": 0.01,
         },
         "556": {
             "enabled": True,
-            "s0": 5.0,
-            "detuning_gamma": -10.0,
+            "s0": 10.0,
+            "detuning_gamma": -20.0,
             "waist_m": 0.01,
             "profile": "gaussian",
             # With strong axis x, the single upward beam requires the opposite

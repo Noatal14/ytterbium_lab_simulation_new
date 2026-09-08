@@ -257,6 +257,11 @@ def test_five_beam_gravity_uses_green_only_on_unpaired_x_direction():
     assert all(beam.profile_kind == "donut" for beam in blue_beams)
     assert all(beam.profile_kind == "gaussian" for beam in green_beams)
     assert profile["magnetic_strong_axis"] == "x"
+    assert profile["magnetic_gradient_G_cm"] == pytest.approx(2.5)
+    assert profile["399"]["s0"] == pytest.approx(1.0)
+    assert profile["399"]["detuning_gamma"] == pytest.approx(-2.0)
+    assert profile["556"]["s0"] == pytest.approx(10.0)
+    assert profile["556"]["detuning_gamma"] == pytest.approx(-20.0)
     assert profile["556"]["polarization_by_axis"]["+X"] == "left"
 
     profile["beam_components"]["+YZ_1"]["399_enabled"] = False
@@ -266,6 +271,15 @@ def test_five_beam_gravity_uses_green_only_on_unpaired_x_direction():
     assert not any("3DMOT_399_+YZ_1" in beam.tag for beam in beams)
     assert any("3DMOT_556_+YZ_1" in beam.tag for beam in beams)
 
+
+def test_angled_donut_uses_selected_provisional_operating_point():
+    profile = _resolved_profile("angled_donut")
+
+    assert profile["magnetic_gradient_G_cm"] == pytest.approx(10.0)
+    assert profile["399"]["s0"] == pytest.approx(1.2)
+    assert profile["399"]["detuning_gamma"] == pytest.approx(-5.0)
+    assert profile["556"]["s0"] == pytest.approx(20.0)
+    assert profile["556"]["detuning_gamma"] == pytest.approx(-15.0)
 
 def _five_beam_single_wavelength_config(wavelength_key, gravity_enabled=False):
     profile = _resolved_profile("five_beam_gravity")
@@ -294,19 +308,33 @@ def test_five_beam_blue_slows_without_an_unopposed_transverse_kick():
     assert abs(force[1]) <= 1e-12 * abs(force[2]) + 1e-30
 
 
-@pytest.mark.parametrize("axis", [0, 1, 2])
-@pytest.mark.parametrize("displacement_sign", [-1.0, 1.0])
-def test_five_beam_green_force_with_gravity_is_restoring(axis, displacement_sign):
+def test_five_beam_green_force_with_gravity_has_stable_sagged_equilibrium():
     profile, simulation_config = _five_beam_single_wavelength_config(
         "556", gravity_enabled=True
     )
     center = np.asarray(profile["center_position_m"], dtype=float)
-    displacement = np.zeros(3)
-    displacement[axis] = displacement_sign * 0.5e-3
 
-    force = _force_at(simulation_config, center + displacement)
+    lower = center + np.array([0.5e-3, 0.0, 0.0])
+    upper = center + np.array([1.0e-3, 0.0, 0.0])
+    assert _force_at(simulation_config, lower)[0] > 0.0
+    assert _force_at(simulation_config, upper)[0] < 0.0
 
-    assert force[axis] * displacement[axis] < 0.0
+    equilibrium = 0.5 * (lower + upper)
+    for _ in range(30):
+        if _force_at(simulation_config, equilibrium)[0] > 0.0:
+            lower = equilibrium
+        else:
+            upper = equilibrium
+        equilibrium = 0.5 * (lower + upper)
+
+    for axis in range(3):
+        displacement = np.zeros(3)
+        displacement[axis] = 0.1e-3
+        force_below = _force_at(simulation_config, equilibrium - displacement)
+        force_above = _force_at(simulation_config, equilibrium + displacement)
+
+        assert force_below[axis] > 0.0
+        assert force_above[axis] < 0.0
 
 
 def test_global_wavelength_switch_disables_explicit_axis_components():

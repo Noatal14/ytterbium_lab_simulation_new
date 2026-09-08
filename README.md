@@ -223,6 +223,18 @@ with `studies.submit_five_beam_reoptimization`. It writes to dedicated
 cannot be merged accidentally, then rebuilds `final_operating_points.json`
 using the already completed donut selection.
 
+After review, the three staged scan results currently adopted in `config.py`
+are provisional simulation operating points: `angled_donut` uses blue
+`s0=1.2`, blue detuning `-5 Gamma`, green `s0=20`, green detuning `-15 Gamma`,
+and `10 G/cm`; `angled_sequential` uses blue `s0=0.6`, blue detuning
+`-1.65 Gamma`, green `s0=5`, green detuning `-10 Gamma`, and `10 G/cm`; and the
+force-corrected `five_beam_gravity` uses blue `s0=1`, blue detuning `-2 Gamma`,
+green `s0=10`, green detuning `-20 Gamma`, and `2.5 G/cm`. The five-beam scan
+found 270/900 atoms capture-eligible at some time and a peak eligible
+population of 249. Its selected gradient and green detuning lie on scan
+boundaries, so the point remains provisional. Each profile supplies its own
+default magnetic gradient; command-line study overrides remain available.
+
 ## Recommended entry point
 
 For a new user, the recommended entry points are the three stage scripts:

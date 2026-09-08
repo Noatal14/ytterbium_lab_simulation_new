@@ -560,6 +560,10 @@ def run_study(args):
         "shard_index": int(args.shard_index),
         "selected_particle_indices": shard_indices.tolist(),
         "profiles": list(args.profiles),
+        "profile_magnetic_gradients_G_cm": {
+            name: MOT_3D_CONFIGURATIONS[name].get("magnetic_gradient_G_cm")
+            for name in args.profiles
+        },
         "selection_seed": int(args.seed),
         "simulation_seed": simulation_seed,
         "dt_s": float(args.dt),

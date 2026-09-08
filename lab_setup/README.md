@@ -65,7 +65,16 @@ For `angled_sequential`, parameter provenance is intentionally separated:
 
 - **Directly reported by Plotkin-Swing et al. (2020):** two 399-nm crossed slowing beams; 45-degree beam angle relative to the atomic beam; crossing point 10 mm before the MOT center; 1/e^2 short-axis width of 1.5 mm; long ellipse axis oriented perpendicular to the top-down view and sized to match the MOT-beam height; optimized crossed-beam saturation parameter `sX = 0.3`; and crossed-beam detuning of approximately -42 MHz.
 - **Geometry and sign-convention choices used by this implementation:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; this is an intentional project geometry choice and differs from the paper's 45-degree value. Atoms propagate along lab `+z`, so both slowing beams have negative `z` propagation components; their transverse components are opposite; the ellipse long axis maps to lab `y`; its 10-mm waist follows from the approximately 2-cm MOT diameter used in the paper; the 556-nm MOT uses the same two orthogonal axes in the `xz` plane plus the `y` axis; and, for the configured field convention, the quadrupole strong axis is `y` with right-handed circular polarization on the `xz` pairs and left-handed circular polarization on the `y` pair. Force tests verify slowing, transverse cancellation, and restoring behavior on both sides of all three axes.
-- **Provisional optimization defaults:** the blue detuning is stored as `-1.45 Gamma` as a convenient seed rather than a fixed reproduction of the paper; the green values `s0 = 5`, `detuning_gamma = -10`, and `waist_m = 10 mm` are temporary defaults because the paper does not establish them as the experimental operating point used by this project. The current 3D-MOT gradient of 10 G/cm is also provisional.
+- **Provisional optimized operating point:** the currently adopted scan result is blue `s0 = 0.6`, blue `detuning_gamma = -1.65`, green `s0 = 5`, green `detuning_gamma = -10`, and magnetic gradient `10 G/cm`. The green `waist_m = 10 mm` remains a temporary geometry default. These are simulation-optimization choices rather than a fixed reproduction of the paper or laboratory-set values.
+
+The other adopted provisional scan results are blue `s0 = 1.2`, blue
+`detuning_gamma = -5`, green `s0 = 20`, green `detuning_gamma = -15`, and
+gradient `10 G/cm` for `angled_donut`; and blue `s0 = 1`, blue
+`detuning_gamma = -2`, green `s0 = 10`, green `detuning_gamma = -20`, and
+gradient `2.5 G/cm` for the force-corrected `five_beam_gravity`. Magnetic
+gradients are profile-specific, and an explicit simulation argument may
+override them for controlled studies. All of these numerical operating points
+remain provisional and are not laboratory-set values.
 
 The configuration plot shows separate short-axis and long-axis intensity cuts for the elliptical 399-nm beams. The other experimental concepts retain their own explicit configurable defaults; values from one profile must not be treated as finalized parameters for another.
 
