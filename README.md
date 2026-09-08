@@ -225,8 +225,8 @@ using the already completed donut selection.
 
 After review, the three staged scan results currently adopted in `config.py`
 are provisional simulation operating points: `angled_donut` uses blue
-`s0=1.2`, blue detuning `-5 Gamma`, green `s0=20`, green detuning `-15 Gamma`,
-and `10 G/cm`; `angled_sequential` uses blue `s0=0.6`, blue detuning
+`s0=1.5`, blue detuning `-3 Gamma`, green `s0=30`, green detuning `-25 Gamma`,
+and `2.5 G/cm`; `angled_sequential` uses blue `s0=0.6`, blue detuning
 `-1.65 Gamma`, green `s0=5`, green detuning `-10 Gamma`, and `10 G/cm`; and the
 force-corrected `five_beam_gravity` uses blue `s0=1`, blue detuning `-2 Gamma`,
 green `s0=10`, green detuning `-20 Gamma`, and `2.5 G/cm`. The five-beam scan
@@ -246,6 +246,12 @@ chain under `polarization_corrected_900` paths, then rebuilds the provisional
 summary while preserving the valid force-corrected five-beam selection. The
 green scan extends to `s0=30` and `-25 Gamma` because the invalid earlier winner
 was near the edge of the smaller grid.
+The corrected 900-atom rerun selected the provisional retention-study point
+blue `s0=1.5`, blue detuning `-3 Gamma`, gradient `2.5 G/cm`, green `s0=30`,
+and green detuning `-25 Gamma`. It produced 567/900 capture-eligible atoms and
+a peak of 567. Blue intensity, gradient, green intensity, and green detuning
+are scan-boundary choices, so this point is adopted only to produce the current
+full-ensemble retention curve; a later expanded optimization must replace it.
 
 ## Recommended entry point
 

@@ -325,11 +325,11 @@ def test_five_beam_gravity_uses_green_only_on_unpaired_x_direction():
 def test_angled_donut_uses_selected_provisional_operating_point():
     profile = _resolved_profile("angled_donut")
 
-    assert profile["magnetic_gradient_G_cm"] == pytest.approx(10.0)
-    assert profile["399"]["s0"] == pytest.approx(1.2)
-    assert profile["399"]["detuning_gamma"] == pytest.approx(-5.0)
-    assert profile["556"]["s0"] == pytest.approx(20.0)
-    assert profile["556"]["detuning_gamma"] == pytest.approx(-15.0)
+    assert profile["magnetic_gradient_G_cm"] == pytest.approx(2.5)
+    assert profile["399"]["s0"] == pytest.approx(1.5)
+    assert profile["399"]["detuning_gamma"] == pytest.approx(-3.0)
+    assert profile["556"]["s0"] == pytest.approx(30.0)
+    assert profile["556"]["detuning_gamma"] == pytest.approx(-25.0)
 
 def _five_beam_single_wavelength_config(wavelength_key, gravity_enabled=False):
     profile = _resolved_profile("five_beam_gravity")

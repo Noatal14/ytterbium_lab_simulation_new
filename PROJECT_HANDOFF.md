@@ -218,8 +218,8 @@ gradients 5, 7.5, 10, 12.5, and 15 G/cm. These are optimization candidates, not
 laboratory-set values; the unchanged config default remains 10 G/cm.
 
 The reviewed staged results are now adopted as provisional, profile-specific
-defaults in `config.py`. `angled_donut` uses blue `s0=1.2`, blue detuning
-`-5 Gamma`, green `s0=20`, green detuning `-15 Gamma`, and gradient `10 G/cm`.
+defaults in `config.py`. `angled_donut` uses blue `s0=1.5`, blue detuning
+`-3 Gamma`, green `s0=30`, green detuning `-25 Gamma`, and gradient `2.5 G/cm`.
 `angled_sequential` uses blue `s0=0.6`, blue detuning `-1.65 Gamma`, green
 `s0=5`, green detuning `-10 Gamma`, and gradient `10 G/cm`. The force-corrected
 `five_beam_gravity` uses blue `s0=1`, blue detuning `-2 Gamma`, green `s0=10`,
@@ -243,6 +243,12 @@ isolated 900-atom, three-shard blue -> gradient -> green PBS dependency chain.
 Its `polarization_corrected_900` paths prevent stale pre-correction results from
 being merged, and its final summary preserves the valid force-corrected
 five-beam selection.
+The corrected 900-atom donut scan selected blue `s0=1.5`, blue detuning
+`-3 Gamma`, gradient `2.5 G/cm`, green `s0=30`, and green detuning
+`-25 Gamma`, yielding 567 capture-eligible atoms and a peak of 567. This point
+is adopted only for the requested full-ensemble retention curve: all varied
+parameters except blue detuning sit on scan boundaries, so a later expanded
+optimization is mandatory.
 
 Particle states use SI units and the column order:
 

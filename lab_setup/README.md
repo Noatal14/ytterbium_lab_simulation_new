@@ -67,14 +67,16 @@ For `angled_sequential`, parameter provenance is intentionally separated:
 - **Geometry and sign-convention choices used by this implementation:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; this is an intentional project geometry choice and differs from the paper's 45-degree value. Atoms propagate along lab `+z`, so both slowing beams have negative `z` propagation components; their transverse components are opposite; the ellipse long axis maps to lab `y`; its 10-mm waist follows from the approximately 2-cm MOT diameter used in the paper; the 556-nm MOT uses the same two orthogonal axes in the `xz` plane plus the `y` axis; and, for the configured field convention, the quadrupole strong axis is `y` with right-handed circular polarization on the `xz` pairs and left-handed circular polarization on the `y` pair. Force tests verify slowing, transverse cancellation, and restoring behavior on both sides of all three axes.
 - **Provisional optimized operating point:** the currently adopted scan result is blue `s0 = 0.6`, blue `detuning_gamma = -1.65`, green `s0 = 5`, green `detuning_gamma = -10`, and magnetic gradient `10 G/cm`. The green `waist_m = 10 mm` remains a temporary geometry default. These are simulation-optimization choices rather than a fixed reproduction of the paper or laboratory-set values.
 
-The other adopted provisional scan results are blue `s0 = 1.2`, blue
-`detuning_gamma = -5`, green `s0 = 20`, green `detuning_gamma = -15`, and
-gradient `10 G/cm` for `angled_donut`; and blue `s0 = 1`, blue
+The polarization-corrected provisional retention point is blue `s0 = 1.5`,
+blue `detuning_gamma = -3`, green `s0 = 30`, green
+`detuning_gamma = -25`, and gradient `2.5 G/cm` for `angled_donut`; and blue `s0 = 1`, blue
 `detuning_gamma = -2`, green `s0 = 10`, green `detuning_gamma = -20`, and
 gradient `2.5 G/cm` for the force-corrected `five_beam_gravity`. Magnetic
 gradients are profile-specific, and an explicit simulation argument may
 override them for controlled studies. All of these numerical operating points
-remain provisional and are not laboratory-set values.
+remain provisional and are not laboratory-set values. Every varied donut
+parameter except blue detuning is on a current scan boundary, so expanded
+optimization is still required.
 
 The configuration plot shows separate short-axis and long-axis intensity cuts for the elliptical 399-nm beams. The other experimental concepts retain their own explicit configurable defaults; values from one profile must not be treated as finalized parameters for another.
 

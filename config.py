@@ -329,13 +329,17 @@ MOT_3D_CONFIGURATIONS = {
         # The y beam is the third MOT axis, so y is the quadrupole strong axis
         # for the configured 2:1 gradient convention.
         "magnetic_strong_axis": "y",
-        "magnetic_gradient_G_cm": 10.0,
+        # Lower scan boundary selected after correcting the force signs;
+        # provisional until the expanded optimization is performed.
+        "magnetic_gradient_G_cm": 2.5,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "blue_green_center_separation_m": 0.0,
         "399": {
             "enabled": True,
-            "s0": 1.2,
-            "detuning_gamma": -5.0,
+            # Selected by the polarization-corrected 900-particle staged scan.
+            # This provisional point lies on the scanned intensity boundary.
+            "s0": 1.5,
+            "detuning_gamma": -3.0,
             "waist_m": 0.015,
             "profile": "donut",
             "polarization_by_axis": {
@@ -353,8 +357,10 @@ MOT_3D_CONFIGURATIONS = {
         },
         "556": {
             "enabled": True,
-            "s0": 20.0,
-            "detuning_gamma": -15.0,
+            # Both values lie on boundaries of the current scan and are used
+            # only as a provisional retention-study operating point.
+            "s0": 30.0,
+            "detuning_gamma": -25.0,
             "waist_m": 0.01,
             "profile": "outer_clipped_gaussian",
             # Required by the quadrupole sign convention for restoring force
