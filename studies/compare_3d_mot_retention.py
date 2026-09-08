@@ -76,6 +76,24 @@ def select_particle_shard(states, num_shards, shard_index):
     return states[indices], indices
 
 
+def final_states_on_grid(results, final_time_s):
+    """Return final six-component states and mark trajectories reaching the grid end."""
+    states = np.full((len(results), 6), np.nan, dtype=float)
+    available = np.zeros(len(results), dtype=bool)
+    for particle_index, trajectory in enumerate(results):
+        times = np.asarray(trajectory.t, dtype=float)
+        values = np.asarray(trajectory.y, dtype=float)
+        if (
+            times.size
+            and values.ndim == 2
+            and values.shape[0] >= 6
+            and np.isclose(times[-1], final_time_s, rtol=0.0, atol=1e-12)
+        ):
+            states[particle_index] = values[:6, -1]
+            available[particle_index] = True
+    return states, available
+
+
 def inside_capture_masks(results, time_points, center_m, capture_radius_m):
     """Return a particle-by-time mask for presence inside the capture sphere."""
     time_points = np.asarray(time_points, dtype=float)
@@ -501,6 +519,10 @@ def run_study(args):
     )
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     analyses = {}
+    checkpoint_dir = getattr(args, "checkpoint_dir", None)
+    if checkpoint_dir is not None:
+        checkpoint_dir = Path(checkpoint_dir)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     for profile_name in args.profiles:
         print(f"Running {profile_name} with {len(states)} shared input atoms...")
@@ -516,6 +538,17 @@ def run_study(args):
         )
         analysis = analyze_results(results, time_points)
         analyses[profile_name] = analysis
+        if checkpoint_dir is not None:
+            final_states, final_state_available = final_states_on_grid(
+                results, time_points[-1]
+            )
+            np.savez_compressed(
+                checkpoint_dir / f"{profile_name}_final_states.npz",
+                final_states=final_states,
+                final_state_available=final_state_available,
+                selected_particle_indices=shard_indices,
+                final_time_s=float(time_points[-1]),
+            )
         fit = analysis["fit"]
         tau_text = (
             f"tau={fit['tau_s'] * 1e3:.3f} ms, R2={fit['r_squared']:.4f}"
@@ -581,6 +614,7 @@ def run_study(args):
             "and maximum-speed criteria at the profile-specific eligible-population "
             "peak that never leave the capture sphere afterward"
         ),
+        "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir is not None else None,
         "fit_model": "N_inf + (N0 - N_inf) * exp(-elapsed_time / tau)",
         "fit_acceptance": {
             "minimum_loss_fraction": DEFAULT_MIN_LOSS_FRACTION,
@@ -602,6 +636,13 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", default=str(DEFAULT_INPUT))
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    parser.add_argument(
+        "--checkpoint-dir",
+        help=(
+            "Optional directory for per-profile final states used to resume a "
+            "long retention run."
+        ),
+    )
     parser.add_argument("--profiles", nargs="+", default=list(DEFAULT_PROFILES))
     parser.add_argument("--max-atoms", type=int)
     parser.add_argument("--num-shards", type=int, default=1)

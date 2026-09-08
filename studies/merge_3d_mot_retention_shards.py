@@ -65,7 +65,23 @@ def _merged_diagnostics(reports, profile):
     return merged
 
 
-def run_merge(input_root, output_dir):
+def retained_at_end_mask(analysis, final_state_available):
+    """Select the global peak cohort that stayed inside through the final sample."""
+    available = np.asarray(final_state_available, dtype=bool)
+    retained = np.zeros(len(available), dtype=bool)
+    retained[analysis["cohort_indices"]] = True
+    retained &= np.all(
+        analysis["inside_masks"][:, analysis["peak_index"] :], axis=1
+    )
+    return retained & available
+
+
+def run_merge(
+    input_root,
+    output_dir,
+    checkpoint_root=None,
+    checkpoint_output_dir=None,
+):
     input_root = Path(input_root)
     report_paths = sorted(input_root.glob("shard_*/retention_summary.json"))
     reports = [json.loads(path.read_text()) for path in report_paths]
@@ -90,6 +106,45 @@ def run_merge(input_root, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     plot_path = output_dir / "retention_comparison.png"
     summary_path = output_dir / "retention_summary.json"
+    checkpoint_summary = {}
+    if (checkpoint_root is None) != (checkpoint_output_dir is None):
+        raise ValueError(
+            "checkpoint_root and checkpoint_output_dir must be supplied together."
+        )
+    if checkpoint_root is not None:
+        checkpoint_root = Path(checkpoint_root)
+        checkpoint_output_dir = Path(checkpoint_output_dir)
+        checkpoint_output_dir.mkdir(parents=True, exist_ok=True)
+        for profile, analysis in analyses.items():
+            state_parts = []
+            available_parts = []
+            index_parts = []
+            for report_path in report_paths:
+                checkpoint = np.load(
+                    checkpoint_root
+                    / report_path.parent.name
+                    / f"{profile}_final_states.npz"
+                )
+                state_parts.append(checkpoint["final_states"])
+                available_parts.append(checkpoint["final_state_available"])
+                index_parts.append(checkpoint["selected_particle_indices"])
+            final_states = np.concatenate(state_parts, axis=0)
+            final_available = np.concatenate(available_parts, axis=0)
+            source_indices = np.concatenate(index_parts, axis=0)
+            survivor_mask = retained_at_end_mask(analysis, final_available)
+            survivor_states = final_states[survivor_mask]
+            survivor_indices = source_indices[survivor_mask]
+            states_path = checkpoint_output_dir / f"{profile}_survivors.npy"
+            np.save(states_path, survivor_states)
+            np.savez_compressed(
+                checkpoint_output_dir / f"{profile}_survivor_metadata.npz",
+                selected_particle_indices=survivor_indices,
+                final_time_s=float(time_points[-1]),
+            )
+            checkpoint_summary[profile] = {
+                "survivor_count": int(len(survivor_states)),
+                "states_file": str(states_path),
+            }
     plot_comparison(time_points, analyses, plot_path)
     summary = {
         "purpose": "globally merge disjoint retention shards before choosing each peak cohort",
@@ -105,6 +160,7 @@ def run_merge(input_root, output_dir):
             "minimum_loss_fraction": DEFAULT_MIN_LOSS_FRACTION,
             "minimum_r_squared": DEFAULT_MIN_FIT_R_SQUARED,
         },
+        "continuation_checkpoints": checkpoint_summary,
         "results": {
             profile: _json_ready_analysis(analysis)
             for profile, analysis in analyses.items()
@@ -128,9 +184,16 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-root", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--checkpoint-root")
+    parser.add_argument("--checkpoint-output-dir")
     return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
     arguments = parse_args()
-    run_merge(arguments.input_root, arguments.output_dir)
+    run_merge(
+        arguments.input_root,
+        arguments.output_dir,
+        arguments.checkpoint_root,
+        arguments.checkpoint_output_dir,
+    )

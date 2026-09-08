@@ -204,6 +204,12 @@ The retention comparison likewise supports `--num-shards` and
 masks; `studies.merge_3d_mot_retention_shards` combines those masks before
 selecting the global peak cohort and fitting a lifetime. Per-shard peak curves
 must not be added directly because their peak times can differ.
+With `--checkpoint-dir`, each shard also saves only the six-component state at
+the final sample, not full trajectories. The merger's `--checkpoint-root` and
+`--checkpoint-output-dir` options then write one continuation ensemble per
+profile containing the global peak cohort members that remained continuously
+inside through the end. These checkpoints can resume a longer retention run
+without repeating the completed interval.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core

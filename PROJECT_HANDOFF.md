@@ -188,6 +188,12 @@ and eligibility masks. `studies/merge_3d_mot_retention_shards.py` concatenates
 the disjoint masks first, then chooses the global peak cohort and performs the
 conditional lifetime fit. Never sum independently chosen shard retention
 curves, because their cohort peak times need not agree.
+For resumable long runs, pass `--checkpoint-dir` to each shard and both
+checkpoint options to the merger. Per-shard files contain final states plus
+original ensemble indices; after the global peak is known, the merger writes
+only peak-cohort atoms retained through the final sample under
+`data/particle_states/after_3d_mot`. This permits continuation without storing
+or recomputing the full trajectory history.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and

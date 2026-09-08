@@ -7,10 +7,12 @@ from studies.compare_3d_mot_retention import (
     capture_diagnostics,
     capture_eligible_masks,
     fit_retention_lifetime,
+    final_states_on_grid,
     inside_capture_masks,
     retention_from_masks,
     select_particle_shard,
 )
+from studies.merge_3d_mot_retention_shards import retained_at_end_mask
 
 
 def _trajectory(times, x_positions, x_velocities):
@@ -64,6 +66,39 @@ def test_particle_shards_are_disjoint_and_cover_the_selected_ensemble():
     combined_indices = np.concatenate([indices for _, indices in shards])
     assert sorted(combined_indices.tolist()) == list(range(10))
     assert len(set(combined_indices.tolist())) == 10
+
+
+def test_final_state_checkpoint_excludes_trajectories_terminated_early():
+    complete = _trajectory([0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [3.0, 4.0, 5.0])
+    terminated = _trajectory([0.0, 1.0], [0.0, 1.0], [3.0, 4.0])
+
+    states, available = final_states_on_grid([complete, terminated], 2.0)
+
+    assert available.tolist() == [True, False]
+    np.testing.assert_allclose(states[0], [2.0, 0.0, 0.0, 5.0, 0.0, 0.0])
+    assert np.isnan(states[1]).all()
+
+
+def test_continuation_checkpoint_keeps_only_peak_cohort_retained_to_end():
+    inside = np.array(
+        [
+            [True, True, True, True],
+            [True, True, False, False],
+            [True, True, True, True],
+        ]
+    )
+    eligible = np.array(
+        [
+            [False, True, False, False],
+            [False, True, False, False],
+            [False, False, False, False],
+        ]
+    )
+    analysis = analyze_masks(inside, eligible, np.arange(4, dtype=float))
+
+    mask = retained_at_end_mask(analysis, [True, True, True])
+
+    assert mask.tolist() == [True, False, False]
 
 
 def test_global_peak_is_selected_after_masks_from_shards_are_combined():
