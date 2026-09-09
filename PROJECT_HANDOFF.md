@@ -274,6 +274,14 @@ crossings) with fixed laser operating points, green light, and magnetic field.
 Earlier sequential optimization and retention results used the obsolete
 elliptical geometry and cannot be used to rank this replacement.
 
+`studies/submit_sequential_reoptimization.py` submits a four-stage PBS chain
+for the replacement: the 12-point circular geometry scan, a blue `s0` and
+detuning scan, a gradient scan restricted to the five best blue pairs, and a
+green `s0` and detuning scan. It uses 900 common input survivors split over
+three 200-core array shards. Geometry metadata is carried in each selected
+record and applied explicitly in all downstream stages; the resulting report
+is provisional and must be reviewed before changing `config.py`.
+
 All generated long-running 3D-MOT PBS scripts use `python -u` and redirect
 stdout/stderr to distinct files under `data/validation/mot_3d/logs`, including
 the array index in the name. The existing simulator-level `tqdm` bar counts

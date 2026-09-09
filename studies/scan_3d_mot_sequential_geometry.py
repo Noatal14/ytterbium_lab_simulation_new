@@ -29,6 +29,33 @@ DEFAULT_EXCLUSIONS_MM = (5.0, 10.0)
 DEFAULT_CROSSINGS_MM = (10.0, 20.0)
 
 
+def apply_sequential_geometry(profile, point):
+    """Apply geometry fields from a scan record to a sequential profile."""
+    required = (
+        "blue_waist_mm",
+        "green_exclusion_radius_mm",
+        "crossing_distance_mm",
+    )
+    if not all(field in point for field in required):
+        raise ValueError("Sequential geometry point is missing required geometry fields.")
+    profile["399"].update(
+        waist_m=float(point["blue_waist_mm"]) * 1e-3,
+        green_exclusion_radius_m=float(point["green_exclusion_radius_mm"]) * 1e-3,
+        center_offset_m=(0.0, 0.0, -float(point["crossing_distance_mm"]) * 1e-3),
+    )
+    return profile
+
+
+def sequential_geometry_fields(profile):
+    """Return geometry metadata in the units used by scan reports."""
+    blue = profile["399"]
+    return {
+        "blue_waist_mm": float(blue["waist_m"]) * 1e3,
+        "green_exclusion_radius_mm": float(blue["green_exclusion_radius_m"]) * 1e3,
+        "crossing_distance_mm": -float(blue["center_offset_m"][2]) * 1e3,
+    }
+
+
 def geometry_points(waists_mm, exclusions_mm, crossings_mm):
     """Return validated waist/exclusion/crossing combinations in metres."""
     points = []

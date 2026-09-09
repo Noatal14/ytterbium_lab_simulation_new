@@ -20,6 +20,13 @@ def run_summary(selections, output_path):
             "peak_capture_eligible_count": point["peak_capture_eligible_count"],
             "source_selection": str(selection_path),
         }
+        for field in (
+            "blue_waist_mm",
+            "green_exclusion_radius_mm",
+            "crossing_distance_mm",
+        ):
+            if field in point:
+                configurations[profile][field] = point[field]
     report = {
         "status": "provisional optimization results; not laboratory-set values",
         "configurations": configurations,

@@ -86,10 +86,14 @@ def run_scan(args):
     pairs = parse_parameter_pairs(args.parameter_pairs)
     if args.parameter_points_file:
         selection = json.loads(Path(args.parameter_points_file).read_text())
+        selected_points = selection["selected_points"]
         pairs = tuple(
             (float(point["s0"]), float(point["detuning_gamma"]))
-            for point in selection["selected_points"]
+            for point in selected_points
         )
+        geometry_point = selected_points[0] if args.profile == "angled_sequential" else None
+    else:
+        geometry_point = None
     gradients = tuple(sorted(set(args.gradient_G_cm_values)))
     if not pairs or not gradients:
         raise ValueError("Parameter pairs and gradient values must not be empty.")
@@ -120,6 +124,10 @@ def run_scan(args):
                 flush=True,
             )
             profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[args.profile])
+            if geometry_point is not None:
+                from studies.scan_3d_mot_sequential_geometry import apply_sequential_geometry
+
+                apply_sequential_geometry(profile, geometry_point)
             profile["399"]["s0"] = float(s0)
             profile["399"]["detuning_gamma"] = float(detuning)
             results, _ = mot_3d_simulation(
@@ -140,6 +148,10 @@ def run_scan(args):
                 args.profile, detuning, s0, analysis, exposure
             )
             record["gradient_G_cm"] = float(gradient)
+            if geometry_point is not None:
+                from studies.scan_3d_mot_sequential_geometry import sequential_geometry_fields
+
+                record.update(sequential_geometry_fields(profile))
             records.append(record)
             print(
                 f"  entered={record['entered_capture_region_count']}, "

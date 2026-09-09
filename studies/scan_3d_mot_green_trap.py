@@ -111,6 +111,9 @@ def run_scan(args):
         blue_s0 = float(point["s0"])
         blue_detuning = float(point["detuning_gamma"])
         gradient = float(point["gradient_G_cm"])
+        geometry_point = point if args.profile == "angled_sequential" else None
+    else:
+        geometry_point = None
 
     selected_states, input_files = load_shared_ensemble(
         args.input, max_atoms=args.max_atoms, seed=args.seed
@@ -136,6 +139,10 @@ def run_scan(args):
                 flush=True,
             )
             profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[args.profile])
+            if geometry_point is not None:
+                from studies.scan_3d_mot_sequential_geometry import apply_sequential_geometry
+
+                apply_sequential_geometry(profile, geometry_point)
             profile["399"]["s0"] = blue_s0
             profile["399"]["detuning_gamma"] = blue_detuning
             profile["556"]["s0"] = float(green_s0)
@@ -166,6 +173,10 @@ def run_scan(args):
                 green_s0=float(green_s0),
                 green_detuning_gamma=float(green_detuning),
             )
+            if geometry_point is not None:
+                from studies.scan_3d_mot_sequential_geometry import sequential_geometry_fields
+
+                record.update(sequential_geometry_fields(profile))
             records.append(record)
             print(
                 f"  entered={record['entered_capture_region_count']}, "

@@ -270,6 +270,11 @@ def run_scan(args):
     detunings = tuple(sorted({detuning for _, detuning in parameter_points}))
     saturation_parameters = tuple(sorted({s0 for s0, _ in parameter_points}))
 
+    geometry_point = None
+    if args.geometry_point_file:
+        selection = json.loads(Path(args.geometry_point_file).read_text())
+        geometry_point = selection["best_point"]
+
     selected_states, input_files = load_shared_ensemble(
         args.input, max_atoms=args.max_atoms, seed=args.seed
     )
@@ -296,6 +301,12 @@ def run_scan(args):
                 flush=True,
             )
             profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[profile_name])
+            if geometry_point is not None:
+                if profile_name != "angled_sequential":
+                    raise ValueError("--geometry-point-file is only valid for angled_sequential.")
+                from studies.scan_3d_mot_sequential_geometry import apply_sequential_geometry
+
+                apply_sequential_geometry(profile, geometry_point)
             profile["399"]["s0"] = float(s0)
             profile["399"]["detuning_gamma"] = float(detuning)
             results, _ = mot_3d_simulation(
@@ -314,6 +325,10 @@ def run_scan(args):
             record = _scan_record(
                 profile_name, detuning, s0, analysis, exposure
             )
+            if geometry_point is not None:
+                from studies.scan_3d_mot_sequential_geometry import sequential_geometry_fields
+
+                record.update(sequential_geometry_fields(profile))
             records.append(record)
             print(
                 "  entered={entered_capture_region_count}, "
@@ -413,6 +428,10 @@ def parse_args(argv=None):
         default=str(AFTER_2D_MOT_DIR / "final_ensemble_s0_1.47"),
     )
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
+    parser.add_argument(
+        "--geometry-point-file",
+        help="Selected angled_sequential geometry JSON from the geometry stage.",
+    )
     parser.add_argument("--profiles", nargs="+", default=list(MOT_3D_CONFIGURATIONS))
     parser.add_argument(
         "--detuning-gamma-values",

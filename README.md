@@ -276,6 +276,12 @@ provisional geometry-study seeds, not laboratory settings. Run
 same saved 2D-MOT ensemble. Earlier sequential scan and retention results used
 the obsolete elliptical geometry and are not performance measurements for this
 replacement.
+Run `python -m studies.submit_sequential_reoptimization` on Zeus to optimize
+the replacement in four dependent stages: circular-beam geometry, 399-nm
+slowing parameters, magnetic gradient, and 556-nm trapping parameters. The
+selected waist, protected-core radius, and crossing position are propagated
+through every later stage. The screening run uses 900 common 2D-MOT survivors
+split across three 200-core nodes; all selected values remain provisional.
 The geometry scan supports the same deterministic `--num-shards` and
 `--shard-index` split as the other 3D-MOT studies; merge its shard directories
 with `python -m studies.merge_3d_mot_blue_scan_shards`.
