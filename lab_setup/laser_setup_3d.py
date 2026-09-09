@@ -92,6 +92,32 @@ class OuterClippedGaussianBeam(CircularGaussianBeam):
         return np.where(rho_laser < self.outer_cutoff_radius, intensity, 0.0)
 
 
+class UpstreamPlanarClippedGaussianBeam(CircularGaussianBeam):
+    """Circular Gaussian transmitted only on the upstream side of a lab-z plane."""
+
+    def __init__(self, *args, maximum_lab_z_m, **kwargs):
+        self.maximum_lab_z_m = float(maximum_lab_z_m)
+        if not np.isfinite(self.maximum_lab_z_m):
+            raise ValueError("maximum_lab_z_m must be finite.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Upstream planar-clipped Gaussian Beam"
+
+    @property
+    def disp_type(self):
+        return "Planar-clipped beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position = np.asarray(position, dtype=float)
+        intensity = CircularGaussianBeam._intensity_func(self, position)
+        # The boundary belongs to the illuminated upstream half-space. This
+        # preserves a crossing located exactly on the physical cutoff plane.
+        return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
+
+
 def _normalize_vector(vec):
     vec = np.asarray(vec, dtype=float)
     norm = np.linalg.norm(vec)
@@ -192,6 +218,7 @@ def _validate_profile(profile):
             "donut",
             "elliptical",
             "outer_clipped_gaussian",
+            "upstream_planar_clipped_gaussian",
         }:
             raise ValueError(
                 f"Unsupported 3D-MOT {wavelength_key} profile "
@@ -212,6 +239,24 @@ def _validate_profile(profile):
                 raise ValueError(
                     f"Set a positive {wavelength_key}.outer_cutoff_radius_m "
                     "for an outer-clipped Gaussian beam."
+                )
+
+        if component["profile"] == "upstream_planar_clipped_gaussian":
+            exclusion = component.get("green_exclusion_radius_m")
+            if exclusion is None or float(exclusion) <= 0.0:
+                raise ValueError(
+                    f"Set a positive {wavelength_key}.green_exclusion_radius_m "
+                    "for an upstream planar-clipped Gaussian beam."
+                )
+            offset = np.asarray(component.get("center_offset_m"), dtype=float)
+            if offset.shape != (3,) or not np.all(np.isfinite(offset)):
+                raise ValueError(
+                    f"Set a finite {wavelength_key}.center_offset_m 3-vector."
+                )
+            if offset[2] > -float(exclusion):
+                raise ValueError(
+                    "The blue crossing must lie on or upstream of its cutoff "
+                    "plane: crossing_distance_m >= green_exclusion_radius_m."
                 )
 
         polarization_by_axis = component.get("polarization_by_axis", {})
@@ -324,6 +369,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         polarization,
         inner_cutoff_radius=None,
         outer_cutoff_radius=None,
+        maximum_lab_z_m=None,
         waist_short=None,
         waist_long=None,
     ):
@@ -333,6 +379,8 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             beam_cls = OuterClippedGaussianBeam
         elif profile_kind == "elliptical":
             beam_cls = EllipticalLaserBeam
+        elif profile_kind == "upstream_planar_clipped_gaussian":
+            beam_cls = UpstreamPlanarClippedGaussianBeam
         else:
             beam_cls = CircularGaussianBeam
         beam_kwargs = dict(
@@ -352,6 +400,8 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             beam_kwargs.pop("waist")
             beam_kwargs["wx"] = waist_short
             beam_kwargs["wy"] = waist_long
+        elif profile_kind == "upstream_planar_clipped_gaussian":
+            beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
         beam = beam_cls(**beam_kwargs)
         beam.profile_kind = profile_kind
         beam.set_power_from_peak_I(peak_intensity)
@@ -385,6 +435,10 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     inner_cutoff_radius=beam_399_cfg.get("inner_cutoff_radius_m"),
                     waist_short=beam_399_cfg.get("waist_short_m"),
                     waist_long=beam_399_cfg.get("waist_long_m"),
+                    maximum_lab_z_m=(
+                        center_position[2]
+                        - beam_399_cfg.get("green_exclusion_radius_m", 0.0)
+                    ),
                 )
             )
 

@@ -51,7 +51,7 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
 - `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward. Its quadrupole strong axis is `y`; both wavelengths use right-handed polarization on the xz pairs and left-handed polarization on the y pair. Force tests verify that the green core is restoring on both sides of all three lab axes
-- `angled_sequential`: the crossed-beam scheme: a six-beam 556-nm MOT and two elliptical 399-nm slowing beams using the same ±30-degree xz axes as `angled_donut`, crossing 1 cm upstream of the MOT
+- `angled_sequential`: a buildable crossed-beam variant with a six-beam 556-nm MOT core and two circular 399-nm slowing beams on the same ±30-degree xz axes as `angled_donut`. A common lab-z plane blocks blue light from the protected green core; its geometry values are provisional scan seeds
 - `five_beam_gravity`: gravity-assisted five-beam 556-nm geometry with the
   `-x` beam removed and the quadrupole strong axis along `x`. The unpaired
   upward `+x` direction is green only, with opposite helicity; enabling an
@@ -63,9 +63,9 @@ The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_
 
 For `angled_sequential`, parameter provenance is intentionally separated:
 
-- **Directly reported by Plotkin-Swing et al. (2020):** two 399-nm crossed slowing beams; 45-degree beam angle relative to the atomic beam; crossing point 10 mm before the MOT center; 1/e^2 short-axis width of 1.5 mm; long ellipse axis oriented perpendicular to the top-down view and sized to match the MOT-beam height; optimized crossed-beam saturation parameter `sX = 0.3`; and crossed-beam detuning of approximately -42 MHz.
-- **Geometry and sign-convention choices used by this implementation:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; this is an intentional project geometry choice and differs from the paper's 45-degree value. Atoms propagate along lab `+z`, so both slowing beams have negative `z` propagation components; their transverse components are opposite; the ellipse long axis maps to lab `y`; its 10-mm waist follows from the approximately 2-cm MOT diameter used in the paper; the 556-nm MOT uses the same two orthogonal axes in the `xz` plane plus the `y` axis; and, for the configured field convention, the quadrupole strong axis is `y` with right-handed circular polarization on the `xz` pairs and left-handed circular polarization on the `y` pair. Force tests verify slowing, transverse cancellation, and restoring behavior on both sides of all three axes.
-- **Provisional optimized operating point:** the currently adopted scan result is blue `s0 = 0.6`, blue `detuning_gamma = -1.65`, green `s0 = 5`, green `detuning_gamma = -10`, and magnetic gradient `10 G/cm`. The green `waist_m = 10 mm` remains a temporary geometry default. These are simulation-optimization choices rather than a fixed reproduction of the paper or laboratory-set values.
+- **Paper motivation, not literal current geometry:** Plotkin-Swing et al. (2020) use two crossed 399-nm slowing beams upstream of a six-beam 556-nm MOT. Their reported 45-degree angle, 1.5-mm short ellipse width, and elliptical profile are no longer values used by this buildable project variant.
+- **Project geometry choices:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; atoms propagate along lab `+z`, so both circular slowing beams have negative-z propagation components and cancelling transverse components. A common plane at `z_MOT - green_exclusion_radius_m` blocks all blue light on the MOT side. The plane boundary remains illuminated, so a crossing may lie exactly on it. The 556-nm MOT retains both xz pairs and the y pair, with strong magnetic axis `y`, right-handed xz polarizations, and left-handed y polarizations.
+- **Provisional scan values:** the current blue waist is 5 mm, protected-core radius 10 mm, and crossing 20 mm upstream. The geometry study scans waists 3/5/10 mm, radii 5/10 mm, and crossings 10/20 mm. The operating point remains blue `s0 = 0.6`, blue `detuning_gamma = -1.65`, green `s0 = 5`, green `detuning_gamma = -10`, and magnetic gradient `10 G/cm`. All are simulation-study values, not laboratory-set constants.
 
 The polarization-corrected provisional retention point is blue `s0 = 1.5`,
 blue `detuning_gamma = -3`, green `s0 = 30`, green
@@ -78,7 +78,9 @@ remain provisional and are not laboratory-set values. Every varied donut
 parameter except blue detuning is on a current scan boundary, so expanded
 optimization is still required.
 
-The configuration plot shows separate short-axis and long-axis intensity cuts for the elliptical 399-nm beams. The other experimental concepts retain their own explicit configurable defaults; values from one profile must not be treated as finalized parameters for another.
+The configuration plots use opaque wire outlines for the 3D beam geometry;
+they do not encode intensity as transparency. Values from one profile must not
+be treated as finalized parameters for another.
 
 ### `mag_field_2d_mot.py`
 

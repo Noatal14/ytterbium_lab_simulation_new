@@ -130,7 +130,7 @@ def test_angled_donut_geometry_is_correct():
     assert np.allclose(beam_by_tag["3DMOT_399_+Y"], -beam_by_tag["3DMOT_399_-Y"])
 
 
-def test_angled_sequential_matches_plotkin_swing_crossed_beam_geometry():
+def test_angled_sequential_uses_buildable_planar_separated_geometry():
     beams = setup_3dmot_lasers(
         mot_3d_config=_resolved_profile("angled_sequential"),
         center_position=(0.0, 0.0, 0.0),
@@ -142,7 +142,7 @@ def test_angled_sequential_matches_plotkin_swing_crossed_beam_geometry():
     assert len(green_beams) == 6
     blue_center = np.asarray(blue_beams[0].waist_position, dtype=float)
     green_center = np.asarray(green_beams[0].waist_position, dtype=float)
-    assert np.allclose(blue_center, (0.0, 0.0, -10.0e-3))
+    assert np.allclose(blue_center, (0.0, 0.0, -20.0e-3))
     assert np.allclose(green_center, (0.0, 0.0, 0.0))
 
     blue_directions = [_normalize(beam.direction) for beam in blue_beams]
@@ -158,9 +158,12 @@ def test_angled_sequential_matches_plotkin_swing_crossed_beam_geometry():
         for direction in blue_directions
     )
     assert np.isclose(blue_directions[0][0], -blue_directions[1][0])
-    assert all(beam.profile_kind == "elliptical" for beam in blue_beams)
-    assert all(beam.wx == pytest.approx(1.5e-3) for beam in blue_beams)
-    assert all(beam.wy == pytest.approx(10.0e-3) for beam in blue_beams)
+    assert all(
+        beam.profile_kind == "upstream_planar_clipped_gaussian"
+        for beam in blue_beams
+    )
+    assert all(beam.waist == pytest.approx(5.0e-3) for beam in blue_beams)
+    assert all(beam.maximum_lab_z_m == pytest.approx(-10.0e-3) for beam in blue_beams)
 
     profile = MOT_3D_CONFIGURATIONS["angled_sequential"]
     assert profile["399"]["s0"] == pytest.approx(0.6)
@@ -242,28 +245,52 @@ def test_angled_donut_blue_shell_force_opposes_velocity(axis, velocity_sign):
     assert force[axis] * velocity[axis] < 0.0
 
 
-def test_crossed_blue_elliptical_intensity_in_lab_coordinates():
+@pytest.mark.parametrize("waist_m", [3.0e-3, 5.0e-3, 10.0e-3])
+@pytest.mark.parametrize("exclusion_m", [5.0e-3, 10.0e-3])
+@pytest.mark.parametrize("crossing_m", [10.0e-3, 20.0e-3])
+def test_planar_clipped_blue_geometry_scan_has_dark_core_and_lit_crossing(
+    waist_m, exclusion_m, crossing_m
+):
     profile = _resolved_profile("angled_sequential")
+    profile["399"]["waist_m"] = waist_m
+    profile["399"]["green_exclusion_radius_m"] = exclusion_m
+    profile["399"]["center_offset_m"] = (0.0, 0.0, -crossing_m)
     beams = setup_3dmot_lasers(mot_3d_config=profile)
     blue_beams = [beam for beam in beams if "3DMOT_399_" in beam.tag]
-    expected_ratio = np.exp(-2.0)
+    mot_center = np.asarray(profile["center_position_m"], dtype=float)
+    crossing = mot_center + np.array([0.0, 0.0, -crossing_m])
+    plane_z = mot_center[2] - exclusion_m
 
     for beam in blue_beams:
-        center = np.asarray(beam.waist_position, dtype=float)
-        direction = _normalize(beam.direction)
-        short_axis_lab = _normalize(np.cross((0.0, 1.0, 0.0), direction))
-        long_axis_lab = np.array([0.0, 1.0, 0.0])
+        assert beam.get_value(np.array([mot_center]))[0] == 0.0
+        assert beam.get_value(np.array([crossing]))[0] > 0.0
+        assert beam.get_value(np.array([[0.0, 0.0, plane_z + 1.0e-9]]))[0] == 0.0
+        assert beam.get_value(np.array([[0.0, 0.0, plane_z]]))[0] > 0.0
 
-        peak = float(beam.get_value(np.array([center]))[0])
-        short_value = float(
-            beam.get_value(np.array([center + beam.wx * short_axis_lab]))[0]
-        )
-        long_value = float(
-            beam.get_value(np.array([center + beam.wy * long_axis_lab]))[0]
-        )
 
-        assert short_value / peak == pytest.approx(expected_ratio, rel=1e-10)
-        assert long_value / peak == pytest.approx(expected_ratio, rel=1e-10)
+def test_planar_clipped_blue_is_circular_in_lab_coordinates():
+    profile = _resolved_profile("angled_sequential")
+    blue = next(
+        beam
+        for beam in setup_3dmot_lasers(mot_3d_config=profile)
+        if "3DMOT_399_" in beam.tag
+    )
+    center = np.asarray(blue.waist_position, dtype=float)
+    u = _normalize(np.cross(blue.direction, (0.0, 1.0, 0.0)))
+    v = _normalize(np.cross(blue.direction, u))
+    peak = blue.get_value(np.array([center]))[0]
+    for transverse_axis in (u, v):
+        value = blue.get_value(np.array([center + blue.waist * transverse_axis]))[0]
+        assert value / peak == pytest.approx(np.exp(-2.0), rel=1e-10)
+
+
+def test_planar_clipped_blue_rejects_crossing_downstream_of_cutoff_plane():
+    profile = _resolved_profile("angled_sequential")
+    profile["399"]["green_exclusion_radius_m"] = 10.0e-3
+    profile["399"]["center_offset_m"] = (0.0, 0.0, -5.0e-3)
+
+    with pytest.raises(ValueError, match="crossing_distance_m"):
+        setup_3dmot_lasers(mot_3d_config=profile)
 
 
 def test_five_beam_gravity_uses_green_only_on_unpaired_x_direction():

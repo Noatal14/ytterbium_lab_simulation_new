@@ -138,8 +138,8 @@ The JSON diagnostics distinguish failure to enter the capture sphere from
 failure to slow or remain there long enough, and include distance, speed, and
 continuous-residence distributions.
 The 3D-MOT solver is selected centrally by `MOT_3D_SIM_CONFIG` and is currently
-`RK4StHybridCustom`. Its fixed grid uses `dt_s=1e-5 s`, which resolves the 1.5 mm
-short-axis crossed beams. The hybrid stochastic recoil model uses exact Poisson
+`RK4StHybridCustom`. Its fixed grid uses `dt_s=1e-5 s`; timestep suitability
+must be rechecked if the 3D-MOT geometry or operating point changes. The hybrid stochastic recoil model uses exact Poisson
 sampling at low expected scattering count and the Gaussian approximation at
 high count.
 
@@ -258,6 +258,20 @@ The corrected 900-atom donut scan selected blue `s0=1.5`, blue detuning
 is adopted only for the requested full-ensemble retention curve: all varied
 parameters except blue detuning sit on scan boundaries, so a later expanded
 optimization is mandatory.
+
+The former elliptical crossed-beam implementation of `angled_sequential` was
+replaced by a physically buildable planar-separated variant. It keeps the
+apparatus-compatible +/-30-degree xz axes, the two upstream-propagating 399-nm
+beams, and all six 556-nm MOT beams. The blue beams are circular Gaussians and
+are transmitted only for `z <= z_MOT - green_exclusion_radius_m`; the boundary
+itself remains illuminated. The MOT center therefore has exactly zero blue
+intensity while a crossing on or upstream of the plane remains illuminated.
+The configured 5-mm waist, 10-mm exclusion radius, and 20-mm upstream crossing
+are provisional seeds. `studies/scan_3d_mot_sequential_geometry.py` compares
+the requested 3x2x2 grid (3/5/10-mm waists, 5/10-mm exclusions, 10/20-mm
+crossings) with fixed laser operating points, green light, and magnetic field.
+Earlier sequential optimization and retention results used the obsolete
+elliptical geometry and cannot be used to rank this replacement.
 
 Particle states use SI units and the column order:
 

@@ -379,7 +379,7 @@ MOT_3D_CONFIGURATIONS = {
         },
     },
     "angled_sequential": {
-        "description": "Crossed-beam slower: a six-beam 556-nm MOT plus two 399-nm beams crossing 1 cm upstream, using the same +/-30-degree xz axes as angled_donut.",
+        "description": "Buildable planar-separated crossed-beam slower: two circular 399-nm beams illuminate only the upstream side of a hard z plane, while six 556-nm beams form the protected MOT core.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
@@ -401,10 +401,16 @@ MOT_3D_CONFIGURATIONS = {
             # an optimization result, not a laboratory-set operating point.
             "s0": 0.6,
             "detuning_gamma": -1.65,
-            "center_offset_m": (0.0, 0.0, -10.0e-3),
-            "profile": "elliptical",
-            "waist_short_m": 1.5e-3,
-            "waist_long_m": 10.0e-3,
+            # Provisional geometry-study seed. The dedicated scan evaluates
+            # waists 3/5/10 mm, crossings 10/20 mm upstream, and protected
+            # core radii 5/10 mm. These are not laboratory-set values.
+            "center_offset_m": (0.0, 0.0, -20.0e-3),
+            "profile": "upstream_planar_clipped_gaussian",
+            "waist_m": 5.0e-3,
+            # The cutoff plane is tangent to the upstream side of this
+            # protected sphere around the green-MOT center. Blue light is
+            # exactly zero for z > z_MOT - exclusion_radius.
+            "green_exclusion_radius_m": 10.0e-3,
         },
         "556": {
             "enabled": True,

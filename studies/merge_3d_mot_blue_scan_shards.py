@@ -44,6 +44,9 @@ def merge_reports(reports):
         reports[0].get("gradient_G_cm_values"),
         reports[0].get("green_s0_values"),
         reports[0].get("green_detuning_gamma_values"),
+        reports[0].get("blue_waists_mm"),
+        reports[0].get("green_exclusion_radii_mm"),
+        reports[0].get("crossing_distances_mm"),
     )
     if any(
         (
@@ -54,6 +57,9 @@ def merge_reports(reports):
             report.get("gradient_G_cm_values"),
             report.get("green_s0_values"),
             report.get("green_detuning_gamma_values"),
+            report.get("blue_waists_mm"),
+            report.get("green_exclusion_radii_mm"),
+            report.get("crossing_distances_mm"),
         )
         != reference_grid
         for report in reports[1:]
@@ -71,6 +77,9 @@ def merge_reports(reports):
                     row.get("gradient_G_cm"),
                     row.get("green_s0"),
                     row.get("green_detuning_gamma"),
+                    row.get("blue_waist_mm"),
+                    row.get("green_exclusion_radius_mm"),
+                    row.get("crossing_distance_mm"),
                 ): row
                 for row in report["records"]
             }
@@ -93,6 +102,24 @@ def merge_reports(reports):
             row["green_s0"] = float(key[4])
         if key[5] is not None:
             row["green_detuning_gamma"] = float(key[5])
+        if key[6] is not None:
+            row["blue_waist_mm"] = float(key[6])
+        if key[7] is not None:
+            row["green_exclusion_radius_mm"] = float(key[7])
+        if key[8] is not None:
+            row["crossing_distance_mm"] = float(key[8])
+            center_values = {
+                float(item["summed_blue_intensity_at_mot_center_W_m2"])
+                for item in rows
+            }
+            crossing_values = {
+                float(item["summed_blue_intensity_at_crossing_W_m2"])
+                for item in rows
+            }
+            if len(center_values) != 1 or len(crossing_values) != 1:
+                raise ValueError("Shard geometry intensity checks do not match.")
+            row["summed_blue_intensity_at_mot_center_W_m2"] = center_values.pop()
+            row["summed_blue_intensity_at_crossing_W_m2"] = crossing_values.pop()
         for field in COUNT_FIELDS:
             row[field] = int(sum(item[field] for item in rows))
         for field in MEDIAN_FIELDS:
@@ -118,15 +145,18 @@ def run_merge(input_root, output_dir):
     paths = sorted(input_root.glob("shard_*/blue_slower_scan.json"))
     if not paths:
         paths = sorted(input_root.glob("shard_*/green_trap_scan.json"))
+    if not paths:
+        paths = sorted(input_root.glob("shard_*/sequential_geometry_scan.json"))
     reports = [json.loads(path.read_text()) for path in paths]
     merged = merge_reports(reports)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    output_stem = (
-        "merged_green_trap_scan"
-        if reports[0].get("green_s0_values") is not None
-        else "merged_blue_slower_scan"
-    )
+    if reports[0].get("blue_waists_mm") is not None:
+        output_stem = "merged_sequential_geometry_scan"
+    elif reports[0].get("green_s0_values") is not None:
+        output_stem = "merged_green_trap_scan"
+    else:
+        output_stem = "merged_blue_slower_scan"
     csv_path = output_dir / f"{output_stem}.csv"
     json_path = output_dir / f"{output_stem}.json"
     with csv_path.open("w", newline="") as stream:

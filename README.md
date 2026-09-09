@@ -263,6 +263,21 @@ a peak of 567. Blue intensity, gradient, green intensity, and green detuning
 are scan-boundary choices, so this point is adopted only to produce the current
 full-ensemble retention curve; a later expanded optimization must replace it.
 
+`angled_sequential` is now a buildable planar-separated variant of crossed-beam
+slowing rather than a literal copy of the paper's elliptical beams. Two circular
+399-nm beams illuminate only the upstream side of a common lab-z cutoff plane,
+so the six-beam 556-nm MOT core has exactly zero blue light. The configured
+5-mm blue waist, 10-mm protected-core radius, and 20-mm upstream crossing are
+provisional geometry-study seeds, not laboratory settings. Run
+`python -m studies.scan_3d_mot_sequential_geometry` to compare the requested
+3/5/10-mm waists, 5/10-mm protected radii, and 10/20-mm crossings using the
+same saved 2D-MOT ensemble. Earlier sequential scan and retention results used
+the obsolete elliptical geometry and are not performance measurements for this
+replacement.
+The geometry scan supports the same deterministic `--num-shards` and
+`--shard-index` split as the other 3D-MOT studies; merge its shard directories
+with `python -m studies.merge_3d_mot_blue_scan_shards`.
+
 ## Recommended entry point
 
 For a new user, the recommended entry points are the three stage scripts:

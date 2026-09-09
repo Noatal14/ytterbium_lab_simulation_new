@@ -143,26 +143,13 @@ def _component_center(profile, wavelength_key):
     )
 
 
-def _intensity_alpha(relative_intensity):
-    """Map normalized intensity to opacity while keeping weak regions visible."""
-    return 0.015 + 0.14 * float(np.clip(relative_intensity, 0.0, 1.0))
-
-
 def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
-    """Draw Gaussian intensity shells whose opacity follows local intensity."""
-    for radius_fraction in np.linspace(1.5, 0.15, 6):
-        radius = radius_fraction * radius_m
-        relative_intensity = np.exp(-2.0 * radius_fraction**2)
-        x, y, z = _cylinder_surface(source, center, radius)
-        ax.plot_surface(
-            x * MM_PER_M,
-            y * MM_PER_M,
-            z * MM_PER_M,
-            color=color,
-            alpha=_intensity_alpha(relative_intensity),
-            linewidth=0,
-            shade=False,
-        )
+    """Draw one opaque wire boundary at the configured 1/e^2 waist."""
+    x, y, z = _cylinder_surface(source, center, radius_m)
+    ax.plot_wireframe(
+        x * MM_PER_M, y * MM_PER_M, z * MM_PER_M,
+        color=color, linewidth=0.55, rstride=3, cstride=6,
+    )
 
     segment = np.vstack([source, center]) * MM_PER_M
     ax.plot(
@@ -171,7 +158,6 @@ def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
         segment[:, 2],
         color=color,
         linewidth=1.8,
-        alpha=0.85,
     )
 
     arrow_start = source + 0.68 * (center - source)
@@ -188,20 +174,12 @@ def _draw_gaussian_beam(ax, source, center, direction, radius_m, color):
 def _draw_outer_clipped_gaussian_beam(
     ax, source, center, direction, waist_m, outer_cutoff_radius_m, color
 ):
-    """Draw only the part of a Gaussian transmitted by the outer aperture."""
-    min_radius = min(0.15 * waist_m, 0.15 * outer_cutoff_radius_m)
-    for radius in np.linspace(outer_cutoff_radius_m, min_radius, 6):
-        relative_intensity = np.exp(-2.0 * radius**2 / waist_m**2)
-        x, y, z = _cylinder_surface(source, center, radius)
-        ax.plot_surface(
-            x * MM_PER_M,
-            y * MM_PER_M,
-            z * MM_PER_M,
-            color=color,
-            alpha=_intensity_alpha(relative_intensity),
-            linewidth=0,
-            shade=False,
-        )
+    """Draw the opaque wire boundary of the transmitted green core."""
+    x, y, z = _cylinder_surface(source, center, outer_cutoff_radius_m)
+    ax.plot_wireframe(
+        x * MM_PER_M, y * MM_PER_M, z * MM_PER_M,
+        color=color, linewidth=0.55, rstride=3, cstride=6,
+    )
 
     segment = np.vstack([source, center]) * MM_PER_M
     ax.plot(*segment.T, color=color, linewidth=1.8, alpha=0.85)
@@ -225,14 +203,14 @@ def _draw_elliptical_beam(ax, source, center, direction, short_m, long_m, color)
         short_m * np.cos(pp)[..., None] * short_axis[None, None, :]
         + long_m * np.sin(pp)[..., None] * long_axis[None, None, :]
     )
-    ax.plot_surface(
+    ax.plot_wireframe(
         points[..., 0] * MM_PER_M,
         points[..., 1] * MM_PER_M,
         points[..., 2] * MM_PER_M,
         color=color,
-        alpha=0.11,
-        linewidth=0,
-        shade=False,
+        linewidth=0.55,
+        rstride=3,
+        cstride=6,
     )
     segment = np.vstack([source, center]) * MM_PER_M
     ax.plot(*segment.T, color=color, linewidth=1.8, alpha=0.85)
@@ -259,18 +237,16 @@ def _draw_donut_beam(
 ):
     """Draw a Gaussian beam whose central disk is removed by a hard mask."""
     outer_radius = max(1.5 * waist_m, inner_cutoff_radius_m)
-    radii = np.linspace(outer_radius, inner_cutoff_radius_m, 7)
-    for radius in radii:
-        relative_intensity = np.exp(-2.0 * radius**2 / waist_m**2)
+    for radius in (outer_radius, inner_cutoff_radius_m):
         x, y, z = _cylinder_surface(source, center, radius)
-        ax.plot_surface(
+        ax.plot_wireframe(
             x * MM_PER_M,
             y * MM_PER_M,
             z * MM_PER_M,
             color=color,
-            alpha=_intensity_alpha(relative_intensity),
-            linewidth=0,
-            shade=False,
+            linewidth=0.5,
+            rstride=3,
+            cstride=6,
         )
 
     for radius, width, linestyle in (
@@ -284,7 +260,6 @@ def _draw_donut_beam(
             circle[:, 2],
             color=color,
             linewidth=width,
-            alpha=0.9 if radius == inner_cutoff_radius_m else 0.6,
             linestyle=linestyle,
         )
 
@@ -295,7 +270,6 @@ def _draw_donut_beam(
         segment[:, 2],
         color=color,
         linewidth=1.0,
-        alpha=0.35,
     )
 
     arrow_start = source + 0.68 * (center - source)
@@ -544,7 +518,24 @@ def plot_configuration(name, profile, beam_length_m):
             source = component_center - direction * beam_length_m
             profile_kind = cfg.get("profile", "gaussian")
 
-            if profile_kind == "donut":
+            if profile_kind == "upstream_planar_clipped_gaussian":
+                exclusion = float(cfg["green_exclusion_radius_m"])
+                plane_z = -exclusion
+                distance_to_plane = (plane_z - component_center[2]) / direction[2]
+                source = component_center + distance_to_plane * direction
+                upstream_end = source + direction * beam_length_m
+                _draw_gaussian_beam(
+                    ax,
+                    source,
+                    upstream_end,
+                    direction,
+                    float(cfg["waist_m"]),
+                    color,
+                )
+                component_center_for_limits = upstream_end
+                display_radius = float(cfg["waist_m"])
+
+            elif profile_kind == "donut":
                 inner_cutoff_radius = float(cfg["inner_cutoff_radius_m"])
                 _draw_donut_beam(
                     ax,
@@ -596,12 +587,15 @@ def plot_configuration(name, profile, beam_length_m):
                 )
                 display_radius = waist
 
+            if profile_kind != "upstream_planar_clipped_gaussian":
+                component_center_for_limits = component_center
+
             points_for_limits.extend(
                 [
                     source * MM_PER_M,
-                    component_center * MM_PER_M,
-                    (component_center + display_radius) * MM_PER_M,
-                    (component_center - display_radius) * MM_PER_M,
+                    component_center_for_limits * MM_PER_M,
+                    (component_center_for_limits + display_radius) * MM_PER_M,
+                    (component_center_for_limits - display_radius) * MM_PER_M,
                 ]
             )
 
@@ -622,6 +616,21 @@ def plot_configuration(name, profile, beam_length_m):
         ax.scatter(*green_center, s=55, color=GREEN_COLOR, marker="o")
         ax.text(*blue_center, "  blue center", color=BLUE_COLOR, fontsize=8)
         ax.text(*green_center, "  green center", color=GREEN_COLOR, fontsize=8)
+        exclusion_mm = float(blue_cfg["green_exclusion_radius_m"]) * MM_PER_M
+        plane_half_width_mm = 1.35 * max(
+            float(blue_cfg["waist_m"]), float(green_cfg["waist_m"])
+        ) * MM_PER_M
+        plane = np.array(
+            [
+                [-plane_half_width_mm, -plane_half_width_mm, -exclusion_mm],
+                [plane_half_width_mm, -plane_half_width_mm, -exclusion_mm],
+                [plane_half_width_mm, plane_half_width_mm, -exclusion_mm],
+                [-plane_half_width_mm, plane_half_width_mm, -exclusion_mm],
+                [-plane_half_width_mm, -plane_half_width_mm, -exclusion_mm],
+            ]
+        )
+        ax.plot(*plane.T, color="black", linewidth=1.5, linestyle="--")
+        ax.text(0.0, 0.0, -exclusion_mm, "  blue cutoff plane", fontsize=8)
 
     if name == "five_beam_gravity":
         # The missing source is physically above (+x). A beam emitted from there
@@ -642,14 +651,6 @@ def plot_configuration(name, profile, beam_length_m):
         Line2D(
             [0],
             [0],
-            color="0.4",
-            lw=6,
-            alpha=0.25,
-            label="opacity indicates relative intensity",
-        ),
-        Line2D(
-            [0],
-            [0],
             marker="*",
             color="black",
             linestyle="None",
@@ -660,7 +661,7 @@ def plot_configuration(name, profile, beam_length_m):
     ax.legend(handles=legend_handles, loc="upper left")
 
     fig.suptitle(f"3D-MOT configuration: {name}", fontsize=16)
-    ax.set_title("Geometry (opacity indicates intensity; length is schematic)")
+    ax.set_title("Geometry (opaque waist/cutoff outlines; length is schematic)")
     ax.set_xlabel("x relative to MOT center [mm]\n(gravity is -x)")
     ax.set_ylabel("y relative to MOT center [mm]")
     ax.set_zlabel("z relative to MOT center [mm]\n(atoms propagate +z)")
