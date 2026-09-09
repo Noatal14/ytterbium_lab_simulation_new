@@ -19,6 +19,8 @@ files.
 
 ## Available prompts
 
+- [`connect_to_zeus.md`](connect_to_zeus.md) — guides a new user through a safe
+  first connection, repository setup, Python environment verification, and the
+  minimum PBS concepts needed to begin working on Zeus.
 - [`run_2d_mot_s0_campaign.md`](run_2d_mot_s0_campaign.md) — guides an operator
   through the automated fixed-intensity 2D-MOT optimization campaign on Zeus.
-
