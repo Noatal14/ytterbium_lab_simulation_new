@@ -108,6 +108,17 @@ def merge_reports(reports):
             row["green_exclusion_radius_mm"] = float(key[7])
         if key[8] is not None:
             row["crossing_distance_mm"] = float(key[8])
+        geometry_intensity_fields = (
+            "summed_blue_intensity_at_mot_center_W_m2",
+            "summed_blue_intensity_at_crossing_W_m2",
+        )
+        has_geometry_intensity_checks = [
+            all(field in item for field in geometry_intensity_fields)
+            for item in rows
+        ]
+        if any(has_geometry_intensity_checks) and not all(has_geometry_intensity_checks):
+            raise ValueError("Geometry intensity checks are missing from some shards.")
+        if all(has_geometry_intensity_checks):
             center_values = {
                 float(item["summed_blue_intensity_at_mot_center_W_m2"])
                 for item in rows

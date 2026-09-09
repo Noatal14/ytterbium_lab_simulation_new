@@ -66,3 +66,20 @@ def test_merge_reports_keeps_green_parameters_as_part_of_point_identity():
 
     assert row["green_s0"] == 5.0
     assert row["green_detuning_gamma"] == -10.0
+
+
+def test_merge_keeps_selected_geometry_without_requiring_geometry_stage_checks():
+    reports = [_report(0, 3, 1, 4.0), _report(1, 4, 2, 6.0)]
+    for report in reports:
+        report["records"][0].update(
+            blue_waist_mm=3.0,
+            green_exclusion_radius_mm=10.0,
+            crossing_distance_mm=20.0,
+        )
+
+    row = merge_reports(reports)[0]
+
+    assert row["blue_waist_mm"] == 3.0
+    assert row["green_exclusion_radius_mm"] == 10.0
+    assert row["crossing_distance_mm"] == 20.0
+    assert "summed_blue_intensity_at_mot_center_W_m2" not in row
