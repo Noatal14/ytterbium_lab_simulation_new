@@ -132,7 +132,8 @@ def run_scan(args):
             point_index += 1
             print(
                 f"[{point_index}/{total_points}] {args.profile}: 556 s0={green_s0:g}, "
-                f"detuning={green_detuning:g} Gamma"
+                f"detuning={green_detuning:g} Gamma",
+                flush=True,
             )
             profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[args.profile])
             profile["399"]["s0"] = blue_s0
@@ -170,7 +171,8 @@ def run_scan(args):
                 f"  entered={record['entered_capture_region_count']}, "
                 f"slow={record['slow_inside_count']}, "
                 f"residence={record['minimum_residence_met_count']}, "
-                f"eligible={record['capture_eligible_ever_count']}"
+                f"eligible={record['capture_eligible_ever_count']}",
+                flush=True,
             )
             del results
             gc.collect()

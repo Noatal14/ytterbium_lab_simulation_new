@@ -25,3 +25,14 @@ def test_pipeline_generates_all_stages_and_dependency_submissions(tmp_path, monk
     assert "studies.scan_3d_mot_green_trap" in generated
     assert "studies.scan_3d_mot_gradient" in generated
     assert generated.count("--max-atoms 900") == 4
+    assert generated.count("python -u -m studies.scan_3d_mot_") == 4
+    assert 'exec > "${LOG_STEM}.out" 2> "${LOG_STEM}.err"' in generated
+    assert "data/validation/mot_3d/logs" in generated
+
+
+def test_pbs_header_creates_distinct_live_logs_for_array_shards():
+    header = pipeline._header("mot3d_test", array=True)
+
+    assert 'LOG_SUFFIX="${PBS_ARRAY_INDEX:-single}"' in header
+    assert "${PBS_JOBNAME}_${PBS_JOBID}_${LOG_SUFFIX}" in header
+    assert "#PBS -j oe" not in header

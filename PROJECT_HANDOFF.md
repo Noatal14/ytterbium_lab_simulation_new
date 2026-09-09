@@ -274,6 +274,13 @@ crossings) with fixed laser operating points, green light, and magnetic field.
 Earlier sequential optimization and retention results used the obsolete
 elliptical geometry and cannot be used to rank this replacement.
 
+All generated long-running 3D-MOT PBS scripts use `python -u` and redirect
+stdout/stderr to distinct files under `data/validation/mot_3d/logs`, including
+the array index in the name. The existing simulator-level `tqdm` bar counts
+completed atoms and writes to `.err`; do not wrap it in a second atom bar.
+Study-level messages immediately before and after individual simulations use
+flushed output so `.out` identifies the active candidate.
+
 `five_beam_gravity` now matches the transverse core-shell rule used by
 `angled_donut`: its paired `yz` directions use center-blocked blue Gaussians and
 green Gaussians clipped outside the same 10-mm radius. The unpaired `+x` beam

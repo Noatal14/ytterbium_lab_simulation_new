@@ -22,7 +22,7 @@ def submit_pipeline(work_dir):
     blue_array = _write(
         work_dir / "five_corrected_blue_array.pbs",
         _header("mot3d_five2_blue", array=True, walltime="05:00:00")
-        + f"""python -m studies.scan_3d_mot_blue_slower \\
+        + f"""python -u -m studies.scan_3d_mot_blue_slower \\
     --input {INPUT} \\
     --profiles five_beam_gravity \\
     --max-atoms 900 \\
@@ -52,7 +52,7 @@ python -m studies.select_3d_mot_scan_points \\
     gradient_array = _write(
         work_dir / "five_corrected_gradient_array.pbs",
         _header("mot3d_five2_grad", array=True, walltime="04:00:00")
-        + f"""python -m studies.scan_3d_mot_gradient \\
+        + f"""python -u -m studies.scan_3d_mot_gradient \\
     --input {INPUT} \\
     --profile five_beam_gravity \\
     --parameter-points-file {blue_root}/merged/selected_top5.json \\
@@ -81,7 +81,7 @@ python -m studies.select_3d_mot_scan_points \\
     green_array = _write(
         work_dir / "five_corrected_green_array.pbs",
         _header("mot3d_five2_green", array=True, walltime="04:00:00")
-        + f"""python -m studies.scan_3d_mot_green_trap \\
+        + f"""python -u -m studies.scan_3d_mot_green_trap \\
     --input {INPUT} \\
     --profile five_beam_gravity \\
     --operating-point-file {gradient_root}/merged/selected_best.json \\

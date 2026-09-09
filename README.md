@@ -280,6 +280,12 @@ The geometry scan supports the same deterministic `--num-shards` and
 `--shard-index` split as the other 3D-MOT studies; merge its shard directories
 with `python -m studies.merge_3d_mot_blue_scan_shards`.
 
+Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
+write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already
+reports completed atoms inside the simulator, so no second atom-level progress
+bar is added by the studies. Follow a running shard's `.err` file with
+`tail -f`; `.out` contains flushed candidate start/completion summaries.
+
 `five_beam_gravity` also uses complementary transverse core-shell profiles on
 its four paired `yz` directions: blue is exactly zero inside 10 mm and green is
 exactly zero from 10 mm outward. The unpaired `+x` direction remains green

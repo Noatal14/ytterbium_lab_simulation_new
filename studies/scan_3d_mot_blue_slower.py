@@ -292,7 +292,8 @@ def run_scan(args):
             point += 1
             print(
                 f"[{point}/{total_points}] {profile_name}: "
-                f"399 s0={s0:g}, detuning={detuning:g} Gamma"
+                f"399 s0={s0:g}, detuning={detuning:g} Gamma",
+                flush=True,
             )
             profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[profile_name])
             profile["399"]["s0"] = float(s0)
@@ -325,7 +326,8 @@ def run_scan(args):
                         if record["median_minimum_speed_inside_m_s"] is not None
                         else "n/a"
                     ),
-                )
+                ),
+                flush=True,
             )
             del results
             gc.collect()

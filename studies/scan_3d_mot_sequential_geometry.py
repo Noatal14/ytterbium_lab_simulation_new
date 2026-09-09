@@ -110,7 +110,8 @@ def run_scan(args):
         waist_m, exclusion_m, crossing_m = point
         print(
             f"[{index}/{len(points)}] waist={waist_m*1e3:g} mm, "
-            f"exclusion={exclusion_m*1e3:g} mm, crossing={crossing_m*1e3:g} mm"
+            f"exclusion={exclusion_m*1e3:g} mm, crossing={crossing_m*1e3:g} mm",
+            flush=True,
         )
         profile = copy.deepcopy(MOT_3D_CONFIGURATIONS["angled_sequential"])
         profile["399"].update(
@@ -134,6 +135,13 @@ def run_scan(args):
         analysis = analyze_results(results, time_points)
         exposure = blue_exposure_diagnostics(results, profile, 0.01)
         records.append(_geometry_record(point, analysis, exposure, center_intensity, crossing_intensity))
+        print(
+            "  completed: "
+            f"entered={records[-1]['entered_capture_region_count']}, "
+            f"slow={records[-1]['slow_inside_count']}, "
+            f"eligible={records[-1]['capture_eligible_ever_count']}",
+            flush=True,
+        )
         del results
         gc.collect()
 

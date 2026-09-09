@@ -532,7 +532,10 @@ def run_study(args):
         checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     for profile_name in args.profiles:
-        print(f"Running {profile_name} with {len(states)} shared input atoms...")
+        print(
+            f"Running {profile_name} with {len(states)} shared input atoms...",
+            flush=True,
+        )
         profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[profile_name])
         results, _ = mot_3d_simulation(
             states,
@@ -570,7 +573,10 @@ def run_study(args):
             if analysis["peak_time_s"] is not None
             else "n/a"
         )
-        print(f"  peak={analysis['peak_count']} at {peak_time_text}; {tau_text}")
+        print(
+            f"  peak={analysis['peak_count']} at {peak_time_text}; {tau_text}",
+            flush=True,
+        )
         diagnostics = analysis["diagnostics"]
         print(
             "  diagnostics: "
