@@ -289,6 +289,15 @@ completed atoms and writes to `.err`; do not wrap it in a second atom bar.
 Study-level messages immediately before and after individual simulations use
 flushed output so `.out` identifies the active candidate.
 
+Use `studies/submit_3d_mot_screening.py` before launching another full 3D-MOT
+optimization. The screening configuration is centralized in
+`MOT_3D_SCREENING_CONFIG`: six deliberately sparse provisional anchors and
+150 common input survivors split over three shards. The report includes static
+green restoring-force signs, blue center leakage and initial force direction,
+plus trajectory exposure, slowing, residence, and capture diagnostics. It is
+strictly a rejection/comparison stage; it must not be reported as an optimized
+or laboratory-set operating point.
+
 `graphs_scripts/plot_3d_mot_tau.py` reads a merged retention summary and writes
 two independent PNGs per profile under `graphs/mot_3d_tau`: capture-eligible
 population versus simulation time and continuous peak-cohort retention versus

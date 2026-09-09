@@ -286,6 +286,14 @@ The geometry scan supports the same deterministic `--num-shards` and
 `--shard-index` split as the other 3D-MOT studies; merge its shard directories
 with `python -m studies.merge_3d_mot_blue_scan_shards`.
 
+Before committing to any full 3D-MOT optimization, run
+`python -m studies.submit_3d_mot_screening`. This fast rejection screen uses
+six fixed, provisional anchor points and 150 shared 2D-MOT survivors split
+over three shards. It records restoring-force signs on all three axes, blue
+leakage at the MOT center, initial blue-force direction, actual blue exposure,
+slowing, residence, and capture counts. Its output is a geometry-comparison
+diagnostic, not an optimized operating point or a laboratory setting.
+
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already
 reports completed atoms inside the simulator, so no second atom-level progress

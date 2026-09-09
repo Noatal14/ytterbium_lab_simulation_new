@@ -489,6 +489,25 @@ MOT_3D_CONFIGURATIONS = {
 ACTIVE_MOT_3D_CONFIGURATION = "angled_donut"
 MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
+# Fast, deliberately sparse probes for rejecting poor 3D-MOT geometries before
+# any expensive optimization. These are comparison points, not optimized or
+# laboratory-set operating parameters.
+MOT_3D_SCREENING_CONFIG = {
+    "max_atoms": 150,
+    "force_displacement_m": 0.5e-3,
+    "blue_exposure_threshold_fraction": 0.01,
+    "minimum_exposed_fraction": 0.25,
+    "minimum_median_slowing_m_s": 1.0,
+    "anchors": (
+        {"blue_s0": 0.5, "blue_detuning_gamma": -2.0, "gradient_G_cm": 2.5, "green_s0": 5.0, "green_detuning_gamma": -10.0},
+        {"blue_s0": 1.0, "blue_detuning_gamma": -2.0, "gradient_G_cm": 2.5, "green_s0": 10.0, "green_detuning_gamma": -15.0},
+        {"blue_s0": 1.5, "blue_detuning_gamma": -2.0, "gradient_G_cm": 2.5, "green_s0": 20.0, "green_detuning_gamma": -20.0},
+        {"blue_s0": 0.5, "blue_detuning_gamma": -3.0, "gradient_G_cm": 5.0, "green_s0": 10.0, "green_detuning_gamma": -10.0},
+        {"blue_s0": 1.0, "blue_detuning_gamma": -3.0, "gradient_G_cm": 5.0, "green_s0": 20.0, "green_detuning_gamma": -15.0},
+        {"blue_s0": 1.5, "blue_detuning_gamma": -3.0, "gradient_G_cm": 10.0, "green_s0": 20.0, "green_detuning_gamma": -20.0},
+    ),
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
