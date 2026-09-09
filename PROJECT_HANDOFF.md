@@ -281,6 +281,12 @@ completed atoms and writes to `.err`; do not wrap it in a second atom bar.
 Study-level messages immediately before and after individual simulations use
 flushed output so `.out` identifies the active candidate.
 
+`graphs_scripts/plot_3d_mot_tau.py` reads a merged retention summary and writes
+two independent PNGs per profile under `graphs/mot_3d_tau`: capture-eligible
+population versus simulation time and continuous peak-cohort retention versus
+post-peak time. It draws a lifetime curve only for a fit already accepted in
+the source JSON and supports a visible `--data-label` for historical results.
+
 `five_beam_gravity` now matches the transverse core-shell rule used by
 `angled_donut`: its paired `yz` directions use center-blocked blue Gaussians and
 green Gaussians clipped outside the same 10-mm radius. The unpaired `+x` beam

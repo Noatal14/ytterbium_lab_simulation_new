@@ -286,6 +286,13 @@ reports completed atoms inside the simulator, so no second atom-level progress
 bar is added by the studies. Follow a running shard's `.err` file with
 `tail -f`; `.out` contains flushed candidate start/completion summaries.
 
+To turn an existing merged retention summary into presentation figures, run
+`python -m graphs_scripts.plot_3d_mot_tau`. It writes a separate captured-
+population plot and peak-cohort-retention plot for every configuration under
+`graphs/mot_3d_tau`. The script uses only the stored curves and accepted fit;
+it does not rerun the simulation or silently refit rejected data. Use
+`--data-label` to mark figures from an older configuration revision.
+
 `five_beam_gravity` also uses complementary transverse core-shell profiles on
 its four paired `yz` directions: blue is exactly zero inside 10 mm and green is
 exactly zero from 10 mm outward. The unpaired `+x` direction remains green
