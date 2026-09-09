@@ -567,21 +567,6 @@ def plot_configuration(name, profile, beam_length_m):
                 component_center_for_limits = upstream_end
                 display_radius = float(cfg["waist_m"])
 
-            elif profile_kind == "downstream_planar_clipped_gaussian":
-                plane_z = -float(blue_cfg["green_exclusion_radius_m"])
-                if source[2] < plane_z and abs(direction[2]) > 1e-15:
-                    distance_to_plane = (plane_z - component_center[2]) / direction[2]
-                    source = component_center + distance_to_plane * direction
-                _draw_gaussian_beam(
-                    ax,
-                    source,
-                    component_center,
-                    direction,
-                    float(cfg["waist_m"]),
-                    color,
-                )
-                display_radius = float(cfg["waist_m"])
-
             elif profile_kind == "donut":
                 inner_cutoff_radius = float(cfg["inner_cutoff_radius_m"])
                 _draw_donut_beam(

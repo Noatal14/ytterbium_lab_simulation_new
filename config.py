@@ -417,7 +417,7 @@ MOT_3D_CONFIGURATIONS = {
             "s0": 5.0,
             "detuning_gamma": -10.0,
             "waist_m": 0.01,
-            "profile": "downstream_planar_clipped_gaussian",
+            "profile": "gaussian",
             "center_offset_m": (0.0, 0.0, 0.0),
             # Required by the sign convention of the configured quadrupole
             # field to make the green MOT restoring along x, y, and z.

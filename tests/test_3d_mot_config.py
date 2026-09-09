@@ -164,11 +164,7 @@ def test_angled_sequential_uses_buildable_planar_separated_geometry():
     )
     assert all(beam.waist == pytest.approx(5.0e-3) for beam in blue_beams)
     assert all(beam.maximum_lab_z_m == pytest.approx(-10.0e-3) for beam in blue_beams)
-    assert all(
-        beam.profile_kind == "downstream_planar_clipped_gaussian"
-        for beam in green_beams
-    )
-    assert all(beam.minimum_lab_z_m == pytest.approx(-10.0e-3) for beam in green_beams)
+    assert all(beam.profile_kind == "gaussian" for beam in green_beams)
 
     profile = MOT_3D_CONFIGURATIONS["angled_sequential"]
     assert profile["399"]["s0"] == pytest.approx(0.6)
@@ -289,7 +285,7 @@ def test_planar_clipped_blue_is_circular_in_lab_coordinates():
         assert value / peak == pytest.approx(np.exp(-2.0), rel=1e-10)
 
 
-def test_sequential_blue_and_green_are_complementary_across_lab_z_plane():
+def test_sequential_blue_is_cut_at_plane_while_green_remains_present():
     profile = _resolved_profile("angled_sequential")
     beams = setup_3dmot_lasers(mot_3d_config=profile, center_position=(0.0, 0.0, 0.0))
     blue_beams = [beam for beam in beams if "3DMOT_399_" in beam.tag]
@@ -300,7 +296,7 @@ def test_sequential_blue_and_green_are_complementary_across_lab_z_plane():
     center = np.array([[0.0, 0.0, 0.0]])
 
     assert sum(beam.get_value(upstream)[0] for beam in blue_beams) > 0.0
-    assert sum(beam.get_value(upstream)[0] for beam in green_beams) == 0.0
+    assert sum(beam.get_value(upstream)[0] for beam in green_beams) > 0.0
     assert sum(beam.get_value(downstream)[0] for beam in blue_beams) == 0.0
     assert sum(beam.get_value(downstream)[0] for beam in green_beams) > 0.0
     assert sum(beam.get_value(center)[0] for beam in blue_beams) == 0.0

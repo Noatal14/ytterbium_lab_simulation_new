@@ -263,9 +263,9 @@ The former elliptical crossed-beam implementation of `angled_sequential` was
 replaced by a physically buildable planar-separated variant. It keeps the
 apparatus-compatible +/-30-degree xz axes, the two upstream-propagating 399-nm
 beams, and all six 556-nm MOT beams. The blue beams are circular Gaussians
-transmitted only for `z <= z_MOT - green_exclusion_radius_m`, while the green
-beams are transmitted only in the complementary downstream half-space. The
-boundary remains illuminated for both idealized profiles. The MOT center therefore has exactly zero blue
+transmitted only for `z <= z_MOT - green_exclusion_radius_m`; the six green
+Gaussian beams are not clipped by that plane and remain present on both sides.
+The boundary remains blue-illuminated. The MOT center therefore has exactly zero blue
 intensity while a crossing on or upstream of the plane remains illuminated.
 The configured 5-mm waist, 10-mm exclusion radius, and 20-mm upstream crossing
 are provisional seeds. `studies/scan_3d_mot_sequential_geometry.py` compares

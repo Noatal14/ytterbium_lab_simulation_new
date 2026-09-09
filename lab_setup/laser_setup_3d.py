@@ -118,30 +118,6 @@ class UpstreamPlanarClippedGaussianBeam(CircularGaussianBeam):
         return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
 
 
-class DownstreamPlanarClippedGaussianBeam(CircularGaussianBeam):
-    """Circular Gaussian transmitted only on the MOT side of a lab-z plane."""
-
-    def __init__(self, *args, minimum_lab_z_m, **kwargs):
-        self.minimum_lab_z_m = float(minimum_lab_z_m)
-        if not np.isfinite(self.minimum_lab_z_m):
-            raise ValueError("minimum_lab_z_m must be finite.")
-        super().__init__(*args, **kwargs)
-
-    @property
-    def type(self):
-        return "Downstream planar-clipped Gaussian Beam"
-
-    @property
-    def disp_type(self):
-        return "Planar-clipped beam"
-
-    @staticmethod
-    def _intensity_func(self, position):
-        position = np.asarray(position, dtype=float)
-        intensity = CircularGaussianBeam._intensity_func(self, position)
-        return np.where(position[..., 2] >= self.minimum_lab_z_m, intensity, 0.0)
-
-
 def _normalize_vector(vec):
     vec = np.asarray(vec, dtype=float)
     norm = np.linalg.norm(vec)
@@ -243,7 +219,6 @@ def _validate_profile(profile):
             "elliptical",
             "outer_clipped_gaussian",
             "upstream_planar_clipped_gaussian",
-            "downstream_planar_clipped_gaussian",
         }:
             raise ValueError(
                 f"Unsupported 3D-MOT {wavelength_key} profile "
@@ -282,14 +257,6 @@ def _validate_profile(profile):
                 raise ValueError(
                     "The blue crossing must lie on or upstream of its cutoff "
                     "plane: crossing_distance_m >= green_exclusion_radius_m."
-                )
-
-        if component["profile"] == "downstream_planar_clipped_gaussian":
-            exclusion = profile["399"].get("green_exclusion_radius_m")
-            if exclusion is None or float(exclusion) <= 0.0:
-                raise ValueError(
-                    "A downstream planar-clipped beam requires positive "
-                    "399.green_exclusion_radius_m."
                 )
 
         polarization_by_axis = component.get("polarization_by_axis", {})
@@ -403,7 +370,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         inner_cutoff_radius=None,
         outer_cutoff_radius=None,
         maximum_lab_z_m=None,
-        minimum_lab_z_m=None,
         waist_short=None,
         waist_long=None,
     ):
@@ -415,8 +381,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             beam_cls = EllipticalLaserBeam
         elif profile_kind == "upstream_planar_clipped_gaussian":
             beam_cls = UpstreamPlanarClippedGaussianBeam
-        elif profile_kind == "downstream_planar_clipped_gaussian":
-            beam_cls = DownstreamPlanarClippedGaussianBeam
         else:
             beam_cls = CircularGaussianBeam
         beam_kwargs = dict(
@@ -438,8 +402,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             beam_kwargs["wy"] = waist_long
         elif profile_kind == "upstream_planar_clipped_gaussian":
             beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
-        elif profile_kind == "downstream_planar_clipped_gaussian":
-            beam_kwargs["minimum_lab_z_m"] = minimum_lab_z_m
         beam = beam_cls(**beam_kwargs)
         beam.profile_kind = profile_kind
         beam.set_power_from_peak_I(peak_intensity)
@@ -494,10 +456,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     polarization=_beam_polarization(beam_556_cfg, axis_tag),
                     outer_cutoff_radius=beam_556_cfg.get(
                         "outer_cutoff_radius_m"
-                    ),
-                    minimum_lab_z_m=(
-                        center_position[2]
-                        - beam_399_cfg.get("green_exclusion_radius_m", 0.0)
                     ),
                 )
             )
