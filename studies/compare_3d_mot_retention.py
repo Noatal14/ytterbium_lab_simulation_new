@@ -397,7 +397,7 @@ def analyze_masks(inside_masks, eligible_masks, time_points, diagnostics=None):
     }
 
 
-def analyze_results(results, time_points):
+def analyze_results(results, time_points, prequalified_input=False):
     """Build capture-eligible and peak-cohort retention curves for one profile."""
     inside_masks = inside_capture_masks(
         results,
@@ -405,13 +405,20 @@ def analyze_results(results, time_points):
         Geometry.MOT_3D_CENTER_M,
         MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
     )
-    eligible_masks = capture_eligible_masks(
-        results,
-        time_points,
-        inside_masks,
-        MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
-        MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
-    )
+    if prequalified_input:
+        # A continuation checkpoint already contains only members of the
+        # original global peak cohort retained through the checkpoint time.
+        # Spatial presence therefore defines continued retention immediately;
+        # do not impose a second residence delay or choose a later cohort.
+        eligible_masks = inside_masks.copy()
+    else:
+        eligible_masks = capture_eligible_masks(
+            results,
+            time_points,
+            inside_masks,
+            MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
+            MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
+        )
     diagnostics = capture_diagnostics(
         results,
         eligible_masks,
@@ -536,7 +543,10 @@ def run_study(args):
             t_max=args.t_max,
             seed=simulation_seed,
         )
-        analysis = analyze_results(results, time_points)
+        prequalified_input = bool(getattr(args, "prequalified_input", False))
+        analysis = analyze_results(
+            results, time_points, prequalified_input=prequalified_input
+        )
         analyses[profile_name] = analysis
         if checkpoint_dir is not None:
             final_states, final_state_available = final_states_on_grid(
@@ -602,6 +612,7 @@ def run_study(args):
         "dt_s": float(args.dt),
         "t_max_s": float(args.t_max),
         "gravity_enabled": not args.no_gravity,
+        "prequalified_input": bool(getattr(args, "prequalified_input", False)),
         "capture_radius_m": MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
         "minimum_residence_time_s": MOT_3D_CAPTURE_CONFIG[
             "minimum_residence_time_s"
@@ -652,6 +663,14 @@ def parse_args(argv=None):
     parser.add_argument("--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"])
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
     parser.add_argument("--no-gravity", action="store_true")
+    parser.add_argument(
+        "--prequalified-input",
+        action="store_true",
+        help=(
+            "Treat every input state as an already qualified retention cohort; "
+            "use for continuation checkpoints only."
+        ),
+    )
     return parser.parse_args(argv)
 
 

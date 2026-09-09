@@ -4,6 +4,7 @@ import numpy as np
 
 from studies.compare_3d_mot_retention import (
     analyze_masks,
+    analyze_results,
     capture_diagnostics,
     capture_eligible_masks,
     fit_retention_lifetime,
@@ -198,6 +199,37 @@ def test_peak_cohort_uses_eligibility_but_retention_uses_spatial_presence():
     assert counts.tolist() == [0, 2, 0, 0]
     assert peak_index == 1
     assert retained.tolist() == [2, 2, 1]
+
+
+def test_prequalified_continuation_starts_with_the_entire_checkpoint_cohort():
+    times = np.arange(4, dtype=float) * 1.0e-3
+    center_z = np.full(4, 0.413)
+    zeros = np.zeros(4)
+    results = [
+        SimpleNamespace(
+            t=times,
+            y=np.vstack([zeros, zeros, center_z, np.full(4, 3.0), zeros, zeros]),
+        ),
+        SimpleNamespace(
+            t=times,
+            y=np.vstack(
+                [
+                    np.array([0.0, 0.0, 0.010, 0.010]),
+                    zeros,
+                    center_z,
+                    zeros,
+                    zeros,
+                    zeros,
+                ]
+            ),
+        ),
+    ]
+
+    analysis = analyze_results(results, times, prequalified_input=True)
+
+    assert analysis["peak_index"] == 0
+    assert analysis["peak_count"] == 2
+    assert analysis["retained_counts"].tolist() == [2, 2, 1, 1]
 
 
 def test_exponential_fit_is_accepted_only_for_a_resolved_decay():

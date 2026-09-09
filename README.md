@@ -210,6 +210,10 @@ the final sample, not full trajectories. The merger's `--checkpoint-root` and
 profile containing the global peak cohort members that remained continuously
 inside through the end. These checkpoints can resume a longer retention run
 without repeating the completed interval.
+When starting from those saved states, pass `--prequalified-input`. This treats
+all checkpoint atoms as the already selected cohort at continuation time zero
+and follows uninterrupted spatial retention immediately, rather than imposing
+another residence delay or selecting a new peak.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core

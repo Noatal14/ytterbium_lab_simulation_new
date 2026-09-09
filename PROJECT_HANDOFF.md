@@ -194,6 +194,9 @@ original ensemble indices; after the global peak is known, the merger writes
 only peak-cohort atoms retained through the final sample under
 `data/particle_states/after_3d_mot`. This permits continuation without storing
 or recomputing the full trajectory history.
+Continuation runs must pass `--prequalified-input`; otherwise the analysis
+would incorrectly reapply the five-millisecond residence requirement and could
+select a new, biased cohort peak after the saved checkpoint.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and
