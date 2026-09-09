@@ -492,7 +492,7 @@ def _print_profile_summary(name, profile, directions):
     print("399 center [m]:", np.array2string(blue_center, precision=6))
     print("556 center [m]:", np.array2string(green_center, precision=6))
 
-    if name == "angled_sequential":
+    if profile["399"].get("profile") == "upstream_planar_clipped_gaussian":
         if blue_center[2] < green_center[2]:
             print("Ordering check: OK — blue is upstream of green along +z.")
         else:
@@ -527,7 +527,7 @@ def plot_configuration(name, profile, beam_length_m):
 
     blue_cfg = profile.get("399", {})
     green_cfg = profile.get("556", {})
-    if name == "angled_sequential":
+    if blue_cfg.get("profile") == "upstream_planar_clipped_gaussian":
         _draw_sequential_longitudinal_profiles(profile_ax, profile)
     else:
         _draw_radial_profiles(profile_ax, blue_cfg, green_cfg)
@@ -641,7 +641,7 @@ def plot_configuration(name, profile, beam_length_m):
                 fontsize=7,
             )
 
-    if name == "angled_sequential":
+    if blue_cfg.get("profile") == "upstream_planar_clipped_gaussian":
         blue_center = (_component_center(profile, "399") - absolute_center) * MM_PER_M
         green_center = (_component_center(profile, "556") - absolute_center) * MM_PER_M
         ax.scatter(*blue_center, s=55, color=BLUE_COLOR, marker="o")

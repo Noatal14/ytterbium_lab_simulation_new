@@ -12,9 +12,9 @@ from studies import submit_3d_mot_screening as submitter
 from studies.merge_3d_mot_screening_shards import screening_verdict
 
 
-def test_six_screening_anchors_are_sparse_valid_probes():
+def test_screening_anchors_include_six_probes_and_donut_positive_control():
     anchors = MOT_3D_SCREENING_CONFIG["anchors"]
-    assert len(anchors) == 6
+    assert len(anchors) == 7
     assert all(point["blue_s0"] > 0 for point in anchors)
     assert all(point["blue_detuning_gamma"] < 0 for point in anchors)
     assert all(point["green_s0"] > 0 for point in anchors)
@@ -30,6 +30,13 @@ def test_anchor_changes_parameters_without_mutating_configuration():
     assert profile["399"]["s0"] == anchor["blue_s0"]
     assert profile["556"]["detuning_gamma"] == anchor["green_detuning_gamma"]
     assert original["399"]["s0"] != anchor["blue_s0"]
+
+
+def test_four_beam_candidate_splits_nominal_blue_intensity_between_two_pairs():
+    profile = copy.deepcopy(MOT_3D_CONFIGURATIONS["dual_plane_four_blue"])
+    anchor = MOT_3D_SCREENING_CONFIG["anchors"][1]
+    apply_anchor(profile, anchor)
+    assert profile["399"]["s0"] == 0.5 * anchor["blue_s0"]
 
 
 def test_screening_rank_rejects_nonrestoring_candidate_first():

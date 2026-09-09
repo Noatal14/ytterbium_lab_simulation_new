@@ -291,12 +291,21 @@ flushed output so `.out` identifies the active candidate.
 
 Use `studies/submit_3d_mot_screening.py` before launching another full 3D-MOT
 optimization. The screening configuration is centralized in
-`MOT_3D_SCREENING_CONFIG`: six deliberately sparse provisional anchors and
+`MOT_3D_SCREENING_CONFIG`: seven deliberately sparse provisional anchors and
 150 common input survivors split over three shards. The report includes static
 green restoring-force signs, blue center leakage and initial force direction,
 plus trajectory exposure, slowing, residence, and capture diagnostics. It is
 strictly a rejection/comparison stage; it must not be reported as an optimized
 or laboratory-set operating point.
+Seven provisional crossed-blue candidates are registered for this screen:
+four `horizontal_cross_*` designs in the gravity-free `yz` plane, two widened
+`vertical_cross_*` designs in `xz`, and `dual_plane_four_blue` using both
+planes. All blue propagation vectors are 30 degrees from `z`, have negative-z
+components, are paired for transverse cancellation, and terminate at a hard
+upstream cutoff plane. They share the existing six-beam green MOT with strong
+axis `y` and its force-tested polarization mapping. The four-beam candidate
+uses half nominal per-beam blue `s0` during screening so its two blue pairs do
+not receive twice the comparison intensity.
 
 `graphs_scripts/plot_3d_mot_tau.py` reads a merged retention summary and writes
 two independent PNGs per profile under `graphs/mot_3d_tau`: capture-eligible

@@ -5,7 +5,12 @@ import pytest
 from atomsmltr.environment.lasers.polarization import CircularRight
 from atomsmltr.simulation.simulator.simbase import get_force_vec
 
-from config import ACTIVE_MOT_3D_CONFIGURATION, MOT_3D_CONFIGURATIONS, BLUE_SATURATION_INTENSITY_MW_CM2
+from config import (
+    ACTIVE_MOT_3D_CONFIGURATION,
+    BLUE_SATURATION_INTENSITY_MW_CM2,
+    MOT_3D_CONFIGURATIONS,
+    MOT_3D_SCREENING_CANDIDATE_NAMES,
+)
 from lab_setup.config_builder import build_base_config
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
 
@@ -58,8 +63,33 @@ def test_active_3d_mot_profile_is_registered():
     assert ACTIVE_MOT_3D_CONFIGURATION in MOT_3D_CONFIGURATIONS
     profile = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
     assert "beam_layout" in profile
-    assert len(MOT_3D_CONFIGURATIONS) == 3
+    assert len(MOT_3D_CONFIGURATIONS) == 10
     assert "orthogonal_counterpropagating" not in MOT_3D_CONFIGURATIONS
+
+
+@pytest.mark.parametrize("profile_name", MOT_3D_SCREENING_CANDIDATE_NAMES)
+def test_screening_candidate_blue_force_slows_and_cancels_transversely(profile_name):
+    profile, simulation_config = _profile_single_wavelength_config(profile_name, "399")
+    crossing = np.asarray(profile["center_position_m"], dtype=float)
+    crossing += np.asarray(profile["399"]["center_offset_m"], dtype=float)
+    force = _force_at(simulation_config, crossing, velocity=(0.0, 0.0, 10.0))
+
+    assert force[2] < 0.0
+    assert np.linalg.norm(force[:2]) <= 1e-6 * abs(force[2]) + 1e-30
+
+
+@pytest.mark.parametrize("profile_name", MOT_3D_SCREENING_CANDIDATE_NAMES)
+def test_screening_candidate_has_dark_center_and_lit_crossing(profile_name):
+    profile = _resolved_profile(profile_name)
+    beams = [
+        beam for beam in setup_3dmot_lasers(profile) if "3DMOT_399_" in beam.tag
+    ]
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    crossing = center + np.asarray(profile["399"]["center_offset_m"], dtype=float)
+
+    assert sum(beam.get_value(center[None, :])[0] for beam in beams) == 0.0
+    assert sum(beam.get_value(crossing[None, :])[0] for beam in beams) > 0.0
+    assert all(np.asarray(beam.direction)[2] < 0.0 for beam in beams)
 
 
 def test_3d_mot_field_accepts_single_position_and_position_batch():

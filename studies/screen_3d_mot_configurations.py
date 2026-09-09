@@ -30,7 +30,7 @@ from utils.data_paths import AFTER_2D_MOT_DIR
 
 def apply_anchor(profile, anchor):
     profile["399"].update(
-        s0=float(anchor["blue_s0"]),
+        s0=float(anchor["blue_s0"]) * float(profile.get("screening_blue_s0_scale", 1.0)),
         detuning_gamma=float(anchor["blue_detuning_gamma"]),
     )
     profile["556"].update(
@@ -184,6 +184,7 @@ def run_screen(args):
         )
         record.update(
             screening_anchor=anchor_index + 1,
+            nominal_blue_s0=float(anchor["blue_s0"]),
             gradient_G_cm=gradient,
             green_s0=float(anchor["green_s0"]),
             green_detuning_gamma=float(anchor["green_detuning_gamma"]),

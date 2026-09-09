@@ -160,6 +160,27 @@ def _five_beam_gravity_directions():
     ]
 
 
+def _crossed_blue_candidate_directions(profile):
+    """Return the common green MOT axes plus independently placed blue pairs."""
+    directions = _angled_xz_y_directions(profile["xz_angle_from_z_deg"])
+    theta = np.deg2rad(float(profile["blue_angle_from_z_deg"]))
+    s, c = np.sin(theta), np.cos(theta)
+    for plane in profile["blue_slower_planes"]:
+        if plane == "yz":
+            directions.extend(
+                [("BLUE_YZ_1", _normalize_vector((0.0, s, -c))),
+                 ("BLUE_YZ_2", _normalize_vector((0.0, -s, -c)))]
+            )
+        elif plane == "xz":
+            directions.extend(
+                [("BLUE_XZ_1", _normalize_vector((s, 0.0, -c))),
+                 ("BLUE_XZ_2", _normalize_vector((-s, 0.0, -c)))]
+            )
+        else:
+            raise ValueError(f"Unsupported blue slower plane '{plane}'.")
+    return directions
+
+
 def _get_beam_directions(profile):
     layout = profile.get("beam_layout")
     if layout == "angled_xz_y":
@@ -167,6 +188,8 @@ def _get_beam_directions(profile):
         return _angled_xz_y_directions(theta_deg)
     if layout == "rotated_yz_minus_upper_x":
         return _five_beam_gravity_directions()
+    if layout == "angled_green_with_crossed_blue":
+        return _crossed_blue_candidate_directions(profile)
     raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
 
 
@@ -188,6 +211,13 @@ def _validate_profile(profile):
             raise ValueError(
                 "Angled 3D-MOT profiles require 0 < xz_angle_from_z_deg < 90."
             )
+    if layout == "angled_green_with_crossed_blue":
+        angle = float(profile.get("blue_angle_from_z_deg", 0.0))
+        planes = profile.get("blue_slower_planes")
+        if angle != 30.0:
+            raise ValueError("Candidate blue slowing beams must use the approved 30-degree angle.")
+        if not planes or any(plane not in {"xz", "yz"} for plane in planes):
+            raise ValueError("Candidate blue slower planes must contain xz and/or yz.")
 
     strong_axis = profile.get("magnetic_strong_axis", "z")
     if strong_axis not in {"x", "y", "z"}:

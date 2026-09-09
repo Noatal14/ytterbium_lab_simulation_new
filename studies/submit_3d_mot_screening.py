@@ -19,7 +19,13 @@ def submit_screening(work_dir, profiles, max_atoms):
     pools = min(50, int(np.ceil(max_atoms / 3)))
     array_file = _write(
         work_dir / "screening_array.pbs",
-        _header("mot3d_screen", array=True, walltime="01:00:00", ncpus=pools, mem="32gb")
+        _header(
+            "mot3d_screen",
+            array=True,
+            walltime=MOT_3D_SCREENING_CONFIG["pbs_walltime"],
+            ncpus=pools,
+            mem="32gb",
+        )
         + f"""python -u -m studies.screen_3d_mot_configurations \\
     --input {INPUT} --profiles {profile_args} --max-atoms {max_atoms} \\
     --num-shards 3 --shard-index "$PBS_ARRAY_INDEX" --npools {pools} \\

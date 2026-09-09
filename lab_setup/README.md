@@ -65,6 +65,14 @@ For `angled_sequential`, parameter provenance is intentionally separated:
 
 - **Paper motivation, not literal current geometry:** Plotkin-Swing et al. (2020) use two crossed 399-nm slowing beams upstream of a six-beam 556-nm MOT. Their reported 45-degree angle, 1.5-mm short ellipse width, and elliptical profile are no longer values used by this buildable project variant.
 - **Project geometry choices:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; atoms propagate along lab `+z`, so both circular slowing beams have negative-z propagation components and cancelling transverse components. A common plane at `z_MOT - green_exclusion_radius_m` cuts only the blue beams on the MOT side; the six green Gaussians remain continuous across it. The boundary remains blue-illuminated, so a crossing may lie exactly on it without losing blue light. The 556-nm MOT retains both xz pairs and the y pair, with strong magnetic axis `y`, right-handed xz polarizations, and left-handed y polarizations.
+- **Screening candidates:** `horizontal_cross_near`, `horizontal_cross_mid`,
+  `horizontal_cross_far_wide`, and `horizontal_cross_at_gate` place a symmetric
+  30-degree blue pair in the gravity-free `yz` plane. The two
+  `vertical_cross_*` candidates use the corresponding `xz` pair, and
+  `dual_plane_four_blue` uses both pairs with half the nominal per-beam `s0`
+  during screening. All seven reuse the same six-beam green MOT, `y` strong
+  field axis, and force-validated green helicities. Every blue beam has a
+  negative lab-z component; paired transverse components cancel.
 - **Provisional scan values:** the current blue waist is 5 mm, protected-core radius 10 mm, and crossing 20 mm upstream. The geometry study scans waists 3/5/10 mm, radii 5/10 mm, and crossings 10/20 mm. The operating point remains blue `s0 = 0.6`, blue `detuning_gamma = -1.65`, green `s0 = 5`, green `detuning_gamma = -10`, and magnetic gradient `10 G/cm`. All are simulation-study values, not laboratory-set constants.
 
 The polarization-corrected provisional retention point is blue `s0 = 1.5`,
