@@ -583,7 +583,10 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 # any expensive optimization. These are comparison points, not optimized or
 # laboratory-set operating parameters.
 MOT_3D_SCREENING_CONFIG = {
-    "max_atoms": 150,
+    "max_atoms": 600,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
     "pbs_walltime": "06:00:00",
     "force_displacement_m": 0.5e-3,
     "blue_exposure_threshold_fraction": 0.01,

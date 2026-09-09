@@ -53,7 +53,7 @@ def test_screening_rank_rejects_nonrestoring_candidate_first():
     assert screening_rank_key(restoring) > screening_rank_key(nonrestoring)
 
 
-def test_submission_uses_three_small_shards_and_dependent_merge(tmp_path, monkeypatch):
+def test_submission_uses_three_full_nodes_and_dependent_merge(tmp_path, monkeypatch):
     submitted = []
 
     def fake_submit(path, dependency=None):
@@ -61,12 +61,13 @@ def test_submission_uses_three_small_shards_and_dependent_merge(tmp_path, monkey
         return f"job{len(submitted)}"
 
     monkeypatch.setattr(submitter, "_submit", fake_submit)
-    assert submitter.submit_screening(tmp_path, ["angled_sequential"], 150) == "job2"
+    assert submitter.submit_screening(tmp_path, ["angled_sequential"], 600) == "job2"
     assert submitted[1][1] == "job1"
     generated = "\n".join(path.read_text() for path, _ in submitted)
-    assert "--max-atoms 150" in generated
+    assert "--max-atoms 600" in generated
     assert "--num-shards 3" in generated
-    assert "--npools 50" in generated
+    assert "#PBS -l select=1:ncpus=200:mem=64gb" in generated
+    assert "--npools 200" in generated
     assert "merge_3d_mot_screening_shards" in generated
 
 

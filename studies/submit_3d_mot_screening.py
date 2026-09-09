@@ -3,8 +3,6 @@
 import argparse
 from pathlib import Path
 
-import numpy as np
-
 from config import MOT_3D_CONFIGURATIONS, MOT_3D_SCREENING_CONFIG
 from studies.submit_3d_mot_overnight_pipeline import INPUT, ROOT, _header, _submit, _write
 
@@ -16,7 +14,9 @@ def submit_screening(work_dir, profiles, max_atoms):
     work_dir = Path(work_dir)
     output_root = ROOT / "screening" / "fast_geometry_screen"
     profile_args = " ".join(profiles)
-    pools = min(50, int(np.ceil(max_atoms / 3)))
+    num_shards = MOT_3D_SCREENING_CONFIG["num_shards"]
+    pools = MOT_3D_SCREENING_CONFIG["pbs_ncpus_per_shard"]
+    memory = MOT_3D_SCREENING_CONFIG["pbs_memory_per_shard"]
     array_file = _write(
         work_dir / "screening_array.pbs",
         _header(
@@ -24,11 +24,11 @@ def submit_screening(work_dir, profiles, max_atoms):
             array=True,
             walltime=MOT_3D_SCREENING_CONFIG["pbs_walltime"],
             ncpus=pools,
-            mem="32gb",
+            mem=memory,
         )
         + f"""python -u -m studies.screen_3d_mot_configurations \\
     --input {INPUT} --profiles {profile_args} --max-atoms {max_atoms} \\
-    --num-shards 3 --shard-index "$PBS_ARRAY_INDEX" --npools {pools} \\
+    --num-shards {num_shards} --shard-index "$PBS_ARRAY_INDEX" --npools {pools} \\
     --output-dir "{output_root}/shard_${{PBS_ARRAY_INDEX}}"
 """,
     )
