@@ -265,8 +265,9 @@ full-ensemble retention curve; a later expanded optimization must replace it.
 
 `angled_sequential` is now a buildable planar-separated variant of crossed-beam
 slowing rather than a literal copy of the paper's elliptical beams. Two circular
-399-nm beams illuminate only the upstream side of a common lab-z cutoff plane,
-so the six-beam 556-nm MOT core has exactly zero blue light. The configured
+399-nm beams illuminate only the upstream side of a common lab-z cutoff plane;
+the six 556-nm beams illuminate only the downstream/MOT side. These complementary
+half-spaces give the 556-nm MOT core exactly zero blue light. The configured
 5-mm blue waist, 10-mm protected-core radius, and 20-mm upstream crossing are
 provisional geometry-study seeds, not laboratory settings. Run
 `python -m studies.scan_3d_mot_sequential_geometry` to compare the requested
@@ -277,6 +278,12 @@ replacement.
 The geometry scan supports the same deterministic `--num-shards` and
 `--shard-index` split as the other 3D-MOT studies; merge its shard directories
 with `python -m studies.merge_3d_mot_blue_scan_shards`.
+
+`five_beam_gravity` also uses complementary transverse core-shell profiles on
+its four paired `yz` directions: blue is exactly zero inside 10 mm and green is
+exactly zero from 10 mm outward. The unpaired `+x` direction remains green
+only. Results obtained before this green aperture was added describe a
+different geometry and must be re-optimized before reuse.
 
 ## Recommended entry point
 

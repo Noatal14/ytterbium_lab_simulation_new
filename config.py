@@ -417,7 +417,7 @@ MOT_3D_CONFIGURATIONS = {
             "s0": 5.0,
             "detuning_gamma": -10.0,
             "waist_m": 0.01,
-            "profile": "gaussian",
+            "profile": "downstream_planar_clipped_gaussian",
             "center_offset_m": (0.0, 0.0, 0.0),
             # Required by the sign convention of the configured quadrupole
             # field to make the green MOT restoring along x, y, and z.
@@ -432,7 +432,7 @@ MOT_3D_CONFIGURATIONS = {
         },
     },
     "five_beam_gravity": {
-        "description": "Five-beam gravity-assisted 556-nm MOT with the -x beam removed and strong magnetic axis x. Four center-blocked 399-nm beams lie on the paired yz axes; the unopposed +x direction is green only.",
+        "description": "Five-beam gravity-assisted core-shell MOT with the -x beam removed and strong magnetic axis x. Four center-blocked 399-nm beams are paired with outer-clipped 556-nm cores on the yz axes; the unopposed +x direction is green only.",
         "beam_layout": "rotated_yz_minus_upper_x",
         "gravity_axis": "x",
         "transport_axis": "z",
@@ -471,7 +471,8 @@ MOT_3D_CONFIGURATIONS = {
             "s0": 10.0,
             "detuning_gamma": -20.0,
             "waist_m": 0.01,
-            "profile": "gaussian",
+            "profile": "outer_clipped_gaussian",
+            "outer_cutoff_radius_m": 0.01,
             # With strong axis x, the single upward beam requires the opposite
             # helicity from the paired yz beams for stable force gradients.
             "polarization_by_axis": {

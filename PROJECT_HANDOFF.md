@@ -262,9 +262,10 @@ optimization is mandatory.
 The former elliptical crossed-beam implementation of `angled_sequential` was
 replaced by a physically buildable planar-separated variant. It keeps the
 apparatus-compatible +/-30-degree xz axes, the two upstream-propagating 399-nm
-beams, and all six 556-nm MOT beams. The blue beams are circular Gaussians and
-are transmitted only for `z <= z_MOT - green_exclusion_radius_m`; the boundary
-itself remains illuminated. The MOT center therefore has exactly zero blue
+beams, and all six 556-nm MOT beams. The blue beams are circular Gaussians
+transmitted only for `z <= z_MOT - green_exclusion_radius_m`, while the green
+beams are transmitted only in the complementary downstream half-space. The
+boundary remains illuminated for both idealized profiles. The MOT center therefore has exactly zero blue
 intensity while a crossing on or upstream of the plane remains illuminated.
 The configured 5-mm waist, 10-mm exclusion radius, and 20-mm upstream crossing
 are provisional seeds. `studies/scan_3d_mot_sequential_geometry.py` compares
@@ -272,6 +273,13 @@ the requested 3x2x2 grid (3/5/10-mm waists, 5/10-mm exclusions, 10/20-mm
 crossings) with fixed laser operating points, green light, and magnetic field.
 Earlier sequential optimization and retention results used the obsolete
 elliptical geometry and cannot be used to rank this replacement.
+
+`five_beam_gravity` now matches the transverse core-shell rule used by
+`angled_donut`: its paired `yz` directions use center-blocked blue Gaussians and
+green Gaussians clipped outside the same 10-mm radius. The unpaired `+x` beam
+remains green only. All five-beam optimization and retention results produced
+before this aperture change correspond to a different geometry and must not be
+reused for the corrected configuration.
 
 Particle states use SI units and the column order:
 

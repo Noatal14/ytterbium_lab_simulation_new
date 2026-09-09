@@ -164,6 +164,11 @@ def test_angled_sequential_uses_buildable_planar_separated_geometry():
     )
     assert all(beam.waist == pytest.approx(5.0e-3) for beam in blue_beams)
     assert all(beam.maximum_lab_z_m == pytest.approx(-10.0e-3) for beam in blue_beams)
+    assert all(
+        beam.profile_kind == "downstream_planar_clipped_gaussian"
+        for beam in green_beams
+    )
+    assert all(beam.minimum_lab_z_m == pytest.approx(-10.0e-3) for beam in green_beams)
 
     profile = MOT_3D_CONFIGURATIONS["angled_sequential"]
     assert profile["399"]["s0"] == pytest.approx(0.6)
@@ -284,6 +289,24 @@ def test_planar_clipped_blue_is_circular_in_lab_coordinates():
         assert value / peak == pytest.approx(np.exp(-2.0), rel=1e-10)
 
 
+def test_sequential_blue_and_green_are_complementary_across_lab_z_plane():
+    profile = _resolved_profile("angled_sequential")
+    beams = setup_3dmot_lasers(mot_3d_config=profile, center_position=(0.0, 0.0, 0.0))
+    blue_beams = [beam for beam in beams if "3DMOT_399_" in beam.tag]
+    green_beams = [beam for beam in beams if "3DMOT_556_" in beam.tag]
+    plane_z = -profile["399"]["green_exclusion_radius_m"]
+    upstream = np.array([[0.0, 0.0, plane_z - 1.0e-9]])
+    downstream = np.array([[0.0, 0.0, plane_z + 1.0e-9]])
+    center = np.array([[0.0, 0.0, 0.0]])
+
+    assert sum(beam.get_value(upstream)[0] for beam in blue_beams) > 0.0
+    assert sum(beam.get_value(upstream)[0] for beam in green_beams) == 0.0
+    assert sum(beam.get_value(downstream)[0] for beam in blue_beams) == 0.0
+    assert sum(beam.get_value(downstream)[0] for beam in green_beams) > 0.0
+    assert sum(beam.get_value(center)[0] for beam in blue_beams) == 0.0
+    assert sum(beam.get_value(center)[0] for beam in green_beams) > 0.0
+
+
 def test_planar_clipped_blue_rejects_crossing_downstream_of_cutoff_plane():
     profile = _resolved_profile("angled_sequential")
     profile["399"]["green_exclusion_radius_m"] = 10.0e-3
@@ -332,7 +355,10 @@ def test_five_beam_gravity_uses_green_only_on_unpaired_x_direction():
     assert not any(beam.tag == "3DMOT_399_+X" for beam in blue_beams)
     assert any(beam.tag == "3DMOT_556_+X" for beam in green_beams)
     assert all(beam.profile_kind == "donut" for beam in blue_beams)
-    assert all(beam.profile_kind == "gaussian" for beam in green_beams)
+    assert all(beam.profile_kind == "outer_clipped_gaussian" for beam in green_beams)
+    assert profile["556"]["outer_cutoff_radius_m"] == pytest.approx(
+        profile["399"]["inner_cutoff_radius_m"]
+    )
     assert profile["magnetic_strong_axis"] == "x"
     assert profile["magnetic_gradient_G_cm"] == pytest.approx(2.5)
     assert profile["399"]["s0"] == pytest.approx(1.0)
@@ -481,6 +507,26 @@ def test_angled_donut_green_and_blue_profiles_are_complementary():
     boundary = np.array([[cutoff, 0.0, 0.0]])
     outside = np.array([[1.5 * cutoff, 0.0, 0.0]])
 
+    assert blue.get_value(inside)[0] == 0.0
+    assert green.get_value(inside)[0] > 0.0
+    assert blue.get_value(boundary)[0] > 0.0
+    assert green.get_value(boundary)[0] == 0.0
+    assert blue.get_value(outside)[0] > 0.0
+    assert green.get_value(outside)[0] == 0.0
+
+
+def test_five_beam_green_and_blue_profiles_are_complementary():
+    profile = _resolved_profile("five_beam_gravity")
+    beams = setup_3dmot_lasers(profile, center_position=(0.0, 0.0, 0.0))
+    blue = next(beam for beam in beams if beam.tag == "3DMOT_399_+YZ_1")
+    green = next(beam for beam in beams if beam.tag == "3DMOT_556_+YZ_1")
+    cutoff = profile["399"]["inner_cutoff_radius_m"]
+    direction = _normalize(blue.direction)
+    transverse = _normalize(np.cross(direction, (1.0, 0.0, 0.0)))
+
+    inside = np.array([0.5 * cutoff * transverse])
+    boundary = np.array([cutoff * transverse])
+    outside = np.array([1.5 * cutoff * transverse])
     assert blue.get_value(inside)[0] == 0.0
     assert green.get_value(inside)[0] > 0.0
     assert blue.get_value(boundary)[0] > 0.0

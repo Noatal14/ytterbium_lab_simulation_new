@@ -31,6 +31,7 @@ from lab_setup.laser_setup_3d import (
     _beam_profile_center,
     _get_beam_directions,
     _validate_profile,
+    setup_3dmot_lasers,
 )
 
 
@@ -426,6 +427,34 @@ def _draw_radial_profiles(ax, blue_cfg, green_cfg):
     ax.legend()
 
 
+def _draw_sequential_longitudinal_profiles(ax, profile):
+    """Show the actual complementary blue/green cut along the atomic axis."""
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    z_relative_m = np.linspace(-50.0e-3, 30.0e-3, 900)
+    positions = np.column_stack(
+        [
+            np.full_like(z_relative_m, center[0]),
+            np.full_like(z_relative_m, center[1]),
+            center[2] + z_relative_m,
+        ]
+    )
+    beams = setup_3dmot_lasers(profile)
+    for wavelength, color in (("399", BLUE_COLOR), ("556", GREEN_COLOR)):
+        selected = [beam for beam in beams if f"3DMOT_{wavelength}_" in beam.tag]
+        intensity = sum(np.asarray(beam.get_value(positions)) for beam in selected)
+        normalized = intensity / intensity.max()
+        ax.plot(z_relative_m * MM_PER_M, normalized, color=color, linewidth=2.5, label=f"{wavelength} nm")
+    cutoff_mm = -float(profile["399"]["green_exclusion_radius_m"]) * MM_PER_M
+    ax.axvline(cutoff_mm, color="black", linestyle="--", linewidth=1.3, label="separation plane")
+    ax.axvline(0.0, color="0.4", linestyle=":", linewidth=1.3, label="MOT center")
+    ax.set_title("Longitudinal intensity on the atomic axis")
+    ax.set_xlabel("z relative to MOT center [mm] (atoms propagate +z)")
+    ax.set_ylabel("normalized intensity for each wavelength")
+    ax.set_ylim(-0.03, 1.08)
+    ax.grid(alpha=0.25)
+    ax.legend()
+
+
 def _set_equal_3d_limits(ax, points_mm, padding=1.12):
     """Give x/y/z approximately equal physical scaling."""
     points_mm = np.asarray(points_mm, dtype=float)
@@ -498,7 +527,10 @@ def plot_configuration(name, profile, beam_length_m):
 
     blue_cfg = profile.get("399", {})
     green_cfg = profile.get("556", {})
-    _draw_radial_profiles(profile_ax, blue_cfg, green_cfg)
+    if name == "angled_sequential":
+        _draw_sequential_longitudinal_profiles(profile_ax, profile)
+    else:
+        _draw_radial_profiles(profile_ax, blue_cfg, green_cfg)
 
     for axis_tag, direction in directions:
         direction = np.asarray(direction, dtype=float)
@@ -533,6 +565,21 @@ def plot_configuration(name, profile, beam_length_m):
                     color,
                 )
                 component_center_for_limits = upstream_end
+                display_radius = float(cfg["waist_m"])
+
+            elif profile_kind == "downstream_planar_clipped_gaussian":
+                plane_z = -float(blue_cfg["green_exclusion_radius_m"])
+                if source[2] < plane_z and abs(direction[2]) > 1e-15:
+                    distance_to_plane = (plane_z - component_center[2]) / direction[2]
+                    source = component_center + distance_to_plane * direction
+                _draw_gaussian_beam(
+                    ax,
+                    source,
+                    component_center,
+                    direction,
+                    float(cfg["waist_m"]),
+                    color,
+                )
                 display_radius = float(cfg["waist_m"])
 
             elif profile_kind == "donut":
