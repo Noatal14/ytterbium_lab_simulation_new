@@ -486,122 +486,20 @@ MOT_3D_CONFIGURATIONS = {
     },
 }
 
-# Candidate geometries for fast screening. All reuse the force-validated green
-# angled-xz/y MOT and its y-strong quadrupole. Only the upstream 399-nm slowing
-# geometry changes. These are proposed designs, not optimized or lab-set values.
-_CROSSED_BLUE_CANDIDATE_SPECS = {
-    "horizontal_cross_near": {
-        "description": "Two horizontal yz-plane blue beams crossing 10 mm upstream, with a 5 mm waist and a cutoff plane 5 mm upstream.",
-        "planes": ("yz",), "waist_m": 5e-3, "crossing_m": 10e-3, "exclusion_m": 5e-3,
-    },
-    "horizontal_cross_mid": {
-        "description": "Two horizontal yz-plane blue beams crossing 20 mm upstream, with a 10 mm waist and a cutoff plane 10 mm upstream.",
-        "planes": ("yz",), "waist_m": 10e-3, "crossing_m": 20e-3, "exclusion_m": 10e-3,
-    },
-    "horizontal_cross_far_wide": {
-        "description": "Two horizontal yz-plane blue beams crossing 30 mm upstream, with a 15 mm waist and a cutoff plane 10 mm upstream.",
-        "planes": ("yz",), "waist_m": 15e-3, "crossing_m": 30e-3, "exclusion_m": 10e-3,
-    },
-    "horizontal_cross_at_gate": {
-        "description": "Two horizontal yz-plane blue beams whose 10 mm crossing lies on the hard cutoff plane, with a 10 mm waist.",
-        "planes": ("yz",), "waist_m": 10e-3, "crossing_m": 10e-3, "exclusion_m": 10e-3,
-    },
-    "vertical_cross_mid_wide": {
-        "description": "Two xz-plane blue beams crossing 20 mm upstream, widened to a 10 mm waist and cut 10 mm upstream.",
-        "planes": ("xz",), "waist_m": 10e-3, "crossing_m": 20e-3, "exclusion_m": 10e-3,
-    },
-    "vertical_cross_far_wide": {
-        "description": "Two xz-plane blue beams crossing 30 mm upstream, with a 15 mm waist and a cutoff plane 10 mm upstream.",
-        "planes": ("xz",), "waist_m": 15e-3, "crossing_m": 30e-3, "exclusion_m": 10e-3,
-    },
-    "dual_plane_four_blue": {
-        "description": "Four blue beams forming symmetric xz- and yz-plane pairs, crossing 20 mm upstream with 10 mm waists and a 10 mm cutoff.",
-        "planes": ("xz", "yz"), "waist_m": 10e-3, "crossing_m": 20e-3, "exclusion_m": 10e-3,
-        # Keep its total nominal blue intensity comparable to a two-beam pair.
-        "screening_blue_s0_scale": 0.5,
-    },
-}
-MOT_3D_SCREENING_CANDIDATE_NAMES = tuple(_CROSSED_BLUE_CANDIDATE_SPECS)
-
-for _candidate_name, _candidate in _CROSSED_BLUE_CANDIDATE_SPECS.items():
-    _blue_tags = tuple(
-        f"BLUE_{plane.upper()}_{index}"
-        for plane in _candidate["planes"]
-        for index in (1, 2)
-    )
-    MOT_3D_CONFIGURATIONS[_candidate_name] = {
-        "description": _candidate["description"],
-        "beam_layout": "angled_green_with_crossed_blue",
-        "xz_angle_from_z_deg": 30.0,
-        "blue_angle_from_z_deg": 30.0,
-        "blue_slower_planes": _candidate["planes"],
-        "magnetic_strong_axis": "y",
-        "magnetic_gradient_G_cm": 10.0,
-        "screening_blue_s0_scale": _candidate.get("screening_blue_s0_scale", 1.0),
-        "center_position_m": Geometry.MOT_3D_CENTER_M,
-        "beam_components": {
-            **{
-                tag: {"399_enabled": False, "556_enabled": True}
-                for tag in ("+XZ_1", "-XZ_1", "+XZ_2", "-XZ_2", "+Y", "-Y")
-            },
-            **{
-                tag: {"399_enabled": True, "556_enabled": False}
-                for tag in _blue_tags
-            },
-        },
-        "399": {
-            "enabled": True,
-            "s0": 1.0,
-            "detuning_gamma": -2.0,
-            "profile": "upstream_planar_clipped_gaussian",
-            "waist_m": _candidate["waist_m"],
-            "center_offset_m": (0.0, 0.0, -_candidate["crossing_m"]),
-            "green_exclusion_radius_m": _candidate["exclusion_m"],
-            "polarization_by_axis": {tag: "right" for tag in _blue_tags},
-        },
-        "556": {
-            "enabled": True,
-            "s0": 10.0,
-            "detuning_gamma": -15.0,
-            "waist_m": 0.01,
-            "profile": "gaussian",
-            "center_offset_m": (0.0, 0.0, 0.0),
-            "polarization_by_axis": {
-                "+XZ_1": "right", "-XZ_1": "right",
-                "+XZ_2": "right", "-XZ_2": "right",
-                "+Y": "left", "-Y": "left",
-            },
-        },
-    }
-
-del _candidate_name, _candidate, _blue_tags
-
 ACTIVE_MOT_3D_CONFIGURATION = "angled_donut"
 MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
-# Fast, deliberately sparse probes for rejecting poor 3D-MOT geometries before
-# any expensive optimization. These are comparison points, not optimized or
-# laboratory-set operating parameters.
-MOT_3D_SCREENING_CONFIG = {
+# Paired causal ablations of the donut geometry. These settings do not define
+# additional physical MOT configurations; they only control the validation
+# study that measures which blue-beam functions are required.
+MOT_3D_DONUT_ABLATION_CONFIG = {
     "max_atoms": 600,
     "num_shards": 3,
     "pbs_ncpus_per_shard": 200,
     "pbs_memory_per_shard": "64gb",
     "pbs_walltime": "06:00:00",
-    "force_displacement_m": 0.5e-3,
+    "single_pass_cutoff_upstream_m": 10e-3,
     "blue_exposure_threshold_fraction": 0.01,
-    "minimum_exposed_fraction": 0.25,
-    "minimum_median_slowing_m_s": 1.0,
-    "anchors": (
-        {"blue_s0": 0.5, "blue_detuning_gamma": -2.0, "gradient_G_cm": 2.5, "green_s0": 5.0, "green_detuning_gamma": -10.0},
-        {"blue_s0": 1.0, "blue_detuning_gamma": -2.0, "gradient_G_cm": 2.5, "green_s0": 10.0, "green_detuning_gamma": -15.0},
-        {"blue_s0": 1.5, "blue_detuning_gamma": -2.0, "gradient_G_cm": 2.5, "green_s0": 20.0, "green_detuning_gamma": -20.0},
-        {"blue_s0": 0.5, "blue_detuning_gamma": -3.0, "gradient_G_cm": 5.0, "green_s0": 10.0, "green_detuning_gamma": -10.0},
-        {"blue_s0": 1.0, "blue_detuning_gamma": -3.0, "gradient_G_cm": 5.0, "green_s0": 20.0, "green_detuning_gamma": -15.0},
-        {"blue_s0": 1.5, "blue_detuning_gamma": -3.0, "gradient_G_cm": 10.0, "green_s0": 20.0, "green_detuning_gamma": -20.0},
-        # Positive-control point at which angled_donut previously showed high capture.
-        {"blue_s0": 1.5, "blue_detuning_gamma": -3.0, "gradient_G_cm": 2.5, "green_s0": 30.0, "green_detuning_gamma": -25.0},
-    ),
 }
 
 MOT_3D_SIM_CONFIG = {

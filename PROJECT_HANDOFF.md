@@ -289,30 +289,26 @@ completed atoms and writes to `.err`; do not wrap it in a second atom bar.
 Study-level messages immediately before and after individual simulations use
 flushed output so `.out` identifies the active candidate.
 
-Use `studies/submit_3d_mot_screening.py` before launching another full 3D-MOT
-optimization. The screening configuration is centralized in
-`MOT_3D_SCREENING_CONFIG`: seven deliberately sparse provisional anchors and
-600 common input survivors split over three 200-core, 64-GB shards (200 atoms
-per shard). The report includes static
-green restoring-force signs, blue center leakage and initial force direction,
-plus trajectory exposure, slowing, residence, and capture diagnostics. It is
-strictly a rejection/comparison stage; it must not be reported as an optimized
-or laboratory-set operating point.
-Seven provisional crossed-blue candidates are registered for this screen:
-four `horizontal_cross_*` designs in the gravity-free `yz` plane, two widened
-`vertical_cross_*` designs in `xz`, and `dual_plane_four_blue` using both
-planes. All blue propagation vectors are 30 degrees from `z`, have negative-z
-components, are paired for transverse cancellation, and terminate at a hard
-upstream cutoff plane. They share the existing six-beam green MOT with strong
-axis `y` and its force-tested polarization mapping. The four-beam candidate
-uses half nominal per-beam blue `s0` during screening so its two blue pairs do
-not receive twice the comparison intensity.
+The retired seven-geometry crossed-blue screening is preserved only as an
+evidence archive under `data/validation/mot_3d/geometry_screening_600`. Its
+candidate profiles and submission machinery were removed after none approached
+the donut positive control. Git history retains the reproducibility code.
 
-`graphs_scripts/plot_3d_mot_tau.py` reads a merged retention summary and writes
-two independent PNGs per profile under `graphs/mot_3d_tau`: capture-eligible
-population versus simulation time and continuous peak-cohort retention versus
-post-peak time. It draws a lifetime curve only for a fit already accepted in
-the source JSON and supports a visible `--data-label` for historical results.
+The retained follow-up causal study is submitted with
+`studies.submit_3d_mot_donut_ablation`. It derives five temporary ablations
+from `angled_donut` without registering them in `MOT_3D_CONFIGURATIONS`: full
+donut, no positive-z blue, no transverse-y blue, counterpropagating pair in the
+full shell, and the same pair clipped 10 mm upstream for a single-pass control.
+The comparison between the last two isolates continued shell access from beam
+count and direction. It uses 600 shared atoms over three 200-core, 64-GB
+shards. The merger creates aggregate curves and automatically chooses the atom
+with the most separated blue-exposure episodes among atoms captured by the
+full donut but not the single-pass control; it never selects by visual appeal.
+
+`graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
+0--100 ms comparison with the donut 100--400 ms continuation. It produces one
+population-count graph and overlays only the already accepted five-beam decay
+fit; it does not extrapolate the five-beam simulation beyond 100 ms.
 
 `five_beam_gravity` now matches the transverse core-shell rule used by
 `angled_donut`: its paired `yz` directions use center-blocked blue Gaussians and

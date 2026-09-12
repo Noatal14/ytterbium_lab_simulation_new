@@ -118,6 +118,26 @@ class UpstreamPlanarClippedGaussianBeam(CircularGaussianBeam):
         return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
 
 
+class UpstreamClippedDonutGaussianBeam(DonutGaussianBeam):
+    """Center-blocked Gaussian additionally terminated at a lab-z plane."""
+
+    def __init__(self, *args, maximum_lab_z_m, **kwargs):
+        self.maximum_lab_z_m = float(maximum_lab_z_m)
+        if not np.isfinite(self.maximum_lab_z_m):
+            raise ValueError("maximum_lab_z_m must be finite.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Upstream-clipped center-blocked Gaussian Beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position = np.asarray(position, dtype=float)
+        intensity = DonutGaussianBeam._intensity_func(self, position)
+        return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
+
+
 def _normalize_vector(vec):
     vec = np.asarray(vec, dtype=float)
     norm = np.linalg.norm(vec)
@@ -160,27 +180,6 @@ def _five_beam_gravity_directions():
     ]
 
 
-def _crossed_blue_candidate_directions(profile):
-    """Return the common green MOT axes plus independently placed blue pairs."""
-    directions = _angled_xz_y_directions(profile["xz_angle_from_z_deg"])
-    theta = np.deg2rad(float(profile["blue_angle_from_z_deg"]))
-    s, c = np.sin(theta), np.cos(theta)
-    for plane in profile["blue_slower_planes"]:
-        if plane == "yz":
-            directions.extend(
-                [("BLUE_YZ_1", _normalize_vector((0.0, s, -c))),
-                 ("BLUE_YZ_2", _normalize_vector((0.0, -s, -c)))]
-            )
-        elif plane == "xz":
-            directions.extend(
-                [("BLUE_XZ_1", _normalize_vector((s, 0.0, -c))),
-                 ("BLUE_XZ_2", _normalize_vector((-s, 0.0, -c)))]
-            )
-        else:
-            raise ValueError(f"Unsupported blue slower plane '{plane}'.")
-    return directions
-
-
 def _get_beam_directions(profile):
     layout = profile.get("beam_layout")
     if layout == "angled_xz_y":
@@ -188,8 +187,6 @@ def _get_beam_directions(profile):
         return _angled_xz_y_directions(theta_deg)
     if layout == "rotated_yz_minus_upper_x":
         return _five_beam_gravity_directions()
-    if layout == "angled_green_with_crossed_blue":
-        return _crossed_blue_candidate_directions(profile)
     raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
 
 
@@ -211,13 +208,6 @@ def _validate_profile(profile):
             raise ValueError(
                 "Angled 3D-MOT profiles require 0 < xz_angle_from_z_deg < 90."
             )
-    if layout == "angled_green_with_crossed_blue":
-        angle = float(profile.get("blue_angle_from_z_deg", 0.0))
-        planes = profile.get("blue_slower_planes")
-        if angle != 30.0:
-            raise ValueError("Candidate blue slowing beams must use the approved 30-degree angle.")
-        if not planes or any(plane not in {"xz", "yz"} for plane in planes):
-            raise ValueError("Candidate blue slower planes must contain xz and/or yz.")
 
     strong_axis = profile.get("magnetic_strong_axis", "z")
     if strong_axis not in {"x", "y", "z"}:
@@ -247,8 +237,9 @@ def _validate_profile(profile):
             "gaussian",
             "donut",
             "elliptical",
-            "outer_clipped_gaussian",
-            "upstream_planar_clipped_gaussian",
+                "outer_clipped_gaussian",
+                "upstream_planar_clipped_gaussian",
+                "upstream_clipped_donut",
         }:
             raise ValueError(
                 f"Unsupported 3D-MOT {wavelength_key} profile "
@@ -302,7 +293,7 @@ def _validate_profile(profile):
             )
 
     blue = profile["399"]
-    if blue["enabled"] and blue["profile"] == "donut":
+    if blue["enabled"] and blue["profile"] in {"donut", "upstream_clipped_donut"}:
         cutoff = blue.get("inner_cutoff_radius_m")
         if cutoff is None or float(cutoff) <= 0.0:
             raise ValueError(
@@ -405,6 +396,8 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
     ):
         if profile_kind == "donut":
             beam_cls = DonutGaussianBeam
+        elif profile_kind == "upstream_clipped_donut":
+            beam_cls = UpstreamClippedDonutGaussianBeam
         elif profile_kind == "outer_clipped_gaussian":
             beam_cls = OuterClippedGaussianBeam
         elif profile_kind == "elliptical":
@@ -422,8 +415,10 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             polarization=polarization,
             tag=tag,
         )
-        if profile_kind == "donut":
+        if profile_kind in {"donut", "upstream_clipped_donut"}:
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
+            if profile_kind == "upstream_clipped_donut":
+                beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
         elif profile_kind == "outer_clipped_gaussian":
             beam_kwargs["outer_cutoff_radius"] = outer_cutoff_radius
         elif profile_kind == "elliptical":

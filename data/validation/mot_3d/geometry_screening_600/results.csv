@@ -1,0 +1,9 @@
+configuration,blue_plane,blue_beam_count,waist_mm,crossing_upstream_mm,cutoff_upstream_mm,best_anchor,capture_eligible_count,input_count,capture_percent,peak_eligible_count,slow_inside_count,blue_exposed_count,best_median_delta_vz_m_s,green_restoring_all_axes,blue_center_dark
+angled_donut,xz core-shell,4,10,0,radial 10 mm,2,452,600,75.333,449,455,600,-37.64388048182985,true,true
+horizontal_cross_near,yz,2,5,10,5,5,4,600,0.667,4,6,600,-36.20253227166875,true,true
+horizontal_cross_mid,yz,2,10,20,10,4,8,600,1.333,5,12,600,-40.74792392524016,true,true
+horizontal_cross_far_wide,yz,2,15,30,10,4,0,600,0.000,0,0,600,-46.924612233737726,true,true
+horizontal_cross_at_gate,yz,2,10,10,10,4,0,600,0.000,0,0,600,-40.20510798030548,true,true
+vertical_cross_mid_wide,xz,2,10,20,10,4,20,600,3.333,19,20,600,-49.462619400283806,true,true
+vertical_cross_far_wide,xz,2,15,30,10,4,0,600,0.000,0,0,600,-51.748450939908274,true,true
+dual_plane_four_blue,xz and yz,4,10,20,10,4,6,600,1.000,6,7,600,-44.776021091599674,true,true
