@@ -494,6 +494,7 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 # study that measures which blue-beam functions are required.
 MOT_3D_DONUT_ABLATION_CONFIG = {
     "max_atoms": 600,
+    "t_max_s": 100e-3,
     "num_shards": 3,
     "pbs_ncpus_per_shard": 200,
     "pbs_memory_per_shard": "64gb",

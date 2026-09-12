@@ -64,4 +64,5 @@ def test_submission_requests_three_full_nodes_and_dependent_merge(tmp_path, monk
     assert "--max-atoms 600" in generated
     assert "--num-shards 3" in generated
     assert "--npools 200" in generated
+    assert "--t-max 0.1" in generated
     assert MOT_3D_DONUT_ABLATION_CONFIG["pbs_ncpus_per_shard"] == 200

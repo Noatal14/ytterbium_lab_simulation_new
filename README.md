@@ -297,7 +297,7 @@ of why the donut works. It compares the full donut with removal of positive-z
 blue beams, removal of the transverse y pair, retention of only the
 counterpropagating xz pair, and a planar-clipped single-pass version of that
 same pair. All variants use the same 600 input atoms, seeds, green MOT, field,
-and blue operating point. The merge writes population and capture comparisons
+and blue operating point over a 100-ms window. The merge writes population and capture comparisons
 plus a non-cherry-picked representative atom that is captured by the full
 donut but not by the single-pass control. Its trajectory graph contains z,
 vz, distance from the MOT center, and the intensity of every blue donut beam

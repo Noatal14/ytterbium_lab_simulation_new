@@ -193,7 +193,9 @@ def parse_args(argv=None):
     parser.add_argument("--shard-index", type=int, default=0)
     parser.add_argument("--npools", type=int, default=1)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
-    parser.add_argument("--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"])
+    parser.add_argument(
+        "--t-max", type=float, default=MOT_3D_DONUT_ABLATION_CONFIG["t_max_s"]
+    )
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
     return parser.parse_args(argv)
 

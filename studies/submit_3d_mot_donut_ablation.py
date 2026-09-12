@@ -7,7 +7,7 @@ from config import MOT_3D_DONUT_ABLATION_CONFIG
 from studies.submit_3d_mot_overnight_pipeline import INPUT, _header, _submit, _write
 
 
-ROOT = Path("data/validation/mot_3d/donut_ablation/full_600")
+ROOT = Path("data/validation/mot_3d/donut_ablation/full_600_100ms")
 
 
 def submit(work_dir):
@@ -28,6 +28,7 @@ def submit(work_dir):
     --input {INPUT} --max-atoms {settings['max_atoms']} \\
     --num-shards {settings['num_shards']} --shard-index "$PBS_ARRAY_INDEX" \\
     --npools {settings['pbs_ncpus_per_shard']} \\
+    --t-max {settings['t_max_s']} \\
     --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
 """,
     )

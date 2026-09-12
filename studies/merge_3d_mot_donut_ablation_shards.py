@@ -45,6 +45,30 @@ def _merge_masks(paths, reports):
             np.concatenate(eligible_parts, axis=0),
             time_points,
         )
+        count_fields = (
+            "particle_count",
+            "entered_capture_region_count",
+            "slow_inside_count",
+            "minimum_residence_met_count",
+            "capture_eligible_ever_count",
+        )
+        diagnostics = {
+            field: int(
+                sum(
+                    report["results"][name]["diagnostics"][field]
+                    for report in reports
+                )
+            )
+            for field in count_fields
+        }
+        total = diagnostics["particle_count"]
+        diagnostics["fractions"] = {
+            "entered_capture_region": diagnostics["entered_capture_region_count"] / total,
+            "slow_inside": diagnostics["slow_inside_count"] / total,
+            "minimum_residence_met": diagnostics["minimum_residence_met_count"] / total,
+            "capture_eligible_ever": diagnostics["capture_eligible_ever_count"] / total,
+        }
+        analyses[name]["diagnostics"] = diagnostics
     return time_points, analyses
 
 

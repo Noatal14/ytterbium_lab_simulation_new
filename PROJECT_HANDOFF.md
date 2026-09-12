@@ -301,7 +301,7 @@ donut, no positive-z blue, no transverse-y blue, counterpropagating pair in the
 full shell, and the same pair clipped 10 mm upstream for a single-pass control.
 The comparison between the last two isolates continued shell access from beam
 count and direction. It uses 600 shared atoms over three 200-core, 64-GB
-shards. The merger creates aggregate curves and automatically chooses the atom
+shards over 100 ms. The merger creates aggregate curves and automatically chooses the atom
 with the most separated blue-exposure episodes among atoms captured by the
 full donut but not the single-pass control; it never selects by visual appeal.
 
