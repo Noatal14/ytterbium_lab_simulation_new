@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from config import Geometry
+from config import Geometry, MOT_3D_CAPTURE_CONFIG, MOT_3D_DONUT_ABLATION_CONFIG
 from studies.analyze_3d_mot_donut_ablation import VARIANT_ORDER
 from studies.compare_3d_mot_retention import _json_ready_analysis, analyze_masks
 
@@ -131,6 +131,13 @@ def _plot_representative(metadata, data, output_path):
     axes[0, 0].set_ylabel("z relative to MOT center [mm]")
     axes[0, 1].set_ylabel("longitudinal velocity vz [m/s]")
     axes[1, 0].set_ylabel("distance from MOT center [mm]")
+    axes[1, 0].axhline(
+        MOT_3D_CAPTURE_CONFIG["capture_radius_m"] * 1e3,
+        color="black",
+        linestyle=":",
+        linewidth=1.2,
+        label="capture radius",
+    )
     for axis in (axes[0, 0], axes[0, 1], axes[1, 0]):
         axis.set_xlabel("time [ms]")
         axis.grid(alpha=0.25)
@@ -138,6 +145,18 @@ def _plot_representative(metadata, data, output_path):
 
     full_time = data["full_donut__time_s"] * 1e3
     intensities = data["full_donut__blue_intensity_W_m2"]
+    total_intensity = intensities.sum(axis=0)
+    exposure = total_intensity >= (
+        MOT_3D_DONUT_ABLATION_CONFIG["blue_exposure_threshold_fraction"]
+        * total_intensity.max()
+    )
+    starts = np.flatnonzero(exposure & np.r_[True, ~exposure[:-1]])
+    ends = np.flatnonzero(exposure & np.r_[~exposure[1:], True])
+    for start, end in zip(starts, ends):
+        for axis in axes.flat:
+            axis.axvspan(
+                full_time[start], full_time[end], color="tab:blue", alpha=0.08
+            )
     for tag, values in zip(metadata["full_donut_blue_beam_tags"], intensities):
         axes[1, 1].plot(full_time, values, linewidth=1.4, label=tag)
     axes[1, 1].set_xlabel("time [ms]")

@@ -305,6 +305,16 @@ shards over 100 ms. The merger creates aggregate curves and automatically choose
 with the most separated blue-exposure episodes among atoms captured by the
 full donut but not the single-pass control; it never selects by visual appeal.
 
+The completed 600-atom, 100-ms result is archived under
+`data/validation/mot_3d/donut_ablation/full_600_100ms`. The capture-eligible
+counts were 491 for the full donut, 65 without positive-z blue, 333 without
+the transverse-y pair, 53 for the counterpropagating pair with continued shell
+access, and 5 for its planar-clipped single-pass control. Thus the clean
+continued-access comparison is 53 versus 5 while holding beam directions and
+all other settings fixed. The representative atom (global index 382) has
+three separated blue-exposure windows; the paired population result remains
+the primary evidence.
+
 `graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
 0--100 ms comparison with the donut 100--400 ms continuation. It produces one
 population-count graph and overlays only the already accepted five-beam decay

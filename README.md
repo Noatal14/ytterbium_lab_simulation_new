@@ -303,6 +303,12 @@ donut but not by the single-pass control. Its trajectory graph contains z,
 vz, distance from the MOT center, and the intensity of every blue donut beam
 along the full-donut path.
 
+The completed 600-atom, 100-ms result is archived under
+`data/validation/mot_3d/donut_ablation/full_600_100ms`. Capture was 491/600
+for the full donut, 53/600 for the counterpropagating pair with continued
+shell access, and 5/600 for the otherwise identical single-pass control.
+The corresponding figures are under `graphs/mot_3d_donut_ablation`.
+
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already
 reports completed atoms inside the simulator, so no second atom-level progress
