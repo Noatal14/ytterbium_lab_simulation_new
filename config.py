@@ -506,6 +506,22 @@ MOT_3D_DONUT_ABLATION_CONFIG = {
     "velocity_plot_sample_interval_s": 50e-6,
 }
 
+# Focused first-stage screen for the study-only single-pass donut ablation.
+# These are provisional numerical candidates, not laboratory-set values. The
+# waist is held fixed so this stage isolates spectral/intensity acceptance;
+# geometry is considered only after selecting a useful operating region.
+MOT_3D_SINGLE_PASS_SCREEN_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "02:00:00",
+    "blue_detuning_gamma_values": (-2.0, -3.0, -4.0, -5.0),
+    "blue_s0_values": (0.75, 1.5, 3.0),
+    "fixed_blue_waist_m": 15e-3,
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,

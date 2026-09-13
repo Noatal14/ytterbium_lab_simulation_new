@@ -323,6 +323,14 @@ longitudinal speed, transverse speed, transverse radius, and entrance angle.
 The corresponding numerical ranges are saved alongside the figures in
 `graphs/mot_3d_donut_ablation/capture_phase_space_summary.json`.
 
+The next single-pass diagnostic is intentionally staged. Run
+`python -m studies.submit_3d_mot_single_pass_screen` on Zeus to test only 12
+provisional blue-light points: four detunings and three intensities at the
+fixed 15-mm waist. It uses the same 600 atoms and three 200-core shards, stores
+the captured atom identities at every point, and compares both total capture
+and initial-velocity acceptance. Only after this screen identifies a useful
+spectral/intensity region should a separate three-waist follow-up be run.
+
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already
 reports completed atoms inside the simulator, so no second atom-level progress

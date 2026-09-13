@@ -325,6 +325,14 @@ trajectory plots with one common initial-`vz` color scale, creates input and
 per-variant acceptance maps, plots binned capture probabilities with binomial
 uncertainty, and writes a machine-readable phase-space summary. This is a
 post-processing step and does not rerun the simulation.
+The focused single-pass follow-up is controlled by
+`MOT_3D_SINGLE_PASS_SCREEN_CONFIG` and submitted with
+`studies.submit_3d_mot_single_pass_screen`. Stage one contains only 12 points
+(`detuning = -2,-3,-4,-5 Gamma`; `s0 = 0.75,1.5,3`) at fixed 15-mm waist. It
+uses the shared 600-atom ensemble on three 200-core shards and preserves the
+per-particle capture outcome so the merger can measure velocity acceptance,
+not merely rank aggregate counts. The values are provisional numerical test
+points, not laboratory settings.
 
 `graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
 0--100 ms comparison with the donut 100--400 ms continuation. It produces one
