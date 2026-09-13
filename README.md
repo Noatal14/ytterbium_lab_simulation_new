@@ -314,6 +314,15 @@ are colored by whether the atom ever satisfies the full capture criterion;
 these figures complement rather than replace the retained representative-atom
 comparison.
 
+Run `python -m graphs_scripts.plot_donut_capture_phase_space` to rebuild the
+first-stage phase-space analysis without rerunning any atom dynamics. It colors
+all longitudinal-velocity trajectories by their initial `vz`, plots the shared
+six-dimensional entrance distribution, creates one two-dimensional acceptance
+map per ablation, and compares binned capture probability against initial
+longitudinal speed, transverse speed, transverse radius, and entrance angle.
+The corresponding numerical ranges are saved alongside the figures in
+`graphs/mot_3d_donut_ablation/capture_phase_space_summary.json`.
+
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already
 reports completed atoms inside the simulator, so no second atom-level progress

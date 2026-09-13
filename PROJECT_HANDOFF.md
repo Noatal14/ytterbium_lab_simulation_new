@@ -319,6 +319,12 @@ The merger writes one separate all-atom longitudinal-velocity graph per
 variant and archives the merged arrays under the result's
 `merged/longitudinal_velocities` directory. Captured and non-captured atoms are
 distinguished without changing the shared ensemble, seeds, or capture rule.
+`graphs_scripts.plot_donut_capture_phase_space` joins those traces to the exact
+shared input states by their stored particle indices. It regenerates the five
+trajectory plots with one common initial-`vz` color scale, creates input and
+per-variant acceptance maps, plots binned capture probabilities with binomial
+uncertainty, and writes a machine-readable phase-space summary. This is a
+post-processing step and does not rerun the simulation.
 
 `graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
 0--100 ms comparison with the donut 100--400 ms continuation. It produces one
