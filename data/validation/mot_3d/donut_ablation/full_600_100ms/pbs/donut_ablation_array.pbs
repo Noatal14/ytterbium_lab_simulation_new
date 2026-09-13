@@ -1,0 +1,20 @@
+#!/bin/bash
+#PBS -q zeus_combined_q
+#PBS -l select=1:ncpus=200:mem=64gb
+#PBS -l walltime=06:00:00
+#PBS -J 0-2
+#PBS -N mot3d_donut_ablation
+
+cd ~/ytterbium_lab_simulation_new
+mkdir -p data/validation/mot_3d/logs
+LOG_SUFFIX="${PBS_ARRAY_INDEX:-single}"
+LOG_STEM="data/validation/mot_3d/logs/${PBS_JOBNAME}_${PBS_JOBID}_${LOG_SUFFIX}"
+exec > "${LOG_STEM}.out" 2> "${LOG_STEM}.err"
+source ~/venvs/atomsmltr/bin/activate
+
+python -u -m studies.analyze_3d_mot_donut_ablation \
+    --input data/particle_states/after_2d_mot/final_ensemble_s0_1.47 --max-atoms 600 \
+    --num-shards 3 --shard-index "$PBS_ARRAY_INDEX" \
+    --npools 200 \
+    --t-max 0.1 \
+    --output-dir "data/validation/mot_3d/donut_ablation/full_600_100ms/shard_${PBS_ARRAY_INDEX}"
