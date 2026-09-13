@@ -308,6 +308,11 @@ The completed 600-atom, 100-ms result is archived under
 for the full donut, 53/600 for the counterpropagating pair with continued
 shell access, and 5/600 for the otherwise identical single-pass control.
 The corresponding figures are under `graphs/mot_3d_donut_ablation`.
+The same study also stores a compact, common-grid `vz(t)` trace for every input
+atom and produces one all-atom longitudinal-velocity figure per ablation. Lines
+are colored by whether the atom ever satisfies the full capture criterion;
+these figures complement rather than replace the retained representative-atom
+comparison.
 
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already

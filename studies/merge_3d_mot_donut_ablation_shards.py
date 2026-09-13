@@ -100,6 +100,100 @@ def _plot_population(time_points, analyses, output_path):
     return counts
 
 
+def _merge_and_plot_longitudinal_velocities(paths, graph_dir, output_dir):
+    velocity_dir = output_dir / "longitudinal_velocities"
+    velocity_dir.mkdir(parents=True, exist_ok=True)
+    colors = {
+        "full_donut": "tab:blue",
+        "without_positive_z_blue": "tab:orange",
+        "without_transverse_y_blue": "tab:green",
+        "counterpropagating_pair_shell": "tab:red",
+        "single_pass_counterpropagating_pair": "tab:purple",
+    }
+    for name in VARIANT_ORDER:
+        parts = [
+            np.load(path.parent / f"{name}_longitudinal_velocities.npz")
+            for path in paths
+        ]
+        time_s = np.asarray(parts[0]["time_s"], dtype=float)
+        if any(not np.array_equal(time_s, part["time_s"]) for part in parts[1:]):
+            raise ValueError(f"Longitudinal-velocity time grids differ for {name}.")
+        velocities = np.concatenate([part["vz_m_s"] for part in parts], axis=0)
+        captured = np.concatenate(
+            [part["capture_eligible_ever"] for part in parts], axis=0
+        ).astype(bool)
+        global_indices = np.concatenate(
+            [part["global_particle_indices"] for part in parts], axis=0
+        )
+        order = np.argsort(global_indices)
+        velocities = velocities[order]
+        captured = captured[order]
+        global_indices = global_indices[order]
+        np.savez_compressed(
+            velocity_dir / f"{name}.npz",
+            time_s=time_s,
+            vz_m_s=velocities,
+            capture_eligible_ever=captured,
+            global_particle_indices=global_indices,
+        )
+
+        fig, axis = plt.subplots(figsize=(11, 7))
+        time_ms = time_s * 1e3
+        for row in velocities[~captured]:
+            axis.plot(
+                time_ms,
+                row,
+                color="0.55",
+                linewidth=0.55,
+                alpha=0.12,
+                rasterized=True,
+            )
+        for row in velocities[captured]:
+            axis.plot(
+                time_ms,
+                row,
+                color=colors[name],
+                linewidth=0.7,
+                alpha=0.20,
+                rasterized=True,
+            )
+        speed_bound = MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"]
+        axis.axhspan(-speed_bound, speed_bound, color="black", alpha=0.04)
+        axis.axhline(speed_bound, color="black", linestyle=":", linewidth=0.8)
+        axis.axhline(-speed_bound, color="black", linestyle=":", linewidth=0.8)
+        axis.plot(
+            [],
+            [],
+            color=colors[name],
+            label=f"captured at least once ({captured.sum()})",
+        )
+        axis.plot(
+            [],
+            [],
+            color="0.55",
+            label=f"not captured ({len(captured) - captured.sum()})",
+        )
+        axis.plot(
+            [],
+            [],
+            color="black",
+            linestyle=":",
+            label=f"|vz| = {speed_bound:g} m/s (necessary speed bound)",
+        )
+        axis.set_xlabel("simulation time [ms]")
+        axis.set_ylabel("longitudinal velocity vz [m/s]")
+        axis.set_title(f"All incoming atoms: {LABELS[name]}")
+        axis.grid(alpha=0.2)
+        axis.legend()
+        fig.tight_layout()
+        fig.savefig(
+            graph_dir / f"{name}_all_atoms_longitudinal_velocity.png",
+            dpi=220,
+            bbox_inches="tight",
+        )
+        plt.close(fig)
+
+
 def _choose_representative(paths, reports):
     candidates = []
     for path, report in zip(paths, reports):
@@ -181,6 +275,7 @@ def run_merge(input_root, output_dir, graph_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     graph_dir.mkdir(parents=True, exist_ok=True)
     counts = _plot_population(time_points, analyses, graph_dir / "donut_ablation_population.png")
+    _merge_and_plot_longitudinal_velocities(paths, graph_dir, output_dir)
     representative, data = _choose_representative(paths, reports)
     if representative is not None:
         _plot_representative(representative, data, graph_dir / "donut_ablation_trajectory.png")

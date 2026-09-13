@@ -314,6 +314,11 @@ continued-access comparison is 53 versus 5 while holding beam directions and
 all other settings fixed. The representative atom (global index 382) has
 three separated blue-exposure windows; the paired population result remains
 the primary evidence.
+The ablation shards now also save downsampled `vz(t)` traces for every atom.
+The merger writes one separate all-atom longitudinal-velocity graph per
+variant and archives the merged arrays under the result's
+`merged/longitudinal_velocities` directory. Captured and non-captured atoms are
+distinguished without changing the shared ensemble, seeds, or capture rule.
 
 `graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
 0--100 ms comparison with the donut 100--400 ms continuation. It produces one

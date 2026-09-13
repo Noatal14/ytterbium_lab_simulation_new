@@ -501,6 +501,9 @@ MOT_3D_DONUT_ABLATION_CONFIG = {
     "pbs_walltime": "06:00:00",
     "single_pass_cutoff_upstream_m": 10e-3,
     "blue_exposure_threshold_fraction": 0.01,
+    # Compact diagnostic sampling for all-atom longitudinal-velocity plots.
+    # The integrator still uses MOT_3D_SIM_CONFIG["dt_s"].
+    "velocity_plot_sample_interval_s": 50e-6,
 }
 
 MOT_3D_SIM_CONFIG = {

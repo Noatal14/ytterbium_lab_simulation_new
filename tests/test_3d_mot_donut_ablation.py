@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import numpy as np
 
 from config import MOT_3D_DONUT_ABLATION_CONFIG
@@ -7,6 +9,7 @@ from studies.analyze_3d_mot_donut_ablation import (
     VARIANT_ORDER,
     _exposure_episode_count,
     build_ablation_profiles,
+    sampled_longitudinal_velocities,
 )
 
 
@@ -47,6 +50,27 @@ def test_single_pass_pair_is_dark_after_cutoff_but_shell_pair_is_not():
 def test_exposure_episode_counter_counts_separate_encounters():
     intensities = np.array([[0.0, 2.0, 2.0, 0.0, 0.0, 3.0, 0.0]])
     assert _exposure_episode_count(intensities) == 2
+
+
+def test_longitudinal_velocity_sampling_uses_common_grid_and_marks_termination():
+    time_points = np.linspace(0.0, 4e-4, 5)
+    complete = SimpleNamespace(
+        t=time_points,
+        y=np.vstack([np.zeros((5, 5)), np.arange(5, dtype=float)]),
+    )
+    terminated = SimpleNamespace(
+        t=time_points[:3],
+        y=np.vstack([np.zeros((5, 3)), np.array([10.0, 11.0, 12.0])]),
+    )
+
+    sample_times, velocities = sampled_longitudinal_velocities(
+        [complete, terminated], time_points, 2e-4
+    )
+
+    np.testing.assert_allclose(sample_times, [0.0, 2e-4, 4e-4])
+    np.testing.assert_allclose(velocities[0], [0.0, 2.0, 4.0])
+    np.testing.assert_allclose(velocities[1, :2], [10.0, 12.0])
+    assert np.isnan(velocities[1, 2])
 
 
 def test_submission_requests_three_full_nodes_and_dependent_merge(tmp_path, monkeypatch):
