@@ -244,6 +244,14 @@ found 270/900 atoms capture-eligible at some time and a peak eligible
 population of 249. Its selected gradient and green detuning lie on scan
 boundaries, so the point remains provisional. Each profile supplies its own
 default magnetic gradient; command-line study overrides remain available.
+The five-beam profile also supports an optional `556.s0_by_axis` override so
+the unpaired lower-source beam (`+X` propagation) can be balanced against
+gravity without weakening the four paired `yz` beams. Run
+`python -m studies.submit_3d_mot_five_beam_balance` for the focused six-point
+screen (`s0=5,6,6.55,7,8,10`) at otherwise fixed five-beam settings. It uses
+the shared 600-atom ensemble on three 200-core shards and reports both capture
+and the calculated gravity-including equilibrium displacement. These test
+values are provisional and do not change the adopted profile automatically.
 The `angled_donut` and `angled_sequential` layouts share the same three MOT
 axes, so both use quadrupole strong axis `y`, right-handed circular
 polarization on the two `xz` pairs, and left-handed circular polarization on

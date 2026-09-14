@@ -291,6 +291,17 @@ def _validate_profile(profile):
                 "3D-MOT polarization_by_axis values must be 'left' or 'right': "
                 f"{invalid_polarizations}"
             )
+        s0_by_axis = component.get("s0_by_axis", {})
+        invalid_s0 = {
+            axis_tag: value
+            for axis_tag, value in s0_by_axis.items()
+            if not np.isfinite(value) or float(value) <= 0.0
+        }
+        if invalid_s0:
+            raise ValueError(
+                "3D-MOT s0_by_axis values must be finite and positive: "
+                f"{invalid_s0}"
+            )
 
     blue = profile["399"]
     if blue["enabled"] and blue["profile"] in {"donut", "upstream_clipped_donut"}:
@@ -375,8 +386,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         center_position = profile["center_position_m"]
     center_position = np.asarray(center_position, dtype=float)
     blue_sat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0
-    peak_intensity_399 = profile["399"]["s0"] * blue_sat_W_m2
-    peak_intensity_556 = profile["556"]["s0"] * GREEN_SATURATION_INTENSITY_W_M2
     beam_axes = _get_beam_directions(profile)
 
     def make_beam(
@@ -446,12 +455,15 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         )
 
         if enabled_399:
+            axis_s0_399 = beam_399_cfg.get("s0_by_axis", {}).get(
+                axis_tag, beam_399_cfg["s0"]
+            )
             beam_center = _beam_profile_center(profile, "399", center_position)
             beams.append(
                 make_beam(
                     wavelength=BLUE_TRANSITION.wavelength_m,
                     waist=beam_399_cfg.get("waist_m", 0.01),
-                    peak_intensity=peak_intensity_399,
+                    peak_intensity=axis_s0_399 * blue_sat_W_m2,
                     direction=direction,
                     tag=f"3DMOT_399_{axis_tag}",
                     beam_center=beam_center,
@@ -468,12 +480,15 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             )
 
         if enabled_556:
+            axis_s0_556 = beam_556_cfg.get("s0_by_axis", {}).get(
+                axis_tag, beam_556_cfg["s0"]
+            )
             beam_center = _beam_profile_center(profile, "556", center_position)
             beams.append(
                 make_beam(
                     wavelength=GREEN_TRANSITION.wavelength_m,
                     waist=beam_556_cfg["waist_m"],
-                    peak_intensity=peak_intensity_556,
+                    peak_intensity=axis_s0_556 * GREEN_SATURATION_INTENSITY_W_M2,
                     direction=direction,
                     tag=f"3DMOT_556_{axis_tag}",
                     beam_center=beam_center,

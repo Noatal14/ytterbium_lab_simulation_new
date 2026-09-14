@@ -238,6 +238,15 @@ gradient and green detuning are scan-boundary values, further expansion may
 improve it. These values are simulation optimization results, never
 laboratory-set constants. Production 3D-MOT runs resolve the magnetic gradient
 from the selected profile unless an explicit override is supplied.
+The five-beam implementation accepts a positive per-axis `s0_by_axis`
+override. The focused balance study varies only the unpaired lower-source
+green beam (`+X` propagation) across `s0=5,6,6.55,7,8,10`; the four paired `yz`
+beams remain at the provisional profile value `s0=10`, while detuning,
+gradient, blue light, ensemble, and seeds remain fixed. The 6.55 point is the
+analytic near-zero-sag estimate at `-20 Gamma`. Submit with
+`studies.submit_3d_mot_five_beam_balance`; it uses 600 atoms split across three
+200-core shards and records capture, center force, and equilibrium position.
+It is a diagnostic optimization and does not alter the adopted operating point.
 
 Subsequent force validation found that the former `angled_donut` default
 (implicit strong axis `z` and right-handed polarization on every beam) was

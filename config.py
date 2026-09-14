@@ -541,6 +541,21 @@ MOT_3D_SINGLE_PASS_WAIST_SCREEN_CONFIG = {
     "cutoff_radius_m": 10e-3,
 }
 
+# Mini-optimization of the only unpaired green beam in five_beam_gravity.
+# The four yz beams retain the profile's provisional s0=10; only the lower
+# source propagating along +x is varied. The 6.55 point approximately balances
+# gravity at the field zero for the current -20-Gamma detuning.
+MOT_3D_FIVE_BEAM_BALANCE_SCREEN_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "02:00:00",
+    "lower_green_s0_values": (5.0, 6.0, 6.55, 7.0, 8.0, 10.0),
+    "equilibrium_search_bounds_m": (-5e-3, 5e-3),
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
