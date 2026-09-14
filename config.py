@@ -556,6 +556,23 @@ MOT_3D_FIVE_BEAM_BALANCE_SCREEN_CONFIG = {
     "equilibrium_search_bounds_m": (-5e-3, 5e-3),
 }
 
+# Reverse ablation of the angled donut: retain only the two blue beams whose
+# propagation vectors have +z components, while all six green beams remain.
+# Compare the current donut-shell pair against an upstream-only planar-clipped
+# version, then tune the latter on the same compact grid used for the -z pair.
+MOT_3D_POSITIVE_Z_PAIR_SCREEN_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "03:00:00",
+    "blue_detuning_gamma_values": (-2.0, -3.0, -4.0, -5.0),
+    "blue_s0_values": (0.75, 1.5, 3.0),
+    "fixed_blue_waist_m": 15e-3,
+    "single_pass_cutoff_upstream_m": 10e-3,
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,

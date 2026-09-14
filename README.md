@@ -348,6 +348,14 @@ waists with `s0` reduced to preserve the baseline Gaussian intensity at the
 coverage from the trivial increase in intensity at the edge of the blue zone.
 Results and plots are written under `data/validation/mot_3d/single_pass_waist_screen`
 and `graphs/mot_3d_single_pass_waist_screen`.
+The complementary reverse-ablation study is submitted with
+`python -m studies.submit_3d_mot_positive_z_pair`. It keeps only the two blue
+beams whose propagation vectors have positive z components (`+XZ_1/+XZ_2`),
+while retaining all six green beams. One shell control at the adopted donut
+settings is compared with 12 upstream-clipped single-pass intensity/detuning
+points. The single-pass blue intensity is exactly zero at the MOT center.
+This naming refers to light propagation; the +z-propagating beam sources are
+on the -z side of the apparatus.
 
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already

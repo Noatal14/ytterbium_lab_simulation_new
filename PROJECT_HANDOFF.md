@@ -351,6 +351,13 @@ same wider waists with `s0` analytically reduced so the nominal Gaussian
 intensity at the 10-mm clipping radius equals the baseline. This paired design
 distinguishes wider spatial/interaction-time coverage from extra edge
 intensity. All values remain provisional numerical candidates.
+The complementary `positive_z_pair` reverse ablation retains only blue
+`+XZ_1/+XZ_2` (positive-z propagation, sources on the negative-z side) and all
+six green beams. It compares one continuous donut-shell control at the adopted
+donut settings with the same 12-point single-pass spectral/intensity grid used
+for the negative-z pair. Its planar-clipped version is exactly blue-dark at the
+MOT center. Submit it with `studies.submit_3d_mot_positive_z_pair`; results are
+diagnostic and do not register a new permanent MOT configuration.
 
 `graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
 0--100 ms comparison with the donut 100--400 ms continuation. It produces one
