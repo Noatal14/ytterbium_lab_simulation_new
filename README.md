@@ -330,6 +330,16 @@ fixed 15-mm waist. It uses the same 600 atoms and three 200-core shards, stores
 the captured atom identities at every point, and compares both total capture
 and initial-velocity acceptance. Only after this screen identifies a useful
 spectral/intensity region should a separate three-waist follow-up be run.
+The 600-atom screen selected the provisional point `detuning=-2 Gamma`,
+`s0=0.75` (52 captured atoms). The follow-up is therefore defined centrally by
+`MOT_3D_SINGLE_PASS_WAIST_SCREEN_CONFIG` and submitted with
+`python -m studies.submit_3d_mot_single_pass_waist`. It tests only five points:
+the 15-mm baseline, 20/25-mm waists at fixed peak `s0`, and the same two wider
+waists with `s0` reduced to preserve the baseline Gaussian intensity at the
+10-mm clipping radius. This separates increased spatial/interaction-time
+coverage from the trivial increase in intensity at the edge of the blue zone.
+Results and plots are written under `data/validation/mot_3d/single_pass_waist_screen`
+and `graphs/mot_3d_single_pass_waist_screen`.
 
 Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
 write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already

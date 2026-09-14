@@ -333,6 +333,15 @@ uses the shared 600-atom ensemble on three 200-core shards and preserves the
 per-particle capture outcome so the merger can measure velocity acceptance,
 not merely rank aggregate counts. The values are provisional numerical test
 points, not laboratory settings.
+The completed stage-one screen selected the provisional point
+`detuning=-2 Gamma`, `s0=0.75` with 52/600 capture-eligible atoms. The focused
+geometry follow-up is controlled by `MOT_3D_SINGLE_PASS_WAIST_SCREEN_CONFIG`
+and submitted by `studies.submit_3d_mot_single_pass_waist`. It contains five
+points only: the 15-mm baseline; 20/25-mm waists at fixed `s0=0.75`; and the
+same wider waists with `s0` analytically reduced so the nominal Gaussian
+intensity at the 10-mm clipping radius equals the baseline. This paired design
+distinguishes wider spatial/interaction-time coverage from extra edge
+intensity. All values remain provisional numerical candidates.
 
 `graphs_scripts/plot_donut_vs_five_beam_retention.py` combines the historical
 0--100 ms comparison with the donut 100--400 ms continuation. It produces one

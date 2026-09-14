@@ -522,6 +522,25 @@ MOT_3D_SINGLE_PASS_SCREEN_CONFIG = {
     "fixed_blue_waist_m": 15e-3,
 }
 
+# Focused second-stage geometry screen around the best provisional single-pass
+# spectral point (-2 Gamma, s0=0.75).  The fixed-s0 points test whether a wider
+# beam improves spatial/interaction-time coverage.  The matched-cutoff points
+# reduce s0 so that the Gaussian intensity at the 10-mm clipping plane is the
+# same as for the 15-mm baseline, separating coverage from local intensity.
+MOT_3D_SINGLE_PASS_WAIST_SCREEN_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "02:00:00",
+    "blue_detuning_gamma": -2.0,
+    "baseline_blue_s0": 0.75,
+    "baseline_blue_waist_m": 15e-3,
+    "blue_waist_values_m": (15e-3, 20e-3, 25e-3),
+    "cutoff_radius_m": 10e-3,
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
