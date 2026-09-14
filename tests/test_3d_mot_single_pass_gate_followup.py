@@ -15,25 +15,24 @@ def _blue(profile):
     return [beam for beam in setup_3dmot_lasers(profile) if "399" in beam.tag]
 
 
-def test_followup_has_controls_and_twelve_downstream_backstop_candidates():
+def test_followup_has_controls_and_nine_downstream_backstop_candidates():
     points = candidate_points()
-    assert len(points) == 14
+    assert len(points) == 11
     assert sum(point["kind"] == "full_donut" for point in points) == 1
     assert sum(point["kind"] == "entrance_only" for point in points) == 1
-    assert sum(point["kind"] == "entrance_plus_backstop" for point in points) == 12
+    assert sum(point["kind"] == "entrance_plus_backstop" for point in points) == 9
     candidates = [
         point for point in points if point["kind"] == "entrance_plus_backstop"
     ]
     assert {point["backstop_crossing_offset_m"] for point in candidates} == {
-        25e-3,
-        30e-3,
         35e-3,
+        40e-3,
+        45e-3,
     }
     assert {point["backstop_s0"] for point in candidates} == {
+        0.5,
         0.75,
         1.0,
-        1.25,
-        1.5,
     }
 
 

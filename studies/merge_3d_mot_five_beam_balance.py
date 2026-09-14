@@ -10,7 +10,8 @@ import numpy as np
 
 COUNT_FIELDS = (
     "input_particle_count",
-    "capture_eligible_ever_count",
+    "usable_ever_count",
+    "usable_at_end_count",
     "peak_capture_eligible_count",
     "entered_capture_region_count",
     "slow_inside_count",
@@ -35,14 +36,18 @@ def merge_screen(input_root, output_dir, graph_dir):
         record = dict(rows[0])
         for field in COUNT_FIELDS:
             record[field] = int(sum(row[field] for row in rows))
-        record["capture_fraction"] = (
-            record["capture_eligible_ever_count"] / record["input_particle_count"]
+        record["usable_ever_fraction"] = (
+            record["usable_ever_count"] / record["input_particle_count"]
+        )
+        record["usable_at_end_fraction"] = (
+            record["usable_at_end_count"] / record["input_particle_count"]
         )
         merged_records.append(record)
     ranked = sorted(
         merged_records,
         key=lambda row: (
-            row["capture_eligible_ever_count"],
+            row["usable_at_end_count"],
+            row["usable_ever_count"],
             row["peak_capture_eligible_count"],
             row["minimum_residence_met_count"],
         ),
@@ -68,7 +73,7 @@ def merge_screen(input_root, output_dir, graph_dir):
 
     s0 = np.asarray([row["lower_green_s0"] for row in merged_records])
     counts = np.asarray(
-        [row["capture_eligible_ever_count"] for row in merged_records]
+        [row["usable_at_end_count"] for row in merged_records]
     )
     equilibrium = np.asarray(
         [row["equilibrium_displacement_x_mm"] for row in merged_records]
@@ -78,7 +83,9 @@ def merge_screen(input_root, output_dir, graph_dir):
         2, 1, figsize=(8.5, 8), sharex=True, constrained_layout=True
     )
     capture_axis.plot(s0[order], counts[order], marker="o", linewidth=2.2)
-    capture_axis.set_ylabel(f"capture-eligible atoms out of {summary['input_particle_count']}")
+    capture_axis.set_ylabel(
+        f"usable atoms at 100 ms out of {summary['input_particle_count']}"
+    )
     capture_axis.set_title("Five-beam MOT: tuning only the lower +x green beam")
     capture_axis.grid(alpha=0.25)
     equilibrium_axis.plot(

@@ -80,7 +80,7 @@ def _common(axis, title):
     axis.add_patch(Circle((0, 0), 10, fill=False, color=GREEN, linewidth=2.4))
     _green_xz_axes(axis)
     axis.text(1.5, 8.2, "556-nm core\n(6 green beams)", color=GREEN, fontsize=9)
-    axis.set(xlim=(-47, 43), ylim=(-27, 27), xlabel="z relative to MOT center [mm]", ylabel="x [mm]", title=title)
+    axis.set(xlim=(-47, 58), ylim=(-31, 31), xlabel="z relative to MOT center [mm]", ylabel="x [mm]", title=title)
     axis.set_aspect("equal", adjustable="box")
     axis.grid(alpha=0.18)
 

@@ -7,7 +7,7 @@ from config import MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG
 from studies.submit_3d_mot_overnight_pipeline import INPUT, _header, _submit, _write
 
 
-ROOT = Path("data/validation/mot_3d/single_pass_gate_followup/refined_600")
+ROOT = Path("data/validation/mot_3d/single_pass_gate_followup/extended_600")
 
 
 def submit(work_dir):

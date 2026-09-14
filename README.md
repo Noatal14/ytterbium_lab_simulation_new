@@ -23,6 +23,9 @@ The code is built around a Yb-171 atom model with the relevant optical transitio
 New contributors should also read `PROJECT_HANDOFF.md`. It records the scientific
 status, parameter categories, data-authority convention, Zeus workflow, and
 current priorities that cannot be inferred safely from code alone.
+The maintained comparison rules and evidence checklist for selecting a 3D-MOT
+design are in `docs/3D_MOT_DECISION_PROTOCOL.md`; use that protocol rather than
+ranking configurations from unrelated historical runs.
 
 To re-optimize detuning and magnet radius for one or more available 2D-MOT
 laser intensities, follow `docs/2D_MOT_S0_CAMPAIGN.md`. That maintained workflow
@@ -238,6 +241,18 @@ the best result lay on both scan boundaries, the refined scan tests crossings
 of 25/30/35 mm and provisional `s0` values 0.75/1.0/1.25/1.5. Its merger also
 reports paired per-particle rescued, lost, and retained counts relative to the
 entrance-only control; aggregate count changes alone do not establish rescue.
+That refined scan selected a 35-mm crossing and `s0=0.75`, retaining 188/600
+atoms versus 115/600 for entrance-only, with 73 individually identified rescues
+and no losses from the entrance-only population. The final position-boundary
+check therefore tests 35/40/45 mm at `s0=0.5/0.75/1.0`; larger intensities were
+discarded because performance had already decreased at 35 mm.
+The current aperture-corrected five-beam design is screened with
+`python -m studies.submit_3d_mot_five_beam_decision`. It runs 12 explicit
+physics anchors and a full-donut control on the same 600 atoms, ranks by the
+instantaneous usable population at 100 ms, and records paired overlap with the
+donut. The compact anchor set is defined in
+`MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG`; it is a decision screen, not a full
+optimization or a set of laboratory operating values.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core

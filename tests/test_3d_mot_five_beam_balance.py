@@ -7,7 +7,20 @@ from studies import submit_3d_mot_five_beam_balance as submitter
 from studies.scan_3d_mot_five_beam_balance import (
     equilibrium_displacement_m,
     profile_with_lower_green_s0,
+    usable_masks,
 )
+
+
+def test_balance_source_uses_final_instantaneous_population_as_primary_metric():
+    ever, at_end = usable_masks(
+        {
+            "eligible_masks": np.array(
+                [[True, False, False], [False, True, True], [False, False, False]]
+            )
+        }
+    )
+    assert np.array_equal(ever, [True, True, False])
+    assert np.array_equal(at_end, [False, True, False])
 
 
 def _green_peak_intensity_by_tag(profile):

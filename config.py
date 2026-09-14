@@ -556,6 +556,34 @@ MOT_3D_FIVE_BEAM_BALANCE_SCREEN_CONFIG = {
     "equilibrium_search_bounds_m": (-5e-3, 5e-3),
 }
 
+# Compact decision screen for the current aperture-corrected five-beam MOT.
+# Each tuple is (label, blue s0, blue detuning [Gamma], gradient [G/cm],
+# paired-yz green s0, lower +x green s0, green detuning [Gamma]). The anchors
+# vary one physical lever around the current baseline where possible and add
+# only two combined hypotheses. These are provisional numerical study points.
+MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "04:00:00",
+    "points": (
+        ("baseline_lower_6", 1.0, -2.0, 2.5, 10.0, 6.0, -20.0),
+        ("equal_lower_10", 1.0, -2.0, 2.5, 10.0, 10.0, -20.0),
+        ("gradient_1p25", 1.0, -2.0, 1.25, 10.0, 6.0, -20.0),
+        ("gradient_5", 1.0, -2.0, 5.0, 10.0, 6.0, -20.0),
+        ("green_detuning_15", 1.0, -2.0, 2.5, 10.0, 6.0, -15.0),
+        ("green_detuning_25", 1.0, -2.0, 2.5, 10.0, 6.0, -25.0),
+        ("green_s0_6", 1.0, -2.0, 2.5, 6.0, 3.6, -20.0),
+        ("green_s0_15", 1.0, -2.0, 2.5, 15.0, 9.0, -20.0),
+        ("blue_soft", 0.75, -1.5, 2.5, 10.0, 6.0, -20.0),
+        ("blue_strong", 1.25, -2.5, 2.5, 10.0, 6.0, -20.0),
+        ("soft_green_low_gradient", 1.0, -2.0, 1.25, 6.0, 3.6, -15.0),
+        ("strong_green_high_gradient", 1.0, -2.0, 5.0, 15.0, 9.0, -25.0),
+    ),
+}
+
 # Reverse ablation of the angled donut: retain only the two blue beams whose
 # propagation vectors have +z components, while all six green beams remain.
 # Compare the current donut-shell pair against an upstream-only planar-clipped
@@ -613,9 +641,9 @@ MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG = {
     "inner_cutoff_radius_m": 10e-3,
     "entrance_crossing_offset_m": -20e-3,
     "entrance_cutoff_offset_m": -10e-3,
-    "backstop_window_m": (10e-3, 45e-3),
-    "backstop_crossing_offsets_m": (25e-3, 30e-3, 35e-3),
-    "backstop_s0_values": (0.75, 1.00, 1.25, 1.50),
+    "backstop_window_m": (10e-3, 55e-3),
+    "backstop_crossing_offsets_m": (35e-3, 40e-3, 45e-3),
+    "backstop_s0_values": (0.50, 0.75, 1.00),
 }
 
 MOT_3D_SIM_CONFIG = {

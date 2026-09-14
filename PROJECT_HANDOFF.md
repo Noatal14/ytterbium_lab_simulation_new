@@ -46,6 +46,18 @@ experimental work. Its current implementation is therefore a runnable design
 framework intended for exploration. Its geometry, laser parameters,
 magnetic-field choices, and capture criterion are provisional unless clearly
 documented otherwise.
+The active design-selection objective and fair-comparison gates are maintained
+in `docs/3D_MOT_DECISION_PROTOCOL.md`. The final choice must compare the current
+five-beam geometry, the best finite four-blue-beam candidate, and the full donut
+using paired ensembles and common loading/retention metrics.
+The five-beam balance workflow must rank the instantaneous usable population at
+100 ms. It also preserves “usable at least once” as a diagnostic; older outputs
+containing only `capture_eligible_ever_count` are not final-retention evidence.
+The next corrected-geometry five-beam screen is submitted by
+`studies.submit_3d_mot_five_beam_decision`. It compares 12 explicit physics
+anchors with a full-donut control on the same 600 atoms and writes paired
+per-particle overlap. Its anchors are centralized in
+`MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG` and are provisional study values.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT
@@ -221,6 +233,11 @@ backstop to z=+10..+45 mm and tests crossings 25/30/35 mm with
 `s0=0.75/1.0/1.25/1.5`. The merger uses stored particle masks to report atoms
 rescued, lost, and retained relative to entrance-only. These candidates are
 study-only and are not added to `MOT_3D_CONFIGURATIONS`.
+The refined scan selected the 35-mm, `s0=0.75` boundary point: 188/600 atoms
+were usable at 100 ms versus 115/600 for entrance-only. Paired masks showed 73
+rescued atoms and zero losses. The final boundary check extends the downstream
+window to +55 mm, scans crossings 35/40/45 mm, and restricts intensity to
+`s0=0.5/0.75/1.0`; higher intensities had already reduced capture at 35 mm.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and

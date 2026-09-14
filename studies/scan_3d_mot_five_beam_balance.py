@@ -74,6 +74,12 @@ def equilibrium_displacement_m(profile, bounds_m=None):
     return float(min(candidates, key=abs))
 
 
+def usable_masks(analysis):
+    """Return historical-ever and primary final instantaneous masks."""
+    eligible = np.asarray(analysis["eligible_masks"], dtype=bool)
+    return np.any(eligible, axis=1), eligible[:, -1]
+
+
 def run_screen(args):
     settings = MOT_3D_FIVE_BEAM_BALANCE_SCREEN_CONFIG
     values = tuple(float(value) for value in args.lower_green_s0_values)
@@ -112,11 +118,12 @@ def run_screen(args):
             seed=simulation_seed,
         )
         analysis = analyze_results(trajectories, time_points)
-        captured = np.any(analysis["eligible_masks"], axis=1)
+        usable_ever, usable_at_end = usable_masks(analysis)
         np.savez_compressed(
             output_dir / f"point_{point_index:02d}_outcomes.npz",
             global_particle_indices=global_indices,
-            capture_eligible_ever=captured,
+            usable_ever=usable_ever,
+            usable_at_end=usable_at_end,
         )
         record = {
             "point_index": point_index,
@@ -128,7 +135,8 @@ def run_screen(args):
                 None if equilibrium is None else equilibrium * 1e3
             ),
             "input_particle_count": len(states),
-            "capture_eligible_ever_count": int(captured.sum()),
+            "usable_ever_count": int(usable_ever.sum()),
+            "usable_at_end_count": int(usable_at_end.sum()),
             "peak_capture_eligible_count": int(analysis["peak_count"]),
             "entered_capture_region_count": int(
                 analysis["diagnostics"]["entered_capture_region_count"]
@@ -141,7 +149,8 @@ def run_screen(args):
         records.append(record)
         print(
             f"Completed point {point_index + 1}/{len(values)}: "
-            f"captured={record['capture_eligible_ever_count']}/{len(states)}, "
+            f"usable ever={record['usable_ever_count']}/{len(states)}, "
+            f"at end={record['usable_at_end_count']}/{len(states)}, "
             f"equilibrium x={record['equilibrium_displacement_x_mm']:.4g} mm",
             flush=True,
         )
