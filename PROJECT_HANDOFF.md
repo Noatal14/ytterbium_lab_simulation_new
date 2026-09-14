@@ -201,6 +201,13 @@ is treated as usable at continuation time zero.
 final-state checkpoints and compare instantaneous populations at 5, 7.5, and
 10 mm without rerunning. It cannot reconstruct larger-radius time histories,
 because only 5-mm masks and final six-component states were retained previously.
+The finite-gate follow-up is implemented by
+`studies/submit_3d_mot_blue_gate_sequence.py`. It compares the full donut,
+one `-z` slowing gate, two sequential `-z` gates, a slowing-plus-`+z` return
+gate, and all three gates. The `+z` gate is upstream, where it pushes returning
+`-z` atoms toward the MOT; it is deliberately not placed downstream, where it
+would push incoming `+z` atoms outward. All coordinates and provisional laser
+parameters are centralized in `MOT_3D_BLUE_GATE_SEQUENCE_CONFIG`.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and

@@ -311,6 +311,27 @@ def _validate_profile(profile):
                 "Set a positive 399.inner_cutoff_radius_m in config.py before "
                 "using the center-blocked Gaussian 3D-MOT profile."
             )
+    blue_groups = blue.get("beam_groups")
+    if blue_groups is not None:
+        if not isinstance(blue_groups, (list, tuple)) or not blue_groups:
+            raise ValueError("399.beam_groups must be a non-empty sequence.")
+        names = [group.get("name") for group in blue_groups]
+        if any(not isinstance(name, str) or not name for name in names):
+            raise ValueError("Every 399 beam group requires a non-empty name.")
+        if len(set(names)) != len(names):
+            raise ValueError("399 beam-group names must be unique.")
+        valid_tags = {tag for tag, _ in _get_beam_directions(profile)}
+        for group in blue_groups:
+            tags = group.get("axis_tags")
+            if not tags or not set(tags) <= valid_tags:
+                raise ValueError(
+                    f"Invalid axis_tags for 399 beam group {group['name']!r}."
+                )
+            if group.get("profile", blue.get("profile")) not in {
+                "upstream_clipped_donut",
+                "upstream_planar_clipped_gaussian",
+            }:
+                raise ValueError("Finite 399 beam groups require a planar-clipped profile.")
 
     if layout == "rotated_yz_minus_upper_x":
         components = profile.get("beam_components")
@@ -442,12 +463,14 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         return beam
 
     beams = []
+    direction_by_tag = dict(beam_axes)
+    blue_groups = profile.get("399", {}).get("beam_groups")
     for axis_tag, direction in beam_axes:
         beam_399_cfg = profile.get("399", {})
         beam_556_cfg = profile.get("556", {})
         axis_components = profile.get("beam_components", {}).get(axis_tag, {})
 
-        enabled_399 = beam_399_cfg.get("enabled", True) and axis_components.get(
+        enabled_399 = not blue_groups and beam_399_cfg.get("enabled", True) and axis_components.get(
             "399_enabled", True
         )
         enabled_556 = beam_556_cfg.get("enabled", True) and axis_components.get(
@@ -499,5 +522,33 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     ),
                 )
             )
+
+    if blue_groups:
+        beam_399_cfg = profile["399"]
+        for group in blue_groups:
+            group_cfg = {**beam_399_cfg, **group}
+            group_name = group_cfg["name"]
+            beam_center = center_position + np.asarray(
+                group_cfg.get("center_offset_m", (0.0, 0.0, 0.0)), dtype=float
+            )
+            maximum_lab_z_m = group_cfg.get(
+                "maximum_lab_z_m",
+                center_position[2] - group_cfg.get("green_exclusion_radius_m", 0.0),
+            )
+            for axis_tag in group_cfg["axis_tags"]:
+                beams.append(
+                    make_beam(
+                        wavelength=BLUE_TRANSITION.wavelength_m,
+                        waist=group_cfg["waist_m"],
+                        peak_intensity=group_cfg["s0"] * blue_sat_W_m2,
+                        direction=direction_by_tag[axis_tag],
+                        tag=f"3DMOT_399_{group_name}_{axis_tag}",
+                        beam_center=beam_center,
+                        profile_kind=group_cfg["profile"],
+                        polarization=_beam_polarization(group_cfg, axis_tag),
+                        inner_cutoff_radius=group_cfg.get("inner_cutoff_radius_m"),
+                        maximum_lab_z_m=maximum_lab_z_m,
+                    )
+                )
 
     return beams

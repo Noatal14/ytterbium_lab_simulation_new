@@ -573,6 +573,28 @@ MOT_3D_POSITIVE_Z_PAIR_SCREEN_CONFIG = {
     "single_pass_cutoff_upstream_m": 10e-3,
 }
 
+# Study-only finite-gate alternatives to the continuous blue donut shell. The
+# locations and operating points are provisional hypotheses, not laboratory
+# settings. Blue groups share the angled-donut xz axes and all six green beams.
+MOT_3D_BLUE_GATE_SEQUENCE_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "03:00:00",
+    "blue_s0": 0.75,
+    "blue_detuning_gamma": -2.0,
+    "blue_waist_m": 15e-3,
+    "inner_cutoff_radius_m": 10e-3,
+    "first_slowing_crossing_offset_m": -20e-3,
+    "second_slowing_crossing_offset_m": 5e-3,
+    "return_crossing_offset_m": -5e-3,
+    "first_cutoff_offset_m": -10e-3,
+    "second_cutoff_offset_m": 15e-3,
+    "return_cutoff_offset_m": 0.0,
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,

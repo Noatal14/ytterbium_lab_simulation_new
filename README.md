@@ -220,6 +220,13 @@ the configured diagnostic radii of 5, 7.5, and 10 mm without rerunning the
 simulation. It reports state availability, position-only occupancy,
 speed-only qualification, and their instantaneous conjunction. Full curves at
 a radius not saved during the original run still require a new simulation.
+`studies.submit_3d_mot_blue_gate_sequence` runs a study-only comparison of the
+full donut with one finite `-z` slowing gate, two sequential `-z` gates, one
+slowing gate plus a Doppler-selective `+z` return gate on the upstream side,
+and the combined three-gate arrangement. All variants retain the same six
+green beams. The gate locations and blue operating point are provisional
+geometry hypotheses; they are centralized in
+`MOT_3D_BLUE_GATE_SEQUENCE_CONFIG` and are not registered MOT profiles.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core
