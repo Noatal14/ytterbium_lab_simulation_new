@@ -115,14 +115,30 @@ def plot_geometries(output_path=OUTPUT):
         Rectangle((z_min, -26.5), z_max - z_min, 53, color="#b8dcfa", alpha=0.5, zorder=-2)
     )
     backstop_crossings = np.asarray(settings["backstop_crossing_offsets_m"]) * 1e3
-    representative = 20.0
+    representative = float(backstop_crossings[len(backstop_crossings) // 2])
     _beam_pair(axes[2], representative, z_min, z_max, alpha=0.95)
     for crossing in backstop_crossings:
         axes[2].scatter([crossing], [0], color=BLUE, s=32, zorder=6)
         axes[2].text(crossing, -4.0, f"{crossing:g}", ha="center", color=BLUE, fontsize=8)
     axes[2].text(-43, 22, "entrance gate\n(kz < 0)", color=BLUE)
-    axes[2].text(25, 22, "downstream backstop\n10…40 mm; kz < 0", ha="center", color=BLUE)
-    axes[2].text(25, -24, "crossings: 15, 20, 25 mm\ns0: 0.25, 0.50, 0.75", ha="center", fontsize=8.5)
+    axes[2].text(
+        np.mean([z_min, z_max]),
+        22,
+        f"downstream backstop\n{z_min:g}…{z_max:g} mm; kz < 0",
+        ha="center",
+        color=BLUE,
+    )
+    crossing_text = ", ".join(f"{value:g}" for value in backstop_crossings)
+    intensity_text = ", ".join(
+        f"{value:g}" for value in settings["backstop_s0_values"]
+    )
+    axes[2].text(
+        np.mean([z_min, z_max]),
+        -24,
+        f"crossings: {crossing_text} mm\ns0: {intensity_text}",
+        ha="center",
+        fontsize=8.5,
+    )
 
     legend = [
         Line2D([0], [0], color=BLUE, lw=3, label="399-nm blue beam; arrow = propagation"),

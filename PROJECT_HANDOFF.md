@@ -208,14 +208,19 @@ gate, and all three gates. The `+z` gate is upstream, where it pushes returning
 `-z` atoms toward the MOT; it is deliberately not placed downstream, where it
 would push incoming `+z` atoms outward. All coordinates and provisional laser
 parameters are centralized in `MOT_3D_BLUE_GATE_SEQUENCE_CONFIG`.
-The next focused study is
-`studies/submit_3d_mot_single_pass_gate_followup.py`. It preserves the known
+The focused study
+`studies/submit_3d_mot_single_pass_gate_followup.py` preserves the known
 entrance-gate spectral point (`-2 Gamma`, `s0=0.75`, 15-mm waist) at a 20-mm
-upstream crossing. A separate `k_z < 0` backstop is confined to z=+10..+40 mm
-after the green core, with crossings 15/20/25 mm and s0 0.25/0.50/0.75. It is
-intended to push +z overshoot back toward the center, not to provide a second
-upstream slowing stage. These candidates are not added to
-`MOT_3D_CONFIGURATIONS`.
+upstream crossing. A separate `k_z < 0` backstop is confined downstream after
+the green core. It is intended to push +z overshoot back toward the center, not
+to provide a second upstream slowing stage. The first 600-atom scan improved
+instantaneous capture at 100 ms from 115 for entrance-only to 153 at a 25-mm
+crossing and `s0=0.75`; the full-donut control retained 491. Since both optimum
+coordinates were scan boundaries, the next targeted scan confines the
+backstop to z=+10..+45 mm and tests crossings 25/30/35 mm with
+`s0=0.75/1.0/1.25/1.5`. The merger uses stored particle masks to report atoms
+rescued, lost, and retained relative to entrance-only. These candidates are
+study-only and are not added to `MOT_3D_CONFIGURATIONS`.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and

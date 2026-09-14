@@ -613,9 +613,9 @@ MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG = {
     "inner_cutoff_radius_m": 10e-3,
     "entrance_crossing_offset_m": -20e-3,
     "entrance_cutoff_offset_m": -10e-3,
-    "backstop_window_m": (10e-3, 40e-3),
-    "backstop_crossing_offsets_m": (15e-3, 20e-3, 25e-3),
-    "backstop_s0_values": (0.25, 0.50, 0.75),
+    "backstop_window_m": (10e-3, 45e-3),
+    "backstop_crossing_offsets_m": (25e-3, 30e-3, 35e-3),
+    "backstop_s0_values": (0.75, 1.00, 1.25, 1.50),
 }
 
 MOT_3D_SIM_CONFIG = {

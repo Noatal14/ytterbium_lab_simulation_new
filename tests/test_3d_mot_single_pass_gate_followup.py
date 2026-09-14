@@ -7,6 +7,7 @@ from config import MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG
 from lab_setup.config_builder import build_base_config
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
 from studies import submit_3d_mot_single_pass_gate_followup as submitter
+from studies.merge_3d_mot_single_pass_gate_followup import _comparison_counts
 from studies.scan_3d_mot_single_pass_gate_followup import candidate_points, profile_for_point
 
 
@@ -14,12 +15,26 @@ def _blue(profile):
     return [beam for beam in setup_3dmot_lasers(profile) if "399" in beam.tag]
 
 
-def test_followup_has_controls_and_nine_downstream_backstop_candidates():
+def test_followup_has_controls_and_twelve_downstream_backstop_candidates():
     points = candidate_points()
-    assert len(points) == 11
+    assert len(points) == 14
     assert sum(point["kind"] == "full_donut" for point in points) == 1
     assert sum(point["kind"] == "entrance_only" for point in points) == 1
-    assert sum(point["kind"] == "entrance_plus_backstop" for point in points) == 9
+    assert sum(point["kind"] == "entrance_plus_backstop" for point in points) == 12
+    candidates = [
+        point for point in points if point["kind"] == "entrance_plus_backstop"
+    ]
+    assert {point["backstop_crossing_offset_m"] for point in candidates} == {
+        25e-3,
+        30e-3,
+        35e-3,
+    }
+    assert {point["backstop_s0"] for point in candidates} == {
+        0.75,
+        1.0,
+        1.25,
+        1.5,
+    }
 
 
 def test_backstop_is_strictly_downstream_and_blue_dark_at_mot_center():
@@ -81,3 +96,26 @@ def test_followup_submission_uses_three_full_nodes(tmp_path, monkeypatch):
     assert "--num-shards 3" in generated
     assert "--npools 200" in generated
     assert MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG["pbs_walltime"] in generated
+
+
+def test_paired_comparison_distinguishes_rescued_lost_and_retained_atoms():
+    indices = np.arange(5)
+    entrance = {
+        "global_particle_indices": indices,
+        "usable_ever": np.array([True, True, False, False, False]),
+        "usable_at_end": np.array([True, False, False, True, False]),
+    }
+    candidate = {
+        "global_particle_indices": indices,
+        "usable_ever": np.array([True, False, True, True, False]),
+        "usable_at_end": np.array([True, True, False, False, False]),
+    }
+
+    assert _comparison_counts(candidate, entrance) == {
+        "rescued_ever_count": 2,
+        "lost_ever_count": 1,
+        "retained_from_entrance_ever_count": 1,
+        "rescued_at_end_count": 1,
+        "lost_at_end_count": 1,
+        "retained_from_entrance_at_end_count": 1,
+    }

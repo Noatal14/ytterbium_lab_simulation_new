@@ -17,11 +17,50 @@ COUNT_FIELDS = (
 )
 
 
+def _load_outcome(path):
+    with np.load(path) as data:
+        return {
+            "global_particle_indices": data["global_particle_indices"],
+            "usable_ever": data["usable_ever"],
+            "usable_at_end": data["usable_at_end"],
+        }
+
+
+def _comparison_counts(candidate, entrance):
+    if not np.array_equal(
+        candidate["global_particle_indices"], entrance["global_particle_indices"]
+    ):
+        raise ValueError("Candidate and entrance outcomes use different particles.")
+    counts = {}
+    for suffix in ("ever", "at_end"):
+        candidate_mask = candidate[f"usable_{suffix}"]
+        entrance_mask = entrance[f"usable_{suffix}"]
+        counts[f"rescued_{suffix}_count"] = int(
+            np.count_nonzero(candidate_mask & ~entrance_mask)
+        )
+        counts[f"lost_{suffix}_count"] = int(
+            np.count_nonzero(~candidate_mask & entrance_mask)
+        )
+        counts[f"retained_from_entrance_{suffix}_count"] = int(
+            np.count_nonzero(candidate_mask & entrance_mask)
+        )
+    return counts
+
+
 def merge_screen(input_root, output_dir, graph_dir):
     paths = sorted(Path(input_root).glob("shard_*/single_pass_gate_followup.json"))
     if not paths:
         raise ValueError("No single-pass gate follow-up shard reports found.")
     reports = [json.loads(path.read_text()) for path in paths]
+    entrance_index = next(
+        index
+        for index, row in enumerate(reports[0]["records"])
+        if row["kind"] == "entrance_only"
+    )
+    entrance_outcomes = [
+        _load_outcome(path.parent / f"point_{entrance_index:02d}_outcomes.npz")
+        for path in paths
+    ]
     records = []
     for index in range(len(reports[0]["records"])):
         rows = [report["records"][index] for report in reports]
@@ -30,6 +69,16 @@ def merge_screen(input_root, output_dir, graph_dir):
         record = dict(rows[0])
         for field in COUNT_FIELDS:
             record[field] = int(sum(row[field] for row in rows))
+        if record["kind"] == "entrance_plus_backstop":
+            comparisons = [
+                _comparison_counts(
+                    _load_outcome(path.parent / f"point_{index:02d}_outcomes.npz"),
+                    entrance_outcome,
+                )
+                for path, entrance_outcome in zip(paths, entrance_outcomes)
+            ]
+            for field in comparisons[0]:
+                record[field] = int(sum(item[field] for item in comparisons))
         record["usable_ever_fraction"] = record["usable_ever_count"] / record["input_particle_count"]
         record["usable_at_end_fraction"] = record["usable_at_end_count"] / record["input_particle_count"]
         records.append(record)
@@ -69,7 +118,16 @@ def merge_screen(input_root, output_dir, graph_dir):
     best = max(candidates, key=lambda row: (row["usable_at_end_count"], row["usable_ever_count"]))
     labels = ["entrance only", "best entrance +\nbackstop", "full donut"]
     counts = [entrance["usable_at_end_count"], best["usable_at_end_count"], control["usable_at_end_count"]]
-    comparison_axis.bar(labels, counts, color=["tab:blue", "tab:orange", "tab:green"])
+    bars = comparison_axis.bar(labels, counts, color=["tab:blue", "tab:orange", "tab:green"])
+    comparison_axis.bar_label(bars)
+    comparison_axis.text(
+        1,
+        best["usable_at_end_count"],
+        f"  +{best['rescued_at_end_count']} rescued\n  -{best['lost_at_end_count']} lost",
+        ha="left",
+        va="center",
+        fontsize=9,
+    )
     comparison_axis.set(ylabel="usable atoms at 100 ms", title="Best finite-gate candidate versus controls")
     comparison_axis.grid(axis="y", alpha=0.25)
     fig.tight_layout()

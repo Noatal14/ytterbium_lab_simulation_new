@@ -231,9 +231,13 @@ The focused follow-up `studies.submit_3d_mot_single_pass_gate_followup` keeps
 the successful entrance slower fixed at a 20-mm-upstream crossing and adds a
 spatially separate downstream backstop after the green core. Both pairs have
 `k_z < 0`: the first slows incoming atoms and the second pushes overshooting
-atoms back toward the MOT. Backstop crossings of 15/20/25 mm and provisional
-`s0` values 0.25/0.50/0.75 are compared against entrance-only and full-donut
-controls.
+atoms back toward the MOT. The first backstop scan improved instantaneous
+100-ms capture from 115/600 for the entrance-only gate to 153/600 at a 25-mm
+crossing and `s0=0.75`, while the full-donut control retained 491/600. Because
+the best result lay on both scan boundaries, the refined scan tests crossings
+of 25/30/35 mm and provisional `s0` values 0.75/1.0/1.25/1.5. Its merger also
+reports paired per-particle rescued, lost, and retained counts relative to the
+entrance-only control; aggregate count changes alone do not establish rescue.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core
