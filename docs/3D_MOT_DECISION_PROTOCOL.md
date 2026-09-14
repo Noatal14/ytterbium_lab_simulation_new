@@ -131,3 +131,12 @@ The final decision package should contain:
   loading, retention, robustness, alignment burden, and evidence status;
 - a recommendation that explicitly separates simulated performance from
   practical laboratory judgement.
+
+## Stochastic repeatability
+
+`studies.submit_3d_mot_decision_repeats` compares the current full-donut,
+finite-four-blue, and corrected-five-beam representatives on the same 600 atoms
+across five independent recoil seeds. It reports the mean and sample standard
+deviation of the instantaneous usable fraction at 100 ms. This measures Monte
+Carlo repeatability, not experimental alignment tolerance, and therefore must
+not be presented as a complete robustness study.

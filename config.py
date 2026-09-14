@@ -584,6 +584,22 @@ MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG = {
     ),
 }
 
+# Repeated-seed comparison of the three currently known decision-family
+# representatives. This measures stochastic simulation uncertainty only; it is
+# not an alignment-tolerance study and does not replace parameter optimization.
+MOT_3D_DECISION_REPEAT_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "04:00:00",
+    "repeat_seeds": (42101, 42102, 42103, 42104, 42105),
+    "finite_gate_backstop_crossing_offset_m": 35e-3,
+    "finite_gate_backstop_s0": 0.75,
+    "five_beam_lower_green_s0": 6.0,
+}
+
 # Reverse ablation of the angled donut: retain only the two blue beams whose
 # propagation vectors have +z components, while all six green beams remain.
 # Compare the current donut-shell pair against an upstream-only planar-clipped

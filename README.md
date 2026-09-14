@@ -253,6 +253,10 @@ instantaneous usable population at 100 ms, and records paired overlap with the
 donut. The compact anchor set is defined in
 `MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG`; it is a decision screen, not a full
 optimization or a set of laboratory operating values.
+Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
+observed separation between the current donut, finite-four-blue, and five-beam
+representatives persists across five recoil seeds. The output error bars are
+simulation repeatability, not experimental alignment or calibration tolerance.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core

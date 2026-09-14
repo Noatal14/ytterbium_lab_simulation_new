@@ -58,6 +58,10 @@ The next corrected-geometry five-beam screen is submitted by
 anchors with a full-donut control on the same 600 atoms and writes paired
 per-particle overlap. Its anchors are centralized in
 `MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG` and are provisional study values.
+`studies.submit_3d_mot_decision_repeats` independently repeats the current
+representatives of all three decision families across five recoil seeds on the
+same 600 atoms. Its standard deviation quantifies stochastic repeatability only
+and must not be labelled experimental robustness.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT
