@@ -227,6 +227,12 @@ and the combined three-gate arrangement. All variants retain the same six
 green beams. The gate locations and blue operating point are provisional
 geometry hypotheses; they are centralized in
 `MOT_3D_BLUE_GATE_SEQUENCE_CONFIG` and are not registered MOT profiles.
+The focused follow-up `studies.submit_3d_mot_single_pass_gate_followup` scans a
+single `-z` gate crossing at 10, 15, 20, 25, and 30 mm upstream. It separately
+tests two non-overlapping finite lab-z windows with total nominal blue
+`s0=0.75` divided as `0.375+0.375`, `0.50+0.25`, or `0.25+0.50`. This prevents
+the overlapping half-spaces in the exploratory gate study from masquerading
+as two sequential interactions.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core

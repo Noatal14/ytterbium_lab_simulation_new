@@ -595,6 +595,28 @@ MOT_3D_BLUE_GATE_SEQUENCE_CONFIG = {
     "return_cutoff_offset_m": 0.0,
 }
 
+# Focused follow-up after the first gate study found 115/600 usable atoms for a
+# single -z gate crossing 20 mm upstream. The first axis isolates crossing
+# position. The second compares two non-overlapping finite windows while
+# preserving the same total nominal s0=0.75 as the single-gate reference.
+MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "04:00:00",
+    "blue_detuning_gamma": -2.0,
+    "total_blue_s0": 0.75,
+    "blue_waist_m": 15e-3,
+    "inner_cutoff_radius_m": 10e-3,
+    "single_crossing_offsets_m": (-10e-3, -15e-3, -20e-3, -25e-3, -30e-3),
+    "single_cutoff_offset_m": -10e-3,
+    "two_stage_windows_m": ((-40e-3, -20e-3), (-20e-3, 0.0)),
+    "two_stage_crossing_offsets_m": (-30e-3, -10e-3),
+    "two_stage_s0_allocations": ((0.375, 0.375), (0.50, 0.25), (0.25, 0.50)),
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,

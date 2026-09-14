@@ -138,6 +138,34 @@ class UpstreamClippedDonutGaussianBeam(DonutGaussianBeam):
         return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
 
 
+class WindowClippedDonutGaussianBeam(DonutGaussianBeam):
+    """Center-blocked Gaussian transmitted only between two lab-z planes."""
+
+    def __init__(self, *args, minimum_lab_z_m, maximum_lab_z_m, **kwargs):
+        self.minimum_lab_z_m = float(minimum_lab_z_m)
+        self.maximum_lab_z_m = float(maximum_lab_z_m)
+        if not (
+            np.isfinite(self.minimum_lab_z_m)
+            and np.isfinite(self.maximum_lab_z_m)
+            and self.minimum_lab_z_m < self.maximum_lab_z_m
+        ):
+            raise ValueError("Finite beam-window bounds must satisfy min < max.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Window-clipped center-blocked Gaussian Beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position = np.asarray(position, dtype=float)
+        intensity = DonutGaussianBeam._intensity_func(self, position)
+        inside_window = (position[..., 2] >= self.minimum_lab_z_m) & (
+            position[..., 2] <= self.maximum_lab_z_m
+        )
+        return np.where(inside_window, intensity, 0.0)
+
+
 def _normalize_vector(vec):
     vec = np.asarray(vec, dtype=float)
     norm = np.linalg.norm(vec)
@@ -329,6 +357,7 @@ def _validate_profile(profile):
                 )
             if group.get("profile", blue.get("profile")) not in {
                 "upstream_clipped_donut",
+                "window_clipped_donut",
                 "upstream_planar_clipped_gaussian",
             }:
                 raise ValueError("Finite 399 beam groups require a planar-clipped profile.")
@@ -421,6 +450,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         inner_cutoff_radius=None,
         outer_cutoff_radius=None,
         maximum_lab_z_m=None,
+        minimum_lab_z_m=None,
         waist_short=None,
         waist_long=None,
     ):
@@ -428,6 +458,8 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             beam_cls = DonutGaussianBeam
         elif profile_kind == "upstream_clipped_donut":
             beam_cls = UpstreamClippedDonutGaussianBeam
+        elif profile_kind == "window_clipped_donut":
+            beam_cls = WindowClippedDonutGaussianBeam
         elif profile_kind == "outer_clipped_gaussian":
             beam_cls = OuterClippedGaussianBeam
         elif profile_kind == "elliptical":
@@ -445,9 +477,12 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             polarization=polarization,
             tag=tag,
         )
-        if profile_kind in {"donut", "upstream_clipped_donut"}:
+        if profile_kind in {"donut", "upstream_clipped_donut", "window_clipped_donut"}:
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
             if profile_kind == "upstream_clipped_donut":
+                beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
+            elif profile_kind == "window_clipped_donut":
+                beam_kwargs["minimum_lab_z_m"] = minimum_lab_z_m
                 beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
         elif profile_kind == "outer_clipped_gaussian":
             beam_kwargs["outer_cutoff_radius"] = outer_cutoff_radius
@@ -548,6 +583,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                         polarization=_beam_polarization(group_cfg, axis_tag),
                         inner_cutoff_radius=group_cfg.get("inner_cutoff_radius_m"),
                         maximum_lab_z_m=maximum_lab_z_m,
+                        minimum_lab_z_m=group_cfg.get("minimum_lab_z_m"),
                     )
                 )
 
