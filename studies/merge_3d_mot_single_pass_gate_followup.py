@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 COUNT_FIELDS = (
@@ -46,27 +47,31 @@ def merge_screen(input_root, output_dir, graph_dir):
     summary_path = output_dir / "single_pass_gate_followup_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
 
-    single = [row for row in records if row["kind"] == "single_gate"]
-    two_stage = [row for row in records if row["kind"] == "two_stage"]
+    candidates = [
+        row for row in records if row["kind"] == "entrance_plus_backstop"
+    ]
     control = next(row for row in records if row["kind"] == "full_donut")
-    fig, (location_axis, allocation_axis) = plt.subplots(1, 2, figsize=(13, 5.5))
-    location_axis.plot(
-        [abs(row["crossing_offset_m"]) * 1e3 for row in single],
-        [row["usable_at_end_count"] for row in single],
-        marker="o",
-    )
-    location_axis.axhline(control["usable_at_end_count"], linestyle="--", color="tab:green", label="full donut")
-    location_axis.set(xlabel="single-gate crossing upstream [mm]", ylabel="usable atoms at 100 ms", title="Single-gate location")
-    location_axis.grid(alpha=0.25)
-    location_axis.legend()
-    allocation_axis.bar(
-        [f"{row['front_s0']:g} + {row['rear_s0']:g}" for row in two_stage],
-        [row["usable_at_end_count"] for row in two_stage],
-    )
-    allocation_axis.axhline(control["usable_at_end_count"], linestyle="--", color="tab:green", label="full donut")
-    allocation_axis.set(xlabel="front + rear nominal s0", ylabel="usable atoms at 100 ms", title="Two non-overlapping gates; total s0 = 0.75")
-    allocation_axis.grid(axis="y", alpha=0.25)
-    allocation_axis.legend()
+    entrance = next(row for row in records if row["kind"] == "entrance_only")
+    crossings = sorted({row["backstop_crossing_offset_m"] for row in candidates})
+    intensities = sorted({row["backstop_s0"] for row in candidates})
+    grid = np.zeros((len(intensities), len(crossings)), dtype=float)
+    for row in candidates:
+        grid[intensities.index(row["backstop_s0"]), crossings.index(row["backstop_crossing_offset_m"])] = row["usable_at_end_count"]
+    fig, (heatmap_axis, comparison_axis) = plt.subplots(1, 2, figsize=(13, 5.5))
+    image = heatmap_axis.imshow(grid, origin="lower", aspect="auto", cmap="viridis")
+    heatmap_axis.set_xticks(range(len(crossings)), [f"{value * 1e3:g}" for value in crossings])
+    heatmap_axis.set_yticks(range(len(intensities)), [f"{value:g}" for value in intensities])
+    heatmap_axis.set(xlabel="downstream backstop crossing [mm]", ylabel="backstop s0", title="Entrance slower + downstream backstop")
+    for i in range(len(intensities)):
+        for j in range(len(crossings)):
+            heatmap_axis.text(j, i, str(int(grid[i, j])), ha="center", va="center", color="white")
+    fig.colorbar(image, ax=heatmap_axis, label="usable atoms at 100 ms")
+    best = max(candidates, key=lambda row: (row["usable_at_end_count"], row["usable_ever_count"]))
+    labels = ["entrance only", "best entrance +\nbackstop", "full donut"]
+    counts = [entrance["usable_at_end_count"], best["usable_at_end_count"], control["usable_at_end_count"]]
+    comparison_axis.bar(labels, counts, color=["tab:blue", "tab:orange", "tab:green"])
+    comparison_axis.set(ylabel="usable atoms at 100 ms", title="Best finite-gate candidate versus controls")
+    comparison_axis.grid(axis="y", alpha=0.25)
     fig.tight_layout()
     graph_path = graph_dir / "single_pass_gate_followup.png"
     fig.savefig(graph_path, dpi=220, bbox_inches="tight")

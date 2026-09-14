@@ -210,11 +210,12 @@ would push incoming `+z` atoms outward. All coordinates and provisional laser
 parameters are centralized in `MOT_3D_BLUE_GATE_SEQUENCE_CONFIG`.
 The next focused study is
 `studies/submit_3d_mot_single_pass_gate_followup.py`. It preserves the known
-single-gate spectral point (`-2 Gamma`, `s0=0.75`, 15-mm waist), scans crossing
-position from 10 to 30 mm upstream, and tests two disjoint blue windows with
-the same total nominal intensity split three ways. The finite-window beam
-class is intentionally study infrastructure; these candidates are not added
-to `MOT_3D_CONFIGURATIONS`.
+entrance-gate spectral point (`-2 Gamma`, `s0=0.75`, 15-mm waist) at a 20-mm
+upstream crossing. A separate `k_z < 0` backstop is confined to z=+10..+40 mm
+after the green core, with crossings 15/20/25 mm and s0 0.25/0.50/0.75. It is
+intended to push +z overshoot back toward the center, not to provide a second
+upstream slowing stage. These candidates are not added to
+`MOT_3D_CONFIGURATIONS`.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and

@@ -1,53 +1,68 @@
+import copy
+
 import numpy as np
+from atomsmltr.simulation.simulator.simbase import get_force_vec
 
 from config import MOT_3D_SINGLE_PASS_GATE_FOLLOWUP_CONFIG
+from lab_setup.config_builder import build_base_config
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
 from studies import submit_3d_mot_single_pass_gate_followup as submitter
-from studies.scan_3d_mot_single_pass_gate_followup import (
-    candidate_points,
-    profile_for_point,
-)
+from studies.scan_3d_mot_single_pass_gate_followup import candidate_points, profile_for_point
 
 
 def _blue(profile):
     return [beam for beam in setup_3dmot_lasers(profile) if "399" in beam.tag]
 
 
-def test_followup_has_control_location_scan_and_fixed_total_power_two_stage_scan():
+def test_followup_has_controls_and_nine_downstream_backstop_candidates():
     points = candidate_points()
-    assert len(points) == 9
-    assert sum(point["kind"] == "single_gate" for point in points) == 5
-    assert sum(point["kind"] == "two_stage" for point in points) == 3
-    for point in points:
-        if point["kind"] == "two_stage":
-            assert point["front_s0"] + point["rear_s0"] == 0.75
+    assert len(points) == 11
+    assert sum(point["kind"] == "full_donut" for point in points) == 1
+    assert sum(point["kind"] == "entrance_only" for point in points) == 1
+    assert sum(point["kind"] == "entrance_plus_backstop" for point in points) == 9
 
 
-def test_two_stage_windows_do_not_illuminate_outside_their_z_intervals():
-    point = next(point for point in candidate_points() if point["kind"] == "two_stage")
+def test_backstop_is_strictly_downstream_and_blue_dark_at_mot_center():
+    point = next(
+        point for point in candidate_points() if point["kind"] == "entrance_plus_backstop"
+    )
     profile = profile_for_point(point)
     beams = _blue(profile)
     assert len(beams) == 4
     center = np.asarray(profile["center_position_m"], dtype=float)
-    for beam in beams:
-        crossing_z = beam.waist_position[2]
-        transverse_point = center + np.array([12e-3, 0.0, crossing_z - center[2]])
-        below = transverse_point.copy()
-        below[2] = beam.minimum_lab_z_m - 1e-6
-        above = transverse_point.copy()
-        above[2] = beam.maximum_lab_z_m + 1e-6
-        assert float(beam.get_value(transverse_point[None, :])[0]) > 0.0
-        assert float(beam.get_value(below[None, :])[0]) == 0.0
-        assert float(beam.get_value(above[None, :])[0]) == 0.0
+    backstop = [beam for beam in beams if "downstream_backstop" in beam.tag]
+    assert len(backstop) == 2
+    for beam in backstop:
+        assert beam.minimum_lab_z_m > center[2]
+        upstream = center + np.array([12e-3, 0.0, 5e-3])
+        at_crossing = center + np.array(
+            [12e-3, 0.0, point["backstop_crossing_offset_m"]]
+        )
+        assert float(beam.get_value(upstream[None, :])[0]) == 0.0
+        assert float(beam.get_value(at_crossing[None, :])[0]) > 0.0
+    assert all(float(beam.get_value(center[None, :])[0]) == 0.0 for beam in beams)
 
 
-def test_every_followup_gate_geometry_is_blue_dark_at_mot_center():
-    for point in candidate_points():
-        if point["kind"] == "full_donut":
-            continue
-        profile = profile_for_point(point)
-        center = np.asarray(profile["center_position_m"])[None, :]
-        assert all(float(beam.get_value(center)[0]) == 0.0 for beam in _blue(profile))
+def test_downstream_backstop_pushes_overshooting_atoms_toward_center():
+    point = next(
+        point for point in candidate_points() if point["kind"] == "entrance_plus_backstop"
+    )
+    profile = profile_for_point(point)
+    profile["399"]["beam_groups"] = [profile["399"]["beam_groups"][1]]
+    profile["556"]["enabled"] = False
+    _, simulation_config = build_base_config(
+        include_2d_mot=False,
+        include_zeeman=False,
+        include_3dmot=True,
+        _3d_mot_config=copy.deepcopy(profile),
+        gravity_enabled=False,
+        zones=[],
+    )
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    position = center + np.array([12e-3, 0.0, point["backstop_crossing_offset_m"]])
+    state = np.array([[*position, 0.0, 0.0, 12.0]])
+    force = np.asarray(get_force_vec(state, simulation_config)[0], dtype=float)
+    assert force[2] < 0.0
 
 
 def test_followup_submission_uses_three_full_nodes(tmp_path, monkeypatch):
