@@ -183,20 +183,24 @@ with `s0=8`, detuning `-15 Gamma` but won the predefined slowing tiebreaker
 than laboratory-set parameters.
 
 Full-ensemble retention runs may be deterministically split with the retention
-study's `--num-shards` and `--shard-index`. Each shard saves compressed inside
-and eligibility masks. `studies/merge_3d_mot_retention_shards.py` concatenates
-the disjoint masks first, then chooses the global peak cohort and performs the
-conditional lifetime fit. Never sum independently chosen shard retention
-curves, because their cohort peak times need not agree.
+study's `--num-shards` and `--shard-index`. Capture is now defined
+instantaneously as radius plus speed <= 1 m/s; leaving and returning is allowed.
+Each shard saves inside, instantaneous-usable, and legacy residence-qualified
+masks. `studies/merge_3d_mot_retention_shards.py` concatenates the disjoint
+masks before selecting the global instantaneous population peak. The old
+continuous peak-cohort curve remains a separately labelled diagnostic.
 For resumable long runs, pass `--checkpoint-dir` to each shard and both
 checkpoint options to the merger. Per-shard files contain final states plus
 original ensemble indices; after the global peak is known, the merger writes
-only peak-cohort atoms retained through the final sample under
+only atoms instantaneously usable at the final sample under
 `data/particle_states/after_3d_mot`. This permits continuation without storing
 or recomputing the full trajectory history.
-Continuation runs must pass `--prequalified-input`; otherwise the analysis
-would incorrectly reapply the five-millisecond residence requirement and could
-select a new, biased cohort peak after the saved checkpoint.
+Continuation runs must pass `--prequalified-input` so the checkpoint population
+is treated as usable at continuation time zero.
+`studies/analyze_3d_mot_checkpoint_radii.py` can pool the original per-shard
+final-state checkpoints and compare instantaneous populations at 5, 7.5, and
+10 mm without rerunning. It cannot reconstruct larger-radius time histories,
+because only 5-mm masks and final six-component states were retained previously.
 The unattended remaining-configuration workflow is submitted by
 `studies/submit_3d_mot_overnight_pipeline.py`. It requires the completed donut
 gradient shards, merges and selects that point, runs the donut green scan, and

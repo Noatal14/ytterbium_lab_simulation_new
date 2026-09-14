@@ -66,14 +66,9 @@ def _merged_diagnostics(reports, profile):
 
 
 def retained_at_end_mask(analysis, final_state_available):
-    """Select the global peak cohort that stayed inside through the final sample."""
+    """Select atoms satisfying the instantaneous usable criterion at the end."""
     available = np.asarray(final_state_available, dtype=bool)
-    retained = np.zeros(len(available), dtype=bool)
-    retained[analysis["cohort_indices"]] = True
-    retained &= np.all(
-        analysis["inside_masks"][:, analysis["peak_index"] :], axis=1
-    )
-    return retained & available
+    return np.asarray(analysis["eligible_masks"][:, -1], dtype=bool) & available
 
 
 def run_merge(
@@ -91,15 +86,23 @@ def run_merge(
     for profile in reports[0]["profiles"]:
         inside_parts = []
         eligible_parts = []
+        residence_parts = []
         for report_path in report_paths:
             masks = np.load(report_path.parent / f"{profile}_retention_masks.npz")
             inside_parts.append(masks["inside_masks"])
             eligible_parts.append(masks["eligible_masks"])
+            if "residence_eligible_masks" in masks:
+                residence_parts.append(masks["residence_eligible_masks"])
         analyses[profile] = analyze_masks(
             np.concatenate(inside_parts, axis=0),
             np.concatenate(eligible_parts, axis=0),
             time_points,
             diagnostics=_merged_diagnostics(reports, profile),
+            residence_eligible_masks=(
+                np.concatenate(residence_parts, axis=0)
+                if residence_parts
+                else None
+            ),
         )
 
     output_dir = Path(output_dir)

@@ -584,6 +584,7 @@ MOT_3D_SIM_CONFIG = {
 # experiment without changing the stage implementation.
 MOT_3D_CAPTURE_CONFIG = {
     "capture_radius_m": 5e-3,
+    "diagnostic_radii_m": (5e-3, 7.5e-3, 10e-3),
     "minimum_residence_time_s": 5e-3,
     "maximum_final_speed_m_s": 1.0,
 }

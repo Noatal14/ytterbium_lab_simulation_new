@@ -10,6 +10,7 @@ from studies.compare_3d_mot_retention import (
     fit_retention_lifetime,
     final_states_on_grid,
     inside_capture_masks,
+    instantaneous_capture_masks,
     retention_from_masks,
     select_particle_shard,
 )
@@ -80,7 +81,7 @@ def test_final_state_checkpoint_excludes_trajectories_terminated_early():
     assert np.isnan(states[1]).all()
 
 
-def test_continuation_checkpoint_keeps_only_peak_cohort_retained_to_end():
+def test_continuation_checkpoint_keeps_atoms_instantaneously_usable_at_end():
     inside = np.array(
         [
             [True, True, True, True],
@@ -99,7 +100,7 @@ def test_continuation_checkpoint_keeps_only_peak_cohort_retained_to_end():
 
     mask = retained_at_end_mask(analysis, [True, True, True])
 
-    assert mask.tolist() == [True, False, False]
+    assert mask.tolist() == [False, False, False]
 
 
 def test_global_peak_is_selected_after_masks_from_shards_are_combined():
@@ -146,6 +147,21 @@ def test_capture_eligibility_rejects_fast_transit_and_requires_residence_time():
 
     assert eligible[0].tolist() == [False, False, False, False, False, True, True]
     assert not eligible[1].any()
+
+
+def test_instantaneous_capture_allows_reentry_without_residence_penalty():
+    times = np.arange(4, dtype=float) * 1.0e-3
+    result = _trajectory(
+        times,
+        np.array([0.0, 0.010, 0.0, 0.0]),
+        np.array([0.5, 0.5, 0.5, 2.0]),
+    )
+
+    usable = instantaneous_capture_masks(
+        [result], times, (0.0, 0.0, 0.0), 0.005, 1.0
+    )
+
+    assert usable.tolist() == [[True, False, True, False]]
 
 
 def test_capture_diagnostics_separates_arrival_speed_and_residence_failures():
@@ -201,7 +217,7 @@ def test_peak_cohort_uses_eligibility_but_retention_uses_spatial_presence():
     assert retained.tolist() == [2, 2, 1]
 
 
-def test_prequalified_continuation_starts_with_the_entire_checkpoint_cohort():
+def test_prequalified_continuation_still_enforces_the_speed_limit():
     times = np.arange(4, dtype=float) * 1.0e-3
     center_z = np.full(4, 0.413)
     zeros = np.zeros(4)
@@ -228,8 +244,9 @@ def test_prequalified_continuation_starts_with_the_entire_checkpoint_cohort():
     analysis = analyze_results(results, times, prequalified_input=True)
 
     assert analysis["peak_index"] == 0
-    assert analysis["peak_count"] == 2
-    assert analysis["retained_counts"].tolist() == [2, 2, 1, 1]
+    assert analysis["peak_count"] == 1
+    assert analysis["capture_eligible_counts"].tolist() == [1, 1, 0, 0]
+    assert analysis["retained_counts"].tolist() == [1, 1, 0, 0]
 
 
 def test_exponential_fit_is_accepted_only_for_a_resolved_decay():

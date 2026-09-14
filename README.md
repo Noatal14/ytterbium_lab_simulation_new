@@ -200,20 +200,26 @@ grid includes the current provisional green configuration; it does not change
 the configuration or treat a scan winner as a laboratory-set value. The study
 uses the same deterministic particle sharding and shard merger.
 The retention comparison likewise supports `--num-shards` and
-`--shard-index`. Each shard saves compressed spatial and capture-eligibility
-masks; `studies.merge_3d_mot_retention_shards` combines those masks before
-selecting the global peak cohort and fitting a lifetime. Per-shard peak curves
-must not be added directly because their peak times can differ.
+`--shard-index`. Its primary usable-atom criterion is instantaneous: an atom
+must be inside the configured radius and have speed at most 1 m/s. An earlier
+exit does not disqualify an atom that later returns. Each shard saves spatial,
+instantaneous-usable, and legacy minimum-residence masks; the merger combines
+the disjoint masks before finding the global population peak. The historical
+continuous peak-cohort curve is retained as a separate diagnostic.
 With `--checkpoint-dir`, each shard also saves only the six-component state at
 the final sample, not full trajectories. The merger's `--checkpoint-root` and
 `--checkpoint-output-dir` options then write one continuation ensemble per
-profile containing the global peak cohort members that remained continuously
-inside through the end. These checkpoints can resume a longer retention run
+profile containing atoms that satisfy the instantaneous usable criterion at
+the final sample. These checkpoints can resume a longer retention run
 without repeating the completed interval.
 When starting from those saved states, pass `--prequalified-input`. This treats
-all checkpoint atoms as the already selected cohort at continuation time zero
-and follows uninterrupted spatial retention immediately, rather than imposing
-another residence delay or selecting a new peak.
+all checkpoint atoms as usable at continuation time zero, rather than imposing
+another residence delay.
+`studies.analyze_3d_mot_checkpoint_radii` re-evaluates saved final states at
+the configured diagnostic radii of 5, 7.5, and 10 mm without rerunning the
+simulation. It reports state availability, position-only occupancy,
+speed-only qualification, and their instantaneous conjunction. Full curves at
+a radius not saved during the original run still require a new simulation.
 `studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
 optimization as a PBS dependency graph: a donut green-light scan followed by
 five-beam blue, gradient, and green scans. At most three 200-core

@@ -1,13 +1,14 @@
 """Compare time-resolved 3D-MOT retention for the configured geometries.
 
 The study sends one shared ensemble of saved 2D-MOT survivor states through
-each requested 3D-MOT configuration. For each configuration it finds the time
-at which the population satisfying the complete operational capture criterion
-is largest: the atoms must be inside the capture sphere, must already have
-remained there continuously for the minimum residence time, and must be below
-the maximum speed. The retention cohort is the set of eligible atoms at that
-time, and an atom remains in the cohort only while it stays continuously inside
-the region thereafter.
+each requested 3D-MOT configuration.  The primary usable-population criterion
+is deliberately instantaneous: an atom is usable whenever it is inside the
+configured sphere and its speed is below the configured limit.  Leaving the
+sphere at an earlier time does not permanently disqualify an atom that returns.
+
+The stricter historical diagnostics (minimum continuous residence and
+continuous survival of the peak cohort) are retained as separate metrics so
+old and new studies remain physically interpretable.
 
 An exponential-with-plateau lifetime is reported only when the observed loss
 and fit quality pass explicit thresholds.  This avoids assigning a misleading
@@ -165,6 +166,40 @@ def capture_eligible_masks(
                 and speed <= maximum_speed_m_s
             )
     return eligible
+
+
+def instantaneous_capture_masks(
+    results,
+    time_points,
+    center_m,
+    capture_radius_m,
+    maximum_speed_m_s,
+):
+    """Mark atoms that are inside the sphere and slow at each sampled time."""
+    time_points = np.asarray(time_points, dtype=float)
+    center = np.asarray(center_m, dtype=float)
+    usable = np.zeros((len(results), len(time_points)), dtype=bool)
+
+    for particle_index, trajectory in enumerate(results):
+        trajectory_times = np.asarray(trajectory.t, dtype=float)
+        states = np.asarray(trajectory.y, dtype=float)
+        if trajectory_times.size == 0 or states.ndim != 2 or states.shape[0] < 6:
+            continue
+        grid_indices = np.searchsorted(time_points, trajectory_times)
+        valid = grid_indices < len(time_points)
+        grid_indices = grid_indices[valid]
+        trajectory_times = trajectory_times[valid]
+        states = states[:, valid]
+        exact = np.isclose(
+            time_points[grid_indices], trajectory_times, rtol=0.0, atol=1e-12
+        )
+        grid_indices = grid_indices[exact]
+        positions = states[:3, exact].T
+        speeds = np.linalg.norm(states[3:6, exact].T, axis=1)
+        usable[particle_index, grid_indices] = (
+            np.linalg.norm(positions - center, axis=1) <= capture_radius_m
+        ) & (speeds <= maximum_speed_m_s)
+    return usable
 
 
 def retention_from_masks(cohort_masks, continuation_masks=None):
@@ -372,16 +407,28 @@ def fit_retention_lifetime(
     }
 
 
-def analyze_masks(inside_masks, eligible_masks, time_points, diagnostics=None):
-    """Build a globally valid retention curve from particle masks."""
+def analyze_masks(
+    inside_masks,
+    eligible_masks,
+    time_points,
+    diagnostics=None,
+    residence_eligible_masks=None,
+):
+    """Build instantaneous and historical continuous-retention metrics."""
     eligible_counts, peak_index, retained, cohort_indices = retention_from_masks(
         eligible_masks, continuation_masks=inside_masks
     )
     elapsed = np.asarray(time_points[peak_index:], dtype=float) - time_points[peak_index]
-    fit = fit_retention_lifetime(elapsed, retained)
+    instantaneous_post_peak = eligible_counts[peak_index:]
+    fit = fit_retention_lifetime(elapsed, instantaneous_post_peak)
     return {
         "inside_counts": inside_masks.sum(axis=0),
         "capture_eligible_counts": eligible_counts,
+        "residence_qualified_counts": (
+            np.asarray(residence_eligible_masks, dtype=bool).sum(axis=0)
+            if residence_eligible_masks is not None
+            else None
+        ),
         "peak_index": peak_index,
         "peak_time_s": (
             float(time_points[peak_index]) if eligible_counts[peak_index] else None
@@ -389,30 +436,37 @@ def analyze_masks(inside_masks, eligible_masks, time_points, diagnostics=None):
         "peak_count": int(eligible_counts[peak_index]),
         "cohort_indices": cohort_indices,
         "retained_counts": retained,
+        "instantaneous_post_peak_counts": instantaneous_post_peak,
         "elapsed_post_peak_s": elapsed,
         "fit": fit,
         "diagnostics": diagnostics,
         "inside_masks": inside_masks,
         "eligible_masks": eligible_masks,
+        "residence_eligible_masks": residence_eligible_masks,
     }
 
 
 def analyze_results(results, time_points, prequalified_input=False):
-    """Build capture-eligible and peak-cohort retention curves for one profile."""
+    """Build instantaneous usable and stricter historical metrics for one profile."""
     inside_masks = inside_capture_masks(
         results,
         time_points,
         Geometry.MOT_3D_CENTER_M,
         MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
     )
+    eligible_masks = instantaneous_capture_masks(
+        results,
+        time_points,
+        Geometry.MOT_3D_CENTER_M,
+        MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
+        MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
+    )
     if prequalified_input:
-        # A continuation checkpoint already contains only members of the
-        # original global peak cohort retained through the checkpoint time.
-        # Spatial presence therefore defines continued retention immediately;
-        # do not impose a second residence delay or choose a later cohort.
-        eligible_masks = inside_masks.copy()
+        # Do not impose a second residence delay on a checkpoint cohort. Speed
+        # is nevertheless checked again at every continuation sample.
+        residence_eligible_masks = inside_masks.copy()
     else:
-        eligible_masks = capture_eligible_masks(
+        residence_eligible_masks = capture_eligible_masks(
             results,
             time_points,
             inside_masks,
@@ -427,17 +481,30 @@ def analyze_results(results, time_points, prequalified_input=False):
         MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
         MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
     )
-    return analyze_masks(inside_masks, eligible_masks, time_points, diagnostics)
+    return analyze_masks(
+        inside_masks,
+        eligible_masks,
+        time_points,
+        diagnostics,
+        residence_eligible_masks=residence_eligible_masks,
+    )
 
 
 def _json_ready_analysis(analysis):
     fit = {key: value for key, value in analysis["fit"].items() if key != "fitted_counts"}
+    residence_counts = analysis["residence_qualified_counts"]
     return {
         "peak_time_s": analysis["peak_time_s"],
         "peak_count": analysis["peak_count"],
         "inside_counts": analysis["inside_counts"].tolist(),
         "capture_eligible_counts": analysis["capture_eligible_counts"].tolist(),
+        "residence_qualified_counts": (
+            residence_counts.tolist() if residence_counts is not None else None
+        ),
         "retained_counts": analysis["retained_counts"].tolist(),
+        "instantaneous_post_peak_counts": analysis[
+            "instantaneous_post_peak_counts"
+        ].tolist(),
         "elapsed_post_peak_s": analysis["elapsed_post_peak_s"].tolist(),
         "fit": fit,
         "diagnostics": analysis["diagnostics"],
@@ -445,7 +512,7 @@ def _json_ready_analysis(analysis):
 
 
 def plot_comparison(time_points, analyses, output_path):
-    """Plot instantaneous occupancy and continuous retention for all profiles."""
+    """Plot instantaneous usable population and legacy continuous retention."""
     fig, (occupancy_ax, retention_ax) = plt.subplots(2, 1, figsize=(10, 9))
     time_ms = np.asarray(time_points) * 1e3
 
@@ -463,14 +530,28 @@ def plot_comparison(time_points, analyses, output_path):
                 linestyle="--",
             )
 
-        retained = analysis["retained_counts"].astype(float)
+        retained = analysis["instantaneous_post_peak_counts"].astype(float)
         normalized = retained / retained[0] if retained.size and retained[0] else retained
         elapsed_ms = analysis["elapsed_post_peak_s"] * 1e3
         retention_ax.step(
             elapsed_ms,
             normalized,
             where="post",
-            label=profile_name,
+            label=f"{profile_name} instantaneous",
+        )
+        continuous = analysis["retained_counts"].astype(float)
+        continuous_normalized = (
+            continuous / continuous[0]
+            if continuous.size and continuous[0]
+            else continuous
+        )
+        retention_ax.step(
+            elapsed_ms,
+            continuous_normalized,
+            where="post",
+            linestyle=":",
+            alpha=0.65,
+            label=f"{profile_name} continuous (historical)",
         )
         fit = analysis["fit"]
         if fit.get("accepted"):
@@ -479,19 +560,19 @@ def plot_comparison(time_points, analyses, output_path):
                 elapsed_ms,
                 fitted,
                 linestyle="--",
-                color=retention_ax.lines[-1].get_color(),
+                color=retention_ax.lines[-2].get_color(),
                 label=f"{profile_name} fit: tau={fit['tau_s'] * 1e3:.2f} ms",
             )
 
-    occupancy_ax.set_title("Population satisfying the 3D-MOT capture criterion")
+    occupancy_ax.set_title("Instantaneous usable 3D-MOT population")
     occupancy_ax.set_xlabel("simulation time [ms]")
     occupancy_ax.set_ylabel("atom count")
     occupancy_ax.grid(alpha=0.25)
     occupancy_ax.legend()
 
-    retention_ax.set_title("Continuous retention of the peak population")
+    retention_ax.set_title("Usable population after its peak")
     retention_ax.set_xlabel("time since profile-specific population peak [ms]")
-    retention_ax.set_ylabel("retained fraction of peak cohort")
+    retention_ax.set_ylabel("fraction of peak usable population")
     retention_ax.set_ylim(-0.03, 1.03)
     retention_ax.grid(alpha=0.25)
     retention_ax.legend()
@@ -598,10 +679,11 @@ def run_study(args):
             output_dir / f"{profile_name}_retention_masks.npz",
             inside_masks=analysis["inside_masks"],
             eligible_masks=analysis["eligible_masks"],
+            residence_eligible_masks=analysis["residence_eligible_masks"],
         )
 
     summary = {
-        "purpose": "compare continuous retention of each profile's captured peak cohort",
+        "purpose": "compare instantaneous usable populations and stricter historical metrics",
         "input_files": [str(path) for path in input_files],
         "input_particle_count": int(len(states)),
         "selected_particle_count_before_sharding": int(len(selected_states)),
@@ -626,10 +708,13 @@ def run_study(args):
         "maximum_speed_m_s": MOT_3D_CAPTURE_CONFIG[
             "maximum_final_speed_m_s"
         ],
-        "retention_definition": (
-            "atoms satisfying the configured radius, minimum continuous residence, "
-            "and maximum-speed criteria at the profile-specific eligible-population "
-            "peak that never leave the capture sphere afterward"
+        "capture_definition": (
+            "instantaneous position within capture_radius_m and speed not exceeding "
+            "maximum_speed_m_s; earlier exits do not disqualify later re-entry"
+        ),
+        "historical_metrics_note": (
+            "minimum-residence qualification and continuous peak-cohort retention "
+            "are saved separately and are not the primary capture criterion"
         ),
         "checkpoint_dir": str(checkpoint_dir) if checkpoint_dir is not None else None,
         "fit_model": "N_inf + (N0 - N_inf) * exp(-elapsed_time / tau)",
