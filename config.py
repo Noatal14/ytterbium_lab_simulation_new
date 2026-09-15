@@ -640,6 +640,31 @@ MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG = {
     ),
 }
 
+# Boundary check after the local grid selected lower-green s0=2 at its lowest
+# tested value. Only the two unresolved local controls are varied; all blue,
+# paired-green, detuning, geometry, solver, and capture settings remain fixed.
+MOT_3D_FIVE_BEAM_BOUNDARY_GRID_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "04:00:00",
+    "points": tuple(
+        (
+            f"gradient_{gradient:g}_lower_{lower_s0:g}".replace(".", "p"),
+            1.0,
+            -2.0,
+            gradient,
+            10.0,
+            lower_s0,
+            -20.0,
+        )
+        for gradient in (1.4, 1.5, 1.6)
+        for lower_s0 in (1.0, 1.5, 2.0, 2.5)
+    ),
+}
+
 # Repeated-seed comparison of the three currently known decision-family
 # representatives. This measures stochastic simulation uncertainty only; it is
 # not an alignment-tolerance study and does not replace parameter optimization.

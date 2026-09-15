@@ -127,7 +127,7 @@ def merge_screen(input_root, output_dir, graph_dir):
     graph_path = graph_dir / "five_beam_decision_screen.png"
     fig.savefig(graph_path, dpi=220, bbox_inches="tight")
     plt.close(fig)
-    if summary["screen_stage"] == "local_grid":
+    if summary["screen_stage"] in {"local_grid", "boundary_grid"}:
         gradients = sorted({row["gradient_G_cm"] for row in ranked})
         lower_values = sorted({row["lower_green_s0"] for row in ranked})
         lookup = {
@@ -162,7 +162,12 @@ def merge_screen(input_root, output_dir, graph_dir):
                     color="white",
                 )
         fig.colorbar(image, ax=axis, label="usable atoms at 100 ms")
-        local_grid_path = graph_dir / "five_beam_local_grid.png"
+        grid_name = (
+            "five_beam_boundary_grid.png"
+            if summary["screen_stage"] == "boundary_grid"
+            else "five_beam_local_grid.png"
+        )
+        local_grid_path = graph_dir / grid_name
         fig.savefig(local_grid_path, dpi=220, bbox_inches="tight")
         plt.close(fig)
         print(f"Saved: {local_grid_path}", flush=True)

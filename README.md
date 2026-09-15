@@ -274,6 +274,10 @@ boundary-checked before it is adopted as the final optimization seed. Its
 merged summary is archived under `data/validation/mot_3d/five_beam_decision/`,
 and the curated decision figures are collected in
 `graphs/mot_3d_configuration_decision/`.
+The same submitter now performs the required boundary check under
+`five_beam_decision/boundary_grid_600`: gradients 1.4/1.5/1.6 G/cm crossed
+with lower-green `s0=1/1.5/2/2.5`, while every other physical and numerical
+setting remains fixed.
 Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
 observed separation between the current donut, finite-four-blue, and five-beam
 representatives persists across five recoil seeds. The output error bars are

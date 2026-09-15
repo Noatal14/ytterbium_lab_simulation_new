@@ -216,7 +216,8 @@ six-beam variants: their best result remains far below the donut, and the
 paired ablations explain why the omitted blue directions are physically useful.
 
 Before launching the full five-beam optimization, complete one inexpensive
-boundary check below lower-green `s0 = 2`, then repeat the selected point over
+boundary check at gradients 1.4/1.5/1.6 G/cm and lower-green
+`s0 = 1/1.5/2/2.5`, then repeat the selected point over
 the same recoil seeds used for the donut. After both full optimizations, compare
 them on a common full ensemble using:
 

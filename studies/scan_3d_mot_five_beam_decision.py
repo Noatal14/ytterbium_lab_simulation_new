@@ -10,6 +10,7 @@ import numpy as np
 from config import (
     DEFAULT_RANDOM_SEED,
     MOT_3D_CONFIGURATIONS,
+    MOT_3D_FIVE_BEAM_BOUNDARY_GRID_CONFIG as BOUNDARY_GRID_CONFIG,
     MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG as STUDY_CONFIG,
     MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG as LOCAL_GRID_CONFIG,
     MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG as REFINED_CONFIG,
@@ -71,7 +72,10 @@ def run_screen(args):
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    if args.local_grid:
+    if args.boundary_grid:
+        settings = BOUNDARY_GRID_CONFIG
+        screen_stage = "boundary_grid"
+    elif args.local_grid:
         settings = LOCAL_GRID_CONFIG
         screen_stage = "local_grid"
     elif args.refined:
@@ -161,6 +165,7 @@ def parse_args(argv=None):
     stage = parser.add_mutually_exclusive_group()
     stage.add_argument("--refined", action="store_true")
     stage.add_argument("--local-grid", action="store_true")
+    stage.add_argument("--boundary-grid", action="store_true")
     return parser.parse_args(argv)
 
 
