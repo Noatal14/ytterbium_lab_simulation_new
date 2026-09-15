@@ -1,6 +1,6 @@
 from config import MOT_3D_DECISION_REPEAT_CONFIG
 from studies import submit_3d_mot_decision_repeats as submitter
-from studies.run_3d_mot_decision_repeats import representatives
+from studies.run_3d_mot_decision_repeats import load_five_beam_point, representatives
 
 
 def test_repeat_study_has_three_distinct_decision_families():
@@ -20,6 +20,26 @@ def test_repeat_study_uses_five_distinct_seeds():
     seeds = MOT_3D_DECISION_REPEAT_CONFIG["repeat_seeds"]
     assert len(seeds) == 5
     assert len(set(seeds)) == 5
+
+
+def test_repeat_study_can_use_selected_five_beam_summary(tmp_path):
+    path = tmp_path / "summary.json"
+    path.write_text(
+        '{"best_five_beam": {'
+        '"kind": "five_beam_gravity", "blue_s0": 1.0, '
+        '"blue_detuning_gamma": -2.0, "gradient_G_cm": 1.5, '
+        '"paired_green_s0": 10.0, "lower_green_s0": 1.5, '
+        '"green_detuning_gamma": -20.0}}'
+    )
+    point = load_five_beam_point(path)
+    items = representatives(
+        five_beam_point=point,
+        configurations=("full_donut", "five_beam_gravity"),
+    )
+    assert [name for name, _ in items] == ["full_donut", "five_beam_gravity"]
+    five = items[1][1]
+    assert five["magnetic_gradient_G_cm"] == 1.5
+    assert five["556"]["s0_by_axis"] == {"+X": 1.5}
 
 
 def test_repeat_submission_uses_three_full_nodes(tmp_path, monkeypatch):

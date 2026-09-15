@@ -278,6 +278,12 @@ The same submitter now performs the required boundary check under
 `five_beam_decision/boundary_grid_600`: gradients 1.4/1.5/1.6 G/cm crossed
 with lower-green `s0=1/1.5/2/2.5`, while every other physical and numerical
 setting remains fixed.
+For an unattended pre-optimization run, use
+`python -m studies.submit_3d_mot_preoptimization_checks`. It submits the
+boundary grid, waits for its merge, reads the selected five-beam point from the
+merged JSON, and then compares that exact point with the full donut across five
+recoil seeds. PBS `afterok` dependencies prevent the repeat study from running
+if the boundary scan or merge fails.
 Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
 observed separation between the current donut, finite-four-blue, and five-beam
 representatives persists across five recoil seeds. The output error bars are

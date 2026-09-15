@@ -22,9 +22,26 @@ from studies.scan_3d_mot_five_beam_decision import profile_for_point as five_pro
 from studies.scan_3d_mot_single_pass_gate_followup import profile_for_point as gate_profile
 
 
-def representatives(settings=None):
+def load_five_beam_point(summary_path):
+    summary = json.loads(Path(summary_path).read_text())
+    point = summary["best_five_beam"]
+    if point.get("kind") != "five_beam_gravity":
+        raise ValueError("The selected boundary-grid point is not five_beam_gravity.")
+    return point
+
+
+def representatives(settings=None, five_beam_point=None, configurations=None):
     settings = settings or STUDY_CONFIG
-    return (
+    five_beam_point = five_beam_point or {
+        "kind": "five_beam_gravity",
+        "blue_s0": 1.0,
+        "blue_detuning_gamma": -2.0,
+        "gradient_G_cm": 2.5,
+        "paired_green_s0": 10.0,
+        "lower_green_s0": settings["five_beam_lower_green_s0"],
+        "green_detuning_gamma": -20.0,
+    }
+    items = (
         ("full_donut", gate_profile({"kind": "full_donut"})),
         (
             "finite_four_blue",
@@ -40,19 +57,16 @@ def representatives(settings=None):
         ),
         (
             "five_beam_gravity",
-            five_profile(
-                {
-                    "kind": "five_beam_gravity",
-                    "blue_s0": 1.0,
-                    "blue_detuning_gamma": -2.0,
-                    "gradient_G_cm": 2.5,
-                    "paired_green_s0": 10.0,
-                    "lower_green_s0": settings["five_beam_lower_green_s0"],
-                    "green_detuning_gamma": -20.0,
-                }
-            ),
+            five_profile(five_beam_point),
         ),
     )
+    if configurations is None:
+        return items
+    selected = set(configurations)
+    unknown = selected - {name for name, _ in items}
+    if unknown:
+        raise ValueError(f"Unknown decision-repeat configurations: {sorted(unknown)}")
+    return tuple(item for item in items if item[0] in selected)
 
 
 def run_repeats(args):
@@ -67,7 +81,15 @@ def run_repeats(args):
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    configurations = representatives()
+    five_beam_point = (
+        load_five_beam_point(args.five_beam_summary)
+        if args.five_beam_summary
+        else None
+    )
+    configurations = representatives(
+        five_beam_point=five_beam_point,
+        configurations=args.configurations,
+    )
     records = []
     total = len(configurations) * len(args.repeat_seeds)
     point_index = 0
@@ -125,6 +147,8 @@ def run_repeats(args):
         "shard_index": args.shard_index,
         "selection_seed": args.selection_seed,
         "repeat_seeds": list(args.repeat_seeds),
+        "five_beam_summary": args.five_beam_summary,
+        "five_beam_point": five_beam_point,
         "dt_s": args.dt,
         "t_max_s": args.t_max,
         "records": records,
@@ -146,6 +170,12 @@ def parse_args(argv=None):
     parser.add_argument("--selection-seed", type=int, default=DEFAULT_RANDOM_SEED)
     parser.add_argument(
         "--repeat-seeds", nargs="+", type=int, default=list(STUDY_CONFIG["repeat_seeds"])
+    )
+    parser.add_argument("--five-beam-summary")
+    parser.add_argument(
+        "--configurations",
+        nargs="+",
+        choices=("full_donut", "finite_four_blue", "five_beam_gravity"),
     )
     return parser.parse_args(argv)
 

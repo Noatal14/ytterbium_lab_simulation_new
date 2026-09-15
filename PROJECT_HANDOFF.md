@@ -82,6 +82,10 @@ The submitter currently targets that boundary check: gradients 1.4/1.5/1.6
 G/cm crossed with lower-green `s0=1/1.5/2/2.5`, written to
 `five_beam_decision/boundary_grid_600`. Do not update the repeat-study
 representative until this grid is merged.
+`studies.submit_3d_mot_preoptimization_checks` chains this boundary grid to a
+five-seed paired comparison of the automatically selected five-beam point and
+the full donut. The reduced-blue six-beam representative is intentionally
+excluded because the decision has narrowed to full donut versus five-beam.
 `studies.submit_3d_mot_decision_repeats` independently repeats the current
 representatives of all three decision families across five recoil seeds on the
 same 600 atoms. Its standard deviation quantifies stochastic repeatability only
