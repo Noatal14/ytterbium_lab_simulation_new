@@ -614,6 +614,32 @@ MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG = {
     ),
 }
 
+# Final local five-beam grid after the refined screen selected lower-green
+# s0=4 at the scan boundary and placed the useful gradient range between
+# 1.25 and 1.5 G/cm. Blue and paired-green settings remain fixed. The grid is
+# deliberately limited to the two unresolved controls.
+MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "04:00:00",
+    "points": tuple(
+        (
+            f"gradient_{gradient:g}_lower_{lower_s0:g}".replace(".", "p"),
+            1.0,
+            -2.0,
+            gradient,
+            10.0,
+            lower_s0,
+            -20.0,
+        )
+        for gradient in (1.25, 1.5, 1.75, 2.0)
+        for lower_s0 in (2.0, 3.0, 4.0, 5.0)
+    ),
+}
+
 # Repeated-seed comparison of the three currently known decision-family
 # representatives. This measures stochastic simulation uncertainty only; it is
 # not an alignment-tolerance study and does not replace parameter optimization.

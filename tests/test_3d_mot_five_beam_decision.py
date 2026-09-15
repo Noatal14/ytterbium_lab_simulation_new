@@ -2,6 +2,7 @@ import numpy as np
 
 from config import (
     MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG,
+    MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG,
     MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG,
 )
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
@@ -29,6 +30,25 @@ def test_refined_screen_has_fourteen_nonduplicate_five_beam_anchors():
         1.0,
         1.25,
         1.5,
+    }
+
+
+def test_local_grid_varies_only_gradient_and_lower_green_intensity():
+    points = candidate_points(MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG)
+    candidates = [point for point in points if point["kind"] == "five_beam_gravity"]
+    assert len(candidates) == 16
+    assert {point["gradient_G_cm"] for point in candidates} == {
+        1.25,
+        1.5,
+        1.75,
+        2.0,
+    }
+    assert {point["lower_green_s0"] for point in candidates} == {2.0, 3.0, 4.0, 5.0}
+    assert {(point["blue_s0"], point["blue_detuning_gamma"]) for point in candidates} == {
+        (1.0, -2.0)
+    }
+    assert {(point["paired_green_s0"], point["green_detuning_gamma"]) for point in candidates} == {
+        (10.0, -20.0)
     }
 
 
@@ -61,5 +81,5 @@ def test_decision_submission_uses_three_full_nodes(tmp_path, monkeypatch):
     assert "--max-atoms 600" in generated
     assert "--num-shards 3" in generated
     assert "--npools 200" in generated
-    assert MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG["pbs_walltime"] in generated
-    assert "--refined" in generated
+    assert MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG["pbs_walltime"] in generated
+    assert "--local-grid" in generated

@@ -259,6 +259,11 @@ anchor gave 136/600. Re-running the same submitter after the refined-screen
 update tests only gradients 0.5--1.5 G/cm, green detunings -20 to -30 Gamma,
 lower-green s0 4--8, and one combined hypothesis; it writes to
 `data/validation/mot_3d/five_beam_decision/refined_600`.
+That refined screen retained 170/600 atoms at lower-green `s0=4`; the useful
+gradient range lay between 1.25 and 1.5 G/cm. The submitter now runs the final
+4-by-4 local grid of gradient 1.25--2.0 G/cm versus lower-green `s0=2--5`,
+writes to `five_beam_decision/local_grid_600`, and produces both a ranked graph
+and a two-dimensional heatmap.
 Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
 observed separation between the current donut, finite-four-blue, and five-beam
 representatives persists across five recoil seeds. The output error bars are

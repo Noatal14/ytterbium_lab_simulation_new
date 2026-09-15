@@ -64,6 +64,11 @@ baseline. A separate -25-Gamma green anchor gave 136/600. The submitter now
 targets `MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG` and writes to `refined_600`;
 it scans only lower gradients, redder green detunings, lower-beam intensity,
 and one combined hypothesis.
+The refined result selected lower-green `s0=4` with 170/600 usable atoms and
+85% retention among ever-usable atoms. It bracketed the useful gradient region
+between 1.25 and 1.5 G/cm. The submitter now targets the final 4-by-4 local grid
+in `MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG`: gradients 1.25/1.5/1.75/2.0 G/cm and
+lower-green `s0=2/3/4/5`, with all other parameters fixed.
 `studies.submit_3d_mot_decision_repeats` independently repeats the current
 representatives of all three decision families across five recoil seeds on the
 same 600 atoms. Its standard deviation quantifies stochastic repeatability only

@@ -11,6 +11,7 @@ from config import (
     DEFAULT_RANDOM_SEED,
     MOT_3D_CONFIGURATIONS,
     MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG as STUDY_CONFIG,
+    MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG as LOCAL_GRID_CONFIG,
     MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG as REFINED_CONFIG,
     MOT_3D_SIM_CONFIG,
 )
@@ -70,7 +71,15 @@ def run_screen(args):
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    settings = REFINED_CONFIG if args.refined else STUDY_CONFIG
+    if args.local_grid:
+        settings = LOCAL_GRID_CONFIG
+        screen_stage = "local_grid"
+    elif args.refined:
+        settings = REFINED_CONFIG
+        screen_stage = "refined"
+    else:
+        settings = STUDY_CONFIG
+        screen_stage = "initial"
     points = candidate_points(settings)
     records = []
     for index, point in enumerate(points):
@@ -119,7 +128,7 @@ def run_screen(args):
         )
     report = {
         "status": "provisional corrected-five-beam decision screen",
-        "screen_stage": "refined" if args.refined else "initial",
+        "screen_stage": screen_stage,
         "purpose": "paired 100-ms screen against the full-donut control",
         "input_files": [str(path) for path in input_files],
         "selected_particle_count_before_sharding": len(selected),
@@ -149,7 +158,9 @@ def parse_args(argv=None):
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
     parser.add_argument("--t-max", type=float, default=STUDY_CONFIG["t_max_s"])
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
-    parser.add_argument("--refined", action="store_true")
+    stage = parser.add_mutually_exclusive_group()
+    stage.add_argument("--refined", action="store_true")
+    stage.add_argument("--local-grid", action="store_true")
     return parser.parse_args(argv)
 
 

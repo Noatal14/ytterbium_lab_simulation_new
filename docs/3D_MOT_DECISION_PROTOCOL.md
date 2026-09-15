@@ -110,6 +110,12 @@ Each finalist must have:
   changing green detuning from -20 to -25 Gamma retained 136/600. The refined
   screen therefore checks 0.5--1.5 G/cm, -20 to -30 Gamma, lower-beam s0 4--8,
   and only one combined low-gradient/red-detuning hypothesis.
+- The refined screen selected lower-green `s0=4` with 170/600 usable atoms and
+  85% final retention among atoms that were usable at least once. The useful
+  gradient region was bracketed by 1.25 G/cm (159/600) and 1.5 G/cm (164/600),
+  while lower gradients failed. The final local grid therefore varies only
+  gradient 1.25/1.5/1.75/2.0 G/cm and lower-green `s0=2/3/4/5`, holding all
+  blue, paired-green, detuning, geometry, and capture parameters fixed.
 
 ## Promotion and decision gates
 

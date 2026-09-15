@@ -127,6 +127,45 @@ def merge_screen(input_root, output_dir, graph_dir):
     graph_path = graph_dir / "five_beam_decision_screen.png"
     fig.savefig(graph_path, dpi=220, bbox_inches="tight")
     plt.close(fig)
+    if summary["screen_stage"] == "local_grid":
+        gradients = sorted({row["gradient_G_cm"] for row in ranked})
+        lower_values = sorted({row["lower_green_s0"] for row in ranked})
+        lookup = {
+            (row["lower_green_s0"], row["gradient_G_cm"]): row[
+                "usable_at_end_count"
+            ]
+            for row in ranked
+        }
+        grid = np.asarray(
+            [
+                [lookup[(lower_s0, gradient)] for gradient in gradients]
+                for lower_s0 in lower_values
+            ]
+        )
+        fig, axis = plt.subplots(figsize=(8, 6), constrained_layout=True)
+        image = axis.imshow(grid, origin="lower", aspect="auto", cmap="viridis")
+        axis.set_xticks(range(len(gradients)), [f"{value:g}" for value in gradients])
+        axis.set_yticks(range(len(lower_values)), [f"{value:g}" for value in lower_values])
+        axis.set(
+            xlabel="magnetic gradient [G/cm]",
+            ylabel="unpaired lower +x green s0",
+            title="Five-beam local grid: usable atoms at 100 ms",
+        )
+        for row_index in range(len(lower_values)):
+            for column_index in range(len(gradients)):
+                axis.text(
+                    column_index,
+                    row_index,
+                    str(int(grid[row_index, column_index])),
+                    ha="center",
+                    va="center",
+                    color="white",
+                )
+        fig.colorbar(image, ax=axis, label="usable atoms at 100 ms")
+        local_grid_path = graph_dir / "five_beam_local_grid.png"
+        fig.savefig(local_grid_path, dpi=220, bbox_inches="tight")
+        plt.close(fig)
+        print(f"Saved: {local_grid_path}", flush=True)
     print(f"Saved: {summary_path}", flush=True)
     print(f"Saved: {graph_path}", flush=True)
     return summary
