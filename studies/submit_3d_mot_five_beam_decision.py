@@ -3,11 +3,11 @@
 import argparse
 from pathlib import Path
 
-from config import MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG as STUDY_CONFIG
+from config import MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG as STUDY_CONFIG
 from studies.submit_3d_mot_overnight_pipeline import INPUT, _header, _submit, _write
 
 
-ROOT = Path("data/validation/mot_3d/five_beam_decision/corrected_600")
+ROOT = Path("data/validation/mot_3d/five_beam_decision/refined_600")
 
 
 def submit(work_dir):
@@ -24,7 +24,7 @@ def submit(work_dir):
         + f"""python -u -m studies.scan_3d_mot_five_beam_decision \\
     --input {INPUT} --max-atoms {STUDY_CONFIG['max_atoms']} \\
     --num-shards {STUDY_CONFIG['num_shards']} --shard-index "$PBS_ARRAY_INDEX" \\
-    --npools {STUDY_CONFIG['pbs_ncpus_per_shard']} \\
+    --npools {STUDY_CONFIG['pbs_ncpus_per_shard']} --refined \\
     --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
 """,
     )

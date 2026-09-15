@@ -58,10 +58,20 @@ The next corrected-geometry five-beam screen is submitted by
 anchors with a full-donut control on the same 600 atoms and writes paired
 per-particle overlap. Its anchors are centralized in
 `MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG` and are provisional study values.
+The initial corrected screen found 159/600 usable atoms at 100 ms at the
+1.25-G/cm lower gradient boundary, compared with 89/600 for the 2.5-G/cm
+baseline. A separate -25-Gamma green anchor gave 136/600. The submitter now
+targets `MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG` and writes to `refined_600`;
+it scans only lower gradients, redder green detunings, lower-beam intensity,
+and one combined hypothesis.
 `studies.submit_3d_mot_decision_repeats` independently repeats the current
 representatives of all three decision families across five recoil seeds on the
 same 600 atoms. Its standard deviation quantifies stochastic repeatability only
 and must not be labelled experimental robustness.
+The completed five-seed means were 83.40% (donut), 29.60% (finite four-blue),
+and 14.47% (the pre-refinement five-beam baseline), with sample standard
+deviations of 1.37, 1.48, and 1.30 percentage points respectively. Do not attach
+the five-beam uncertainty to the newly selected 1.25-G/cm candidate.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT

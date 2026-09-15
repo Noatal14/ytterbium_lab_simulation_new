@@ -87,6 +87,7 @@ def merge_screen(input_root, output_dir, graph_dir):
     control = next(row for row in records if row["kind"] == "full_donut")
     summary = {
         "status": reports[0]["status"],
+        "screen_stage": reports[0].get("screen_stage", "initial"),
         "purpose": reports[0]["purpose"],
         "input_particle_count": sum(
             report["input_particle_count"] for report in reports

@@ -253,6 +253,12 @@ instantaneous usable population at 100 ms, and records paired overlap with the
 donut. The compact anchor set is defined in
 `MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG`; it is a decision screen, not a full
 optimization or a set of laboratory operating values.
+The initial corrected screen selected its lower-gradient boundary: 1.25 G/cm
+gave 159/600 usable atoms at 100 ms, while a separate -25-Gamma green-detuning
+anchor gave 136/600. Re-running the same submitter after the refined-screen
+update tests only gradients 0.5--1.5 G/cm, green detunings -20 to -30 Gamma,
+lower-green s0 4--8, and one combined hypothesis; it writes to
+`data/validation/mot_3d/five_beam_decision/refined_600`.
 Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
 observed separation between the current donut, finite-four-blue, and five-beam
 representatives persists across five recoil seeds. The output error bars are

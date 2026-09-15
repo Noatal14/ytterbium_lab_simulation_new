@@ -80,6 +80,10 @@ Each finalist must have:
 - Required next evidence: the 35/40/45-mm boundary check at
   `s0=0.5/0.75/1.0`, followed by phase-space and trajectory diagnostics for the
   selected finite-gate point.
+- The boundary check confirmed a local position optimum at +35 mm: all three
+  tested intensities retained 184--188/600, whereas +40 mm retained at most 137
+  and +45 mm at most 127. The selected finite-gate representative therefore
+  remains +35 mm and `s0=0.75` with 188/600 usable atoms.
 
 ### Five-beam gravity MOT
 
@@ -101,6 +105,11 @@ Each finalist must have:
   control on the same 600 atoms. The anchors probe lower-beam balance, green
   detuning and intensity, magnetic gradient, blue spectral strength, and two
   limited combined hypotheses. It is not a Cartesian optimization.
+- The corrected screen selected the lower gradient boundary: 1.25 G/cm retained
+  159/600 atoms at 100 ms versus 89/600 at the 2.5-G/cm baseline. Independently,
+  changing green detuning from -20 to -25 Gamma retained 136/600. The refined
+  screen therefore checks 0.5--1.5 G/cm, -20 to -30 Gamma, lower-beam s0 4--8,
+  and only one combined low-gradient/red-detuning hypothesis.
 
 ## Promotion and decision gates
 
@@ -140,3 +149,8 @@ across five independent recoil seeds. It reports the mean and sample standard
 deviation of the instantaneous usable fraction at 100 ms. This measures Monte
 Carlo repeatability, not experimental alignment tolerance, and therefore must
 not be presented as a complete robustness study.
+The five-seed result was 83.40% ± 1.37 percentage points for the donut,
+29.60% ± 1.48 for the finite-four-blue representative, and 14.47% ± 1.30 for
+the pre-refinement five-beam baseline. The separation is much larger than the
+observed stochastic spread. The five-beam number is not the newly selected
+1.25-G/cm point and must not be used as its uncertainty estimate.

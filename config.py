@@ -584,6 +584,36 @@ MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG = {
     ),
 }
 
+# Refined five-beam screen after the corrected decision screen selected the
+# lower gradient boundary (1.25 G/cm) and showed a separate improvement at
+# -25 Gamma green detuning. Blue parameters and paired-green s0 remain fixed;
+# the explicit anchors isolate lower gradient, redder green detuning, and the
+# unpaired lower-beam intensity before testing one combined hypothesis.
+MOT_3D_FIVE_BEAM_REFINED_SCREEN_CONFIG = {
+    "max_atoms": 600,
+    "t_max_s": 100e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "04:00:00",
+    "points": (
+        ("gradient_0p5", 1.0, -2.0, 0.5, 10.0, 6.0, -20.0),
+        ("gradient_0p75", 1.0, -2.0, 0.75, 10.0, 6.0, -20.0),
+        ("gradient_1", 1.0, -2.0, 1.0, 10.0, 6.0, -20.0),
+        ("gradient_1p25_control", 1.0, -2.0, 1.25, 10.0, 6.0, -20.0),
+        ("gradient_1p5", 1.0, -2.0, 1.5, 10.0, 6.0, -20.0),
+        ("green_detuning_22p5", 1.0, -2.0, 1.25, 10.0, 6.0, -22.5),
+        ("green_detuning_25", 1.0, -2.0, 1.25, 10.0, 6.0, -25.0),
+        ("green_detuning_27p5", 1.0, -2.0, 1.25, 10.0, 6.0, -27.5),
+        ("green_detuning_30", 1.0, -2.0, 1.25, 10.0, 6.0, -30.0),
+        ("lower_green_4", 1.0, -2.0, 1.25, 10.0, 4.0, -20.0),
+        ("lower_green_5", 1.0, -2.0, 1.25, 10.0, 5.0, -20.0),
+        ("lower_green_7", 1.0, -2.0, 1.25, 10.0, 7.0, -20.0),
+        ("lower_green_8", 1.0, -2.0, 1.25, 10.0, 8.0, -20.0),
+        ("gradient_0p75_detuning_25", 1.0, -2.0, 0.75, 10.0, 6.0, -25.0),
+    ),
+}
+
 # Repeated-seed comparison of the three currently known decision-family
 # representatives. This measures stochastic simulation uncertainty only; it is
 # not an alignment-tolerance study and does not replace parameter optimization.
