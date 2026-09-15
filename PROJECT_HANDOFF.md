@@ -69,6 +69,15 @@ The refined result selected lower-green `s0=4` with 170/600 usable atoms and
 between 1.25 and 1.5 G/cm. The submitter now targets the final 4-by-4 local grid
 in `MOT_3D_FIVE_BEAM_LOCAL_GRID_CONFIG`: gradients 1.25/1.5/1.75/2.0 G/cm and
 lower-green `s0=2/3/4/5`, with all other parameters fixed.
+The local grid reported from Zeus selected gradient 1.5 G/cm and lower-green
+`s0=2`: 194/600 atoms were usable at 100 ms and 222/600 were usable at least
+once. The merged result is archived under
+`data/validation/mot_3d/five_beam_decision/local_grid_600/merged`. Because
+`s0=2` is a boundary, complete a small lower-intensity boundary check before
+adopting the point or updating the five-seed repeat configuration. The
+rationale for advancing the five-beam and full-donut families, while retiring
+the tested reduced-blue six-beam alternatives, is in
+`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`.
 `studies.submit_3d_mot_decision_repeats` independently repeats the current
 representatives of all three decision families across five recoil seeds on the
 same 600 atoms. Its standard deviation quantifies stochastic repeatability only

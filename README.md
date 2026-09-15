@@ -264,6 +264,16 @@ gradient range lay between 1.25 and 1.5 G/cm. The submitter now runs the final
 4-by-4 local grid of gradient 1.25--2.0 G/cm versus lower-green `s0=2--5`,
 writes to `five_beam_decision/local_grid_600`, and produces both a ranked graph
 and a two-dimensional heatmap.
+The rationale for advancing only the full donut and gravity-assisted five-beam
+families to full optimization is documented in
+`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`. It collects the paired
+blue-beam ablations, finite-gate result, stochastic-repeat interpretation,
+current provisional five-beam result, graph references, and laboratory
+advantages and disadvantages. The latest five-beam local-grid result must be
+boundary-checked before it is adopted as the final optimization seed. Its
+merged summary is archived under `data/validation/mot_3d/five_beam_decision/`,
+and the curated decision figures are collected in
+`graphs/mot_3d_configuration_decision/`.
 Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
 observed separation between the current donut, finite-four-blue, and five-beam
 representatives persists across five recoil seeds. The output error bars are
