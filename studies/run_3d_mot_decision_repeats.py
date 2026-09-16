@@ -36,7 +36,7 @@ def representatives(settings=None, five_beam_point=None, configurations=None):
         "kind": "five_beam_gravity",
         "blue_s0": 1.0,
         "blue_detuning_gamma": -2.0,
-        "gradient_G_cm": 2.5,
+        "gradient_G_cm": settings["five_beam_gradient_G_cm"],
         "paired_green_s0": 10.0,
         "lower_green_s0": settings["five_beam_lower_green_s0"],
         "green_detuning_gamma": -20.0,

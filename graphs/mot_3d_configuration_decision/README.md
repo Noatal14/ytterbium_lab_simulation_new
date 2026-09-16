@@ -21,9 +21,14 @@ not moved or deleted.
 | `12_single_pass_pair_velocity.png` | Velocity histories for the same pair restricted to one upstream pass |
 | `13_five_beam_local_grid_ranking.png` | Ranked five-beam local-grid points with the paired donut control |
 | `14_five_beam_local_grid_heatmap.png` | Final usable count versus gradient and unpaired lower-green intensity |
+| `15_five_beam_boundary_grid_ranking.png` | Ranked boundary-grid points and paired donut control |
+| `16_five_beam_boundary_grid_heatmap.png` | Boundary check around the selected gradient and unpaired green intensity |
+| `17_finalist_repeatability.png` | Mean usable fraction and sample standard deviation across five recoil seeds for the donut and selected five-beam point |
 
 The five-beam local-grid source data are stored in
 `data/validation/mot_3d/five_beam_decision/local_grid_600/merged/five_beam_decision_summary.json`.
-The best provisional five-beam point retained 194/600 atoms at 100 ms; its
-lower-green `s0=2` lies on the tested boundary and therefore still requires a
-small boundary check before full optimization.
+The boundary check selected gradient 1.4 G/cm and lower-green `s0=2.5`, with
+202/600 atoms usable at 100 ms. Across five recoil seeds, this point gave
+31.23% ± 1.70 percentage points, compared with 83.40% ± 1.37 percentage points
+for the paired full donut. The uncertainty is the sample standard deviation
+across recoil seeds, not experimental uncertainty.

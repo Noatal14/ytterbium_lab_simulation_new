@@ -145,32 +145,42 @@ the equilibrium and capture volume can be more sensitive to intensity,
 detuning, and magnetic gradient. It may also accept a narrower set of incoming
 trajectories and retain a smaller fraction of atoms that are temporarily slow.
 
-### Current provisional evidence
+### Completed pre-optimization evidence
 
-The latest targeted local grid reported from Zeus found a best provisional
-point at
+The first targeted local grid found 194/600 atoms at 100 ms at gradient
+1.5 G/cm and lower-green `s0=2`. Because the intensity lay at the scan boundary,
+a second 3-by-4 grid tested gradients 1.4/1.5/1.6 G/cm and lower-green
+`s0=1/1.5/2/2.5`. It selected the following provisional starting point:
 
-- magnetic gradient: 1.5 G/cm;
-- unpaired lower-green saturation parameter: `s0 = 2`;
+- magnetic gradient: 1.4 G/cm;
+- unpaired lower-green saturation parameter: `s0 = 2.5`;
 - paired-green saturation parameter: `s0 = 10`;
 - green detuning: `-20 Gamma`;
 - blue saturation parameter: `s0 = 1`;
 - blue detuning: `-2 Gamma`.
 
-At this point, 222/600 atoms were usable at least once and 194/600 were usable
-at 100 ms (32.3%), giving 87.4% final retention among the ever-usable set. The
-nearby points at gradient 1.5--1.75 G/cm and lower-green `s0 = 2--3` also
-performed well enough to indicate a local region rather than a single isolated
-pixel. The ranked comparison and grid are shown in
+At this point, 232/600 atoms were usable at least once and 202/600 were usable
+at 100 ms (33.67%), giving 87.1% final retention among the ever-usable set. The
+ranked local comparison and its first grid are shown in
 [`13_five_beam_local_grid_ranking.png`](../graphs/mot_3d_configuration_decision/13_five_beam_local_grid_ranking.png)
 and
 [`14_five_beam_local_grid_heatmap.png`](../graphs/mot_3d_configuration_decision/14_five_beam_local_grid_heatmap.png).
-However, `s0 = 2` is still a scan boundary. These numbers must therefore be
-treated as provisional until the boundary check and stochastic repeats are
-completed.
+The completed boundary check is shown in
+[`15_five_beam_boundary_grid_ranking.png`](../graphs/mot_3d_configuration_decision/15_five_beam_boundary_grid_ranking.png)
+and
+[`16_five_beam_boundary_grid_heatmap.png`](../graphs/mot_3d_configuration_decision/16_five_beam_boundary_grid_heatmap.png).
+
+The selected five-beam point was then repeated on the same 600 initial atoms
+across five recoil seeds. It gave a mean usable fraction of 31.23%, sample
+standard deviation 1.70 percentage points, and observed range 29.67--33.83%.
+The paired donut gave 83.40% ± 1.37 percentage points, with range
+81.50--84.83%. The repeatability comparison is shown in
+[`17_finalist_repeatability.png`](../graphs/mot_3d_configuration_decision/17_finalist_repeatability.png).
+The non-overlapping ranges establish that the performance gap is much larger
+than the simulated recoil-seed variation.
 
 This result is comparable to the best reduced-blue four-beam geometry
-(194 versus 188 atoms), but both remain far below the unoptimized paired donut
+(202 versus 188 atoms), but both remain far below the unoptimized paired donut
 control (491 atoms). The five-beam design nevertheless remains worth a full
 optimization because it is a different experimental architecture with a large
 practical simplification—not because its present simulated capture matches the
@@ -194,19 +204,19 @@ rerun with five independent recoil seeds. The full donut gave
 - this is not a standard error, confidence interval, experimental uncertainty,
   or alignment-tolerance estimate.
 
-The finite four-blue representative gave `29.60% ± 1.48 percentage points`
-over the same five-seed protocol. The separation between it and the donut is
-therefore much larger than the observed stochastic spread. The repeat study's
-old five-beam value must not be quoted for the newly selected point, because it
-used the pre-refinement five-beam settings. A new repeat study is required
-after selecting the final five-beam operating point.
+The finite four-blue representative gave `29.60% ± 1.48 percentage points` in
+the earlier three-family repeat. The completed finalist repeat supersedes that
+study's pre-refinement five-beam number: the selected five-beam point gave
+`31.23% ± 1.70 percentage points`, with an observed 29.67--33.83% range. The
+donut/five-beam separation is therefore much larger than the observed
+stochastic spread.
 
 ## Advantages and disadvantages to present to the laboratory team
 
 | Candidate | Advantages | Disadvantages | Current evidence status |
 |---|---|---|---|
 | full angled donut | highest capture by a large margin; broad initial phase-space acceptance; repeated cooling after reversals; effectively no loss from 100 to 400 ms in the tested run | six blue beams and six green beams; more optics, alignment, and access constraints | strong performance, ablation, trajectory, phase-space, force, and long-hold evidence; still needs a systematic full optimization |
-| five-beam gravity MOT | fewer MOT beams; simpler and likely more practical laboratory construction; promising local region found in the corrected geometry | currently much lower capture; asymmetric force balance; likely greater sensitivity to gradient and unpaired-beam settings; final lifetime and robustness unknown | physically validated geometry and promising provisional screen; needs boundary check, stochastic repeats, full optimization, and updated retention/trajectory evidence |
+| five-beam gravity MOT | fewer MOT beams; simpler and likely more practical laboratory construction; repeatable nonzero capture in the corrected geometry | currently much lower capture; asymmetric force balance; likely greater sensitivity to gradient and unpaired-beam settings; final lifetime and alignment tolerance unknown | force, boundary-grid, and stochastic-repeat evidence complete; needs full optimization and updated retention/trajectory evidence |
 
 ## Recommendation before full optimization
 
@@ -215,11 +225,12 @@ families. Do not spend the main optimization budget on the tested reduced-blue
 six-beam variants: their best result remains far below the donut, and the
 paired ablations explain why the omitted blue directions are physically useful.
 
-Before launching the full five-beam optimization, complete one inexpensive
-boundary check at gradients 1.4/1.5/1.6 G/cm and lower-green
-`s0 = 1/1.5/2/2.5`, then repeat the selected point over
-the same recoil seeds used for the donut. After both full optimizations, compare
-them on a common full ensemble using:
+The boundary check and matched five-seed repeat are complete. The selected
+gradient remains at the low edge of the boundary grid, so the full five-beam
+optimization must extend below 1.4 G/cm; a reasonable initial gradient range is
+approximately 1.0--1.6 G/cm. This edge result is now an optimization-range
+constraint rather than a reason for another separate screening run. After both
+full optimizations, compare them on a common full ensemble using:
 
 1. usable population versus time through 100 ms;
 2. longer retention and `tau` only if a genuine exponential tail exists;

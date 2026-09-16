@@ -116,6 +116,13 @@ Each finalist must have:
   while lower gradients failed. The final local grid therefore varies only
   gradient 1.25/1.5/1.75/2.0 G/cm and lower-green `s0=2/3/4/5`, holding all
   blue, paired-green, detuning, geometry, and capture parameters fixed.
+- The completed boundary grid selected gradient 1.4 G/cm and lower-green
+  `s0=2.5`: 202/600 atoms were usable at 100 ms and 232/600 were usable at
+  least once. Across five recoil seeds, this point gave 31.23% ± 1.70
+  percentage points (range 29.67--33.83%), while the paired donut gave
+  83.40% ± 1.37 percentage points (range 81.50--84.83%). The gradient remains
+  at the tested low boundary, so the full optimization must extend below
+  1.4 G/cm.
 
 ## Promotion and decision gates
 
@@ -149,14 +156,13 @@ The final decision package should contain:
 
 ## Stochastic repeatability
 
-`studies.submit_3d_mot_decision_repeats` compares the current full-donut,
-finite-four-blue, and corrected-five-beam representatives on the same 600 atoms
-across five independent recoil seeds. It reports the mean and sample standard
-deviation of the instantaneous usable fraction at 100 ms. This measures Monte
-Carlo repeatability, not experimental alignment tolerance, and therefore must
-not be presented as a complete robustness study.
-The five-seed result was 83.40% ± 1.37 percentage points for the donut,
-29.60% ± 1.48 for the finite-four-blue representative, and 14.47% ± 1.30 for
-the pre-refinement five-beam baseline. The separation is much larger than the
-observed stochastic spread. The five-beam number is not the newly selected
-1.25-G/cm point and must not be used as its uncertainty estimate.
+`studies.submit_3d_mot_decision_repeats` repeats configured representatives on
+the same 600 atoms across five independent recoil seeds. It reports the mean
+and sample standard deviation of the instantaneous usable fraction at 100 ms.
+This measures Monte Carlo repeatability, not experimental alignment tolerance,
+and therefore must not be presented as a complete robustness study.
+The final paired finalist repeat gave 83.40% ± 1.37 percentage points for the
+donut and 31.23% ± 1.70 for the selected five-beam point. Their observed ranges
+were 81.50--84.83% and 29.67--33.83%, respectively. The earlier three-family
+repeat remains useful only as historical evidence for the retired finite
+four-blue representative; its pre-refinement five-beam result is superseded.

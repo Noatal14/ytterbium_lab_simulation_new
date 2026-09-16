@@ -73,27 +73,30 @@ The local grid reported from Zeus selected gradient 1.5 G/cm and lower-green
 `s0=2`: 194/600 atoms were usable at 100 ms and 222/600 were usable at least
 once. The merged result is archived under
 `data/validation/mot_3d/five_beam_decision/local_grid_600/merged`. Because
-`s0=2` is a boundary, complete a small lower-intensity boundary check before
-adopting the point or updating the five-seed repeat configuration. The
-rationale for advancing the five-beam and full-donut families, while retiring
-the tested reduced-blue six-beam alternatives, is in
+`s0=2` was a boundary, so a small lower-intensity boundary check was completed
+before adopting the point. The rationale for advancing the five-beam and
+full-donut families, while retiring the tested reduced-blue six-beam
+alternatives, is in
 `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`.
-The submitter currently targets that boundary check: gradients 1.4/1.5/1.6
-G/cm crossed with lower-green `s0=1/1.5/2/2.5`, written to
-`five_beam_decision/boundary_grid_600`. Do not update the repeat-study
-representative until this grid is merged.
+The boundary check used gradients 1.4/1.5/1.6 G/cm crossed with lower-green
+`s0=1/1.5/2/2.5`, written to `five_beam_decision/boundary_grid_600`.
+The completed boundary grid selected gradient 1.4 G/cm and lower-green
+`s0=2.5`: 202/600 atoms were usable at 100 ms and 232/600 were usable at least
+once. The following five-seed paired repeat gave 31.23% ± 1.70 percentage
+points (29.67--33.83%) for five-beam and 83.40% ± 1.37 percentage points
+(81.50--84.83%) for the donut. These are sample standard deviations across
+recoil seeds. The full five-beam optimization must extend below 1.4 G/cm.
 `studies.submit_3d_mot_preoptimization_checks` chains this boundary grid to a
 five-seed paired comparison of the automatically selected five-beam point and
 the full donut. The reduced-blue six-beam representative is intentionally
 excluded because the decision has narrowed to full donut versus five-beam.
-`studies.submit_3d_mot_decision_repeats` independently repeats the current
-representatives of all three decision families across five recoil seeds on the
-same 600 atoms. Its standard deviation quantifies stochastic repeatability only
-and must not be labelled experimental robustness.
-The completed five-seed means were 83.40% (donut), 29.60% (finite four-blue),
-and 14.47% (the pre-refinement five-beam baseline), with sample standard
-deviations of 1.37, 1.48, and 1.30 percentage points respectively. Do not attach
-the five-beam uncertainty to the newly selected 1.25-G/cm candidate.
+`studies.submit_3d_mot_decision_repeats` independently repeats the configured
+representatives across five recoil seeds on the same 600 atoms. Its standard
+deviation quantifies stochastic repeatability only and must not be labelled
+experimental robustness. The older three-family repeat gave 29.60% for the
+finite four-blue representative and 14.47% for the pre-refinement five-beam
+baseline. Those historical values are superseded for the finalist comparison
+by the matched donut-versus-five-beam repeat reported above.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT

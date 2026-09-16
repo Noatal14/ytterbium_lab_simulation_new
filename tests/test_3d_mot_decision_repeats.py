@@ -13,7 +13,8 @@ def test_repeat_study_has_three_distinct_decision_families():
     finite = items[1][1]
     assert len(finite["399"]["beam_groups"]) == 2
     five = items[2][1]
-    assert five["556"]["s0_by_axis"] == {"+X": 6.0}
+    assert five["magnetic_gradient_G_cm"] == 1.4
+    assert five["556"]["s0_by_axis"] == {"+X": 2.5}
 
 
 def test_repeat_study_uses_five_distinct_seeds():

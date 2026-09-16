@@ -678,7 +678,8 @@ MOT_3D_DECISION_REPEAT_CONFIG = {
     "repeat_seeds": (42101, 42102, 42103, 42104, 42105),
     "finite_gate_backstop_crossing_offset_m": 35e-3,
     "finite_gate_backstop_s0": 0.75,
-    "five_beam_lower_green_s0": 6.0,
+    "five_beam_gradient_G_cm": 1.4,
+    "five_beam_lower_green_s0": 2.5,
 }
 
 # Reverse ablation of the angled donut: retain only the two blue beams whose

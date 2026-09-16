@@ -270,14 +270,21 @@ families to full optimization is documented in
 blue-beam ablations, finite-gate result, stochastic-repeat interpretation,
 current provisional five-beam result, graph references, and laboratory
 advantages and disadvantages. The latest five-beam local-grid result must be
-boundary-checked before it is adopted as the final optimization seed. Its
-merged summary is archived under `data/validation/mot_3d/five_beam_decision/`,
-and the curated decision figures are collected in
+checked against the completed boundary grid before it is used as the full
+optimization seed. Both merged summaries are archived under
+`data/validation/mot_3d/five_beam_decision/`, and the curated decision figures
+are collected in
 `graphs/mot_3d_configuration_decision/`.
-The same submitter now performs the required boundary check under
+The same submitter performs the completed boundary check under
 `five_beam_decision/boundary_grid_600`: gradients 1.4/1.5/1.6 G/cm crossed
 with lower-green `s0=1/1.5/2/2.5`, while every other physical and numerical
 setting remains fixed.
+That check selected gradient 1.4 G/cm and lower-green `s0=2.5`, with 202/600
+atoms usable at 100 ms. The chained five-seed comparison gave
+31.23% ± 1.70 percentage points for this five-beam point and
+83.40% ± 1.37 percentage points for the donut. The full five-beam optimization
+must include gradients below 1.4 G/cm because the selected point remains on the
+low-gradient boundary.
 For an unattended pre-optimization run, use
 `python -m studies.submit_3d_mot_preoptimization_checks`. It submits the
 boundary grid, waits for its merge, reads the selected five-beam point from the
