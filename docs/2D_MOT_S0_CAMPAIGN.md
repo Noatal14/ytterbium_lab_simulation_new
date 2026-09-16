@@ -21,7 +21,7 @@ Every `s0` follows the same sequence:
 1. two-particle smoke test;
 2. broad paired Optuna screening;
 3. focused refinement around three distinguishable screening candidates;
-4. confirmation of three finalists on 10 ensembles of 10,000 particles;
+4. confirmation of five finalists on 10 ensembles of 10,000 particles;
 5. a 3-by-3 local detuning/radius sensitivity grid;
 6. production on all 20 accepted Zeeman ensembles.
 
@@ -29,6 +29,12 @@ The winner is chosen deterministically by the largest lower endpoint of its
 95% mean interval, then by mean capture. A boundary winner or an uncertainty
 target failure is returned with a warning; it never causes the workflow to hide
 the best tested result.
+
+The local sensitivity grid is also part of winner selection. If a neighboring
+point has a paired 95% confidence interval entirely above the confirmed center,
+that neighbor is promoted to final production. Otherwise the confirmed center
+is retained and statistically equivalent neighbors are reported as its stable
+operating region.
 
 ## Operator instructions
 

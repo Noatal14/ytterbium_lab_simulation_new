@@ -170,6 +170,56 @@ def test_campaign_production_directory_preserves_readable_s0():
     assert label(1.474497) == "1.474497"
 
 
+def test_campaign_promotes_a_clearly_better_sensitivity_neighbor():
+    from studies.mot_2d_s0_campaign import select_production_point
+
+    def point(detuning_offset, differences):
+        replicates = []
+        for index, difference in enumerate(differences):
+            replicates.append(
+                {
+                    "zeeman_seed": 3000 + index,
+                    "mot_seed": 25000 + index,
+                    "n_input": 10_000,
+                    "subset_seed": 5000 + index,
+                    "conditional_efficiency": 0.02 + difference,
+                }
+            )
+        return {
+            "parameters": {
+                "s0": 1.3,
+                "detuning_gamma": -1.1 + detuning_offset,
+                "magnet_radius": 0.048,
+            },
+            "offsets": {
+                "detuning_gamma": detuning_offset,
+                "magnet_radius_m": 0.0,
+            },
+            "evaluation": {
+                "replicates": replicates,
+                "statistics": {
+                    "mean_conditional_efficiency": np.mean(
+                        [row["conditional_efficiency"] for row in replicates]
+                    )
+                },
+            },
+        }
+
+    reference = point(0.0, [0.0, 0.0, 0.0])
+    better = point(0.02, [0.001, 0.001, 0.001])
+    worse = point(-0.02, [-0.001, -0.001, -0.001])
+
+    _, selection = select_production_point(
+        [worse, reference, better],
+        reference,
+    )
+
+    assert selection["parameters"] == better["parameters"]
+    assert selection["selection_reason"] == (
+        "sensitivity_neighbor_clearly_better_at_95_percent"
+    )
+
+
 def test_final_production_prediction_uses_conservative_variance():
     from studies.run_2d_mot_final_production import final_prediction, parse_args
 

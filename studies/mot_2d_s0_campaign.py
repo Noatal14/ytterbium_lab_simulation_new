@@ -24,6 +24,7 @@ D_RES = 0.01
 R_RES = 0.01e-3
 SCREEN_TRIALS = 17
 REFINE_TRIALS = 10
+CONFIRMATION_CANDIDATES = 5
 PRODUCTION_SEEDS = tuple(range(3000, 3020))
 
 
@@ -222,7 +223,10 @@ def prepare_confirmation(root, manifest):
         rows = trial_rows(root, "refine", value)
         if len(rows) != 3 * REFINE_TRIALS:
             raise RuntimeError(f"Refinement incomplete for s0={value}: {len(rows)}/{3*REFINE_TRIALS}")
-        candidates[key(value)] = distinct(rows)
+        candidates[key(value)] = distinct(
+            rows,
+            count=CONFIRMATION_CANDIDATES,
+        )
         for index, candidate in enumerate(candidates[key(value)]):
             specs.append({"s0": value, "candidate_index": index,
                           "parameters": {k: candidate[k] for k in ("s0", "detuning_gamma", "magnet_radius")}})
@@ -309,6 +313,54 @@ def sensitivity_task(args):
     evaluate_task(Path(args.campaign), "sensitivity", args.task_index)
 
 
+def select_production_point(rows, reference):
+    """Choose a clearly superior sensitivity neighbor, otherwise the center."""
+    point_summaries = []
+    clearly_better = []
+    for row in rows:
+        comparison = paired(row, reference)
+        summary = {
+            "parameters": row["parameters"],
+            "offsets": row["offsets"],
+            "mean_efficiency": row["evaluation"]["statistics"][
+                "mean_conditional_efficiency"
+            ],
+            "comparison_to_reference": comparison,
+            "within_loss_margin_at_95_percent": bool(
+                comparison["95_ci_fraction"][0] >= -TARGET
+            ),
+        }
+        point_summaries.append(summary)
+        if comparison["95_ci_fraction"][0] > 0.0:
+            clearly_better.append(summary)
+
+    if clearly_better:
+        selected = max(
+            clearly_better,
+            key=lambda item: (
+                item["comparison_to_reference"]["95_ci_fraction"][0],
+                item["mean_efficiency"],
+            ),
+        )
+        reason = "sensitivity_neighbor_clearly_better_at_95_percent"
+    else:
+        selected = next(
+            item
+            for item in point_summaries
+            if item["offsets"]
+            == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0}
+        )
+        reason = "no_sensitivity_neighbor_clearly_better_at_95_percent"
+
+    return point_summaries, {
+        "parameters": selected["parameters"],
+        "offsets_from_confirmed_winner": selected["offsets"],
+        "mean_efficiency": selected["mean_efficiency"],
+        "comparison_to_confirmed_winner": selected["comparison_to_reference"],
+        "selection_reason": reason,
+    }
+
+
 def prepare_production(root, manifest):
     winners, sensitivity = read(root / "winners.json"), {}
     for value in manifest["s0_values"]:
@@ -316,15 +368,17 @@ def prepare_production(root, manifest):
         if len(rows) != 9:
             raise RuntimeError(f"Sensitivity incomplete for s0={value}: {len(rows)}/9")
         reference = next(row for row in rows if row["offsets"] == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0})
-        sensitivity[key(value)] = {"reference": winners[key(value)]["parameters"], "points": [
-            {"parameters": row["parameters"], "offsets": row["offsets"],
-             "mean_efficiency": row["evaluation"]["statistics"]["mean_conditional_efficiency"],
-             "comparison_to_reference": paired(row, reference),
-             "within_loss_margin_at_95_percent": bool(paired(row, reference)["95_ci_fraction"][0] >= -TARGET)}
-            for row in rows]}
+        points, production_selection = select_production_point(rows, reference)
+        sensitivity[key(value)] = {
+            "reference": winners[key(value)]["parameters"],
+            "points": points,
+            "production_selection": production_selection,
+        }
     save_file_json(root / "sensitivity_summary.json", sensitivity)
     specs = [{"s0": value, "zeeman_seed": seed,
-              "parameters": winners[key(value)]["parameters"]}
+              "parameters": sensitivity[key(value)]["production_selection"][
+                  "parameters"
+              ]}
              for value in manifest["s0_values"] for seed in PRODUCTION_SEEDS]
     prepare(root, manifest, "production", specs, "06", 150, "12:00:00")
 
@@ -349,7 +403,7 @@ def production_task(args):
 
 
 def finish(root, manifest):
-    winners, sensitivity = read(root / "winners.json"), read(root / "sensitivity_summary.json")
+    sensitivity = read(root / "sensitivity_summary.json")
     results = []
     for value in manifest["s0_values"]:
         output = root / "production" / key(value)
@@ -357,10 +411,11 @@ def finish(root, manifest):
         if count != len(PRODUCTION_SEEDS):
             raise RuntimeError(f"Production incomplete for s0={value}: {count}/{len(PRODUCTION_SEEDS)}")
         summary = summarize(output)
-        warnings = list(winners[key(value)]["boundary_flags"])
+        recommended = sensitivity[key(value)]["production_selection"]["parameters"]
+        warnings = boundary(recommended)
         if not summary["stopping_rule_passes"]:
             warnings.append("target_95_prediction_half_width_not_met")
-        results.append({"s0": value, "recommended_parameters": winners[key(value)]["parameters"],
+        results.append({"s0": value, "recommended_parameters": recommended,
                         "warnings": warnings, "sensitivity": sensitivity[key(value)],
                         "prediction": summary["prediction_for_10m_zeeman_survivors"],
                         "target_uncertainty_passes": summary["stopping_rule_passes"],

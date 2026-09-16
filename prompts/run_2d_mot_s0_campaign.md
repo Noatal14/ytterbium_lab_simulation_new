@@ -36,13 +36,18 @@ available in the laboratory. For every supplied value, the campaign must:
 
 1. find the recommended detuning and magnet radius;
 2. perform broad screening and focused refinement;
-3. confirm the three strongest candidates;
+3. confirm the five strongest distinguishable candidates;
 4. measure sensitivity to small detuning and radius changes;
 5. perform final production runs;
 6. predict capture for `10,000,000` Zeeman survivors with a 95% interval;
 7. save all captured 2D-MOT states for future 3D-MOT studies; and
 8. return the best tested result even when it lies on a search boundary or
    misses the uncertainty target, with a clear warning.
+
+If a local sensitivity neighbor is clearly better than the confirmed center
+under the paired 95% comparison, promote that neighbor to final production.
+Otherwise retain the center and report equivalent neighbors as the stable
+operating region.
 
 ## Sources of truth
 
