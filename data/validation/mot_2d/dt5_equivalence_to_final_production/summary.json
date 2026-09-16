@@ -1,0 +1,55 @@
+{
+  "kind": "mot_2d_dt5_equivalence_summary",
+  "parameters": {
+    "s0": 1.474497,
+    "detuning_gamma": -1.1840645,
+    "magnet_radius": 0.049217614
+  },
+  "candidate_dt_s": 5e-06,
+  "reference_dt_s": 6.25e-07,
+  "n_paired_ensembles": 20,
+  "candidate_total_input": 592319,
+  "candidate_total_captured": 15481,
+  "candidate_pooled_efficiency": 0.026136254281898773,
+  "reference_total_input": 592319,
+  "reference_total_captured": 15840,
+  "reference_pooled_efficiency": 0.02674234660714919,
+  "paired_comparison": {
+    "paired_differences_fraction": [
+      -0.00016951451044209392,
+      0.00010133423408207817,
+      -0.0014184397163120588,
+      -0.0006070621564196813,
+      -0.0012120395932933813,
+      0.0007773421657428677,
+      -0.00033767812521105084,
+      -0.0013182355923609945,
+      -0.0007747237941255723,
+      -0.00020406081012141336,
+      -0.0011792850163415206,
+      -0.0004739657390480066,
+      -0.0007449294010090403,
+      -0.0006443736010309994,
+      0.0004047081042797898,
+      0.00033723400667723044,
+      -0.0014186792771491326,
+      -0.000773083257705625,
+      -0.0018103188172583703,
+      -0.000640766221502765
+    ],
+    "mean_paired_difference_fraction": -0.000605326855927487,
+    "paired_difference_standard_deviation_fraction": 0.0006812971780604598,
+    "paired_difference_standard_error_fraction": 0.00015234268030219663,
+    "critical_value": 2.0930240544083087,
+    "paired_95_ci_fraction": [
+      -0.0009241837503130194,
+      -0.0002864699615419546
+    ],
+    "paired_95_ci_half_width_fraction": 0.0003188568943855324,
+    "equivalence_margin_fraction": 0.0005,
+    "equivalence_margin_percentage_points": 0.05,
+    "equivalence_passes": false
+  },
+  "decision": "FAIL_KEEP_0P625_US",
+  "decision_rule": "Use 5 us only if the complete paired 95% confidence interval for candidate minus reference capture lies inside the predeclared +/-0.05 percentage-point margin."
+}

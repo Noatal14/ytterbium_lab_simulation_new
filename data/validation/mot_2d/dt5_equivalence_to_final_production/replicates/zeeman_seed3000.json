@@ -1,0 +1,42 @@
+{
+  "kind": "mot_2d_dt5_equivalence_replicate",
+  "parameters": {
+    "s0": 1.474497,
+    "detuning_gamma": -1.1840645,
+    "magnet_radius": 0.049217614
+  },
+  "design": {
+    "dt_s": 5e-06,
+    "stochastic_solver": "RK4StHybridCustom",
+    "uses_all_available_particles": true,
+    "npools": 150,
+    "reference_summary": "data/optimization/mot_2d/final_production_v22/summary.json",
+    "reference_dt_s": 6.25e-07
+  },
+  "replicate": {
+    "ensemble_file": "production_zeeman_n50000_dt40us_seed3000.npy",
+    "zeeman_seed": 3000,
+    "mot_seed": 18000,
+    "n_available": 29496,
+    "selection_method": "all_particles",
+    "subset_seed": 103000,
+    "n_input": 29496,
+    "captured": 751,
+    "conditional_efficiency": 0.025461079468402495,
+    "estimated_total_efficiency": 0.01502,
+    "batch_elapsed_seconds": 10377.967203140259
+  },
+  "reference_replicate": {
+    "ensemble_file": "production_zeeman_n50000_dt40us_seed3000.npy",
+    "zeeman_seed": 3000,
+    "mot_seed": 18000,
+    "n_available": 29496,
+    "selection_method": "all_particles",
+    "subset_seed": 103000,
+    "n_input": 29496,
+    "captured": 756,
+    "conditional_efficiency": 0.02563059397884459,
+    "estimated_total_efficiency": 0.01512,
+    "batch_elapsed_seconds": 16510.350933790207
+  }
+}
