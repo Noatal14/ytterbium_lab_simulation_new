@@ -1,0 +1,18 @@
+#!/bin/bash
+#PBS -N mot2d_smoke
+#PBS -q zeus_combined_q
+#PBS -J 0-2
+#PBS -l select=1:ncpus=1:mem=64gb
+#PBS -l walltime=00:20:00
+
+set -euo pipefail
+cd /home/tal.noa/ytterbium_lab_simulation_new || exit 1
+module load SPACK/apps
+module load gcc/14.1.0
+module load python/3.14.2
+source ~/venvs/atomsmltr/bin/activate
+RUN_TMP="/tmp/${USER}_mot2d_smoke_${PBS_JOBID}_${PBS_ARRAY_INDEX:-0}"
+mkdir -p "${RUN_TMP}"
+export TMPDIR="${RUN_TMP}" TMP="${RUN_TMP}" TEMP="${RUN_TMP}"
+trap 'rm -rf -- "${RUN_TMP}"' EXIT
+python -m studies.mot_2d_s0_campaign smoke --campaign data/optimization/mot_2d/s0_campaign_130_135_140_sep2026 --s0-index $PBS_ARRAY_INDEX

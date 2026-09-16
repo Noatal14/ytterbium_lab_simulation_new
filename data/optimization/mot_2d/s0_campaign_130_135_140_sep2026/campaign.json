@@ -1,0 +1,32 @@
+{
+  "kind": "mot_2d_s0_campaign",
+  "name": "mot_2d_fixed_s0_130_135_140_sep2026",
+  "stage": "screen",
+  "s0_values": [
+    1.3,
+    1.35,
+    1.4
+  ],
+  "stages": {
+    "screen": {
+      "tasks": 9,
+      "job_file": "data/optimization/mot_2d/s0_campaign_130_135_140_sep2026/jobs/02_screen.pbs"
+    }
+  },
+  "fixed_design": {
+    "dt_s": 6.25e-07,
+    "solver": "RK4StHybridCustom",
+    "detuning_bounds_gamma": [
+      -1.55,
+      -0.85
+    ],
+    "magnet_radius_bounds_m": [
+      0.045,
+      0.051
+    ],
+    "detuning_resolution_gamma": 0.01,
+    "magnet_radius_resolution_m": 1e-05,
+    "target_95_half_width_fraction": 0.0005,
+    "reporting_zeeman_survivors": 10000000
+  }
+}

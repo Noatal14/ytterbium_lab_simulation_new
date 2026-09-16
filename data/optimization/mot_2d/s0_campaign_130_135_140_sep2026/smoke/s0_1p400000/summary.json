@@ -1,0 +1,44 @@
+{
+  "kind": "mot_2d_joint_optimization_summary",
+  "study_name": "mot_2d_fixed_s0_130_135_140_sep2026_s0_1p400000_smoke",
+  "objectives": [
+    "maximize_mean_conditional_efficiency"
+  ],
+  "fixed_s0": 1.4,
+  "n_registered_trials": 1,
+  "n_finished_trials": 1,
+  "ranked_trials": [
+    {
+      "trial_number": 0,
+      "mean_conditional_efficiency": 0.0,
+      "parameters": {
+        "s0": 1.4,
+        "detuning_gamma": -1.2878219168068463,
+        "magnet_radius": 0.05070428583845949
+      }
+    }
+  ],
+  "pareto_front": [],
+  "design": {
+    "dt_s": 6.25e-07,
+    "n_ensembles": 1,
+    "particles_per_ensemble": 2,
+    "mot_seed_start": 4000,
+    "stochastic_solver": "RK4StHybridCustom",
+    "sampler_seed": 42,
+    "bounds": {
+      "s0": [
+        1.4,
+        1.4
+      ],
+      "detuning_gamma": [
+        -1.55,
+        -0.85
+      ],
+      "magnet_radius_m": [
+        0.045,
+        0.051
+      ]
+    }
+  }
+}
