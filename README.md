@@ -23,9 +23,7 @@ The code is built around a Yb-171 atom model with the relevant optical transitio
 New contributors should also read `PROJECT_HANDOFF.md`. It records the scientific
 status, parameter categories, data-authority convention, Zeus workflow, and
 current priorities that cannot be inferred safely from code alone.
-The maintained comparison rules and evidence checklist for selecting a 3D-MOT
-design are in `docs/3D_MOT_DECISION_PROTOCOL.md`; use that protocol rather than
-ranking configurations from unrelated historical runs.
+The maintained rationale for selecting the two 3D-MOT finalists is in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the full search and validation design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`.
 
 To re-optimize detuning and magnet radius for one or more available 2D-MOT
 laser intensities, follow `docs/2D_MOT_S0_CAMPAIGN.md`. That maintained workflow
@@ -147,314 +145,36 @@ Any compatible `(N, 6)` state array may be supplied as the input.
 python -m simulations.mot_3d --input data/particle_states/after_2d_mot/mot_2d_survivors.npy
 ```
 
-The 3D stage saves the captured states and a JSON summary containing the capture
-percentage and exact criterion. Run any stage with `--help` to see its numerical
-and file-path options.
+The 3D stage saves captured states and a JSON summary containing the capture percentage and exact criterion. Run it with `--help` for numerical and file-path options.
 
-To compare how the three provisional 3D-MOT profiles retain the same incoming
-2D-MOT survivors, run:
+The maintained 3D-MOT design space now contains exactly two candidates:
 
-```bash
-python -m studies.compare_3d_mot_retention
-```
+- `angled_donut`: six green core beams and six complementary, center-blocked
+  blue shell beams;
+- `five_beam_gravity`: five green beams, including one unpaired beam opposing
+  gravity, plus four complementary blue shell beams.
 
-The study identifies each profile's peak population satisfying the complete
-operational capture criterion (radius, minimum continuous residence, and
-maximum speed), follows only atoms that remain inside the sphere continuously,
-and writes a comparison plot plus a JSON report under
-`data/validation/mot_3d/retention/`. It reports an exponential lifetime `tau`
-only when the post-peak loss is sufficiently large and the fit passes the
-documented quality threshold. The JSON report also separates arrival into the
-capture region, slowing below the speed threshold, continuous residence, and
-full capture eligibility, and summarizes closest approach, speed, and residence
-time. Use `--help` for local subsets, runtime settings, and output options.
-The 3D-MOT simulation uses the `RK4StHybridCustom` solver selected in
-`MOT_3D_SIM_CONFIG`. Its fixed time grid uses the configured `dt_s`, so narrow
-slowing beams cannot be skipped; low expected scattering counts use exact
-Poisson sampling instead of the high-count Gaussian approximation.
+The former crossed-beam and finite-gate geometries were exploratory studies.
+They are no longer selectable configurations and their one-off scan/submit
+programs have been removed. The compact evidence supporting that decision and
+the figures used to present it are retained in
+[`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`](docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md)
+and [`graphs/mot_3d_configuration_decision/`](graphs/mot_3d_configuration_decision/).
 
-Before scanning the magnetic-field gradient, the blue-slower screening study
-varies only the 399-nm detuning (in Gamma) and saturation parameter while using
-the same input atoms and seed at every point:
+The detailed plan for the forthcoming seven-parameter donut optimization and
+ten-parameter five-beam optimization is
+[`docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`](docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md).
+It defines the common capture metric, data split, Optuna discovery stage,
+high-statistics refinement, near-optimal hyperrectangle construction, and the
+held-out atom-number prediction. The numerical search code will be added only
+after the laboratory bounds, power constraints, and accepted robustness loss
+have been agreed.
+
+Geometry figures for the two maintained profiles can be regenerated with:
 
 ```bash
-python -m studies.scan_3d_mot_blue_slower --max-atoms 200
+MPLBACKEND=Agg python -m graphs_scripts.plot_3d_mot_configurations
 ```
-
-It saves CSV and JSON tables plus heatmaps under
-`data/validation/mot_3d/blue_slower_scan/`. The green-light, magnetic-field,
-geometry, and capture settings remain fixed during this first-stage scan.
-The scan also measures actual trajectory overlap with the blue beams: the
-maximum relative intensity encountered, exposure time above 1% of the summed
-peak intensity, and the longitudinal velocity change during that exposure.
-Large scans can be split deterministically across independent PBS jobs with
-`--num-shards` and `--shard-index`. Apply `--max-atoms` before sharding so every
-job selects the same global subset and processes a disjoint strided portion.
-Use `--parameter-pairs S0:DETUNING_GAMMA ...` to validate only points selected
-by a pilot instead of rerunning the full Cartesian grid.
-`studies.merge_3d_mot_blue_scan_shards` then sums all count metrics exactly and
-labels distribution summaries as shard-level approximations.
-`studies.scan_3d_mot_gradient` scans the magnetic gradient only at selected
-399-nm parameter pairs while retaining the same sharding and merge format.
-After selecting a blue operating point and gradient,
-`studies.scan_3d_mot_green_trap` scans the provisional 556-nm saturation
-parameter and detuning while holding those earlier choices fixed. Its default
-grid includes the current provisional green configuration; it does not change
-the configuration or treat a scan winner as a laboratory-set value. The study
-uses the same deterministic particle sharding and shard merger.
-The retention comparison likewise supports `--num-shards` and
-`--shard-index`. Its primary usable-atom criterion is instantaneous: an atom
-must be inside the configured radius and have speed at most 1 m/s. An earlier
-exit does not disqualify an atom that later returns. Each shard saves spatial,
-instantaneous-usable, and legacy minimum-residence masks; the merger combines
-the disjoint masks before finding the global population peak. The historical
-continuous peak-cohort curve is retained as a separate diagnostic.
-With `--checkpoint-dir`, each shard also saves only the six-component state at
-the final sample, not full trajectories. The merger's `--checkpoint-root` and
-`--checkpoint-output-dir` options then write one continuation ensemble per
-profile containing atoms that satisfy the instantaneous usable criterion at
-the final sample. These checkpoints can resume a longer retention run
-without repeating the completed interval.
-When starting from those saved states, pass `--prequalified-input`. This treats
-all checkpoint atoms as usable at continuation time zero, rather than imposing
-another residence delay.
-`studies.analyze_3d_mot_checkpoint_radii` re-evaluates saved final states at
-the configured diagnostic radii of 5, 7.5, and 10 mm without rerunning the
-simulation. It reports state availability, position-only occupancy,
-speed-only qualification, and their instantaneous conjunction. Full curves at
-a radius not saved during the original run still require a new simulation.
-`studies.submit_3d_mot_blue_gate_sequence` runs a study-only comparison of the
-full donut with one finite `-z` slowing gate, two sequential `-z` gates, one
-slowing gate plus a Doppler-selective `+z` return gate on the upstream side,
-and the combined three-gate arrangement. All variants retain the same six
-green beams. The gate locations and blue operating point are provisional
-geometry hypotheses; they are centralized in
-`MOT_3D_BLUE_GATE_SEQUENCE_CONFIG` and are not registered MOT profiles.
-The focused follow-up `studies.submit_3d_mot_single_pass_gate_followup` keeps
-the successful entrance slower fixed at a 20-mm-upstream crossing and adds a
-spatially separate downstream backstop after the green core. Both pairs have
-`k_z < 0`: the first slows incoming atoms and the second pushes overshooting
-atoms back toward the MOT. The first backstop scan improved instantaneous
-100-ms capture from 115/600 for the entrance-only gate to 153/600 at a 25-mm
-crossing and `s0=0.75`, while the full-donut control retained 491/600. Because
-the best result lay on both scan boundaries, the refined scan tests crossings
-of 25/30/35 mm and provisional `s0` values 0.75/1.0/1.25/1.5. Its merger also
-reports paired per-particle rescued, lost, and retained counts relative to the
-entrance-only control; aggregate count changes alone do not establish rescue.
-That refined scan selected a 35-mm crossing and `s0=0.75`, retaining 188/600
-atoms versus 115/600 for entrance-only, with 73 individually identified rescues
-and no losses from the entrance-only population. The final position-boundary
-check therefore tests 35/40/45 mm at `s0=0.5/0.75/1.0`; larger intensities were
-discarded because performance had already decreased at 35 mm.
-The current aperture-corrected five-beam design is screened with
-`python -m studies.submit_3d_mot_five_beam_decision`. It runs 12 explicit
-physics anchors and a full-donut control on the same 600 atoms, ranks by the
-instantaneous usable population at 100 ms, and records paired overlap with the
-donut. The compact anchor set is defined in
-`MOT_3D_FIVE_BEAM_DECISION_SCREEN_CONFIG`; it is a decision screen, not a full
-optimization or a set of laboratory operating values.
-The initial corrected screen selected its lower-gradient boundary: 1.25 G/cm
-gave 159/600 usable atoms at 100 ms, while a separate -25-Gamma green-detuning
-anchor gave 136/600. Re-running the same submitter after the refined-screen
-update tests only gradients 0.5--1.5 G/cm, green detunings -20 to -30 Gamma,
-lower-green s0 4--8, and one combined hypothesis; it writes to
-`data/validation/mot_3d/five_beam_decision/refined_600`.
-That refined screen retained 170/600 atoms at lower-green `s0=4`; the useful
-gradient range lay between 1.25 and 1.5 G/cm. The submitter now runs the final
-4-by-4 local grid of gradient 1.25--2.0 G/cm versus lower-green `s0=2--5`,
-writes to `five_beam_decision/local_grid_600`, and produces both a ranked graph
-and a two-dimensional heatmap.
-The rationale for advancing only the full donut and gravity-assisted five-beam
-families to full optimization is documented in
-`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`. It collects the paired
-blue-beam ablations, finite-gate result, stochastic-repeat interpretation,
-current provisional five-beam result, graph references, and laboratory
-advantages and disadvantages. The latest five-beam local-grid result must be
-checked against the completed boundary grid before it is used as the full
-optimization seed. Both merged summaries are archived under
-`data/validation/mot_3d/five_beam_decision/`, and the curated decision figures
-are collected in
-`graphs/mot_3d_configuration_decision/`.
-The same submitter performs the completed boundary check under
-`five_beam_decision/boundary_grid_600`: gradients 1.4/1.5/1.6 G/cm crossed
-with lower-green `s0=1/1.5/2/2.5`, while every other physical and numerical
-setting remains fixed.
-That check selected gradient 1.4 G/cm and lower-green `s0=2.5`, with 202/600
-atoms usable at 100 ms. The chained five-seed comparison gave
-31.23% ± 1.70 percentage points for this five-beam point and
-83.40% ± 1.37 percentage points for the donut. The full five-beam optimization
-must include gradients below 1.4 G/cm because the selected point remains on the
-low-gradient boundary.
-For an unattended pre-optimization run, use
-`python -m studies.submit_3d_mot_preoptimization_checks`. It submits the
-boundary grid, waits for its merge, reads the selected five-beam point from the
-merged JSON, and then compares that exact point with the full donut across five
-recoil seeds. PBS `afterok` dependencies prevent the repeat study from running
-if the boundary scan or merge fails.
-Use `python -m studies.submit_3d_mot_decision_repeats` to test whether the
-observed separation between the current donut, finite-four-blue, and five-beam
-representatives persists across five recoil seeds. The output error bars are
-simulation repeatability, not experimental alignment or calibration tolerance.
-`studies.submit_3d_mot_overnight_pipeline` submits the remaining staged
-optimization as a PBS dependency graph: a donut green-light scan followed by
-five-beam blue, gradient, and green scans. At most three 200-core
-nodes are requested concurrently. Selection occurs only after
-each three-shard merge, and the final provisional choices are written to
-`data/validation/mot_3d/optimization/final_operating_points.json`. The pipeline
-uses 900 shared input atoms (300 per shard) and does not silently adopt those
-scan results into `config.py`.
-The `five_beam_gravity` design uses `x` as the quadrupole strong axis. Its
-single upward `+x` direction contains only 556-nm light with helicity opposite to
-the paired `yz` beams; the 399-nm component is disabled on that unopposed axis
-to avoid a broad-line transverse kick. These are geometry and force-sign
-requirements, while its numerical operating point remains provisional.
-After this force-sign correction, rerun only the five-beam staged optimization
-with `studies.submit_five_beam_reoptimization`. It writes to dedicated
-`force_corrected_900` directories so incompatible pre-correction scan results
-cannot be merged accidentally, then rebuilds `final_operating_points.json`
-using the already completed donut selection.
-
-After review, the three staged scan results currently adopted in `config.py`
-are provisional simulation operating points: `angled_donut` uses blue
-`s0=1.5`, blue detuning `-3 Gamma`, green `s0=30`, green detuning `-25 Gamma`,
-and `2.5 G/cm`; `angled_sequential` uses blue `s0=0.6`, blue detuning
-`-1.65 Gamma`, green `s0=5`, green detuning `-10 Gamma`, and `10 G/cm`; and the
-force-corrected `five_beam_gravity` uses blue `s0=1`, blue detuning `-2 Gamma`,
-green `s0=10`, green detuning `-20 Gamma`, and `2.5 G/cm`. The five-beam scan
-found 270/900 atoms capture-eligible at some time and a peak eligible
-population of 249. Its selected gradient and green detuning lie on scan
-boundaries, so the point remains provisional. Each profile supplies its own
-default magnetic gradient; command-line study overrides remain available.
-The five-beam profile also supports an optional `556.s0_by_axis` override so
-the unpaired lower-source beam (`+X` propagation) can be balanced against
-gravity without weakening the four paired `yz` beams. Run
-`python -m studies.submit_3d_mot_five_beam_balance` for the focused six-point
-screen (`s0=5,6,6.55,7,8,10`) at otherwise fixed five-beam settings. It uses
-the shared 600-atom ensemble on three 200-core shards and reports both capture
-and the calculated gravity-including equilibrium displacement. These test
-values are provisional and do not change the adopted profile automatically.
-The `angled_donut` and `angled_sequential` layouts share the same three MOT
-axes, so both use quadrupole strong axis `y`, right-handed circular
-polarization on the two `xz` pairs, and left-handed circular polarization on
-the `y` pair. Fixed force-regression tests require the 556-nm force to point
-back toward the center from both sides of every lab axis. Donut optimization
-results produced before this force-sign correction must be rerun before use.
-Use `studies.submit_angled_donut_reoptimization` for that rerun. It submits an
-isolated 900-atom, three-shard blue -> top-five -> gradient -> green dependency
-chain under `polarization_corrected_900` paths, then rebuilds the provisional
-summary while preserving the valid force-corrected five-beam selection. The
-green scan extends to `s0=30` and `-25 Gamma` because the invalid earlier winner
-was near the edge of the smaller grid.
-The corrected 900-atom rerun selected the provisional retention-study point
-blue `s0=1.5`, blue detuning `-3 Gamma`, gradient `2.5 G/cm`, green `s0=30`,
-and green detuning `-25 Gamma`. It produced 567/900 capture-eligible atoms and
-a peak of 567. Blue intensity, gradient, green intensity, and green detuning
-are scan-boundary choices, so this point is adopted only to produce the current
-full-ensemble retention curve; a later expanded optimization must replace it.
-
-`angled_sequential` is now a buildable planar-separated variant of crossed-beam
-slowing rather than a literal copy of the paper's elliptical beams. Two circular
-399-nm beams illuminate only the upstream side of a common lab-z cutoff plane,
-while all six 556-nm Gaussian beams remain spatially continuous through the
-slowing and MOT regions. The 556-nm MOT core therefore has exactly zero blue
-light without removing green light from the upstream side. The configured
-5-mm blue waist, 10-mm protected-core radius, and 20-mm upstream crossing are
-provisional geometry-study seeds, not laboratory settings. Run
-`python -m studies.scan_3d_mot_sequential_geometry` to compare the requested
-3/5/10-mm waists, 5/10-mm protected radii, and 10/20-mm crossings using the
-same saved 2D-MOT ensemble. Earlier sequential scan and retention results used
-the obsolete elliptical geometry and are not performance measurements for this
-replacement.
-Run `python -m studies.submit_sequential_reoptimization` on Zeus to optimize
-the replacement in four dependent stages: circular-beam geometry, 399-nm
-slowing parameters, magnetic gradient, and 556-nm trapping parameters. The
-selected waist, protected-core radius, and crossing position are propagated
-through every later stage. The screening run uses 900 common 2D-MOT survivors
-split across three 200-core nodes; all selected values remain provisional.
-The geometry scan supports the same deterministic `--num-shards` and
-`--shard-index` split as the other 3D-MOT studies; merge its shard directories
-with `python -m studies.merge_3d_mot_blue_scan_shards`.
-
-The completed 600-particle crossed-blue geometry screen is archived under
-`data/validation/mot_3d/geometry_screening_600`. Its seven rejected candidate
-profiles are no longer active configurations. The archive records their
-geometry, force-sign validation, best-anchor metrics, and comparison with the
-donut positive control.
-
-`python -m studies.submit_3d_mot_donut_ablation` submits a paired causal test
-of why the donut works. It compares the full donut with removal of positive-z
-blue beams, removal of the transverse y pair, retention of only the
-counterpropagating xz pair, and a planar-clipped single-pass version of that
-same pair. All variants use the same 600 input atoms, seeds, green MOT, field,
-and blue operating point over a 100-ms window. The merge writes population and capture comparisons
-plus a non-cherry-picked representative atom that is captured by the full
-donut but not by the single-pass control. Its trajectory graph contains z,
-vz, distance from the MOT center, and the intensity of every blue donut beam
-along the full-donut path.
-
-The completed 600-atom, 100-ms result is archived under
-`data/validation/mot_3d/donut_ablation/full_600_100ms`. Capture was 491/600
-for the full donut, 53/600 for the counterpropagating pair with continued
-shell access, and 5/600 for the otherwise identical single-pass control.
-The corresponding figures are under `graphs/mot_3d_donut_ablation`.
-The same study also stores a compact, common-grid `vz(t)` trace for every input
-atom and produces one all-atom longitudinal-velocity figure per ablation. Lines
-are colored by whether the atom ever satisfies the full capture criterion;
-these figures complement rather than replace the retained representative-atom
-comparison.
-
-Run `python -m graphs_scripts.plot_donut_capture_phase_space` to rebuild the
-first-stage phase-space analysis without rerunning any atom dynamics. It colors
-all longitudinal-velocity trajectories by their initial `vz`, plots the shared
-six-dimensional entrance distribution, creates one two-dimensional acceptance
-map per ablation, and compares binned capture probability against initial
-longitudinal speed, transverse speed, transverse radius, and entrance angle.
-The corresponding numerical ranges are saved alongside the figures in
-`graphs/mot_3d_donut_ablation/capture_phase_space_summary.json`.
-
-The next single-pass diagnostic is intentionally staged. Run
-`python -m studies.submit_3d_mot_single_pass_screen` on Zeus to test only 12
-provisional blue-light points: four detunings and three intensities at the
-fixed 15-mm waist. It uses the same 600 atoms and three 200-core shards, stores
-the captured atom identities at every point, and compares both total capture
-and initial-velocity acceptance. Only after this screen identifies a useful
-spectral/intensity region should a separate three-waist follow-up be run.
-The 600-atom screen selected the provisional point `detuning=-2 Gamma`,
-`s0=0.75` (52 captured atoms). The follow-up is therefore defined centrally by
-`MOT_3D_SINGLE_PASS_WAIST_SCREEN_CONFIG` and submitted with
-`python -m studies.submit_3d_mot_single_pass_waist`. It tests only five points:
-the 15-mm baseline, 20/25-mm waists at fixed peak `s0`, and the same two wider
-waists with `s0` reduced to preserve the baseline Gaussian intensity at the
-10-mm clipping radius. This separates increased spatial/interaction-time
-coverage from the trivial increase in intensity at the edge of the blue zone.
-Results and plots are written under `data/validation/mot_3d/single_pass_waist_screen`
-and `graphs/mot_3d_single_pass_waist_screen`.
-The complementary reverse-ablation study is submitted with
-`python -m studies.submit_3d_mot_positive_z_pair`. It keeps only the two blue
-beams whose propagation vectors have positive z components (`+XZ_1/+XZ_2`),
-while retaining all six green beams. One shell control at the adopted donut
-settings is compared with 12 upstream-clipped single-pass intensity/detuning
-points. The single-pass blue intensity is exactly zero at the MOT center.
-This naming refers to light propagation; the +z-propagating beam sources are
-on the -z side of the apparatus.
-
-Generated PBS workflows run long 3D-MOT simulations with unbuffered Python and
-write separate live logs under `data/validation/mot_3d/logs`. `tqdm` already
-reports completed atoms inside the simulator, so no second atom-level progress
-bar is added by the studies. Follow a running shard's `.err` file with
-`tail -f`; `.out` contains flushed candidate start/completion summaries.
-
-To create the presentation comparison from the existing retention summaries,
-run `python -m graphs_scripts.plot_donut_vs_five_beam_retention`. It combines
-the donut's 0--100 ms run and 100--400 ms continuation with the five-beam
-0--100 ms curve, and overlays the accepted five-beam lifetime fit. The output
-is `graphs/mot_3d_retention_comparison/donut_vs_five_beam_0_to_400ms.png`.
-
-`five_beam_gravity` also uses complementary transverse core-shell profiles on
-its four paired `yz` directions: blue is exactly zero inside 10 mm and green is
-exactly zero from 10 mm outward. The unpaired `+x` direction remains green
-only. Results obtained before this green aperture was added describe a
-different geometry and must be re-optimized before reuse.
 
 ## Recommended entry point
 

@@ -63,7 +63,7 @@ def parse_args():
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("graphs/mot_3d_configurations"),
+        default=Path("graphs/mot_3d_configuration_decision"),
         help="Directory for the generated PNG files.",
     )
     return parser.parse_args()
@@ -725,7 +725,11 @@ def main():
             MOT_3D_CONFIGURATIONS[name],
             beam_length_m,
         )
-        output_path = args.output_dir / f"3d_mot_{name}.png"
+        output_names = {
+            "angled_donut": "01_angled_donut_geometry.png",
+            "five_beam_gravity": "02_five_beam_geometry.png",
+        }
+        output_path = args.output_dir / output_names[name]
         fig.savefig(output_path, dpi=220, bbox_inches="tight")
         plt.close(fig)
         print(f"Saved: {output_path}")

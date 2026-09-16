@@ -51,26 +51,12 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
 - `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward. Its quadrupole strong axis is `y`; both wavelengths use right-handed polarization on the xz pairs and left-handed polarization on the y pair. Force tests verify that the green core is restoring on both sides of all three lab axes
-- `angled_sequential`: a buildable crossed-beam variant with six spatially continuous 556-nm Gaussian MOT beams and two circular 399-nm slowing beams on the same ±30-degree xz axes as `angled_donut`. A common lab-z plane cuts only the blue beams, leaving green light present on both sides; its geometry values are provisional scan seeds
 - `five_beam_gravity`: gravity-assisted five-beam 556-nm geometry with the
   `-x` beam removed and the quadrupole strong axis along `x`. The unpaired
-  upward `+x` direction is green only, with opposite helicity; enabling an
-  unopposed broad-line 399-nm beam there would cause a large transverse kick.
-  Four center-blocked 399-nm beams and four outer-clipped green cores occupy the two paired
-  axes in the `yz` plane, rotated by 45° from atomic `+z`. Force tests verify
-  longitudinal blue slowing, transverse cancellation, and green restoring
-  force along all three lab axes including gravity.
-
-`UpstreamClippedDonutGaussianBeam` is used only by the donut ablation study. It
-combines the same radial central obstruction with a hard lab-z cutoff, allowing
-the full-shell counterpropagating pair and a single-pass version of exactly the
-same pair to be compared without changing the active donut configuration.
-
-For `angled_sequential`, parameter provenance is intentionally separated:
-
-- **Paper motivation, not literal current geometry:** Plotkin-Swing et al. (2020) use two crossed 399-nm slowing beams upstream of a six-beam 556-nm MOT. Their reported 45-degree angle, 1.5-mm short ellipse width, and elliptical profile are no longer values used by this buildable project variant.
-- **Project geometry choices:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; atoms propagate along lab `+z`, so both circular slowing beams have negative-z propagation components and cancelling transverse components. A common plane at `z_MOT - green_exclusion_radius_m` cuts only the blue beams on the MOT side; the six green Gaussians remain continuous across it. The boundary remains blue-illuminated, so a crossing may lie exactly on it without losing blue light. The 556-nm MOT retains both xz pairs and the y pair, with strong magnetic axis `y`, right-handed xz polarizations, and left-handed y polarizations.
-- **Provisional scan values:** the current blue waist is 5 mm, protected-core radius 10 mm, and crossing 20 mm upstream. The geometry study scans waists 3/5/10 mm, radii 5/10 mm, and crossings 10/20 mm. The operating point remains blue `s0 = 0.6`, blue `detuning_gamma = -1.65`, green `s0 = 5`, green `detuning_gamma = -10`, and magnetic gradient `10 G/cm`. All are simulation-study values, not laboratory-set constants.
+  upward `+x` direction is green only. Four center-blocked 399-nm shells and
+  four complementary green cores occupy two paired axes in the `yz` plane.
+  Force tests verify blue slowing, transverse cancellation, and restoring green
+  force with gravity along all three laboratory axes.
 
 The polarization-corrected provisional retention point is blue `s0 = 1.5`,
 blue `detuning_gamma = -3`, green `s0 = 30`, green

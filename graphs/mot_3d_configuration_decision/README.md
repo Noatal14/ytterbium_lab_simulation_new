@@ -1,9 +1,9 @@
 # 3D-MOT configuration-decision figures
 
 This directory is the curated figure package accompanying
-`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`. The files are copies of
-results retained in their original study directories; the source figures are
-not moved or deleted.
+`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`. This is the authoritative
+retained figure set; duplicate figures and heavy per-shard exploratory outputs
+were removed after the candidate decision.
 
 | Figure | Purpose |
 |---|---|
@@ -27,6 +27,9 @@ not moved or deleted.
 
 The five-beam local-grid source data are stored in
 `data/validation/mot_3d/five_beam_decision/local_grid_600/merged/five_beam_decision_summary.json`.
+The boundary-grid and repeatability summaries are stored beside it under
+`boundary_grid_600/merged` and
+`data/validation/mot_3d/decision_repeats/finalists_from_boundary_600/merged`.
 The boundary check selected gradient 1.4 G/cm and lower-green `s0=2.5`, with
 202/600 atoms usable at 100 ms. Across five recoil seeds, this point gave
 31.23% ± 1.70 percentage points, compared with 83.40% ± 1.37 percentage points
