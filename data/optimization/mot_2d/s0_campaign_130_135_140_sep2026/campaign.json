@@ -14,7 +14,8 @@
     }
   },
   "fixed_design": {
-    "dt_s": 6.25e-07,
+    "working_dt_s": 1.25e-06,
+    "final_dt_s": 6.25e-07,
     "solver": "RK4StHybridCustom",
     "detuning_bounds_gamma": [
       -1.55,

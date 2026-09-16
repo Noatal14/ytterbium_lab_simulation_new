@@ -9,7 +9,9 @@ stages; no scientific choice is required between stages.
 
 - detuning domain: `-1.55` to `-0.85` linewidths;
 - magnet-radius domain: `0.045` to `0.051 m`;
-- hybrid stochastic solver with `dt = 6.25e-7 s`;
+- hybrid stochastic solver with `dt = 1.25e-6 s` for screening/refinement;
+- hybrid stochastic solver with `dt = 6.25e-7 s` for confirmation,
+  sensitivity, and final production;
 - provisional control resolutions: `0.01` linewidth and `1e-5 m`;
 - final uncertainty target: 95% prediction half-width no larger than `0.05`
   percentage points for `10,000,000` Zeeman survivors.

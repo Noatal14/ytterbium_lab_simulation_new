@@ -68,7 +68,8 @@ principal program is `studies/mot_2d_s0_campaign.py`.
 Do not change these settings unless I explicitly ask:
 
 ```text
-2D-MOT timestep: 0.625 microseconds
+2D-MOT working timestep for screening/refinement: 1.25 microseconds
+2D-MOT final timestep for confirmation/sensitivity/production: 0.625 microseconds
 stochastic solver: RK4StHybridCustom
 detuning search domain: -1.55 to -0.85 Gamma
 magnet-radius search domain: 0.045 to 0.051 m
@@ -220,4 +221,3 @@ explicit approval.
 
 Begin now with one short question only: Which `s0` values should be tested, and
 what should the campaign be called?
-
