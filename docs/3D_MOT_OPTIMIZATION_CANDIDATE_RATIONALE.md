@@ -109,12 +109,15 @@ after the entrance interaction. This trajectory illustrates the mechanism;
 the paired 600-particle population result is the stronger evidence.
 
 Focused tuning did improve the reduced-blue alternatives, so the conclusion is
-not based only on an intentionally poor single-pass operating point. The
-initial one-pair single-pass ablation captured 5/600 atoms (0.8%). A focused
-scan of blue detuning and intensity increased the best one-pair result to
-52/600 (8.7%). A later finite entrance-gate implementation reached 115/600
-atoms usable at 100 ms (19.2%). Finally, adding and positioning a second finite
-blue pair as a downstream slowing backstop reached 188/600 (31.3%). These
+not based only on an intentionally poor single-pass operating point. In the
+two-blue single-pass configuration, only one blue pair is responsible for the
+main entrance slowing. The initial one-pair ablation captured 5/600 atoms
+(0.8%). A focused scan of blue detuning and intensity increased the result to
+52/600 (8.7%), and jointly tuning blue s0, detuning, and the finite gate
+position reached 115/600 atoms usable at 100 ms (19.2%). Adding a second finite
+blue pair with the opposite role - returning atoms that reversed or overshot
+after the entrance stage - produced the best tested four-blue endpoint:
+188/600 (31.3%). These
 numbers come from successive study versions whose diagnostic labels evolved,
 so the intermediate values should not be interpreted as one rigorously paired
 optimization curve. The decisive endpoint comparison is nevertheless paired:
