@@ -119,9 +119,7 @@ def plot_finalists(curves, output_path):
         "five_beam_best": "tab:orange",
         "four_blue_gate_best": "tab:purple",
     }
-    fig, (population_ax, stability_ax) = plt.subplots(
-        2, 1, figsize=(11.0, 9.0), gridspec_kw={"height_ratios": (1.25, 1.0)}
-    )
+    fig, population_ax = plt.subplots(figsize=(11.0, 5.8))
     fits = {}
     for name, curve in curves.items():
         time_s = np.asarray(curve["time_s"], dtype=float)
@@ -135,26 +133,6 @@ def plot_finalists(curves, output_path):
         )
         peak_index, fit = population_fit(time_s, counts)
         fits[name] = fit
-        post_counts = counts[peak_index:]
-        elapsed_ms = (time_s[peak_index:] - time_s[peak_index]) * 1e3
-        normalized = post_counts / post_counts[0] if post_counts[0] else post_counts
-        stability_ax.plot(
-            elapsed_ms,
-            normalized,
-            linewidth=2.2,
-            color=colors[name],
-            label=labels[name],
-        )
-        if fit.get("accepted"):
-            fitted = np.asarray(fit["fitted_counts"], dtype=float) / post_counts[0]
-            stability_ax.plot(
-                elapsed_ms,
-                fitted,
-                "--",
-                linewidth=1.8,
-                color=colors[name],
-                label=rf"{labels[name]} fit: $\tau={fit['tau_s'] * 1e3:.2f}$ ms",
-            )
 
     population_ax.set_xlim(0, 400)
     population_ax.set_ylim(bottom=0)
@@ -163,18 +141,11 @@ def plot_finalists(curves, output_path):
     population_ax.set_ylabel("usable atoms (r <= 5 mm, speed <= 1 m/s)")
     population_ax.grid(alpha=0.25)
     population_ax.legend()
-
-    stability_ax.set_xlim(left=0)
-    stability_ax.set_ylim(-0.03, 1.03)
-    stability_ax.set_xlabel("time since each configuration's usable-population peak [ms]")
-    stability_ax.set_ylabel("fraction of peak usable population")
-    stability_ax.grid(alpha=0.25)
-    stability_ax.legend()
-    stability_ax.text(
+    population_ax.text(
         0.99,
         0.03,
         "Same 2D-MOT survivor ensemble; donut curve reused from the existing run",
-        transform=stability_ax.transAxes,
+        transform=population_ax.transAxes,
         ha="right",
         va="bottom",
         fontsize=8.5,
