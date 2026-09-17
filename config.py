@@ -436,6 +436,37 @@ MOT_3D_CONFIGURATIONS = {
 ACTIVE_MOT_3D_CONFIGURATION = "angled_donut"
 MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
+# Fixed, provisional operating points for the direct 0--400 ms finalist
+# comparison.  These values reproduce the best pre-optimization points found
+# by the focused 600-particle studies; they are evidence points, not the final
+# laboratory recommendations produced by the planned full optimization.
+MOT_3D_FINALIST_STABILITY_CONFIG = {
+    "max_atoms": None,
+    "t_max_s": 400e-3,
+    "num_shards": 3,
+    "pbs_ncpus_per_shard": 200,
+    "pbs_memory_per_shard": "64gb",
+    "pbs_walltime": "24:00:00",
+    "five_beam": {
+        "magnetic_gradient_G_cm": 1.4,
+        "lower_green_axis_tag": "+X",
+        "lower_green_s0": 2.5,
+        "paired_green_s0": 10.0,
+        "green_detuning_gamma": -20.0,
+    },
+    "four_blue_gate": {
+        "blue_detuning_gamma": -2.0,
+        "blue_s0": 0.75,
+        "blue_waist_m": 15e-3,
+        "inner_cutoff_radius_m": 10e-3,
+        "axis_tags": ("-XZ_1", "-XZ_2"),
+        "entrance_crossing_offset_m": -20e-3,
+        "entrance_cutoff_offset_m": -10e-3,
+        "backstop_crossing_offset_m": 35e-3,
+        "backstop_window_m": (10e-3, 55e-3),
+    },
+}
+
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
