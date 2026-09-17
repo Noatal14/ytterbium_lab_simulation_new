@@ -179,19 +179,25 @@ ensembles are not used by Optuna, and the final newly generated survivor set
 remains unopened until all parameter choices and the robust-region procedure
 are locked.
 
+The existing 15,840 survivors are used for final candidate selection, not for
+the final unbiased performance claim. That claim is evaluated only on the
+newly generated sealed ensembles.
+
 After both operating points and hyperrectangles are locked, generate new
 independent 2D-MOT survivor ensembles for final production validation. Start
 with approximately 16,000 new survivors and add ensembles adaptively if the
-prediction stopping rule is not met. Do not regenerate survivors merely to
+confidence-interval stopping rule is not met. Do not regenerate survivors merely to
 increase the discovery-stage trial count.
 
 The final absolute-performance target is a 95% confidence-interval half-width
 no larger than 0.75 percentage points for the mean conditional 3D-MOT capture.
 A binomial planning estimate at 31% capture requires about 14,600 particles; at
-83% it requires about 9,700. The actual interval uses a hierarchical bootstrap:
-resample independent 2D-MOT ensembles as the outer clusters and recoil seeds
-within each selected ensemble. Report expected variation for a new equivalent
-ensemble separately, using a bootstrap predictive distribution that adds a new
+83% it requires about 9,700. The recoil-seed realizations are crossed across
+the ensemble groups, not nested separately within each ensemble. The actual
+interval therefore uses a crossed hierarchical bootstrap: independently
+resample 2D-MOT ensemble clusters and recoil-seed realizations while preserving
+the particle grouping within each ensemble. Report expected variation for a
+new equivalent ensemble separately, using a bootstrap predictive distribution that adds a new
 ensemble effect, recoil-seed effect, and finite-particle variation at the stated
 ensemble size. If the data cannot support that second calculation, report the
 observed between-ensemble spread and do not call it a prediction interval. Add
@@ -240,9 +246,12 @@ approval rather than silently reducing statistical validation.
 | worst-point box validation | 8 points/family | 3,000 x 3 | 144 | <=48 h |
 | initial final prediction | 2 nominal points | about 16,000 x 3 | 144 | <=48 h |
 
-The hard pre-extension ceiling is 1,302 node-hours. Discovery may receive only
-one additional approved 72-node-hour block (up to 150 five-beam or 100 donut
-trials), followed by a mandatory stop-or-approve decision. Final prediction
+The hard pre-extension ceiling is 1,302 node-hours, including the explicit
+6-node-hour implementation and timing row. Discovery may receive only one
+additional approved block of at most 100 donut trials or 150 five-beam trials,
+followed by a mandatory stop-or-approve decision. Its cap is 72 node-hours only
+when the Stage-0 timing estimate shows the selected block fits; otherwise the
+trial count is reduced to fit the cap. Final prediction
 may add ensembles only to meet the declared confidence-interval precision and
 must report the additional calibrated cost before submission.
 
@@ -305,7 +314,8 @@ donut, 7 dimensions:     at most 350 completed valid trials
 ```
 
 These are fixed first-pass ceilings, not convergence claims. One additional
-predefined block of at most 150 five-beam trials or 100 donut trials may be
+predefined block of at most 100 additional donut trials or 150 additional
+five-beam trials may be
 requested only if the preliminary held-out estimate improves by more than one
 percentage point near the end, an important optimum remains on a boundary, or
 the sampler seeds locate incompatible regions. After that block the campaign
@@ -342,8 +352,9 @@ power/calibration boundary.
 
 Carry at most three finalists per family to all 15,840 existing survivors with
 three matched recoil seeds. Add a fourth or fifth seed only for unresolved
-paired comparisons. This stage selects the nominal points; the later new
-ensembles are reserved for unbiased production reporting.
+paired comparisons. This is final candidate selection, not final held-out
+validation. The later new ensembles are reserved for unbiased production
+reporting.
 
 Optuna trials that violate a declared power or hardware constraint are marked
 `PRUNED_INFEASIBLE` before simulation and retain the reason. Numerical errors,
@@ -407,9 +418,10 @@ guarantee before calibration.
 ## Stage 4: held-out production prediction
 
 Lock both nominal points and hyperrectangles before opening the new validation
-ensembles. Run each nominal point on identical new survivors and independent
-recoil seeds. Continue adding independent ensembles until the hierarchical-
-bootstrap 95% confidence-interval half-width for mean conditional capture is
+ensembles. Run each nominal point on identical new survivors and crossed,
+independent recoil-seed realizations. Continue adding independent ensembles
+until the crossed hierarchical-bootstrap 95% confidence-interval half-width
+for mean conditional capture is
 at most 0.75 percentage points
 for both families. This final reporting precision is separate from the tighter
 0.4-percentage-point paired-difference target used to resolve finalists.

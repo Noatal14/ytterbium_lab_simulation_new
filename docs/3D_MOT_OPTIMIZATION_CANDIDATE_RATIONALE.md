@@ -21,7 +21,7 @@ These results are screening evidence rather than equal-budget global
 optimizations. Their purpose is to identify configurations with sufficient
 demonstrated performance and experimental value to justify the substantially
 more expensive production search. Labels below distinguish initial tested
-points, limited-scan best results, and full-ensemble validation runs.
+points, limited-scan best results, and full-ensemble candidate-selection runs.
 
 ## Common comparison rule
 
@@ -70,9 +70,9 @@ optimized five-beam MOT.
 
 | Configuration | Tested capture at 100 ms | Green beams | Blue beams | Main experimental advantage | Main risk or cost | Decision |
 |---|---:|---:|---:|---|---|---|
-| full angled donut | 12,992/15,840 (82.02%), full-ensemble validation | 6 | 6 | highest demonstrated capture and broad acceptance | most optics and alignment | production search |
-| gravity-assisted five-beam | 4,706/15,840 (29.71%), full-ensemble validation | 5 | 4 | fewer beams and simpler construction | asymmetric force balance and lower demonstrated capture | production search |
-| four-blue entrance + backstop | 4,629/15,840 (29.22%), full-ensemble validation | 6 | 4 | avoids the complete blue shell | six green beams, extra gate placement, no demonstrated capture advantage over five-beam | screening only |
+| full angled donut | 12,992/15,840 (82.02%), candidate-selection run | 6 | 6 | highest demonstrated capture and broad acceptance | most optics and alignment | production search |
+| gravity-assisted five-beam | 4,706/15,840 (29.71%), candidate-selection run | 5 | 4 | fewer beams and simpler construction | asymmetric force balance and lower demonstrated capture | production search |
+| four-blue entrance + backstop | 4,629/15,840 (29.22%), candidate-selection run | 6 | 4 | avoids the complete blue shell | six green beams, extra gate placement, no demonstrated capture advantage over five-beam | screening only |
 
 The observed five-beam minus four-blue difference is 77/15,840 = 0.486
 percentage points. The archived summary contains aggregate counts but not the
@@ -251,8 +251,8 @@ study's pre-refinement five-beam number: the selected five-beam point gave
 donut/five-beam separation is therefore much larger than the observed
 stochastic spread.
 
-A subsequent direct stability comparison used all 15,840 validated 2D-MOT
-survivors and propagated the corrected five-beam point continuously through
+A subsequent direct candidate-selection and stability comparison used all
+15,840 existing 2D-MOT survivors and propagated the corrected five-beam point continuously through
 400 ms. The five-beam population contained 4,706 usable atoms at 100 ms,
 reached its maximum of 4,721 atoms at 118.9 ms, and contained 4,718 atoms at
 400 ms. The paired historical donut curve contained 12,992 usable atoms at
@@ -263,6 +263,10 @@ fit. Thus the present five-beam disadvantage is capture efficiency, not an
 observed 100--400 ms retention failure. The common-scale comparison is shown
 in
 [`18_finalist_loading_and_stability.png`](../graphs/mot_3d_configuration_decision/18_finalist_loading_and_stability.png).
+These 15,840 survivors overlap the pools used during model development and are
+therefore not the final unbiased performance sample. Final reported efficiency
+must be evaluated only after settings are locked, using newly generated sealed
+ensembles.
 
 ## Advantages and disadvantages to present to the laboratory team
 
