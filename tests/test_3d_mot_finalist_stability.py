@@ -9,6 +9,10 @@ from studies.compare_3d_mot_finalist_stability import (
     active_trajectory_counts,
     finalist_profiles,
 )
+from studies.analyze_3d_mot_five_beam_velocity import (
+    sampled_longitudinal_velocities,
+)
+from studies.merge_3d_mot_five_beam_velocity import plot_velocity
 from studies.merge_3d_mot_finalist_stability import (
     _validate_reports,
     historical_donut_curve,
@@ -154,3 +158,36 @@ def test_end_to_end_merge_writes_summary_and_graph(tmp_path):
     assert (output / "finalist_stability_summary.json").exists()
     assert summary["input_particle_count"] == 6
     assert summary["results"]["five_beam_best"]["usable_at_400ms_count"] == 3
+
+
+def test_velocity_sampling_marks_terminated_trajectory_with_nan():
+    complete = SimpleNamespace(
+        t=np.array([0.0, 0.1, 0.2]),
+        y=np.vstack([np.zeros((5, 3)), [3.0, 2.0, 1.0]]),
+    )
+    terminated = SimpleNamespace(
+        t=np.array([0.0, 0.1]),
+        y=np.vstack([np.zeros((5, 2)), [4.0, 3.0]]),
+    )
+    times, velocities = sampled_longitudinal_velocities(
+        [complete, terminated], np.array([0.0, 0.1, 0.2]), 0.1
+    )
+
+    np.testing.assert_allclose(times, [0.0, 0.1, 0.2])
+    np.testing.assert_allclose(velocities[0], [3.0, 2.0, 1.0])
+    np.testing.assert_allclose(velocities[1, :2], [4.0, 3.0])
+    assert np.isnan(velocities[1, 2])
+
+
+def test_five_beam_velocity_plot_is_created(tmp_path):
+    output = tmp_path / "velocity.png"
+    plot_velocity(
+        {
+            "time_s": np.array([0.0, 0.1]),
+            "vz_m_s": np.array([[10.0, 0.0], [20.0, 5.0]]),
+            "initial_vz_m_s": np.array([10.0, 20.0]),
+            "usable_ever": np.array([True, False]),
+        },
+        output,
+    )
+    assert output.exists()

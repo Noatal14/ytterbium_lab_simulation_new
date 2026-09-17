@@ -447,6 +447,12 @@ MOT_3D_FINALIST_STABILITY_CONFIG = {
     "pbs_ncpus_per_shard": 200,
     "pbs_memory_per_shard": "64gb",
     "pbs_walltime": "24:00:00",
+    "velocity_diagnostic": {
+        "max_atoms": 600,
+        "t_max_s": 100e-3,
+        "sample_interval_s": 0.1e-3,
+        "pbs_walltime": "01:00:00",
+    },
     "five_beam": {
         "magnetic_gradient_G_cm": 1.4,
         "lower_green_axis_tag": "+X",
