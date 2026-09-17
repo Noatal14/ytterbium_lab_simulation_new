@@ -17,6 +17,12 @@ do not currently justify replacing the full donut.
 All operating points quoted below are simulation-study values, not measured or
 approved laboratory settings.
 
+These results are screening evidence rather than equal-budget global
+optimizations. Their purpose is to identify configurations with sufficient
+demonstrated performance and experimental value to justify the substantially
+more expensive production search. Labels below distinguish initial tested
+points, limited-scan best results, and full-ensemble validation runs.
+
 ## Common comparison rule
 
 Unless stated otherwise, the paired comparisons use the same 600 survivors of
@@ -59,6 +65,23 @@ The loading and long-hold comparison is shown in
 The five-beam trace in that historical figure belongs to an older operating
 point and should not be interpreted as the expected lifetime of a future
 optimized five-beam MOT.
+
+## Compact comparison of the three leading tested configurations
+
+| Configuration | Tested capture at 100 ms | Green beams | Blue beams | Main experimental advantage | Main risk or cost | Decision |
+|---|---:|---:|---:|---|---|---|
+| full angled donut | 12,992/15,840 (82.02%), full-ensemble validation | 6 | 6 | highest demonstrated capture and broad acceptance | most optics and alignment | production search |
+| gravity-assisted five-beam | 4,706/15,840 (29.71%), full-ensemble validation | 5 | 4 | fewer beams and simpler construction | asymmetric force balance and lower demonstrated capture | production search |
+| four-blue entrance + backstop | 4,629/15,840 (29.22%), full-ensemble validation | 6 | 4 | avoids the complete blue shell | six green beams, extra gate placement, no demonstrated capture advantage over five-beam | screening only |
+
+The observed five-beam minus four-blue difference is 77/15,840 = 0.486
+percentage points. The archived summary contains aggregate counts but not the
+per-particle paired masks or ensemble-level decomposition required for a valid
+paired confidence interval. The difference has therefore not been shown to be
+statistically meaningful. The five-beam is retained because it combines
+comparable tested-point performance with fewer total beams and simpler
+implementation, not because this 77-atom difference establishes superior
+capture.
 
 ## Why reduced-blue six-beam variants were rejected
 
@@ -136,7 +159,8 @@ is not merely “more laser power.” Its six blue directions provide repeated,
 three-dimensional access to atoms whose directions change during capture. The
 tested removals and relocations narrow the accepted phase space substantially.
 For a six-green-beam MOT, the current evidence therefore supports keeping the
-full blue donut rather than optimizing another reduced-blue geometry.
+full blue donut for the production search rather than allocating the same main
+budget to another reduced-blue geometry.
 
 ## The gravity-assisted five-beam MOT
 

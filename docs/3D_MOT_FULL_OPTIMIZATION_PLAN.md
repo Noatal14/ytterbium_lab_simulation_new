@@ -20,7 +20,9 @@ The final output for each optimized family must contain:
 
 - a recommended nominal operating point;
 - conditional 3D-MOT capture efficiency among validated 2D-MOT survivors;
-- a 95% prediction interval for a new equivalent ensemble;
+- a 95% confidence interval for the mean conditional efficiency;
+- a separately labeled estimate of expected variation for a new equivalent
+  ensemble, when supported by the number of independent ensembles;
 - expected usable atoms per 10,000,000 atoms leaving the 2D MOT;
 - expected usable 3D-MOT flux obtained by combining the conditional result with
   the existing oven-to-2D-MOT prediction;
@@ -50,8 +52,10 @@ when the decay tail passes the existing fit checks.
 
 All stages use `RK4StHybridCustom`, the timestep in `MOT_3D_SIM_CONFIG`, gravity,
 the same physical capture definition, and the same input ordering. Candidate
-comparisons within a stage use common initial particles and common random
-streams. Changing a solver, timestep, capture rule, or geometry creates a new
+comparisons within a stage use common initial particles and matched recoil
+seeds: the same recoil-seed index is applied to every candidate being compared,
+which reduces Monte Carlo noise in paired differences. Changing a solver,
+timestep, capture rule, or geometry creates a new
 campaign and cannot be silently merged with the old one.
 
 ## Optimization variables
@@ -147,7 +151,7 @@ The upper limit `blue_s0 <= 1.5` applies to every 399-nm beam group in both
 candidate families. The lower bound remains a planning value until the full
 laboratory control range is confirmed.
 
-The five-beam pre-optimization winner was on the 1.4-G/cm lower boundary, so
+The best tested five-beam pre-optimization point was on the 1.4-G/cm lower boundary, so
 the production domain must extend below 1.4 G/cm. The donut's present green
 intensity and detuning also came from earlier boundary points, so the new domain
 must not be centered too narrowly on those provisional values.
@@ -162,9 +166,18 @@ optimistically selected.
 
 Use the current 20 ensembles as follows:
 
-- 12 ensembles: Optuna discovery pool;
+- 12 ensembles: Optuna discovery pool; the fixed 600-particle screening batch
+  contains 50 particles from each ensemble;
 - 4 ensembles: focused refinement and hyperrectangle construction;
 - 4 ensembles: preliminary held-out check before expensive production.
+
+Every broad trial uses the same balanced 600-particle batch and matched recoil
+seeds for efficient paired comparisons. Before costly refinement, at most 12
+leading regions per family are evaluated on a separate balanced 600-particle
+batch drawn only from the four preliminary-check ensembles. The four refinement
+ensembles are not used by Optuna, and the final newly generated survivor set
+remains unopened until all parameter choices and the robust-region procedure
+are locked.
 
 After both operating points and hyperrectangles are locked, generate new
 independent 2D-MOT survivor ensembles for final production validation. Start
@@ -172,12 +185,17 @@ with approximately 16,000 new survivors and add ensembles adaptively if the
 prediction stopping rule is not met. Do not regenerate survivors merely to
 increase the discovery-stage trial count.
 
-The final absolute-performance target is a 95% half-width no larger than 0.75
-percentage points for conditional 3D-MOT capture. A binomial planning estimate at 31%
-capture requires about 14,600 particles; at 83% it requires about 9,700. The
-actual stopping rule must use the larger of pooled counting uncertainty and
-empirical between-ensemble/recoil-seed variation. If the measured half-width is
-larger than 0.75 points, generate more independent survivors until it passes.
+The final absolute-performance target is a 95% confidence-interval half-width
+no larger than 0.75 percentage points for the mean conditional 3D-MOT capture.
+A binomial planning estimate at 31% capture requires about 14,600 particles; at
+83% it requires about 9,700. The actual interval uses a hierarchical bootstrap:
+resample independent 2D-MOT ensembles as the outer clusters and recoil seeds
+within each selected ensemble. Report expected variation for a new equivalent
+ensemble separately, using a bootstrap predictive distribution that adds a new
+ensemble effect, recoil-seed effect, and finite-particle variation at the stated
+ensemble size. If the data cannot support that second calculation, report the
+observed between-ensemble spread and do not call it a prediction interval. Add
+independent ensembles until the confidence-interval precision target passes.
 
 This absolute reporting target is distinct from the precision used to choose
 between nearby finalists. Paired comparisons of finalists must target a 95%
@@ -202,6 +220,31 @@ Before any long Optuna allocation:
 6. run two-atom and twelve-atom smoke tests for both families;
 7. verify that every completed trial is written atomically and can be resumed;
 8. verify live atom-level progress in each Zeus `.err` file.
+
+## Approved-budget envelope
+
+The following are planning ceilings, not promised runtimes. Replace the
+node-hour estimates with measured values from Stage 0 before submitting the
+campaign; if the calibrated estimate exceeds a row ceiling, stop and request
+approval rather than silently reducing statistical validation.
+
+| Stage | Maximum evaluations | Atoms x recoil seeds per point | Node-hour ceiling | Approx. elapsed on 3 nodes |
+|---|---:|---:|---:|---:|
+| implementation and timing | 24 diagnostics | 2--600 x 1 | 6 | <=2 h |
+| donut discovery | 350 valid trials | 600 x 1 | 72 | <=24 h |
+| five-beam discovery | 600 valid trials | 600 x 1 | 144 | <=48 h |
+| early independent check | 12 points/family | 600 x 3 | 72 | <=24 h |
+| refinement | 16 points/family | 3,000 x 3 | 288 | <=96 h |
+| finalist selection | 3 points/family | 15,840 x 3 | 216 | <=72 h |
+| box construction screen | 69 points/family | 1,800 x 1 | 216 | <=72 h |
+| worst-point box validation | 8 points/family | 3,000 x 3 | 144 | <=48 h |
+| initial final prediction | 2 nominal points | about 16,000 x 3 | 144 | <=48 h |
+
+The hard pre-extension ceiling is 1,302 node-hours. Discovery may receive only
+one additional approved 72-node-hour block (up to 150 five-beam or 100 donut
+trials), followed by a mandatory stop-or-approve decision. Final prediction
+may add ensembles only to meet the declared confidence-interval precision and
+must report the additional calibrated cost before submission.
 
 ## Stage 1: broad Optuna discovery
 
@@ -254,17 +297,19 @@ one study; otherwise use three independent studies and merge their completed
 trial tables between 24-hour rounds. Do not use a shared SQLite database over
 the cluster filesystem without a concurrency smoke test.
 
-Minimum discovery budgets:
+Hard discovery budgets:
 
 ```text
-five-beam, 10 dimensions: at least 600 completed valid trials
-donut, 7 dimensions:     at least 350 completed valid trials
+five-beam, 10 dimensions: at most 600 completed valid trials
+donut, 7 dimensions:     at most 350 completed valid trials
 ```
 
-These are minimum budgets, not convergence claims. Continue another 24-hour
-round if the best held-out estimate improves by more than 1 percentage point in
-the final 100 trials, important parameter ranges still collapse onto a search
-boundary, or the three sampler seeds locate incompatible regions.
+These are fixed first-pass ceilings, not convergence claims. One additional
+predefined block of at most 150 five-beam trials or 100 donut trials may be
+requested only if the preliminary held-out estimate improves by more than one
+percentage point near the end, an important optimum remains on a boundary, or
+the sampler seeds locate incompatible regions. After that block the campaign
+stops unless the laboratory explicitly approves a new budget.
 
 The objective is usable fraction at 100 ms. Do not optimize
 usable-at-least-once count. Record it only to diagnose loading followed by loss.
@@ -273,7 +318,7 @@ usable-at-least-once count. Record it only to diagnose loading followed by loss.
 
 Optuna's best single 600-particle trial is not the recommendation. Cluster the
 top trials into distinct regions, include lower-power and interior candidates,
-and carry approximately 20 representatives per family forward.
+and carry at most 16 representatives per family forward.
 
 Evaluate these representatives with:
 
@@ -283,17 +328,28 @@ at least 3 recoil seeds
 common particles and seeds across candidates
 ```
 
-Rank candidates by a conservative lower confidence bound on usable fraction,
-then by mean capture. For statistically close candidates, allocate additional
+Rank candidates lexicographically: require physical and laboratory feasibility;
+maximize a conservative lower confidence bound on usable fraction; then, among
+statistically tied points, prefer the point that passes the robustness
+tolerance, lies farther from control and power boundaries, requires less
+optical power, and has lower local sensitivity. For statistically close
+candidates, allocate additional
 paired particles and seeds until the 95% half-width of their capture-fraction
 difference is at most 0.4 percentage points, or until they can safely be
 declared tied. Reject narrow peaks whose small nominal advantage is smaller
 than their stochastic variation or whose settings lie too close to a
 power/calibration boundary.
 
-Carry approximately five finalists per family to all 15,840 existing survivors
-with five recoil seeds. This stage selects the nominal points; the later new
+Carry at most three finalists per family to all 15,840 existing survivors with
+three matched recoil seeds. Add a fourth or fifth seed only for unresolved
+paired comparisons. This stage selects the nominal points; the later new
 ensembles are reserved for unbiased production reporting.
+
+Optuna trials that violate a declared power or hardware constraint are marked
+`PRUNED_INFEASIBLE` before simulation and retain the reason. Numerical errors,
+timeouts, or corrupted outputs are marked `FAIL` and do not receive an
+artificial zero objective. Retry a failed trial once only when the failure is
+demonstrably infrastructural and parameters and seed remain unchanged.
 
 ## Stage 3: construct the near-optimal hyperrectangle
 
@@ -313,34 +369,35 @@ At 30--85% capture, proving 0.05-point equivalence would require an impractical
 particle budget and would not be experimentally meaningful. The laboratory team
 must approve or replace `delta` before production.
 
-Construct the largest axis-aligned box around a robust nominal point using a
-local surrogate fitted to a space-filling design. For each parameter, propose
-bounds aligned to the confirmed experimental resolution. A box is accepted
-only after all of the following tests:
+Construct an axis-aligned box around a robust nominal point using a local
+surrogate fitted to a space-filling design. Snap every bound to the confirmed
+laboratory resolution, then shrink the box until the following risk-directed
+validation design contains no unresolved point whose upper confidence bound on
+loss exceeds `delta`:
 
-1. the center and every one-parameter face midpoint;
-2. every corner at a cheap paired particle budget (128 corners for seven
-   dimensions; 1,024 corners for ten dimensions);
-3. a space-filling sample of interior and face points;
-4. adversarial optimization of the surrogate to search the box for the largest
-   predicted capture loss;
-5. high-statistics reevaluation of the worst corners, worst adversarial points,
-   and representative interior points;
-6. simultaneous, multiplicity-adjusted confidence bounds for loss relative to
-   the nominal setting.
+1. the center and all one-parameter face midpoints (14 or 20 points);
+2. at most 16 risk-directed or fractional-factorial corners;
+3. at most 24 space-filling interior and boundary points;
+4. at most 8 adversarial points found by optimizing surrogate loss and
+   uncertainty within the box;
+5. high-statistics reevaluation of at most 8 worst predicted points;
+6. one-sided 95% max-T bootstrap simultaneous upper bounds across the finite
+   high-statistics set, preserving ensemble and recoil clusters.
 
-The cheap all-corner pass is necessary because one-dimensional scans cannot
-detect interactions. High-statistics simulation of all 1,024 ten-dimensional
-corners is not required unless many remain unresolved; allocate particles
-adaptively to the worst challengers.
+The 10D plan therefore does not evaluate all 1,024 corners. Finite simulation
+cannot prove behavior throughout a continuous box. The surrogate interpolates
+between evaluated points, and targeted adversarial sampling searches for
+failures of that interpolation.
 
 The defensible claim is:
 
 ```text
-Within the stated parameter domain, control resolution, tested corner set,
-and adversarial validation design, the data provide 95% simultaneous
-confidence that no validated point in the recommended hyperrectangle loses
-more than delta percentage points of conditional capture.
+The recommended box is an empirically supported operating region. For the
+finite high-statistics validation design, one-sided max-T bootstrap bounds show
+that no evaluated point loses more than delta percentage points of conditional
+capture at simultaneous 95% confidence. Behavior between evaluated points is
+assessed by the surrogate and targeted adversarial sampling, not guaranteed
+mathematically.
 ```
 
 This is a simulation-based guarantee over a declared finite validation design,
@@ -351,8 +408,9 @@ guarantee before calibration.
 
 Lock both nominal points and hyperrectangles before opening the new validation
 ensembles. Run each nominal point on identical new survivors and independent
-recoil seeds. Continue adding independent ensembles until the 95% interval
-half-width for absolute conditional capture is at most 0.75 percentage points
+recoil seeds. Continue adding independent ensembles until the hierarchical-
+bootstrap 95% confidence-interval half-width for mean conditional capture is
+at most 0.75 percentage points
 for both families. This final reporting precision is separate from the tighter
 0.4-percentage-point paired-difference target used to resolve finalists.
 
@@ -360,15 +418,16 @@ For a reporting reference of 10,000,000 atoms leaving the 2D MOT, report:
 
 ```text
 expected usable 3D-MOT atoms = 10,000,000 * conditional 3D efficiency
-95% prediction interval in both fraction and atom count
+95% confidence interval for the mean, plus separately labeled new-ensemble
+variation when estimable
 ```
 
 The existing end-to-end 2D-MOT prediction is:
 
 ```text
-modeled Yb-171 oven flux:       7.38634e13 atoms/s
-expected 2D-MOT capture flux:   6.78232e9 atoms/s
-95% range:                      6.63701e9 to 6.92764e9 atoms/s
+modeled Yb-171 oven flux:       7.39e13 atoms/s
+expected 2D-MOT capture flux:   6.78e9 atoms/s
+95% interval:                   6.64e9 to 6.93e9 atoms/s
 ```
 
 For each 3D-MOT family, multiply the 2D-MOT flux by the independently estimated
@@ -416,18 +475,24 @@ No stage silently adopts its numerical winner into the laboratory configuration.
 The final nominal values are written only after the declared validation and
 uncertainty stopping rules pass.
 
-## Decisions required before implementation
+## Approval requested before implementation
 
 The optimization code should not be written against guessed laboratory limits.
 The team must confirm:
 
-1. feasible bounds and resolutions for all 7/10 variables;
-2. optical-power constraints coupling `s0` and waist;
-3. whether the unpaired green detuning is independently controllable;
-4. the negligible-loss tolerance `delta` for the hyperrectangle;
-5. whether the proposed 0.4-percentage-point 95% half-width for paired finalist
-   differences and 0.75-percentage-point 95% half-width for final absolute
-   performance are sufficient.
+1. approve the angled donut and gravity-assisted five-beam MOT as the two
+   production-search families;
+2. confirm or revise the parameter bounds, resolutions, drift, and optical-
+   power constraints;
+3. approve the 1,302-node-hour planning ceiling, the single bounded discovery
+   extension, and the stop-or-approve checkpoints;
+4. confirm whether `delta = 1.0` percentage point is an experimentally
+   negligible conditional-capture loss;
+5. confirm whether the unpaired lower green beam has independently controlled
+   power, detuning, and waist;
+6. confirm whether the proposed 0.4-percentage-point 95% half-width for paired
+   finalist differences and 0.75-percentage-point 95% confidence-interval
+   half-width for the final mean efficiency are sufficient.
 
 Once these are fixed, implementation proceeds in the order Stage 0 through
 Stage 5. No additional geometry screening is required.
