@@ -128,19 +128,24 @@ when laser power is limited. For Gaussian beams the required power scales
 approximately as `s0 * waist^2`; infeasible trials must be rejected by a
 laboratory power constraint rather than allowed to win numerically.
 
-Until measured constraints are supplied, the following broad domains are
-planning placeholders, not approved scan ranges:
+Until the remaining measured constraints are supplied, the following broad
+domains are planning placeholders, except for the confirmed hard upper limit
+`blue_s0 <= 1.5`:
 
 | Parameter group | Provisional domain |
 |---|---:|
 | green `s0` | 0.5 to 40 |
 | green detuning | -35 to -5 Gamma |
 | green waist | 5 to 20 mm |
-| blue `s0` | 0.2 to 4 |
+| blue `s0` | 0.2 to 1.5 (confirmed hard upper limit) |
 | blue detuning | -6 to -0.5 Gamma |
 | blue waist | 10 to 25 mm |
 | five-beam gradient | 0.75 to 3 G/cm |
 | donut gradient | 0.5 to 6 G/cm |
+
+The upper limit `blue_s0 <= 1.5` applies to every 399-nm beam group in both
+candidate families. The lower bound remains a planning value until the full
+laboratory control range is confirmed.
 
 The five-beam pre-optimization winner was on the 1.4-G/cm lower boundary, so
 the production domain must extend below 1.4 G/cm. The donut's present green
