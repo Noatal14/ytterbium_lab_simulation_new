@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 import numpy as np
 
-from config import MOT_3D_CAPTURE_CONFIG
+from config import MOT_3D_CAPTURE_CONFIG, MOT_3D_FINALIST_STABILITY_CONFIG
 
 
 DEFAULT_GRAPH = Path(
@@ -52,40 +52,81 @@ def plot_velocity(data, output_path):
     normalization = Normalize(vmin=float(np.nanmin(initial)), vmax=float(np.nanmax(initial)))
     colormap = plt.get_cmap("coolwarm")
     fig, axis = plt.subplots(figsize=(11, 7))
-
+    # All failures establish the background distribution without turning it
+    # into an opaque black mass.
+    for row in velocities[~usable]:
+        axis.plot(
+            time_ms,
+            row,
+            color="#555b61",
+            linewidth=0.5,
+            alpha=0.20,
+            rasterized=True,
+        )
+    # Emphasize a deterministic, velocity-stratified subset so representative
+    # escape paths remain individually traceable.
+    failed_indices = np.flatnonzero(~usable)
+    if failed_indices.size:
+        ordered = failed_indices[np.argsort(initial[failed_indices])]
+        selected_positions = np.linspace(
+            0, len(ordered) - 1, min(30, len(ordered)), dtype=int
+        )
+        for row in velocities[ordered[selected_positions]]:
+            axis.plot(
+                time_ms,
+                row,
+                color="#30343b",
+                linewidth=0.8,
+                alpha=0.65,
+                rasterized=True,
+            )
+    # Successful trajectories carry the initial-velocity encoding and remain
+    # visually above the neutral failure distribution.
     for row, initial_vz in zip(velocities[usable], initial[usable]):
         axis.plot(
             time_ms,
             row,
             color=colormap(normalization(initial_vz)),
-            linewidth=0.75,
-            alpha=0.55,
-            rasterized=True,
-        )
-    # Draw failures last and dark so their escape paths remain visible.
-    for row in velocities[~usable]:
-        axis.plot(
-            time_ms,
-            row,
-            color="black",
-            linewidth=0.75,
-            alpha=0.52,
+            linewidth=0.8,
+            alpha=0.62,
             rasterized=True,
         )
 
     speed_bound = MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"]
     axis.axhline(speed_bound, color="black", linestyle=":", linewidth=0.9)
     axis.axhline(-speed_bound, color="black", linestyle=":", linewidth=0.9)
-    axis.plot([], [], color="0.35", label=f"usable at least once ({usable.sum()})")
     axis.plot(
-        [], [], color="black", linewidth=1.2,
-        label=f"not usable ({len(usable) - usable.sum()})"
+        [], [], color="tab:blue", linewidth=1.2,
+        label=f"usable at least once ({usable.sum()})"
+    )
+    axis.plot(
+        [], [], color="#555b61", linewidth=1.2,
+        label=f"not usable ({len(usable) - usable.sum()}; 30 emphasized)"
     )
     axis.set_xlabel("simulation time [ms]")
     axis.set_ylabel("longitudinal velocity vz [m/s]")
     axis.set_title("All incoming atoms: corrected five-beam MOT")
     axis.grid(alpha=0.2)
     axis.legend()
+    diagnostic = MOT_3D_FINALIST_STABILITY_CONFIG["velocity_diagnostic"]
+    usable_at_end = diagnostic["usable_at_100ms_reference_count"]
+    transient = int(usable.sum()) - usable_at_end
+    axis.text(
+        0.985,
+        0.77,
+        "usable at least once: "
+        f"{usable.sum()}/{len(usable)} ({100 * usable.mean():.1f}%)\n"
+        "usable at 100 ms:     "
+        f"{usable_at_end}/{len(usable)} ({100 * usable_at_end / len(usable):.1f}%)\n"
+        "transiently usable:    "
+        f"{transient}/{len(usable)} ({100 * transient / len(usable):.1f}%)",
+        transform=axis.transAxes,
+        ha="right",
+        va="top",
+        fontsize=9,
+        color="0.20",
+        bbox={"facecolor": "white", "edgecolor": "0.75", "alpha": 0.88},
+    )
     scalar = plt.cm.ScalarMappable(norm=normalization, cmap=colormap)
     scalar.set_array([])
     colorbar = fig.colorbar(scalar, ax=axis, pad=0.025)
@@ -111,6 +152,12 @@ def run_merge(input_root, output_dir, graph):
         "num_shards": len(reports),
         "usable_ever_count": usable,
         "usable_ever_fraction": usable / total,
+        "usable_at_100ms_reference_count": MOT_3D_FINALIST_STABILITY_CONFIG[
+            "velocity_diagnostic"
+        ]["usable_at_100ms_reference_count"],
+        "usable_at_100ms_reference_source": MOT_3D_FINALIST_STABILITY_CONFIG[
+            "velocity_diagnostic"
+        ]["usable_at_100ms_reference_source"],
         "graph": str(graph),
     }
     summary_path = output_dir / "five_beam_velocity_summary.json"

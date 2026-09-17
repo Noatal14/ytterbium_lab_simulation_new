@@ -452,6 +452,15 @@ MOT_3D_FINALIST_STABILITY_CONFIG = {
         "t_max_s": 100e-3,
         "sample_interval_s": 0.1e-3,
         "pbs_walltime": "01:00:00",
+        # Matching 600-atom boundary-grid decision run at the same operating
+        # point. The trajectory diagnostic stores usable-ever membership but
+        # not full position histories, so this independently stored endpoint
+        # count must remain explicitly labelled as a reference measurement.
+        "usable_at_100ms_reference_count": 202,
+        "usable_at_100ms_reference_source": (
+            "data/validation/mot_3d/five_beam_decision/"
+            "boundary_grid_600/merged/five_beam_decision_summary.json"
+        ),
     },
     "five_beam": {
         "magnetic_gradient_G_cm": 1.4,
