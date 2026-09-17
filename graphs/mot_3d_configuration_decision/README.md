@@ -7,8 +7,10 @@ were removed after the candidate decision.
 
 | Figure | Purpose |
 |---|---|
-| `01_angled_donut_geometry.png` | Full six-green/six-blue donut geometry |
-| `02_five_beam_geometry.png` | Gravity-assisted five-beam geometry |
+| `01_angled_donut_geometry.png` | Full six-green/six-blue donut geometry, with a filled 3D schematic and x-z/y-z projections |
+| `01b_angled_donut_radial_profiles.png` | Separate transverse intensity cut showing the complementary green core and blue shell |
+| `02_five_beam_geometry.png` | Gravity-assisted five-beam geometry, with a filled 3D schematic and x-z/y-z projections |
+| `02b_five_beam_radial_profiles.png` | Separate transverse intensity cut for the five-beam green core and blue exclusion region |
 | `03_historical_retention_comparison.png` | Donut through 400 ms and historical five-beam trace through 100 ms; the five-beam point predates the current optimization |
 | `04_donut_blue_beam_ablation.png` | Paired population comparison after removing or relocating blue-beam groups |
 | `05_representative_donut_trajectory.png` | One atom illustrating separated blue-exposure episodes and direction reversal |

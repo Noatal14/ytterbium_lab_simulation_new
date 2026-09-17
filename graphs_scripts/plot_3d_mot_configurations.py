@@ -25,6 +25,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
+from matplotlib.patches import Arc
 
 from config import MOT_3D_CONFIGURATIONS
 from lab_setup.laser_setup_3d import (
@@ -123,6 +124,244 @@ def _circle_points(center, direction, radius, n_phi=120):
         + radius * np.cos(phi)[:, None] * u[None, :]
         + radius * np.sin(phi)[:, None] * v[None, :]
     )
+
+
+def _filled_cylinder(ax, start, end, radius, color, alpha):
+    """Draw one smooth beam envelope without the visually dense wire mesh."""
+    x, y, z = _cylinder_surface(start, end, radius, n_long=2, n_phi=56)
+    ax.plot_surface(
+        x * MM_PER_M,
+        y * MM_PER_M,
+        z * MM_PER_M,
+        color=color,
+        alpha=alpha,
+        linewidth=0.0,
+        antialiased=True,
+        shade=False,
+    )
+    for point in (start, end):
+        circle = _circle_points(point, end - start, radius) * MM_PER_M
+        ax.plot(*circle.T, color=color, linewidth=0.8, alpha=min(1.0, alpha + 0.35))
+
+
+def _display_radius(cfg):
+    profile_kind = cfg.get("profile", "gaussian")
+    if profile_kind == "donut":
+        return max(1.5 * float(cfg["waist_m"]), float(cfg["inner_cutoff_radius_m"]))
+    if profile_kind == "outer_clipped_gaussian":
+        return float(cfg["outer_cutoff_radius_m"])
+    if profile_kind == "elliptical":
+        return max(float(cfg["waist_short_m"]), float(cfg["waist_long_m"]))
+    return float(cfg["waist_m"])
+
+
+def _beam_display_specs(profile, beam_length_m):
+    """Return one authoritative set of schematic beams for all view panels."""
+    absolute_center = np.asarray(profile["center_position_m"], dtype=float)
+    specs = []
+    for axis_tag, raw_direction in _get_beam_directions(profile):
+        direction = np.asarray(raw_direction, dtype=float)
+        direction /= np.linalg.norm(direction)
+        for wavelength_key, color in (("399", BLUE_COLOR), ("556", GREEN_COLOR)):
+            if not _direction_component_enabled(profile, axis_tag, wavelength_key):
+                continue
+            cfg = profile[wavelength_key]
+            center = _component_center(profile, wavelength_key) - absolute_center
+            source = center - direction * beam_length_m
+            specs.append(
+                {
+                    "axis_tag": axis_tag,
+                    "wavelength": wavelength_key,
+                    "color": color,
+                    "direction": direction,
+                    "source": source,
+                    "center": center,
+                    "radius_m": _display_radius(cfg),
+                    "inner_radius_m": (
+                        float(cfg["inner_cutoff_radius_m"])
+                        if cfg.get("profile") == "donut"
+                        else None
+                    ),
+                }
+            )
+
+    return specs
+
+
+def _draw_simplified_3d_beam(ax, spec):
+    """Draw a filled envelope, centerline, and unmistakable propagation arrow."""
+    alpha = 0.12 if spec["wavelength"] == "399" else 0.24
+    _filled_cylinder(
+        ax,
+        spec["source"],
+        spec["center"],
+        spec["radius_m"],
+        spec["color"],
+        alpha,
+    )
+    if spec["inner_radius_m"] is not None:
+        for point in (spec["source"], spec["center"]):
+            circle = _circle_points(
+                point, spec["direction"], spec["inner_radius_m"]
+            ) * MM_PER_M
+            ax.plot(*circle.T, color=spec["color"], linewidth=1.5, linestyle="--")
+    segment = np.vstack([spec["source"], spec["center"]]) * MM_PER_M
+    ax.plot(*segment.T, color=spec["color"], linewidth=2.0, alpha=0.92)
+    start = spec["source"] + 0.57 * (spec["center"] - spec["source"])
+    length = 0.25 * np.linalg.norm(spec["center"] - spec["source"])
+    ax.quiver(
+        *(start * MM_PER_M),
+        *(spec["direction"] * length * MM_PER_M),
+        color=spec["color"],
+        linewidth=2.6,
+        arrow_length_ratio=0.42,
+    )
+
+
+def _draw_projection(ax, specs, vertical_axis, title, profile, beam_length_m):
+    """Draw an orthographic z-versus-x/y schematic with readable arrows."""
+    vertical_index = {"x": 0, "y": 1}[vertical_axis]
+    projected = []
+    labels_by_segment = {}
+    drawn_segments = set()
+
+    for spec in specs:
+        source = np.array(
+            [spec["source"][2], spec["source"][vertical_index]], dtype=float
+        )
+        center = np.array(
+            [spec["center"][2], spec["center"][vertical_index]], dtype=float
+        )
+        # An axis perpendicular to this view collapses to a point. Omitting it
+        # is clearer than drawing a blob and a label at the MOT center; it is
+        # visible in the complementary projection.
+        if np.linalg.norm(center - source) < 1e-10:
+            continue
+        geometry_key = tuple(np.round(np.concatenate([source, center]), 10))
+        labels_by_segment.setdefault(geometry_key, set()).add(spec["axis_tag"])
+        projected.append((spec, source, center, geometry_key))
+
+    # Draw broad 399 envelopes first and green cores above them.
+    ordered = sorted(projected, key=lambda item: item[0]["wavelength"] == "556")
+    for spec, source, center, geometry_key in ordered:
+        draw_key = (spec["wavelength"], geometry_key)
+        if draw_key in drawn_segments:
+            continue
+        drawn_segments.add(draw_key)
+        z = np.array([source[0], center[0]]) * MM_PER_M
+        vertical = np.array([source[1], center[1]]) * MM_PER_M
+        width = 15 if spec["wavelength"] == "399" else 8
+        ax.plot(
+            z,
+            vertical,
+            color=spec["color"],
+            linewidth=width,
+            alpha=0.14 if spec["wavelength"] == "399" else 0.24,
+            solid_capstyle="round",
+        )
+        ax.plot(z, vertical, color=spec["color"], linewidth=1.8, alpha=0.9)
+        start = source + 0.55 * (center - source)
+        delta = 0.25 * (center - source)
+        ax.annotate(
+            "",
+            xy=((start[0] + delta[0]) * MM_PER_M,
+                (start[1] + delta[1]) * MM_PER_M),
+            xytext=(start[0] * MM_PER_M, start[1] * MM_PER_M),
+            arrowprops={
+                "arrowstyle": "-|>",
+                "color": spec["color"],
+                "lw": 2.6,
+                "mutation_scale": 16,
+            },
+        )
+
+    # Hidden-coordinate symmetry can make distinct axes coincide in a 2D
+    # view. Label the shared projection once instead of stacking text.
+    for geometry_key, axis_tags in labels_by_segment.items():
+        source_z, source_vertical, _, _ = geometry_key
+        label = " / ".join(sorted(axis_tags))
+        ax.text(
+            source_z * MM_PER_M,
+            source_vertical * MM_PER_M,
+            f" {label}",
+            fontsize=8,
+            color="0.2",
+            ha="left",
+            va="bottom",
+        )
+
+    ax.scatter(0, 0, marker="*", s=90, color="black", zorder=10)
+    ax.annotate(
+        "atoms +z",
+        xy=(-0.70 * beam_length_m * MM_PER_M, -0.78 * beam_length_m * MM_PER_M),
+        xytext=(-1.08 * beam_length_m * MM_PER_M, -0.78 * beam_length_m * MM_PER_M),
+        arrowprops={"arrowstyle": "-|>", "lw": 2.8, "color": "#b24c00"},
+        color="#b24c00",
+        fontsize=9,
+        va="center",
+    )
+    if vertical_axis == "x":
+        ax.annotate(
+            "gravity",
+            xy=(0, -0.58 * beam_length_m * MM_PER_M),
+            xytext=(0, -0.20 * beam_length_m * MM_PER_M),
+            arrowprops={"arrowstyle": "-|>", "lw": 2.4, "color": "black"},
+            ha="center",
+            fontsize=9,
+        )
+        if profile.get("beam_layout") == "rotated_yz_minus_upper_x":
+            ax.scatter(0, beam_length_m * MM_PER_M, marker="x", s=90, color="black")
+            ax.text(2, beam_length_m * MM_PER_M, "blocked upper beam", fontsize=8)
+
+    limit = 1.38 * beam_length_m * MM_PER_M
+    ax.set_xlim(-limit, limit)
+    ax.set_ylim(-limit, limit)
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlabel("z relative to MOT center [mm]")
+    ax.set_ylabel(f"{vertical_axis} relative to MOT center [mm]")
+    ax.set_title(title)
+    ax.grid(alpha=0.16)
+
+
+def _draw_angle_marker(ax, radius_mm, theta1_deg, theta2_deg, label):
+    """Draw a compact angle arc around the MOT center in a 2D projection."""
+    arc = Arc(
+        (0.0, 0.0),
+        2.0 * radius_mm,
+        2.0 * radius_mm,
+        theta1=theta1_deg,
+        theta2=theta2_deg,
+        color="#6a3d9a",
+        linewidth=2.2,
+        zorder=12,
+    )
+    ax.add_patch(arc)
+    middle = np.deg2rad(0.5 * (theta1_deg + theta2_deg))
+    label_radius = 1.18 * radius_mm
+    ax.text(
+        label_radius * np.cos(middle),
+        label_radius * np.sin(middle),
+        label,
+        color="#6a3d9a",
+        fontsize=10,
+        fontweight="bold",
+        ha="center",
+        va="center",
+        zorder=13,
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.78, "pad": 1.0},
+    )
+
+
+def _annotate_configuration_angles(name, xz_ax, yz_ax):
+    """Mark the experimentally relevant inter-beam angles."""
+    if name == "angled_donut":
+        # The two crossed x-z axes are 30 degrees from z, giving alternating
+        # 60-degree and 120-degree sectors around the MOT center.
+        _draw_angle_marker(xz_ax, 17.0, -30.0, 30.0, r"$60^\circ$")
+        _draw_angle_marker(xz_ax, 22.0, 30.0, 150.0, r"$120^\circ$")
+    elif name == "five_beam_gravity":
+        # The two diagonal axes in the y-z plane are orthogonal.
+        _draw_angle_marker(yz_ax, 19.0, 45.0, 135.0, r"$90^\circ$")
 
 
 def _direction_component_enabled(profile, axis_tag, wavelength_key):
@@ -510,172 +749,49 @@ def plot_configuration(name, profile, beam_length_m):
     _validate_profile(profile)
     directions = _get_beam_directions(profile)
     _print_profile_summary(name, profile, directions)
+    specs = _beam_display_specs(profile, beam_length_m)
+    fig = plt.figure(figsize=(15.5, 8.5))
+    grid = fig.add_gridspec(2, 3, width_ratios=(1.25, 1.25, 1.0))
+    ax = fig.add_subplot(grid[:, :2], projection="3d")
+    xz_ax = fig.add_subplot(grid[0, 2])
+    yz_ax = fig.add_subplot(grid[1, 2])
 
-    absolute_center = np.asarray(profile["center_position_m"], dtype=float)
+    for spec in specs:
+        _draw_simplified_3d_beam(ax, spec)
+    ax.scatter(0, 0, 0, marker="*", s=180, color="black", zorder=20)
 
-    fig = plt.figure(figsize=(16, 8))
-    ax = fig.add_subplot(121, projection="3d")
-    profile_ax = fig.add_subplot(122)
+    # One label per optical axis, positioned at the source and detached from
+    # wavelength-specific colors.
+    labelled = set()
+    for spec in specs:
+        if spec["axis_tag"] in labelled:
+            continue
+        source_mm = spec["source"] * MM_PER_M
+        ax.text(*source_mm, f"  {spec['axis_tag']}", color="0.18", fontsize=8)
+        labelled.add(spec["axis_tag"])
 
-    points_for_limits = [np.zeros(3)]
-    relative_origin = np.zeros(3)
-
-    reference_scale = min(0.025, 0.45 * beam_length_m)
-    _draw_coordinate_reference(ax, relative_origin, reference_scale)
-
-    ax.scatter(0.0, 0.0, 0.0, marker="*", s=140, color="black", zorder=10)
-
-    blue_cfg = profile.get("399", {})
-    green_cfg = profile.get("556", {})
-    if blue_cfg.get("profile") == "upstream_planar_clipped_gaussian":
-        _draw_sequential_longitudinal_profiles(profile_ax, profile)
-    else:
-        _draw_radial_profiles(profile_ax, blue_cfg, green_cfg)
-
-    for axis_tag, direction in directions:
-        direction = np.asarray(direction, dtype=float)
-        direction /= np.linalg.norm(direction)
-
-        for wavelength_key, cfg, color in (
-            ("399", blue_cfg, BLUE_COLOR),
-            ("556", green_cfg, GREEN_COLOR),
-        ):
-            if not _direction_component_enabled(profile, axis_tag, wavelength_key):
-                continue
-
-            component_center_abs = _component_center(profile, wavelength_key)
-            component_center = component_center_abs - absolute_center
-
-            # A propagation vector points from the source toward the beam center.
-            source = component_center - direction * beam_length_m
-            profile_kind = cfg.get("profile", "gaussian")
-
-            if profile_kind == "upstream_planar_clipped_gaussian":
-                exclusion = float(cfg["green_exclusion_radius_m"])
-                plane_z = -exclusion
-                distance_to_plane = (plane_z - component_center[2]) / direction[2]
-                source = component_center + distance_to_plane * direction
-                upstream_end = source + direction * beam_length_m
-                _draw_gaussian_beam(
-                    ax,
-                    source,
-                    upstream_end,
-                    direction,
-                    float(cfg["waist_m"]),
-                    color,
-                )
-                component_center_for_limits = upstream_end
-                display_radius = float(cfg["waist_m"])
-
-            elif profile_kind == "donut":
-                inner_cutoff_radius = float(cfg["inner_cutoff_radius_m"])
-                _draw_donut_beam(
-                    ax,
-                    source,
-                    component_center,
-                    direction,
-                    float(cfg["waist_m"]),
-                    inner_cutoff_radius,
-                    color,
-                )
-                display_radius = max(
-                    1.5 * float(cfg["waist_m"]),
-                    inner_cutoff_radius,
-                )
-            elif profile_kind == "outer_clipped_gaussian":
-                outer_cutoff_radius = float(cfg["outer_cutoff_radius_m"])
-                _draw_outer_clipped_gaussian_beam(
-                    ax,
-                    source,
-                    component_center,
-                    direction,
-                    float(cfg["waist_m"]),
-                    outer_cutoff_radius,
-                    color,
-                )
-                display_radius = outer_cutoff_radius
-            elif profile_kind == "elliptical":
-                short_m = float(cfg["waist_short_m"])
-                long_m = float(cfg["waist_long_m"])
-                _draw_elliptical_beam(
-                    ax,
-                    source,
-                    component_center,
-                    direction,
-                    short_m,
-                    long_m,
-                    color,
-                )
-                display_radius = max(short_m, long_m)
-            else:
-                waist = float(cfg["waist_m"])
-                _draw_gaussian_beam(
-                    ax,
-                    source,
-                    component_center,
-                    direction,
-                    waist,
-                    color,
-                )
-                display_radius = waist
-
-            if profile_kind != "upstream_planar_clipped_gaussian":
-                component_center_for_limits = component_center
-
-            points_for_limits.extend(
-                [
-                    source * MM_PER_M,
-                    component_center_for_limits * MM_PER_M,
-                    (component_center_for_limits + display_radius) * MM_PER_M,
-                    (component_center_for_limits - display_radius) * MM_PER_M,
-                ]
-            )
-
-            label_pos = source * MM_PER_M
-            ax.text(
-                label_pos[0],
-                label_pos[1],
-                label_pos[2],
-                f"{wavelength_key} {axis_tag}",
-                color=color,
-                fontsize=7,
-            )
-
-    if blue_cfg.get("profile") == "upstream_planar_clipped_gaussian":
-        blue_center = (_component_center(profile, "399") - absolute_center) * MM_PER_M
-        green_center = (_component_center(profile, "556") - absolute_center) * MM_PER_M
-        ax.scatter(*blue_center, s=55, color=BLUE_COLOR, marker="o")
-        ax.scatter(*green_center, s=55, color=GREEN_COLOR, marker="o")
-        ax.text(*blue_center, "  blue center", color=BLUE_COLOR, fontsize=8)
-        ax.text(*green_center, "  green center", color=GREEN_COLOR, fontsize=8)
-        exclusion_mm = float(blue_cfg["green_exclusion_radius_m"]) * MM_PER_M
-        plane_half_width_mm = 1.35 * max(
-            float(blue_cfg["waist_m"]), float(green_cfg["waist_m"])
-        ) * MM_PER_M
-        plane = np.array(
-            [
-                [-plane_half_width_mm, -plane_half_width_mm, -exclusion_mm],
-                [plane_half_width_mm, -plane_half_width_mm, -exclusion_mm],
-                [plane_half_width_mm, plane_half_width_mm, -exclusion_mm],
-                [-plane_half_width_mm, plane_half_width_mm, -exclusion_mm],
-                [-plane_half_width_mm, -plane_half_width_mm, -exclusion_mm],
-            ]
-        )
-        ax.plot(*plane.T, color="black", linewidth=1.5, linestyle="--")
-        ax.text(0.0, 0.0, -exclusion_mm, "  blue cutoff plane", fontsize=8)
+    # Reference arrows are spatially separated from the optical arrows.
+    atom_start = np.array([0.0, 0.0, -1.18 * beam_length_m])
+    ax.quiver(
+        *(atom_start * MM_PER_M), 0, 0, 0.38 * beam_length_m * MM_PER_M,
+        color="#b24c00", linewidth=3.0, arrow_length_ratio=0.25,
+    )
+    ax.text(*(atom_start * MM_PER_M), " atoms +z", color="#b24c00", fontsize=9)
+    gravity_start = np.array([0.55 * beam_length_m, 0.65 * beam_length_m, 0.0])
+    ax.quiver(
+        *(gravity_start * MM_PER_M), -0.38 * beam_length_m * MM_PER_M, 0, 0,
+        color="black", linewidth=2.8, arrow_length_ratio=0.25,
+    )
+    ax.text(*(gravity_start * MM_PER_M), " gravity -x", fontsize=9)
 
     if name == "five_beam_gravity":
-        # The missing source is physically above (+x). A beam emitted from there
-        # toward the MOT would propagate along -x.
         missing_source = np.array([beam_length_m, 0.0, 0.0])
-        ax.scatter(*(missing_source * MM_PER_M), marker="x", s=90, color="black")
-        ax.text(
-            *(missing_source * MM_PER_M),
-            "  blocked upper beam\n  (would propagate -x)",
-            color="black",
-            fontsize=8,
-        )
-        points_for_limits.append(missing_source * MM_PER_M)
+        ax.scatter(*(missing_source * MM_PER_M), marker="x", s=120, color="black")
+        ax.text(*(missing_source * MM_PER_M), "  blocked upper beam", fontsize=8)
+
+    _draw_projection(xz_ax, specs, "x", "x-z view", profile, beam_length_m)
+    _draw_projection(yz_ax, specs, "y", "y-z view", profile, beam_length_m)
+    _annotate_configuration_angles(name, xz_ax, yz_ax)
 
     legend_handles = [
         Line2D([0], [0], color=BLUE_COLOR, lw=4, label="399 nm"),
@@ -692,14 +808,32 @@ def plot_configuration(name, profile, beam_length_m):
     ]
     ax.legend(handles=legend_handles, loc="upper left")
 
-    fig.suptitle(f"3D-MOT configuration: {name}", fontsize=16)
-    ax.set_title("Geometry (opaque waist/cutoff outlines; length is schematic)")
+    display_names = {
+        "angled_donut": "angled donut",
+        "five_beam_gravity": "five-beam gravity MOT",
+    }
+    fig.suptitle(f"3D-MOT geometry: {display_names.get(name, name)}", fontsize=16)
+    ax.set_title("Filled beam envelopes; length is schematic")
     ax.set_xlabel("x relative to MOT center [mm]\n(gravity is -x)")
     ax.set_ylabel("y relative to MOT center [mm]")
     ax.set_zlabel("z relative to MOT center [mm]\n(atoms propagate +z)")
 
-    _set_equal_3d_limits(ax, points_for_limits)
-    ax.view_init(elev=24, azim=-55)
+    extent = 1.38 * beam_length_m * MM_PER_M
+    ax.set_xlim(-extent, extent)
+    ax.set_ylim(-extent, extent)
+    ax.set_zlim(-extent, extent)
+    ax.set_box_aspect((1, 1, 1))
+    ax.view_init(elev=21, azim=-52)
+    ax.grid(alpha=0.12)
+    fig.tight_layout()
+    return fig
+
+
+def plot_radial_profiles(name, profile):
+    """Keep intensity information separate from the geometry schematic."""
+    fig, ax = plt.subplots(figsize=(8.2, 5.4))
+    _draw_radial_profiles(ax, profile["399"], profile["556"])
+    fig.suptitle(f"3D-MOT radial profiles: {name}", fontsize=15)
     fig.tight_layout()
     return fig
 
@@ -733,6 +867,16 @@ def main():
         fig.savefig(output_path, dpi=220, bbox_inches="tight")
         plt.close(fig)
         print(f"Saved: {output_path}")
+
+        radial_fig = plot_radial_profiles(name, MOT_3D_CONFIGURATIONS[name])
+        radial_names = {
+            "angled_donut": "01b_angled_donut_radial_profiles.png",
+            "five_beam_gravity": "02b_five_beam_radial_profiles.png",
+        }
+        radial_path = args.output_dir / radial_names[name]
+        radial_fig.savefig(radial_path, dpi=220, bbox_inches="tight")
+        plt.close(radial_fig)
+        print(f"Saved: {radial_path}")
 
 
 if __name__ == "__main__":

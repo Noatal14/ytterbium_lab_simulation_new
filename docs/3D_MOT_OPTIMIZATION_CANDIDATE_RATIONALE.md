@@ -108,12 +108,25 @@ contains separated blue-exposure episodes, including a later encounter well
 after the entrance interaction. This trajectory illustrates the mechanism;
 the paired 600-particle population result is the stronger evidence.
 
-Targeted finite-gate studies improved a four-blue-beam arrangement to 188/600
-(31.3%) at 100 ms. This demonstrates that a downstream backstop can rescue
-overshooting atoms, but it remains 303 atoms below the full donut on the same
-ensemble. The position optimum was also locally bracketed: the best crossing
-was +35 mm, while +40 and +45 mm performed worse. The result is therefore not
-explained simply by having stopped the gate scan too close to the MOT.
+Focused tuning did improve the reduced-blue alternatives, so the conclusion is
+not based only on an intentionally poor single-pass operating point. The
+initial one-pair single-pass ablation captured 5/600 atoms (0.8%). A focused
+scan of blue detuning and intensity increased the best one-pair result to
+52/600 (8.7%). A later finite entrance-gate implementation reached 115/600
+atoms usable at 100 ms (19.2%). Finally, adding and positioning a second finite
+blue pair as a downstream slowing backstop reached 188/600 (31.3%). These
+numbers come from successive study versions whose diagnostic labels evolved,
+so the intermediate values should not be interpreted as one rigorously paired
+optimization curve. The decisive endpoint comparison is nevertheless paired:
+the best retained four-blue geometry gave 188/600 versus 491/600 (81.8%) for
+the full donut on the same 600-atom input ensemble and 100-ms usability
+criterion.
+
+The four-blue endpoint demonstrates that a downstream backstop can rescue
+overshooting atoms, but it remains 303 atoms below the full donut. Its position
+optimum was also locally bracketed: the best crossing was +35 mm, while +40 and
++45 mm performed worse. The result is therefore not explained simply by having
+stopped the gate scan too close to the MOT.
 
 Together, the ablations and finite-gate studies show that the donut's advantage
 is not merely “more laser power.” Its six blue directions provide repeated,
