@@ -224,12 +224,25 @@ study's pre-refinement five-beam number: the selected five-beam point gave
 donut/five-beam separation is therefore much larger than the observed
 stochastic spread.
 
+A subsequent direct stability comparison used all 15,840 validated 2D-MOT
+survivors and propagated the corrected five-beam point continuously through
+400 ms. The five-beam population contained 4,706 usable atoms at 100 ms,
+reached its maximum of 4,721 atoms at 118.9 ms, and contained 4,718 atoms at
+400 ms. The paired historical donut curve contained 12,992 usable atoms at
+100 ms and 12,989 at 400 ms. The best retained four-blue entrance-plus-backstop
+configuration contained 4,629 and 4,631 atoms at the same times. None of the
+three curves had sufficient post-peak loss to justify an exponential lifetime
+fit. Thus the present five-beam disadvantage is capture efficiency, not an
+observed 100--400 ms retention failure. The common-scale comparison is shown
+in
+[`18_finalist_loading_and_stability.png`](../graphs/mot_3d_configuration_decision/18_finalist_loading_and_stability.png).
+
 ## Advantages and disadvantages to present to the laboratory team
 
 | Candidate | Advantages | Disadvantages | Current evidence status |
 |---|---|---|---|
 | full angled donut | highest capture by a large margin; broad initial phase-space acceptance; repeated cooling after reversals; effectively no loss from 100 to 400 ms in the tested run | six blue beams and six green beams; more optics, alignment, and access constraints | strong performance, ablation, trajectory, phase-space, force, and long-hold evidence; still needs a systematic full optimization |
-| five-beam gravity MOT | fewer MOT beams; simpler and likely more practical laboratory construction; repeatable nonzero capture in the corrected geometry | currently much lower capture; asymmetric force balance; likely greater sensitivity to gradient and unpaired-beam settings; final lifetime and alignment tolerance unknown | force, boundary-grid, and stochastic-repeat evidence complete; needs full optimization and updated retention/trajectory evidence |
+| five-beam gravity MOT | fewer MOT beams; simpler and likely more practical laboratory construction; repeatable nonzero capture; no measurable population decay through 400 ms at the tested corrected point | currently much lower capture; asymmetric force balance; likely greater sensitivity to gradient and unpaired-beam settings; alignment tolerance remains unknown | force, boundary-grid, stochastic-repeat, full-ensemble trajectory, and 400-ms stability evidence complete; still needs a systematic full optimization |
 
 ## Recommendation before full optimization
 
