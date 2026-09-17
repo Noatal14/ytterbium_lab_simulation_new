@@ -1,0 +1,8 @@
+{
+  "status": "corrected five-beam longitudinal-velocity diagnostic",
+  "input_particle_count": 600,
+  "num_shards": 3,
+  "usable_ever_count": 232,
+  "usable_ever_fraction": 0.38666666666666666,
+  "graph": "graphs/mot_3d_configuration_decision/19_five_beam_longitudinal_velocity.png"
+}
