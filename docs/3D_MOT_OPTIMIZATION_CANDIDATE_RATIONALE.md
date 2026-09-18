@@ -72,7 +72,7 @@ optimized five-beam MOT.
 |---|---:|---:|---:|---|---|---|
 | full angled donut | 12,992/15,840 (82.02%), candidate-selection run | 6 | 6 | highest demonstrated capture and broad acceptance | most optics and alignment | production search |
 | gravity-assisted five-beam | 4,706/15,840 (29.71%), candidate-selection run | 5 | 4 | fewer beams and simpler construction | asymmetric force balance and lower demonstrated capture | production search |
-| four-blue entrance + backstop | 4,629/15,840 (29.22%), candidate-selection run | 6 | 4 | avoids the complete blue shell | six green beams, extra gate placement, no demonstrated capture advantage over five-beam | screening only |
+| four-blue entrance + backstop | 4,629/15,840 (29.22%), candidate-selection run | 6 | 4 | uses four localized blue beams instead of a full six-beam blue shell | much lower demonstrated capture, with no clear advantage over the five-beam MOT | screening only |
 
 The observed five-beam minus four-blue difference is 77/15,840 = 0.486
 percentage points. The archived summary contains aggregate counts but not the
