@@ -285,8 +285,11 @@ def prepare_sensitivity(root, manifest):
     winners, specs = {}, []
     for value in manifest["s0_values"]:
         files = sorted((root / "confirmation" / key(value)).glob("point_*.json"))
-        if len(files) != 3:
-            raise RuntimeError(f"Confirmation incomplete for s0={value}: {len(files)}/3")
+        if len(files) != CONFIRMATION_CANDIDATES:
+            raise RuntimeError(
+                f"Confirmation incomplete for s0={value}: "
+                f"{len(files)}/{CONFIRMATION_CANDIDATES}"
+            )
         rows = [read(path) for path in files]
         rows.sort(key=lambda row: (-row["evaluation"]["statistics"]["conditional_95_ci"][0],
                                    -row["evaluation"]["statistics"]["mean_conditional_efficiency"],

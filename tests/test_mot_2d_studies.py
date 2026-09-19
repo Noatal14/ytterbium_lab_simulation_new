@@ -220,6 +220,69 @@ def test_campaign_promotes_a_clearly_better_sensitivity_neighbor():
     )
 
 
+def test_campaign_advances_five_confirmed_finalists_to_sensitivity(
+    tmp_path,
+    monkeypatch,
+):
+    import studies.mot_2d_s0_campaign as campaign
+
+    root = tmp_path / "campaign"
+    confirmation = root / "confirmation" / campaign.key(1.3)
+    confirmation.mkdir(parents=True)
+
+    for index in range(campaign.CONFIRMATION_CANDIDATES):
+        replicates = [
+            {
+                "zeeman_seed": 3000 + replicate,
+                "mot_seed": 25000 + replicate,
+                "n_input": 10_000,
+                "subset_seed": 5000 + replicate,
+                "conditional_efficiency": 0.02 + 0.0001 * index,
+            }
+            for replicate in range(3)
+        ]
+        payload = {
+            "candidate_index": index,
+            "parameters": {
+                "s0": 1.3,
+                "detuning_gamma": -1.1 + 0.01 * index,
+                "magnet_radius": 0.048 + 0.00001 * index,
+            },
+            "evaluation": {
+                "replicates": replicates,
+                "statistics": {
+                    "mean_conditional_efficiency": 0.02 + 0.0001 * index,
+                    "conditional_95_ci": [
+                        0.019 + 0.0001 * index,
+                        0.021 + 0.0001 * index,
+                    ],
+                },
+            },
+        }
+        (confirmation / f"point_{index:02d}.json").write_text(
+            json.dumps(payload),
+            encoding="utf-8",
+        )
+
+    prepared = {}
+
+    def fake_prepare(root_arg, manifest, stage, specs, number, ncpus, walltime):
+        prepared.update(
+            stage=stage,
+            specs=specs,
+            number=number,
+            ncpus=ncpus,
+            walltime=walltime,
+        )
+
+    monkeypatch.setattr(campaign, "prepare", fake_prepare)
+    campaign.prepare_sensitivity(root, {"s0_values": [1.3]})
+
+    assert prepared["stage"] == "sensitivity"
+    assert len(prepared["specs"]) == 9
+    assert (root / "winners.json").exists()
+
+
 def test_final_production_prediction_uses_conservative_variance():
     from studies.run_2d_mot_final_production import final_prediction, parse_args
 
