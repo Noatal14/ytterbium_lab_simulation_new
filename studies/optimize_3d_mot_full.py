@@ -217,9 +217,9 @@ def _seed_parameters(family, worker_index):
         )
     else:
         seeds = (
-            dict(blue_s0=1.5, blue_detuning_gamma=-3.0, core_shell_split_radius_m=0.005),
-            dict(blue_s0=1.2, blue_detuning_gamma=-3.0, core_shell_split_radius_m=0.004),
-            dict(blue_s0=1.5, blue_detuning_gamma=-2.5, core_shell_split_radius_m=0.006),
+            dict(blue_s0=1.5, blue_detuning_gamma=-3.0, core_shell_split_radius_m=0.0030),
+            dict(blue_s0=1.2, blue_detuning_gamma=-3.0, core_shell_split_radius_m=0.0035),
+            dict(blue_s0=1.5, blue_detuning_gamma=-2.5, core_shell_split_radius_m=0.0040),
         )
     return {**common, **seeds[worker_index % len(seeds)]}
 

@@ -354,7 +354,7 @@ Hard discovery budgets:
 
 ```text
 single-pass, 9 dimensions: at most 600 completed valid trials
-donut, 7 dimensions:     at most 350 completed valid trials
+donut, 8 dimensions:     at most 350 completed valid trials
 ```
 
 These are fixed first-pass ceilings, not convergence claims. One additional

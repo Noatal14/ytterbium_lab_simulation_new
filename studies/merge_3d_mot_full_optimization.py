@@ -6,12 +6,18 @@ import json
 from pathlib import Path
 
 
-def merge(input_root, output_dir):
+def merge(input_root, output_dir, expected_trial_count=None):
     input_root = Path(input_root)
     paths = sorted(input_root.glob("worker_*/trials/trial_[0-9][0-9][0-9][0-9].json"))
     rows = [json.loads(path.read_text()) for path in paths]
     if not rows:
         raise FileNotFoundError(f"No completed trial JSON files found below {input_root}.")
+    if expected_trial_count is not None and len(rows) != expected_trial_count:
+        raise RuntimeError(
+            f"Discovery is incomplete: found {len(rows)} completed trials below "
+            f"{input_root}, expected exactly {expected_trial_count}. Resume the "
+            "workers before merging."
+        )
     families = {row["family"] for row in rows}
     if len(families) != 1:
         raise ValueError(f"Mixed optimization families: {sorted(families)}")
@@ -92,9 +98,10 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input-root", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--expected-trial-count", type=int)
     return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
     args = parse_args()
-    merge(args.input_root, args.output_dir)
+    merge(args.input_root, args.output_dir, args.expected_trial_count)
