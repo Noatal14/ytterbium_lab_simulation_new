@@ -84,8 +84,10 @@ Field and blue geometry:
 The blue beams lie in the `yz` plane. One originates on the negative-y side
 and the other on the positive-y side; both propagate with a negative-z
 component toward their shared crossing. The initial seed is a 45-degree
-included angle and a crossing 10 mm upstream of the MOT center. The approved
-angle domain is 45--70 degrees. The six green beams retain the fixed angled
+included angle and a crossing 50 mm upstream of the MOT center. With the
+10-mm seed waist this makes the calculated blue intensity at the MOT center
+less than 0.1% of its value on the beam axis. The approved angle domain is
+45--70 degrees. The six green beams retain the fixed angled
 60/120-degree geometry used by the donut candidate.
 
 ### Full angled donut: seven variables
@@ -145,7 +147,7 @@ domains are planning placeholders, except for the confirmed hard upper limit
 | blue waist | 10 to 25 mm |
 | single-pass gradient | 0.5 to 6 G/cm |
 | single-pass blue included angle | 45 to 70 degrees (confirmed) |
-| single-pass blue crossing z offset | provisional; centered initially at -10 mm |
+| single-pass blue crossing z offset | provisional; centered initially at -50 mm and constrained by center darkness |
 | donut gradient | 0.5 to 6 G/cm |
 
 The upper limit `blue_s0 <= 1.5` applies to every 399-nm beam group in both
@@ -156,6 +158,11 @@ The donut's present green intensity and detuning came from earlier boundary
 points, so the new domain must not be centered too narrowly on those
 provisional values. The single-pass z-offset bounds remain provisional until
 the short geometry screen and the laboratory's mechanical access are reviewed.
+Every proposed combination of angle, crossing position, and waist must keep
+the calculated 399-nm intensity at the MOT center below 0.1% of the on-axis
+peak. This is a physical Gaussian-tail constraint, not an artificial
+longitudinal cutoff. A different threshold requires an explicitly specified
+laboratory mask or beam stop and a diffraction-aware model.
 
 ## Input ensembles and data separation
 

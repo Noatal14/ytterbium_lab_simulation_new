@@ -7,7 +7,7 @@ from pathlib import Path
 from studies.compare_3d_mot_retention import DEFAULT_INPUT
 
 
-ROOT = Path("data/validation/mot_3d/single_pass_yz_screen/seed_600_100ms")
+ROOT = Path("data/validation/mot_3d/single_pass_yz_screen/physical_seed_600_100ms")
 
 
 def _write(path, text):

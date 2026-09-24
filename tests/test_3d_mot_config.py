@@ -2,6 +2,7 @@ import copy
 
 import numpy as np
 import pytest
+from scipy.optimize import root
 from atomsmltr.environment.lasers.polarization import CircularRight
 from atomsmltr.simulation.simulator.simbase import get_force_vec
 
@@ -169,7 +170,8 @@ def test_single_pass_geometry_has_six_green_and_two_upstream_blue_beams():
     profile = _resolved_profile("single_pass")
     assert profile["beam_layout"] == "angled_green_yz_single_pass"
     assert profile["blue_crossing_angle_deg"] == pytest.approx(45.0)
-    assert profile["blue_crossing_z_offset_m"] == pytest.approx(-10e-3)
+    assert profile["blue_crossing_z_offset_m"] == pytest.approx(-50e-3)
+    assert profile["399"]["waist_m"] == pytest.approx(10e-3)
     beams = setup_3dmot_lasers(
         mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
     )
@@ -188,7 +190,7 @@ def test_single_pass_geometry_has_six_green_and_two_upstream_blue_beams():
         np.arccos(np.clip(np.dot(*blue_directions), -1.0, 1.0))
     )
     assert included_angle == pytest.approx(45.0)
-    assert all(beam.waist_position[2] == pytest.approx(-10e-3) for beam in blue_beams)
+    assert all(beam.waist_position[2] == pytest.approx(-50e-3) for beam in blue_beams)
 
     green_directions = _unique_directions(green_beams)
     assert len(green_directions) == 6
@@ -198,7 +200,7 @@ def test_single_pass_geometry_has_six_green_and_two_upstream_blue_beams():
 def test_single_pass_angle_and_crossing_offset_are_config_driven():
     profile = _resolved_profile("single_pass")
     profile["blue_crossing_angle_deg"] = 70.0
-    profile["blue_crossing_z_offset_m"] = -25e-3
+    profile["blue_crossing_z_offset_m"] = -40e-3
     beams = setup_3dmot_lasers(
         mot_3d_config=profile, center_position=(0.0, 0.0, 0.0)
     )
@@ -208,7 +210,29 @@ def test_single_pass_angle_and_crossing_offset_are_config_driven():
         np.arccos(np.clip(np.dot(*directions), -1.0, 1.0))
     )
     assert included_angle == pytest.approx(70.0)
-    assert all(beam.waist_position[2] == pytest.approx(-25e-3) for beam in blue_beams)
+    assert all(beam.waist_position[2] == pytest.approx(-40e-3) for beam in blue_beams)
+
+
+def test_single_pass_rejects_blue_geometry_that_illuminates_mot_center():
+    profile = _resolved_profile("single_pass")
+    profile["blue_crossing_z_offset_m"] = -10e-3
+    profile["399"]["waist_m"] = 15e-3
+    with pytest.raises(ValueError, match="illuminates the MOT center too strongly"):
+        setup_3dmot_lasers(profile)
+
+
+def test_single_pass_blue_intensity_is_negligible_at_mot_center():
+    profile = _resolved_profile("single_pass")
+    beams = setup_3dmot_lasers(profile)
+    center = np.asarray(profile["center_position_m"], dtype=float)
+    for beam in [beam for beam in beams if "3DMOT_399_" in beam.tag]:
+        center_intensity = float(beam.get_value(center[np.newaxis, :])[0])
+        peak_intensity = float(
+            beam.get_value(np.asarray(beam.waist_position)[np.newaxis, :])[0]
+        )
+        assert center_intensity / peak_intensity <= profile[
+            "maximum_blue_center_relative_intensity"
+        ]
 
 
 def test_angled_donut_uses_selected_provisional_operating_point():
@@ -225,7 +249,7 @@ def test_single_pass_blue_pair_slows_incoming_atoms_without_net_y_kick():
         "single_pass", "399"
     )
     center = np.asarray(profile["center_position_m"], dtype=float)
-    position = center + np.array([0.0, 0.0, -10.0e-3])
+    position = center + np.array([0.0, 0.0, -50.0e-3])
 
     force = _force_at(simulation_config, position, velocity=(0.0, 0.0, 12.0))
 
@@ -245,6 +269,41 @@ def test_single_pass_green_mot_is_restoring(axis, displacement_sign):
     displacement[axis] = displacement_sign * 0.5e-3
     force = _force_at(simulation_config, center + displacement)
     assert force[axis] * displacement[axis] < 0.0
+
+
+def test_single_pass_full_force_has_stable_equilibrium_inside_capture_region():
+    profile = _resolved_profile("single_pass")
+    _, simulation_config = build_base_config(
+        include_2d_mot=False,
+        include_zeeman=False,
+        include_3dmot=True,
+        _3d_mot_config=profile,
+        gravity_enabled=True,
+        zones=[],
+    )
+    center = np.asarray(profile["center_position_m"], dtype=float)
+
+    def force_from_offset(offset):
+        return _force_at(simulation_config, center + np.asarray(offset))
+
+    equilibrium = root(force_from_offset, [0.0, 0.0, -2.5e-3])
+    assert equilibrium.success
+    assert np.linalg.norm(equilibrium.x) < 5e-3
+    assert np.linalg.norm(force_from_offset(equilibrium.x)) < 1e-30
+
+    for axis in range(3):
+        for sign in (-1.0, 1.0):
+            displacement = np.zeros(3)
+            displacement[axis] = sign * 0.5e-3
+            force = force_from_offset(equilibrium.x + displacement)
+            assert force[axis] * displacement[axis] < 0.0
+
+            velocity = np.zeros(3)
+            velocity[axis] = sign * 0.5
+            force = _force_at(
+                simulation_config, center + equilibrium.x, velocity=velocity
+            )
+            assert force[axis] * velocity[axis] < 0.0
 
 
 def test_global_wavelength_switch_disables_explicit_axis_components():

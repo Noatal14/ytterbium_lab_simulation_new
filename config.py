@@ -389,8 +389,11 @@ MOT_3D_CONFIGURATIONS = {
         # optimization variable with the approved range 45--70 degrees.
         "blue_crossing_angle_deg": 45.0,
         # The blue X-shaped crossing is upstream along the atomic +z path.
-        # This is an optimization variable; -10 mm is the initial seed.
-        "blue_crossing_z_offset_m": -10e-3,
+        # At -50 mm with a 10-mm waist and 45-degree included angle, each
+        # physical Gaussian beam contributes <0.1% of its peak intensity at
+        # the MOT center; no artificial longitudinal clipping is assumed.
+        "blue_crossing_z_offset_m": -50e-3,
+        "maximum_blue_center_relative_intensity": 1e-3,
         "xz_angle_from_z_deg": 30.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "beam_components": {
@@ -407,7 +410,7 @@ MOT_3D_CONFIGURATIONS = {
             "enabled": True,
             "s0": 0.75,
             "detuning_gamma": -2.0,
-            "waist_m": 0.015,
+            "waist_m": 0.010,
             "profile": "gaussian",
             "polarization_by_axis": {
                 "SP_FROM_NEG_Y": "right",

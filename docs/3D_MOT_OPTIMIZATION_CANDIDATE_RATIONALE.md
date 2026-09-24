@@ -14,7 +14,11 @@ The single-pass candidate keeps the same six 556-nm MOT beams as the donut but
 uses only two localized 399-nm beams. The blue beams lie in the yz plane, cross
 at a shared point upstream of the MOT, and both propagate with a negative-z
 component against the incoming atoms. The initial implementation uses a 45°
-included angle and a crossing at z = -10 mm. Both quantities will be optimized.
+included angle and a crossing at z = -50 mm. With the 10-mm seed waist this
+keeps the physical Gaussian tails below 0.1% of peak intensity at the MOT
+center, without assuming that a laser beam can terminate inside the chamber.
+The angle and crossing position will be optimized subject to this darkness
+constraint.
 
 Geometry figures:
 

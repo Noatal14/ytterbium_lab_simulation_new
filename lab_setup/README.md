@@ -53,7 +53,7 @@ The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_
 - `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward. Its quadrupole strong axis is `y`; both wavelengths use right-handed polarization on the xz pairs and left-handed polarization on the y pair. Force tests verify that the green core is restoring on both sides of all three lab axes
 - `single_pass`: the six green beams retain the angled 60/120-degree geometry.
   Two Gaussian 399-nm beams lie in the `yz` plane, cross initially at
-  `z = -10 mm`, and both propagate with a `-z` component. Their included angle
+  `z = -50 mm`, and both propagate with a `-z` component. Their included angle
   starts at 45 degrees and is an optimization variable over 45--70 degrees.
   Force tests verify symmetric longitudinal slowing, transverse cancellation,
   and restoring green force along all three laboratory axes.
@@ -63,7 +63,9 @@ blue `detuning_gamma = -3`, green `s0 = 30`, green
 `detuning_gamma = -25`, and gradient `2.5 G/cm` for `angled_donut`. The initial
 `single_pass` seed uses blue `s0 = 0.75`, blue `detuning_gamma = -2`, green
 `s0 = 30`, green `detuning_gamma = -25`, gradient `2.5 G/cm`, a 45-degree
-blue crossing angle, and a crossing at `z = -10 mm`. Magnetic
+blue crossing angle, and a crossing at `z = -50 mm`. The 10-mm waist and
+crossing distance keep each physical Gaussian tail below 0.1% at the MOT
+center; no unphysical longitudinal beam cutoff is assumed. Magnetic
 gradients are profile-specific, and an explicit simulation argument may
 override them for controlled studies. All of these numerical operating points
 remain provisional and are not laboratory-set values. Every varied donut

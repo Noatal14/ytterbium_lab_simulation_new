@@ -251,6 +251,29 @@ def _validate_profile(profile):
                 "Single-pass profiles require a finite negative "
                 "blue_crossing_z_offset_m."
             )
+        maximum_center_fraction = profile.get(
+            "maximum_blue_center_relative_intensity"
+        )
+        if maximum_center_fraction is None or not 0.0 < float(maximum_center_fraction) < 1.0:
+            raise ValueError(
+                "Single-pass profiles require 0 < "
+                "maximum_blue_center_relative_intensity < 1."
+            )
+        blue_waist = float(profile["399"]["waist_m"])
+        center_axis_distance = abs(float(offset)) * np.sin(
+            0.5 * np.deg2rad(float(angle))
+        )
+        estimated_center_fraction = np.exp(
+            -2.0 * (center_axis_distance / blue_waist) ** 2
+        )
+        if estimated_center_fraction > float(maximum_center_fraction):
+            raise ValueError(
+                "Single-pass blue geometry illuminates the MOT center too "
+                f"strongly: estimated relative intensity "
+                f"{estimated_center_fraction:.6g} exceeds "
+                f"{float(maximum_center_fraction):.6g}. Move the crossing "
+                "farther upstream, increase the angle, or reduce the waist."
+            )
 
     strong_axis = profile.get("magnetic_strong_axis", "z")
     if strong_axis not in {"x", "y", "z"}:

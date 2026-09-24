@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import math
 import shutil
 from pathlib import Path
 
@@ -22,6 +23,13 @@ def merge_screen(input_root, output_dir, graph_dir=None):
     usable_ever = int(diagnostics["capture_eligible_ever_count"])
     peak_usable = int(analysis["peak_count"])
     profile = MOT_3D_CONFIGURATIONS[PROFILE]
+    angle_rad = math.radians(profile["blue_crossing_angle_deg"])
+    center_axis_distance_m = abs(profile["blue_crossing_z_offset_m"]) * math.sin(
+        0.5 * angle_rad
+    )
+    estimated_center_fraction = math.exp(
+        -2.0 * (center_axis_distance_m / profile["399"]["waist_m"]) ** 2
+    )
 
     summary = {
         "status": "new yz single-pass 600-atom geometry screen",
@@ -46,6 +54,13 @@ def merge_screen(input_root, output_dir, graph_dir=None):
             "blue_crossing_angle_deg": profile["blue_crossing_angle_deg"],
             "blue_crossing_z_offset_m": profile["blue_crossing_z_offset_m"],
             "blue_propagation_z_component": "negative for both beams",
+            "blue_axis_distance_from_mot_center_m": center_axis_distance_m,
+            "estimated_blue_center_to_peak_intensity_ratio_per_beam": (
+                estimated_center_fraction
+            ),
+            "maximum_allowed_blue_center_to_peak_intensity_ratio": profile[
+                "maximum_blue_center_relative_intensity"
+            ],
         },
         "operating_point": {
             "green_s0": profile["556"]["s0"],
