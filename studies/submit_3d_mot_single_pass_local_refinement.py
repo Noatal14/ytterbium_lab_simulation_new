@@ -10,6 +10,7 @@ from studies.compare_3d_mot_retention import DEFAULT_INPUT
 ROOT = Path("data/validation/mot_3d/single_pass_yz_screen/local_refinement_600")
 DETUNINGS = (-2.75, -3.00, -3.25)
 INTENSITIES = (0.18, 0.22, 0.25, 0.28, 0.32)
+BLUE_WAIST_M = 0.0075
 
 
 def _write(path, text):
@@ -63,6 +64,7 @@ def submit(work_dir):
     --shard-index "$PBS_ARRAY_INDEX" --npools 200 --t-max 0.1 \\
     --detuning-gamma-values {_values(DETUNINGS)} \\
     --s0-values {_values(INTENSITIES)} \\
+    --blue-waist-m {BLUE_WAIST_M:g} \\
     --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
 """,
     )

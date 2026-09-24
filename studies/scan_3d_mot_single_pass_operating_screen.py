@@ -50,6 +50,8 @@ def run_screen(args):
         profile = copy.deepcopy(MOT_3D_CONFIGURATIONS["single_pass"])
         profile["399"]["detuning_gamma"] = detuning
         profile["399"]["s0"] = s0
+        if args.blue_waist_m is not None:
+            profile["399"]["waist_m"] = args.blue_waist_m
         print(
             f"Starting point {point_index + 1}/{len(points)}: "
             f"blue detuning={detuning:g} Gamma, s0={s0:g}",
@@ -120,9 +122,11 @@ def run_screen(args):
             "blue_crossing_z_offset_m": MOT_3D_CONFIGURATIONS["single_pass"][
                 "blue_crossing_z_offset_m"
             ],
-            "blue_waist_m": MOT_3D_CONFIGURATIONS["single_pass"]["399"][
-                "waist_m"
-            ],
+            "blue_waist_m": (
+                args.blue_waist_m
+                if args.blue_waist_m is not None
+                else MOT_3D_CONFIGURATIONS["single_pass"]["399"]["waist_m"]
+            ),
         },
         "records": records,
     }
@@ -145,6 +149,7 @@ def parse_args(argv=None):
         "--detuning-gamma-values", nargs="+", type=float, default=DEFAULT_DETUNINGS
     )
     parser.add_argument("--s0-values", nargs="+", type=float, default=DEFAULT_INTENSITIES)
+    parser.add_argument("--blue-waist-m", type=float)
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
     return parser.parse_args(argv)
 
