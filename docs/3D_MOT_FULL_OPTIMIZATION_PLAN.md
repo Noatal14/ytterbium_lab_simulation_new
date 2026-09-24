@@ -72,7 +72,7 @@ Six angled green MOT beams:
 Two blue entrance-slowing beams:
 
 4. `blue_s0`
-5. `blue_detuning_gamma`
+5. `blue_detuning_anchor_gamma`
 6. `blue_waist_m`
 
 Field and blue geometry:
@@ -83,12 +83,40 @@ Field and blue geometry:
 
 The blue beams lie in the `yz` plane. One originates on the negative-y side
 and the other on the positive-y side; both propagate with a negative-z
-component toward their shared crossing. The initial seed is a 45-degree
-included angle and a crossing 50 mm upstream of the MOT center. With the
-10-mm seed waist this makes the calculated blue intensity at the MOT center
+component toward their shared crossing. The initial physical seed is a
+45-degree included angle, a crossing 50 mm upstream of the MOT center, and a
+7.5-mm blue waist. This makes the calculated blue intensity at the MOT center
 less than 0.1% of its value on the beam axis. The approved angle domain is
-45--70 degrees. The six green beams retain the fixed angled
+45--70 degrees, and the screened crossing-position domain is -50 to -40 mm.
+The six green beams retain the fixed angled
 60/120-degree geometry used by the donut candidate.
+
+The magnetic gradient is selected only as part of the green-MOT operating
+point. It is not allowed to move in response to a blue-only proposal. The blue
+detuning is parameterized by an optimized anchor plus a deterministic Zeeman
+correction evaluated at the effective slowing point
+
+```text
+z_slow = z_crossing - 1.1 * blue_waist
+```
+
+The factor 1.1 is empirical: trajectory diagnostics at crossings of -50 and
+-45 mm place the median maximum slowing at -57.96 and -53.32 mm respectively
+for the 7.5-mm waist. At those points both beams are approximately 92.5%
+sigma-plus in the simulation convention. Increasing the field magnitude
+therefore shifts the required bare blue detuning in the positive (less-red)
+direction. Relative to the screened reference point, the optimizer uses
+
+```text
+blue_detuning_gamma = blue_detuning_anchor_gamma
+    + C_blue * (B_slow - B_slow_reference)
+```
+
+where `C_blue = (1.5 * 965 kHz/G) / 29.13 MHz = 0.04969 Gamma/G`.
+The anchor remains an optimized degree of freedom so Doppler matching and the
+finite spatial width of the slowing region are not assumed away. The
+reference field uses the green-selected gradient, the configured quadrupole
+strong axis, and the current blue geometry.
 
 ### Full angled donut: seven variables
 
@@ -141,13 +169,13 @@ domains are planning placeholders, except for the confirmed hard upper limit
 |---|---:|
 | green `s0` | 0.5 to 40 |
 | green detuning | -35 to -5 Gamma |
-| green waist | 5 to 20 mm |
+| green waist | 5 to 7.5 mm (15-mm maximum beam diameter; prefer 5 mm when performance is equivalent) |
 | blue `s0` | 0.2 to 1.5 (confirmed hard upper limit) |
-| blue detuning | -6 to -0.5 Gamma |
-| blue waist | 10 to 25 mm |
+| blue detuning anchor | provisional local domain around the screened optimum -2.75 Gamma; absolute detuning receives the derived Zeeman correction |
+| blue waist | 5 to 7.5 mm (15-mm maximum beam diameter; prefer 5 mm when performance is equivalent) |
 | single-pass gradient | 0.5 to 6 G/cm |
 | single-pass blue included angle | 45 to 70 degrees (confirmed) |
-| single-pass blue crossing z offset | provisional; centered initially at -50 mm and constrained by center darkness |
+| single-pass blue crossing z offset | -50 to -40 mm, additionally constrained by center darkness |
 | donut gradient | 0.5 to 6 G/cm |
 
 The upper limit `blue_s0 <= 1.5` applies to every 399-nm beam group in both
