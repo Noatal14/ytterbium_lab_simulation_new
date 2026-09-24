@@ -20,7 +20,7 @@ def _weighted_summary(records, field):
     }
 
 
-def merge_screen(input_root, output_dir, graph_dir):
+def merge_screen(input_root, output_dir, graph_dir, graph_filename):
     input_root = Path(input_root)
     paths = sorted(input_root.glob("shard_*/single_pass_operating_screen.json"))
     reports = [json.loads(path.read_text()) for path in paths]
@@ -97,7 +97,7 @@ def merge_screen(input_root, output_dir, graph_dir):
     fig.tight_layout()
     graph_dir = Path(graph_dir)
     graph_dir.mkdir(parents=True, exist_ok=True)
-    graph_path = graph_dir / "single_pass_yz_operating_screen.png"
+    graph_path = graph_dir / graph_filename
     fig.savefig(graph_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 
@@ -118,9 +118,14 @@ def parse_args(argv=None):
     parser.add_argument("--input-root", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--graph-dir", default="graphs/mot_3d_configuration_decision")
+    parser.add_argument(
+        "--graph-filename", default="single_pass_yz_operating_screen.png"
+    )
     return parser.parse_args(argv)
 
 
 if __name__ == "__main__":
     args = parse_args()
-    merge_screen(args.input_root, args.output_dir, args.graph_dir)
+    merge_screen(
+        args.input_root, args.output_dir, args.graph_dir, args.graph_filename
+    )
