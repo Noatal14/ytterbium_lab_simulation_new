@@ -378,56 +378,55 @@ MOT_3D_CONFIGURATIONS = {
             "outer_cutoff_radius_m": 0.01,
         },
     },
-    "five_beam_gravity": {
-        "description": "Five-beam gravity-assisted core-shell MOT with the -x beam removed and strong magnetic axis x. Four center-blocked 399-nm beams are paired with outer-clipped 556-nm cores on the yz axes; the unopposed +x direction is green only.",
-        "beam_layout": "rotated_yz_minus_upper_x",
+    "single_pass": {
+        "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+        "beam_layout": "angled_green_yz_single_pass",
         "gravity_axis": "x",
         "transport_axis": "z",
-        # A five-beam gravity MOT is stable when its single-beam/gravity axis
-        # is also the quadrupole strong axis.
-        "magnetic_strong_axis": "x",
-        # Selected by the force-corrected 900-particle staged scan. This is
-        # provisional and sits at the lower boundary of the scanned range.
+        "magnetic_strong_axis": "y",
         "magnetic_gradient_G_cm": 2.5,
-        "in_plane_rotation_deg": 45.0,
+        # Full angle between the two blue propagation vectors. This is an
+        # optimization variable with the approved range 45--70 degrees.
+        "blue_crossing_angle_deg": 45.0,
+        # The blue X-shaped crossing is upstream along the atomic +z path.
+        # This is an optimization variable; -10 mm is the initial seed.
+        "blue_crossing_z_offset_m": -10e-3,
+        "xz_angle_from_z_deg": 30.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "beam_components": {
-            # An unopposed broad-line beam would impart a transverse kick many
-            # orders of magnitude larger than gravity, so +X is green only.
-            "+X": {"399_enabled": False,
-                   "556_enabled": True},
-            "+YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "-YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "+YZ_2": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "-YZ_2": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
+            "+XZ_1": {"399_enabled": False, "556_enabled": True},
+            "-XZ_1": {"399_enabled": False, "556_enabled": True},
+            "+XZ_2": {"399_enabled": False, "556_enabled": True},
+            "-XZ_2": {"399_enabled": False, "556_enabled": True},
+            "+Y": {"399_enabled": False, "556_enabled": True},
+            "-Y": {"399_enabled": False, "556_enabled": True},
+            "SP_FROM_NEG_Y": {"399_enabled": True, "556_enabled": False},
+            "SP_FROM_POS_Y": {"399_enabled": True, "556_enabled": False},
         },
         "399": {
             "enabled": True,
-            "s0": 1.0,
+            "s0": 0.75,
             "detuning_gamma": -2.0,
             "waist_m": 0.015,
-            "profile": "donut",
-            "inner_cutoff_radius_m": 0.01,
+            "profile": "gaussian",
+            "polarization_by_axis": {
+                "SP_FROM_NEG_Y": "right",
+                "SP_FROM_POS_Y": "right",
+            },
         },
         "556": {
             "enabled": True,
-            "s0": 10.0,
-            "detuning_gamma": -20.0,
+            "s0": 30.0,
+            "detuning_gamma": -25.0,
             "waist_m": 0.01,
-            "profile": "outer_clipped_gaussian",
-            "outer_cutoff_radius_m": 0.01,
-            # With strong axis x, the single upward beam requires the opposite
-            # helicity from the paired yz beams for stable force gradients.
+            "profile": "gaussian",
             "polarization_by_axis": {
-                "+X": "left",
-                "+YZ_1": "right",
-                "-YZ_1": "right",
-                "+YZ_2": "right",
-                "-YZ_2": "right",
+                "+XZ_1": "right",
+                "-XZ_1": "right",
+                "+XZ_2": "right",
+                "-XZ_2": "right",
+                "+Y": "left",
+                "-Y": "left",
             },
         },
     },
@@ -435,52 +434,6 @@ MOT_3D_CONFIGURATIONS = {
 
 ACTIVE_MOT_3D_CONFIGURATION = "angled_donut"
 MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
-
-# Fixed, provisional operating points for the direct 0--400 ms finalist
-# comparison.  These values reproduce the best pre-optimization points found
-# by the focused 600-particle studies; they are evidence points, not the final
-# laboratory recommendations produced by the planned full optimization.
-MOT_3D_FINALIST_STABILITY_CONFIG = {
-    "max_atoms": None,
-    "t_max_s": 400e-3,
-    "num_shards": 3,
-    "pbs_ncpus_per_shard": 200,
-    "pbs_memory_per_shard": "64gb",
-    "pbs_walltime": "24:00:00",
-    "velocity_diagnostic": {
-        "max_atoms": 600,
-        "t_max_s": 100e-3,
-        "sample_interval_s": 0.1e-3,
-        "pbs_walltime": "01:00:00",
-        # Matching 600-atom boundary-grid decision run at the same operating
-        # point. The trajectory diagnostic stores usable-ever membership but
-        # not full position histories, so this independently stored endpoint
-        # count must remain explicitly labelled as a reference measurement.
-        "usable_at_100ms_reference_count": 202,
-        "usable_at_100ms_reference_source": (
-            "data/validation/mot_3d/five_beam_decision/"
-            "boundary_grid_600/merged/five_beam_decision_summary.json"
-        ),
-    },
-    "five_beam": {
-        "magnetic_gradient_G_cm": 1.4,
-        "lower_green_axis_tag": "+X",
-        "lower_green_s0": 2.5,
-        "paired_green_s0": 10.0,
-        "green_detuning_gamma": -20.0,
-    },
-    "four_blue_gate": {
-        "blue_detuning_gamma": -2.0,
-        "blue_s0": 0.75,
-        "blue_waist_m": 15e-3,
-        "inner_cutoff_radius_m": 10e-3,
-        "axis_tags": ("-XZ_1", "-XZ_2"),
-        "entrance_crossing_offset_m": -20e-3,
-        "entrance_cutoff_offset_m": -10e-3,
-        "backstop_crossing_offset_m": 35e-3,
-        "backstop_window_m": (10e-3, 55e-3),
-    },
-}
 
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,

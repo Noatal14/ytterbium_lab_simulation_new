@@ -6,8 +6,9 @@ Optimize and compare exactly two experimentally relevant 3D-MOT families:
 
 1. the six-green/six-blue `angled_donut`, which is the present capture and
    retention reference;
-2. the gravity-assisted `five_beam_gravity` MOT, which currently captures fewer
-   atoms but is substantially simpler to build and align.
+2. the two-blue `single_pass` geometry, which retains the six-beam angled green
+   MOT but replaces the full blue shell with one localized entrance-slowing
+   pair in the `yz` plane.
 
 The reduced-blue six-green-beam geometries are not optimization candidates.
 Paired ablations, finite-gate scans, phase-space plots, and trajectories show
@@ -60,34 +61,32 @@ campaign and cannot be silently merged with the old one.
 
 ## Optimization variables
 
-### Five-beam gravity MOT: ten proposed variables
+### Two-blue single pass: nine proposed variables
 
-Unpaired green beam opposing gravity:
+Six angled green MOT beams:
 
-1. `green_unpaired_s0`
-2. `green_unpaired_detuning_gamma`
-3. `green_unpaired_waist_m`
+1. `green_s0`
+2. `green_detuning_gamma`
+3. `green_waist_m`
 
-Four paired green beams:
+Two blue entrance-slowing beams:
 
-4. `green_paired_s0`
-5. `green_paired_detuning_gamma`
-6. `green_paired_waist_m`
+4. `blue_s0`
+5. `blue_detuning_gamma`
+6. `blue_waist_m`
 
-Four paired blue beams:
+Field and blue geometry:
 
-7. `blue_s0`
-8. `blue_detuning_gamma`
-9. `blue_waist_m`
+7. `magnetic_gradient_G_cm`
+8. `blue_crossing_angle_deg`
+9. `blue_crossing_z_offset_m`
 
-Magnetic field:
-
-10. `magnetic_gradient_G_cm`
-
-The current code supports an intensity override for the unpaired green beam,
-but not yet separate unpaired-green detuning and waist. The production
-optimizer must add explicit per-axis detuning and waist support, with force-sign
-and profile tests, before launching this ten-dimensional search.
+The blue beams lie in the `yz` plane. One originates on the negative-y side
+and the other on the positive-y side; both propagate with a negative-z
+component toward their shared crossing. The initial seed is a 45-degree
+included angle and a crossing 10 mm upstream of the MOT center. The approved
+angle domain is 45--70 degrees. The six green beams retain the fixed angled
+60/120-degree geometry used by the donut candidate.
 
 ### Full angled donut: seven variables
 
@@ -120,9 +119,9 @@ search domain is frozen:
    for every optimized `s0`, detuning, waist, and gradient;
 2. available optical power for each beam group, or an empirical feasible
    relationship between `s0` and waist;
-3. whether the unpaired green beam can have an independently controlled
-   detuning from the four paired green beams;
-4. whether the four beams within a group share one power/frequency/waist
+3. the mechanically accessible range and positioning resolution for the blue
+   crossing along z and for the included angle;
+4. whether the beams within each wavelength group share one power/frequency/waist
    control, as assumed here;
 5. the largest absolute loss in conditional 3D-MOT capture that the team agrees
    is experimentally negligible.
@@ -144,17 +143,19 @@ domains are planning placeholders, except for the confirmed hard upper limit
 | blue `s0` | 0.2 to 1.5 (confirmed hard upper limit) |
 | blue detuning | -6 to -0.5 Gamma |
 | blue waist | 10 to 25 mm |
-| five-beam gradient | 0.75 to 3 G/cm |
+| single-pass gradient | 0.5 to 6 G/cm |
+| single-pass blue included angle | 45 to 70 degrees (confirmed) |
+| single-pass blue crossing z offset | provisional; centered initially at -10 mm |
 | donut gradient | 0.5 to 6 G/cm |
 
 The upper limit `blue_s0 <= 1.5` applies to every 399-nm beam group in both
 candidate families. The lower bound remains a planning value until the full
 laboratory control range is confirmed.
 
-The best tested five-beam pre-optimization point was on the 1.4-G/cm lower boundary, so
-the production domain must extend below 1.4 G/cm. The donut's present green
-intensity and detuning also came from earlier boundary points, so the new domain
-must not be centered too narrowly on those provisional values.
+The donut's present green intensity and detuning came from earlier boundary
+points, so the new domain must not be centered too narrowly on those
+provisional values. The single-pass z-offset bounds remain provisional until
+the short geometry screen and the laboratory's mechanical access are reviewed.
 
 ## Input ensembles and data separation
 
@@ -217,7 +218,7 @@ claiming a numerically unique optimum.
 
 Before any long Optuna allocation:
 
-1. add the five-beam per-group detuning and waist controls;
+1. expose the single-pass crossing angle and z offset as bounded optimizer variables;
 2. centralize both search spaces and all campaign settings in `config.py`;
 3. verify restoring-force signs on both sides of x, y, and z for sampled trials;
 4. verify exact zero blue intensity inside every protected core;
@@ -238,7 +239,7 @@ approval rather than silently reducing statistical validation.
 |---|---:|---:|---:|---:|
 | implementation and timing | 24 diagnostics | 2--600 x 1 | 6 | <=2 h |
 | donut discovery | 350 valid trials | 600 x 1 | 72 | <=24 h |
-| five-beam discovery | 600 valid trials | 600 x 1 | 144 | <=48 h |
+| single-pass discovery | 600 valid trials | 600 x 1 | 144 | <=48 h |
 | early independent check | 12 points/family | 600 x 3 | 72 | <=24 h |
 | refinement | 16 points/family | 3,000 x 3 | 288 | <=96 h |
 | finalist selection | 3 points/family | 15,840 x 3 | 216 | <=72 h |
@@ -248,7 +249,7 @@ approval rather than silently reducing statistical validation.
 
 The hard pre-extension ceiling is 1,302 node-hours, including the explicit
 6-node-hour implementation and timing row. Discovery may receive only one
-additional approved block of at most 100 donut trials or 150 five-beam trials,
+additional approved block of at most 100 donut trials or 150 single-pass trials,
 followed by a mandatory stop-or-approve decision. Its cap is 72 node-hours only
 when the Stage-0 timing estimate shows the selected block fits; otherwise the
 trial count is reduced to fit the cap. Final prediction
@@ -309,13 +310,13 @@ the cluster filesystem without a concurrency smoke test.
 Hard discovery budgets:
 
 ```text
-five-beam, 10 dimensions: at most 600 completed valid trials
+single-pass, 9 dimensions: at most 600 completed valid trials
 donut, 7 dimensions:     at most 350 completed valid trials
 ```
 
 These are fixed first-pass ceilings, not convergence claims. One additional
 predefined block of at most 100 additional donut trials or 150 additional
-five-beam trials may be
+single-pass trials may be
 requested only if the preliminary held-out estimate improves by more than one
 percentage point near the end, an important optimum remains on a boundary, or
 the sampler seeds locate incompatible regions. After that block the campaign
@@ -395,7 +396,7 @@ loss exceeds `delta`:
 6. one-sided 95% max-T bootstrap simultaneous upper bounds across the finite
    high-statistics set, preserving ensemble and recoil clusters.
 
-The 10D plan therefore does not evaluate all 1,024 corners. Finite simulation
+The 9D plan therefore does not evaluate all 512 corners. Finite simulation
 cannot prove behavior throughout a continuous box. The surrogate interpolates
 between evaluated points, and targeted adversarial sampling searches for
 failures of that interpolation.
@@ -492,7 +493,7 @@ uncertainty stopping rules pass.
 The optimization code should not be written against guessed laboratory limits.
 The team must confirm:
 
-1. approve the angled donut and gravity-assisted five-beam MOT as the two
+1. approve the angled donut and two-blue single-pass geometry as the two
    production-search families;
 2. confirm or revise the parameter bounds, resolutions, drift, and optical-
    power constraints;
@@ -500,11 +501,12 @@ The team must confirm:
    extension, and the stop-or-approve checkpoints;
 4. confirm whether `delta = 1.0` percentage point is an experimentally
    negligible conditional-capture loss;
-5. confirm whether the unpaired lower green beam has independently controlled
-   power, detuning, and waist;
+5. confirm the mechanically feasible z-offset range and positioning resolution
+   for the blue crossing;
 6. confirm whether the proposed 0.4-percentage-point 95% half-width for paired
    finalist differences and 0.75-percentage-point 95% confidence-interval
    half-width for the final mean efficiency are sufficient.
 
 Once these are fixed, implementation proceeds in the order Stage 0 through
-Stage 5. No additional geometry screening is required.
+Stage 5. Before the expensive campaign, a short 600-particle screen must verify
+that the new `yz` single-pass seed reaches a useful capture level.

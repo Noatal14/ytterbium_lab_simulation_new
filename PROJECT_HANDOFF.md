@@ -40,7 +40,7 @@ apparatus, and 399-nm optical layout. Parameters explicitly selected for an
 optimization study are exceptions; they should not be mistaken for arbitrary
 geometry.
 
-The 3D MOT is **not a finalized laboratory design**. The maintained candidates are now only `angled_donut` and `five_beam_gravity`. The evidence for retiring the explored crossed-beam and reduced-blue geometries is summarized in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the production optimization design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`. Current operating points are provisional simulation seeds, not laboratory settings. The forthcoming search must optimize the seven donut variables and ten five-beam variables on paired 2D-MOT survivor ensembles, then validate the selected points and robust parameter boxes on held-out particles.
+The 3D MOT is **not a finalized laboratory design**. The maintained candidates are now only `angled_donut` and `single_pass`. The evidence for retiring the explored reduced-blue geometries is summarized in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the production optimization design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`. Current operating points are provisional simulation seeds, not laboratory settings. The forthcoming search must optimize the seven donut variables and nine single-pass variables on paired 2D-MOT survivor ensembles, then validate the selected points and robust parameter boxes on held-out particles.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT
@@ -124,7 +124,7 @@ The production workflow is deliberately split into three stages:
    - applies the configured capture criterion;
    - saves captured states and a JSON summary containing the capture percentage.
 
-The maintained 3D-MOT implementation contains only the full angled donut and the gravity-assisted five-beam geometry. Both use complementary green cores and center-blocked blue shells. Their geometry, polarization signs, blue slowing, and green restoring forces are covered by `tests/test_3d_mot_config.py`.
+The maintained 3D-MOT implementation contains only the full angled donut and the two-blue `single_pass` geometry. The single-pass candidate retains the six-beam angled green MOT and adds a localized blue entrance-slowing pair in the `yz` plane. Geometry, propagation directions, crossing angle and position, blue slowing, transverse cancellation, and green restoring forces are covered by `tests/test_3d_mot_config.py`.
 
 `MOT_3D_SIM_CONFIG` centrally selects `RK4StHybridCustom` and its time grid. `MOT_3D_CAPTURE_CONFIG` defines the primary instantaneous usable-atom metric. Historical one-off scans and submitters were removed after the candidate decision; compact accepted summaries and curated figures remain as evidence. New optimization code must follow `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`, checkpoint every completed trial, and preserve the common-ensemble comparison contract.
 

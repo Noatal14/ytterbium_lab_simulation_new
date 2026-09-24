@@ -9,7 +9,6 @@ import numpy as np
 
 from config import DEFAULT_RANDOM_SEED, MOT_3D_CONFIGURATIONS, MOT_3D_SIM_CONFIG
 from simulations.mot_3d import mot_3d_simulation
-from studies.analyze_3d_mot_five_beam_velocity import sampled_longitudinal_velocities
 from studies.compare_3d_mot_retention import (
     DEFAULT_INPUT,
     analyze_results,
@@ -26,6 +25,41 @@ VARIANT_ORDER = (
     "single_pass_counterpropagating_pair",
 )
 AXIS_TAGS = ("+XZ_1", "-XZ_1", "+XZ_2", "-XZ_2", "+Y", "-Y")
+
+
+def sampled_longitudinal_velocities(results, time_points, sample_interval_s):
+    """Sample every atom's vz on a compact common time grid."""
+    time_points = np.asarray(time_points, dtype=float)
+    if sample_interval_s <= 0:
+        raise ValueError("sample_interval_s must be positive.")
+    if len(time_points) < 2:
+        sample_indices = np.array([0], dtype=int)
+    else:
+        dt = float(time_points[1] - time_points[0])
+        stride = max(1, int(round(sample_interval_s / dt)))
+        sample_indices = np.arange(0, len(time_points), stride, dtype=int)
+        if sample_indices[-1] != len(time_points) - 1:
+            sample_indices = np.append(sample_indices, len(time_points) - 1)
+    sample_times = time_points[sample_indices]
+    velocities = np.full(
+        (len(results), len(sample_times)), np.nan, dtype=np.float32
+    )
+    for particle_index, trajectory in enumerate(results):
+        trajectory_times = np.asarray(trajectory.t, dtype=float)
+        states = np.asarray(trajectory.y, dtype=float)
+        if not trajectory_times.size or states.ndim != 2 or states.shape[0] < 6:
+            continue
+        trajectory_indices = np.searchsorted(trajectory_times, sample_times)
+        valid = trajectory_indices < len(trajectory_times)
+        exact = np.zeros_like(valid)
+        exact[valid] = np.isclose(
+            trajectory_times[trajectory_indices[valid]],
+            sample_times[valid],
+            rtol=0.0,
+            atol=1e-12,
+        )
+        velocities[particle_index, exact] = states[5, trajectory_indices[exact]]
+    return sample_times, velocities
 
 
 def build_profiles():

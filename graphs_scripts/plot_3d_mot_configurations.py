@@ -309,9 +309,6 @@ def _draw_projection(ax, specs, vertical_axis, title, profile, beam_length_m):
             ha="center",
             fontsize=9,
         )
-        if profile.get("beam_layout") == "rotated_yz_minus_upper_x":
-            ax.scatter(0, beam_length_m * MM_PER_M, marker="x", s=90, color="black")
-            ax.text(2, beam_length_m * MM_PER_M, "blocked upper beam", fontsize=8)
 
     limit = 1.38 * beam_length_m * MM_PER_M
     ax.set_xlim(-limit, limit)
@@ -323,10 +320,12 @@ def _draw_projection(ax, specs, vertical_axis, title, profile, beam_length_m):
     ax.grid(alpha=0.16)
 
 
-def _draw_angle_marker(ax, radius_mm, theta1_deg, theta2_deg, label):
+def _draw_angle_marker(
+    ax, radius_mm, theta1_deg, theta2_deg, label, center_mm=(0.0, 0.0)
+):
     """Draw a compact angle arc around the MOT center in a 2D projection."""
     arc = Arc(
-        (0.0, 0.0),
+        center_mm,
         2.0 * radius_mm,
         2.0 * radius_mm,
         theta1=theta1_deg,
@@ -339,8 +338,8 @@ def _draw_angle_marker(ax, radius_mm, theta1_deg, theta2_deg, label):
     middle = np.deg2rad(0.5 * (theta1_deg + theta2_deg))
     label_radius = 1.18 * radius_mm
     ax.text(
-        label_radius * np.cos(middle),
-        label_radius * np.sin(middle),
+        center_mm[0] + label_radius * np.cos(middle),
+        center_mm[1] + label_radius * np.sin(middle),
         label,
         color="#6a3d9a",
         fontsize=10,
@@ -359,9 +358,19 @@ def _annotate_configuration_angles(name, xz_ax, yz_ax):
         # 60-degree and 120-degree sectors around the MOT center.
         _draw_angle_marker(xz_ax, 17.0, -30.0, 30.0, r"$60^\circ$")
         _draw_angle_marker(xz_ax, 22.0, 30.0, 150.0, r"$120^\circ$")
-    elif name == "five_beam_gravity":
-        # The two diagonal axes in the y-z plane are orthogonal.
-        _draw_angle_marker(yz_ax, 19.0, 45.0, 135.0, r"$90^\circ$")
+    elif name == "single_pass":
+        profile = MOT_3D_CONFIGURATIONS[name]
+        angle = float(profile["blue_crossing_angle_deg"])
+        half = 0.5 * angle
+        crossing_z_mm = float(profile["blue_crossing_z_offset_m"]) * MM_PER_M
+        _draw_angle_marker(
+            yz_ax,
+            17.0,
+            -half,
+            half,
+            rf"${angle:g}^\circ$",
+            center_mm=(crossing_z_mm, 0.0),
+        )
 
 
 def _direction_component_enabled(profile, axis_tag, wavelength_key):
@@ -737,12 +746,18 @@ def _print_profile_summary(name, profile, directions):
         else:
             print("Ordering check: WARNING — blue is not upstream of green.")
 
-    if name == "five_beam_gravity":
-        tags = {tag for tag, _ in directions}
-        if "-X" not in tags and "+X" in tags:
-            print("Five-beam check: OK — -X is blocked and +X remains.")
-        else:
-            print("Five-beam check: WARNING — unexpected vertical beam set.")
+    if name == "single_pass":
+        blue = [
+            direction
+            for tag, direction in directions
+            if tag.startswith("SP_FROM_")
+        ]
+        angle = np.rad2deg(np.arccos(np.clip(np.dot(*blue), -1.0, 1.0)))
+        print(f"single-pass blue included angle: {angle:.3f} deg")
+        print(
+            "single-pass blue crossing z offset [mm]:",
+            profile["blue_crossing_z_offset_m"] * MM_PER_M,
+        )
 
 
 def plot_configuration(name, profile, beam_length_m):
@@ -784,10 +799,12 @@ def plot_configuration(name, profile, beam_length_m):
     )
     ax.text(*(gravity_start * MM_PER_M), " gravity -x", fontsize=9)
 
-    if name == "five_beam_gravity":
-        missing_source = np.array([beam_length_m, 0.0, 0.0])
-        ax.scatter(*(missing_source * MM_PER_M), marker="x", s=120, color="black")
-        ax.text(*(missing_source * MM_PER_M), "  blocked upper beam", fontsize=8)
+    if name == "single_pass":
+        crossing = np.array(
+            [0.0, 0.0, float(profile["blue_crossing_z_offset_m"])]
+        )
+        ax.scatter(*(crossing * MM_PER_M), marker="X", s=90, color=BLUE_COLOR)
+        ax.text(*(crossing * MM_PER_M), "  blue crossing", color=BLUE_COLOR, fontsize=8)
 
     _draw_projection(xz_ax, specs, "x", "x-z view", profile, beam_length_m)
     _draw_projection(yz_ax, specs, "y", "y-z view", profile, beam_length_m)
@@ -810,7 +827,7 @@ def plot_configuration(name, profile, beam_length_m):
 
     display_names = {
         "angled_donut": "angled donut",
-        "five_beam_gravity": "five-beam gravity MOT",
+        "single_pass": "two-blue single pass",
     }
     fig.suptitle(f"3D-MOT geometry: {display_names.get(name, name)}", fontsize=16)
     ax.set_title("Filled beam envelopes; length is schematic")
@@ -861,7 +878,7 @@ def main():
         )
         output_names = {
             "angled_donut": "01_angled_donut_geometry.png",
-            "five_beam_gravity": "02_five_beam_geometry.png",
+            "single_pass": "02_single_pass_geometry.png",
         }
         output_path = args.output_dir / output_names[name]
         fig.savefig(output_path, dpi=220, bbox_inches="tight")
@@ -871,7 +888,7 @@ def main():
         radial_fig = plot_radial_profiles(name, MOT_3D_CONFIGURATIONS[name])
         radial_names = {
             "angled_donut": "01b_angled_donut_radial_profiles.png",
-            "five_beam_gravity": "02b_five_beam_radial_profiles.png",
+            "single_pass": "02b_single_pass_radial_profiles.png",
         }
         radial_path = args.output_dir / radial_names[name]
         radial_fig.savefig(radial_path, dpi=220, bbox_inches="tight")

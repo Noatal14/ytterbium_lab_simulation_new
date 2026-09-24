@@ -151,8 +151,9 @@ The maintained 3D-MOT design space now contains exactly two candidates:
 
 - `angled_donut`: six green core beams and six complementary, center-blocked
   blue shell beams;
-- `five_beam_gravity`: five green beams, including one unpaired beam opposing
-  gravity, plus four complementary blue shell beams.
+- `single_pass`: the same six-beam angled green MOT, plus two localized blue
+  entrance-slowing beams in the `yz` plane. The blue beams cross upstream of
+  the MOT and both propagate with a `-z` component.
 
 The former crossed-beam and finite-gate geometries were exploratory studies.
 They are no longer selectable configurations and their one-off scan/submit
@@ -162,7 +163,7 @@ the figures used to present it are retained in
 and [`graphs/mot_3d_configuration_decision/`](graphs/mot_3d_configuration_decision/).
 
 The detailed plan for the forthcoming seven-parameter donut optimization and
-ten-parameter five-beam optimization is
+nine-parameter single-pass optimization is
 [`docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`](docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md).
 It defines the common capture metric, data split, Optuna discovery stage,
 high-statistics refinement, near-optimal hyperrectangle construction, and the

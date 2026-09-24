@@ -188,23 +188,19 @@ def _angled_xz_y_directions(theta_deg):
     ]
 
 
-def _five_beam_gravity_directions():
-    # Gravity acts along -x, but source position and propagation direction are not
-    # the same quantity. A laser source physically above the MOT can still
-    # propagate downward (-x), while the remaining upward beam is the +x
-    # propagation direction that opposes gravity.
-    #
-    # The other two counter-propagating axes lie in the yz plane, perpendicular
-    # to gravity. They are rotated by 45 degrees from the atomic +z transport
-    # axis. The axes remain mutually orthogonal, but no beam is parallel or
-    # antiparallel to the atomic transport direction.
-    diagonal = 1.0 / np.sqrt(2.0)
+def _single_pass_yz_directions(crossing_angle_deg):
+    """Return the two blue entrance-slower directions in the yz plane.
+
+    Both beams propagate toward -z.  The first originates at negative y and
+    therefore has a +y component; the second originates at positive y and has
+    a -y component.  Their full included angle is ``crossing_angle_deg``.
+    """
+    half_angle = 0.5 * np.deg2rad(float(crossing_angle_deg))
+    transverse = np.sin(half_angle)
+    longitudinal = np.cos(half_angle)
     return [
-        ("+X", _normalize_vector((1.0, 0.0, 0.0))),
-        ("+YZ_1", _normalize_vector((0.0, diagonal, diagonal))),
-        ("-YZ_1", _normalize_vector((0.0, -diagonal, -diagonal))),
-        ("+YZ_2", _normalize_vector((0.0, -diagonal, diagonal))),
-        ("-YZ_2", _normalize_vector((0.0, diagonal, -diagonal))),
+        ("SP_FROM_NEG_Y", _normalize_vector((0.0, transverse, -longitudinal))),
+        ("SP_FROM_POS_Y", _normalize_vector((0.0, -transverse, -longitudinal))),
     ]
 
 
@@ -213,8 +209,14 @@ def _get_beam_directions(profile):
     if layout == "angled_xz_y":
         theta_deg = float(profile.get("xz_angle_from_z_deg", 30.0))
         return _angled_xz_y_directions(theta_deg)
-    if layout == "rotated_yz_minus_upper_x":
-        return _five_beam_gravity_directions()
+    if layout == "angled_green_yz_single_pass":
+        green_directions = _angled_xz_y_directions(
+            float(profile.get("xz_angle_from_z_deg", 30.0))
+        )
+        blue_directions = _single_pass_yz_directions(
+            float(profile["blue_crossing_angle_deg"])
+        )
+        return [*green_directions, *blue_directions]
     raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
 
 
@@ -235,6 +237,19 @@ def _validate_profile(profile):
         if angle is None or not 0.0 < float(angle) < 90.0:
             raise ValueError(
                 "Angled 3D-MOT profiles require 0 < xz_angle_from_z_deg < 90."
+            )
+
+    if layout == "angled_green_yz_single_pass":
+        angle = profile.get("blue_crossing_angle_deg")
+        if angle is None or not 0.0 < float(angle) < 180.0:
+            raise ValueError(
+                "Single-pass profiles require 0 < blue_crossing_angle_deg < 180."
+            )
+        offset = profile.get("blue_crossing_z_offset_m")
+        if offset is None or not np.isfinite(offset) or float(offset) >= 0.0:
+            raise ValueError(
+                "Single-pass profiles require a finite negative "
+                "blue_crossing_z_offset_m."
             )
 
     strong_axis = profile.get("magnetic_strong_axis", "z")
@@ -362,11 +377,11 @@ def _validate_profile(profile):
             }:
                 raise ValueError("Finite 399 beam groups require a planar-clipped profile.")
 
-    if layout == "rotated_yz_minus_upper_x":
+    if layout == "angled_green_yz_single_pass":
         components = profile.get("beam_components")
         if not isinstance(components, dict):
-            raise ValueError("five_beam_gravity requires beam_components.")
-        for axis_tag, _ in _five_beam_gravity_directions():
+            raise ValueError("single_pass requires beam_components.")
+        for axis_tag, _ in _get_beam_directions(profile):
             axis = components.get(axis_tag)
             if not isinstance(axis, dict):
                 raise ValueError(f"Missing beam_components entry for {axis_tag}.")
@@ -374,7 +389,7 @@ def _validate_profile(profile):
                 if axis.get(key) not in (True, False):
                     raise ValueError(
                         f"Choose True or False for beam_components.{axis_tag}."
-                        f"{key} before using five_beam_gravity."
+                        f"{key} before using single_pass."
                     )
 
 
@@ -382,6 +397,13 @@ def _beam_profile_center(profile, wavelength_key, base_center):
     base_center = np.asarray(base_center, dtype=float)
     center = base_center
     wavelength_cfg = profile.get(wavelength_key, {})
+    if (
+        wavelength_key == "399"
+        and profile.get("beam_layout") == "angled_green_yz_single_pass"
+    ):
+        return center + np.array(
+            [0.0, 0.0, float(profile["blue_crossing_z_offset_m"])]
+        )
     if "center_offset_m" in wavelength_cfg:
         return center + np.asarray(wavelength_cfg["center_offset_m"], dtype=float)
     if profile.get("blue_green_center_separation_m", 0.0) == 0.0:
