@@ -13,11 +13,13 @@ from config import (
 
 
 class DonutGaussianBeam(CircularGaussianBeam):
-    """A regular Gaussian beam with a completely blocked central aperture.
+    """A Gaussian annulus with hard inner and optional outer cutoffs.
 
     The optical Gaussian is unchanged outside ``inner_cutoff_radius``. Inside
     that radius its intensity is exactly zero, representing the experimental
-    beam after its center is removed by the mirror arrangement.
+    beam after its center is removed by the mirror arrangement.  When
+    ``outer_cutoff_radius`` is supplied, the chamber aperture also clips the
+    outside of the shell.
     """
 
     def __init__(
@@ -31,11 +33,21 @@ class DonutGaussianBeam(CircularGaussianBeam):
         polarization=None,
         tag=None,
         inner_cutoff_radius=0.5e-3,
+        outer_cutoff_radius=None,
         **kwargs,
     ):
         self.inner_cutoff_radius = float(inner_cutoff_radius)
         if self.inner_cutoff_radius <= 0.0:
             raise ValueError("inner_cutoff_radius must be positive.")
+        self.outer_cutoff_radius = (
+            None if outer_cutoff_radius is None else float(outer_cutoff_radius)
+        )
+        if self.outer_cutoff_radius is not None and (
+            self.outer_cutoff_radius <= self.inner_cutoff_radius
+        ):
+            raise ValueError(
+                "outer_cutoff_radius must be greater than inner_cutoff_radius."
+            )
         super().__init__(
             wavelength=wavelength,
             waist=waist,
@@ -63,6 +75,10 @@ class DonutGaussianBeam(CircularGaussianBeam):
         rho_laser = np.sqrt(x_laser**2 + y_laser**2)
         intensity = CircularGaussianBeam._intensity_func(self, position)
         intensity = np.where(rho_laser < self.inner_cutoff_radius, 0.0, intensity)
+        if self.outer_cutoff_radius is not None:
+            intensity = np.where(
+                rho_laser <= self.outer_cutoff_radius, intensity, 0.0
+            )
         return intensity
 
 
@@ -377,6 +393,21 @@ def _validate_profile(profile):
                 "Set a positive 399.inner_cutoff_radius_m in config.py before "
                 "using the center-blocked Gaussian 3D-MOT profile."
             )
+        outer_cutoff = blue.get("outer_cutoff_radius_m")
+        if outer_cutoff is not None and float(outer_cutoff) <= float(cutoff):
+            raise ValueError(
+                "399.outer_cutoff_radius_m must exceed "
+                "399.inner_cutoff_radius_m."
+            )
+        green = profile.get("556", {})
+        if green.get("profile") == "outer_clipped_gaussian" and not np.isclose(
+            float(green.get("outer_cutoff_radius_m", np.nan)), float(cutoff)
+        ):
+            raise ValueError(
+                "The donut requires one shared boundary: "
+                "556.outer_cutoff_radius_m must equal "
+                "399.inner_cutoff_radius_m."
+            )
     blue_groups = blue.get("beam_groups")
     if blue_groups is not None:
         if not isinstance(blue_groups, (list, tuple)) or not blue_groups:
@@ -524,6 +555,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         )
         if profile_kind in {"donut", "upstream_clipped_donut", "window_clipped_donut"}:
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
+            beam_kwargs["outer_cutoff_radius"] = outer_cutoff_radius
             if profile_kind == "upstream_clipped_donut":
                 beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
             elif profile_kind == "window_clipped_donut":
@@ -573,6 +605,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     profile_kind=beam_399_cfg["profile"],
                     polarization=_beam_polarization(beam_399_cfg, axis_tag),
                     inner_cutoff_radius=beam_399_cfg.get("inner_cutoff_radius_m"),
+                    outer_cutoff_radius=beam_399_cfg.get("outer_cutoff_radius_m"),
                     waist_short=beam_399_cfg.get("waist_short_m"),
                     waist_long=beam_399_cfg.get("waist_long_m"),
                     maximum_lab_z_m=(
@@ -627,6 +660,7 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                         profile_kind=group_cfg["profile"],
                         polarization=_beam_polarization(group_cfg, axis_tag),
                         inner_cutoff_radius=group_cfg.get("inner_cutoff_radius_m"),
+                        outer_cutoff_radius=group_cfg.get("outer_cutoff_radius_m"),
                         maximum_lab_z_m=maximum_lab_z_m,
                         minimum_lab_z_m=group_cfg.get("minimum_lab_z_m"),
                     )

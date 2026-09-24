@@ -334,6 +334,11 @@ MOT_3D_OPTIMIZATION_CONFIG = {
     },
     "angled_donut": {
         "blue_detuning_gamma_bounds": (-6.0, -0.5),
+        # Shared hard boundary between the green core and blue shell.  The
+        # chamber aperture has a 7.5-mm radius, so the split stays far enough
+        # inside it to leave a finite blue annulus.
+        "core_shell_split_radius_m_bounds": (0.0025, 0.0065),
+        "aperture_radius_m": 0.0075,
         "total_discovery_trials": 350,
     },
     "single_pass": {
@@ -356,7 +361,7 @@ MOT_3D_OPTIMIZATION_CONFIG = {
 # to modify or optimize.
 MOT_3D_CONFIGURATIONS = {
     "angled_donut": {
-        "description": "Two xz axes at +/-30 degrees from z plus a y axis, with a blue Gaussian beam blocked to exactly zero inside a 10 mm radius and coaxial with the green Gaussian beam.",
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue annulus, both hard-clipped by the 15-mm-diameter chamber aperture.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
         # The y beam is the third MOT axis, so y is the quadrupole strong axis
@@ -373,7 +378,7 @@ MOT_3D_CONFIGURATIONS = {
             # This provisional point lies on the scanned intensity boundary.
             "s0": 1.5,
             "detuning_gamma": -3.0,
-            "waist_m": 0.015,
+            "waist_m": 0.0075,
             "profile": "donut",
             "polarization_by_axis": {
                 "+XZ_1": "right",
@@ -386,7 +391,8 @@ MOT_3D_CONFIGURATIONS = {
             # The experimental mirrors remove the center of an otherwise
             # ordinary Gaussian beam; the intensity jumps from exactly zero to
             # the unmodified Gaussian tail at this radius.
-            "inner_cutoff_radius_m": 0.01,
+            "inner_cutoff_radius_m": 0.005,
+            "outer_cutoff_radius_m": 0.0075,
         },
         "556": {
             "enabled": True,
@@ -394,7 +400,7 @@ MOT_3D_CONFIGURATIONS = {
             # only as a provisional retention-study operating point.
             "s0": 30.0,
             "detuning_gamma": -25.0,
-            "waist_m": 0.01,
+            "waist_m": 0.0075,
             "profile": "outer_clipped_gaussian",
             # Required by the quadrupole sign convention for restoring force
             # along all three lab axes.
@@ -408,7 +414,7 @@ MOT_3D_CONFIGURATIONS = {
             },
             # The chamber walls transmit the green beam only inside the same
             # radius at which the center-blocked blue beam begins.
-            "outer_cutoff_radius_m": 0.01,
+            "outer_cutoff_radius_m": 0.005,
         },
     },
     "single_pass": {

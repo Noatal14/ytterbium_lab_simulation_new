@@ -40,7 +40,7 @@ apparatus, and 399-nm optical layout. Parameters explicitly selected for an
 optimization study are exceptions; they should not be mistaken for arbitrary
 geometry.
 
-The 3D MOT is **not a finalized laboratory design**. The maintained candidates are now only `angled_donut` and `single_pass`. The evidence for retiring the explored reduced-blue geometries is summarized in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the production optimization design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`. Current operating points are provisional simulation seeds, not laboratory settings. The forthcoming search must optimize the seven donut variables and nine single-pass variables on paired 2D-MOT survivor ensembles, then validate the selected points and robust parameter boxes on held-out particles.
+The 3D MOT is **not a finalized laboratory design**. The maintained candidates are now only `angled_donut` and `single_pass`. The evidence for retiring the explored reduced-blue geometries is summarized in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the production optimization design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`. Current operating points are provisional simulation seeds, not laboratory settings. The forthcoming search must optimize the eight donut variables and nine single-pass variables on paired 2D-MOT survivor ensembles, then validate the selected points and robust parameter boxes on held-out particles.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT

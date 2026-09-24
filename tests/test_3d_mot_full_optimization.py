@@ -39,3 +39,7 @@ def test_seed_profiles_respect_confirmed_search_bounds():
         assert common["green_waist_m_bounds"][0] <= profile["556"]["waist_m"] <= common["green_waist_m_bounds"][1]
         assert common["blue_waist_m_bounds"][0] <= profile["399"]["waist_m"] <= common["blue_waist_m_bounds"][1]
         assert profile["399"]["s0"] <= 1.5
+        if family == "angled_donut":
+            split = profile["399"]["inner_cutoff_radius_m"]
+            assert profile["556"]["outer_cutoff_radius_m"] == split
+            assert profile["399"]["outer_cutoff_radius_m"] == 0.0075

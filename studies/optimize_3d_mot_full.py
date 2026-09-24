@@ -142,13 +142,27 @@ def build_trial_profile(family, trial):
     derived = {}
 
     if family == "angled_donut":
-        bounds = MOT_3D_OPTIMIZATION_CONFIG[family][
+        settings = MOT_3D_OPTIMIZATION_CONFIG[family]
+        bounds = settings[
             "blue_detuning_gamma_bounds"
         ]
         parameters["blue_detuning_gamma"] = trial.suggest_float(
             "blue_detuning_gamma", *bounds
         )
         profile["399"]["detuning_gamma"] = parameters["blue_detuning_gamma"]
+        parameters["core_shell_split_radius_m"] = trial.suggest_float(
+            "core_shell_split_radius_m",
+            *settings["core_shell_split_radius_m_bounds"],
+        )
+        split_radius = parameters["core_shell_split_radius_m"]
+        # One authoritative boundary is assigned to both colors: green is
+        # present for r < split and blue for r >= split.  This construction
+        # makes a gap or overlap impossible.
+        profile["556"]["outer_cutoff_radius_m"] = split_radius
+        profile["399"]["inner_cutoff_radius_m"] = split_radius
+        profile["399"]["outer_cutoff_radius_m"] = settings[
+            "aperture_radius_m"
+        ]
     elif family == "single_pass":
         settings = MOT_3D_OPTIMIZATION_CONFIG[family]
         parameters["blue_detuning_anchor_gamma"] = trial.suggest_float(
@@ -206,9 +220,9 @@ def _seed_parameters(family, worker_index):
         )
     else:
         seeds = (
-            dict(blue_s0=1.5, blue_detuning_gamma=-3.0),
-            dict(blue_s0=1.2, blue_detuning_gamma=-3.0),
-            dict(blue_s0=1.5, blue_detuning_gamma=-2.5),
+            dict(blue_s0=1.5, blue_detuning_gamma=-3.0, core_shell_split_radius_m=0.005),
+            dict(blue_s0=1.2, blue_detuning_gamma=-3.0, core_shell_split_radius_m=0.004),
+            dict(blue_s0=1.5, blue_detuning_gamma=-2.5, core_shell_split_radius_m=0.006),
         )
     return {**common, **seeds[worker_index % len(seeds)]}
 

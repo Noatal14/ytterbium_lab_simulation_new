@@ -83,15 +83,18 @@ claim is evaluated only on newly generated sealed ensembles.
 
 ## Parameters to optimize
 
-The donut search is seven-dimensional:
+The donut search is eight-dimensional:
 
 - green s0, detuning, and waist;
 - blue s0, detuning, and waist; and
-- magnetic-field gradient.
+- magnetic-field gradient; and
+- the shared green-core/blue-shell split radius inside the 7.5-mm-radius
+  chamber aperture.
 
 The single-pass search is nine-dimensional:
 
-- the same seven optical and magnetic parameters;
+- the same seven optical and magnetic parameters (but not the donut-only
+  core/shell split radius);
 - the included angle between the two blue beams, constrained to 45-70°; and
 - the z position of their crossing relative to the MOT center.
 

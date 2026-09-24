@@ -162,7 +162,7 @@ the figures used to present it are retained in
 [`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`](docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md)
 and [`graphs/mot_3d_configuration_decision/`](graphs/mot_3d_configuration_decision/).
 
-The detailed plan for the forthcoming seven-parameter donut optimization and
+The detailed plan for the forthcoming eight-parameter donut optimization and
 nine-parameter single-pass optimization is
 [`docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`](docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md).
 It defines the common capture metric, data split, Optuna discovery stage,

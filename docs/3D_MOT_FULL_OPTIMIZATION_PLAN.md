@@ -118,7 +118,7 @@ finite spatial width of the slowing region are not assumed away. The
 reference field uses the green-selected gradient, the configured quadrupole
 strong axis, and the current blue geometry.
 
-### Full angled donut: seven variables
+### Full angled donut: eight variables
 
 Six green core beams:
 
@@ -136,9 +136,15 @@ Magnetic field:
 
 7. `magnetic_gradient_G_cm`
 
-The cutoff radius, beam angles, polarizations, strong magnetic axis, MOT center,
-and gravity direction remain fixed geometry choices. They are not silently
-re-optimized with the laser operating point.
+Shared core/shell geometry:
+
+8. `core_shell_split_radius_m`
+
+The split is one common hard boundary: green light exists only for radii below
+it and blue light only from it outward. Both are clipped by the chamber's
+7.5-mm-radius aperture, so there is no radial gap or overlap. Beam angles,
+polarizations, strong magnetic axis, MOT center, and gravity direction remain
+fixed geometry choices.
 
 ## Required laboratory constraints before production search
 

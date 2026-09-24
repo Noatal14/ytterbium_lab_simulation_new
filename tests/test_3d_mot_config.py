@@ -82,7 +82,8 @@ def test_3d_mot_field_accepts_single_position_and_position_batch():
 
 def test_angled_donut_geometry_is_correct():
     profile = _resolved_profile("angled_donut")
-    assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.01)
+    assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.005)
+    assert profile["399"]["outer_cutoff_radius_m"] == pytest.approx(0.0075)
     assert "ring_radius_m" not in profile["399"]
     assert "ring_width_m" not in profile["399"]
     assert profile["beam_layout"] == "angled_xz_y"
@@ -155,9 +156,8 @@ def test_angled_donut_blue_shell_force_opposes_velocity(axis, velocity_sign):
         "angled_donut", "399"
     )
     position = np.asarray(profile["center_position_m"], dtype=float)
-    # This lab-frame point lies in the illuminated blue shell rather than the
-    # intentionally dark 10-mm core.
-    position += np.array([15.0e-3, 0.0, 0.0])
+    # This lab-frame point lies between the 5-mm split and 7.5-mm aperture.
+    position += np.array([6.0e-3, 0.0, 0.0])
     velocity = np.zeros(3)
     velocity[axis] = velocity_sign * 10.0
 
@@ -329,7 +329,7 @@ def test_active_angled_profile_emits_expected_vectors():
     assert (0.0, -1.0, 0.0) in directions
 
 
-def test_donut_is_an_unmodified_gaussian_with_a_hard_central_cutoff():
+def test_donut_is_an_unmodified_gaussian_inside_hard_annular_cutoffs():
     from lab_setup.laser_setup_3d import DonutGaussianBeam
 
     beam = DonutGaussianBeam(
@@ -338,16 +338,18 @@ def test_donut_is_an_unmodified_gaussian_with_a_hard_central_cutoff():
         power=1e-3,
         polarization=CircularRight(),
         inner_cutoff_radius=1.0e-3,
+        outer_cutoff_radius=3.0e-3,
     )
     target_I0 = 7.5e5
     beam.set_power_from_peak_I(target_I0)
     rho = np.linspace(0.0, 5e-3, 1001)
     intensity = np.array([beam._intensity_func(beam, np.array([[x, 0.0, 0.0]])).item() for x in rho])
     assert np.all(intensity[rho < beam.inner_cutoff_radius] == 0.0)
-    outside = rho >= beam.inner_cutoff_radius
-    expected = target_I0 * np.exp(-2.0 * rho[outside] ** 2 / beam.waist**2)
-    assert np.allclose(intensity[outside], expected)
-    assert intensity[np.flatnonzero(outside)[0]] > intensity[np.flatnonzero(outside)[-1]]
+    annulus = (rho >= beam.inner_cutoff_radius) & (rho <= beam.outer_cutoff_radius)
+    expected = target_I0 * np.exp(-2.0 * rho[annulus] ** 2 / beam.waist**2)
+    assert np.allclose(intensity[annulus], expected)
+    assert np.all(intensity[rho > beam.outer_cutoff_radius] == 0.0)
+    assert intensity[np.flatnonzero(annulus)[0]] > intensity[np.flatnonzero(annulus)[-1]]
 
     invalid = DonutGaussianBeam
     try:
@@ -367,11 +369,14 @@ def test_angled_donut_green_and_blue_profiles_are_complementary():
     blue = next(beam for beam in beams if beam.tag == "3DMOT_399_+Y")
     green = next(beam for beam in beams if beam.tag == "3DMOT_556_+Y")
     cutoff = profile["399"]["inner_cutoff_radius_m"]
+    aperture = profile["399"]["outer_cutoff_radius_m"]
     assert green.outer_cutoff_radius == pytest.approx(cutoff)
+    assert blue.outer_cutoff_radius == pytest.approx(aperture)
 
     inside = np.array([[0.5 * cutoff, 0.0, 0.0]])
     boundary = np.array([[cutoff, 0.0, 0.0]])
-    outside = np.array([[1.5 * cutoff, 0.0, 0.0]])
+    outside = np.array([[0.5 * (cutoff + aperture), 0.0, 0.0]])
+    beyond_aperture = np.array([[1.01 * aperture, 0.0, 0.0]])
 
     assert blue.get_value(inside)[0] == 0.0
     assert green.get_value(inside)[0] > 0.0
@@ -379,6 +384,8 @@ def test_angled_donut_green_and_blue_profiles_are_complementary():
     assert green.get_value(boundary)[0] == 0.0
     assert blue.get_value(outside)[0] > 0.0
     assert green.get_value(outside)[0] == 0.0
+    assert blue.get_value(beyond_aperture)[0] == 0.0
+    assert green.get_value(beyond_aperture)[0] == 0.0
 
 
 def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():
