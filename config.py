@@ -317,6 +317,39 @@ FORCE_SCALE_N = 3.141895058426422e-20
 
 MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM = 10.0
 
+# Full-search domains. Length bounds are 1/e^2 Gaussian waist radii, not
+# diameters. The 7.5-mm ceiling therefore represents a 15-mm 1/e^2 diameter.
+# Power feasibility must be added separately when measured power limits are
+# supplied; s0 and waist alone do not encode the available optical power.
+MOT_3D_OPTIMIZATION_CONFIG = {
+    "common": {
+        "green_s0_bounds": (0.5, 40.0),
+        "green_detuning_gamma_bounds": (-35.0, -5.0),
+        "green_waist_m_bounds": (0.005, 0.0075),
+        "blue_s0_bounds": (0.05, 1.5),
+        "blue_waist_m_bounds": (0.005, 0.0075),
+        "magnetic_gradient_G_cm_bounds": (0.5, 6.0),
+        "particles_per_trial": 600,
+        "t_max_s": 0.1,
+    },
+    "angled_donut": {
+        "blue_detuning_gamma_bounds": (-6.0, -0.5),
+        "total_discovery_trials": 350,
+    },
+    "single_pass": {
+        "blue_detuning_anchor_gamma_bounds": (-3.75, -1.75),
+        "blue_crossing_angle_deg_bounds": (45.0, 70.0),
+        "blue_crossing_z_offset_m_bounds": (-0.050, -0.040),
+        "maximum_blue_center_relative_intensity": 1e-3,
+        "slowing_position_waist_factor": 1.1,
+        "blue_zeeman_gamma_per_G": 0.04969,
+        "reference_gradient_G_cm": 2.5,
+        "reference_crossing_z_offset_m": -0.050,
+        "reference_blue_waist_m": 0.0075,
+        "total_discovery_trials": 600,
+    },
+}
+
 # Some 3D-MOT geometry parameters are provisional because the final
 # experimental configuration is still under investigation. They are kept
 # as numeric defaults so each profile remains directly runnable and easy

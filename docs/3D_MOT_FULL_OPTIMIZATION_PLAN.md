@@ -400,7 +400,7 @@ demonstrably infrastructural and parameters and seed remain unchanged.
 
 ## Stage 3: construct the near-optimal hyperrectangle
 
-The desired result is a joint 7- or 10-dimensional region, not independent
+The desired result is a joint 7- or 9-dimensional region, not independent
 one-dimensional error bars. Parameter interactions are explicitly allowed.
 
 Before this stage, declare an absolute negligible-loss tolerance. This is a
