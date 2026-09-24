@@ -88,8 +88,8 @@ The donut search is eight-dimensional:
 - green s0, detuning, and waist;
 - blue s0, detuning, and waist; and
 - magnetic-field gradient; and
-- the shared green-core/blue-shell split radius inside the 7.5-mm-radius
-  chamber aperture.
+- the shared green-core/blue-shell split radius. The final chamber-hole
+  diameter follows the optimized waist and is not a fixed clipping mask.
 
 The single-pass search is nine-dimensional:
 

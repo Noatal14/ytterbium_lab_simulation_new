@@ -334,11 +334,8 @@ MOT_3D_OPTIMIZATION_CONFIG = {
     },
     "angled_donut": {
         "blue_detuning_gamma_bounds": (-6.0, -0.5),
-        # Shared hard boundary between the green core and blue shell.  The
-        # chamber aperture has a 7.5-mm radius, so the split stays far enough
-        # inside it to leave a finite blue annulus.
+        # Shared hard boundary between the green core and blue shell.
         "core_shell_split_radius_m_bounds": (0.0025, 0.0065),
-        "aperture_radius_m": 0.0075,
         "total_discovery_trials": 350,
     },
     "single_pass": {
@@ -361,7 +358,7 @@ MOT_3D_OPTIMIZATION_CONFIG = {
 # to modify or optimize.
 MOT_3D_CONFIGURATIONS = {
     "angled_donut": {
-        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue annulus, both hard-clipped by the 15-mm-diameter chamber aperture.",
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
         # The y beam is the third MOT axis, so y is the quadrupole strong axis
@@ -392,7 +389,6 @@ MOT_3D_CONFIGURATIONS = {
             # ordinary Gaussian beam; the intensity jumps from exactly zero to
             # the unmodified Gaussian tail at this radius.
             "inner_cutoff_radius_m": 0.005,
-            "outer_cutoff_radius_m": 0.0075,
         },
         "556": {
             "enabled": True,

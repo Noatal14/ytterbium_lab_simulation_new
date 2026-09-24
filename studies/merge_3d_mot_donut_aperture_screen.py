@@ -1,4 +1,4 @@
-"""Merge and plot the physical narrow-donut aperture sanity screen."""
+"""Merge and plot the narrow-waist donut core/shell split sanity screen."""
 
 import argparse
 import json
@@ -12,7 +12,7 @@ def merge_screen(input_root, output_dir, graph_dir):
     reports = [json.loads(path.read_text()) for path in paths]
     if len(reports) != 3:
         raise ValueError(f"Expected three donut-screen shards, found {len(reports)}.")
-    if any(report.get("run_label") != "donut_aperture_split_screen_v1_600" for report in reports):
+    if any(report.get("run_label") != "donut_core_shell_split_screen_v2_600" for report in reports):
         raise ValueError("Refusing to merge results from a different run label.")
     point_count = len(reports[0]["records"])
     if any(len(report["records"]) != point_count for report in reports):
@@ -22,10 +22,8 @@ def merge_screen(input_root, output_dir, graph_dir):
     for index in range(point_count):
         parts = [report["records"][index] for report in reports]
         split = parts[0]["core_shell_split_radius_m"]
-        aperture = parts[0]["aperture_radius_m"]
         if any(
-            (part["core_shell_split_radius_m"], part["aperture_radius_m"])
-            != (split, aperture)
+            part["core_shell_split_radius_m"] != split
             for part in parts
         ):
             raise ValueError(f"Point {index} differs across shards.")
@@ -33,7 +31,6 @@ def merge_screen(input_root, output_dir, graph_dir):
         row = {
             "point_index": index,
             "core_shell_split_radius_m": split,
-            "aperture_radius_m": aperture,
             "input_particle_count": total,
         }
         for field in (
@@ -58,8 +55,8 @@ def merge_screen(input_root, output_dir, graph_dir):
         reverse=True,
     )
     summary = {
-        "status": "merged physical narrow-donut aperture sanity screen",
-        "run_label": "donut_aperture_split_screen_v1_600",
+        "status": "merged narrow-waist donut core/shell split sanity screen",
+        "run_label": "donut_core_shell_split_screen_v2_600",
         "input_particle_count": sum(
             report["input_particle_count"] for report in reports
         ),
@@ -89,7 +86,7 @@ def merge_screen(input_root, output_dir, graph_dir):
         )
     ax.set_xlabel("shared green-core / blue-shell split radius [mm]")
     ax.set_ylabel("usable atoms [% of 2D-MOT survivors]")
-    ax.set_title("Physical narrow donut: 15-mm chamber aperture")
+    ax.set_title("Narrow-waist donut: shared core/shell split")
     ax.set_xticks(x)
     ax.set_ylim(bottom=0)
     ax.grid(alpha=0.25)
@@ -97,7 +94,7 @@ def merge_screen(input_root, output_dir, graph_dir):
     fig.tight_layout()
     graph_dir = Path(graph_dir)
     graph_dir.mkdir(parents=True, exist_ok=True)
-    graph_path = graph_dir / "donut_aperture_split_screen_v1.png"
+    graph_path = graph_dir / "donut_core_shell_split_screen_v2.png"
     fig.savefig(graph_path, dpi=200, bbox_inches="tight")
     plt.close(fig)
 

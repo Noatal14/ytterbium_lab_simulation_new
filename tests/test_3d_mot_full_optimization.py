@@ -42,4 +42,4 @@ def test_seed_profiles_respect_confirmed_search_bounds():
         if family == "angled_donut":
             split = profile["399"]["inner_cutoff_radius_m"]
             assert profile["556"]["outer_cutoff_radius_m"] == split
-            assert profile["399"]["outer_cutoff_radius_m"] == 0.0075
+            assert "outer_cutoff_radius_m" not in profile["399"]

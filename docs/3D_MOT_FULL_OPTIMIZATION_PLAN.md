@@ -141,8 +141,10 @@ Shared core/shell geometry:
 8. `core_shell_split_radius_m`
 
 The split is one common hard boundary: green light exists only for radii below
-it and blue light only from it outward. Both are clipped by the chamber's
-7.5-mm-radius aperture, so there is no radial gap or overlap. Beam angles,
+it and blue light only from it outward, so there is no radial gap or overlap.
+The chamber hole is not modeled as a fixed optical mask: its final diameter is
+chosen to accommodate the optimized beam waist, subject to a 15-mm maximum and
+a preference for about 10 mm when performance is equivalent. Beam angles,
 polarizations, strong magnetic axis, MOT center, and gravity direction remain
 fixed geometry choices.
 

@@ -160,9 +160,6 @@ def build_trial_profile(family, trial):
         # makes a gap or overlap impossible.
         profile["556"]["outer_cutoff_radius_m"] = split_radius
         profile["399"]["inner_cutoff_radius_m"] = split_radius
-        profile["399"]["outer_cutoff_radius_m"] = settings[
-            "aperture_radius_m"
-        ]
     elif family == "single_pass":
         settings = MOT_3D_OPTIMIZATION_CONFIG[family]
         parameters["blue_detuning_anchor_gamma"] = trial.suggest_float(

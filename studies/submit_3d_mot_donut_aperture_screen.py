@@ -1,4 +1,4 @@
-"""Submit the three-point, 600-particle physical narrow-donut sanity screen."""
+"""Submit the three-point, 600-particle narrow-donut split sanity screen."""
 
 import subprocess
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 from studies.compare_3d_mot_retention import DEFAULT_INPUT
 
 
-ROOT = Path("data/validation/mot_3d/donut_aperture_split_screen_v1_600")
+ROOT = Path("data/validation/mot_3d/donut_core_shell_split_screen_v2_600")
 
 
 def _write(path, text):
@@ -55,7 +55,6 @@ def main():
     --input {DEFAULT_INPUT} --max-atoms 600 --num-shards 3 \\
     --shard-index "$PBS_ARRAY_INDEX" --npools 200 --t-max 0.1 \\
     --split-radius-m-values 0.004 0.005 0.006 \\
-    --aperture-radius-m 0.0075 \\
     --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
 """,
     )

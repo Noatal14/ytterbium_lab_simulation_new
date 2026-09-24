@@ -1,4 +1,4 @@
-"""Sanity-check the physical 15-mm-aperture donut at several core/shell splits."""
+"""Sanity-check the narrower-waist donut at several core/shell splits."""
 
 import argparse
 import copy
@@ -33,15 +33,14 @@ def run_screen(args):
     for point_index, split_radius_m in enumerate(args.split_radius_m_values):
         profile = copy.deepcopy(MOT_3D_CONFIGURATIONS["angled_donut"])
         # A single value controls both sides of the boundary.  Green occupies
-        # r < split; blue occupies split <= r <= aperture.
+        # r < split; blue occupies r >= split.  The eventual chamber hole is
+        # sized from the optimized waist and is not a fixed clipping mask.
         profile["556"]["outer_cutoff_radius_m"] = float(split_radius_m)
         profile["399"]["inner_cutoff_radius_m"] = float(split_radius_m)
-        profile["399"]["outer_cutoff_radius_m"] = float(args.aperture_radius_m)
 
         print(
             f"Starting point {point_index + 1}/{len(args.split_radius_m_values)}: "
-            f"split={1000 * split_radius_m:g} mm, "
-            f"aperture={1000 * args.aperture_radius_m:g} mm",
+            f"split={1000 * split_radius_m:g} mm",
             flush=True,
         )
         trajectories, _ = mot_3d_simulation(
@@ -66,7 +65,6 @@ def run_screen(args):
         record = {
             "point_index": point_index,
             "core_shell_split_radius_m": float(split_radius_m),
-            "aperture_radius_m": float(args.aperture_radius_m),
             "input_particle_count": len(states),
             "usable_at_end_count": int(usable_at_end.sum()),
             "usable_ever_count": int(usable_ever.sum()),
@@ -86,8 +84,8 @@ def run_screen(args):
         )
 
     report = {
-        "status": "physical narrow-donut aperture sanity screen",
-        "run_label": "donut_aperture_split_screen_v1_600",
+        "status": "narrow-waist donut core/shell split sanity screen",
+        "run_label": "donut_core_shell_split_screen_v2_600",
         "input_files": [str(path) for path in input_files],
         "selected_particle_count_before_sharding": len(selected),
         "input_particle_count": len(states),
@@ -120,7 +118,6 @@ def parse_args(argv=None):
         type=float,
         default=(0.004, 0.005, 0.006),
     )
-    parser.add_argument("--aperture-radius-m", type=float, default=0.0075)
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
     return parser.parse_args(argv)
 
