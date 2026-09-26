@@ -1,0 +1,37 @@
+{
+  "kind": "guarded_weekly_mot_3d_discovery_submission",
+  "software_revision": "e805d5dc4c8812b2045b26678b98d7a51474ad5f",
+  "output_root": "data/optimization/mot_3d/weekly_discovery_20260924",
+  "donut_screen": "data/validation/mot_3d/donut_core_shell_split_screen_v2_600/merged/donut_aperture_screen_summary.json",
+  "minimum_donut_fraction": 0.2,
+  "donut_rounds": 2,
+  "single_pass_rounds": 3,
+  "jobs": {
+    "preflight": "4701198.zeus-master",
+    "smoke": [
+      "4701199.zeus-master",
+      "4701200.zeus-master"
+    ],
+    "donut_workers": [
+      "4701201.zeus-master",
+      "4701202.zeus-master",
+      "4701203.zeus-master",
+      "4701204.zeus-master",
+      "4701205.zeus-master",
+      "4701206.zeus-master"
+    ],
+    "donut_merge": "4701207.zeus-master",
+    "single_pass_workers": [
+      "4701208.zeus-master",
+      "4701209.zeus-master",
+      "4701210.zeus-master",
+      "4701211.zeus-master",
+      "4701212.zeus-master",
+      "4701213.zeus-master",
+      "4701214.zeus-master",
+      "4701215.zeus-master",
+      "4701216.zeus-master"
+    ],
+    "single_pass_merge": "4701217.zeus-master"
+  }
+}
