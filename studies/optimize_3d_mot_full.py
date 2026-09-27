@@ -127,8 +127,8 @@ def resolve_single_pass_detuning(anchor_gamma, gradient_G_cm, crossing_z_m, wais
     return float(detuning), float(z_slow_m), float(field_G)
 
 
-def build_trial_profile(family, trial):
-    parameters = _suggest_common(trial)
+def build_profile_from_parameters(family, parameters):
+    parameters = dict(parameters)
     profile = copy.deepcopy(MOT_3D_CONFIGURATIONS[family])
     profile["556"].update(
         s0=parameters["green_s0"],
@@ -142,18 +142,7 @@ def build_trial_profile(family, trial):
     derived = {}
 
     if family == "angled_donut":
-        settings = MOT_3D_OPTIMIZATION_CONFIG[family]
-        bounds = settings[
-            "blue_detuning_gamma_bounds"
-        ]
-        parameters["blue_detuning_gamma"] = trial.suggest_float(
-            "blue_detuning_gamma", *bounds
-        )
         profile["399"]["detuning_gamma"] = parameters["blue_detuning_gamma"]
-        parameters["core_shell_split_radius_m"] = trial.suggest_float(
-            "core_shell_split_radius_m",
-            *settings["core_shell_split_radius_m_bounds"],
-        )
         split_radius = parameters["core_shell_split_radius_m"]
         # One authoritative boundary is assigned to both colors: green is
         # present for r < split and blue for r >= split.  This construction
@@ -162,18 +151,6 @@ def build_trial_profile(family, trial):
         profile["399"]["inner_cutoff_radius_m"] = split_radius
     elif family == "single_pass":
         settings = MOT_3D_OPTIMIZATION_CONFIG[family]
-        parameters["blue_detuning_anchor_gamma"] = trial.suggest_float(
-            "blue_detuning_anchor_gamma",
-            *settings["blue_detuning_anchor_gamma_bounds"],
-        )
-        parameters["blue_crossing_angle_deg"] = trial.suggest_float(
-            "blue_crossing_angle_deg",
-            *settings["blue_crossing_angle_deg_bounds"],
-        )
-        parameters["blue_crossing_z_offset_m"] = trial.suggest_float(
-            "blue_crossing_z_offset_m",
-            *settings["blue_crossing_z_offset_m_bounds"],
-        )
         profile["blue_crossing_angle_deg"] = parameters[
             "blue_crossing_angle_deg"
         ]
@@ -199,6 +176,35 @@ def build_trial_profile(family, trial):
     else:
         raise ValueError(f"Unsupported family {family!r}.")
     return profile, parameters, derived
+
+
+def build_trial_profile(family, trial):
+    parameters = _suggest_common(trial)
+    settings = MOT_3D_OPTIMIZATION_CONFIG[family]
+    if family == "angled_donut":
+        parameters["blue_detuning_gamma"] = trial.suggest_float(
+            "blue_detuning_gamma", *settings["blue_detuning_gamma_bounds"]
+        )
+        parameters["core_shell_split_radius_m"] = trial.suggest_float(
+            "core_shell_split_radius_m",
+            *settings["core_shell_split_radius_m_bounds"],
+        )
+    elif family == "single_pass":
+        parameters["blue_detuning_anchor_gamma"] = trial.suggest_float(
+            "blue_detuning_anchor_gamma",
+            *settings["blue_detuning_anchor_gamma_bounds"],
+        )
+        parameters["blue_crossing_angle_deg"] = trial.suggest_float(
+            "blue_crossing_angle_deg",
+            *settings["blue_crossing_angle_deg_bounds"],
+        )
+        parameters["blue_crossing_z_offset_m"] = trial.suggest_float(
+            "blue_crossing_z_offset_m",
+            *settings["blue_crossing_z_offset_m_bounds"],
+        )
+    else:
+        raise ValueError(f"Unsupported family {family!r}.")
+    return build_profile_from_parameters(family, parameters)
 
 
 def _seed_parameters(family, worker_index):
