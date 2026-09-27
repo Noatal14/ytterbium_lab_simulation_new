@@ -1,0 +1,560 @@
+{
+  "kind": "merged_mot_3d_early_independent_check",
+  "family": "single_pass",
+  "candidate_count": 12,
+  "particle_count": 600,
+  "ensemble_file_indices": [
+    16,
+    17,
+    18,
+    19
+  ],
+  "recoil_seed_count": 3,
+  "bootstrap_method": "crossed resampling of ensemble clusters and recoil seeds",
+  "bootstrap_replicates": 5000,
+  "lcb_leader_candidate_id": "single_pass_00",
+  "ranked_candidates": [
+    {
+      "candidate_id": "single_pass_00",
+      "selection_roles": [
+        "global_best",
+        "worker_1_best",
+        "lower_power"
+      ],
+      "discovery_rank": 1,
+      "discovery_usable_at_end_fraction": 0.49833333333333335,
+      "discovery_usable_at_end_count": 299,
+      "worker_index": 1,
+      "trial_number": 105,
+      "normalized_boundary_distance": 0.03511803003730807,
+      "power_proxy": 0.012727110455118394,
+      "parameters": {
+        "green_s0": 38.54224590225253,
+        "green_detuning_gamma": -23.337937404161192,
+        "green_waist_m": 0.00741220492490673,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.00733673976861462,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.5815960235603703,
+        "effective_slowing_z_offset_m": -0.05370613877446794,
+        "effective_slowing_field_G": 12.15416311061482,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.445,
+      "mean_usable_count_per_600": 267.0,
+      "bootstrap_95_ci": [
+        0.41833333333333333,
+        0.4766666666666667
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        0.0,
+        0.0
+      ],
+      "seed_counts": [
+        266,
+        277,
+        258
+      ]
+    },
+    {
+      "candidate_id": "single_pass_05",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 2,
+      "discovery_usable_at_end_fraction": 0.36,
+      "discovery_usable_at_end_count": 216,
+      "worker_index": 1,
+      "trial_number": 0,
+      "normalized_boundary_distance": 0.0,
+      "power_proxy": 0.010153125,
+      "parameters": {
+        "green_s0": 30.0,
+        "green_detuning_gamma": -25.0,
+        "green_waist_m": 0.0075,
+        "blue_s0": 0.25,
+        "blue_waist_m": 0.0075,
+        "magnetic_gradient_G_cm": 2.5,
+        "blue_detuning_anchor_gamma": -2.75,
+        "blue_crossing_angle_deg": 45.0,
+        "blue_crossing_z_offset_m": -0.045
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.8121125,
+        "effective_slowing_z_offset_m": -0.05325,
+        "effective_slowing_field_G": 13.3125,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.3016666666666667,
+      "mean_usable_count_per_600": 181.00000000000003,
+      "bootstrap_95_ci": [
+        0.27666666666666667,
+        0.33002777777777736
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.16666666666666669,
+        -0.1233333333333333
+      ],
+      "seed_counts": [
+        184,
+        181,
+        178
+      ]
+    },
+    {
+      "candidate_id": "single_pass_01",
+      "selection_roles": [
+        "worker_0_best"
+      ],
+      "discovery_rank": 3,
+      "discovery_usable_at_end_fraction": 0.32166666666666666,
+      "discovery_usable_at_end_count": 193,
+      "worker_index": 0,
+      "trial_number": 0,
+      "normalized_boundary_distance": 0.0,
+      "power_proxy": 0.010153125,
+      "parameters": {
+        "green_s0": 30.0,
+        "green_detuning_gamma": -25.0,
+        "green_waist_m": 0.0075,
+        "blue_s0": 0.25,
+        "blue_waist_m": 0.0075,
+        "magnetic_gradient_G_cm": 2.5,
+        "blue_detuning_anchor_gamma": -2.75,
+        "blue_crossing_angle_deg": 45.0,
+        "blue_crossing_z_offset_m": -0.05
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.75,
+        "effective_slowing_z_offset_m": -0.05825,
+        "effective_slowing_field_G": 14.5625,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.28944444444444445,
+      "mean_usable_count_per_600": 173.66666666666666,
+      "bootstrap_95_ci": [
+        0.25555555555555554,
+        0.3383333333333333
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.17277777777777775,
+        -0.13
+      ],
+      "seed_counts": [
+        174,
+        176,
+        171
+      ]
+    },
+    {
+      "candidate_id": "single_pass_02",
+      "selection_roles": [
+        "worker_2_best"
+      ],
+      "discovery_rank": 4,
+      "discovery_usable_at_end_fraction": 0.31833333333333336,
+      "discovery_usable_at_end_count": 191,
+      "worker_index": 2,
+      "trial_number": 94,
+      "normalized_boundary_distance": 0.017896294566221514,
+      "power_proxy": 0.012163967994436553,
+      "parameters": {
+        "green_s0": 36.90036197181854,
+        "green_detuning_gamma": -15.129902233900749,
+        "green_waist_m": 0.007409150698978301,
+        "blue_s0": 0.10936671009637483,
+        "blue_waist_m": 0.00675538640061464,
+        "magnetic_gradient_G_cm": 1.70188404419895,
+        "blue_detuning_anchor_gamma": -1.8678331213243013,
+        "blue_crossing_angle_deg": 45.44740736415554,
+        "blue_crossing_z_offset_m": -0.04908377494270287
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.113518040953381,
+        "effective_slowing_z_offset_m": -0.05651469998337898,
+        "effective_slowing_field_G": 9.618146616440335,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.2761111111111111,
+      "mean_usable_count_per_600": 165.66666666666666,
+      "bootstrap_95_ci": [
+        0.24443055555555554,
+        0.3005555555555556
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.20333333333333337,
+        -0.12777777777777777
+      ],
+      "seed_counts": [
+        157,
+        166,
+        174
+      ]
+    },
+    {
+      "candidate_id": "single_pass_07",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 5,
+      "discovery_usable_at_end_fraction": 0.27666666666666667,
+      "discovery_usable_at_end_count": 166,
+      "worker_index": 1,
+      "trial_number": 86,
+      "normalized_boundary_distance": 0.037702494667207764,
+      "power_proxy": 0.009829017998078412,
+      "parameters": {
+        "green_s0": 33.435161463178495,
+        "green_detuning_gamma": -19.735286664093927,
+        "green_waist_m": 0.006985131327729203,
+        "blue_s0": 0.3719173084704375,
+        "blue_waist_m": 0.00740574376333198,
+        "magnetic_gradient_G_cm": 2.244771954363152,
+        "blue_detuning_anchor_gamma": -2.9835932788459436,
+        "blue_crossing_angle_deg": 47.68491192875439,
+        "blue_crossing_z_offset_m": -0.04231011047335862
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -3.1443991829586353,
+        "effective_slowing_z_offset_m": -0.050456428613023796,
+        "effective_slowing_field_G": 11.32631758678423,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.25055555555555553,
+      "mean_usable_count_per_600": 150.33333333333331,
+      "bootstrap_95_ci": [
+        0.2288888888888889,
+        0.26556944444444425
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.22333333333333333,
+        -0.15500000000000003
+      ],
+      "seed_counts": [
+        150,
+        143,
+        158
+      ]
+    },
+    {
+      "candidate_id": "single_pass_04",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 6,
+      "discovery_usable_at_end_fraction": 0.25166666666666665,
+      "discovery_usable_at_end_count": 151,
+      "worker_index": 1,
+      "trial_number": 88,
+      "normalized_boundary_distance": 0.049980756377817515,
+      "power_proxy": 0.009599763737241586,
+      "parameters": {
+        "green_s0": 37.86090206251512,
+        "green_detuning_gamma": -22.741357850720668,
+        "green_waist_m": 0.006487126864733583,
+        "blue_s0": 0.3875504716495833,
+        "blue_waist_m": 0.007184078575523964,
+        "magnetic_gradient_G_cm": 2.044859657572787,
+        "blue_detuning_anchor_gamma": -2.9961522616694776,
+        "blue_crossing_angle_deg": 47.163221873124286,
+        "blue_crossing_z_offset_m": -0.040499807563778176
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -3.2279516478769232,
+        "effective_slowing_z_offset_m": -0.048402293996854535,
+        "effective_slowing_field_G": 9.897589832814534,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.235,
+      "mean_usable_count_per_600": 141.0,
+      "bootstrap_95_ci": [
+        0.20222222222222222,
+        0.26555555555555554
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.2366666666666667,
+        -0.18166666666666667
+      ],
+      "seed_counts": [
+        147,
+        144,
+        132
+      ]
+    },
+    {
+      "candidate_id": "single_pass_10",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 7,
+      "discovery_usable_at_end_fraction": 0.22666666666666666,
+      "discovery_usable_at_end_count": 136,
+      "worker_index": 1,
+      "trial_number": 160,
+      "normalized_boundary_distance": 0.007591292617803225,
+      "power_proxy": 0.008154930716320117,
+      "parameters": {
+        "green_s0": 39.70014394159677,
+        "green_detuning_gamma": -18.306857161402988,
+        "green_waist_m": 0.005838624415351636,
+        "blue_s0": 0.3368534124953747,
+        "blue_waist_m": 0.007184424638768822,
+        "magnetic_gradient_G_cm": 3.0193069641539863,
+        "blue_detuning_anchor_gamma": -2.833612925256099,
+        "blue_crossing_angle_deg": 48.268028083191474,
+        "blue_crossing_z_offset_m": -0.04163475444927254
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.8140137694173615,
+        "effective_slowing_z_offset_m": -0.049537621551918244,
+        "effective_slowing_field_G": 14.956928573933135,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.20722222222222222,
+      "mean_usable_count_per_600": 124.33333333333333,
+      "bootstrap_95_ci": [
+        0.18888888888888888,
+        0.22666666666666666
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.2733333333333333,
+        -0.20222222222222222
+      ],
+      "seed_counts": [
+        121,
+        122,
+        130
+      ]
+    },
+    {
+      "candidate_id": "single_pass_08",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 8,
+      "discovery_usable_at_end_fraction": 0.21666666666666667,
+      "discovery_usable_at_end_count": 130,
+      "worker_index": 1,
+      "trial_number": 159,
+      "normalized_boundary_distance": 0.04023811173169001,
+      "power_proxy": 0.00937577168546214,
+      "parameters": {
+        "green_s0": 37.402319525616385,
+        "green_detuning_gamma": -20.505047359985724,
+        "green_waist_m": 0.006453948190816269,
+        "blue_s0": 0.2571489777630309,
+        "blue_waist_m": 0.007399404720670775,
+        "magnetic_gradient_G_cm": 3.9262231330994055,
+        "blue_detuning_anchor_gamma": -2.789876591178534,
+        "blue_crossing_angle_deg": 46.97255069497123,
+        "blue_crossing_z_offset_m": -0.040585402599328906
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.5628964876903058,
+        "effective_slowing_z_offset_m": -0.04872474779206676,
+        "effective_slowing_field_G": 19.130423193564667,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.18722222222222223,
+      "mean_usable_count_per_600": 112.33333333333334,
+      "bootstrap_95_ci": [
+        0.15333333333333332,
+        0.22111111111111112
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.2727777777777778,
+        -0.24277777777777776
+      ],
+      "seed_counts": [
+        113,
+        124,
+        100
+      ]
+    },
+    {
+      "candidate_id": "single_pass_11",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 12,
+      "discovery_usable_at_end_fraction": 0.175,
+      "discovery_usable_at_end_count": 105,
+      "worker_index": 2,
+      "trial_number": 87,
+      "normalized_boundary_distance": 0.03473895741657118,
+      "power_proxy": 0.01165895385407325,
+      "parameters": {
+        "green_s0": 35.301789371812426,
+        "green_detuning_gamma": -28.047588220404258,
+        "green_waist_m": 0.007413152606458572,
+        "blue_s0": 0.19797987949875295,
+        "blue_waist_m": 0.00691441993247588,
+        "magnetic_gradient_G_cm": 1.8078473561581574,
+        "blue_detuning_anchor_gamma": -2.39173160120419,
+        "blue_crossing_angle_deg": 47.32953277328568,
+        "blue_crossing_z_offset_m": -0.048754940834124336
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.6090422284785495,
+        "effective_slowing_z_offset_m": -0.056360802759847804,
+        "effective_slowing_field_G": 10.189172826034223,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.1527777777777778,
+      "mean_usable_count_per_600": 91.66666666666667,
+      "bootstrap_95_ci": [
+        0.12777777777777777,
+        0.18
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.32999999999999996,
+        -0.25388888888888883
+      ],
+      "seed_counts": [
+        83,
+        104,
+        88
+      ]
+    },
+    {
+      "candidate_id": "single_pass_03",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 11,
+      "discovery_usable_at_end_fraction": 0.175,
+      "discovery_usable_at_end_count": 105,
+      "worker_index": 1,
+      "trial_number": 174,
+      "normalized_boundary_distance": 0.01885349186712091,
+      "power_proxy": 0.006222708157609712,
+      "parameters": {
+        "green_s0": 37.46482314576629,
+        "green_detuning_gamma": -14.63263855629505,
+        "green_waist_m": 0.005249550879764539,
+        "blue_s0": 0.2832939251144996,
+        "blue_waist_m": 0.007032730285341119,
+        "magnetic_gradient_G_cm": 2.7107861162894697,
+        "blue_detuning_anchor_gamma": -2.6745778289608038,
+        "blue_crossing_angle_deg": 45.47133729667802,
+        "blue_crossing_z_offset_m": -0.04194454375451585
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.7289966412020257,
+        "effective_slowing_z_offset_m": -0.04968054706839108,
+        "effective_slowing_field_G": 13.467333724266007,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.1461111111111111,
+      "mean_usable_count_per_600": 87.66666666666667,
+      "bootstrap_95_ci": [
+        0.1238888888888889,
+        0.1622222222222222
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.33666666666666667,
+        -0.2661111111111111
+      ],
+      "seed_counts": [
+        93,
+        90,
+        80
+      ]
+    },
+    {
+      "candidate_id": "single_pass_09",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 17,
+      "discovery_usable_at_end_fraction": 0.13833333333333334,
+      "discovery_usable_at_end_count": 83,
+      "worker_index": 2,
+      "trial_number": 109,
+      "normalized_boundary_distance": 0.010546817624976224,
+      "power_proxy": 0.01128487996789059,
+      "parameters": {
+        "green_s0": 39.58340070381344,
+        "green_detuning_gamma": -18.34095314206514,
+        "green_waist_m": 0.006877688523887903,
+        "blue_s0": 0.5022005044511164,
+        "blue_waist_m": 0.007090291498989255,
+        "magnetic_gradient_G_cm": 3.1598050179094557,
+        "blue_detuning_anchor_gamma": -3.422180345309597,
+        "blue_crossing_angle_deg": 45.72222444200764,
+        "blue_crossing_z_offset_m": -0.04812983355004587
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -3.2676433417681214,
+        "effective_slowing_z_offset_m": -0.055929154198934045,
+        "effective_slowing_field_G": 17.67252220852235,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.12,
+      "mean_usable_count_per_600": 72.0,
+      "bootstrap_95_ci": [
+        0.10333333333333333,
+        0.1361111111111111
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.35501388888888885,
+        -0.29833333333333334
+      ],
+      "seed_counts": [
+        78,
+        65,
+        73
+      ]
+    },
+    {
+      "candidate_id": "single_pass_06",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 30,
+      "discovery_usable_at_end_fraction": 0.10333333333333333,
+      "discovery_usable_at_end_count": 62,
+      "worker_index": 2,
+      "trial_number": 150,
+      "normalized_boundary_distance": 0.061790205851441245,
+      "power_proxy": 0.009074737888558905,
+      "parameters": {
+        "green_s0": 37.53246328839542,
+        "green_detuning_gamma": -25.417150175836326,
+        "green_waist_m": 0.006344959256787569,
+        "blue_s0": 0.1395957984845898,
+        "blue_waist_m": 0.005592513393178879,
+        "magnetic_gradient_G_cm": 3.193288976230408,
+        "blue_detuning_anchor_gamma": -1.89241382166772,
+        "blue_crossing_angle_deg": 55.74065681345532,
+        "blue_crossing_z_offset_m": -0.043947379423701444
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -1.8210786352922204,
+        "effective_slowing_z_offset_m": -0.05009914415619821,
+        "effective_slowing_field_G": 15.998104475256582,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.10833333333333334,
+      "mean_usable_count_per_600": 65.0,
+      "bootstrap_95_ci": [
+        0.08222222222222222,
+        0.14
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.3794444444444445,
+        -0.3044444444444444
+      ],
+      "seed_counts": [
+        76,
+        58,
+        61
+      ]
+    }
+  ]
+}
