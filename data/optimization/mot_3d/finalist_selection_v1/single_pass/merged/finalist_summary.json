@@ -1,0 +1,167 @@
+{
+  "kind": "merged_mot_3d_finalist_selection",
+  "family": "single_pass",
+  "candidate_count": 3,
+  "particle_count": 15840,
+  "ensemble_file_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+  ],
+  "recoil_seed_count": 3,
+  "bootstrap_method": "crossed resampling of 20 ensemble clusters and recoil seeds",
+  "bootstrap_replicates": 10000,
+  "paired_difference_target_half_width": 0.004,
+  "lcb_leader_candidate_id": "single_pass_finalist_01",
+  "ranked_candidates": [
+    {
+      "candidate_id": "single_pass_finalist_01",
+      "finalist_rank_from_closure": 1,
+      "source_candidate_id": "single_pass_closure_13",
+      "source_closure_role": "hardware_waists_and_green_s0",
+      "source_closure_fraction": 0.513,
+      "source_closure_ci": [
+        0.5036666666666667,
+        0.5215555555555556
+      ],
+      "parameters": {
+        "green_s0": 40.0,
+        "green_detuning_gamma": -25.337937404161192,
+        "green_waist_m": 0.0075,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.0075,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.57957652652381,
+        "effective_slowing_z_offset_m": -0.05388572502899186,
+        "effective_slowing_field_G": 12.194805031253988,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.510753367003367,
+      "mean_usable_count_per_15840": 8090.333333333334,
+      "bootstrap_95_ci": [
+        0.5050176243845763,
+        0.5166877602854859
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        0.0,
+        0.0
+      ],
+      "paired_difference_half_width": 0.0,
+      "seed_counts": [
+        8112,
+        8077,
+        8082
+      ]
+    },
+    {
+      "candidate_id": "single_pass_finalist_03",
+      "finalist_rank_from_closure": 3,
+      "source_candidate_id": "single_pass_closure_12",
+      "source_closure_role": "blue_waist_7p5mm",
+      "source_closure_fraction": 0.49677777777777776,
+      "source_closure_ci": [
+        0.48044444444444445,
+        0.5115555555555555
+      ],
+      "parameters": {
+        "green_s0": 38.54224590225253,
+        "green_detuning_gamma": -25.337937404161192,
+        "green_waist_m": 0.00741220492490673,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.0075,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.57957652652381,
+        "effective_slowing_z_offset_m": -0.05388572502899186,
+        "effective_slowing_field_G": 12.194805031253988,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.495496632996633,
+      "mean_usable_count_per_15840": 7848.666666666667,
+      "bootstrap_95_ci": [
+        0.48972085655004605,
+        0.5011940936583464
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.01995361862105347,
+        -0.010144394029398048
+      ],
+      "paired_difference_half_width": 0.0049046122958277105,
+      "seed_counts": [
+        7825,
+        7855,
+        7866
+      ]
+    },
+    {
+      "candidate_id": "single_pass_finalist_02",
+      "finalist_rank_from_closure": 2,
+      "source_candidate_id": "single_pass_closure_09",
+      "source_closure_role": "angle_45p5",
+      "source_closure_fraction": 0.4935555555555556,
+      "source_closure_ci": [
+        0.48333333333333334,
+        0.5043333333333333
+      ],
+      "parameters": {
+        "green_s0": 38.54224590225253,
+        "green_detuning_gamma": -25.337937404161192,
+        "green_waist_m": 0.00741220492490673,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.00733673976861462,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 45.5,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.5815960235603703,
+        "effective_slowing_z_offset_m": -0.05370613877446794,
+        "effective_slowing_field_G": 12.15416311061482,
+        "reference_slowing_field_G": 14.5625
+      },
+      "mean_usable_fraction": 0.49025673400673403,
+      "mean_usable_count_per_15840": 7765.666666666667,
+      "bootstrap_95_ci": [
+        0.48435078806458365,
+        0.49617710403909376
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.025354335933193143,
+        -0.015482984978160542
+      ],
+      "paired_difference_half_width": 0.0049356754775163,
+      "seed_counts": [
+        7790,
+        7768,
+        7739
+      ]
+    }
+  ]
+}
