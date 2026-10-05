@@ -1,0 +1,487 @@
+{
+  "kind": "merged_mot_3d_early_independent_check",
+  "family": "angled_donut",
+  "candidate_count": 12,
+  "particle_count": 600,
+  "ensemble_file_indices": [
+    16,
+    17,
+    18,
+    19
+  ],
+  "recoil_seed_count": 3,
+  "bootstrap_method": "crossed resampling of ensemble clusters and recoil seeds",
+  "bootstrap_replicates": 5000,
+  "lcb_leader_candidate_id": "angled_donut_00",
+  "ranked_candidates": [
+    {
+      "candidate_id": "angled_donut_00",
+      "selection_roles": [
+        "global_best",
+        "worker_2_best"
+      ],
+      "discovery_rank": 1,
+      "discovery_usable_at_end_fraction": 0.7066666666666667,
+      "discovery_usable_at_end_count": 424,
+      "worker_index": 2,
+      "trial_number": 96,
+      "normalized_boundary_distance": 0.00997651671221303,
+      "power_proxy": 0.005071537589546998,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6727777777777778,
+      "mean_usable_count_per_600": 403.6666666666667,
+      "bootstrap_95_ci": [
+        0.6555416666666667,
+        0.6905555555555556
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        0.0,
+        0.0
+      ],
+      "seed_counts": [
+        402,
+        404,
+        405
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_02",
+      "selection_roles": [
+        "worker_1_best"
+      ],
+      "discovery_rank": 3,
+      "discovery_usable_at_end_fraction": 0.6816666666666666,
+      "discovery_usable_at_end_count": 409,
+      "worker_index": 1,
+      "trial_number": 82,
+      "normalized_boundary_distance": 0.033679652083756895,
+      "power_proxy": 0.011377048386709096,
+      "parameters": {
+        "green_s0": 34.14805058752245,
+        "green_detuning_gamma": -7.199526977815593,
+        "green_waist_m": 0.007317870418519888,
+        "blue_s0": 1.2973418366700562,
+        "blue_waist_m": 0.007213396680409177,
+        "magnetic_gradient_G_cm": 5.814761913539337,
+        "blue_detuning_gamma": -1.9835962062293637,
+        "core_shell_split_radius_m": 0.003680056165670996
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6477777777777778,
+      "mean_usable_count_per_600": 388.6666666666667,
+      "bootstrap_95_ci": [
+        0.6211111111111111,
+        0.6755555555555556
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.039999999999999925,
+        -0.01055555555555554
+      ],
+      "seed_counts": [
+        390,
+        387,
+        389
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_01",
+      "selection_roles": [
+        "worker_0_best"
+      ],
+      "discovery_rank": 6,
+      "discovery_usable_at_end_fraction": 0.6733333333333333,
+      "discovery_usable_at_end_count": 404,
+      "worker_index": 0,
+      "trial_number": 66,
+      "normalized_boundary_distance": 0.01322097353035534,
+      "power_proxy": 0.00610476365666422,
+      "parameters": {
+        "green_s0": 18.318320812311274,
+        "green_detuning_gamma": -16.818891347269684,
+        "green_waist_m": 0.0071922663975319545,
+        "blue_s0": 1.2954217792711995,
+        "blue_waist_m": 0.007344528101723373,
+        "magnetic_gradient_G_cm": 5.927284645583046,
+        "blue_detuning_gamma": -3.0352569064056,
+        "core_shell_split_radius_m": 0.003264693802828019
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6377777777777778,
+      "mean_usable_count_per_600": 382.6666666666667,
+      "bootstrap_95_ci": [
+        0.6033333333333334,
+        0.6755555555555556
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.06000000000000005,
+        -0.010000000000000009
+      ],
+      "seed_counts": [
+        381,
+        385,
+        382
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_11",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 7,
+      "discovery_usable_at_end_fraction": 0.6716666666666666,
+      "discovery_usable_at_end_count": 403,
+      "worker_index": 0,
+      "trial_number": 71,
+      "normalized_boundary_distance": 0.06024959094068516,
+      "power_proxy": 0.005037514646504265,
+      "parameters": {
+        "green_s0": 15.6063128701192,
+        "green_detuning_gamma": -7.058578340142218,
+        "green_waist_m": 0.0070137769544277905,
+        "blue_s0": 1.4126380931360065,
+        "blue_waist_m": 0.007132443741463915,
+        "magnetic_gradient_G_cm": 5.551558052680128,
+        "blue_detuning_gamma": -1.0528667994722691,
+        "core_shell_split_radius_m": 0.0027711283618338553
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6255555555555555,
+      "mean_usable_count_per_600": 375.3333333333333,
+      "bootstrap_95_ci": [
+        0.6,
+        0.655
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.06500000000000006,
+        -0.030000000000000027
+      ],
+      "seed_counts": [
+        377,
+        375,
+        374
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_09",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 24,
+      "discovery_usable_at_end_fraction": 0.6366666666666667,
+      "discovery_usable_at_end_count": 382,
+      "worker_index": 1,
+      "trial_number": 74,
+      "normalized_boundary_distance": 0.013223157995986501,
+      "power_proxy": 0.010194614003727133,
+      "parameters": {
+        "green_s0": 39.477685259158534,
+        "green_detuning_gamma": -9.674925449283078,
+        "green_waist_m": 0.006417186452846697,
+        "blue_s0": 1.3857577506966932,
+        "blue_waist_m": 0.007277877426708765,
+        "magnetic_gradient_G_cm": 4.3817816063330985,
+        "blue_detuning_gamma": -0.8158961130596372,
+        "core_shell_split_radius_m": 0.002706666963354647
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6088888888888889,
+      "mean_usable_count_per_600": 365.33333333333337,
+      "bootstrap_95_ci": [
+        0.5955555555555555,
+        0.6211111111111111
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.0822222222222222,
+        -0.04888888888888887
+      ],
+      "seed_counts": [
+        368,
+        362,
+        366
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_07",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 28,
+      "discovery_usable_at_end_fraction": 0.63,
+      "discovery_usable_at_end_count": 378,
+      "worker_index": 2,
+      "trial_number": 61,
+      "normalized_boundary_distance": 0.047935213853145295,
+      "power_proxy": 0.006101824015814423,
+      "parameters": {
+        "green_s0": 23.029817735319302,
+        "green_detuning_gamma": -10.62679038451077,
+        "green_waist_m": 0.006540768882538672,
+        "blue_s0": 0.6018103866213611,
+        "blue_waist_m": 0.007259646581889193,
+        "magnetic_gradient_G_cm": 5.210595429410925,
+        "blue_detuning_gamma": -2.1210225766789743,
+        "core_shell_split_radius_m": 0.0026917408554125812
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6177777777777778,
+      "mean_usable_count_per_600": 370.66666666666663,
+      "bootstrap_95_ci": [
+        0.5949861111111111,
+        0.6427777777777778
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.09166666666666667,
+        -0.016111111111111187
+      ],
+      "seed_counts": [
+        370,
+        372,
+        370
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_06",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 12,
+      "discovery_usable_at_end_fraction": 0.6566666666666666,
+      "discovery_usable_at_end_count": 394,
+      "worker_index": 2,
+      "trial_number": 51,
+      "normalized_boundary_distance": 0.005001741519956471,
+      "power_proxy": 0.0047808679133232975,
+      "parameters": {
+        "green_s0": 18.686218770654534,
+        "green_detuning_gamma": -32.16719059892457,
+        "green_waist_m": 0.006252869663462904,
+        "blue_s0": 1.1810095385356725,
+        "blue_waist_m": 0.0074874956462001084,
+        "magnetic_gradient_G_cm": 5.219750221674108,
+        "blue_detuning_gamma": -3.1242077564529174,
+        "core_shell_split_radius_m": 0.002648196535704678
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.6322222222222222,
+      "mean_usable_count_per_600": 379.33333333333337,
+      "bootstrap_95_ci": [
+        0.5844444444444444,
+        0.6866666666666666
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.09444444444444444,
+        0.002777777777777768
+      ],
+      "seed_counts": [
+        380,
+        386,
+        372
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_03",
+      "selection_roles": [
+        "best_interior"
+      ],
+      "discovery_rank": 21,
+      "discovery_usable_at_end_fraction": 0.64,
+      "discovery_usable_at_end_count": 384,
+      "worker_index": 2,
+      "trial_number": 71,
+      "normalized_boundary_distance": 0.12329789509472379,
+      "power_proxy": 0.009135888001983616,
+      "parameters": {
+        "green_s0": 31.168419596868134,
+        "green_detuning_gamma": -21.156048326748188,
+        "green_waist_m": 0.006867951548991514,
+        "blue_s0": 1.1418220559425893,
+        "blue_waist_m": 0.006779006017343372,
+        "magnetic_gradient_G_cm": 4.9750922160741045,
+        "blue_detuning_gamma": -2.1248181535785227,
+        "core_shell_split_radius_m": 0.002993191580378895
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.5911111111111111,
+      "mean_usable_count_per_600": 354.6666666666667,
+      "bootstrap_95_ci": [
+        0.5566666666666666,
+        0.63
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.11611111111111105,
+        -0.050000000000000044
+      ],
+      "seed_counts": [
+        344,
+        363,
+        357
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_10",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 31,
+      "discovery_usable_at_end_fraction": 0.6216666666666667,
+      "discovery_usable_at_end_count": 373,
+      "worker_index": 0,
+      "trial_number": 34,
+      "normalized_boundary_distance": 0.020786493009705177,
+      "power_proxy": 0.009699801859863544,
+      "parameters": {
+        "green_s0": 36.28838609970041,
+        "green_detuning_gamma": -19.033869064028988,
+        "green_waist_m": 0.006569277355921734,
+        "blue_s0": 1.266257859999024,
+        "blue_waist_m": 0.006321016268682706,
+        "magnetic_gradient_G_cm": 2.288221848621337,
+        "blue_detuning_gamma": -1.1433469347862886,
+        "core_shell_split_radius_m": 0.0025831459720388208
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.5744444444444444,
+      "mean_usable_count_per_600": 344.66666666666663,
+      "bootstrap_95_ci": [
+        0.5533333333333333,
+        0.6
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.11777777777777776,
+        -0.07499999999999996
+      ],
+      "seed_counts": [
+        342,
+        341,
+        351
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_04",
+      "selection_roles": [
+        "lower_power"
+      ],
+      "discovery_rank": 25,
+      "discovery_usable_at_end_fraction": 0.6333333333333333,
+      "discovery_usable_at_end_count": 380,
+      "worker_index": 2,
+      "trial_number": 72,
+      "normalized_boundary_distance": 0.014327640217570381,
+      "power_proxy": 0.0006159319462790989,
+      "parameters": {
+        "green_s0": 1.7436275211629182,
+        "green_detuning_gamma": -21.553764571386576,
+        "green_waist_m": 0.005774724295317801,
+        "blue_s0": 0.8455241993336526,
+        "blue_waist_m": 0.0072554582030806185,
+        "magnetic_gradient_G_cm": 5.921197978803363,
+        "blue_detuning_gamma": -1.3736125756818485,
+        "core_shell_split_radius_m": 0.00274880598609559
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.57,
+      "mean_usable_count_per_600": 341.99999999999994,
+      "bootstrap_95_ci": [
+        0.54,
+        0.6011111111111112
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.1233333333333334,
+        -0.08387500000000021
+      ],
+      "seed_counts": [
+        336,
+        347,
+        343
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_08",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 48,
+      "discovery_usable_at_end_fraction": 0.5966666666666667,
+      "discovery_usable_at_end_count": 358,
+      "worker_index": 1,
+      "trial_number": 88,
+      "normalized_boundary_distance": 0.019793716790912463,
+      "power_proxy": 0.005503348239467215,
+      "parameters": {
+        "green_s0": 25.26353463179292,
+        "green_detuning_gamma": -8.440010259603515,
+        "green_waist_m": 0.005755979906980673,
+        "blue_s0": 1.471299110653177,
+        "blue_waist_m": 0.007383564185285147,
+        "magnetic_gradient_G_cm": 5.555766183729403,
+        "blue_detuning_gamma": -1.5721393514722464,
+        "core_shell_split_radius_m": 0.0043371149176097395
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.5422222222222223,
+      "mean_usable_count_per_600": 325.33333333333337,
+      "bootstrap_95_ci": [
+        0.5172222222222222,
+        0.575
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.15112499999999998,
+        -0.10666666666666669
+      ],
+      "seed_counts": [
+        328,
+        323,
+        325
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_05",
+      "selection_roles": [
+        "diverse_competitive_region"
+      ],
+      "discovery_rank": 43,
+      "discovery_usable_at_end_fraction": 0.605,
+      "discovery_usable_at_end_count": 363,
+      "worker_index": 1,
+      "trial_number": 66,
+      "normalized_boundary_distance": 0.010566401136247532,
+      "power_proxy": 0.0034223360793762883,
+      "parameters": {
+        "green_s0": 20.11571607086575,
+        "green_detuning_gamma": -11.40641062125394,
+        "green_waist_m": 0.005026416002840619,
+        "blue_s0": 1.2634918215758488,
+        "blue_waist_m": 0.007014544346346129,
+        "magnetic_gradient_G_cm": 2.996236110401359,
+        "blue_detuning_gamma": -1.3431408823837812,
+        "core_shell_split_radius_m": 0.002567931124599306
+      },
+      "derived_parameters": {},
+      "mean_usable_fraction": 0.5405555555555556,
+      "mean_usable_count_per_600": 324.3333333333333,
+      "bootstrap_95_ci": [
+        0.4855555555555556,
+        0.59
+      ],
+      "paired_difference_from_lcb_leader_95_ci": [
+        -0.17500000000000004,
+        -0.09111111111111114
+      ],
+      "seed_counts": [
+        328,
+        323,
+        322
+      ]
+    }
+  ]
+}

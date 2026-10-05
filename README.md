@@ -25,6 +25,7 @@ The code is built around a Yb-171 atom model with the relevant optical transitio
 New contributors should also read `PROJECT_HANDOFF.md`. It records the scientific
 status, parameter categories, data-authority convention, Zeus workflow, and
 current priorities that cannot be inferred safely from code alone.
+The maintained rationale for selecting the two 3D-MOT finalists is in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the full search and validation design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`.
 
 To re-optimize detuning and magnet radius for one or more available 2D-MOT
 laser intensities, follow `docs/2D_MOT_S0_CAMPAIGN.md`. That maintained workflow
@@ -147,39 +148,37 @@ Any compatible `(N, 6)` state array may be supplied as the input.
 python -m simulations.mot_3d --input data/particle_states/after_2d_mot/mot_2d_survivors.npy
 ```
 
-The 3D stage saves the captured states and a JSON summary containing the capture
-percentage and exact criterion. Run any stage with `--help` to see its numerical
-and file-path options.
+The 3D stage saves captured states and a JSON summary containing the capture percentage and exact criterion. Run it with `--help` for numerical and file-path options.
 
-To compare how the three provisional 3D-MOT profiles retain the same incoming
-2D-MOT survivors, run:
+The maintained 3D-MOT design space now contains exactly two candidates:
+
+- `angled_donut`: six green core beams and six complementary, center-blocked
+  blue shell beams;
+- `single_pass`: the same six-beam angled green MOT, plus two localized blue
+  entrance-slowing beams in the `yz` plane. The blue beams cross upstream of
+  the MOT and both propagate with a `-z` component.
+
+The former crossed-beam and finite-gate geometries were exploratory studies.
+They are no longer selectable configurations and their one-off scan/submit
+programs have been removed. The compact evidence supporting that decision and
+the figures used to present it are retained in
+[`docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`](docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md)
+and [`graphs/mot_3d_configuration_decision/`](graphs/mot_3d_configuration_decision/).
+
+The detailed plan for the forthcoming eight-parameter donut optimization and
+nine-parameter single-pass optimization is
+[`docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`](docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md).
+It defines the common capture metric, data split, Optuna discovery stage,
+high-statistics refinement, near-optimal hyperrectangle construction, and the
+held-out atom-number prediction. The numerical search code will be added only
+after the laboratory bounds, power constraints, and accepted robustness loss
+have been agreed.
+
+Geometry figures for the two maintained profiles can be regenerated with:
 
 ```bash
-python -m studies.compare_3d_mot_retention
+MPLBACKEND=Agg python -m graphs_scripts.plot_3d_mot_configurations
 ```
-
-The study identifies each profile's peak population satisfying the complete
-operational capture criterion (radius, minimum continuous residence, and
-maximum speed), follows only atoms that remain inside the sphere continuously,
-and writes a comparison plot plus a JSON report under
-`data/validation/mot_3d/retention/`. It reports an exponential lifetime `tau`
-only when the post-peak loss is sufficiently large and the fit passes the
-documented quality threshold. The JSON report also separates arrival into the
-capture region, slowing below the speed threshold, continuous residence, and
-full capture eligibility, and summarizes closest approach, speed, and residence
-time. Use `--help` for local subsets, runtime settings, and output options.
-
-Before scanning the magnetic-field gradient, the blue-slower screening study
-varies only the 399-nm detuning (in Gamma) and saturation parameter while using
-the same input atoms and seed at every point:
-
-```bash
-python -m studies.scan_3d_mot_blue_slower --max-atoms 200
-```
-
-It saves CSV and JSON tables plus heatmaps under
-`data/validation/mot_3d/blue_slower_scan/`. The green-light, magnetic-field,
-geometry, and capture settings remain fixed during this first-stage scan.
 
 ## Recommended entry point
 

@@ -1,0 +1,323 @@
+{
+  "kind": "mot_3d_finalist_selection",
+  "family": "single_pass",
+  "candidate_count": 3,
+  "selection_rule": "top three closure candidates ranked by conservative lower confidence bound",
+  "candidates": [
+    {
+      "candidate_id": "single_pass_finalist_01",
+      "finalist_rank_from_closure": 1,
+      "source_candidate_id": "single_pass_closure_13",
+      "source_closure_role": "hardware_waists_and_green_s0",
+      "source_closure_fraction": 0.513,
+      "source_closure_ci": [
+        0.5036666666666667,
+        0.5215555555555556
+      ],
+      "parameters": {
+        "green_s0": 40.0,
+        "green_detuning_gamma": -25.337937404161192,
+        "green_waist_m": 0.0075,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.0075,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.57957652652381,
+        "effective_slowing_z_offset_m": -0.05388572502899186,
+        "effective_slowing_field_G": 12.194805031253988,
+        "reference_slowing_field_G": 14.5625
+      },
+      "resolved_profile": {
+        "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+        "beam_layout": "angled_green_yz_single_pass",
+        "gravity_axis": "x",
+        "transport_axis": "z",
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186,
+        "maximum_blue_center_relative_intensity": 0.001,
+        "xz_angle_from_z_deg": 30.0,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "beam_components": {
+          "+XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "SP_FROM_NEG_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          },
+          "SP_FROM_POS_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          }
+        },
+        "399": {
+          "enabled": true,
+          "s0": 0.20308958176149428,
+          "detuning_gamma": -2.57957652652381,
+          "waist_m": 0.0075,
+          "profile": "gaussian",
+          "polarization_by_axis": {
+            "SP_FROM_NEG_Y": "right",
+            "SP_FROM_POS_Y": "right"
+          }
+        },
+        "556": {
+          "enabled": true,
+          "s0": 40.0,
+          "detuning_gamma": -25.337937404161192,
+          "waist_m": 0.0075,
+          "profile": "gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          }
+        }
+      }
+    },
+    {
+      "candidate_id": "single_pass_finalist_02",
+      "finalist_rank_from_closure": 2,
+      "source_candidate_id": "single_pass_closure_09",
+      "source_closure_role": "angle_45p5",
+      "source_closure_fraction": 0.4935555555555556,
+      "source_closure_ci": [
+        0.48333333333333334,
+        0.5043333333333333
+      ],
+      "parameters": {
+        "green_s0": 38.54224590225253,
+        "green_detuning_gamma": -25.337937404161192,
+        "green_waist_m": 0.00741220492490673,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.00733673976861462,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 45.5,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.5815960235603703,
+        "effective_slowing_z_offset_m": -0.05370613877446794,
+        "effective_slowing_field_G": 12.15416311061482,
+        "reference_slowing_field_G": 14.5625
+      },
+      "resolved_profile": {
+        "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+        "beam_layout": "angled_green_yz_single_pass",
+        "gravity_axis": "x",
+        "transport_axis": "z",
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_crossing_angle_deg": 45.5,
+        "blue_crossing_z_offset_m": -0.04563572502899186,
+        "maximum_blue_center_relative_intensity": 0.001,
+        "xz_angle_from_z_deg": 30.0,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "beam_components": {
+          "+XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "SP_FROM_NEG_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          },
+          "SP_FROM_POS_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          }
+        },
+        "399": {
+          "enabled": true,
+          "s0": 0.20308958176149428,
+          "detuning_gamma": -2.5815960235603703,
+          "waist_m": 0.00733673976861462,
+          "profile": "gaussian",
+          "polarization_by_axis": {
+            "SP_FROM_NEG_Y": "right",
+            "SP_FROM_POS_Y": "right"
+          }
+        },
+        "556": {
+          "enabled": true,
+          "s0": 38.54224590225253,
+          "detuning_gamma": -25.337937404161192,
+          "waist_m": 0.00741220492490673,
+          "profile": "gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          }
+        }
+      }
+    },
+    {
+      "candidate_id": "single_pass_finalist_03",
+      "finalist_rank_from_closure": 3,
+      "source_candidate_id": "single_pass_closure_12",
+      "source_closure_role": "blue_waist_7p5mm",
+      "source_closure_fraction": 0.49677777777777776,
+      "source_closure_ci": [
+        0.48044444444444445,
+        0.5115555555555555
+      ],
+      "parameters": {
+        "green_s0": 38.54224590225253,
+        "green_detuning_gamma": -25.337937404161192,
+        "green_waist_m": 0.00741220492490673,
+        "blue_s0": 0.20308958176149428,
+        "blue_waist_m": 0.0075,
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_detuning_anchor_gamma": -2.461925763526821,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -2.57957652652381,
+        "effective_slowing_z_offset_m": -0.05388572502899186,
+        "effective_slowing_field_G": 12.194805031253988,
+        "reference_slowing_field_G": 14.5625
+      },
+      "resolved_profile": {
+        "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+        "beam_layout": "angled_green_yz_single_pass",
+        "gravity_axis": "x",
+        "transport_axis": "z",
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 2.2630863785711113,
+        "blue_crossing_angle_deg": 46.338712100216625,
+        "blue_crossing_z_offset_m": -0.04563572502899186,
+        "maximum_blue_center_relative_intensity": 0.001,
+        "xz_angle_from_z_deg": 30.0,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "beam_components": {
+          "+XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "SP_FROM_NEG_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          },
+          "SP_FROM_POS_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          }
+        },
+        "399": {
+          "enabled": true,
+          "s0": 0.20308958176149428,
+          "detuning_gamma": -2.57957652652381,
+          "waist_m": 0.0075,
+          "profile": "gaussian",
+          "polarization_by_axis": {
+            "SP_FROM_NEG_Y": "right",
+            "SP_FROM_POS_Y": "right"
+          }
+        },
+        "556": {
+          "enabled": true,
+          "s0": 38.54224590225253,
+          "detuning_gamma": -25.337937404161192,
+          "waist_m": 0.00741220492490673,
+          "profile": "gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          }
+        }
+      }
+    }
+  ]
+}

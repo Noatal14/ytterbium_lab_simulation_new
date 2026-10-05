@@ -13,11 +13,13 @@ from config import (
 
 
 class DonutGaussianBeam(CircularGaussianBeam):
-    """A regular Gaussian beam with a completely blocked central aperture.
+    """A Gaussian annulus with hard inner and optional outer cutoffs.
 
     The optical Gaussian is unchanged outside ``inner_cutoff_radius``. Inside
     that radius its intensity is exactly zero, representing the experimental
-    beam after its center is removed by the mirror arrangement.
+    beam after its center is removed by the mirror arrangement.  When
+    ``outer_cutoff_radius`` is supplied, the chamber aperture also clips the
+    outside of the shell.
     """
 
     def __init__(
@@ -31,11 +33,21 @@ class DonutGaussianBeam(CircularGaussianBeam):
         polarization=None,
         tag=None,
         inner_cutoff_radius=0.5e-3,
+        outer_cutoff_radius=None,
         **kwargs,
     ):
         self.inner_cutoff_radius = float(inner_cutoff_radius)
         if self.inner_cutoff_radius <= 0.0:
             raise ValueError("inner_cutoff_radius must be positive.")
+        self.outer_cutoff_radius = (
+            None if outer_cutoff_radius is None else float(outer_cutoff_radius)
+        )
+        if self.outer_cutoff_radius is not None and (
+            self.outer_cutoff_radius <= self.inner_cutoff_radius
+        ):
+            raise ValueError(
+                "outer_cutoff_radius must be greater than inner_cutoff_radius."
+            )
         super().__init__(
             wavelength=wavelength,
             waist=waist,
@@ -63,6 +75,10 @@ class DonutGaussianBeam(CircularGaussianBeam):
         rho_laser = np.sqrt(x_laser**2 + y_laser**2)
         intensity = CircularGaussianBeam._intensity_func(self, position)
         intensity = np.where(rho_laser < self.inner_cutoff_radius, 0.0, intensity)
+        if self.outer_cutoff_radius is not None:
+            intensity = np.where(
+                rho_laser <= self.outer_cutoff_radius, intensity, 0.0
+            )
         return intensity
 
 
@@ -92,6 +108,80 @@ class OuterClippedGaussianBeam(CircularGaussianBeam):
         return np.where(rho_laser < self.outer_cutoff_radius, intensity, 0.0)
 
 
+class UpstreamPlanarClippedGaussianBeam(CircularGaussianBeam):
+    """Circular Gaussian transmitted only on the upstream side of a lab-z plane."""
+
+    def __init__(self, *args, maximum_lab_z_m, **kwargs):
+        self.maximum_lab_z_m = float(maximum_lab_z_m)
+        if not np.isfinite(self.maximum_lab_z_m):
+            raise ValueError("maximum_lab_z_m must be finite.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Upstream planar-clipped Gaussian Beam"
+
+    @property
+    def disp_type(self):
+        return "Planar-clipped beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position = np.asarray(position, dtype=float)
+        intensity = CircularGaussianBeam._intensity_func(self, position)
+        # The boundary belongs to the illuminated upstream half-space. This
+        # preserves a crossing located exactly on the physical cutoff plane.
+        return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
+
+
+class UpstreamClippedDonutGaussianBeam(DonutGaussianBeam):
+    """Center-blocked Gaussian additionally terminated at a lab-z plane."""
+
+    def __init__(self, *args, maximum_lab_z_m, **kwargs):
+        self.maximum_lab_z_m = float(maximum_lab_z_m)
+        if not np.isfinite(self.maximum_lab_z_m):
+            raise ValueError("maximum_lab_z_m must be finite.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Upstream-clipped center-blocked Gaussian Beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position = np.asarray(position, dtype=float)
+        intensity = DonutGaussianBeam._intensity_func(self, position)
+        return np.where(position[..., 2] <= self.maximum_lab_z_m, intensity, 0.0)
+
+
+class WindowClippedDonutGaussianBeam(DonutGaussianBeam):
+    """Center-blocked Gaussian transmitted only between two lab-z planes."""
+
+    def __init__(self, *args, minimum_lab_z_m, maximum_lab_z_m, **kwargs):
+        self.minimum_lab_z_m = float(minimum_lab_z_m)
+        self.maximum_lab_z_m = float(maximum_lab_z_m)
+        if not (
+            np.isfinite(self.minimum_lab_z_m)
+            and np.isfinite(self.maximum_lab_z_m)
+            and self.minimum_lab_z_m < self.maximum_lab_z_m
+        ):
+            raise ValueError("Finite beam-window bounds must satisfy min < max.")
+        super().__init__(*args, **kwargs)
+
+    @property
+    def type(self):
+        return "Window-clipped center-blocked Gaussian Beam"
+
+    @staticmethod
+    def _intensity_func(self, position):
+        position = np.asarray(position, dtype=float)
+        intensity = DonutGaussianBeam._intensity_func(self, position)
+        inside_window = (position[..., 2] >= self.minimum_lab_z_m) & (
+            position[..., 2] <= self.maximum_lab_z_m
+        )
+        return np.where(inside_window, intensity, 0.0)
+
+
 def _normalize_vector(vec):
     vec = np.asarray(vec, dtype=float)
     norm = np.linalg.norm(vec)
@@ -114,23 +204,19 @@ def _angled_xz_y_directions(theta_deg):
     ]
 
 
-def _five_beam_gravity_directions():
-    # Gravity acts along -x, but source position and propagation direction are not
-    # the same quantity. A laser source physically above the MOT can still
-    # propagate downward (-x), while the remaining upward beam is the +x
-    # propagation direction that opposes gravity.
-    #
-    # The other two counter-propagating axes lie in the yz plane, perpendicular
-    # to gravity. They are rotated by 45 degrees from the atomic +z transport
-    # axis. The axes remain mutually orthogonal, but no beam is parallel or
-    # antiparallel to the atomic transport direction.
-    diagonal = 1.0 / np.sqrt(2.0)
+def _single_pass_yz_directions(crossing_angle_deg):
+    """Return the two blue entrance-slower directions in the yz plane.
+
+    Both beams propagate toward -z.  The first originates at negative y and
+    therefore has a +y component; the second originates at positive y and has
+    a -y component.  Their full included angle is ``crossing_angle_deg``.
+    """
+    half_angle = 0.5 * np.deg2rad(float(crossing_angle_deg))
+    transverse = np.sin(half_angle)
+    longitudinal = np.cos(half_angle)
     return [
-        ("+X", _normalize_vector((1.0, 0.0, 0.0))),
-        ("+YZ_1", _normalize_vector((0.0, diagonal, diagonal))),
-        ("-YZ_1", _normalize_vector((0.0, -diagonal, -diagonal))),
-        ("+YZ_2", _normalize_vector((0.0, -diagonal, diagonal))),
-        ("-YZ_2", _normalize_vector((0.0, diagonal, -diagonal))),
+        ("SP_FROM_NEG_Y", _normalize_vector((0.0, transverse, -longitudinal))),
+        ("SP_FROM_POS_Y", _normalize_vector((0.0, -transverse, -longitudinal))),
     ]
 
 
@@ -139,8 +225,14 @@ def _get_beam_directions(profile):
     if layout == "angled_xz_y":
         theta_deg = float(profile.get("xz_angle_from_z_deg", 30.0))
         return _angled_xz_y_directions(theta_deg)
-    if layout == "rotated_yz_minus_upper_x":
-        return _five_beam_gravity_directions()
+    if layout == "angled_green_yz_single_pass":
+        green_directions = _angled_xz_y_directions(
+            float(profile.get("xz_angle_from_z_deg", 30.0))
+        )
+        blue_directions = _single_pass_yz_directions(
+            float(profile["blue_crossing_angle_deg"])
+        )
+        return [*green_directions, *blue_directions]
     raise ValueError(f"Unsupported 3D-MOT beam layout '{layout}'.")
 
 
@@ -161,6 +253,42 @@ def _validate_profile(profile):
         if angle is None or not 0.0 < float(angle) < 90.0:
             raise ValueError(
                 "Angled 3D-MOT profiles require 0 < xz_angle_from_z_deg < 90."
+            )
+
+    if layout == "angled_green_yz_single_pass":
+        angle = profile.get("blue_crossing_angle_deg")
+        if angle is None or not 0.0 < float(angle) < 180.0:
+            raise ValueError(
+                "Single-pass profiles require 0 < blue_crossing_angle_deg < 180."
+            )
+        offset = profile.get("blue_crossing_z_offset_m")
+        if offset is None or not np.isfinite(offset) or float(offset) >= 0.0:
+            raise ValueError(
+                "Single-pass profiles require a finite negative "
+                "blue_crossing_z_offset_m."
+            )
+        maximum_center_fraction = profile.get(
+            "maximum_blue_center_relative_intensity"
+        )
+        if maximum_center_fraction is None or not 0.0 < float(maximum_center_fraction) < 1.0:
+            raise ValueError(
+                "Single-pass profiles require 0 < "
+                "maximum_blue_center_relative_intensity < 1."
+            )
+        blue_waist = float(profile["399"]["waist_m"])
+        center_axis_distance = abs(float(offset)) * np.sin(
+            0.5 * np.deg2rad(float(angle))
+        )
+        estimated_center_fraction = np.exp(
+            -2.0 * (center_axis_distance / blue_waist) ** 2
+        )
+        if estimated_center_fraction > float(maximum_center_fraction):
+            raise ValueError(
+                "Single-pass blue geometry illuminates the MOT center too "
+                f"strongly: estimated relative intensity "
+                f"{estimated_center_fraction:.6g} exceeds "
+                f"{float(maximum_center_fraction):.6g}. Move the crossing "
+                "farther upstream, increase the angle, or reduce the waist."
             )
 
     strong_axis = profile.get("magnetic_strong_axis", "z")
@@ -191,7 +319,9 @@ def _validate_profile(profile):
             "gaussian",
             "donut",
             "elliptical",
-            "outer_clipped_gaussian",
+                "outer_clipped_gaussian",
+                "upstream_planar_clipped_gaussian",
+                "upstream_clipped_donut",
         }:
             raise ValueError(
                 f"Unsupported 3D-MOT {wavelength_key} profile "
@@ -214,6 +344,24 @@ def _validate_profile(profile):
                     "for an outer-clipped Gaussian beam."
                 )
 
+        if component["profile"] == "upstream_planar_clipped_gaussian":
+            exclusion = component.get("green_exclusion_radius_m")
+            if exclusion is None or float(exclusion) <= 0.0:
+                raise ValueError(
+                    f"Set a positive {wavelength_key}.green_exclusion_radius_m "
+                    "for an upstream planar-clipped Gaussian beam."
+                )
+            offset = np.asarray(component.get("center_offset_m"), dtype=float)
+            if offset.shape != (3,) or not np.all(np.isfinite(offset)):
+                raise ValueError(
+                    f"Set a finite {wavelength_key}.center_offset_m 3-vector."
+                )
+            if offset[2] > -float(exclusion):
+                raise ValueError(
+                    "The blue crossing must lie on or upstream of its cutoff "
+                    "plane: crossing_distance_m >= green_exclusion_radius_m."
+                )
+
         polarization_by_axis = component.get("polarization_by_axis", {})
         invalid_polarizations = {
             axis_tag: handedness
@@ -225,21 +373,69 @@ def _validate_profile(profile):
                 "3D-MOT polarization_by_axis values must be 'left' or 'right': "
                 f"{invalid_polarizations}"
             )
+        s0_by_axis = component.get("s0_by_axis", {})
+        invalid_s0 = {
+            axis_tag: value
+            for axis_tag, value in s0_by_axis.items()
+            if not np.isfinite(value) or float(value) <= 0.0
+        }
+        if invalid_s0:
+            raise ValueError(
+                "3D-MOT s0_by_axis values must be finite and positive: "
+                f"{invalid_s0}"
+            )
 
     blue = profile["399"]
-    if blue["enabled"] and blue["profile"] == "donut":
+    if blue["enabled"] and blue["profile"] in {"donut", "upstream_clipped_donut"}:
         cutoff = blue.get("inner_cutoff_radius_m")
         if cutoff is None or float(cutoff) <= 0.0:
             raise ValueError(
                 "Set a positive 399.inner_cutoff_radius_m in config.py before "
                 "using the center-blocked Gaussian 3D-MOT profile."
             )
+        outer_cutoff = blue.get("outer_cutoff_radius_m")
+        if outer_cutoff is not None and float(outer_cutoff) <= float(cutoff):
+            raise ValueError(
+                "399.outer_cutoff_radius_m must exceed "
+                "399.inner_cutoff_radius_m."
+            )
+        green = profile.get("556", {})
+        if green.get("profile") == "outer_clipped_gaussian" and not np.isclose(
+            float(green.get("outer_cutoff_radius_m", np.nan)), float(cutoff)
+        ):
+            raise ValueError(
+                "The donut requires one shared boundary: "
+                "556.outer_cutoff_radius_m must equal "
+                "399.inner_cutoff_radius_m."
+            )
+    blue_groups = blue.get("beam_groups")
+    if blue_groups is not None:
+        if not isinstance(blue_groups, (list, tuple)) or not blue_groups:
+            raise ValueError("399.beam_groups must be a non-empty sequence.")
+        names = [group.get("name") for group in blue_groups]
+        if any(not isinstance(name, str) or not name for name in names):
+            raise ValueError("Every 399 beam group requires a non-empty name.")
+        if len(set(names)) != len(names):
+            raise ValueError("399 beam-group names must be unique.")
+        valid_tags = {tag for tag, _ in _get_beam_directions(profile)}
+        for group in blue_groups:
+            tags = group.get("axis_tags")
+            if not tags or not set(tags) <= valid_tags:
+                raise ValueError(
+                    f"Invalid axis_tags for 399 beam group {group['name']!r}."
+                )
+            if group.get("profile", blue.get("profile")) not in {
+                "upstream_clipped_donut",
+                "window_clipped_donut",
+                "upstream_planar_clipped_gaussian",
+            }:
+                raise ValueError("Finite 399 beam groups require a planar-clipped profile.")
 
-    if layout == "rotated_yz_minus_upper_x":
+    if layout == "angled_green_yz_single_pass":
         components = profile.get("beam_components")
         if not isinstance(components, dict):
-            raise ValueError("five_beam_gravity requires beam_components.")
-        for axis_tag, _ in _five_beam_gravity_directions():
+            raise ValueError("single_pass requires beam_components.")
+        for axis_tag, _ in _get_beam_directions(profile):
             axis = components.get(axis_tag)
             if not isinstance(axis, dict):
                 raise ValueError(f"Missing beam_components entry for {axis_tag}.")
@@ -247,7 +443,7 @@ def _validate_profile(profile):
                 if axis.get(key) not in (True, False):
                     raise ValueError(
                         f"Choose True or False for beam_components.{axis_tag}."
-                        f"{key} before using five_beam_gravity."
+                        f"{key} before using single_pass."
                     )
 
 
@@ -255,6 +451,13 @@ def _beam_profile_center(profile, wavelength_key, base_center):
     base_center = np.asarray(base_center, dtype=float)
     center = base_center
     wavelength_cfg = profile.get(wavelength_key, {})
+    if (
+        wavelength_key == "399"
+        and profile.get("beam_layout") == "angled_green_yz_single_pass"
+    ):
+        return center + np.array(
+            [0.0, 0.0, float(profile["blue_crossing_z_offset_m"])]
+        )
     if "center_offset_m" in wavelength_cfg:
         return center + np.asarray(wavelength_cfg["center_offset_m"], dtype=float)
     if profile.get("blue_green_center_separation_m", 0.0) == 0.0:
@@ -309,8 +512,6 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         center_position = profile["center_position_m"]
     center_position = np.asarray(center_position, dtype=float)
     blue_sat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0
-    peak_intensity_399 = profile["399"]["s0"] * blue_sat_W_m2
-    peak_intensity_556 = profile["556"]["s0"] * GREEN_SATURATION_INTENSITY_W_M2
     beam_axes = _get_beam_directions(profile)
 
     def make_beam(
@@ -324,15 +525,23 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
         polarization,
         inner_cutoff_radius=None,
         outer_cutoff_radius=None,
+        maximum_lab_z_m=None,
+        minimum_lab_z_m=None,
         waist_short=None,
         waist_long=None,
     ):
         if profile_kind == "donut":
             beam_cls = DonutGaussianBeam
+        elif profile_kind == "upstream_clipped_donut":
+            beam_cls = UpstreamClippedDonutGaussianBeam
+        elif profile_kind == "window_clipped_donut":
+            beam_cls = WindowClippedDonutGaussianBeam
         elif profile_kind == "outer_clipped_gaussian":
             beam_cls = OuterClippedGaussianBeam
         elif profile_kind == "elliptical":
             beam_cls = EllipticalLaserBeam
+        elif profile_kind == "upstream_planar_clipped_gaussian":
+            beam_cls = UpstreamPlanarClippedGaussianBeam
         else:
             beam_cls = CircularGaussianBeam
         beam_kwargs = dict(
@@ -344,57 +553,78 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
             polarization=polarization,
             tag=tag,
         )
-        if profile_kind == "donut":
+        if profile_kind in {"donut", "upstream_clipped_donut", "window_clipped_donut"}:
             beam_kwargs["inner_cutoff_radius"] = inner_cutoff_radius
+            beam_kwargs["outer_cutoff_radius"] = outer_cutoff_radius
+            if profile_kind == "upstream_clipped_donut":
+                beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
+            elif profile_kind == "window_clipped_donut":
+                beam_kwargs["minimum_lab_z_m"] = minimum_lab_z_m
+                beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
         elif profile_kind == "outer_clipped_gaussian":
             beam_kwargs["outer_cutoff_radius"] = outer_cutoff_radius
         elif profile_kind == "elliptical":
             beam_kwargs.pop("waist")
             beam_kwargs["wx"] = waist_short
             beam_kwargs["wy"] = waist_long
+        elif profile_kind == "upstream_planar_clipped_gaussian":
+            beam_kwargs["maximum_lab_z_m"] = maximum_lab_z_m
         beam = beam_cls(**beam_kwargs)
         beam.profile_kind = profile_kind
         beam.set_power_from_peak_I(peak_intensity)
         return beam
 
     beams = []
+    direction_by_tag = dict(beam_axes)
+    blue_groups = profile.get("399", {}).get("beam_groups")
     for axis_tag, direction in beam_axes:
         beam_399_cfg = profile.get("399", {})
         beam_556_cfg = profile.get("556", {})
         axis_components = profile.get("beam_components", {}).get(axis_tag, {})
 
-        enabled_399 = axis_components.get(
-            "399_enabled", beam_399_cfg.get("enabled", True)
+        enabled_399 = not blue_groups and beam_399_cfg.get("enabled", True) and axis_components.get(
+            "399_enabled", True
         )
-        enabled_556 = axis_components.get(
-            "556_enabled", beam_556_cfg.get("enabled", True)
+        enabled_556 = beam_556_cfg.get("enabled", True) and axis_components.get(
+            "556_enabled", True
         )
 
         if enabled_399:
+            axis_s0_399 = beam_399_cfg.get("s0_by_axis", {}).get(
+                axis_tag, beam_399_cfg["s0"]
+            )
             beam_center = _beam_profile_center(profile, "399", center_position)
             beams.append(
                 make_beam(
                     wavelength=BLUE_TRANSITION.wavelength_m,
                     waist=beam_399_cfg.get("waist_m", 0.01),
-                    peak_intensity=peak_intensity_399,
+                    peak_intensity=axis_s0_399 * blue_sat_W_m2,
                     direction=direction,
                     tag=f"3DMOT_399_{axis_tag}",
                     beam_center=beam_center,
                     profile_kind=beam_399_cfg["profile"],
                     polarization=_beam_polarization(beam_399_cfg, axis_tag),
                     inner_cutoff_radius=beam_399_cfg.get("inner_cutoff_radius_m"),
+                    outer_cutoff_radius=beam_399_cfg.get("outer_cutoff_radius_m"),
                     waist_short=beam_399_cfg.get("waist_short_m"),
                     waist_long=beam_399_cfg.get("waist_long_m"),
+                    maximum_lab_z_m=(
+                        center_position[2]
+                        - beam_399_cfg.get("green_exclusion_radius_m", 0.0)
+                    ),
                 )
             )
 
         if enabled_556:
+            axis_s0_556 = beam_556_cfg.get("s0_by_axis", {}).get(
+                axis_tag, beam_556_cfg["s0"]
+            )
             beam_center = _beam_profile_center(profile, "556", center_position)
             beams.append(
                 make_beam(
                     wavelength=GREEN_TRANSITION.wavelength_m,
                     waist=beam_556_cfg["waist_m"],
-                    peak_intensity=peak_intensity_556,
+                    peak_intensity=axis_s0_556 * GREEN_SATURATION_INTENSITY_W_M2,
                     direction=direction,
                     tag=f"3DMOT_556_{axis_tag}",
                     beam_center=beam_center,
@@ -405,5 +635,35 @@ def setup_3dmot_lasers(mot_3d_config=None, center_position=None, profile_name=No
                     ),
                 )
             )
+
+    if blue_groups:
+        beam_399_cfg = profile["399"]
+        for group in blue_groups:
+            group_cfg = {**beam_399_cfg, **group}
+            group_name = group_cfg["name"]
+            beam_center = center_position + np.asarray(
+                group_cfg.get("center_offset_m", (0.0, 0.0, 0.0)), dtype=float
+            )
+            maximum_lab_z_m = group_cfg.get(
+                "maximum_lab_z_m",
+                center_position[2] - group_cfg.get("green_exclusion_radius_m", 0.0),
+            )
+            for axis_tag in group_cfg["axis_tags"]:
+                beams.append(
+                    make_beam(
+                        wavelength=BLUE_TRANSITION.wavelength_m,
+                        waist=group_cfg["waist_m"],
+                        peak_intensity=group_cfg["s0"] * blue_sat_W_m2,
+                        direction=direction_by_tag[axis_tag],
+                        tag=f"3DMOT_399_{group_name}_{axis_tag}",
+                        beam_center=beam_center,
+                        profile_kind=group_cfg["profile"],
+                        polarization=_beam_polarization(group_cfg, axis_tag),
+                        inner_cutoff_radius=group_cfg.get("inner_cutoff_radius_m"),
+                        outer_cutoff_radius=group_cfg.get("outer_cutoff_radius_m"),
+                        maximum_lab_z_m=maximum_lab_z_m,
+                        minimum_lab_z_m=group_cfg.get("minimum_lab_z_m"),
+                    )
+                )
 
     return beams

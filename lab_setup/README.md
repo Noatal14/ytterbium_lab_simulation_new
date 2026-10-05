@@ -50,17 +50,31 @@ Builds 3D MOT laser beams for the final capture region when applicable.
 
 The 3D-MOT configuration is profile-based and selectable through `ACTIVE_MOT_3D_CONFIGURATION` in `config.py`. The supported experimental concepts are intentionally narrow and explicit:
 
-- `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward
-- `angled_sequential`: the crossed-beam scheme: a six-beam 556-nm MOT and two elliptical 399-nm slowing beams using the same ±30-degree xz axes as `angled_donut`, crossing 1 cm upstream of the MOT
-- `five_beam_gravity`: five-beam geometry with the `-x` beam removed; every direction combines the same center-blocked blue 399-nm Gaussian with a coaxial green 556-nm Gaussian, and the two orthogonal counter-propagating axes in the `yz` plane are rotated by 45° from the atomic `+z` transport axis, so no in-plane beam is parallel to the atoms
+- `angled_donut`: two xz axes at ±30° from z and one y axis. The coaxial beams are complementary at a 10-mm radius: the blue 399-nm Gaussian is exactly zero inside that radius and begins at the boundary, while the green 556-nm Gaussian is transmitted only inside the radius and is exactly zero from the boundary outward. Its quadrupole strong axis is `y`; both wavelengths use right-handed polarization on the xz pairs and left-handed polarization on the y pair. Force tests verify that the green core is restoring on both sides of all three lab axes
+- `single_pass`: the six green beams retain the angled 60/120-degree geometry.
+  Two Gaussian 399-nm beams lie in the `yz` plane, cross initially at
+  `z = -50 mm`, and both propagate with a `-z` component. Their included angle
+  starts at 45 degrees and is an optimization variable over 45--70 degrees.
+  Force tests verify symmetric longitudinal slowing, transverse cancellation,
+  and restoring green force along all three laboratory axes.
 
-For `angled_sequential`, parameter provenance is intentionally separated:
+The polarization-corrected provisional retention point is blue `s0 = 1.5`,
+blue `detuning_gamma = -3`, green `s0 = 30`, green
+`detuning_gamma = -25`, and gradient `2.5 G/cm` for `angled_donut`. The initial
+`single_pass` seed uses blue `s0 = 0.75`, blue `detuning_gamma = -2`, green
+`s0 = 30`, green `detuning_gamma = -25`, gradient `2.5 G/cm`, a 45-degree
+blue crossing angle, and a crossing at `z = -50 mm`. The 10-mm waist and
+crossing distance keep each physical Gaussian tail below 0.1% at the MOT
+center; no unphysical longitudinal beam cutoff is assumed. Magnetic
+gradients are profile-specific, and an explicit simulation argument may
+override them for controlled studies. All of these numerical operating points
+remain provisional and are not laboratory-set values. Every varied donut
+parameter except blue detuning is on a current scan boundary, so expanded
+optimization is still required.
 
-- **Directly reported by Plotkin-Swing et al. (2020):** two 399-nm crossed slowing beams; 45-degree beam angle relative to the atomic beam; crossing point 10 mm before the MOT center; 1/e^2 short-axis width of 1.5 mm; long ellipse axis oriented perpendicular to the top-down view and sized to match the MOT-beam height; optimized crossed-beam saturation parameter `sX = 0.3`; and crossed-beam detuning of approximately -42 MHz.
-- **Geometry and sign-convention choices used by this implementation:** the xz axes use ±30 degrees from lab `z`, matching `angled_donut`; this is an intentional project geometry choice and differs from the paper's 45-degree value. Atoms propagate along lab `+z`, so both slowing beams have negative `z` propagation components; their transverse components are opposite; the ellipse long axis maps to lab `y`; its 10-mm waist follows from the approximately 2-cm MOT diameter used in the paper; the 556-nm MOT uses the same two orthogonal axes in the `xz` plane plus the `y` axis; and, for the configured field convention, the quadrupole strong axis is `y` with right-handed circular polarization on the `xz` pairs and left-handed circular polarization on the `y` pair. Force tests verify slowing, transverse cancellation, and restoring behavior on both sides of all three axes.
-- **Provisional optimization defaults:** the blue detuning is stored as `-1.45 Gamma` as a convenient seed rather than a fixed reproduction of the paper; the green values `s0 = 5`, `detuning_gamma = -10`, and `waist_m = 10 mm` are temporary defaults because the paper does not establish them as the experimental operating point used by this project. The current 3D-MOT gradient of 10 G/cm is also provisional.
-
-The configuration plot shows separate short-axis and long-axis intensity cuts for the elliptical 399-nm beams. The other experimental concepts retain their own explicit configurable defaults; values from one profile must not be treated as finalized parameters for another.
+The configuration plots use opaque wire outlines for the 3D beam geometry;
+they do not encode intensity as transparency. Values from one profile must not
+be treated as finalized parameters for another.
 
 ### `mag_field_2d_mot.py`
 

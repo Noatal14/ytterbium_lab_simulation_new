@@ -1,0 +1,45 @@
+{
+  "status": "single-pass effective slowing-region diagnostic",
+  "input_files": [
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3000_mot_seed18000.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3001_mot_seed18001.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3002_mot_seed18002.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3003_mot_seed18003.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3004_mot_seed18004.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3005_mot_seed18005.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3006_mot_seed18006.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3007_mot_seed18007.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3008_mot_seed18008.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3009_mot_seed18009.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3010_mot_seed18010.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3011_mot_seed18011.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3012_mot_seed18012.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3013_mot_seed18013.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3014_mot_seed18014.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3015_mot_seed18015.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3016_mot_seed18016.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3017_mot_seed18017.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3018_mot_seed18018.npy",
+    "data/particle_states/after_2d_mot/final_ensemble_s0_1.47/mot_2d_survivors_zeeman_seed3019_mot_seed18019.npy"
+  ],
+  "blue_s0": 0.25,
+  "blue_detuning_gamma": -2.75,
+  "blue_waist_m": 0.0075,
+  "sample_interval_s": 0.0001,
+  "records": [
+    {
+      "blue_crossing_z_offset_m": -0.05,
+      "input_particle_count": 120,
+      "usable_ever_count": 60,
+      "captured_peak_slowing_z_median_m": -0.05796445906162262,
+      "not_captured_peak_slowing_z_median_m": -0.058825865387916565
+    },
+    {
+      "blue_crossing_z_offset_m": -0.045,
+      "input_particle_count": 120,
+      "usable_ever_count": 61,
+      "captured_peak_slowing_z_median_m": -0.05332019925117493,
+      "not_captured_peak_slowing_z_median_m": -0.05368742346763611
+    }
+  ]
+}

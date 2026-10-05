@@ -3,12 +3,18 @@ from types import SimpleNamespace
 import numpy as np
 
 from studies.compare_3d_mot_retention import (
+    analyze_masks,
+    analyze_results,
     capture_diagnostics,
     capture_eligible_masks,
     fit_retention_lifetime,
+    final_states_on_grid,
     inside_capture_masks,
+    instantaneous_capture_masks,
     retention_from_masks,
+    select_particle_shard,
 )
+from studies.merge_3d_mot_retention_shards import retained_at_end_mask
 
 
 def _trajectory(times, x_positions, x_velocities):
@@ -55,6 +61,60 @@ def test_retention_cohort_never_readds_atoms_that_leave_and_return():
     assert retained.tolist() == [3, 2, 1]
 
 
+def test_particle_shards_are_disjoint_and_cover_the_selected_ensemble():
+    states = np.arange(60).reshape(10, 6)
+    shards = [select_particle_shard(states, 3, index) for index in range(3)]
+
+    combined_indices = np.concatenate([indices for _, indices in shards])
+    assert sorted(combined_indices.tolist()) == list(range(10))
+    assert len(set(combined_indices.tolist())) == 10
+
+
+def test_final_state_checkpoint_excludes_trajectories_terminated_early():
+    complete = _trajectory([0.0, 1.0, 2.0], [0.0, 1.0, 2.0], [3.0, 4.0, 5.0])
+    terminated = _trajectory([0.0, 1.0], [0.0, 1.0], [3.0, 4.0])
+
+    states, available = final_states_on_grid([complete, terminated], 2.0)
+
+    assert available.tolist() == [True, False]
+    np.testing.assert_allclose(states[0], [2.0, 0.0, 0.0, 5.0, 0.0, 0.0])
+    assert np.isnan(states[1]).all()
+
+
+def test_continuation_checkpoint_keeps_atoms_instantaneously_usable_at_end():
+    inside = np.array(
+        [
+            [True, True, True, True],
+            [True, True, False, False],
+            [True, True, True, True],
+        ]
+    )
+    eligible = np.array(
+        [
+            [False, True, False, False],
+            [False, True, False, False],
+            [False, False, False, False],
+        ]
+    )
+    analysis = analyze_masks(inside, eligible, np.arange(4, dtype=float))
+
+    mask = retained_at_end_mask(analysis, [True, True, True])
+
+    assert mask.tolist() == [False, False, False]
+
+
+def test_global_peak_is_selected_after_masks_from_shards_are_combined():
+    first_eligible = np.array([[True, False, False], [True, False, False]])
+    second_eligible = np.array([[False, True, False]] * 3)
+    eligible = np.concatenate([first_eligible, second_eligible], axis=0)
+    inside = np.ones_like(eligible)
+
+    analysis = analyze_masks(inside, eligible, np.array([0.0, 1.0, 2.0]))
+
+    assert analysis["peak_index"] == 1
+    assert analysis["peak_count"] == 3
+
+
 def test_capture_eligibility_rejects_fast_transit_and_requires_residence_time():
     time_points = np.arange(7, dtype=float) * 1.0e-3
     slow = SimpleNamespace(
@@ -87,6 +147,21 @@ def test_capture_eligibility_rejects_fast_transit_and_requires_residence_time():
 
     assert eligible[0].tolist() == [False, False, False, False, False, True, True]
     assert not eligible[1].any()
+
+
+def test_instantaneous_capture_allows_reentry_without_residence_penalty():
+    times = np.arange(4, dtype=float) * 1.0e-3
+    result = _trajectory(
+        times,
+        np.array([0.0, 0.010, 0.0, 0.0]),
+        np.array([0.5, 0.5, 0.5, 2.0]),
+    )
+
+    usable = instantaneous_capture_masks(
+        [result], times, (0.0, 0.0, 0.0), 0.005, 1.0
+    )
+
+    assert usable.tolist() == [[True, False, True, False]]
 
 
 def test_capture_diagnostics_separates_arrival_speed_and_residence_failures():
@@ -140,6 +215,38 @@ def test_peak_cohort_uses_eligibility_but_retention_uses_spatial_presence():
     assert counts.tolist() == [0, 2, 0, 0]
     assert peak_index == 1
     assert retained.tolist() == [2, 2, 1]
+
+
+def test_prequalified_continuation_still_enforces_the_speed_limit():
+    times = np.arange(4, dtype=float) * 1.0e-3
+    center_z = np.full(4, 0.413)
+    zeros = np.zeros(4)
+    results = [
+        SimpleNamespace(
+            t=times,
+            y=np.vstack([zeros, zeros, center_z, np.full(4, 3.0), zeros, zeros]),
+        ),
+        SimpleNamespace(
+            t=times,
+            y=np.vstack(
+                [
+                    np.array([0.0, 0.0, 0.010, 0.010]),
+                    zeros,
+                    center_z,
+                    zeros,
+                    zeros,
+                    zeros,
+                ]
+            ),
+        ),
+    ]
+
+    analysis = analyze_results(results, times, prequalified_input=True)
+
+    assert analysis["peak_index"] == 0
+    assert analysis["peak_count"] == 1
+    assert analysis["capture_eligible_counts"].tolist() == [1, 1, 0, 0]
+    assert analysis["retained_counts"].tolist() == [1, 1, 0, 0]
 
 
 def test_exponential_fit_is_accepted_only_for_a_resolved_decay():

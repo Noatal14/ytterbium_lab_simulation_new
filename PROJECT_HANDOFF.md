@@ -40,12 +40,7 @@ apparatus, and 399-nm optical layout. Parameters explicitly selected for an
 optimization study are exceptions; they should not be mistaken for arbitrary
 geometry.
 
-The 3D MOT is **not a finalized laboratory design**. Integration of the 556-nm
-cooling stage and optimization of transfer into the science chamber are future
-experimental work. Its current implementation is therefore a runnable design
-framework intended for exploration. Its geometry, laser parameters,
-magnetic-field choices, and capture criterion are provisional unless clearly
-documented otherwise.
+The 3D MOT is **not a finalized laboratory design**. The maintained candidates are now only `angled_donut` and `single_pass`. The evidence for retiring the explored reduced-blue geometries is summarized in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the production optimization design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`. Current operating points are provisional simulation seeds, not laboratory settings. The forthcoming search must optimize the eight donut variables and nine single-pass variables on paired 2D-MOT survivor ensembles, then validate the selected points and robust parameter boxes on held-out particles.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT
@@ -92,13 +87,15 @@ exploration, but may not represent achievable operating points.
 
 ### 3.4 Provisional 3D-MOT parameters
 
-The entire 3D-MOT design should currently be treated as provisional. The current
-operational capture definition is also provisional. An atom is classified as
-captured when it:
+The entire 3D-MOT design should currently be treated as provisional. The
+primary optimization metric is the instantaneous usable population at 100 ms:
 
-- finishes within the configured radius of the 3D-MOT center;
-- has remained there continuously for the configured final residence time;
-- finishes below the configured maximum speed.
+- distance from the configured 3D-MOT center no larger than 5 mm; and
+- total speed no larger than 1 m/s.
+
+Earlier exit does not disqualify an atom that returns. Continuous residence,
+ever-usable population, and peak usable population remain diagnostics rather
+than the optimization objective.
 
 The exact values are centralized in `MOT_3D_CAPTURE_CONFIG` in `config.py`. They
 are intended to be tested and revised, not cited as established experimental
@@ -127,23 +124,9 @@ The production workflow is deliberately split into three stages:
    - applies the configured capture criterion;
    - saves captured states and a JSON summary containing the capture percentage.
 
-`studies/compare_3d_mot_retention.py` compares all 3D-MOT profiles using the
-same saved 2D-MOT survivor states. For each profile it defines a cohort at the
-peak population satisfying the configured radius, minimum continuous residence,
-and maximum-speed capture criteria, then counts only atoms that remain inside
-the sphere continuously. Its exponential-with-plateau `tau` is reported
-only when the observed decay passes explicit loss and fit-quality checks; a
-rejected fit must not be interpreted as a measured lifetime.
-The JSON diagnostics distinguish failure to enter the capture sphere from
-failure to slow or remain there long enough, and include distance, speed, and
-continuous-residence distributions.
+The maintained 3D-MOT implementation contains only the full angled donut and the two-blue `single_pass` geometry. The single-pass candidate retains the six-beam angled green MOT and adds a localized blue entrance-slowing pair in the `yz` plane. Geometry, propagation directions, crossing angle and position, blue slowing, transverse cancellation, and green restoring forces are covered by `tests/test_3d_mot_config.py`.
 
-`studies/scan_3d_mot_blue_slower.py` performs the preceding first-stage slowing
-screen: it scans only 399-nm `s0` and detuning in Gamma on a shared ensemble and
-seed. Green-light, field, geometry, and capture settings remain fixed. Its CSV,
-JSON, and heatmaps rank points by capture, slowing, residence, and then median
-minimum speed; magnetic-gradient scans should be restricted to promising blue
-parameter regions found here.
+`MOT_3D_SIM_CONFIG` centrally selects `RK4StHybridCustom` and its time grid. `MOT_3D_CAPTURE_CONFIG` defines the primary instantaneous usable-atom metric. Historical one-off scans and submitters were removed after the candidate decision; compact accepted summaries and curated figures remain as evidence. New optimization code must follow `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`, checkpoint every completed trial, and preserve the common-ensemble comparison contract.
 
 Particle states use SI units and the column order:
 

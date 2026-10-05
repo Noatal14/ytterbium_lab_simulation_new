@@ -258,6 +258,39 @@ ZEEMAN_MAGNET_PROFILES = {
     "active": [[0.017535533905932734,0.017535533905932734,0.017535533905932734,0.017535533905932734,0.017724341355394507,0.017807639397413037,0.017535533905932734,0.017558649317337756,0.017535533905932734,0.017535533905932734,0.017572896061464196,0.018109042077148352,0.019710302489932198,0.023283852772779945,0.023865804838020952,0.02047473304831934,0.018519901522551438,0.018413863414305908,0.033440078301165695,0.021447544493230431], [-0.025,-0.01639302684885063,-0.00873617259935825,-0.0010278790620025199,0.0077045758217454121,0.016401001365448333,0.024703026668746068,0.032788719546652356,0.040608482073262904,0.04826533632275528,0.055922190572247663,0.0638577956987382,0.072313023630660375,0.083335649497427139,0.11329202655770933,0.12551350645356837,0.13583836001283542,0.14439440356356595,0.15205125781305834,0.16], [311.1115116173969,285.57927964565226,269.99946748995416,200.15337850353157,220.40789608302032,198.79829114993382,197.28062682945193,191.72608024099026,189.09787878267898,187.18359590433028,189.0978787737254,195.32208163286597,208.13513935955149,210.379413661073,23.206202508368488,26.827927305908172,35.84138321817079,86.433777688052317,13.242003071582833,101.33361539741681]],
 }
 
+# Corrected 19-ring array supplied by the Zeeman-slower project on 2026-10-05.
+# It is intentionally not made the global active profile: the impact study
+# selects it explicitly so historical production data remain reproducible.
+ZEEMAN_MAGNET_PROFILES["corrected_projectant_19ring_20261005"] = [
+    [
+        0.015135533905932736, 0.015135533905932736, 0.015135533905932736,
+        0.015640674917128269, 0.015135533905932736, 0.01545487107744853,
+        0.015506191182137931, 0.015431029052418464, 0.015431384813488134,
+        0.015593843015546225, 0.015982574299336368, 0.016696322694038545,
+        0.017911491977064927, 0.019997208970787862, 0.02441422530642514,
+        0.023392011949175236, 0.018848907108002317, 0.0175763591559792,
+        0.018772301091804829,
+    ],
+    [
+        -0.024997611820684773, -0.0166074820171394, -0.008950627767647022,
+        -0.00092078429967626, 0.00814443912675755, 0.017179267715678983,
+        0.026052663995999155, 0.034685478864268364, 0.04313306739867095,
+        0.05148390143722414, 0.05982896994946931, 0.06827013970417552,
+        0.07691949882013517, 0.08584387642827504, 0.09421920860081025,
+        0.11603819574961396, 0.12420178457671346, 0.13228342027062034,
+        0.14031881812095845,
+    ],
+    [
+        335.0804487572892, 285.24900315151967, 270.00000024390067,
+        221.7488209497955, 225.5347010506507, 216.80695838117836,
+        207.61076606534354, 202.18280990952204, 199.40982196429187,
+        198.4289729313029, 199.19434976365733, 202.15552612330583,
+        208.5689225261901, 222.93255723300166, 277.02744495961696,
+        310.1872851907945, 356.6815879296744, 31.72880818764883,
+        92.20371185585765,
+    ],
+]
+
 ACTIVE_ZEEMAN_MAGNET_PROFILE = "active"
 
 (
@@ -317,74 +350,147 @@ FORCE_SCALE_N = 3.141895058426422e-20
 
 MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM = 10.0
 
+# Full-search domains. Length bounds are 1/e^2 Gaussian waist radii, not
+# diameters. The 7.5-mm ceiling therefore represents a 15-mm 1/e^2 diameter.
+# Power feasibility must be added separately when measured power limits are
+# supplied; s0 and waist alone do not encode the available optical power.
+MOT_3D_OPTIMIZATION_CONFIG = {
+    "common": {
+        "green_s0_bounds": (0.5, 40.0),
+        "green_detuning_gamma_bounds": (-35.0, -5.0),
+        "green_waist_m_bounds": (0.005, 0.0075),
+        "blue_s0_bounds": (0.05, 1.5),
+        "blue_waist_m_bounds": (0.005, 0.0075),
+        "magnetic_gradient_G_cm_bounds": (0.5, 6.0),
+        "particles_per_trial": 600,
+        "t_max_s": 0.1,
+    },
+    "angled_donut": {
+        "blue_detuning_gamma_bounds": (-6.0, -0.5),
+        # Shared hard boundary between the green core and blue shell.
+        "core_shell_split_radius_m_bounds": (0.0025, 0.0065),
+        "total_discovery_trials": 350,
+    },
+    "single_pass": {
+        "blue_detuning_anchor_gamma_bounds": (-3.75, -1.75),
+        "blue_crossing_angle_deg_bounds": (45.0, 70.0),
+        "blue_crossing_z_offset_m_bounds": (-0.050, -0.040),
+        "maximum_blue_center_relative_intensity": 1e-3,
+        "slowing_position_waist_factor": 1.1,
+        "blue_zeeman_gamma_per_G": 0.04969,
+        "reference_gradient_G_cm": 2.5,
+        "reference_crossing_z_offset_m": -0.050,
+        "reference_blue_waist_m": 0.0075,
+        "total_discovery_trials": 600,
+    },
+}
+
 # Some 3D-MOT geometry parameters are provisional because the final
 # experimental configuration is still under investigation. They are kept
 # as numeric defaults so each profile remains directly runnable and easy
 # to modify or optimize.
 MOT_3D_CONFIGURATIONS = {
     "angled_donut": {
-        "description": "Two xz axes at +/-30 degrees from z plus a y axis, with a blue Gaussian beam blocked to exactly zero inside a 10 mm radius and coaxial with the green Gaussian beam.",
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
         "beam_layout": "angled_xz_y",
         "xz_angle_from_z_deg": 30.0,
+        # The y beam is the third MOT axis, so y is the quadrupole strong axis
+        # for the configured 2:1 gradient convention.
+        "magnetic_strong_axis": "y",
+        # Lower scan boundary selected after correcting the force signs;
+        # provisional until the expanded optimization is performed.
+        "magnetic_gradient_G_cm": 2.5,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "blue_green_center_separation_m": 0.0,
         "399": {
             "enabled": True,
-            "s0": 0.5,
-            "detuning_gamma": -1.0,
-            "waist_m": 0.015,
+            # Selected by the polarization-corrected 900-particle staged scan.
+            # This provisional point lies on the scanned intensity boundary.
+            "s0": 1.5,
+            "detuning_gamma": -3.0,
+            "waist_m": 0.0075,
             "profile": "donut",
+            "polarization_by_axis": {
+                "+XZ_1": "right",
+                "-XZ_1": "right",
+                "+XZ_2": "right",
+                "-XZ_2": "right",
+                "+Y": "left",
+                "-Y": "left",
+            },
             # The experimental mirrors remove the center of an otherwise
             # ordinary Gaussian beam; the intensity jumps from exactly zero to
             # the unmodified Gaussian tail at this radius.
-            "inner_cutoff_radius_m": 0.01,
+            "inner_cutoff_radius_m": 0.005,
         },
         "556": {
             "enabled": True,
-            "s0": 5.0,
-            "detuning_gamma": -10.0,
-            "waist_m": 0.01,
+            # Both values lie on boundaries of the current scan and are used
+            # only as a provisional retention-study operating point.
+            "s0": 30.0,
+            "detuning_gamma": -25.0,
+            "waist_m": 0.0075,
             "profile": "outer_clipped_gaussian",
+            # Required by the quadrupole sign convention for restoring force
+            # along all three lab axes.
+            "polarization_by_axis": {
+                "+XZ_1": "right",
+                "-XZ_1": "right",
+                "+XZ_2": "right",
+                "-XZ_2": "right",
+                "+Y": "left",
+                "-Y": "left",
+            },
             # The chamber walls transmit the green beam only inside the same
             # radius at which the center-blocked blue beam begins.
-            "outer_cutoff_radius_m": 0.01,
+            "outer_cutoff_radius_m": 0.005,
         },
     },
-    "angled_sequential": {
-        "description": "Crossed-beam slower: a six-beam 556-nm MOT plus two 399-nm beams crossing 1 cm upstream, using the same +/-30-degree xz axes as angled_donut.",
-        "beam_layout": "angled_xz_y",
+    "single_pass": {
+        "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+        "beam_layout": "angled_green_yz_single_pass",
+        "gravity_axis": "x",
+        "transport_axis": "z",
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 2.5,
+        # Full angle between the two blue propagation vectors. This is an
+        # optimization variable with the approved range 45--70 degrees.
+        "blue_crossing_angle_deg": 45.0,
+        # The blue X-shaped crossing is upstream along the atomic +z path.
+        # At -50 mm with a 10-mm waist and 45-degree included angle, each
+        # physical Gaussian beam contributes <0.1% of its peak intensity at
+        # the MOT center; no artificial longitudinal clipping is assumed.
+        "blue_crossing_z_offset_m": -50e-3,
+        "maximum_blue_center_relative_intensity": 1e-3,
         "xz_angle_from_z_deg": 30.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
-        # The third MOT-beam axis is y, so the quadrupole's strong axis must
-        # be y for the standard 2:1 gradient and helicity arrangement.
-        "magnetic_strong_axis": "y",
         "beam_components": {
             "+XZ_1": {"399_enabled": False, "556_enabled": True},
-            "-XZ_1": {"399_enabled": True, "556_enabled": True},
+            "-XZ_1": {"399_enabled": False, "556_enabled": True},
             "+XZ_2": {"399_enabled": False, "556_enabled": True},
-            "-XZ_2": {"399_enabled": True, "556_enabled": True},
+            "-XZ_2": {"399_enabled": False, "556_enabled": True},
             "+Y": {"399_enabled": False, "556_enabled": True},
             "-Y": {"399_enabled": False, "556_enabled": True},
+            "SP_FROM_NEG_Y": {"399_enabled": True, "556_enabled": False},
+            "SP_FROM_POS_Y": {"399_enabled": True, "556_enabled": False},
         },
         "399": {
             "enabled": True,
-            "s0": 0.3,
-            # Initial optimization seed in units of the 399-nm linewidth Gamma.
-            "detuning_gamma": -1.45,
-            "center_offset_m": (0.0, 0.0, -10.0e-3),
-            "profile": "elliptical",
-            "waist_short_m": 1.5e-3,
-            "waist_long_m": 10.0e-3,
+            "s0": 0.75,
+            "detuning_gamma": -2.0,
+            "waist_m": 0.010,
+            "profile": "gaussian",
+            "polarization_by_axis": {
+                "SP_FROM_NEG_Y": "right",
+                "SP_FROM_POS_Y": "right",
+            },
         },
         "556": {
             "enabled": True,
-            "s0": 5.0,
-            "detuning_gamma": -10.0,
+            "s0": 30.0,
+            "detuning_gamma": -25.0,
             "waist_m": 0.01,
             "profile": "gaussian",
-            "center_offset_m": (0.0, 0.0, 0.0),
-            # Required by the sign convention of the configured quadrupole
-            # field to make the green MOT restoring along x, y, and z.
             "polarization_by_axis": {
                 "+XZ_1": "right",
                 "-XZ_1": "right",
@@ -395,41 +501,6 @@ MOT_3D_CONFIGURATIONS = {
             },
         },
     },
-    "five_beam_gravity": {
-        "description": "Five-beam 3D MOT with the -x beam removed. Each direction combines a center-blocked blue Gaussian with a coaxial green Gaussian; the two axes in the yz plane are mutually orthogonal and rotated by 45 degrees from atomic +z.",
-        "beam_layout": "rotated_yz_minus_upper_x",
-        "gravity_axis": "x",
-        "transport_axis": "z",
-        "in_plane_rotation_deg": 45.0,
-        "center_position_m": Geometry.MOT_3D_CENTER_M,
-        "beam_components": {
-            "+X": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "+YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "-YZ_1": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "+YZ_2": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-            "-YZ_2": {"399_enabled": True,  # Provisional — final experimental choice TBD
-                   "556_enabled": True},
-        },
-        "399": {
-            "enabled": True,
-            "s0": 0.5,
-            "detuning_gamma": -1.0,
-            "waist_m": 0.015,
-            "profile": "donut",
-            "inner_cutoff_radius_m": 0.01,
-        },
-        "556": {
-            "enabled": True,
-            "s0": 5.0,
-            "detuning_gamma": -10.0,
-            "waist_m": 0.01,
-            "profile": "gaussian",
-        },
-    },
 }
 
 ACTIVE_MOT_3D_CONFIGURATION = "angled_donut"
@@ -438,6 +509,7 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
     "dt_s": 1e-5,
+    "solver": "RK4StHybridCustom",
 }
 
 # Provisional operational definition of 3D-MOT capture. These values are
@@ -445,6 +517,7 @@ MOT_3D_SIM_CONFIG = {
 # experiment without changing the stage implementation.
 MOT_3D_CAPTURE_CONFIG = {
     "capture_radius_m": 5e-3,
+    "diagnostic_radii_m": (5e-3, 7.5e-3, 10e-3),
     "minimum_residence_time_s": 5e-3,
     "maximum_final_speed_m_s": 1.0,
 }

@@ -1,0 +1,1034 @@
+{
+  "kind": "mot_3d_focused_refinement_selection",
+  "family": "angled_donut",
+  "candidate_count": 16,
+  "parameter_bounds": {
+    "green_s0": [
+      0.5,
+      40.0
+    ],
+    "green_detuning_gamma": [
+      -35.0,
+      -5.0
+    ],
+    "green_waist_m": [
+      0.005,
+      0.0075
+    ],
+    "blue_s0": [
+      0.05,
+      1.5
+    ],
+    "blue_waist_m": [
+      0.005,
+      0.0075
+    ],
+    "magnetic_gradient_G_cm": [
+      0.5,
+      6.0
+    ],
+    "blue_detuning_gamma": [
+      -6.0,
+      -0.5
+    ],
+    "core_shell_split_radius_m": [
+      0.0025,
+      0.0065
+    ]
+  },
+  "design": "leader-centered one-at-a-time sensitivity plus distinct-region anchors",
+  "candidates": [
+    {
+      "candidate_id": "angled_donut_refine_00",
+      "refinement_role": "early_check_leader",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_01",
+      "refinement_role": "green_s0_down",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 15.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 15.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_02",
+      "refinement_role": "green_s0_up",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 21.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 21.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_03",
+      "refinement_role": "green_detuning_red",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -20.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -20.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_04",
+      "refinement_role": "green_detuning_blue",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -16.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -16.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_05",
+      "refinement_role": "green_waist_down",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006152323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006152323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_06",
+      "refinement_role": "green_waist_up",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.0068523230949643285,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.0068523230949643285,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_07",
+      "refinement_role": "gradient_down",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 4.507283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 4.507283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_08",
+      "refinement_role": "gradient_up",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.507283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.507283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_09",
+      "refinement_role": "blue_s0_inward",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.2798956875579137,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.2798956875579137,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_10",
+      "refinement_role": "blue_waist_inward",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007052882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007052882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_11",
+      "refinement_role": "blue_detuning_inward",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -1.2927560798500615,
+        "core_shell_split_radius_m": 0.002539906066848852
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -1.2927560798500615,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002539906066848852
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002539906066848852
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_12",
+      "refinement_role": "split_radius_inward",
+      "source_candidate_id": "angled_donut_00",
+      "source_early_check_fraction": 0.6727777777777778,
+      "parameters": {
+        "green_s0": 18.138373528546254,
+        "green_detuning_gamma": -18.373473780336884,
+        "green_waist_m": 0.006502323094964329,
+        "blue_s0": 1.4298956875579136,
+        "blue_waist_m": 0.007402882585438528,
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "blue_detuning_gamma": -0.7927560798500614,
+        "core_shell_split_radius_m": 0.0029399060668488524
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.007283737669036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4298956875579136,
+          "detuning_gamma": -0.7927560798500614,
+          "waist_m": 0.007402882585438528,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.0029399060668488524
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.138373528546254,
+          "detuning_gamma": -18.373473780336884,
+          "waist_m": 0.006502323094964329,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.0029399060668488524
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_13",
+      "refinement_role": "anchor_angled_donut_02",
+      "source_candidate_id": "angled_donut_02",
+      "source_early_check_fraction": 0.6477777777777778,
+      "parameters": {
+        "green_s0": 34.14805058752245,
+        "green_detuning_gamma": -7.199526977815593,
+        "green_waist_m": 0.007317870418519888,
+        "blue_s0": 1.2973418366700562,
+        "blue_waist_m": 0.007213396680409177,
+        "magnetic_gradient_G_cm": 5.814761913539337,
+        "blue_detuning_gamma": -1.9835962062293637,
+        "core_shell_split_radius_m": 0.003680056165670996
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.814761913539337,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.2973418366700562,
+          "detuning_gamma": -1.9835962062293637,
+          "waist_m": 0.007213396680409177,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.003680056165670996
+        },
+        "556": {
+          "enabled": true,
+          "s0": 34.14805058752245,
+          "detuning_gamma": -7.199526977815593,
+          "waist_m": 0.007317870418519888,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.003680056165670996
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_14",
+      "refinement_role": "anchor_angled_donut_06",
+      "source_candidate_id": "angled_donut_06",
+      "source_early_check_fraction": 0.6322222222222222,
+      "parameters": {
+        "green_s0": 18.686218770654534,
+        "green_detuning_gamma": -32.16719059892457,
+        "green_waist_m": 0.006252869663462904,
+        "blue_s0": 1.1810095385356725,
+        "blue_waist_m": 0.0074874956462001084,
+        "magnetic_gradient_G_cm": 5.219750221674108,
+        "blue_detuning_gamma": -3.1242077564529174,
+        "core_shell_split_radius_m": 0.002648196535704678
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.219750221674108,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.1810095385356725,
+          "detuning_gamma": -3.1242077564529174,
+          "waist_m": 0.0074874956462001084,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.002648196535704678
+        },
+        "556": {
+          "enabled": true,
+          "s0": 18.686218770654534,
+          "detuning_gamma": -32.16719059892457,
+          "waist_m": 0.006252869663462904,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.002648196535704678
+        }
+      }
+    },
+    {
+      "candidate_id": "angled_donut_refine_15",
+      "refinement_role": "anchor_angled_donut_11",
+      "source_candidate_id": "angled_donut_11",
+      "source_early_check_fraction": 0.6255555555555555,
+      "parameters": {
+        "green_s0": 15.6063128701192,
+        "green_detuning_gamma": -7.058578340142218,
+        "green_waist_m": 0.0070137769544277905,
+        "blue_s0": 1.4126380931360065,
+        "blue_waist_m": 0.007132443741463915,
+        "magnetic_gradient_G_cm": 5.551558052680128,
+        "blue_detuning_gamma": -1.0528667994722691,
+        "core_shell_split_radius_m": 0.0027711283618338553
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 30.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 5.551558052680128,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.4126380931360065,
+          "detuning_gamma": -1.0528667994722691,
+          "waist_m": 0.007132443741463915,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.0027711283618338553
+        },
+        "556": {
+          "enabled": true,
+          "s0": 15.6063128701192,
+          "detuning_gamma": -7.058578340142218,
+          "waist_m": 0.0070137769544277905,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.0027711283618338553
+        }
+      }
+    }
+  ]
+}

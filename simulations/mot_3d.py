@@ -12,12 +12,13 @@ from config import (
     MOT_2D_MAGNET_RADIUS_M,
     MOT_3D_CAPTURE_CONFIG,
     MOT_3D_LASER_CONFIG,
+    MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
     MOT_3D_SIM_CONFIG,
     ZEEMAN_LASER_CONFIG,
 )
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
-from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
+from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import (
     DEFAULT_2D_MOT_STATES_FILE,
     DEFAULT_3D_MOT_STATES_FILE,
@@ -27,6 +28,18 @@ from utils.data_paths import (
 )
 from utils.file_helpers import save_file_json
 from utils.simulation_helpers import generate_timepoints, run_multiple_atoms_simulation
+
+
+MOT_3D_SOLVERS = {"RK4StHybridCustom": RK4StHybridCustom}
+
+
+def _configured_3d_solver():
+    """Resolve the 3D-MOT solver selected by the central configuration."""
+    solver_name = MOT_3D_SIM_CONFIG["solver"]
+    try:
+        return MOT_3D_SOLVERS[solver_name]
+    except KeyError as error:
+        raise ValueError(f"Unsupported 3D-MOT solver: {solver_name}") from error
 
 
 def _continuous_final_residence_time(time_points, inside_capture_region):
@@ -92,10 +105,18 @@ def mot_3d_simulation(
     dt=MOT_3D_SIM_CONFIG["dt_s"],
     t_max=MOT_3D_SIM_CONFIG["t_max_s"],
     seed=DEFAULT_RANDOM_SEED,
+    magnetic_gradient_G_cm=None,
 ):
     """Propagate saved 2D-MOT states through the 3D-MOT stage."""
     if len(survivor_states) == 0:
         return [], np.empty((0, 6))
+    resolved_gradient_G_cm = (
+        _3d_mot_config.get(
+            "magnetic_gradient_G_cm", MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM
+        )
+        if magnetic_gradient_G_cm is None
+        else magnetic_gradient_G_cm
+    )
     _, simulation_config = build_base_config(
         atom_species="Yb171",
         include_zeeman=True,
@@ -107,13 +128,14 @@ def mot_3d_simulation(
         zeeman_config=ZEEMAN_LASER_CONFIG,
         zones=get_entire_apparatus_zone(),
         _3d_mot_config=_3d_mot_config,
+        _3d_mot_gradient_G_cm=resolved_gradient_G_cm,
     )
     time_points, _ = generate_timepoints(t_max, dt)
     results, _ = run_multiple_atoms_simulation(
         config=simulation_config,
         u0=[np.asarray(state).copy() for state in survivor_states],
         time_points=time_points,
-        sim_function=ScipyIVP_3DCustom,
+        sim_function=_configured_3d_solver(),
         npools=npools,
         seed_idx=seed,
     )
@@ -135,6 +157,14 @@ def run_3d_mot_from_file(input_file, output_file, summary_file, **kwargs):
         "capture_percentage": capture_percentage,
         "criterion": dict(MOT_3D_CAPTURE_CONFIG),
         "capture_center_m": list(Geometry.MOT_3D_CENTER_M),
+        "magnetic_gradient_G_cm": float(
+            kwargs.get("magnetic_gradient_G_cm")
+            if kwargs.get("magnetic_gradient_G_cm") is not None
+            else kwargs.get("_3d_mot_config", MOT_3D_LASER_CONFIG).get(
+                "magnetic_gradient_G_cm",
+                MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
+            )
+        ),
         "captured_states_file": str(output_path),
     }
     save_file_json(summary_file, summary)
@@ -156,6 +186,12 @@ def parse_args():
         "--t-max", type=float, default=MOT_3D_SIM_CONFIG["t_max_s"]
     )
     parser.add_argument("--seed", type=int, default=DEFAULT_RANDOM_SEED)
+    parser.add_argument(
+        "--magnetic-gradient-G-cm",
+        type=float,
+        default=None,
+        help="Override the selected profile's configured gradient in G/cm.",
+    )
     return parser.parse_args()
 
 
@@ -169,4 +205,5 @@ if __name__ == "__main__":
         dt=args.dt,
         t_max=args.t_max,
         seed=args.seed,
+        magnetic_gradient_G_cm=args.magnetic_gradient_G_cm,
     )
