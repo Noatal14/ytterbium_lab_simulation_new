@@ -54,10 +54,28 @@ def test_joint_optimizer_accepts_refinement_bounds():
 def test_joint_optimizer_accepts_fixed_s0():
     from studies.optimize_2d_mot_joint import parse_args
 
-    args = parse_args(["--fixed-s0", "1.30", "--stochastic-solver", "hybrid"])
+    args = parse_args(
+        [
+            "--fixed-s0",
+            "1.30",
+            "--stochastic-solver",
+            "hybrid",
+            "--ensemble-dir",
+            "corrected",
+            "--zeeman-seeds",
+            "3000",
+            "3001",
+            "--enqueue-point",
+            "-1.2",
+            "0.049",
+        ]
+    )
 
     assert args.fixed_s0 == 1.30
     assert args.stochastic_solver == "hybrid"
+    assert args.ensemble_dir == "corrected"
+    assert args.zeeman_seeds == [3000, 3001]
+    assert args.enqueue_point == [[-1.2, 0.049]]
 
 
 def test_2d_mot_uses_hybrid_solver_by_default():
@@ -67,15 +85,22 @@ def test_2d_mot_uses_hybrid_solver_by_default():
     from studies.optimize_2d_mot_joint import evaluate_configuration, parse_args
     from utils.RK4StHybridCustom import RK4StHybridCustom
 
-    assert inspect.signature(mot_simulation).parameters[
-        "stochastic_sim_function"
-    ].default is RK4StHybridCustom
-    assert inspect.signature(mot_simulation_paired_ensembles).parameters[
-        "stochastic_sim_function"
-    ].default is RK4StHybridCustom
-    assert inspect.signature(evaluate_configuration).parameters[
-        "stochastic_sim_function"
-    ].default is RK4StHybridCustom
+    assert (
+        inspect.signature(mot_simulation).parameters["stochastic_sim_function"].default
+        is RK4StHybridCustom
+    )
+    assert (
+        inspect.signature(mot_simulation_paired_ensembles)
+        .parameters["stochastic_sim_function"]
+        .default
+        is RK4StHybridCustom
+    )
+    assert (
+        inspect.signature(evaluate_configuration)
+        .parameters["stochastic_sim_function"]
+        .default
+        is RK4StHybridCustom
+    )
     assert parse_args([]).stochastic_solver == "hybrid"
 
 
@@ -84,10 +109,14 @@ def test_final_production_can_save_downstream_states():
 
     args = parse_args(
         [
-            "--zeeman-seeds", "3000",
-            "--s0", "1.474497",
-            "--detuning-gamma", "-1.1840645",
-            "--magnet-radius-mm", "49.217614",
+            "--zeeman-seeds",
+            "3000",
+            "--s0",
+            "1.474497",
+            "--detuning-gamma",
+            "-1.1840645",
+            "--magnet-radius-mm",
+            "49.217614",
             "--save-survivor-states",
         ]
     )
@@ -145,10 +174,18 @@ def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
     )
 
     output = tmp_path / "campaign"
-    args = parse_args([
-        "create", "--name", "test", "--s0", "1.3", "1.4",
-        "--output-dir", str(output),
-    ])
+    args = parse_args(
+        [
+            "create",
+            "--name",
+            "test",
+            "--s0",
+            "1.3",
+            "1.4",
+            "--output-dir",
+            str(output),
+        ]
+    )
     create(args)
 
     manifest = json.loads((output / "campaign.json").read_text())

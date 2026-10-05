@@ -120,6 +120,8 @@ def optimize_mot(args):
     ensembles = load_production_ensembles(
         max_ensembles=args.n_ensembles,
         particles_per_ensemble=args.particles_per_ensemble,
+        directory=args.ensemble_dir,
+        zeeman_seeds=args.zeeman_seeds,
     )
     output_dir = Path(args.output_dir)
     trials_dir = output_dir / "trials"
@@ -185,6 +187,14 @@ def optimize_mot(args):
         pruner=optuna.pruners.NopPruner(),
         load_if_exists=True,
     )
+    if not study.trials:
+        for detuning_gamma, magnet_radius in args.enqueue_point:
+            study.enqueue_trial(
+                {
+                    "detuning_gamma": float(detuning_gamma),
+                    "magnet_radius": float(magnet_radius),
+                }
+            )
     study.optimize(objective, n_trials=args.n_trials)
     complete_trials = [
         trial
@@ -211,7 +221,11 @@ def optimize_mot(args):
                 "trial_number": trial.number,
                 "mean_conditional_efficiency": float(trial.values[0]),
                 "parameters": {
-                    "s0": float(args.fixed_s0) if args.fixed_s0 is not None else float(trial.params["s0"]),
+                    "s0": (
+                        float(args.fixed_s0)
+                        if args.fixed_s0 is not None
+                        else float(trial.params["s0"])
+                    ),
                     "detuning_gamma": float(trial.params["detuning_gamma"]),
                     "magnet_radius": float(trial.params["magnet_radius"]),
                 },
@@ -240,6 +254,8 @@ def optimize_mot(args):
             "particles_per_ensemble": args.particles_per_ensemble,
             "mot_seed_start": args.mot_seed_start,
             "stochastic_solver": stochastic_sim_function.__name__,
+            "ensemble_dir": str(args.ensemble_dir) if args.ensemble_dir else None,
+            "zeeman_seeds": [row["zeeman_seed"] for row in ensembles],
             "sampler_seed": args.sampler_seed,
             "bounds": {
                 "s0": (
@@ -267,6 +283,16 @@ def parse_args(argv=None):
     )
     parser.add_argument("--n-ensembles", type=int, default=3)
     parser.add_argument("--particles-per-ensemble", type=int, default=2000)
+    parser.add_argument(
+        "--ensemble-dir",
+        help="Directory containing the authoritative Zeeman ensemble files.",
+    )
+    parser.add_argument(
+        "--zeeman-seeds",
+        type=int,
+        nargs="+",
+        help="Optional explicit Zeeman-seed order to load from --ensemble-dir.",
+    )
     parser.add_argument("--mot-seed-start", type=int, default=4000)
     parser.add_argument("--sampler-seed", type=int, default=DEFAULT_RANDOM_SEED)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
@@ -300,6 +326,15 @@ def parse_args(argv=None):
     parser.add_argument(
         "--study-name",
         default="mot_2d_joint_pareto_v3_radius45to51mm",
+    )
+    parser.add_argument(
+        "--enqueue-point",
+        type=float,
+        nargs=2,
+        action="append",
+        default=[],
+        metavar=("DETUNING_GAMMA", "MAGNET_RADIUS_M"),
+        help="Evaluate an explicit detuning/radius point before sampled trials.",
     )
     parser.add_argument(
         "--output-dir",

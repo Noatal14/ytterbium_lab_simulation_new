@@ -46,6 +46,7 @@ def run_seeds(args):
     ensembles = load_production_ensembles(
         particles_per_ensemble=None,
         zeeman_seeds=args.zeeman_seeds,
+        directory=args.ensemble_dir,
     )
     mot_seeds = [seed + MOT_SEED_OFFSET for seed in args.zeeman_seeds]
     evaluation = evaluate_configuration(
@@ -71,6 +72,7 @@ def run_seeds(args):
                 "uses_all_available_particles": True,
                 "mot_seed_offset": MOT_SEED_OFFSET,
                 "npools": args.npools,
+                "ensemble_dir": str(args.ensemble_dir) if args.ensemble_dir else None,
             },
             "replicate": row,
         }
@@ -92,9 +94,7 @@ def run_seeds(args):
                     "mot_seed": row["mot_seed"],
                     "n_input": row["n_input"],
                     "n_survivors": row["captured"],
-                    "state_layout": [
-                        "x_m", "y_m", "z_m", "vx_m_s", "vy_m_s", "vz_m_s"
-                    ],
+                    "state_layout": ["x_m", "y_m", "z_m", "vx_m_s", "vy_m_s", "vz_m_s"],
                     "parameters": parameters,
                     "design": payload["design"],
                 },
@@ -119,27 +119,20 @@ def final_prediction(replicates, reporting_survivors=REPORTING_SURVIVORS):
     binomial_mean_variance = float(
         pooled_efficiency * (1.0 - pooled_efficiency) / total_input
     )
-    empirical_mean_variance = float(
-        np.var(efficiencies, ddof=1) / len(efficiencies)
-    )
+    empirical_mean_variance = float(np.var(efficiencies, ddof=1) / len(efficiencies))
     use_empirical_variance = empirical_mean_variance > binomial_mean_variance
     selected_mean_variance = max(
         binomial_mean_variance,
         empirical_mean_variance,
     )
     future_counting_variance = float(
-        pooled_efficiency
-        * (1.0 - pooled_efficiency)
-        / reporting_survivors
+        pooled_efficiency * (1.0 - pooled_efficiency) / reporting_survivors
     )
     critical = float(
-        student_t.ppf(0.975, len(replicates) - 1)
-        if use_empirical_variance
-        else 1.96
+        student_t.ppf(0.975, len(replicates) - 1) if use_empirical_variance else 1.96
     )
     half_width = float(
-        critical
-        * np.sqrt(selected_mean_variance + future_counting_variance)
+        critical * np.sqrt(selected_mean_variance + future_counting_variance)
     )
     low = max(0.0, pooled_efficiency - half_width)
     high = min(1.0, pooled_efficiency + half_width)
@@ -200,8 +193,7 @@ def summarize(output_dir):
         "target_95_half_width_fraction": TARGET_HALF_WIDTH_FRACTION,
         "target_95_half_width_percentage_points": 100 * TARGET_HALF_WIDTH_FRACTION,
         "stopping_rule_passes": bool(
-            prediction["predicted_95_half_width_fraction"]
-            <= TARGET_HALF_WIDTH_FRACTION
+            prediction["predicted_95_half_width_fraction"] <= TARGET_HALF_WIDTH_FRACTION
         ),
         "zeeman_seeds": seeds,
         "replicates": replicates,
@@ -218,6 +210,10 @@ def summarize(output_dir):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--zeeman-seeds", type=int, nargs="+")
+    parser.add_argument(
+        "--ensemble-dir",
+        help="Directory containing the authoritative Zeeman ensemble files.",
+    )
     parser.add_argument("--s0", type=float)
     parser.add_argument("--detuning-gamma", type=float)
     parser.add_argument("--magnet-radius-mm", type=float)

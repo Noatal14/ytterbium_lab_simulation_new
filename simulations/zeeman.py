@@ -21,6 +21,7 @@ from config import (
     MOT_2D_MAGNET_RADIUS_M,
     ZEEMAN_FIELD_CONFIG,
     ZEEMAN_LASER_CONFIG,
+    ZEEMAN_MAGNET_PROFILES,
     ZEEMAN_SIM_CONFIG,
 )
 from lab_setup.config_builder import build_base_config
@@ -105,12 +106,15 @@ def _git_commit():
 
 def _tracked_worktree_is_dirty():
     try:
-        return subprocess.run(
-            ["git", "diff", "--quiet", "HEAD", "--"],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).returncode != 0
+        return (
+            subprocess.run(
+                ["git", "diff", "--quiet", "HEAD", "--"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            ).returncode
+            != 0
+        )
     except OSError:
         return None
 
@@ -127,6 +131,22 @@ def _resolved_run_parameters(simulation_kwargs):
     collimation_angle_deg = simulation_kwargs.get(
         "collimation_angle_deg", COLLIMATION_ANGLE_DEG
     )
+    field_config = simulation_kwargs.get("zeeman_field_config", ZEEMAN_FIELD_CONFIG)
+    matched_profile = None
+    for profile_name, (radii, positions, tilts) in ZEEMAN_MAGNET_PROFILES.items():
+        if all(
+            np.array_equal(
+                np.asarray(field_config[key], dtype=float),
+                np.asarray(values, dtype=float),
+            )
+            for key, values in (
+                ("radii_m", radii),
+                ("positions_m", positions),
+                ("tilt_angles_deg", tilts),
+            )
+        ):
+            matched_profile = profile_name
+            break
     return {
         "n_initial_atoms": int(
             simulation_kwargs.get("N_particles", DEFAULT_NUM_PARTICLES)
@@ -137,9 +157,7 @@ def _resolved_run_parameters(simulation_kwargs):
         "stochastic": bool(simulation_kwargs.get("stochastic", True)),
         "gravity_enabled": bool(simulation_kwargs.get("gravity_enabled", True)),
         "collimation_angle_deg": (
-            None
-            if collimation_angle_deg is None
-            else float(collimation_angle_deg)
+            None if collimation_angle_deg is None else float(collimation_angle_deg)
         ),
         "full_angular_distribution": collimation_angle_deg is None,
         "angular_broadening_factor": float(
@@ -151,14 +169,13 @@ def _resolved_run_parameters(simulation_kwargs):
         "zeeman_laser_config": simulation_kwargs.get(
             "zeeman_config", ZEEMAN_LASER_CONFIG
         ),
-        "zeeman_field_config": simulation_kwargs.get(
-            "zeeman_field_config", ZEEMAN_FIELD_CONFIG
-        ),
+        "zeeman_field_config": field_config,
         "mot_2d_laser_config": simulation_kwargs.get(
             "_2d_mot_config", MOT_2D_LASER_CONFIG
         ),
         "zeeman_sim_config": ZEEMAN_SIM_CONFIG,
         "active_zeeman_magnet_profile": ACTIVE_ZEEMAN_MAGNET_PROFILE,
+        "resolved_zeeman_magnet_profile": matched_profile,
     }
 
 

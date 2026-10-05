@@ -3,7 +3,8 @@ import json
 
 import numpy as np
 
-from simulations.zeeman import write_zeeman_metadata
+from config import ZEEMAN_MAGNET_PROFILES
+from simulations.zeeman import _resolved_run_parameters, write_zeeman_metadata
 
 
 def test_zeeman_metadata_records_shape_parameters_and_file_hash(tmp_path):
@@ -32,3 +33,20 @@ def test_zeeman_metadata_records_shape_parameters_and_file_hash(tmp_path):
     assert metadata["parameters"]["seed"] == 123
     assert metadata["parameters"]["dt_s"] == 4e-5
     assert metadata["output_sha256"] == expected_hash
+
+
+def test_resolved_parameters_identify_explicit_corrected_magnet_profile():
+    profile_name = "corrected_projectant_19ring_20261005"
+    radii, positions, tilts = ZEEMAN_MAGNET_PROFILES[profile_name]
+
+    parameters = _resolved_run_parameters(
+        {
+            "zeeman_field_config": {
+                "radii_m": radii,
+                "positions_m": positions,
+                "tilt_angles_deg": tilts,
+            }
+        }
+    )
+
+    assert parameters["resolved_zeeman_magnet_profile"] == profile_name
