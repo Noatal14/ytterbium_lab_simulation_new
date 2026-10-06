@@ -6,7 +6,7 @@
 > ensembles. If the guide, plan, configuration, implementation, and prompt
 > disagree, stop before submission and report the discrepancy.
 
-Last updated: 2026-08-26
+Last updated: 2026-10-06
 
 ## 1. Purpose and scientific context
 
@@ -142,8 +142,10 @@ x, y, z, vx, vy, vz
 
 `simulations/pipeline.py` retains the former combined workflow. New code should
 import the appropriate stage module directly. `studies/` contains research
-workflows built on those stages, while `dt_comparison/` is an archive of numerical
-investigations and is not the normal production entry point.
+workflows built on those stages. The accepted timestep and stochastic-solver
+decisions are summarized in `docs/2D_MOT_OPTIMIZATION_PLAN.md`; the exploratory
+workspace that produced the earliest comparisons is retained in Git history,
+not in the active project tree.
 
 ## 5. Running the stages locally
 
@@ -167,12 +169,15 @@ data/particle_states/after_2d_mot/
 data/particle_states/after_3d_mot/
 ```
 
-The authoritative input ensemble for downstream 3D-MOT work is
+The historical pre-correction input used by the retained 3D-MOT chain is
 `data/particle_states/after_2d_mot/final_ensemble_s0_1.47/`. It contains 20 paired
 state arrays with layout `(x, y, z, vx, vy, vz)` in SI units, plus adjacent
 metadata. The replay validated all arrays as finite `float64` data with shape
 `(N, 6)` and reproduced 15,840 captures from 592,319 Zeeman survivors
-(2.6742347%).
+(2.6742347%). It is retained for reproducibility and method development, but it
+is not authoritative for a corrected-profile 3D performance claim. That input
+will be the versioned sealed output of the corrected 19-ring campaign after
+provenance validation.
 
 Accepted Optuna summaries and stochastic-seed results belong under:
 
@@ -267,7 +272,9 @@ independent ensembles. The locked setting is `s0=1.474497`, detuning
 were captured. For 10,000,000 Zeeman survivors, the model predicts 267,423
 captures, with a 95% prediction range of 263,195 to 271,652 and a half-width of
 0.042285 percentage points. This result is conditional on entering the 2D MOT
-as a Zeeman survivor and is the authoritative final conditional prediction.
+as a Zeeman survivor and is the closed historical 20-ring campaign's
+conditional prediction. It is not the authoritative corrected-profile
+prediction.
 
 The corrected campaign instead uses a 20,000-draw cluster-aware parametric
 bootstrap whose point target is the survivor-weighted pooled efficiency. It
@@ -311,10 +318,13 @@ and -0.027 percentage points, respectively. The associated 95% intervals were
 as evidence that the local mean response is not sharply degraded, not as a
 strict simultaneous equivalence proof over an entire continuous parameter box.
 
-The 2D-MOT optimization, timestep investigation, sensitivity campaign,
-conditional production prediction, and full-thermal Zeeman-flux prediction are
-closed. Do not launch more optimization or timestep runs unless the apparatus
-constraints, physical model, or scientific objective changes.
+The pre-correction 2D-MOT optimization, timestep investigation, sensitivity
+campaign, and conditional production prediction are closed historical work.
+The full-thermal Zeeman-flux prediction below is also historical: its metadata
+identifies the former `active` 20-ring profile at commit `b70c788...`, not the
+corrected 19-ring profile. Do not combine it with corrected-profile downstream
+results. A corrected-profile full-angular run remains necessary for a new
+end-to-end flux claim.
 
 The final full-source run used 5,000,000 Yb-171 atoms in 100 independent batches
 with no angular cutoff and the conservative 3x-broadened microtube distribution.
@@ -409,9 +419,9 @@ Save figures systematically under `graphs/`.
 
 ### D. Consolidate numerical validation
 
-Summarize the evidence supporting production timestep, particle count, and
-stochastic/numerical choices. Preserve `dt_comparison/` as provenance, but create
-a concise explanation of the conclusions for future users.
+Keep the evidence supporting production timestep, particle count, and
+stochastic/numerical choices concise and current in the scientific plan. The
+historical exploratory files remain recoverable from the pre-cleanup Git tag.
 
 ### E. Maintain the architecture and documentation
 

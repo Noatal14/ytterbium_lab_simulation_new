@@ -61,7 +61,9 @@ def test_campaign_manifest_has_nonoverlapping_roles_and_pinned_jobs(tmp_path, mo
     assert manifest["fixed_design"]["particle_counts"]["refine"] == 10000
     pbs = (root / "jobs/01_smoke.pbs").read_text()
     assert "git rev-parse HEAD" in pbs and "Commit mismatch" in pbs
-    assert "#PBS -J 0-0%1" in pbs
+    assert "#PBS -J" not in pbs
+    assert "export PBS_ARRAY_INDEX=0" in pbs
+    assert "--s0-index $PBS_ARRAY_INDEX" in pbs
     assert manifest["mot_seeds"]["sealed_validation"] == list(range(43015, 43035))
 
 
@@ -222,6 +224,39 @@ def test_refinement_rounds_share_study_and_use_cumulative_targets(tmp_path, monk
     submitter = Path(saved["stages"]["refine"]["submit_chain"]).read_text()
     assert submitter.count('depend=afterok:"${previous}"') == 3
     assert "afterokarray" not in submitter
+
+
+def test_write_pbs_uses_array_only_for_multiple_tasks(tmp_path):
+    import studies.mot_2d_s0_campaign as campaign
+
+    scalar = tmp_path / "scalar.pbs"
+    campaign.write_pbs(
+        scalar,
+        "scalar",
+        "4-4",
+        1,
+        "00:05:00",
+        "python worker.py --task-index ${PBS_ARRAY_INDEX:-0}",
+        revision="abc",
+    )
+    scalar_text = scalar.read_text()
+    assert "#PBS -J" not in scalar_text
+    assert "export PBS_ARRAY_INDEX=4" in scalar_text
+    assert "--task-index ${PBS_ARRAY_INDEX:-0}" in scalar_text
+
+    array = tmp_path / "array.pbs"
+    campaign.write_pbs(
+        array,
+        "array",
+        "0-2",
+        200,
+        "01:00:00",
+        "python worker.py --task-index $PBS_ARRAY_INDEX",
+        revision="abc",
+    )
+    array_text = array.read_text()
+    assert "#PBS -J 0-2%3" in array_text
+    assert "--task-index $PBS_ARRAY_INDEX" in array_text
 
 
 def test_refinement_task_keeps_same_study_and_exact_total_target(tmp_path, monkeypatch):

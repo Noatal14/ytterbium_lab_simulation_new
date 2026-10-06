@@ -46,20 +46,26 @@ explicitly rather than inferring them.
 The Zeeman production command creates this adjacent metadata automatically,
 including runtime, software versions, and a SHA-256 hash of the saved ``.npy``.
 
-The accepted final 2D-MOT production replay used ``--save-survivor-states``.
-Its authoritative downstream ensembles are stored under
+The historical pre-correction 2D-MOT production replay used
+``--save-survivor-states``. Its downstream ensembles are stored under
 ``data/particle_states/after_2d_mot/final_ensemble_s0_1.47/``. The directory
 contains one ``(N, 6)`` state array and adjacent metadata file for each of the
 20 Zeeman/MOT seed pairs. Together they contain 15,840 captured states from
 592,319 Zeeman survivors and reproduce the locked conditional efficiency of
-2.6742347%. These are the fixed inputs for 3D-MOT studies; do not rerun the 2D
-stage merely to generate 3D-MOT input.
+2.6742347%. These remain the fixed inputs for reproducing the historical 3D-MOT
+studies, but they are not authoritative for a corrected-profile 3D claim. The
+authoritative replacement will be the versioned sealed output of the corrected
+19-ring campaign after provenance validation; do not overwrite this historical
+directory.
 
-The completed full-source Zeeman campaign is stored under
+The historical full-source Zeeman campaign is stored under
 ``data/validation/zeeman/full_thermal_flux_v1/``. It contains one survivor-state
 array and adjacent metadata file for each of 100 seeds, plus ``summary.json``.
-These files are the authoritative inputs for the final oven-to-Zeeman and
-oven-to-2D-MOT flux prediction.
+Its metadata records the former ``active`` 20-ring magnet profile at commit
+``b70c788a4e4012ac92130f2e77363c7bb406d7a2``. It is not authoritative for the
+corrected 19-ring campaign and must not be combined with the corrected 2D-MOT
+results. Keep it as historical evidence until a full-angular campaign is rerun
+with explicit corrected-profile provenance.
 
 GitHub rejects individual files larger than 100 MB. If future state ensembles
 approach that size, use Git LFS or documented external storage instead of adding

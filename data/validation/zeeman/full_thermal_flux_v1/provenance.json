@@ -1,0 +1,17 @@
+{
+  "kind": "retrospective_dataset_provenance",
+  "dataset": "full_thermal_flux_v1",
+  "classification": "historical_active_20_ring_profile",
+  "verified_run_count": 100,
+  "seed_range_inclusive": [9000, 9099],
+  "git_commit": "b70c788a4e4012ac92130f2e77363c7bb406d7a2",
+  "resolved_zeeman_magnet_profile": "active",
+  "magnet_ring_count": 20,
+  "source_worktree_was_clean": true,
+  "field_payloads_are_identical": true,
+  "corrected_campaign_profile": "corrected_projectant_19ring_20261005",
+  "compatible_with_corrected_campaign": false,
+  "data_files_rewritten": false,
+  "evidence": "Every original run JSON embeds the active profile name and complete field arrays; all 100 payloads match the registered active profile and none match the corrected 19-ring profile.",
+  "note": "Existing result files remain unchanged; rerun into a new versioned directory before making a corrected-profile end-to-end flux claim."
+}

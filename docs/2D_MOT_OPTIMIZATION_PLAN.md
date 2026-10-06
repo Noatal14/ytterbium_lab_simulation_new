@@ -18,6 +18,12 @@ campaign. Update it when the experimental constraints, statistical target, or
 accepted workflow changes. Do not infer the campaign goal only from an Optuna
 script or one result directory.
 
+The sources of truth have distinct roles. The code and configuration define
+supported behavior and defaults. A campaign manifest freezes the exact inputs,
+parameters, numerical settings, provenance, and seed roles for one run. This
+plan records the scientific rationale, while the campaign guide and prompt
+describe operation. If these disagree, stop rather than silently choosing one.
+
 ## Scientific target
 
 The optimization target is the conditional capture efficiency among atoms that
@@ -138,12 +144,6 @@ Map the joint high-performing region rather than reporting three independent
 one-dimensional ranges. Parameter correlations can make some combinations of
 otherwise acceptable individual ranges perform poorly.
 
-## Historical timestep investigation (superseded protocol)
-
-The following paragraphs document how the hybrid solver and timestep were
-selected before the corrected-Zeeman campaign. They are retained as provenance,
-not as instructions for a new campaign. The active protocol is stated below.
-
 ## Stage 3: held-out validation
 
 Use five held-out Zeeman/MOT pairs (seeds 3010-3014), 10,000 particles per
@@ -152,62 +152,49 @@ deduplicated sensitivity union. These data are held out from Optuna discovery,
 but because they select/tune the recommendation they are not the sealed unbiased
 performance estimate. That estimate uses seeds 3015-3034 and all survivors.
 
-Recheck finalists at the finer 2D-MOT timestep of 5 microseconds. The 10
-microsecond timestep is the accepted screening choice, not an excuse to skip the
-final numerical cross-check.
-
-The selected setting subsequently passed the production prediction target at
-10 microseconds using 20 independent Zeeman/MOT seed pairs. Repeating those
-exact 20 pairs at 5 microseconds produced a paired difference of +0.060106
-percentage points, with a 95% interval from +0.032474 to +0.087739 percentage
-points. Therefore 5 and 10 microseconds are not equivalent at the predeclared
-+/-0.05-percentage-point tolerance.
-
-The library's current stochastic solver samples Gaussian recoil fluctuations
-with expected photon count `Ni = scattering_rate * dt` for each laser and time
-step. A smaller timestep is not automatically more physical when `Ni` becomes
-too small for that approximation. Before choosing the production timestep, run
-`python -m studies.diagnose_2d_mot_photon_counts` at 5 microseconds. It reports,
-separately for every laser and for captured/non-captured trajectories, both the
-fraction of evaluations below the provisional `Ni = 15` threshold and the
-fraction of expected photon impulse contributed by those evaluations. The next
-solver validation should use exact Poisson sampling in the low-`Ni` regime and
-the Gaussian approximation only where it is justified, then repeat the paired
-timestep comparison and finalist checks.
-
-That diagnostic was completed on three independent 2,000-particle ensembles.
-Across all lasers, 95.1738% of laser-step evaluations had `Ni < 15`, accounting
-for 14.3490% of the expected photons. For captured trajectories the corresponding
-photon fraction was 8.7943%; for non-captured trajectories it was 17.2808%.
-The four 2D-MOT beams individually received about 9.0%-13.1% of their expected
-photons from `Ni < 15` evaluations, while the residual Zeeman laser received
-99.18% of its expected photons there (and contributed 5.008% of the combined
-expected photons). The low-count regime is therefore materially present and
-cannot be dismissed by counting only high-force steps.
-
-`RK4StHybridCustom` is the accepted validation model. Below `Ni = 15`, it
-samples an exact Poisson absorption count and the isotropic recoil directions of
-the same spontaneous-emission events. At and above 15 it retains the fast
-Gaussian approximation. The one-off timestep script was removed after the
-completed validation results were saved under `data/validation/mot_2d/`.
+Use the hybrid stochastic solver at 0.625 microseconds for finalist selection,
+sensitivity, and the sealed production estimate. This is the active numerical
+protocol. Screening and refinement use the same solver at 1.25 microseconds for
+efficiency. Do not substitute the historical 10- or 5-microsecond protocols.
 
 For a new experimentally available laser intensity, use the maintained
-`studies.mot_2d_s0_campaign` workflow rather than recreating those historical
-validation stages.
+`studies.mot_2d_s0_campaign` workflow rather than recreating the historical
+timestep investigations.
 
-The follow-up campaign found no monotonic capture trend from 5 down to 0.3125
-microseconds; adjacent comparisons were dominated by uncoupled Monte Carlo
-recoil noise. Repeated 1.25-versus-0.625 batches gave mean differences of
-+0.054 and +0.047 percentage points, while 0.625 versus 0.3125 gave -0.067
-percentage points with a 95% interval that included zero. Continuing to halve
-the timestep would therefore spend rapidly increasing compute on the random
-realization rather than resolve a clear numerical trend.
+## Numerical-method provenance (historical, not operational)
 
-Use 1.25 microseconds as the efficient working timestep for candidate screening
-and local refinement. Recheck finalists at 0.625 microseconds, which is the
-production timestep. Retain the completed 0.3125-microsecond run as a sensitivity
-check on the final recommendation; do not recursively halve the timestep unless
-a future comparison shows a reproducible monotonic numerical bias.
+Earlier work compared 10 and 5 microseconds, then extended the study from 5 to
+0.3125 microseconds. The old 10-versus-5 comparison found a paired difference of
++0.060106 percentage points, with a 95% interval from +0.032474 to +0.087739
+percentage points; those two historical settings were therefore not equivalent
+under the predeclared +/-0.05-point tolerance. Later comparisons found no
+monotonic capture trend as the timestep was repeatedly halved. Repeated
+1.25-versus-0.625 batches gave mean differences of +0.054 and +0.047 percentage
+points, while 0.625 versus 0.3125 gave -0.067 percentage points with an interval
+that included zero. These results motivated the active 1.25/0.625-microsecond
+working/production split.
+
+The exploratory calibration selected `Ni = 15` as the transition point at which
+the mean relative discrepancy between Poisson and Gaussian recoil sampling was
+approximately 1.99%. This value is not a requirement to use the Gaussian
+approximation. `RK4StHybridCustom` samples the absorption count and associated
+isotropic emission recoils from the exact Poisson model whenever `Ni < 15`, and
+uses the faster Gaussian approximation only at or above the calibrated threshold.
+
+`F_min` belonged to the same superseded Gaussian-only timestep estimate: it was
+a historical force scale used with `N_min` to construct a proposed lower bound
+on `dt`. It is not an active force or capture cutoff, and that lower-bound
+argument does not constrain `RK4StHybridCustom`. The current 1.25-microsecond
+working timestep and 0.625-microsecond production timestep are locked empirical
+protocol choices, not consequences of `N_min` or `F_min`.
+
+A trajectory diagnostic on three independent 2,000-particle ensembles found
+that 95.1738% of laser-step evaluations had `Ni < 15`, accounting for 14.3490%
+of the expected photons. The corresponding photon fractions were 8.7943% for
+captured trajectories and 17.2808% for non-captured trajectories. The low-count
+regime is therefore material, which is precisely why the accepted solver uses
+Poisson sampling there. Re-run `studies.diagnose_2d_mot_photon_counts` if the
+laser settings, recoil model, or solver transition rule changes.
 
 ## Stage 4: establish near-optimality within experimental resolution
 
@@ -329,8 +316,10 @@ observed local response is therefore practically flat in its means, but the
 data do not prove simultaneous equivalence of every continuous setting in a
 parameter box.
 
-No further 2D-MOT optimization, timestep, sensitivity, or conditional
-production runs are required under the present model and apparatus constraints.
+No further optimization, timestep, sensitivity, or conditional-production runs
+are required to close the historical pre-correction campaign. The active
+corrected 19-ring campaign and a corrected full-angular flux calculation remain
+outstanding before making a current apparatus-level claim.
 
 On Zeus, scheduler and multiprocessing startup are material.  Use three
 long-lived 200-core workers within the 600-core quota, and let each worker run
@@ -369,7 +358,12 @@ simulation domain, experimental resolution, particle count, and seed count
 
 ## Stage 6: full unfiltered apparatus prediction
 
-Status as of 2026-09-01: **complete.**
+Status as of 2026-10-06: **historical result; corrected-profile rerun required.**
+
+The result described below used the former `active` 20-ring Zeeman profile, as
+verified from all 100 run-metadata files. It must not be combined with the
+corrected 19-ring 2D-MOT campaign. The procedure remains valid, but a new
+versioned full-angular run with explicit corrected-profile provenance is needed.
 
 The completed campaign followed this procedure:
 

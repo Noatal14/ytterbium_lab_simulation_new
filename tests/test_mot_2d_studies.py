@@ -235,6 +235,10 @@ def test_s0_campaign_accepts_noncanonical_positive_fixed_value(tmp_path, monkeyp
     ]))
     manifest = json.loads((root / "campaign.json").read_text())
     assert manifest["s0_values"] == [1.25]
+    pbs = (root / "jobs" / "01_smoke.pbs").read_text()
+    assert "#PBS -J" not in pbs
+    assert "export PBS_ARRAY_INDEX=0" in pbs
+    assert "--s0-index $PBS_ARRAY_INDEX" in pbs
 
 
 def test_campaign_production_directory_preserves_readable_s0():

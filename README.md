@@ -42,7 +42,6 @@ report, and export of survivor states for the 3D MOT.
 - `graphs_scripts/` — plotting and graph-generation scripts for analysis and publication output.
 - `data/` — reference data, optimization summaries, and generated survivor ensembles.
 - `prompts/` — reusable prompts for AI-guided operation of established workflows.
-- `dt_comparison/` — archival exploratory work around timestep and stochastic/numerical investigations; not part of the normal production workflow.
 - `atomsmltr/` — a local vendored copy of the external `atomsmltr` library used by the project.
 
 ## Configuration
@@ -120,11 +119,15 @@ This stage always starts from a newly generated thermal beam.
 
 The standard command uses the configured angular cutoff for efficient MOT
 optimization. For an absolute source-to-Zeeman flux estimate, sample the full
-forward distribution instead:
+forward distribution instead. The existing ``full_thermal_flux_v1`` output is
+historical and uses the former 20-ring profile; do not combine it with corrected
+19-ring campaign results. A new run must record the corrected profile explicitly:
 
 ```bash
-python -m studies.full_thermal_zeeman_flux run --n-atoms 50000 --seed 9000 --npools 150
-python -m studies.full_thermal_zeeman_flux summarize
+python -m studies.full_thermal_zeeman_flux run --n-atoms 50000 --seed 9000 --npools 150 \
+  --magnet-profile corrected_projectant_19ring_20261005
+python -m studies.full_thermal_zeeman_flux summarize \
+  --magnet-profile corrected_projectant_19ring_20261005
 ```
 
 The full-angle study defaults to the conservative threefold divergence
@@ -210,10 +213,11 @@ scripts were removed after the campaign closed. Git history retains them if an
 old result ever needs to be reconstructed. The retained scripts reproduce the
 accepted hybrid refinement, finalist, sensitivity, and final-production chain.
 
-### Final 2D-MOT recommendation
+### Historical pre-correction 2D-MOT recommendation
 
-The conditional 2D-MOT optimization campaign is complete. The locked nominal
-setting is:
+The former 20-ring conditional 2D-MOT optimization campaign is complete. Its
+locked nominal setting, retained for reproducibility and method development,
+is:
 
 ```text
 s0:             1.474497
@@ -223,7 +227,7 @@ solver:         RK4StHybridCustom
 production dt:  0.625 us
 ```
 
-The final production dataset contains 20 independent Zeeman/MOT ensemble pairs,
+This historical production dataset contains 20 independent Zeeman/MOT ensemble pairs,
 592,319 simulated Zeeman survivors, and 15,840 captured atoms. The pooled
 conditional capture efficiency is 2.6742347%. For a reporting input of
 10,000,000 Zeeman survivors, the expected capture is 267,423 atoms and the 95%
@@ -240,14 +244,14 @@ neighborhood, but their intervals are wider than the strict +/-0.05-point
 equivalence margin and should not be presented as proof that every point in a
 continuous box is equivalent.
 
-The final source-to-apparatus flux campaign is separate. It samples the full
+The historical source-to-apparatus flux campaign is separate. It samples the full
 thermal angular distribution, estimates the Zeeman-survival fraction, and then
-applies the already measured conditional 2D-MOT prediction; it does not reopen
-the completed 2D-MOT optimization.
+applies the former-profile conditional 2D-MOT prediction. It must not be
+combined with corrected-profile results.
 
-### Final oven-to-2D-MOT flux prediction
+### Historical pre-correction oven-to-2D-MOT flux prediction
 
-The full-source campaign is also complete. It sampled 5,000,000 Yb-171 atoms
+The former 20-ring full-source campaign is complete. It sampled 5,000,000 Yb-171 atoms
 from the complete forward microtube distribution with the conservative 3x
 angular broadening, split across 100 independent 50,000-particle seeds. A total
 of 17,168 atoms met the existing Zeeman-survivor criterion:
@@ -284,10 +288,13 @@ New outputs are grouped under `data/particle_states/after_zeeman/`,
 `data/particle_states/after_3d_mot/`, and `data/optimization/`. See
 `data/README.md` for the layout and file conventions.
 
-The fixed downstream ensemble for 3D-MOT studies is
+The historical pre-correction input used by the retained 3D-MOT studies is
 `data/particle_states/after_2d_mot/final_ensemble_s0_1.47/`: 20 validated `(N, 6)`
 arrays containing all 15,840 states captured in the accepted final 2D-MOT
-production replay.
+production replay. It remains useful for exact reproduction of the historical
+3D chain, but it is not authoritative for a corrected-profile 3D claim. The
+authoritative downstream input will be the versioned sealed output of the
+corrected 19-ring campaign after its provenance has been validated.
 
 The `graphs/` and `graphs_scripts/` directories are used for plotting and interpretation of these results.
 
@@ -307,10 +314,6 @@ For reproducibility, the most important things to preserve are:
 This repository contains a local copy of `atomsmltr` under the `atomsmltr/` directory. The project uses this local package as part of the simulation environment.
 
 The exact upstream revision and the full set of project-specific modifications cannot be established confidently from the current working tree alone. For that reason, the checked-in `atomsmltr` directory should be treated as the version associated with this project rather than assumed to be identical to a particular upstream release.
-
-## dt_comparison
-
-The `dt_comparison/` directory is archival and exploratory. It contains investigation code around timestep choices, numerical checks, and force/step-size comparisons. It is not part of the normal production workflow and does not need to follow the same cleanup conventions as the main simulation scripts.
 
 ## Environment and dependency setup
 

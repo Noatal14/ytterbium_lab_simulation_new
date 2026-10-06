@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import math
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -159,7 +160,15 @@ def paths(root):
 
 def write_pbs(path, name, array, ncpus, walltime, command, revision=None):
     throttle = 3 if ncpus == 200 else 4 if ncpus == 150 else 1
-    array_line = f"#PBS -J {array}%{throttle}\n" if array else ""
+    array_line = ""
+    scalar_index_line = ""
+    if array:
+        single_index = re.fullmatch(r"(\d+)-(\d+)", array)
+        if single_index and single_index.group(1) == single_index.group(2):
+            index = single_index.group(1)
+            scalar_index_line = f"export PBS_ARRAY_INDEX={index}\n"
+        else:
+            array_line = f"#PBS -J {array}%{throttle}\n"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"""#!/bin/bash
 #PBS -N {name}
@@ -173,7 +182,7 @@ module load SPACK/apps
 module load gcc/14.1.0
 module load python/3.14.2
 source ~/venvs/atomsmltr/bin/activate
-EXPECTED_COMMIT={revision or git_commit()}
+{scalar_index_line}EXPECTED_COMMIT={revision or git_commit()}
 ACTUAL_COMMIT=$(git rev-parse HEAD)
 if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
   echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2

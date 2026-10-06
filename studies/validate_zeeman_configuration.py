@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+from numbers import Integral
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,8 +18,8 @@ from config import (
     Geometry,
     MOT_2D_MAGNET_RADIUS_M,
     ZEEMAN_BEAM_DIRECTION,
-    ZEEMAN_FIELD_CONFIG,
     ZEEMAN_LASER_CONFIG,
+    ZEEMAN_MAGNET_PROFILES,
     ZEEMAN_SIM_CONFIG,
 )
 from lab_setup.atom_species import create_atom
@@ -30,6 +31,10 @@ from utils.data_paths import ZEEMAN_VALIDATION_DIR
 
 DEFAULT_REPORT_FILE = ZEEMAN_VALIDATION_DIR / "zeeman_validation.json"
 DEFAULT_PLOT_FILE = ZEEMAN_VALIDATION_DIR / "zeeman_validation.png"
+EXPECTED_MAGNET_RING_COUNTS = {
+    "active": 20,
+    "corrected_projectant_19ring_20261005": 19,
+}
 
 
 def _git_commit():
@@ -70,14 +75,34 @@ def analyze_zeeman_configuration(
     target_exit_speed_m_s=50.0,
     endpoint_tolerance_m_s=20.0,
     include_2d_mot_field=True,
+    magnet_profile=ACTIVE_ZEEMAN_MAGNET_PROFILE,
+    expected_ring_count=None,
 ):
     """Sample the real field/laser implementation and return an audit summary."""
     if num_points < 3:
         raise ValueError("num_points must be at least 3.")
 
-    radii = np.asarray(ZEEMAN_FIELD_CONFIG["radii_m"], dtype=float)
-    positions = np.asarray(ZEEMAN_FIELD_CONFIG["positions_m"], dtype=float)
-    tilts = np.asarray(ZEEMAN_FIELD_CONFIG["tilt_angles_deg"], dtype=float)
+    if magnet_profile not in ZEEMAN_MAGNET_PROFILES:
+        raise ValueError(f"Unknown Zeeman magnet profile: {magnet_profile}")
+    radii, positions, tilts = (
+        np.asarray(values, dtype=float)
+        for values in ZEEMAN_MAGNET_PROFILES[magnet_profile]
+    )
+    if expected_ring_count is None:
+        try:
+            expected_ring_count = EXPECTED_MAGNET_RING_COUNTS[magnet_profile]
+        except KeyError as exc:
+            raise ValueError(
+                "No independent expected ring count is registered for Zeeman "
+                f"profile {magnet_profile!r}; pass expected_ring_count explicitly."
+            ) from exc
+    if (
+        isinstance(expected_ring_count, bool)
+        or not isinstance(expected_ring_count, Integral)
+        or expected_ring_count < 1
+    ):
+        raise ValueError("expected_ring_count must be a positive integer.")
+    expected_ring_count = int(expected_ring_count)
 
     laser_direction = np.asarray(ZEEMAN_BEAM_DIRECTION, dtype=float)
     atom_direction = -laser_direction
@@ -181,7 +206,7 @@ def analyze_zeeman_configuration(
 
     checks = {
         "magnet_arrays_have_equal_length": len(radii) == len(positions) == len(tilts),
-        "magnet_profile_has_20_rings": len(radii) == 20,
+        "magnet_ring_count_matches_expected": len(radii) == expected_ring_count,
         "magnet_positions_are_strictly_increasing": bool(
             np.all(np.diff(positions) > 0.0)
         ),
@@ -241,9 +266,11 @@ def analyze_zeeman_configuration(
         "base_git_commit": _git_commit(),
         "working_tree_was_dirty": _git_is_dirty(),
         "active_magnet_profile": ACTIVE_ZEEMAN_MAGNET_PROFILE,
+        "evaluated_magnet_profile": magnet_profile,
         "include_2d_mot_field": include_2d_mot_field,
         "configuration": {
             "magnet_ring_count": len(radii),
+            "expected_magnet_ring_count": expected_ring_count,
             "magnet_position_min_m": float(positions.min()),
             "magnet_position_max_m": float(positions.max()),
             "laser_s0": ZEEMAN_LASER_CONFIG["s0"],
@@ -400,7 +427,7 @@ def plot_validation(summary, profiles, output_file):
         axis.grid(alpha=0.22)
 
     fig.suptitle(
-        f"Zeeman validation: {summary['active_magnet_profile']} "
+        f"Zeeman validation: {summary['evaluated_magnet_profile']} "
         f"[{summary['status']}]",
         fontsize=15,
     )
@@ -428,6 +455,18 @@ def parse_args():
     parser.add_argument("--target-exit-speed", type=float, default=50.0)
     parser.add_argument("--endpoint-tolerance", type=float, default=20.0)
     parser.add_argument(
+        "--magnet-profile",
+        choices=sorted(ZEEMAN_MAGNET_PROFILES),
+        default=ACTIVE_ZEEMAN_MAGNET_PROFILE,
+        help="Named magnet profile to validate (default: active profile).",
+    )
+    parser.add_argument(
+        "--expected-ring-count",
+        type=int,
+        default=None,
+        help="Optional independent check on the selected profile's ring count.",
+    )
+    parser.add_argument(
         "--include-2d-mot-field",
         type=int,
         choices=[0, 1],
@@ -445,6 +484,8 @@ def main():
         target_exit_speed_m_s=args.target_exit_speed,
         endpoint_tolerance_m_s=args.endpoint_tolerance,
         include_2d_mot_field=bool(args.include_2d_mot_field),
+        magnet_profile=args.magnet_profile,
+        expected_ring_count=args.expected_ring_count,
     )
     report_path = write_report(summary, args.report)
     plot_path = plot_validation(summary, profiles, args.plot)
