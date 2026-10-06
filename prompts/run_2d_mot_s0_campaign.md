@@ -31,8 +31,9 @@ instructions such as "update the file" or "run the script."
 
 ## Campaign objective
 
-I will provide a list of laser saturation parameter values, `s0`, that may be
-available in the laboratory. For every supplied value, the campaign must:
+Run a corrected-Zeeman campaign for the explicit fixed `s0` value or values I
+provide. The current canonical example is `s0=1.3`. Each supplied value remains
+fixed during its detuning/radius optimization. The campaign must:
 
 1. find the recommended detuning and magnet radius;
 2. perform broad screening and focused refinement;
@@ -64,9 +65,21 @@ studies/optimize_2d_mot_joint.py
 studies/run_2d_mot_final_production.py
 ```
 
-The current repository code and documentation override this prompt if they
-differ. The principal operating guide is `docs/2D_MOT_S0_CAMPAIGN.md`, and the
-principal program is `studies/mot_2d_s0_campaign.py`.
+If this prompt, the campaign guide, scientific plan, configuration, and
+implementation disagree, stop before submission, report the discrepancy, and
+do not silently select one source.
+
+The current canonical example uses fixed `s0=1.3`, ensemble directory
+`data/particle_states/after_zeeman/corrected_projectant_19ring_20261005` and
+profile `corrected_projectant_19ring_20261005`. Seed roles are discovery
+`3000-3004`, refinement `3005-3009`, held-out confirmation/tuning `3010-3014`,
+and sealed validation `3015-3034`. Working/final timesteps are `1.25 us` and
+`0.625 us`; solver is `RK4StHybridCustom`; bounds are `[-1.55,-0.85] Gamma`
+and `[0.045,0.051] m`. Every job must enforce the pinned Git revision.
+All 35 input ensembles for seeds `3000-3034` must exist and pass immutable
+provenance validation before campaign creation.
+Candidate selection and sealed performance validation are distinct. Never
+claim robustness or epsilon-near-optimality unless simultaneous checks pass.
 
 ## Locked scientific design
 
@@ -106,7 +119,8 @@ particle counts, seed counts, or winner-selection rule during the campaign.
 
 ## Starting the campaign
 
-First ask me only for the `s0` values and campaign name. After I answer, provide
+First ask me only for the fixed `s0` value or values and campaign name. After I
+answer, provide
 copy-ready commands that enter the repository, activate the environment, check
 for old matching jobs, inspect Git status, update safely, display the commit,
 and run a short syntax/import check. Use:
@@ -124,11 +138,14 @@ Then create the campaign using actual values in this structure:
 ```bash
 python -m studies.mot_2d_s0_campaign create \
   --name <CAMPAIGN_NAME> \
-  --s0 <S0_VALUES> \
+  --s0 <EXPLICIT_S0_VALUES> \
+  --ensemble-dir data/particle_states/after_zeeman/corrected_projectant_19ring_20261005 \
+  --zeeman-profile corrected_projectant_19ring_20261005 \
   --output-dir data/optimization/mot_2d/<CAMPAIGN_DIRECTORY>
 ```
 
-Do not leave angle-bracket placeholders in the final command. The program will
+Replace the placeholders with the values I supplied; do not leave angle-bracket
+placeholders in the final command. The program will
 print the first generated PBS file; give me its exact `qsub` command.
 
 ## Advancing and monitoring
@@ -140,9 +157,13 @@ python -m studies.mot_2d_s0_campaign advance \
   --campaign data/optimization/mot_2d/<CAMPAIGN_DIRECTORY>
 ```
 
-This validates the stage and creates the next PBS file. Display that file,
-verify its array size, cores, and walltime, give me the exact `qsub` command,
-and ask for the returned Job ID. The stages are:
+This validates the stage and creates the next submission artifact. Display it,
+verify its array size, cores, walltime, and dependencies, then give me the exact
+copy-ready command. Refinement is a four-round dependent chain; submit its
+generated shell script once and do not advance until all four rounds finish.
+The script must use `depend=afterok:<complete-array-job-id>` with the exact ID
+returned by Zeus, including `[]` when present; do not use `afterokarray`.
+The stages are:
 
 ```text
 smoke

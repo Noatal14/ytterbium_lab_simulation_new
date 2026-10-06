@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import hashlib
+import subprocess
 import time
 from pathlib import Path
 
@@ -30,6 +32,16 @@ from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 BOUNDS_S0 = (1.4, 1.5)
 BOUNDS_DETUNING = (-1.55, -0.85)
 BOUNDS_MAGNET_RADIUS_M = (0.045, 0.051)
+
+
+def remaining_complete_trials(target, states):
+    """Return the exact resume budget for an immutable total-trial target."""
+    complete = sum(state == optuna.trial.TrialState.COMPLETE for state in states)
+    if complete > target:
+        raise RuntimeError(
+            f"Study already has {complete} complete trials, exceeding target {target}."
+        )
+    return target - complete
 
 
 def evaluate_configuration(
@@ -129,6 +141,24 @@ def optimize_mot(args):
     stochastic_sim_function = (
         RK4StHybridCustom if args.stochastic_solver == "hybrid" else RK4StCustom
     )
+    git_commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], text=True
+    ).strip()
+    design = {
+        "fixed_s0": args.fixed_s0,
+        "dt_s": args.dt,
+        "solver": stochastic_sim_function.__name__,
+        "ensemble_dir": str(Path(args.ensemble_dir).resolve()) if args.ensemble_dir else None,
+        "zeeman_seeds": [row["zeeman_seed"] for row in ensembles],
+        "mot_seeds": list(args.mot_seeds) if args.mot_seeds else [args.mot_seed_start+i for i in range(len(ensembles))],
+        "particles_per_ensemble": args.particles_per_ensemble,
+        "sampler_seed": args.sampler_seed,
+        "bounds": {"s0": [args.fixed_s0, args.fixed_s0] if args.fixed_s0 is not None else list(bounds_s0),
+                   "detuning_gamma": list(bounds_detuning), "magnet_radius_m": list(bounds_radius)},
+        "git_commit": git_commit,
+        "campaign_design_id": args.campaign_design_id,
+    }
+    design_id = hashlib.sha256(json.dumps(design, sort_keys=True).encode()).hexdigest()
 
     def objective(trial):
         parameters = {
@@ -144,6 +174,7 @@ def optimize_mot(args):
             **parameters,
             ensembles=ensembles,
             mot_seed_start=args.mot_seed_start,
+            mot_seeds=design["mot_seeds"],
             npools=args.npools,
             dt_s=args.dt,
             stochastic_sim_function=stochastic_sim_function,
@@ -158,6 +189,11 @@ def optimize_mot(args):
                 "particles_per_ensemble": args.particles_per_ensemble,
                 "mot_seed_start": args.mot_seed_start,
                 "stochastic_solver": stochastic_sim_function.__name__,
+                "design_id": design_id,
+                "git_commit": git_commit,
+                "ensemble_dir": design["ensemble_dir"],
+                "zeeman_seeds": design["zeeman_seeds"],
+                "mot_seeds": design["mot_seeds"],
             },
             **evaluation,
         }
@@ -187,6 +223,17 @@ def optimize_mot(args):
         pruner=optuna.pruners.NopPruner(),
         load_if_exists=True,
     )
+    existing_design = study.user_attrs.get("scientific_design")
+    if existing_design is None:
+        study.set_user_attr("scientific_design", design)
+        study.set_user_attr("design_id", design_id)
+    elif existing_design != design or study.user_attrs.get("design_id") != design_id:
+        raise RuntimeError("Existing Optuna study has an incompatible scientific design.")
+    running = [t for t in study.trials if t.state == optuna.trial.TrialState.RUNNING]
+    for trial in running:
+        study._storage.set_trial_state_values(
+            trial._trial_id, optuna.trial.TrialState.FAIL
+        )
     if not study.trials:
         for detuning_gamma, magnet_radius in args.enqueue_point:
             study.enqueue_trial(
@@ -195,7 +242,9 @@ def optimize_mot(args):
                     "magnet_radius": float(magnet_radius),
                 }
             )
-    study.optimize(objective, n_trials=args.n_trials)
+    remaining = remaining_complete_trials(args.n_trials, [t.state for t in study.trials])
+    if remaining:
+        study.optimize(objective, n_trials=remaining)
     complete_trials = [
         trial
         for trial in study.trials
@@ -276,6 +325,7 @@ def optimize_mot(args):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-trials", type=int, default=50)
+    parser.add_argument("--campaign-design-id")
     parser.add_argument(
         "--fixed-s0",
         type=float,
@@ -294,6 +344,7 @@ def parse_args(argv=None):
         help="Optional explicit Zeeman-seed order to load from --ensemble-dir.",
     )
     parser.add_argument("--mot-seed-start", type=int, default=4000)
+    parser.add_argument("--mot-seeds", type=int, nargs="+")
     parser.add_argument("--sampler-seed", type=int, default=DEFAULT_RANDOM_SEED)
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--dt", type=float, default=MOT_2D_SIM_CONFIG["dt_s"])

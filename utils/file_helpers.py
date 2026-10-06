@@ -1,5 +1,7 @@
 import csv
 import json
+import os
+import tempfile
 from pathlib import Path
 import numpy as np
 from typing import Any
@@ -82,8 +84,21 @@ JSON
 def save_file_json(filename, data):
     filepath = Path(filename)
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    with open(filepath, "w") as f:
-        json.dump(data, f, indent=2, default=_json_default)
+    fd, temporary = tempfile.mkstemp(
+        prefix=f".{filepath.name}.", suffix=".tmp", dir=filepath.parent
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, default=_json_default)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, filepath)
+    except BaseException:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
 
     print(f"JSON summary saved to: {filepath}")
 

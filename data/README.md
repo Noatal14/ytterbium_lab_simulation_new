@@ -1,5 +1,14 @@
 # Data directory
 
+The authoritative corrected-Zeeman source for the active fixed-`s0=1.3`
+campaign is `particle_states/after_zeeman/corrected_projectant_19ring_20261005`.
+Every array must have adjacent metadata identifying the same corrected profile,
+seed, shape, survivor count, SHA-256 and source Git revision. Discovery,
+refinement, held-out confirmation, and sealed final-validation seeds are
+non-overlapping. All required seeds `3000-3034` must exist and pass these checks
+before campaign creation. Only the sealed production outputs may support the final
+unbiased performance claim and downstream 3D-MOT state ensemble.
+
 Generated data is grouped by its role in the stage-based workflow:
 
 ```text

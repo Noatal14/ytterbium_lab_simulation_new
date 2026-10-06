@@ -65,6 +65,9 @@ def test_joint_optimizer_accepts_fixed_s0():
             "--zeeman-seeds",
             "3000",
             "3001",
+            "--mot-seeds",
+            "43000",
+            "43001",
             "--enqueue-point",
             "-1.2",
             "0.049",
@@ -75,6 +78,7 @@ def test_joint_optimizer_accepts_fixed_s0():
     assert args.stochastic_solver == "hybrid"
     assert args.ensemble_dir == "corrected"
     assert args.zeeman_seeds == [3000, 3001]
+    assert args.mot_seeds == [43000, 43001]
     assert args.enqueue_point == [[-1.2, 0.049]]
 
 
@@ -111,6 +115,8 @@ def test_final_production_can_save_downstream_states():
         [
             "--zeeman-seeds",
             "3000",
+            "--mot-seeds",
+            "43000",
             "--s0",
             "1.474497",
             "--detuning-gamma",
@@ -164,7 +170,7 @@ def test_joint_evaluation_returns_requested_survivor_states(monkeypatch):
     )
 
 
-def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
+def test_s0_campaign_accepts_multiple_locked_fixed_s0_values(tmp_path, monkeypatch):
     from config import MOT_2D_SIM_CONFIG
     from studies.mot_2d_s0_campaign import (
         FINAL_DT_S,
@@ -174,6 +180,16 @@ def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
     )
 
     output = tmp_path / "campaign"
+    import studies.mot_2d_s0_campaign as campaign
+    monkeypatch.setattr(campaign, "assert_relevant_worktree_clean", lambda: None)
+    monkeypatch.setattr(
+        campaign,
+        "freeze_input_ensembles",
+        lambda directory, profile, roles: {
+            role: [{"zeeman_seed": seed} for seed in seeds]
+            for role, seeds in roles.items()
+        },
+    )
     args = parse_args(
         [
             "create",
@@ -198,6 +214,27 @@ def test_s0_campaign_accepts_a_list_and_uses_locked_design(tmp_path):
     )
     pbs = (output / "jobs" / "01_smoke.pbs").read_text()
     assert "--s0-index $PBS_ARRAY_INDEX" in pbs
+
+
+def test_s0_campaign_accepts_noncanonical_positive_fixed_value(tmp_path, monkeypatch):
+    import studies.mot_2d_s0_campaign as campaign
+
+    monkeypatch.setattr(campaign, "assert_relevant_worktree_clean", lambda: None)
+    monkeypatch.setattr(
+        campaign,
+        "freeze_input_ensembles",
+        lambda directory, profile, roles: {
+            role: [{"zeeman_seed": seed} for seed in seeds]
+            for role, seeds in roles.items()
+        },
+    )
+    root = tmp_path / "noncanonical"
+    campaign.create(campaign.parse_args([
+        "create", "--name", "s0_1p25", "--s0", "1.25",
+        "--output-dir", str(root),
+    ]))
+    manifest = json.loads((root / "campaign.json").read_text())
+    assert manifest["s0_values"] == [1.25]
 
 
 def test_campaign_production_directory_preserves_readable_s0():
@@ -316,7 +353,7 @@ def test_campaign_advances_five_confirmed_finalists_to_sensitivity(
     campaign.prepare_sensitivity(root, {"s0_values": [1.3]})
 
     assert prepared["stage"] == "sensitivity"
-    assert len(prepared["specs"]) == 9
+    assert len(prepared["specs"]) == 17
     assert (root / "winners.json").exists()
 
 
@@ -346,6 +383,9 @@ def test_final_production_prediction_uses_conservative_variance():
             "--zeeman-seeds",
             "3000",
             "3001",
+            "--mot-seeds",
+            "43000",
+            "43001",
             "--s0",
             "1.5",
             "--detuning-gamma",
@@ -357,8 +397,33 @@ def test_final_production_prediction_uses_conservative_variance():
         ]
     )
     assert args.zeeman_seeds == [3000, 3001]
+    assert args.mot_seeds == [43000, 43001]
     assert args.s0 == 1.5
     assert args.magnet_radius_mm == 49.3
+
+
+def test_cluster_bootstrap_targets_survivor_weighted_pooled_efficiency():
+    from studies.run_2d_mot_final_production import cluster_bootstrap_prediction
+
+    unequal = [
+        {"n_input": 1_000, "captured": 10},
+        {"n_input": 9_000, "captured": 270},
+    ]
+    draws = cluster_bootstrap_prediction(
+        unequal, reporting_survivors=1_000_000, draws=40_000, random_seed=7
+    )
+    pooled = 280 / 10_000
+    unweighted = (0.01 + 0.03) / 2
+    assert abs(float(np.mean(draws)) - pooled) < abs(float(np.mean(draws)) - unweighted)
+
+    equal = [
+        {"n_input": 5_000, "captured": 100},
+        {"n_input": 5_000, "captured": 150},
+    ]
+    equal_draws = cluster_bootstrap_prediction(
+        equal, reporting_survivors=1_000_000, draws=40_000, random_seed=8
+    )
+    assert abs(float(np.mean(equal_draws)) - 0.025) < 0.001
 
 
 def test_student_interval_requires_replicates():

@@ -1,8 +1,9 @@
-"""Resumable, decision-free 2D-MOT optimization for a list of fixed s0 values."""
+"""Resumable corrected-Zeeman 2D-MOT optimization at supplied fixed s0 values."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import math
 import subprocess
@@ -24,8 +25,119 @@ D_RES = 0.01
 R_RES = 0.01e-3
 SCREEN_TRIALS = 17
 REFINE_TRIALS = 10
+REFINEMENT_CUMULATIVE_TARGETS = (3, 6, 9, 10)
+SCREEN_WALLTIME = "24:00:00"
+REFINEMENT_ROUND_WALLTIME = "20:00:00"
 CONFIRMATION_CANDIDATES = 5
-PRODUCTION_SEEDS = tuple(range(3000, 3020))
+CAPTURE_CRITERION_VERSION = "mot_2d_extract_survivors_v1"
+DEFAULT_PROFILE = "corrected_projectant_19ring_20261005"
+DEFAULT_ENSEMBLE_DIR = str(Path("data/particle_states/after_zeeman") / DEFAULT_PROFILE)
+SEED_ROLES = {
+    "discovery": list(range(3000, 3005)),
+    "refinement": list(range(3005, 3010)),
+    "held_out_confirmation": list(range(3010, 3015)),
+    "sealed_validation": list(range(3015, 3035)),
+}
+STAGE_ROLE = {"smoke": "discovery", "screen": "discovery",
+              "refine": "refinement", "confirmation": "held_out_confirmation",
+              "sensitivity": "held_out_confirmation", "production": "sealed_validation"}
+RELEVANT_CODE_FILES = [
+    "config.py", "simulations/mot_2d.py", "studies/mot_2d_s0_campaign.py",
+    "studies/optimize_2d_mot_joint.py", "studies/run_2d_mot_final_production.py",
+    "utils/mot_2d_study.py", "utils/file_helpers.py",
+    "utils/RK4StHybridCustom.py",
+]
+
+
+def git_commit():
+    return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+
+
+def physical_model_hash():
+    digest = hashlib.sha256()
+    paths = [Path(path) for path in RELEVANT_CODE_FILES]
+    paths.extend(sorted(Path("lab_setup").rglob("*.py")))
+    for path in paths:
+        digest.update(path.as_posix().encode())
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def relevant_code_files():
+    return RELEVANT_CODE_FILES + [
+        path.as_posix() for path in sorted(Path("lab_setup").rglob("*.py"))
+    ]
+
+
+def assert_relevant_worktree_clean():
+    dirty = subprocess.check_output(
+        ["git", "status", "--porcelain", "--", *relevant_code_files()], text=True
+    ).strip()
+    if dirty:
+        raise RuntimeError("Relevant campaign/scientific files are dirty:\n" + dirty)
+
+
+def freeze_input_ensembles(directory, profile, seed_roles):
+    records = {}
+    for role, seeds in seed_roles.items():
+        ensembles = load_production_ensembles(
+            directory=directory, zeeman_seeds=seeds, expected_profile=profile
+        )
+        records[role] = []
+        for row in ensembles:
+            metadata = read(row["metadata_path"])
+            parameters = metadata["parameters"]
+            required = (row["sha256"], metadata.get("shape"), metadata.get("dtype"),
+                        metadata.get("n_survivors"), row["source_git_commit"],
+                        parameters.get("dt_s"), parameters.get("n_initial_atoms"))
+            if any(value is None for value in required):
+                raise ValueError(f"Incomplete immutable provenance in {row['metadata_path']}")
+            records[role].append({
+                "zeeman_seed": row["zeeman_seed"],
+                "path": str(Path(row["path"]).resolve()),
+                "metadata_path": str(Path(row["metadata_path"]).resolve()),
+                "sha256": row["sha256"], "shape": metadata["shape"],
+                "dtype": metadata["dtype"], "survivor_count": metadata["n_survivors"],
+                "zeeman_profile": row["zeeman_profile"],
+                "source_git_commit": row["source_git_commit"],
+                "generation": {"n_initial_atoms": parameters["n_initial_atoms"],
+                               "dt_s": parameters["dt_s"],
+                               "stochastic": parameters.get("stochastic"),
+                               "collimation_angle_deg": parameters.get("collimation_angle_deg")},
+            })
+    return records
+
+
+def assert_design(manifest):
+    assert_relevant_worktree_clean()
+    if git_commit() != manifest["provenance"]["git_commit"]:
+        raise RuntimeError("Git revision differs from the immutable campaign revision.")
+    if physical_model_hash() != manifest["provenance"]["physical_model_sha256"]:
+        raise RuntimeError("Physical-model files differ from the campaign design.")
+
+
+def stage_ensembles(manifest, stage, particles):
+    role = STAGE_ROLE[stage]
+    seeds = manifest["seed_roles"][role]
+    ensembles = load_production_ensembles(
+        particles_per_ensemble=particles,
+        directory=manifest["ensemble_source"]["directory"],
+        zeeman_seeds=seeds,
+        expected_profile=manifest["ensemble_source"]["zeeman_profile"],
+    )
+    frozen = {row["zeeman_seed"]: row for row in manifest["input_ensembles"][role]}
+    for row in ensembles:
+        record = frozen.get(row["zeeman_seed"])
+        observed = {"path": str(Path(row["path"]).resolve()),
+                    "metadata_path": str(Path(row["metadata_path"]).resolve()),
+                    "sha256": row["sha256"], "shape": row["shape"],
+                    "dtype": row["dtype"], "survivor_count": row["n_available"],
+                    "zeeman_profile": row["zeeman_profile"],
+                    "source_git_commit": row["source_git_commit"],
+                    "generation": row["generation"]}
+        if record is None or any(record[field] != value for field, value in observed.items()):
+            raise RuntimeError(f"Frozen Zeeman input changed for seed {row['zeeman_seed']}")
+    return ensembles
 
 
 def key(value):
@@ -45,8 +157,9 @@ def paths(root):
     return root, root / "campaign.json", root / "jobs"
 
 
-def write_pbs(path, name, array, ncpus, walltime, command):
-    array_line = f"#PBS -J {array}\n" if array else ""
+def write_pbs(path, name, array, ncpus, walltime, command, revision=None):
+    throttle = 3 if ncpus == 200 else 4 if ncpus == 150 else 1
+    array_line = f"#PBS -J {array}%{throttle}\n" if array else ""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(f"""#!/bin/bash
 #PBS -N {name}
@@ -60,6 +173,12 @@ module load SPACK/apps
 module load gcc/14.1.0
 module load python/3.14.2
 source ~/venvs/atomsmltr/bin/activate
+EXPECTED_COMMIT={revision or git_commit()}
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
+  echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2
+  exit 42
+fi
 RUN_TMP="/tmp/${{USER}}_{name}_${{PBS_JOBID}}_${{PBS_ARRAY_INDEX:-0}}"
 mkdir -p "${{RUN_TMP}}"
 export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
@@ -77,11 +196,29 @@ def create(args):
             raise ValueError("Every s0 value must be finite and positive.")
         if value not in values:
             values.append(value)
-    if manifest_path.exists() and not args.force:
+    if root.exists() and any(root.iterdir()):
         raise FileExistsError(f"Campaign already exists: {manifest_path}")
+    assert_relevant_worktree_clean()
+    revision = git_commit()
+    model_hash = physical_model_hash()
+    roles = {name: list(values_) for name, values_ in SEED_ROLES.items()}
+    all_seeds = [seed for seeds in roles.values() for seed in seeds]
+    if len(all_seeds) != len(set(all_seeds)):
+        raise ValueError("Campaign seed roles must be non-overlapping.")
+    frozen_inputs = freeze_input_ensembles(args.ensemble_dir, args.zeeman_profile, roles)
     manifest = {
         "kind": "mot_2d_s0_campaign", "name": args.name, "stage": "smoke",
         "s0_values": values, "stages": {},
+        "ensemble_source": {"directory": str(Path(args.ensemble_dir)),
+                            "zeeman_profile": args.zeeman_profile},
+        "seed_roles": roles,
+        "input_ensembles": frozen_inputs,
+        "mot_seeds": {role: [40_000 + seed for seed in seeds]
+                      for role, seeds in roles.items()},
+        "provenance": {"git_commit": revision,
+                       "physical_model_sha256": model_hash,
+                       "hashed_files": relevant_code_files(),
+                       "capture_criterion_version": CAPTURE_CRITERION_VERSION},
         "fixed_design": {
             "working_dt_s": WORKING_DT_S,
             "final_dt_s": FINAL_DT_S,
@@ -92,6 +229,16 @@ def create(args):
             "magnet_radius_resolution_m": R_RES,
             "target_95_half_width_fraction": TARGET,
             "reporting_zeeman_survivors": 10_000_000,
+            "particle_counts": {"screen": 2000, "refine": 10000,
+                                "confirmation": 10000, "sensitivity": 10000,
+                                "production": "all_available"},
+            "trial_budgets": {"screen_per_worker": SCREEN_TRIALS,
+                              "refine_per_worker": REFINE_TRIALS},
+            "control_resolution": {"status": "provisional",
+                                   "detuning_gamma": D_RES,
+                                   "magnet_radius_m": R_RES},
+            "stress_test_offsets": {"detuning_gamma": 0.02,
+                                    "magnet_radius_m": 0.0001},
         },
     }
     save_file_json(manifest_path, manifest)
@@ -105,6 +252,8 @@ def create(args):
 def smoke(args):
     root = Path(args.campaign)
     manifest = read(root / "campaign.json")
+    assert_design(manifest)
+    stage_ensembles(manifest, "smoke", 2)
     value = manifest["s0_values"][args.s0_index]
     output = root / "smoke" / key(value)
     subprocess.run([
@@ -112,6 +261,10 @@ def smoke(args):
         "--n-trials", "1", "--n-ensembles", "1", "--particles-per-ensemble", "2",
         "--npools", "1", "--dt", str(WORKING_DT_S),
         "--stochastic-solver", "hybrid",
+        "--ensemble-dir", manifest["ensemble_source"]["directory"],
+        "--zeeman-seeds", str(manifest["seed_roles"]["discovery"][0]),
+        "--mot-seeds", str(manifest["mot_seeds"]["discovery"][0]),
+        "--campaign-design-id", manifest["provenance"]["physical_model_sha256"],
         "--study-name", f"{manifest['name']}_{key(value)}_smoke", "--output-dir", str(output),
     ], check=True)
     assert read(output / "summary.json")["n_finished_trials"] == 1
@@ -123,7 +276,8 @@ def prepare(root, manifest, stage, specs, number, ncpus, walltime):
     job = root / "jobs" / f"{number}_{stage}.pbs"
     write_pbs(job, f"mot2d_{stage[:5]}", f"0-{len(specs)-1}", ncpus, walltime,
               f"python -m studies.mot_2d_s0_campaign {stage}-task "
-              f"--campaign {root} --task-index $PBS_ARRAY_INDEX")
+              f"--campaign {root} --task-index $PBS_ARRAY_INDEX",
+              manifest["provenance"]["git_commit"])
     manifest["stage"] = stage
     manifest["stages"][stage] = {"tasks": len(specs), "job_file": str(job)}
     save_file_json(root / "campaign.json", manifest)
@@ -137,17 +291,25 @@ def prepare_screen(root, manifest):
         raise RuntimeError(f"Smoke tests incomplete: {missing}")
     specs = [{"s0": value, "worker": worker}
              for value in manifest["s0_values"] for worker in range(3)]
-    prepare(root, manifest, "screen", specs, "02", 200, "10:00:00")
+    prepare(root, manifest, "screen", specs, "02", 200, SCREEN_WALLTIME)
 
 
 def optuna_task(root, stage, spec, trials, particles, sampler_seed, bounds=None):
+    manifest = read(root / "campaign.json")
+    assert_design(manifest)
+    stage_ensembles(manifest, stage, particles)
+    role = STAGE_ROLE[stage]
     output = root / stage / key(spec["s0"]) / f"worker{spec['worker']}"
     command = [
         sys.executable, "-m", "studies.optimize_2d_mot_joint", "--fixed-s0", str(spec["s0"]),
-        "--n-trials", str(trials), "--n-ensembles", "3",
+        "--n-trials", str(trials), "--n-ensembles", str(len(manifest["seed_roles"][role])),
         "--particles-per-ensemble", str(particles), "--npools", "200",
         "--dt", str(WORKING_DT_S), "--stochastic-solver", "hybrid",
         "--sampler-seed", str(sampler_seed + spec["worker"]),
+        "--ensemble-dir", manifest["ensemble_source"]["directory"],
+        "--zeeman-seeds", *map(str, manifest["seed_roles"][role]),
+        "--mot-seeds", *map(str, manifest["mot_seeds"][role]),
+        "--campaign-design-id", manifest["provenance"]["physical_model_sha256"],
         # All candidate points use the same MOT seeds, including candidates
         # generated by different Optuna workers, so comparisons stay paired.
         "--mot-seed-start", "24000",
@@ -168,8 +330,22 @@ def screen_task(args):
 
 def trial_rows(root, stage, value):
     rows = []
+    manifest = read(root / "campaign.json")
+    role = STAGE_ROLE[stage]
     for path in (root / stage / key(value)).glob("worker*/trials/trial_*.json"):
         item = read(path)
+        design = item.get("design", {})
+        expected = {
+            "dt_s": WORKING_DT_S,
+            "stochastic_solver": "RK4StHybridCustom",
+            "ensemble_dir": str(Path(manifest["ensemble_source"]["directory"]).resolve()),
+            "zeeman_seeds": manifest["seed_roles"][role],
+            "mot_seeds": manifest["mot_seeds"][role],
+            "git_commit": manifest["provenance"]["git_commit"],
+        }
+        for field, expected_value in expected.items():
+            if design.get(field) != expected_value:
+                raise RuntimeError(f"Incompatible {stage} trial {path}: {field}")
         rows.append({"s0": value, **item["parameters"],
                      "mean_conditional_efficiency": item["statistics"]["mean_conditional_efficiency"],
                      "source": str(path)})
@@ -208,13 +384,56 @@ def prepare_refine(root, manifest):
                                          min(BOUNDS_MAGNET_RADIUS_M[1], candidate["magnet_radius"]+0.5e-3)],
                           }})
     save_file_json(root / "screening_candidates.json", selected)
-    prepare(root, manifest, "refine", specs, "03", 200, "14:00:00")
+    save_file_json(root / "refine" / "tasks.json", specs)
+    jobs = root / "jobs"
+    round_jobs = []
+    for round_index, target in enumerate(REFINEMENT_CUMULATIVE_TARGETS, start=1):
+        job = jobs / f"03_refine_round_{round_index:02d}.pbs"
+        write_pbs(
+            job,
+            f"mot2d_ref{round_index}",
+            f"0-{len(specs)-1}",
+            200,
+            REFINEMENT_ROUND_WALLTIME,
+            "python -m studies.mot_2d_s0_campaign refine-task "
+            f"--campaign {root} --task-index $PBS_ARRAY_INDEX "
+            f"--target-trials {target}",
+            manifest["provenance"]["git_commit"],
+        )
+        round_jobs.append(str(job))
+    submitter = jobs / "03_submit_refinement_chain.sh"
+    lines = ["#!/bin/bash", "set -euo pipefail"]
+    for index, job in enumerate(round_jobs):
+        if index == 0:
+            lines.append(f'previous=$(qsub "{job}")')
+        else:
+            lines.append(
+                f'previous=$(qsub -W depend=afterok:"${{previous}}" "{job}")'
+            )
+        lines.append(f'echo "submitted refinement round {index + 1}: ${{previous}}"')
+    submitter.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    manifest["stage"] = "refine"
+    manifest["stages"]["refine"] = {
+        "tasks": len(specs),
+        "cumulative_trial_targets": list(REFINEMENT_CUMULATIVE_TARGETS),
+        "round_job_files": round_jobs,
+        "submit_chain": str(submitter),
+        "dependency": "afterok",
+    }
+    save_file_json(root / "campaign.json", manifest)
+    print(f"Next jobs: bash {submitter}")
 
 
 def refine_task(args):
     root = Path(args.campaign)
     spec = read(root / "refine" / "tasks.json")[args.task_index]
-    optuna_task(root, "refine", spec, REFINE_TRIALS, 5000, 701, spec["bounds"])
+    if args.target_trials not in REFINEMENT_CUMULATIVE_TARGETS:
+        raise ValueError(
+            f"Invalid refinement cumulative target: {args.target_trials}"
+        )
+    optuna_task(
+        root, "refine", spec, args.target_trials, 10000, 701, spec["bounds"]
+    )
 
 
 def prepare_confirmation(root, manifest):
@@ -235,22 +454,30 @@ def prepare_confirmation(root, manifest):
 
 
 def evaluate_task(root, stage, task_index):
+    manifest = read(root / "campaign.json")
+    assert_design(manifest)
     spec = read(root / stage / "tasks.json")[task_index]
     point = spec.get("candidate_index", spec.get("point_index", 0))
     output = root / stage / key(spec["s0"]) / f"point_{point:02d}.json"
     if output.exists():
         print(f"Already complete: {output}")
         return
-    ensembles = load_production_ensembles(max_ensembles=10, particles_per_ensemble=10000)
+    ensembles = stage_ensembles(manifest, stage, 10000)
+    role = STAGE_ROLE[stage]
     evaluation = evaluate_configuration(
-        **spec["parameters"], ensembles=ensembles, mot_seed_start=25000,
+        **spec["parameters"], ensembles=ensembles, mot_seed_start=manifest["mot_seeds"][role][0],
+        mot_seeds=manifest["mot_seeds"][role],
         npools=200, dt_s=FINAL_DT_S,
         stochastic_sim_function=RK4StHybridCustom)
     save_file_json(output, {"kind": f"mot_2d_campaign_{stage}", **spec,
-                            "design": {"n_ensembles": 10, "particles_per_ensemble": 10000,
-                                       "mot_seed_start": 25000, "npools": 200,
+                            "design": {"n_ensembles": len(ensembles), "particles_per_ensemble": 10000,
+                                       "zeeman_seeds": manifest["seed_roles"][role],
+                                       "mot_seeds": manifest["mot_seeds"][role], "npools": 200,
                                        "dt_s": FINAL_DT_S,
-                                       "solver": "RK4StHybridCustom"},
+                                       "solver": "RK4StHybridCustom",
+                                       "ensemble_source": manifest["ensemble_source"],
+                                       "git_commit": manifest["provenance"]["git_commit"],
+                                       "physical_model_sha256": manifest["provenance"]["physical_model_sha256"]},
                             "evaluation": evaluation})
 
 
@@ -258,14 +485,14 @@ def confirmation_task(args):
     evaluate_task(Path(args.campaign), "confirmation", args.task_index)
 
 
-def paired(candidate, reference):
+def paired(candidate, reference, confidence=0.95):
     differences = []
     for left, right in zip(candidate["evaluation"]["replicates"],
                            reference["evaluation"]["replicates"]):
         if any(left[k] != right[k] for k in ("zeeman_seed", "mot_seed", "n_input", "subset_seed")):
             raise ValueError("Replicates are not paired")
         differences.append(left["conditional_efficiency"] - right["conditional_efficiency"])
-    mean, low, high, half = student_mean_interval(differences)
+    mean, low, high, half = student_mean_interval(differences, confidence=confidence)
     return {"mean_difference_fraction": mean, "95_ci_fraction": [low, high],
             "95_ci_half_width_fraction": half, "differences_fraction": differences}
 
@@ -298,16 +525,30 @@ def prepare_sensitivity(root, manifest):
         winner["boundary_flags"] = boundary(winner["parameters"])
         winner["comparisons_to_other_candidates"] = [paired(row, winner) for row in rows[1:]]
         winners[key(value)] = winner
-        point = 0
-        for d_offset in (-0.02, 0.0, 0.02):
-            for r_offset in (-0.1e-3, 0.0, 0.1e-3):
+        unique = {}
+        neighborhoods = {
+            "provisional_control_resolution": (-D_RES, D_RES, -R_RES, R_RES),
+            "broader_stress_test": (-0.02, 0.02, -0.1e-3, 0.1e-3),
+        }
+        for neighborhood, (d_low, d_high, r_low, r_high) in neighborhoods.items():
+          for d_offset in (d_low, 0.0, d_high):
+            for r_offset in (r_low, 0.0, r_high):
                 reference = winner["parameters"]
-                specs.append({"s0": value, "point_index": point,
-                              "offsets": {"detuning_gamma": d_offset, "magnet_radius_m": r_offset},
-                              "parameters": {"s0": value,
-                                  "detuning_gamma": min(max(reference["detuning_gamma"]+d_offset, BOUNDS_DETUNING[0]), BOUNDS_DETUNING[1]),
-                                  "magnet_radius": min(max(reference["magnet_radius"]+r_offset, BOUNDS_MAGNET_RADIUS_M[0]), BOUNDS_MAGNET_RADIUS_M[1])}})
-                point += 1
+                parameters = {"s0": value,
+                    "detuning_gamma": min(max(reference["detuning_gamma"]+d_offset, BOUNDS_DETUNING[0]), BOUNDS_DETUNING[1]),
+                    "magnet_radius": min(max(reference["magnet_radius"]+r_offset, BOUNDS_MAGNET_RADIUS_M[0]), BOUNDS_MAGNET_RADIUS_M[1])}
+                identity = (parameters["detuning_gamma"], parameters["magnet_radius"])
+                requested = {"neighborhood": neighborhood, "detuning_gamma": d_offset,
+                             "magnet_radius_m": r_offset}
+                if identity in unique:
+                    unique[identity]["requested_offsets"].append(requested)
+                else:
+                    unique[identity] = {"s0": value, "parameters": parameters,
+                                        "offsets": {"detuning_gamma": parameters["detuning_gamma"]-reference["detuning_gamma"],
+                                                    "magnet_radius_m": parameters["magnet_radius"]-reference["magnet_radius"]},
+                                        "requested_offsets": [requested]}
+        for point, spec in enumerate(unique.values()):
+            specs.append({"point_index": point, **spec})
     save_file_json(root / "winners.json", winners)
     prepare(root, manifest, "sensitivity", specs, "05", 200, "10:00:00")
 
@@ -320,8 +561,9 @@ def select_production_point(rows, reference):
     """Choose a clearly superior sensitivity neighbor, otherwise the center."""
     point_summaries = []
     clearly_better = []
+    familywise_confidence = 1.0 - 0.05 / max(1, len(rows) - 1)
     for row in rows:
-        comparison = paired(row, reference)
+        comparison = paired(row, reference, confidence=familywise_confidence)
         summary = {
             "parameters": row["parameters"],
             "offsets": row["offsets"],
@@ -361,6 +603,8 @@ def select_production_point(rows, reference):
         "mean_efficiency": selected["mean_efficiency"],
         "comparison_to_confirmed_winner": selected["comparison_to_reference"],
         "selection_reason": reason,
+        "familywise_method": "Bonferroni simultaneous paired intervals",
+        "familywise_confidence_per_comparison": familywise_confidence,
     }
 
 
@@ -368,56 +612,85 @@ def prepare_production(root, manifest):
     winners, sensitivity = read(root / "winners.json"), {}
     for value in manifest["s0_values"]:
         rows = [read(p) for p in sorted((root / "sensitivity" / key(value)).glob("point_*.json"))]
-        if len(rows) != 9:
-            raise RuntimeError(f"Sensitivity incomplete for s0={value}: {len(rows)}/9")
+        expected_count = sum(1 for task in read(root / "sensitivity" / "tasks.json")
+                             if task["s0"] == value)
+        if len(rows) != expected_count:
+            raise RuntimeError(f"Sensitivity incomplete for s0={value}: {len(rows)}/{expected_count}")
         reference = next(row for row in rows if row["offsets"] == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0})
         points, production_selection = select_production_point(rows, reference)
         sensitivity[key(value)] = {
             "reference": winners[key(value)]["parameters"],
             "points": points,
             "production_selection": production_selection,
+            "robustness_status": "not_established_pending_adaptive_challenger_validation",
+            "near_optimality_status": "not_established_pending_domain_challenger_elimination",
         }
     save_file_json(root / "sensitivity_summary.json", sensitivity)
     specs = [{"s0": value, "zeeman_seed": seed,
+              "mot_seed": manifest["mot_seeds"]["sealed_validation"][
+                  manifest["seed_roles"]["sealed_validation"].index(seed)
+              ],
               "parameters": sensitivity[key(value)]["production_selection"][
                   "parameters"
               ]}
-             for value in manifest["s0_values"] for seed in PRODUCTION_SEEDS]
+             for value in manifest["s0_values"]
+             for seed in manifest["seed_roles"]["sealed_validation"]]
     prepare(root, manifest, "production", specs, "06", 150, "12:00:00")
 
 
 def production_task(args):
     root = Path(args.campaign)
+    manifest = read(root / "campaign.json")
+    assert_design(manifest)
+    stage_ensembles(manifest, "production", None)
     spec = read(root / "production" / "tasks.json")[args.task_index]
     output = root / "production" / key(spec["s0"])
     states = Path("data/particle_states/after_2d_mot") / f"final_ensemble_s0_{label(spec['s0'])}"
     result = output / "replicates" / f"zeeman_seed{spec['zeeman_seed']}.json"
-    state = states / f"mot_2d_survivors_zeeman_seed{spec['zeeman_seed']}_mot_seed{spec['zeeman_seed']+15000}.npy"
+    state = states / f"mot_2d_survivors_zeeman_seed{spec['zeeman_seed']}_mot_seed{spec['mot_seed']}.npy"
     if result.exists() and state.exists():
         print(f"Already complete: {result}")
         return
     p = spec["parameters"]
     subprocess.run([sys.executable, "-m", "studies.run_2d_mot_final_production",
                     "--zeeman-seeds", str(spec["zeeman_seed"]), "--s0", str(spec["s0"]),
+                    "--mot-seeds", str(spec["mot_seed"]),
                     "--detuning-gamma", str(p["detuning_gamma"]),
                     "--magnet-radius-mm", str(1000*p["magnet_radius"]), "--npools", "150",
+                    "--ensemble-dir", manifest["ensemble_source"]["directory"],
+                    "--expected-zeeman-profile", manifest["ensemble_source"]["zeeman_profile"],
+                    "--expected-git-commit", manifest["provenance"]["git_commit"],
                     "--output-dir", str(output), "--save-survivor-states", "--states-dir", str(states)],
                    check=True)
 
 
 def finish(root, manifest):
+    assert_design(manifest)
     sensitivity = read(root / "sensitivity_summary.json")
     results = []
     for value in manifest["s0_values"]:
         output = root / "production" / key(value)
-        count = len(list((output / "replicates").glob("zeeman_seed*.json")))
-        if count != len(PRODUCTION_SEEDS):
-            raise RuntimeError(f"Production incomplete for s0={value}: {count}/{len(PRODUCTION_SEEDS)}")
-        summary = summarize(output)
+        expected = manifest["seed_roles"]["sealed_validation"]
+        states = Path("data/particle_states/after_2d_mot") / f"final_ensemble_s0_{label(value)}"
+        expected_pairs = dict(zip(
+            expected,
+            manifest["mot_seeds"]["sealed_validation"],
+        ))
+        summary = summarize(output, expected_seeds=expected,
+                            expected_seed_pairs=expected_pairs, states_dir=states,
+                            expected_design={"dt_s": FINAL_DT_S,
+                                             "stochastic_solver": "RK4StHybridCustom",
+                                             "ensemble_dir": manifest["ensemble_source"]["directory"],
+                                             "zeeman_profile": manifest["ensemble_source"]["zeeman_profile"],
+                                             "git_commit": manifest["provenance"]["git_commit"]})
         recommended = sensitivity[key(value)]["production_selection"]["parameters"]
         warnings = boundary(recommended)
         if not summary["stopping_rule_passes"]:
             warnings.append("target_95_prediction_half_width_not_met")
+        if sensitivity[key(value)]["robustness_status"] != "established":
+            warnings.append("robust_operating_region_not_established")
+        if sensitivity[key(value)]["near_optimality_status"] != "established":
+            warnings.append("epsilon_near_optimality_not_established")
         results.append({"s0": value, "recommended_parameters": recommended,
                         "warnings": warnings, "sensitivity": sensitivity[key(value)],
                         "prediction": summary["prediction_for_10m_zeeman_survivors"],
@@ -435,6 +708,7 @@ def finish(root, manifest):
 def advance(args):
     root = Path(args.campaign)
     manifest = read(root / "campaign.json")
+    assert_design(manifest)
     transitions = {"smoke": prepare_screen, "screen": prepare_refine,
                    "refine": prepare_confirmation, "confirmation": prepare_sensitivity,
                    "sensitivity": prepare_production, "production": finish}
@@ -456,7 +730,8 @@ def status(args):
             print(f"s0={value}: {len(list((root/stage/key(value)).glob('point_*.json')))} completed points")
         elif stage == "production":
             done = len(list((root/stage/key(value)/'replicates').glob('zeeman_seed*.json')))
-            print(f"s0={value}: {done}/{len(PRODUCTION_SEEDS)} production ensembles")
+            expected = len(manifest["seed_roles"]["sealed_validation"])
+            print(f"s0={value}: {done}/{expected} production ensembles")
 
 
 def parse_args(argv=None):
@@ -464,7 +739,9 @@ def parse_args(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     command = sub.add_parser("create")
     command.add_argument("--name", required=True); command.add_argument("--s0", nargs="+", type=float, required=True)
-    command.add_argument("--output-dir", required=True); command.add_argument("--force", action="store_true")
+    command.add_argument("--output-dir", required=True)
+    command.add_argument("--ensemble-dir", default=DEFAULT_ENSEMBLE_DIR)
+    command.add_argument("--zeeman-profile", default=DEFAULT_PROFILE)
     command.set_defaults(func=create)
     command = sub.add_parser("smoke")
     command.add_argument("--campaign", required=True); command.add_argument("--s0-index", type=int, required=True)
@@ -473,7 +750,10 @@ def parse_args(argv=None):
                            ("confirmation-task", confirmation_task), ("sensitivity-task", sensitivity_task),
                            ("production-task", production_task)):
         command = sub.add_parser(name); command.add_argument("--campaign", required=True)
-        command.add_argument("--task-index", type=int, required=True); command.set_defaults(func=function)
+        command.add_argument("--task-index", type=int, required=True)
+        if name == "refine-task":
+            command.add_argument("--target-trials", type=int, required=True)
+        command.set_defaults(func=function)
     for name, function in (("advance", advance), ("status", status)):
         command = sub.add_parser(name); command.add_argument("--campaign", required=True); command.set_defaults(func=function)
     return parser.parse_args(argv)

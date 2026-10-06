@@ -1,16 +1,17 @@
 """Run and summarize the final conditional 2D-MOT production prediction.
 
-The three Zeus workers receive disjoint Zeeman seeds.  Every available
-survivor in each ensemble is simulated with the final hybrid solver.  The
-summary predicts the captured count for 10,000,000 Zeeman survivors and uses
-the larger of the empirical between-ensemble uncertainty and ideal binomial
-uncertainty, so the reported interval is not artificially optimistic.
+Every available survivor in each sealed ensemble is simulated with an explicit
+manifest-pinned MOT seed and the final hybrid solver.  Final uncertainty uses a
+cluster-aware parametric bootstrap targeting the survivor-weighted pooled
+conditional efficiency reported as the point estimate.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import subprocess
 from pathlib import Path
 
 import numpy as np
@@ -26,7 +27,6 @@ from utils.mot_2d_study import load_production_ensembles, summarize_replicates
 
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
-MOT_SEED_OFFSET = 15_000
 REPORTING_SURVIVORS = 10_000_000
 TARGET_HALF_WIDTH_FRACTION = 0.0005  # 0.05 percentage points
 DEFAULT_OUTPUT_DIR = MOT_2D_OPTIMIZATION_DIR / "final_production_v22"
@@ -47,8 +47,14 @@ def run_seeds(args):
         particles_per_ensemble=None,
         zeeman_seeds=args.zeeman_seeds,
         directory=args.ensemble_dir,
+        expected_profile=args.expected_zeeman_profile,
     )
-    mot_seeds = [seed + MOT_SEED_OFFSET for seed in args.zeeman_seeds]
+    current_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    if args.expected_git_commit and current_commit != args.expected_git_commit:
+        raise RuntimeError("Production Git revision does not match campaign revision.")
+    mot_seeds = list(args.mot_seeds)
+    if len(mot_seeds) != len(args.zeeman_seeds):
+        raise ValueError("Provide exactly one explicit MOT seed per Zeeman seed.")
     evaluation = evaluate_configuration(
         **parameters,
         ensembles=ensembles,
@@ -70,9 +76,10 @@ def run_seeds(args):
                 "dt_s": FINAL_DT_S,
                 "stochastic_solver": RK4StHybridCustom.__name__,
                 "uses_all_available_particles": True,
-                "mot_seed_offset": MOT_SEED_OFFSET,
                 "npools": args.npools,
                 "ensemble_dir": str(args.ensemble_dir) if args.ensemble_dir else None,
+                "zeeman_profile": args.expected_zeeman_profile,
+                "git_commit": current_commit,
             },
             "replicate": row,
         }
@@ -85,6 +92,7 @@ def run_seeds(args):
                 f"_mot_seed{row['mot_seed']}.npy"
             )
             save_particle_states(states_path, survivor_state_ensembles[index])
+            states_sha256 = hashlib.sha256(states_path.read_bytes()).hexdigest()
             save_file_json(
                 states_path.with_suffix(".json"),
                 {
@@ -97,6 +105,9 @@ def run_seeds(args):
                     "state_layout": ["x_m", "y_m", "z_m", "vx_m_s", "vy_m_s", "vz_m_s"],
                     "parameters": parameters,
                     "design": payload["design"],
+                    "shape": list(np.asarray(survivor_state_ensembles[index]).shape),
+                    "dtype": str(np.asarray(survivor_state_ensembles[index]).dtype),
+                    "output_sha256": states_sha256,
                 },
             )
             print(f"Saved 2D-MOT survivor states to: {states_path}")
@@ -106,6 +117,34 @@ def run_seeds(args):
             f"captured={row['captured']} n_input={row['n_input']} "
             f"conditional_percent={100 * row['conditional_efficiency']:.6f}"
         )
+
+
+def cluster_bootstrap_prediction(
+    replicates,
+    reporting_survivors=REPORTING_SURVIVORS,
+    draws=20_000,
+    random_seed=20261005,
+):
+    """Sample the survivor-weighted pooled efficiency and future count."""
+    n_input = np.asarray([row["n_input"] for row in replicates], dtype=float)
+    captured = np.asarray([row["captured"] for row in replicates], dtype=float)
+    rng = np.random.default_rng(random_seed)
+    bootstrap = np.empty(draws)
+    for index in range(draws):
+        selected = rng.integers(0, len(replicates), len(replicates))
+        selected_n = n_input[selected]
+        probabilities = rng.beta(
+            captured[selected] + 0.5,
+            selected_n - captured[selected] + 0.5,
+        )
+        pooled_probability = float(
+            np.sum(probabilities * selected_n) / np.sum(selected_n)
+        )
+        bootstrap[index] = (
+            rng.binomial(reporting_survivors, pooled_probability)
+            / reporting_survivors
+        )
+    return bootstrap
 
 
 def final_prediction(replicates, reporting_survivors=REPORTING_SURVIVORS):
@@ -136,19 +175,25 @@ def final_prediction(replicates, reporting_survivors=REPORTING_SURVIVORS):
     )
     low = max(0.0, pooled_efficiency - half_width)
     high = min(1.0, pooled_efficiency + half_width)
+    # Cluster-aware uncertainty: resample independent Zeeman/MOT ensemble
+    # pairs, then sample each cluster's finite-count uncertainty and the new
+    # reporting population.  This respects the actual crossed pair structure.
+    bootstrap = cluster_bootstrap_prediction(replicates, reporting_survivors)
+    bootstrap_low, bootstrap_high = map(float, np.quantile(bootstrap, [0.025, 0.975]))
+    bootstrap_half = (bootstrap_high - bootstrap_low) / 2.0
     return {
         "reporting_zeeman_survivors": int(reporting_survivors),
         "simulated_zeeman_survivors": total_input,
         "simulated_captured_atoms": total_captured,
         "pooled_conditional_efficiency": pooled_efficiency,
         "expected_captured_atoms": int(round(pooled_efficiency * reporting_survivors)),
-        "predicted_95_interval_fraction": [low, high],
+        "predicted_95_interval_fraction": [bootstrap_low, bootstrap_high],
         "predicted_95_captured_atoms_interval": [
-            int(round(low * reporting_survivors)),
-            int(round(high * reporting_survivors)),
+            int(round(bootstrap_low * reporting_survivors)),
+            int(round(bootstrap_high * reporting_survivors)),
         ],
-        "predicted_95_half_width_fraction": half_width,
-        "predicted_95_half_width_percentage_points": 100 * half_width,
+        "predicted_95_half_width_fraction": bootstrap_half,
+        "predicted_95_half_width_percentage_points": 100 * bootstrap_half,
         "binomial_mean_variance": binomial_mean_variance,
         "empirical_between_ensemble_mean_variance": empirical_mean_variance,
         "selected_mean_variance": selected_mean_variance,
@@ -160,16 +205,24 @@ def final_prediction(replicates, reporting_survivors=REPORTING_SURVIVORS):
         "critical_value": critical,
         "future_counting_variance": future_counting_variance,
         "uncertainty_method": (
-            "95% prediction interval combining future binomial counting "
-            "variance with the larger of pooled-binomial and empirical "
-            "between-ensemble variance of the estimated mean; Student-t is "
-            "used when empirical ensemble variance controls, otherwise the "
-            "large-sample normal critical value is used"
+            "20,000-draw cluster-aware parametric bootstrap: independent "
+            "Zeeman/MOT ensemble pairs are resampled as clusters, finite "
+            "within-cluster capture uncertainty is sampled with a Jeffreys "
+            "beta model, cluster probabilities are pooled with their resampled "
+            "survivor counts as weights, and future counting noise is sampled "
+            "binomially"
         ),
+        "bootstrap_replicates": 20_000,
     }
 
 
-def summarize(output_dir):
+def summarize(
+    output_dir,
+    expected_seeds=None,
+    expected_seed_pairs=None,
+    states_dir=None,
+    expected_design=None,
+):
     paths = sorted((Path(output_dir) / "replicates").glob("zeeman_seed*.json"))
     if not paths:
         raise FileNotFoundError("No final-production replicate files were found.")
@@ -184,6 +237,57 @@ def summarize(output_dir):
     seeds = [int(row["zeeman_seed"]) for row in replicates]
     if len(seeds) != len(set(seeds)):
         raise ValueError("Final-production data contain duplicate Zeeman seeds.")
+    if expected_seeds is not None and sorted(seeds) != sorted(expected_seeds):
+        raise ValueError(
+            f"Final-production seed mismatch: expected {sorted(expected_seeds)}, "
+            f"found {sorted(seeds)}"
+        )
+    if expected_seed_pairs is not None:
+        found_pairs = {
+            int(row["zeeman_seed"]): int(row["mot_seed"])
+            for row in replicates
+        }
+        expected_pairs = {
+            int(zeeman_seed): int(mot_seed)
+            for zeeman_seed, mot_seed in expected_seed_pairs.items()
+        }
+        if found_pairs != expected_pairs:
+            raise ValueError(
+                "Final-production Zeeman/MOT seed-pair mismatch: "
+                f"expected {expected_pairs}, found {found_pairs}"
+            )
+    if expected_design:
+        for field, expected in expected_design.items():
+            if design.get(field) != expected:
+                raise ValueError(
+                    f"Final-production design mismatch for {field}: "
+                    f"{design.get(field)!r} != {expected!r}"
+                )
+    if states_dir is not None:
+        states_dir = Path(states_dir)
+        expected_names = set()
+        for row in replicates:
+            state_path = states_dir / (
+                f"mot_2d_survivors_zeeman_seed{row['zeeman_seed']}"
+                f"_mot_seed{row['mot_seed']}.npy"
+            )
+            expected_names.add(state_path.name)
+            metadata_path = state_path.with_suffix(".json")
+            if not state_path.exists() or not metadata_path.exists():
+                raise FileNotFoundError(f"Missing sealed state/metadata: {state_path}")
+            states = np.load(state_path, mmap_mode="r")
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+            if states.ndim != 2 or states.shape[1] != 6 or not np.all(np.isfinite(states)):
+                raise ValueError(f"Invalid sealed survivor array: {state_path}")
+            if len(states) != row["captured"] or metadata.get("n_survivors") != len(states):
+                raise ValueError(f"Sealed survivor count mismatch: {state_path}")
+            if metadata.get("shape") != list(states.shape):
+                raise ValueError(f"Sealed survivor shape metadata mismatch: {state_path}")
+            if metadata.get("output_sha256") != hashlib.sha256(state_path.read_bytes()).hexdigest():
+                raise ValueError(f"Sealed survivor SHA-256 mismatch: {state_path}")
+        stale = {path.name for path in states_dir.glob("mot_2d_survivors_*.npy")} - expected_names
+        if stale:
+            raise ValueError(f"Unexpected stale survivor arrays: {sorted(stale)}")
     replicates.sort(key=lambda row: row["zeeman_seed"])
     prediction = final_prediction(replicates)
     summary = {
@@ -210,10 +314,13 @@ def summarize(output_dir):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--zeeman-seeds", type=int, nargs="+")
+    parser.add_argument("--mot-seeds", type=int, nargs="+")
     parser.add_argument(
         "--ensemble-dir",
         help="Directory containing the authoritative Zeeman ensemble files.",
     )
+    parser.add_argument("--expected-zeeman-profile")
+    parser.add_argument("--expected-git-commit")
     parser.add_argument("--s0", type=float)
     parser.add_argument("--detuning-gamma", type=float)
     parser.add_argument("--magnet-radius-mm", type=float)
@@ -230,7 +337,7 @@ def parse_args(argv=None):
     if not args.summarize_only:
         missing = [
             name
-            for name in ("zeeman_seeds", "s0", "detuning_gamma", "magnet_radius_mm")
+            for name in ("zeeman_seeds", "mot_seeds", "s0", "detuning_gamma", "magnet_radius_mm")
             if getattr(args, name) is None
         ]
         if missing:

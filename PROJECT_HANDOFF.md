@@ -1,5 +1,11 @@
 # Project handoff: Yb-171 laser-cooling simulation
 
+> Active corrected-Zeeman campaign: fixed `s0=1.3`, profile
+> `corrected_projectant_19ring_20261005`, with non-overlapping discovery,
+> refinement, held-out and sealed seed roles. Never mix legacy and corrected
+> ensembles. If the guide, plan, configuration, implementation, and prompt
+> disagree, stop before submission and report the discrepancy.
+
 Last updated: 2026-08-26
 
 ## 1. Purpose and scientific context
@@ -248,7 +254,8 @@ workloads that scale well to 200 processes, the current practical default is
 three concurrent 200-core workers.  Preserve each completed seed or point in a
 separate result file so an interrupted worker can resume safely.
 
-The final conditional-capture prediction was produced with
+The following result is the historical pre-correction conditional-capture
+prediction. It must not be used as the canonical corrected-Zeeman claim. It was produced with
 `python -m studies.run_2d_mot_final_production`. Its stopping rule required the
 95% prediction for 10,000,000 Zeeman survivors to have a half-width no larger
 than 0.05 percentage points.
@@ -262,11 +269,12 @@ captures, with a 95% prediction range of 263,195 to 271,652 and a half-width of
 0.042285 percentage points. This result is conditional on entering the 2D MOT
 as a Zeeman survivor and is the authoritative final conditional prediction.
 
-The prediction interval combines future binomial capture-counting variance with
-the larger of the pooled-binomial and empirical between-ensemble uncertainty in
-the estimated mean. The pooled-binomial term controlled in the final dataset,
-so the calculation used the large-sample 1.96 critical value. The result passed
-the predeclared maximum half-width of 0.05 percentage points.
+The corrected campaign instead uses a 20,000-draw cluster-aware parametric
+bootstrap whose point target is the survivor-weighted pooled efficiency. It
+resamples whole Zeeman/MOT pairs, samples finite within-pair uncertainty with a
+Jeffreys beta model, pools with resampled survivor-count weights, and samples
+future binomial counting noise. The sealed-production stopping rule is a 95%
+prediction half-width no larger than 0.05 percentage points.
 
 The retained generic diagnostic is
 `python -m studies.diagnose_2d_mot_photon_counts`. It established that the

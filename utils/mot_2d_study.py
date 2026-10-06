@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 import numpy as np
 from scipy.stats import t as student_t
@@ -15,6 +16,8 @@ def load_production_ensembles(
     particles_per_ensemble=None,
     directory=None,
     zeeman_seeds=None,
+    expected_profile=None,
+    verify_sha256=True,
 ):
     """Load the same deterministic particle subsets for every parameter point."""
     paths = (
@@ -44,12 +47,38 @@ def load_production_ensembles(
 
     ensembles = []
     for path in paths:
+        metadata_path = path.with_suffix(".json")
+        if not metadata_path.exists():
+            raise FileNotFoundError(f"Missing adjacent metadata: {metadata_path}")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        parameters = metadata.get("parameters", {})
+        zeeman_seed = int(parameters["seed"])
+        if expected_profile is not None:
+            resolved = parameters.get("resolved_zeeman_magnet_profile")
+            if resolved != expected_profile:
+                raise ValueError(
+                    f"Zeeman profile mismatch in {metadata_path}: "
+                    f"expected {expected_profile!r}, found {resolved!r}"
+                )
         states = np.load(path, mmap_mode="r")
         if states.ndim != 2 or states.shape[1] != 6:
             raise ValueError(f"Invalid particle-state shape in {path}: {states.shape}")
-        metadata_path = path.with_suffix(".json")
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-        zeeman_seed = int(metadata["parameters"]["seed"])
+        if not np.all(np.isfinite(states)):
+            raise ValueError(f"Non-finite particle states in {path}")
+        if expected_profile is not None and list(states.shape) != metadata.get("shape"):
+            raise ValueError(f"State/metadata shape mismatch in {path}")
+        if expected_profile is not None and len(states) != int(metadata.get("n_survivors", -1)):
+            raise ValueError(f"State/metadata survivor-count mismatch in {path}")
+        expected_hash = metadata.get("output_sha256")
+        if verify_sha256 and expected_hash:
+            digest = hashlib.sha256()
+            with path.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            if digest.hexdigest() != expected_hash:
+                raise ValueError(f"SHA-256 mismatch in {path}")
+        source_shape = list(states.shape)
+        source_dtype = str(states.dtype)
         n_available = len(states)
         subset_seed = 100_000 + zeeman_seed
         if particles_per_ensemble is not None and particles_per_ensemble < n_available:
@@ -72,6 +101,18 @@ def load_production_ensembles(
                 "n_available": n_available,
                 "selection_method": selection_method,
                 "subset_seed": subset_seed,
+                "sha256": expected_hash,
+                "shape": source_shape,
+                "dtype": source_dtype,
+                "zeeman_profile": parameters.get("resolved_zeeman_magnet_profile"),
+                "metadata_path": metadata_path,
+                "source_git_commit": metadata.get("software", {}).get("git_commit"),
+                "generation": {
+                    "n_initial_atoms": parameters.get("n_initial_atoms"),
+                    "dt_s": parameters.get("dt_s"),
+                    "stochastic": parameters.get("stochastic"),
+                    "collimation_angle_deg": parameters.get("collimation_angle_deg"),
+                },
             }
         )
     return ensembles

@@ -1,5 +1,18 @@
 # 2D-MOT optimization and prediction plan
 
+## Corrected-Zeeman rerun contract (2026-10)
+
+The current corrected campaign instance supplies fixed `s0=1.3` and uses profile
+`corrected_projectant_19ring_20261005`, the four-way seed split in the campaign
+guide, five-by-10,000 refinement, held-out candidate confirmation, and a
+separate 20-ensemble sealed final validation. Selection intervals are not
+unbiased performance intervals. Robustness and epsilon-near-optimality remain
+`not established` unless adaptive challenger testing and familywise paired
+comparisons pass. Final uncertainty uses a cluster-aware bootstrap over
+independent Zeeman/MOT ensemble pairs plus finite-count uncertainty. If this
+plan, the guide, configuration, implementation, or prompt disagree, stop before
+submission and report the discrepancy.
+
 This document is the authoritative scientific plan for the current 2D-MOT
 campaign. Update it when the experimental constraints, statistical target, or
 accepted workflow changes. Do not infer the campaign goal only from an Optuna
@@ -45,8 +58,9 @@ leave the region. If no such interior point exists, the result is not yet a
 robust laboratory recommendation even if it is the highest simulated point.
 
 The desired final result is a robust operating point or joint parameter region,
-not necessarily a single sharp maximum. The completed production result for a
-reporting reference of ten million Zeeman survivors is:
+not necessarily a single sharp maximum. The numbers below are the historical
+pre-correction production result and must not be reported as the outcome of the
+corrected-Zeeman campaign:
 
 ```text
 For the recommended 2D-MOT settings and 10,000,000 Zeeman survivors,
@@ -71,7 +85,7 @@ survival percentage from the full oven flux.
 After the 2D-MOT settings were locked, the completed end-to-end campaign used
 the unfiltered thermal beam to predict total transmission from the oven.
 
-## Adjustable parameters and current experimental constraints
+## Canonical corrected-Zeeman parameters and constraints
 
 The joint optimization variables are:
 
@@ -81,29 +95,28 @@ detuning_gamma
 magnet_radius
 ```
 
-The current boundary-follow-up search uses:
+Each campaign instance fixes every explicitly supplied intensity and searches
+only detuning and radius for that intensity. The current canonical instance is:
 
 ```text
-s0:             1.4 to 1.5
+s0:             exactly 1.3
 detuning_gamma: -1.55 to -0.85
 magnet_radius:  0.045 to 0.051 m
 ```
 
-The laboratory can provide `s0 = 1.4`. Approximately `s0 = 1.5` is the expected
-upper limit, but its availability is not guaranteed. The current Pareto study
-therefore maximizes conditional capture while minimizing `s0` within the
-experimentally relevant interval. It should reveal whether operating above 1.4
-provides a meaningful capture improvement.
+The tool also accepts other positive finite fixed values, or several explicit
+values in one campaign. Those values are frozen in the manifest and cannot be
+changed during resume.
 
 ## Stage 1: cheap paired screening
 
 Use the same fixed particles and random streams for every parameter point:
 
 ```text
-3 independent Zeeman ensembles
+5 discovery Zeeman ensembles (seeds 3000-3004)
 2,000 particles per ensemble
-6,000 particles per parameter point
-50 parameter points in the current Pareto follow-up
+10,000 particles per parameter point
+3 workers x 17 completed trials
 ```
 
 This stage is only for locating promising regions, identifying parameter
@@ -116,8 +129,8 @@ per 6,000-particle point, so these trial values are too noisy for final reportin
 Narrow the domain around promising regions and increase the statistical effort:
 
 ```text
-at least 5 independent ensembles
-10,000 to 20,000 particles per ensemble
+exactly 5 refinement ensembles (seeds 3005-3009)
+10,000 particles per ensemble
 paired particles and MOT random streams for every candidate
 ```
 
@@ -125,12 +138,19 @@ Map the joint high-performing region rather than reporting three independent
 one-dimensional ranges. Parameter correlations can make some combinations of
 otherwise acceptable individual ranges perform poorly.
 
+## Historical timestep investigation (superseded protocol)
+
+The following paragraphs document how the hybrid solver and timestep were
+selected before the corrected-Zeeman campaign. They are retained as provenance,
+not as instructions for a new campaign. The active protocol is stated below.
+
 ## Stage 3: held-out validation
 
-Reserve Zeeman ensembles and MOT seeds that did not participate in screening or
-candidate selection. Validate the center, boundaries, representative interior
-points, and nearby exterior points of the proposed operating region. This tests
-whether the recommendation generalizes rather than fitting the screening seeds.
+Use five held-out Zeeman/MOT pairs (seeds 3010-3014), 10,000 particles per
+ensemble, to select among five distinguishable finalists and then evaluate the
+deduplicated sensitivity union. These data are held out from Optuna discovery,
+but because they select/tune the recommendation they are not the sealed unbiased
+performance estimate. That estimate uses seeds 3015-3034 and all survivors.
 
 Recheck finalists at the finer 2D-MOT timestep of 5 microseconds. The 10
 microsecond timestep is the accepted screening choice, not an excuse to skip the
@@ -290,11 +310,13 @@ efficiency range:        2.6319496% to 2.7165198%
 stopping target:         <= 0.05 percentage points (PASS)
 ```
 
-The prediction combines the binomial counting variance expected in a future
-10,000,000-particle run with uncertainty in the estimated mean. The latter is
-chosen conservatively as the larger of the pooled-binomial estimate and the
-empirical between-ensemble estimate. In the final data the pooled-binomial term
-was larger, so the normal 1.96 critical value was used.
+This numerical result belongs to the historical pre-correction campaign and is
+not the canonical corrected-Zeeman result. Its original interval calculation is
+retained only for provenance. New campaign reports use a 20,000-draw
+cluster-aware parametric bootstrap: independent Zeeman/MOT pairs are resampled,
+finite within-pair capture uncertainty is sampled with a Jeffreys beta model,
+the probabilities are pooled with the resampled survivor counts as weights,
+and future counting noise for 10,000,000 survivors is sampled binomially.
 
 The local sensitivity confirmation evaluated the most actionable shifted point,
 `detuning=-1.2040645 Gamma` and `radius=49.317614 mm`, at the selected `s0` and
