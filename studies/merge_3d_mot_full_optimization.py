@@ -6,7 +6,10 @@ import json
 from pathlib import Path
 
 
-def merge(input_root, output_dir, expected_trial_count=None):
+def merge(
+    input_root, output_dir, expected_trial_count=None, expected_worker_count=None,
+    campaign_manifest_sha256=None,
+):
     input_root = Path(input_root)
     paths = sorted(input_root.glob("worker_*/trials/trial_[0-9][0-9][0-9][0-9].json"))
     rows = [json.loads(path.read_text()) for path in paths]
@@ -21,6 +24,24 @@ def merge(input_root, output_dir, expected_trial_count=None):
     families = {row["family"] for row in rows}
     if len(families) != 1:
         raise ValueError(f"Mixed optimization families: {sorted(families)}")
+    design_ids = {row.get("design_id") for row in rows}
+    designs = [row.get("scientific_design") for row in rows]
+    worker_indices = sorted({row["worker_index"] for row in rows})
+    required_workers = expected_worker_count or len(worker_indices)
+    if None in design_ids or len(design_ids) != required_workers:
+        # Each worker has its own immutable identity, hence exactly three IDs.
+        raise ValueError("Discovery results have missing or unexpected worker designs.")
+    if expected_worker_count is not None and worker_indices != list(range(expected_worker_count)):
+        raise ValueError(
+            f"Expected worker indices {list(range(expected_worker_count))}, "
+            f"found {worker_indices}."
+        )
+    for worker in worker_indices:
+        worker_designs = [
+            row.get("scientific_design") for row in rows if row["worker_index"] == worker
+        ]
+        if not worker_designs or any(value != worker_designs[0] for value in worker_designs[1:]):
+            raise ValueError(f"Discovery worker {worker} contains mixed designs.")
     for path, row in zip(paths, rows):
         row["source_path"] = str(path)
     rows.sort(
@@ -36,6 +57,8 @@ def merge(input_root, output_dir, expected_trial_count=None):
         "family": rows[0]["family"],
         "completed_trial_count": len(rows),
         "software_revisions": sorted({row["software_revision"] for row in rows}),
+        "worker_design_ids": sorted(design_ids),
+        "campaign_manifest_sha256": campaign_manifest_sha256,
         "best": rows[0],
         "ranked_trials": rows,
     }

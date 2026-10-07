@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
+import fcntl
 import json
 import os
 import subprocess
@@ -28,11 +30,91 @@ from utils.data_paths import load_particle_states
 FAMILIES = ("angled_donut", "single_pass")
 
 
+def remaining_complete_trials(target, states):
+    complete = sum(state == optuna.trial.TrialState.COMPLETE for state in states)
+    if complete > target:
+        raise RuntimeError(
+            f"Study already has {complete} complete trials, exceeding target {target}."
+        )
+    return target - complete
+
+
+def _design_identity(args, provenance, manifest_payload):
+    frozen_records = manifest_payload.get("input_roles", {}).get(args.input_role, [])
+    upstream = manifest_payload.get("upstream_2d_campaign", {})
+    design = {
+        "family": args.family,
+        "worker_index": args.worker_index,
+        "sampler_seed": args.sampler_seed,
+        "startup_trials": args.startup_trials,
+        "selection_seed": args.selection_seed,
+        "simulation_seed": args.simulation_seed,
+        "particles_per_ensemble": args.particles_per_ensemble,
+        "dt_s": args.dt,
+        "t_max_s": args.t_max,
+        "solver": MOT_3D_SIM_CONFIG["solver"],
+        "bounds": MOT_3D_OPTIMIZATION_CONFIG,
+        "particle_selection": provenance,
+        "campaign_commit": manifest_payload.get("provenance", {}).get("git_commit"),
+        "physical_model_sha256": manifest_payload.get("provenance", {}).get(
+            "physical_model_sha256"
+        ),
+        "input_role": args.input_role,
+        "frozen_inputs": frozen_records,
+        "upstream_campaign_sha256": upstream.get("campaign_sha256"),
+        "upstream_final_report_sha256": upstream.get("final_report_sha256"),
+    }
+    encoded = json.dumps(design, sort_keys=True, separators=(",", ":"))
+    return design, hashlib.sha256(encoded.encode()).hexdigest()
+
+
+def acquire_worker_lock(output_dir):
+    path = Path(output_dir) / ".worker.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open("a+", encoding="utf-8")
+    try:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        handle.close()
+        raise RuntimeError(f"Another process owns worker lock {path}.")
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"pid={os.getpid()} job={os.environ.get('PBS_JOBID', 'local')}\n")
+    handle.flush()
+    os.fsync(handle.fileno())
+    return handle
+
+
+def lock_study_design(study, design, design_id):
+    existing_design = study.user_attrs.get("scientific_design")
+    if existing_design is None:
+        study.set_user_attr("scientific_design", design)
+        study.set_user_attr("design_id", design_id)
+        return
+    if existing_design != design or study.user_attrs.get("design_id") != design_id:
+        raise RuntimeError("Existing Optuna study has an incompatible scientific design.")
+
+
+def fail_stale_running_trials(study):
+    stale = [
+        trial for trial in study.trials
+        if trial.state == optuna.trial.TrialState.RUNNING
+    ]
+    for trial in stale:
+        study._storage.set_trial_state_values(
+            trial._trial_id, optuna.trial.TrialState.FAIL
+        )
+    return len(stale)
+
+
 def _atomic_json(path, payload):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(payload, indent=2, default=_json_default) + "\n")
+    with temporary.open("w", encoding="utf-8") as stream:
+        stream.write(json.dumps(payload, indent=2, default=_json_default) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
     os.replace(temporary, path)
 
 
@@ -55,9 +137,15 @@ def _git_revision():
         return "unknown"
 
 
-def load_balanced_discovery_particles(input_dir, ensemble_count, per_ensemble, seed):
+def load_balanced_discovery_particles(
+    input_dir, ensemble_count, per_ensemble, seed, input_files=None
+):
     input_dir = Path(input_dir)
-    files = sorted(input_dir.glob("*.npy"))[:ensemble_count]
+    files = (
+        [Path(path) for path in input_files]
+        if input_files is not None
+        else sorted(input_dir.glob("*.npy"))[:ensemble_count]
+    )
     if len(files) != ensemble_count:
         raise ValueError(
             f"Expected {ensemble_count} discovery ensembles in {input_dir}, "
@@ -82,6 +170,15 @@ def load_balanced_discovery_particles(input_dir, ensemble_count, per_ensemble, s
             }
         )
     return np.concatenate(states, axis=0), provenance
+
+
+def _manifest_input_files(path, role):
+    # Import lazily to keep this worker independently importable while making
+    # execution-time campaign validation authoritative.
+    from studies.mot_3d_campaign import validate_frozen_inputs
+
+    records = validate_frozen_inputs(path, role)
+    return [record["path"] for record in records]
 
 
 def _suggest_common(trial):
@@ -144,13 +241,26 @@ def build_profile_from_parameters(family, parameters):
     if family == "angled_donut":
         profile["399"]["detuning_gamma"] = parameters["blue_detuning_gamma"]
         split_radius = parameters["core_shell_split_radius_m"]
+        aperture_radius = MOT_3D_OPTIMIZATION_CONFIG[family][
+            "shared_aperture_radius_m"
+        ]
         # One authoritative boundary is assigned to both colors: green is
         # present for r < split and blue for r >= split.  This construction
         # makes a gap or overlap impossible.
         profile["556"]["outer_cutoff_radius_m"] = split_radius
         profile["399"]["inner_cutoff_radius_m"] = split_radius
+        profile["399"]["outer_cutoff_radius_m"] = aperture_radius
     elif family == "single_pass":
         settings = MOT_3D_OPTIMIZATION_CONFIG[family]
+        profile["xz_angle_from_z_deg"] = 0.5 * settings["green_full_angle_deg"]
+        profile["556"]["profile"] = "outer_clipped_gaussian"
+        profile["556"]["outer_cutoff_radius_m"] = settings[
+            "green_aperture_radius_m"
+        ]
+        profile["399"]["profile"] = "outer_clipped_gaussian"
+        profile["399"]["outer_cutoff_radius_m"] = settings[
+            "blue_aperture_radius_m"
+        ]
         profile["blue_crossing_angle_deg"] = parameters[
             "blue_crossing_angle_deg"
         ]
@@ -270,15 +380,27 @@ def _worker_summary(study, args, output_dir, provenance, revision):
 def optimize(args):
     if args.family not in FAMILIES:
         raise ValueError(f"family must be one of {FAMILIES}.")
+    manifest_payload = (
+        json.loads(Path(args.input_manifest).read_text(encoding="utf-8"))
+        if args.input_manifest else {}
+    )
+    input_files = (
+        _manifest_input_files(args.input_manifest, args.input_role)
+        if args.input_manifest
+        else None
+    )
+    ensemble_count = len(input_files) if input_files is not None else args.ensemble_count
     states, provenance = load_balanced_discovery_particles(
         args.input,
-        ensemble_count=args.ensemble_count,
+        ensemble_count=ensemble_count,
         per_ensemble=args.particles_per_ensemble,
         seed=args.selection_seed,
+        input_files=input_files,
     )
-    if len(states) != args.ensemble_count * args.particles_per_ensemble:
+    if len(states) != ensemble_count * args.particles_per_ensemble:
         raise AssertionError("Balanced discovery particle count is inconsistent.")
     output_dir = Path(args.output_dir) / f"worker_{args.worker_index}"
+    worker_lock = acquire_worker_lock(output_dir)
     trials_dir = output_dir / "trials"
     trials_dir.mkdir(parents=True, exist_ok=True)
     _atomic_json(output_dir / "particle_selection.json", provenance)
@@ -299,6 +421,9 @@ def optimize(args):
         pruner=optuna.pruners.NopPruner(),
         load_if_exists=True,
     )
+    design, design_id = _design_identity(args, provenance, manifest_payload)
+    lock_study_design(study, design, design_id)
+    fail_stale_running_trials(study)
     study.enqueue_trial(
         _seed_parameters(args.family, args.worker_index),
         user_attrs={"source": "physics_seed"},
@@ -359,6 +484,8 @@ def optimize(args):
                 "runtime_seconds": float(runtime),
                 "simulation_seed": args.simulation_seed,
                 "software_revision": revision,
+                "design_id": design_id,
+                "scientific_design": design,
             }
             _atomic_json(trials_dir / f"trial_{trial.number:04d}.json", payload)
             print(
@@ -387,10 +514,10 @@ def optimize(args):
             raise
 
     while time.monotonic() < deadline:
-        completed = sum(
-            trial.state == optuna.trial.TrialState.COMPLETE for trial in study.trials
+        remaining = remaining_complete_trials(
+            args.target_completed_trials, [trial.state for trial in study.trials]
         )
-        if completed >= args.target_completed_trials:
+        if remaining == 0:
             break
         study.optimize(objective, n_trials=1, catch=(Exception,))
         _worker_summary(study, args, output_dir, provenance, revision)
@@ -403,6 +530,8 @@ def optimize(args):
                 f"Stopping after {args.max_consecutive_failures} consecutive failed trials."
             )
     _worker_summary(study, args, output_dir, provenance, revision)
+    fcntl.flock(worker_lock.fileno(), fcntl.LOCK_UN)
+    worker_lock.close()
     return study
 
 
@@ -413,6 +542,8 @@ def parse_args(argv=None):
     parser.add_argument("--target-completed-trials", type=int, required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--input", default=str(DEFAULT_INPUT))
+    parser.add_argument("--input-manifest")
+    parser.add_argument("--input-role", default="discovery")
     parser.add_argument("--ensemble-count", type=int, default=12)
     parser.add_argument("--particles-per-ensemble", type=int, default=50)
     parser.add_argument("--selection-seed", type=int, default=DEFAULT_RANDOM_SEED)

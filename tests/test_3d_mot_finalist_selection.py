@@ -22,7 +22,7 @@ def test_selected_donut_finalists_preserve_shared_core_shell_boundary():
         profile = candidate["resolved_profile"]
         assert profile["556"]["outer_cutoff_radius_m"] == split
         assert profile["399"]["inner_cutoff_radius_m"] == split
-        assert "outer_cutoff_radius_m" not in profile["399"]
+        assert profile["399"]["outer_cutoff_radius_m"] == 0.005
 
 
 def test_selected_single_pass_finalists_recompute_zeeman_detuning():

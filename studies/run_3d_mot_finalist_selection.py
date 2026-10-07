@@ -1,4 +1,4 @@
-"""Evaluate one 3D-MOT finalist on all 15,840 existing survivors and three seeds."""
+"""Evaluate one 3D-MOT finalist on all 20 frozen selection ensembles and three seeds."""
 
 import argparse
 import json
@@ -9,46 +9,19 @@ import numpy as np
 
 from config import MOT_3D_SIM_CONFIG
 from simulations.mot_3d import mot_3d_simulation
-from studies.compare_3d_mot_retention import DEFAULT_INPUT, analyze_results
-from utils.data_paths import load_particle_states
+from studies.compare_3d_mot_retention import analyze_results
+from studies.mot_3d_campaign import load_all_frozen_particles
+from utils.file_helpers import save_file_json
+from studies.mot_3d_stage_integrity import (
+    frozen_stage_design, sha256, validate_completed_result,
+)
 
 
 RECOIL_SEEDS = (43001, 43002, 43003)
-EXPECTED_PARTICLE_COUNT = 15_840
 
 
 def _atomic_json(path, payload):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(payload, indent=2) + "\n")
-    os.replace(temporary, path)
-
-
-def load_all_existing_particles(input_dir):
-    files = sorted(Path(input_dir).glob("*.npy"))
-    if len(files) != 20:
-        raise ValueError(f"Expected exactly 20 ensembles, found {len(files)}.")
-    states, ensemble_ids, provenance = [], [], []
-    for ensemble_id, path in enumerate(files):
-        available = np.asarray(load_particle_states(path), dtype=float)
-        states.append(available)
-        ensemble_ids.extend([ensemble_id] * len(available))
-        provenance.append(
-            {
-                "ensemble_id": ensemble_id,
-                "file_index": ensemble_id,
-                "file": str(path),
-                "particle_count": len(available),
-            }
-        )
-    combined = np.concatenate(states)
-    if len(combined) != EXPECTED_PARTICLE_COUNT:
-        raise ValueError(
-            f"Expected {EXPECTED_PARTICLE_COUNT:,} existing survivors, "
-            f"found {len(combined):,}."
-        )
-    return combined, np.asarray(ensemble_ids), provenance
+    save_file_json(path, payload)
 
 
 def run(args):
@@ -59,18 +32,42 @@ def run(args):
     if args.finalist_index < 0 or args.finalist_index >= len(candidates):
         raise IndexError("Finalist index is outside the selection.")
     candidate = candidates[args.finalist_index]
-    states, ensemble_ids, provenance = load_all_existing_particles(args.input)
+    if not args.input_manifest:
+        raise ValueError("Canonical finalist selection requires --input-manifest.")
+    states, ensemble_ids, provenance = load_all_frozen_particles(args.input_manifest)
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     _atomic_json(output_dir / "particle_selection.json", provenance)
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
+    # Finalist selection uses all three frozen roles, represented by a stable
+    # combined role digest stored directly below.
+    manifest_payload = json.loads(Path(args.input_manifest).read_text())
+    combined_records = sum(
+        (manifest_payload["input_roles"][role] for role in (
+            "discovery", "refinement", "preliminary_check"
+        )),
+        [],
+    )
+    design = frozen_stage_design(
+        args.input_manifest, args.selection, "discovery", args.dt, args.t_max,
+        particle_selection=provenance,
+    )
+    design["input_role"] = "all_existing_selection"
+    design["input_role_sha256"] = __import__("hashlib").sha256(
+        json.dumps(combined_records, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
 
     candidate_id = candidate["candidate_id"]
     for recoil_seed in RECOIL_SEEDS:
         stem = f"{candidate_id}_seed_{recoil_seed}"
         json_path = output_dir / f"{stem}.json"
         npz_path = output_dir / f"{stem}.npz"
-        if json_path.exists() and npz_path.exists():
+        if validate_completed_result(
+            json_path, npz_path,
+            kind="mot_3d_finalist_seed_result",
+            family=args.family, candidate_id=candidate_id,
+            recoil_seed=recoil_seed, design=design,
+        ):
             print(f"Skipping completed {stem}", flush=True)
             continue
         print(f"FINALIST_START {stem}", flush=True)
@@ -108,6 +105,8 @@ def run(args):
             "entered_capture_region_count": int(diagnostics["entered_capture_region_count"]),
             "slow_inside_count": int(diagnostics["slow_inside_count"]),
             "outcomes_path": str(npz_path),
+            "outcomes_sha256": sha256(npz_path),
+            "design": design,
         }
         _atomic_json(json_path, result)
         print(
@@ -123,7 +122,7 @@ def parse_args(argv=None):
     parser.add_argument("--selection", required=True)
     parser.add_argument("--finalist-index", type=int, required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--input", default=str(DEFAULT_INPUT))
+    parser.add_argument("--input-manifest", required=True)
     parser.add_argument("--npools", type=int, default=200)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
     parser.add_argument("--t-max", type=float, default=0.1)

@@ -16,14 +16,14 @@ def test_closure_design_has_16_unique_candidates(family):
     assert len({tuple(sorted(row["parameters"].items())) for row in candidates}) == 16
 
 
-def test_donut_closure_preserves_shared_boundary_without_outer_blue_clip():
+def test_donut_closure_preserves_shared_boundary_and_shared_hole():
     payload = select("angled_donut", ROOT / "angled_donut" / "merged" / "refinement_summary.json")
     for candidate in payload["candidates"]:
         split = candidate["parameters"]["core_shell_split_radius_m"]
         profile = candidate["resolved_profile"]
         assert profile["556"]["outer_cutoff_radius_m"] == split
         assert profile["399"]["inner_cutoff_radius_m"] == split
-        assert "outer_cutoff_radius_m" not in profile["399"]
+        assert profile["399"]["outer_cutoff_radius_m"] == 0.005
 
 
 def test_single_pass_closure_recomputes_zeeman_corrected_detuning():

@@ -4,7 +4,9 @@ import argparse
 import json
 from pathlib import Path
 
+from config import MOT_3D_OPTIMIZATION_CONFIG
 from studies.optimize_3d_mot_full import build_profile_from_parameters
+from studies.select_3d_mot_refinement_candidates import _bounds
 
 
 def _candidate(family, index, role, parameters):
@@ -137,15 +139,44 @@ def _single_pass_design(ranked):
     ]
 
 
+def _current_local_design(family, ranked, count=16):
+    """Build a bounds-aware local closure without historical magic values."""
+    leader = dict(ranked[0]["parameters"])
+    bounds = _bounds(family)
+    rows = [("focused_refinement_leader", leader)]
+    signatures = {tuple(sorted(leader.items()))}
+    for key in bounds:
+        low, high = bounds[key]
+        delta = 0.05 * (high - low)
+        for direction, sign in (("down", -1.0), ("up", 1.0)):
+            candidate = dict(leader)
+            candidate[key] = min(max(candidate[key] + sign * delta, low), high)
+            signature = tuple(sorted(candidate.items()))
+            if signature == tuple(sorted(leader.items())) or signature in signatures:
+                # At a boundary, use an inward step rather than duplicate center.
+                candidate[key] = min(max(candidate[key] - 2 * sign * delta, low), high)
+                signature = tuple(sorted(candidate.items()))
+            if signature not in signatures:
+                signatures.add(signature)
+                rows.append((f"{key}_{direction}", candidate))
+            if len(rows) == count:
+                return rows
+    for source in ranked[1:]:
+        candidate = dict(source["parameters"])
+        signature = tuple(sorted(candidate.items()))
+        if signature not in signatures:
+            signatures.add(signature)
+            rows.append((f"refinement_anchor_{source['candidate_id']}", candidate))
+        if len(rows) == count:
+            return rows
+    raise RuntimeError(f"Could only construct {len(rows)}/{count} unique closure points.")
+
+
 def select(family, refinement_summary):
     summary = json.loads(Path(refinement_summary).read_text())
     if summary["family"] != family:
         raise ValueError("Refinement summary and requested family disagree.")
-    rows = (
-        _donut_design(summary["ranked_candidates"])
-        if family == "angled_donut"
-        else _single_pass_design(summary["ranked_candidates"])
-    )
+    rows = _current_local_design(family, summary["ranked_candidates"])
     if len(rows) != 16:
         raise AssertionError(f"Expected 16 closure candidates, built {len(rows)}.")
     candidates = [_candidate(family, index, role, params) for index, (role, params) in enumerate(rows)]
@@ -156,7 +187,7 @@ def select(family, refinement_summary):
         "kind": "mot_3d_local_closure_selection",
         "family": family,
         "candidate_count": len(candidates),
-        "design": "boundary-and-combination closure" if family == "angled_donut" else "fine resonance and local hardware closure",
+        "design": "bounds-aware local one-at-a-time closure around the refinement leader",
         "candidates": candidates,
     }
 

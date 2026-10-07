@@ -26,7 +26,9 @@ def select(family, closure_summary, count=3):
                 "source_candidate_id": source["candidate_id"],
                 "source_closure_role": source.get("closure_role"),
                 "source_closure_fraction": source["mean_usable_fraction"],
-                "source_closure_ci": source["bootstrap_95_ci"],
+                "source_closure_ci": source.get(
+                    "simultaneous_95_ci", source["bootstrap_95_ci"]
+                ),
                 "parameters": parameters,
                 "derived_parameters": derived,
                 "resolved_profile": profile,
@@ -36,7 +38,7 @@ def select(family, closure_summary, count=3):
         "kind": "mot_3d_finalist_selection",
         "family": family,
         "candidate_count": len(candidates),
-        "selection_rule": "top three closure candidates ranked by conservative lower confidence bound",
+        "selection_rule": "top three closure candidates ranked by the lower endpoint of the simultaneous 95% confidence interval",
         "candidates": candidates,
     }
 

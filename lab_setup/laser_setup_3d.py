@@ -279,9 +279,16 @@ def _validate_profile(profile):
         center_axis_distance = abs(float(offset)) * np.sin(
             0.5 * np.deg2rad(float(angle))
         )
-        estimated_center_fraction = np.exp(
-            -2.0 * (center_axis_distance / blue_waist) ** 2
-        )
+        blue_outer_cutoff = profile["399"].get("outer_cutoff_radius_m")
+        if (
+            blue_outer_cutoff is not None
+            and center_axis_distance >= float(blue_outer_cutoff)
+        ):
+            estimated_center_fraction = 0.0
+        else:
+            estimated_center_fraction = np.exp(
+                -2.0 * (center_axis_distance / blue_waist) ** 2
+            )
         if estimated_center_fraction > float(maximum_center_fraction):
             raise ValueError(
                 "Single-pass blue geometry illuminates the MOT center too "

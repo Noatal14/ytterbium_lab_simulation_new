@@ -9,55 +9,32 @@ import numpy as np
 
 from config import DEFAULT_RANDOM_SEED, MOT_3D_SIM_CONFIG
 from simulations.mot_3d import mot_3d_simulation
-from studies.compare_3d_mot_retention import DEFAULT_INPUT, analyze_results
-from utils.data_paths import load_particle_states
+from studies.compare_3d_mot_retention import analyze_results
+from studies.mot_3d_campaign import load_role_particles
+from utils.file_helpers import save_file_json
+from studies.mot_3d_stage_integrity import (
+    frozen_stage_design, sha256, validate_completed_result,
+)
 
 
 RECOIL_SEEDS = (41001, 41002, 41003)
 
 
 def _atomic_json(path, payload):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
-    temporary.write_text(json.dumps(payload, indent=2) + "\n")
-    os.replace(temporary, path)
-
-
-def load_preliminary_particles(input_dir, per_ensemble, seed):
-    files = sorted(Path(input_dir).glob("*.npy"))
-    selected_files = files[16:20]
-    if len(files) != 20 or len(selected_files) != 4:
-        raise ValueError(f"Expected exactly 20 ensembles, found {len(files)}.")
-    states = []
-    ensemble_ids = []
-    provenance = []
-    for ensemble_id, path in enumerate(selected_files):
-        available = np.asarray(load_particle_states(path), dtype=float)
-        if len(available) < per_ensemble:
-            raise ValueError(f"{path} has {len(available)} particles; need {per_ensemble}.")
-        rng = np.random.default_rng(np.random.SeedSequence([seed, 16 + ensemble_id]))
-        indices = np.sort(rng.choice(len(available), per_ensemble, replace=False))
-        states.append(available[indices])
-        ensemble_ids.extend([ensemble_id] * per_ensemble)
-        provenance.append(
-            {
-                "ensemble_id": ensemble_id,
-                "file_index": 16 + ensemble_id,
-                "file": str(path),
-                "available_count": len(available),
-                "selected_indices": indices.tolist(),
-            }
-        )
-    return np.concatenate(states), np.asarray(ensemble_ids), provenance
+    save_file_json(path, payload)
 
 
 def run(args):
     selection = json.loads(Path(args.selection).read_text())
     if selection["family"] != args.family:
         raise ValueError("Selection family and requested family disagree.")
-    states, ensemble_ids, provenance = load_preliminary_particles(
-        args.input, args.particles_per_ensemble, args.selection_seed
+    if not args.input_manifest:
+        raise ValueError("Canonical early check requires --input-manifest.")
+    states, ensemble_ids, provenance = load_role_particles(
+        args.input_manifest,
+        "preliminary_check",
+        args.particles_per_ensemble,
+        args.selection_seed,
     )
     if len(states) != 600:
         raise AssertionError("Early-check design must contain exactly 600 particles.")
@@ -65,6 +42,12 @@ def run(args):
     output_dir.mkdir(parents=True, exist_ok=True)
     _atomic_json(output_dir / "particle_selection.json", provenance)
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
+    design = frozen_stage_design(
+        args.input_manifest, args.selection, "preliminary_check", args.dt, args.t_max,
+        particle_selection=provenance,
+        particles_per_ensemble=args.particles_per_ensemble,
+        selection_seed=args.selection_seed,
+    )
 
     assigned = selection["candidates"][args.worker_index :: args.num_workers]
     for candidate in assigned:
@@ -73,7 +56,12 @@ def run(args):
             stem = f"{candidate_id}_seed_{recoil_seed}"
             json_path = output_dir / f"{stem}.json"
             npz_path = output_dir / f"{stem}.npz"
-            if json_path.exists() and npz_path.exists():
+            if validate_completed_result(
+                json_path, npz_path,
+                kind="mot_3d_early_independent_check_seed_result",
+                family=args.family, candidate_id=candidate_id,
+                recoil_seed=recoil_seed, design=design,
+            ):
                 print(f"Skipping completed {stem}", flush=True)
                 continue
             print(f"EARLY_CHECK_START {stem}", flush=True)
@@ -113,6 +101,8 @@ def run(args):
                 ),
                 "slow_inside_count": int(diagnostics["slow_inside_count"]),
                 "outcomes_path": str(npz_path),
+                "outcomes_sha256": sha256(npz_path),
+                "design": design,
             }
             _atomic_json(json_path, result)
             print(
@@ -127,7 +117,7 @@ def parse_args(argv=None):
     parser.add_argument("--family", choices=("angled_donut", "single_pass"), required=True)
     parser.add_argument("--selection", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--input", default=str(DEFAULT_INPUT))
+    parser.add_argument("--input-manifest", required=True)
     parser.add_argument("--worker-index", type=int, required=True)
     parser.add_argument("--num-workers", type=int, default=3)
     parser.add_argument("--particles-per-ensemble", type=int, default=150)

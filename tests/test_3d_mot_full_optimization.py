@@ -1,6 +1,8 @@
 import math
+from types import SimpleNamespace
 
 import optuna
+import pytest
 
 from config import MOT_3D_OPTIMIZATION_CONFIG
 from studies.optimize_3d_mot_full import (
@@ -8,6 +10,11 @@ from studies.optimize_3d_mot_full import (
     _single_pass_reference_field_G,
     build_trial_profile,
     resolve_single_pass_detuning,
+    remaining_complete_trials,
+    lock_study_design,
+    fail_stale_running_trials,
+    acquire_worker_lock,
+    _design_identity,
 )
 
 
@@ -42,4 +49,69 @@ def test_seed_profiles_respect_confirmed_search_bounds():
         if family == "angled_donut":
             split = profile["399"]["inner_cutoff_radius_m"]
             assert profile["556"]["outer_cutoff_radius_m"] == split
-            assert "outer_cutoff_radius_m" not in profile["399"]
+            assert profile["399"]["outer_cutoff_radius_m"] == 0.005
+
+
+def test_resume_budget_counts_only_complete_trials():
+    states = [
+        optuna.trial.TrialState.COMPLETE,
+        optuna.trial.TrialState.FAIL,
+        optuna.trial.TrialState.RUNNING,
+    ]
+    assert remaining_complete_trials(3, states) == 2
+    with pytest.raises(RuntimeError, match="exceeding target"):
+        remaining_complete_trials(0, states)
+
+
+def test_optuna_design_lock_rejects_incompatible_resume(tmp_path):
+    study = optuna.create_study(
+        storage=f"sqlite:///{tmp_path / 'study.db'}",
+        study_name="locked",
+        load_if_exists=True,
+    )
+    lock_study_design(study, {"family": "angled_donut"}, "design-a")
+    lock_study_design(study, {"family": "angled_donut"}, "design-a")
+    with pytest.raises(RuntimeError, match="incompatible scientific design"):
+        lock_study_design(study, {"family": "single_pass"}, "design-b")
+
+
+def test_interrupted_running_trial_is_failed_deterministically(tmp_path):
+    study = optuna.create_study(
+        storage=f"sqlite:///{tmp_path / 'study.db'}",
+        study_name="interrupted",
+        load_if_exists=True,
+    )
+    study.ask()
+    assert study.trials[0].state == optuna.trial.TrialState.RUNNING
+    assert fail_stale_running_trials(study) == 1
+    assert study.trials[0].state == optuna.trial.TrialState.FAIL
+    assert fail_stale_running_trials(study) == 0
+
+
+def test_worker_lock_rejects_concurrent_owner(tmp_path):
+    first = acquire_worker_lock(tmp_path)
+    with pytest.raises(RuntimeError, match="Another process owns worker lock"):
+        acquire_worker_lock(tmp_path)
+    first.close()
+    recovered = acquire_worker_lock(tmp_path)
+    recovered.close()
+
+
+def test_design_identity_changes_with_frozen_input_sha():
+    args = SimpleNamespace(
+        family="angled_donut", worker_index=0, sampler_seed=1,
+        startup_trials=2, selection_seed=3, simulation_seed=4,
+        particles_per_ensemble=5, dt=1e-6, t_max=0.1,
+        input_role="discovery",
+    )
+    manifest = {
+        "provenance": {"git_commit": "abc", "physical_model_sha256": "model"},
+        "upstream_2d_campaign": {
+            "campaign_sha256": "campaign", "final_report_sha256": "report"
+        },
+        "input_roles": {"discovery": [{"path": "same.npy", "sha256": "a"}]},
+    }
+    _, first = _design_identity(args, [], manifest)
+    manifest["input_roles"]["discovery"][0]["sha256"] = "b"
+    _, second = _design_identity(args, [], manifest)
+    assert first != second
