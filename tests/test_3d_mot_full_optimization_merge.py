@@ -21,6 +21,8 @@ def _trial(root, worker, number):
                 "entered_capture_region_count": 500,
                 "runtime_seconds": 10.0,
                 "software_revision": "test",
+                "design_id": f"worker-{worker}-design",
+                "scientific_design": {"worker_index": worker, "test": True},
                 "parameters": {},
                 "derived_parameters": {},
             }

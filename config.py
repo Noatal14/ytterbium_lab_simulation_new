@@ -350,25 +350,25 @@ FORCE_SCALE_N = 3.141895058426422e-20
 
 MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM = 10.0
 
-# Full-search domains. Length bounds are 1/e^2 Gaussian waist radii, not
-# diameters. The 7.5-mm ceiling therefore represents a 15-mm 1/e^2 diameter.
-# Power feasibility must be added separately when measured power limits are
-# supplied; s0 and waist alone do not encode the available optical power.
+# Full-search domains. Length bounds are 1/e^2 Gaussian waist radii. Chamber
+# holes are represented separately as hard transverse apertures, so a waist is
+# not interpreted as a physical beam diameter.
 MOT_3D_OPTIMIZATION_CONFIG = {
     "common": {
-        "green_s0_bounds": (0.5, 40.0),
+        "green_s0_bounds": (0.5, 150.0),
         "green_detuning_gamma_bounds": (-35.0, -5.0),
-        "green_waist_m_bounds": (0.005, 0.0075),
+        "green_waist_m_bounds": (0.002, 0.020),
         "blue_s0_bounds": (0.05, 1.5),
-        "blue_waist_m_bounds": (0.005, 0.0075),
-        "magnetic_gradient_G_cm_bounds": (0.5, 6.0),
+        "blue_waist_m_bounds": (0.002, 0.020),
+        "magnetic_gradient_G_cm_bounds": (0.5, 100.0),
         "particles_per_trial": 600,
         "t_max_s": 0.1,
     },
     "angled_donut": {
         "blue_detuning_gamma_bounds": (-6.0, -0.5),
         # Shared hard boundary between the green core and blue shell.
-        "core_shell_split_radius_m_bounds": (0.0025, 0.0065),
+        "core_shell_split_radius_m_bounds": (0.0005, 0.0049),
+        "shared_aperture_radius_m": 0.005,
         "total_discovery_trials": 350,
     },
     "single_pass": {
@@ -376,6 +376,9 @@ MOT_3D_OPTIMIZATION_CONFIG = {
         "blue_crossing_angle_deg_bounds": (45.0, 70.0),
         "blue_crossing_z_offset_m_bounds": (-0.050, -0.040),
         "maximum_blue_center_relative_intensity": 1e-3,
+        "green_full_angle_deg": 62.0,
+        "green_aperture_radius_m": 0.005,
+        "blue_aperture_radius_m": 0.0075,
         "slowing_position_waist_factor": 1.1,
         "blue_zeeman_gamma_per_G": 0.04969,
         "reference_gradient_G_cm": 2.5,
@@ -391,9 +394,9 @@ MOT_3D_OPTIMIZATION_CONFIG = {
 # to modify or optimize.
 MOT_3D_CONFIGURATIONS = {
     "angled_donut": {
-        "description": "Two xz axes at +/-30 degrees from z plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell. The required chamber-hole diameter is selected after the waist optimization, subject to the 15-mm maximum.",
+        "description": "Two xz axes with a 62-degree full included angle plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell, and the common chamber hole clips both colors at 5 mm radius.",
         "beam_layout": "angled_xz_y",
-        "xz_angle_from_z_deg": 30.0,
+        "xz_angle_from_z_deg": 31.0,
         # The y beam is the third MOT axis, so y is the quadrupole strong axis
         # for the configured 2:1 gradient convention.
         "magnetic_strong_axis": "y",
@@ -421,7 +424,8 @@ MOT_3D_CONFIGURATIONS = {
             # The experimental mirrors remove the center of an otherwise
             # ordinary Gaussian beam; the intensity jumps from exactly zero to
             # the unmodified Gaussian tail at this radius.
-            "inner_cutoff_radius_m": 0.005,
+            "inner_cutoff_radius_m": 0.0025,
+            "outer_cutoff_radius_m": 0.005,
         },
         "556": {
             "enabled": True,
@@ -441,9 +445,8 @@ MOT_3D_CONFIGURATIONS = {
                 "+Y": "left",
                 "-Y": "left",
             },
-            # The chamber walls transmit the green beam only inside the same
-            # radius at which the center-blocked blue beam begins.
-            "outer_cutoff_radius_m": 0.005,
+            # The optimized profile replaces this provisional shared split.
+            "outer_cutoff_radius_m": 0.0025,
         },
     },
     "single_pass": {
@@ -462,7 +465,7 @@ MOT_3D_CONFIGURATIONS = {
         # the MOT center; no artificial longitudinal clipping is assumed.
         "blue_crossing_z_offset_m": -50e-3,
         "maximum_blue_center_relative_intensity": 1e-3,
-        "xz_angle_from_z_deg": 30.0,
+        "xz_angle_from_z_deg": 31.0,
         "center_position_m": Geometry.MOT_3D_CENTER_M,
         "beam_components": {
             "+XZ_1": {"399_enabled": False, "556_enabled": True},
@@ -479,7 +482,8 @@ MOT_3D_CONFIGURATIONS = {
             "s0": 0.75,
             "detuning_gamma": -2.0,
             "waist_m": 0.010,
-            "profile": "gaussian",
+            "profile": "outer_clipped_gaussian",
+            "outer_cutoff_radius_m": 0.0075,
             "polarization_by_axis": {
                 "SP_FROM_NEG_Y": "right",
                 "SP_FROM_POS_Y": "right",
@@ -490,7 +494,8 @@ MOT_3D_CONFIGURATIONS = {
             "s0": 30.0,
             "detuning_gamma": -25.0,
             "waist_m": 0.01,
-            "profile": "gaussian",
+            "profile": "outer_clipped_gaussian",
+            "outer_cutoff_radius_m": 0.005,
             "polarization_by_axis": {
                 "+XZ_1": "right",
                 "-XZ_1": "right",
@@ -508,7 +513,14 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
 MOT_3D_SIM_CONFIG = {
     "t_max_s": 25e-3,
-    "dt_s": 1e-5,
+    # Provisional values only.  The 0.625-us production value is supported by
+    # the 2D-MOT convergence study, not yet by a 3D-MOT convergence study.
+    # A new campaign must pass its paired dt-validation gate before discovery.
+    "dt_s": 1.25e-6,
+    "screening_dt_s": 1.25e-6,
+    "production_dt_s": 0.625e-6,
+    "dt_validation_candidates_s": (2.5e-6, 1.25e-6, 0.625e-6),
+    "dt_validation_reference_s": 0.3125e-6,
     "solver": "RK4StHybridCustom",
 }
 

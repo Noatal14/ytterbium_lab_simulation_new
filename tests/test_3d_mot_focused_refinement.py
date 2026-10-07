@@ -33,7 +33,7 @@ def test_donut_refinement_preserves_one_shared_core_shell_boundary():
         profile = candidate["resolved_profile"]
         assert profile["556"]["outer_cutoff_radius_m"] == split
         assert profile["399"]["inner_cutoff_radius_m"] == split
-        assert "outer_cutoff_radius_m" not in profile["399"]
+        assert profile["399"]["outer_cutoff_radius_m"] == 0.005
 
 
 def test_single_pass_refinement_records_zeeman_corrected_detuning():

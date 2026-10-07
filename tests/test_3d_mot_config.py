@@ -10,6 +10,7 @@ from config import (
     ACTIVE_MOT_3D_CONFIGURATION,
     BLUE_SATURATION_INTENSITY_MW_CM2,
     MOT_3D_CONFIGURATIONS,
+    MOT_3D_OPTIMIZATION_CONFIG,
 )
 from lab_setup.config_builder import build_base_config
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
@@ -82,8 +83,8 @@ def test_3d_mot_field_accepts_single_position_and_position_batch():
 
 def test_angled_donut_geometry_is_correct():
     profile = _resolved_profile("angled_donut")
-    assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.005)
-    assert "outer_cutoff_radius_m" not in profile["399"]
+    assert profile["399"]["inner_cutoff_radius_m"] == pytest.approx(0.0025)
+    assert profile["399"]["outer_cutoff_radius_m"] == pytest.approx(0.005)
     assert "ring_radius_m" not in profile["399"]
     assert "ring_width_m" not in profile["399"]
     assert profile["beam_layout"] == "angled_xz_y"
@@ -156,8 +157,8 @@ def test_angled_donut_blue_shell_force_opposes_velocity(axis, velocity_sign):
         "angled_donut", "399"
     )
     position = np.asarray(profile["center_position_m"], dtype=float)
-    # This lab-frame point lies outside the 5-mm dark core.
-    position += np.array([6.0e-3, 0.0, 0.0])
+    # This lab-frame point lies in the transmitted blue annulus.
+    position += np.array([3.5e-3, 0.0, 0.0])
     velocity = np.zeros(3)
     velocity[axis] = velocity_sign * 10.0
 
@@ -179,8 +180,10 @@ def test_single_pass_geometry_has_six_green_and_two_upstream_blue_beams():
     green_beams = [beam for beam in beams if "3DMOT_556_" in beam.tag]
     assert len(blue_beams) == 2
     assert len(green_beams) == 6
-    assert all(beam.profile_kind == "gaussian" for beam in blue_beams)
-    assert all(beam.profile_kind == "gaussian" for beam in green_beams)
+    assert all(beam.profile_kind == "outer_clipped_gaussian" for beam in blue_beams)
+    assert all(beam.profile_kind == "outer_clipped_gaussian" for beam in green_beams)
+    assert all(beam.outer_cutoff_radius == pytest.approx(7.5e-3) for beam in blue_beams)
+    assert all(beam.outer_cutoff_radius == pytest.approx(5e-3) for beam in green_beams)
 
     blue_directions = [_normalize(beam.direction) for beam in blue_beams]
     assert all(np.isclose(direction[0], 0.0) for direction in blue_directions)
@@ -195,6 +198,25 @@ def test_single_pass_geometry_has_six_green_and_two_upstream_blue_beams():
     green_directions = _unique_directions(green_beams)
     assert len(green_directions) == 6
     assert profile["magnetic_strong_axis"] == "y"
+
+
+def test_new_3d_optimization_hardware_decisions_are_canonical():
+    common = MOT_3D_OPTIMIZATION_CONFIG["common"]
+    donut = MOT_3D_OPTIMIZATION_CONFIG["angled_donut"]
+    single_pass = MOT_3D_OPTIMIZATION_CONFIG["single_pass"]
+
+    assert common["green_s0_bounds"][1] == pytest.approx(150.0)
+    assert common["magnetic_gradient_G_cm_bounds"][1] == pytest.approx(100.0)
+    assert common["green_waist_m_bounds"] == pytest.approx((0.002, 0.020))
+    assert common["blue_waist_m_bounds"] == pytest.approx((0.002, 0.020))
+    assert donut["core_shell_split_radius_m_bounds"][0] < 2.5e-3
+    assert donut["core_shell_split_radius_m_bounds"][1] < donut[
+        "shared_aperture_radius_m"
+    ]
+    assert donut["shared_aperture_radius_m"] == pytest.approx(5e-3)
+    assert single_pass["green_full_angle_deg"] == pytest.approx(62.0)
+    assert single_pass["green_aperture_radius_m"] == pytest.approx(5e-3)
+    assert single_pass["blue_aperture_radius_m"] == pytest.approx(7.5e-3)
 
 
 def test_single_pass_angle_and_crossing_offset_are_config_driven():
@@ -215,10 +237,25 @@ def test_single_pass_angle_and_crossing_offset_are_config_driven():
 
 def test_single_pass_rejects_blue_geometry_that_illuminates_mot_center():
     profile = _resolved_profile("single_pass")
+    profile["399"]["profile"] = "gaussian"
+    profile["399"].pop("outer_cutoff_radius_m", None)
     profile["blue_crossing_z_offset_m"] = -10e-3
     profile["399"]["waist_m"] = 15e-3
     with pytest.raises(ValueError, match="illuminates the MOT center too strongly"):
         setup_3dmot_lasers(profile)
+
+
+def test_single_pass_hard_aperture_keeps_center_dark_for_large_waist():
+    profile = _resolved_profile("single_pass")
+    profile["blue_crossing_angle_deg"] = 45.0
+    profile["blue_crossing_z_offset_m"] = -40e-3
+    profile["399"]["waist_m"] = 20e-3
+
+    beams = setup_3dmot_lasers(profile)
+    center = np.asarray(profile["center_position_m"], dtype=float)
+
+    for beam in [beam for beam in beams if "3DMOT_399_" in beam.tag]:
+        assert beam.get_value(center[None, :])[0] == 0.0
 
 
 def test_single_pass_blue_intensity_is_negligible_at_mot_center():
@@ -316,15 +353,19 @@ def test_global_wavelength_switch_disables_explicit_axis_components():
 
 
 def test_active_angled_profile_emits_expected_vectors():
+    profile = _resolved_profile("angled_donut")
     beams = setup_3dmot_lasers(
-        mot_3d_config=_resolved_profile("angled_donut"),
+        mot_3d_config=profile,
         center_position=(0.0, 0.0, 0.0),
     )
     directions = {tuple(np.round(_normalize(beam.direction), 8)) for beam in beams}
-    assert (0.5, 0.0, 0.8660254) in directions
-    assert (-0.5, 0.0, 0.8660254) in directions
-    assert (-0.5, 0.0, -0.8660254) in directions
-    assert (0.5, 0.0, -0.8660254) in directions
+    angle = np.deg2rad(profile["xz_angle_from_z_deg"])
+    transverse = round(float(np.sin(angle)), 8)
+    longitudinal = round(float(np.cos(angle)), 8)
+    assert (transverse, 0.0, longitudinal) in directions
+    assert (-transverse, 0.0, longitudinal) in directions
+    assert (-transverse, 0.0, -longitudinal) in directions
+    assert (transverse, 0.0, -longitudinal) in directions
     assert (0.0, 1.0, 0.0) in directions
     assert (0.0, -1.0, 0.0) in directions
 
@@ -369,12 +410,14 @@ def test_angled_donut_green_and_blue_profiles_are_complementary():
     blue = next(beam for beam in beams if beam.tag == "3DMOT_399_+Y")
     green = next(beam for beam in beams if beam.tag == "3DMOT_556_+Y")
     cutoff = profile["399"]["inner_cutoff_radius_m"]
+    aperture = profile["399"]["outer_cutoff_radius_m"]
     assert green.outer_cutoff_radius == pytest.approx(cutoff)
-    assert blue.outer_cutoff_radius is None
+    assert blue.outer_cutoff_radius == pytest.approx(aperture)
 
     inside = np.array([[0.5 * cutoff, 0.0, 0.0]])
     boundary = np.array([[cutoff, 0.0, 0.0]])
     outside = np.array([[1.2 * cutoff, 0.0, 0.0]])
+    beyond_hole = np.array([[1.1 * aperture, 0.0, 0.0]])
 
     assert blue.get_value(inside)[0] == 0.0
     assert green.get_value(inside)[0] > 0.0
@@ -382,6 +425,8 @@ def test_angled_donut_green_and_blue_profiles_are_complementary():
     assert green.get_value(boundary)[0] == 0.0
     assert blue.get_value(outside)[0] > 0.0
     assert green.get_value(outside)[0] == 0.0
+    assert blue.get_value(beyond_hole)[0] == 0.0
+    assert green.get_value(beyond_hole)[0] == 0.0
 
 
 def test_3d_mot_builder_uses_profile_values_not_detuning_arguments():
