@@ -18,6 +18,7 @@ from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mot_2d_plan import RELEVANT_FILES
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshot
+from workflow_api.zeus_snapshot import ZeusProfile
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
@@ -211,10 +212,11 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None):
+def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     handler.creation_service = creation_service
+    handler.zeus_service = zeus_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -506,3 +508,32 @@ def test_cross_site_request_cannot_allocate_creation_session(tmp_path):
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
         status, _, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
         assert status == 200 and payload["data"]["csrf_token"]
+
+
+class _FakeZeusService:
+    def __init__(self): self.payload = None
+    def snapshot(self, payload):
+        ZeusProfile.parse(payload)
+        self.payload = payload
+        return {
+            "connection_status": "connected",
+            "profile": {"host": "zeus-login.zeus.technion.ac.il", "username": payload["username"], "project_directory": payload["project_directory"], "authentication": "ssh-key-or-agent"},
+            "remote": {"project_directory": payload["project_directory"], "git_commit": "a" * 40, "branch": "main", "dirty": False},
+            "scheduler": {"status": "available", "queried_at": "2026-10-08T00:00:00+00:00", "jobs": []},
+        }
+
+
+def test_zeus_snapshot_requires_explicit_same_origin_csrf_and_never_accepts_password():
+    service = _FakeZeusService()
+    with running_server(request_count=4, zeus_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+        body = json.dumps({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"})
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers={"Content-Type": "application/json"}, body=body)
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers=trusted, body=body)
+        assert status == 200 and payload["data"]["connection_status"] == "connected"
+        assert service.payload == {"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers=trusted, body=json.dumps({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new", "password": "never"}))
+        assert status == 400 and payload["error"]["code"] == "invalid_request"

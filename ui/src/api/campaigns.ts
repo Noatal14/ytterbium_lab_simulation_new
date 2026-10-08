@@ -83,6 +83,65 @@ export const creationApi = {
 };
 export type CreationApi = typeof creationApi;
 
+export type ZeusJob = {
+  id: string; name: string; raw_state: "Q" | "R" | "H" | "F" | "X" | "E" | "B" | "S" | "W" | "T" | "U" | "?";
+  state: "queued" | "running" | "held_attention" | "completed_success" | "completed_failed" | "unknown";
+  exit_status: number | null; walltime: string | null; start_time: string | null; comment: string | null; dependencies: string[];
+};
+export type ZeusSnapshot = {
+  connection_status: "connected";
+  profile: { host: "zeus-login.zeus.technion.ac.il"; username: string; project_directory: string; authentication: "ssh-key-or-agent" };
+  remote: { project_directory: string; git_commit: string; branch: string; dirty: boolean };
+  scheduler: { status: "available"; queried_at: string; jobs: ZeusJob[] };
+};
+
+export class ZeusApiError extends Error {
+  constructor(public code: string, message: string) { super(message); }
+}
+
+const exactKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+const boundedPrintable = (value: unknown, limit: number): value is string => text(value) && value.length <= limit && !/[\u0000-\u001f\u007f]/.test(value);
+const nullableBoundedPrintable = (value: unknown, limit: number): value is string | null => value === null || boundedPrintable(value, limit);
+function parseZeusSnapshot(value: unknown): ZeusSnapshot {
+  if (!value || typeof value !== "object") throw new Error("Invalid Zeus snapshot response.");
+  const row = value as Record<string, unknown>;
+  const profile = row.profile as Record<string, unknown>;
+  const remote = row.remote as Record<string, unknown>;
+  const scheduler = row.scheduler as Record<string, unknown>;
+  if (!exactKeys(row, ["connection_status", "profile", "remote", "scheduler"]) || row.connection_status !== "connected" || !profile || !exactKeys(profile, ["host", "username", "project_directory", "authentication"]) || profile.host !== "zeus-login.zeus.technion.ac.il" || !text(profile.username) || !/^[A-Za-z][A-Za-z0-9._-]{0,31}$/.test(profile.username) || !text(profile.project_directory) || profile.project_directory !== `/home/${profile.username}/ytterbium_lab_simulation_new` || profile.authentication !== "ssh-key-or-agent" || !remote || !exactKeys(remote, ["project_directory", "git_commit", "branch", "dirty"]) || remote.project_directory !== profile.project_directory || !text(remote.git_commit) || !/^[0-9a-f]{40}$/.test(remote.git_commit) || !boundedPrintable(remote.branch, 256) || typeof remote.dirty !== "boolean" || !scheduler || !exactKeys(scheduler, ["status", "queried_at", "jobs"]) || scheduler.status !== "available" || !text(scheduler.queried_at) || Number.isNaN(Date.parse(String(scheduler.queried_at))) || !Array.isArray(scheduler.jobs) || scheduler.jobs.length > 500) throw new Error("Invalid Zeus snapshot response.");
+  const rawStates = ["Q", "R", "H", "F", "X", "E", "B", "S", "W", "T", "U", "?"];
+  const states = ["queued", "running", "held_attention", "completed_success", "completed_failed", "unknown"];
+  const jobId = /^\d+(?:\[\d+\]|\[\])?(?:\.zeus-master)?$/;
+  const seenJobs = new Set<string>();
+  for (const job of scheduler.jobs) {
+    if (!job || typeof job !== "object") throw new Error("Invalid Zeus job response.");
+    const item = job as Record<string, unknown>;
+    if (!exactKeys(item, ["id", "name", "raw_state", "state", "exit_status", "walltime", "start_time", "comment", "dependencies"]) || !text(item.id) || !jobId.test(item.id) || seenJobs.has(item.id) || !boundedPrintable(item.name, 128) || !rawStates.includes(String(item.raw_state)) || !states.includes(String(item.state)) || (item.exit_status !== null && (!Number.isInteger(item.exit_status) || Number(item.exit_status) < -2_147_483_648 || Number(item.exit_status) > 2_147_483_647)) || !nullableBoundedPrintable(item.walltime, 32) || !nullableBoundedPrintable(item.start_time, 128) || !nullableBoundedPrintable(item.comment, 512) || !Array.isArray(item.dependencies) || item.dependencies.length > 500 || !item.dependencies.every((dependency) => text(dependency) && jobId.test(dependency))) throw new Error("Invalid Zeus job response.");
+    seenJobs.add(item.id);
+    const expectedState = item.raw_state === "Q" ? "queued"
+      : ["R", "E", "B"].includes(String(item.raw_state)) ? "running"
+      : item.raw_state === "H" ? "held_attention"
+      : ["F", "X"].includes(String(item.raw_state)) && item.exit_status === 0 ? "completed_success"
+      : ["F", "X"].includes(String(item.raw_state)) && item.exit_status !== null ? "completed_failed"
+      : "unknown";
+    if (item.state !== expectedState) throw new Error("Inconsistent Zeus job response.");
+  }
+  return row as unknown as ZeusSnapshot;
+}
+
+export const zeusApi = {
+  async snapshot(username: string, project_directory: string): Promise<ZeusSnapshot> {
+    const csrf = await creationApi.session();
+    const response = await fetch("/api/v1/zeus/snapshot", { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify({ username, project_directory }) });
+    const payload = await response.json() as { data?: unknown; error?: { code?: unknown; message?: unknown } };
+    if (!response.ok || !payload.data) throw new ZeusApiError(text(payload.error?.code) ? payload.error.code : "check_failed", text(payload.error?.message) ? payload.error.message : "The read-only Zeus check failed safely.");
+    const snapshot = parseZeusSnapshot(payload.data);
+    if (snapshot.profile.username !== username || snapshot.profile.project_directory !== project_directory || snapshot.remote.project_directory !== project_directory) throw new Error("Zeus snapshot did not match the requested profile.");
+    return snapshot;
+  },
+};
+export type ZeusApi = typeof zeusApi;
+
 function parsePreview(value: Record<string, unknown>): CreationPreview {
   const provenance = value.provenance as Record<string, unknown>;
   const plan = value.plan as Record<string, unknown> | null;
