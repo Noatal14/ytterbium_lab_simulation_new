@@ -168,12 +168,16 @@ describe("onboarding home", () => {
     const username = screen.getByLabelText("Technion username");
     const connect = screen.getByRole("button", { name: "Connect and check status" });
     await user.type(username, "1tal.noa");
+    expect(username).toHaveAccessibleName("Technion username");
+    expect(username).toHaveAttribute("aria-invalid", "true");
     expect(connect).toBeDisabled();
     expect(screen.getByLabelText("Remote project directory")).toHaveValue("");
+    expect(screen.getByText("Enter the username you use to sign in to Technion services.")).toBeVisible();
     await user.clear(username);
     await user.type(username, "tal.noa");
+    expect(username).toHaveAttribute("aria-invalid", "false");
     expect(connect).toBeEnabled();
-    expect(screen.getByText(/32 characters maximum/)).toBeInTheDocument();
+    expect(screen.queryByText("Enter the username you use to sign in to Technion services.")).not.toBeInTheDocument();
   });
 
   it("labels an old empty scheduler snapshot as stale without implying failure", async () => {

@@ -35,9 +35,23 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
   await expect(page.getByText(/install only the .* public key in your Zeus account/)).toBeVisible();
   await expect(page.getByText(/compare the displayed server fingerprint with an official Technion source/)).toBeVisible();
   await expect(page.getByText(/Never paste your Zeus password, private key, or key passphrase/)).toBeVisible();
+  const finalInstruction = page.getByRole("listitem").filter({ hasText: "Return here and select Connect and check status." });
+  await expect(finalInstruction).toHaveText("Return here and select Connect and check status.");
+  expect(await finalInstruction.locator("strong").evaluate((element) => getComputedStyle(element).display)).toBe("inline");
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(requests.filter((request) => request.includes("/api/v1/session") || request.includes("/api/v1/zeus/snapshot"))).toEqual([]);
+  await page.getByLabel("Technion username").fill("1tal.noa");
+  await expect(page.getByLabel("Technion username")).toHaveAttribute("aria-invalid", "true");
+  await expect(page.getByText("Enter the username you use to sign in to Technion services.")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  if ((page.viewportSize()?.width ?? 0) > 620) {
+    const [usernameBox, directoryBox] = await Promise.all([page.getByLabel("Technion username").boundingBox(), page.getByLabel("Remote project directory").boundingBox()]);
+    expect(usernameBox?.y).toBe(directoryBox?.y);
+  } else {
+    const [usernameBox, errorBox, directoryBox] = await Promise.all([page.getByLabel("Technion username").boundingBox(), page.getByText("Enter the username you use to sign in to Technion services.").boundingBox(), page.getByLabel("Remote project directory").boundingBox()]);
+    expect(usernameBox && errorBox && directoryBox && usernameBox.y < errorBox.y && errorBox.y < directoryBox.y).toBe(true);
+  }
   await page.getByLabel("Technion username").fill("tal.noa");
   await expect(page.getByLabel("Remote project directory")).toHaveValue("/home/tal.noa/ytterbium_lab_simulation_new");
   await page.getByRole("button", { name: "Connect and check status" }).click();
