@@ -19,6 +19,7 @@ from workflow_api.mot_2d_plan import RELEVANT_FILES
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.zeus_snapshot import ZeusProfile
+from workflow_api.zeus_transfer import ZeusPreparationError
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
@@ -257,11 +258,12 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None):
+def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     handler.creation_service = creation_service
     handler.zeus_service = zeus_service
+    handler.transfer_service = transfer_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -568,6 +570,39 @@ class _FakeZeusService:
         }
 
 
+class _FakeTransferService:
+    def __init__(self, error=None):
+        self.calls = []
+        self.error = error
+
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        if set(payload) != {"campaign_id", "username", "project_directory"}:
+            raise ZeusPreparationError("request_invalid")
+        if self.error:
+            raise self.error
+        return {
+            "preview_token": "review-token", "expires_in_seconds": 300,
+            "campaign": {"id": payload["campaign_id"], "name": "Campaign", "path": "data/optimization/mot_2d/c", "git_commit": "a" * 40},
+            "destination": {"host": "zeus.technion.ac.il", "project_directory": payload["project_directory"], "campaign_directory": f'{payload["project_directory"]}/data/optimization/mot_2d/c'},
+            "artifacts": {"ensemble_count": 35, "total_count": 72, "missing_count": 72, "identical_count": 0, "total_bytes": 100, "missing_bytes": 100},
+            "effects": {"copy_missing_only": True, "overwrite_existing": False, "submit_jobs": False, "run_simulation": False},
+        }
+
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        if set(payload) != {"preview_token"}:
+            raise ZeusPreparationError("request_invalid")
+        if self.error:
+            raise self.error
+        return {
+            "status": "prepared", "campaign_id": "mot_2d-id",
+            "destination": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/c",
+            "transferred_count": 72, "reused_identical_count": 0, "bytes_transferred": 100,
+            "submitted_to_zeus": False, "simulation_started": False,
+        }
+
+
 def test_zeus_snapshot_requires_explicit_same_origin_csrf_and_never_accepts_password():
     service = _FakeZeusService()
     with running_server(request_count=4, zeus_service=service) as base_url:
@@ -582,3 +617,44 @@ def test_zeus_snapshot_requires_explicit_same_origin_csrf_and_never_accepts_pass
         assert service.payload == {"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
         status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers=trusted, body=json.dumps({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new", "password": "never"}))
         assert status == 400 and payload["error"]["code"] == "invalid_request"
+
+
+def test_zeus_transfer_preview_and_confirm_require_session_csrf_and_never_submit():
+    service = _FakeTransferService()
+    with running_server(request_count=5, transfer_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+        request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+        body = json.dumps(request)
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers={"Content-Type": "application/json"}, body=body)
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers=trusted, body=body)
+        assert status == 200 and payload["data"]["effects"]["submit_jobs"] is False
+        token = payload["data"]["preview_token"]
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token": token}))
+        assert status == 201
+        assert payload["data"]["submitted_to_zeus"] is False
+        assert payload["data"]["simulation_started"] is False
+        assert service.calls[0][1] == request
+        assert service.calls[0][2] == service.calls[1][2]
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token": token, "extra": True}))
+        assert status == 400 and payload["error"]["code"] == "request_invalid"
+
+
+def test_zeus_transfer_unavailable_and_errors_are_sanitized():
+    with running_server(request_count=1) as base_url:
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/transfers/preview", method="POST",
+            headers={"Content-Type": "application/json"}, body="{}",
+        )
+        assert status == 503 and payload["error"] == {"code": "zeus_preparation_unavailable", "message": "Zeus campaign preparation is unavailable."}
+
+    service = _FakeTransferService(ZeusPreparationError("remote_input_conflict"))
+    with running_server(request_count=2, transfer_service=service) as base_url:
+        _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+        request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers=trusted, body=json.dumps(request))
+        assert status == 409
+        assert payload["error"] == {"code": "remote_input_conflict", "message": "A required Zeus input differs from the frozen campaign input."}

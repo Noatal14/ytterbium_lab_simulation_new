@@ -1,7 +1,8 @@
 """Minimal localhost bridge for workflow inspection and guarded actions.
 
-The only remote surface is an explicit, CSRF-protected, read-only Zeus
-snapshot.  There is no generic command or scheduler-mutation endpoint.
+Remote surfaces are explicit and CSRF-protected: a read-only Zeus snapshot and
+a review-before-write campaign preparation.  There is no generic command or
+scheduler-mutation endpoint.
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshotProvider
 from workflow_api.zeus_snapshot import ZeusSnapshotError, ZeusSnapshotProvider, ZeusSnapshotService
+from workflow_api.zeus_transfer import ZeusPreparationCoordinator, ZeusPreparationError
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -43,6 +45,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     repository_root = Path(__file__).resolve().parents[1]
     creation_service: CreationService | None = None
     zeus_service: ZeusSnapshotService | None = None
+    transfer_service: ZeusPreparationCoordinator | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -61,7 +64,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None:
                 self._error("session_unavailable", "Local actions are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -115,12 +118,15 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
         if not self._trusted_request_target(): return
         target = urlsplit(self.path)
-        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot"}
+        transfer_paths = {"/api/v1/zeus/transfers/preview", "/api/v1/zeus/transfers/confirm"}
+        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths}
         if target.query or target.path not in allowed:
             self._method_not_allowed(); return
         if target.path == "/api/v1/zeus/snapshot" and self.zeus_service is None:
             self._error("zeus_unavailable", "Read-only Zeus inspection is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
+        if target.path in transfer_paths and self.transfer_service is None:
+            self._error("zeus_preparation_unavailable", "Zeus campaign preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
+        if target.path not in transfer_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
             self._error("creation_unavailable", "Local campaign creation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if not self._trusted_mutation_headers(): return
         try:
@@ -128,6 +134,10 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             session = self._session_id()
             if target.path == "/api/v1/zeus/snapshot":
                 data = self.zeus_service.snapshot(payload)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/transfers/preview":
+                data = self.transfer_service.preview(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/transfers/confirm":
+                data = self.transfer_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path.endswith("/preview"):
                 data = self.creation_service.preview(payload, session)
             else:
@@ -159,6 +169,44 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 "zeus_check_failed": "The read-only Zeus check failed safely.",
             }
             self._error(error.code, messages.get(error.code, messages["zeus_check_failed"]), statuses.get(error.code, HTTPStatus.BAD_GATEWAY)); return
+        except ZeusPreparationError as error:
+            statuses = {
+                "request_invalid": HTTPStatus.BAD_REQUEST,
+                "profile_invalid": HTTPStatus.BAD_REQUEST,
+                "campaign_not_found": HTTPStatus.NOT_FOUND,
+                "confirmation_invalid": HTTPStatus.PRECONDITION_FAILED,
+                "confirmation_expired": HTTPStatus.PRECONDITION_FAILED,
+                "too_many_pending_previews": HTTPStatus.TOO_MANY_REQUESTS,
+                "zeus_authentication_required": HTTPStatus.UNAUTHORIZED,
+                "zeus_host_key_untrusted": HTTPStatus.PRECONDITION_FAILED,
+                "zeus_timeout": HTTPStatus.GATEWAY_TIMEOUT,
+                "zeus_unreachable": HTTPStatus.SERVICE_UNAVAILABLE,
+                "remote_project_missing": HTTPStatus.PRECONDITION_FAILED,
+                "target_exists": HTTPStatus.CONFLICT,
+                "remote_input_conflict": HTTPStatus.CONFLICT,
+                "remote_campaign_conflict": HTTPStatus.CONFLICT,
+                "local_checkout_mismatch": HTTPStatus.PRECONDITION_FAILED,
+                "remote_checkout_mismatch": HTTPStatus.PRECONDITION_FAILED,
+            }
+            messages = {
+                "request_invalid": "The Zeus preparation request is invalid.",
+                "profile_invalid": "The Zeus connection profile is invalid.",
+                "campaign_not_found": "The selected campaign was not found.",
+                "confirmation_invalid": "The preparation preview is invalid or belongs to another session.",
+                "confirmation_expired": "The preparation preview has expired. Review it again before continuing.",
+                "too_many_pending_previews": "Too many preparation previews are pending.",
+                "zeus_authentication_required": "An existing SSH key or agent is required.",
+                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
+                "zeus_timeout": "The Zeus preparation check timed out.",
+                "zeus_unreachable": "Zeus could not be reached.",
+                "remote_project_missing": "The remote project directory could not be verified.",
+                "target_exists": "A remote file appeared after review. Review the preparation again.",
+                "remote_input_conflict": "A required Zeus input differs from the frozen campaign input.",
+                "remote_campaign_conflict": "The Zeus campaign destination already contains different or incomplete files.",
+                "local_checkout_mismatch": "The local checkout is not clean at the campaign commit.",
+                "remote_checkout_mismatch": "The Zeus checkout is not clean at the campaign commit.",
+            }
+            self._error(error.code, messages.get(error.code, "Zeus preparation stopped safely."), statuses.get(error.code, HTTPStatus.PRECONDITION_FAILED)); return
         except BlockingIOError:
             self._error("rate_limited", "Too many local creation requests.", HTTPStatus.TOO_MANY_REQUESTS); return
         except FileExistsError:
@@ -267,6 +315,9 @@ def main() -> None:
     )
     ReadOnlyWorkflowHandler.zeus_service = ZeusSnapshotService(
         ZeusSnapshotProvider(ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh")),
+    )
+    ReadOnlyWorkflowHandler.transfer_service = ZeusPreparationCoordinator(
+        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), ReadOnlyWorkflowHandler)
     print(f"Local workflow API listening on http://{HOST}:{PORT}")

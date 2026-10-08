@@ -1,4 +1,4 @@
-import { campaignApi, zeusApi, ZeusApiError } from "../api/campaigns";
+import { campaignApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
 
 describe("campaign API runtime validation", () => {
   it("rejects malformed nested status data instead of rendering it", async () => {
@@ -90,6 +90,27 @@ describe("campaign API runtime validation", () => {
       method: "POST", credentials: "same-origin", body: JSON.stringify({ username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" }),
       headers: expect.objectContaining({ "X-CSRF-Token": "csrf-token" }),
     }));
+    vi.unstubAllGlobals();
+  });
+
+  it("uses one session for transfer preview and confirmation and validates safe effects", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "transfer-csrf" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {
+        preview_token: "transfer-token", expires_in_seconds: 300,
+        campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40) },
+        destination: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/x" },
+        artifacts: { ensemble_count: 35, total_count: 72, missing_count: 2, identical_count: 70, total_bytes: 52_000_000, missing_bytes: 1000 },
+        effects: { copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false },
+      } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { status: "prepared", campaign_id: "mot_2d-x", destination: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/x", transferred_count: 2, reused_identical_count: 70, bytes_transferred: 1000, submitted_to_zeus: false, simulation_started: false } }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    expect((await transferApi.preview("mot_2d-x", profile)).artifacts.missing_count).toBe(2);
+    expect((await transferApi.confirm("transfer-token")).submitted_to_zeus).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/zeus/transfers/preview", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "transfer-csrf" }) }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/transfers/confirm", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "transfer-csrf" }) }));
     vi.unstubAllGlobals();
   });
 

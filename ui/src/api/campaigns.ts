@@ -146,6 +146,63 @@ export const zeusApi = {
 };
 export type ZeusApi = typeof zeusApi;
 
+export type ZeusTransferPreview = {
+  preview_token: string; expires_in_seconds: number;
+  campaign: { id: string; name: string; path: string; git_commit: string };
+  destination: { host: "zeus.technion.ac.il"; project_directory: string; campaign_directory: string };
+  artifacts: { ensemble_count: 35; total_count: 72; missing_count: number; identical_count: number; total_bytes: number; missing_bytes: number };
+  effects: { copy_missing_only: true; overwrite_existing: false; submit_jobs: false; run_simulation: false };
+};
+export type ZeusTransferResult = {
+  status: "prepared"; campaign_id: string; destination: string; transferred_count: number;
+  reused_identical_count: number; bytes_transferred: number; submitted_to_zeus: false; simulation_started: false;
+};
+
+function parseTransferPreview(value: Record<string, unknown>): ZeusTransferPreview {
+  const campaign = value.campaign as Record<string, unknown>;
+  const destination = value.destination as Record<string, unknown>;
+  const artifacts = value.artifacts as Record<string, unknown>;
+  const effects = value.effects as Record<string, unknown>;
+  if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "destination", "artifacts", "effects"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || !finiteNonnegative(value.expires_in_seconds)
+    || !campaign || !exactKeys(campaign, ["id", "name", "path", "git_commit"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !boundedPrintable(campaign.path, 1024) || !String(campaign.path).startsWith("data/optimization/mot_2d/") || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit))
+    || !destination || !exactKeys(destination, ["host", "project_directory", "campaign_directory"]) || destination.host !== "zeus.technion.ac.il" || !boundedPrintable(destination.project_directory, 1024) || !/^\/home\/[A-Za-z][A-Za-z0-9._-]{0,31}\/ytterbium_lab_simulation_new$/.test(String(destination.project_directory)) || !boundedPrintable(destination.campaign_directory, 2048) || destination.campaign_directory !== `${destination.project_directory}/${campaign.path}`
+    || !artifacts || !exactKeys(artifacts, ["ensemble_count", "total_count", "missing_count", "identical_count", "total_bytes", "missing_bytes"]) || artifacts.ensemble_count !== 35 || artifacts.total_count !== 72 || !Number.isInteger(artifacts.missing_count) || !Number.isInteger(artifacts.identical_count) || !Number.isInteger(artifacts.total_bytes) || !Number.isInteger(artifacts.missing_bytes) || !finiteNonnegative(artifacts.missing_count) || !finiteNonnegative(artifacts.identical_count) || !finiteNonnegative(artifacts.total_bytes) || !finiteNonnegative(artifacts.missing_bytes) || Number(artifacts.missing_count) + Number(artifacts.identical_count) !== 72 || Number(artifacts.missing_bytes) > Number(artifacts.total_bytes)
+    || !effects || !exactKeys(effects, ["copy_missing_only", "overwrite_existing", "submit_jobs", "run_simulation"]) || effects.copy_missing_only !== true || effects.overwrite_existing !== false || effects.submit_jobs !== false || effects.run_simulation !== false) throw new Error("Invalid Zeus preparation preview response.");
+  return value as unknown as ZeusTransferPreview;
+}
+
+function parseTransferResult(value: Record<string, unknown>): ZeusTransferResult {
+  if (!exactKeys(value, ["status", "campaign_id", "destination", "transferred_count", "reused_identical_count", "bytes_transferred", "submitted_to_zeus", "simulation_started"]) || value.status !== "prepared" || !boundedPrintable(value.campaign_id, 512) || !boundedPrintable(value.destination, 2048) || !Number.isInteger(value.transferred_count) || !Number.isInteger(value.reused_identical_count) || !Number.isInteger(value.bytes_transferred) || !finiteNonnegative(value.transferred_count) || !finiteNonnegative(value.reused_identical_count) || Number(value.transferred_count) + Number(value.reused_identical_count) !== 72 || !finiteNonnegative(value.bytes_transferred) || value.submitted_to_zeus !== false || value.simulation_started !== false) throw new Error("Invalid Zeus preparation result.");
+  return value as unknown as ZeusTransferResult;
+}
+
+let transferSession: Promise<string> | null = null;
+let transferContext: { token: string; campaignId: string; destination: string } | null = null;
+const getTransferSession = () => transferSession ??= creationApi.session();
+export const transferApi = {
+  async preview(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<ZeusTransferPreview> {
+    const csrf = await getTransferSession();
+    try {
+      const preview = parseTransferPreview(await mutationRequest("/api/v1/zeus/transfers/preview", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf));
+      if (preview.campaign.id !== campaign_id || preview.destination.project_directory !== profile.project_directory) throw new Error("Zeus preparation preview did not match the requested campaign and profile.");
+      transferContext = { token: preview.preview_token, campaignId: preview.campaign.id, destination: preview.destination.campaign_directory };
+      return preview;
+    }
+    catch (error) { transferSession = null; transferContext = null; throw error; }
+  },
+  async confirm(preview_token: string): Promise<ZeusTransferResult> {
+    if (!transferContext || transferContext.token !== preview_token) throw new Error("The Zeus preparation preview is no longer active.");
+    const csrf = await getTransferSession();
+    try {
+      const result = parseTransferResult(await mutationRequest("/api/v1/zeus/transfers/confirm", { preview_token }, csrf));
+      if (result.campaign_id !== transferContext.campaignId || result.destination !== transferContext.destination) throw new Error("Zeus preparation result did not match the reviewed plan.");
+      return result;
+    }
+    finally { transferSession = null; transferContext = null; }
+  },
+};
+export type TransferApi = typeof transferApi;
+
 function parsePreview(value: Record<string, unknown>): CreationPreview {
   const provenance = value.provenance as Record<string, unknown>;
   const plan = value.plan as Record<string, unknown> | null;

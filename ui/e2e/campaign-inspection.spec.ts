@@ -51,3 +51,40 @@ test("legacy campaigns remain inspectable but expose no Zeus command", async ({ 
   await page.getByRole("button", { name: /Back to campaigns/ }).click();
   await expect(page.getByRole("button", { name: "Open campaign" })).toBeFocused();
 });
+
+test("operator reviews and confirms missing-only Zeus preparation", async ({ page }) => {
+  const smoke = { ...campaign, stage: "smoke", git_commit: "b".repeat(40), next_plan: null };
+  await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { data: { campaigns: [smoke], invalid_count: 0, total: 1 } } }));
+  await page.route("**/api/v1/campaigns/mot_2d-safe", (route) => route.fulfill({ json: { data: smoke } }));
+  await page.route("**/api/v1/session", (route) => route.fulfill({ json: { data: { csrf_token: "csrf" } } }));
+  await page.route("**/api/v1/zeus/snapshot", (route) => route.fulfill({ json: { data: {
+    connection_status: "connected",
+    profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+    remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "b".repeat(40), branch: "main", dirty: false },
+    scheduler: { status: "available", queried_at: new Date().toISOString(), jobs: [] },
+  } } }));
+  await page.route("**/api/v1/zeus/transfers/preview", (route) => route.fulfill({ json: { data: {
+    preview_token: "transfer-token", expires_in_seconds: 300,
+    campaign: { id: smoke.id, name: smoke.name, path: smoke.path, git_commit: "b".repeat(40) },
+    destination: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/sample" },
+    artifacts: { ensemble_count: 35, total_count: 72, missing_count: 12, identical_count: 60, total_bytes: 52_000_000, missing_bytes: 9_000_000 },
+    effects: { copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false },
+  } } }));
+  await page.route("**/api/v1/zeus/transfers/confirm", (route) => route.fulfill({ json: { data: {
+    status: "prepared", campaign_id: smoke.id, destination: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/sample", transferred_count: 12, reused_identical_count: 60, bytes_transferred: 9_000_000, submitted_to_zeus: false, simulation_started: false,
+  } } }));
+  await page.goto("/");
+  await page.getByRole("link", { name: "Zeus jobs" }).click();
+  await page.getByLabel("Technion username").fill("tal.noa");
+  await page.getByRole("button", { name: "Connect and check status" }).click();
+  await expect(page.getByText("Connected — read-only snapshot received")).toBeVisible();
+  await page.getByRole("button", { name: "Inspect campaign" }).click();
+  await page.getByRole("button", { name: "Review Zeus preparation" }).click();
+  await expect(page.getByText("12 · 9 MB")).toBeVisible();
+  await expect(page.getByText("No Zeus job will be submitted.")).toBeVisible();
+  await page.getByRole("button", { name: "Prepare campaign on Zeus" }).click();
+  await expect(page.getByText("Campaign prepared on Zeus")).toBeVisible();
+  await expect(page.getByText("No simulation was started and no Zeus job was submitted.")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
