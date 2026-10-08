@@ -83,3 +83,27 @@ class CampaignSummary:
         result["next_plan"] = self.next_plan.to_dict() if self.next_plan else None
         result["warnings"] = list(self.warnings)
         return result
+
+
+@dataclass(frozen=True)
+class Mot3dCampaignSummary:
+    kind: str
+    name: str
+    root: Path
+    stage: str
+    families: tuple[str, ...]
+    git_commit: str | None
+    upstream_2d_campaign: str | None
+    progress: tuple[StageProgress, ...] = ()
+    next_plan: JobPlan | None = None
+    warnings: tuple[str, ...] = field(default_factory=tuple)
+
+    def to_dict(self) -> dict[str, Any]:
+        result = asdict(self)
+        result["schema_version"] = SCHEMA_VERSION
+        result["root"] = str(self.root)
+        result["families"] = list(self.families)
+        result["progress"] = [item.to_dict() for item in self.progress]
+        result["next_plan"] = self.next_plan.to_dict() if self.next_plan else None
+        result["warnings"] = list(self.warnings)
+        return result

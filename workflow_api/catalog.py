@@ -19,8 +19,8 @@ _WORKFLOWS = (
         label="3D MOT optimization campaign",
         maturity="active",
         entrypoint="studies.mot_3d_campaign",
-        capabilities=(),
-        notes="Canonical manifest-driven workflow; UI submission is intentionally disabled.",
+        capabilities=("inspect",),
+        notes="Canonical manifest-driven workflow; the UI API is currently read-only.",
     ),
     WorkflowDescriptor(
         workflow_id="zeeman_validation",

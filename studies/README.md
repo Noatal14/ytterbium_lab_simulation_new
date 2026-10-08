@@ -58,4 +58,5 @@ The current read-only boundary can also be inspected from the terminal:
 ```bash
 python -m workflow_api list
 python -m workflow_api inspect-2d path/to/campaign
+python -m workflow_api inspect-3d path/to/campaign
 ```
