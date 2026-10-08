@@ -7,7 +7,8 @@ file, but it cannot connect to Zeus, run a simulation, or submit a job.
 
 ## Development
 
-With Node.js and npm installed, use the committed lockfile:
+With Node.js and npm installed, use the committed lockfile. The development
+command starts both the localhost workflow API and the Vite interface:
 
 ```bash
 cd ui
@@ -15,10 +16,11 @@ npm ci
 npm run dev
 ```
 
-The optional local API bridge runs from the repository root:
+To run only the browser frontend (for example, when the API is managed by a
+debugger), use:
 
 ```bash
-python -m workflow_api.server
+npm run dev:ui
 ```
 
 Vite proxies `/api` to `http://127.0.0.1:8765`. Creation uses a short-lived,

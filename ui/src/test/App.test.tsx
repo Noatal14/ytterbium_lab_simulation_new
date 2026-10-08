@@ -67,4 +67,24 @@ describe("onboarding home", () => {
     expect(await screen.findByRole("heading", { name: "Campaign created and validated" })).toHaveFocus();
     expect(screen.getByText(/No simulation was run and no work was submitted to Zeus/)).toBeInTheDocument();
   });
+
+  it("explains an unavailable local source service and retries successfully", async () => {
+    const user = userEvent.setup();
+    let attempts = 0;
+    const recovering = {
+      ...creationFixture,
+      sources: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error("offline");
+        return creationFixture.sources();
+      },
+    };
+    render(<App api={fixtureApi} creation={recovering} />);
+    await user.click(screen.getByRole("button", { name: "Start 2D-MOT campaign" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(/local campaign service is not available/i);
+    expect(screen.getByLabelText(/^Zeeman ensemble source/)).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(await screen.findByRole("option", { name: /after_zeeman\/production/ })).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Zeeman ensemble source/)).toBeEnabled();
+  });
 });

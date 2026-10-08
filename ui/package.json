@@ -4,10 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.mjs",
+    "dev:ui": "vite",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run && node --test scripts/dev.test.mjs",
     "test:a11y": "vitest run src/test/accessibility.test.tsx",
     "test:e2e": "playwright test"
   },

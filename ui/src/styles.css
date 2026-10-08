@@ -125,11 +125,14 @@ h1 { margin-bottom: 14px; color: #1c2f34; font-size: clamp(2rem, 4vw, 3.25rem); 
 footer { padding: 18px 24px; color: #d5e4e3; background: var(--ink-dark); text-align: center; font-size: .86rem; }
 .creation-page { max-width: 1060px; }
 .creation-form { display: grid; gap: 22px; margin-top: 34px; padding: clamp(24px, 4vw, 38px); background: white; border: 1px solid var(--line); border-radius: 18px; }
+.form-field { display: grid; gap: 7px; }
 .creation-form label { display: grid; gap: 7px; color: #1b343a; font-weight: 750; }
 .creation-form label > span { color: var(--muted); font-size: .88rem; font-weight: 450; line-height: 1.45; }
 .creation-form input, .creation-form select { width: 100%; min-height: 48px; padding: 10px 12px; color: #20363b; background: white; border: 1px solid #9eb1b3; border-radius: 9px; font: inherit; }
 .creation-form input:focus-visible, .creation-form select:focus-visible, .help button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .field-warning, .field-error { font-weight: 550; }.field-warning { color: #765600; }.field-error { color: #9a3528; }
+.inline-retry { margin-left: 8px; padding: 2px 4px; color: inherit; background: transparent; border: 0; border-bottom: 1px solid currentColor; font: inherit; font-weight: 750; cursor: pointer; }
+.inline-retry:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px; }
 .review-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 32px; }
 .review-card { min-width: 0; padding: 26px; background: white; border: 1px solid var(--line); border-radius: 16px; }

@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 import numpy as np
+from pathlib import Path
 from contextlib import contextmanager
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
@@ -438,6 +439,15 @@ def test_server_import_does_not_cross_the_simulation_or_study_boundary():
         "or name == 'studies' or name.startswith('studies.') for name in sys.modules)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+def test_documented_development_command_starts_api_and_ui():
+    package = json.loads(Path("ui/package.json").read_text())
+    launcher = Path("ui/scripts/dev.mjs").read_text()
+    assert package["scripts"]["dev"] == "node scripts/dev.mjs"
+    assert '["-m", "workflow_api.server"]' in launcher
+    assert '"vite.js"' in launcher
+    assert "shell: true" not in launcher
 
 
 class _FixedSnapshots:
