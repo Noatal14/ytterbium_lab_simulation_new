@@ -100,6 +100,9 @@ Current operational documents:
 - `docs/3D_MOT_CAMPAIGN.md` — canonical 3D operating guide; and
 - `PROJECT_HANDOFF.md` — current scientific and project status.
 
+The UI product scope and staged delivery plan are maintained in
+`docs/UI_PRODUCT_PLAN.md`.
+
 Historical conclusions that remain useful belong in an explicitly historical
 document, not in an active command path.
 
