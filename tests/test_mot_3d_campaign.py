@@ -1,5 +1,6 @@
 import hashlib
 import json
+import shlex
 from argparse import Namespace
 from pathlib import Path
 
@@ -166,6 +167,45 @@ def test_create_is_plan_only_and_freezes_new_design(
     second = Path(donut_rounds[1]).read_text()
     assert "targets=(59 59 58)" in first
     assert "targets=(117 117 116)" in second
+
+    for job in jobs:
+        text = job.read_text()
+        if "studies.mot_3d.discovery.optimize" not in text:
+            continue
+        command = next(
+            line for line in text.splitlines()
+            if "studies.mot_3d.discovery.optimize" in line
+        )
+        tokens = shlex.split(command)
+        assert tokens[tokens.index("--input") + 1] == str(input_dir.resolve())
+        assert tokens[tokens.index("--input-manifest") + 1] == str(
+            output / "campaign.json"
+        )
+
+
+def test_discovery_jobs_quote_hostile_input_path(tmp_path):
+    root = tmp_path / "campaign with spaces; $(unsafe)"
+    input_dir = tmp_path / "input with spaces; $(unsafe) 'quote'"
+    input_dir.mkdir()
+
+    smoke, rounds, _ = mot_3d_campaign.write_discovery_jobs(
+        root, "abc123", input_dir
+    )
+
+    jobs = list(smoke.values()) + [
+        path for family_paths in rounds.values() for path in family_paths
+    ]
+    assert len(jobs) == 7
+    for job in jobs:
+        command = next(
+            line for line in job.read_text().splitlines()
+            if "studies.mot_3d.discovery.optimize" in line
+        )
+        tokens = shlex.split(command)
+        assert tokens[tokens.index("--input") + 1] == str(input_dir.resolve())
+        assert tokens[tokens.index("--input-manifest") + 1] == str(
+            root / "campaign.json"
+        )
 
 
 def test_discovery_loader_accepts_frozen_role_manifest(input_dir, tmp_path, monkeypatch):

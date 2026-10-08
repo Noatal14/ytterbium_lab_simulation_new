@@ -1,10 +1,11 @@
 # Automated 2D-MOT campaign for fixed laser intensities
 
-## Canonical corrected-Zeeman campaign (2026-10)
+## Campaign input contract
 
-The current canonical campaign instance uses fixed `s0=1.3` and ensemble directory
-`data/particle_states/after_zeeman/corrected_projectant_19ring_20261005` with
-profile `corrected_projectant_19ring_20261005`. It pins the Git revision and a
+Each campaign uses an explicitly selected, versioned ensemble directory under
+`data/particle_states/after_zeeman/<source-name>/`. Runtime inputs are generated
+or imported and are not included in a fresh checkout. The campaign pins the selected
+profile, Git revision, and a
 physical-model hash. Seed roles are non-overlapping: discovery `3000-3004`,
 refinement `3005-3009`, held-out confirmation/tuning `3010-3014`, and sealed
 final validation `3015-3034`. All 35 ensembles must exist and pass provenance
@@ -76,8 +77,8 @@ Create a campaign once, for example:
 python -m studies.mot_2d_s0_campaign create \
   --name mot_2d_available_power_2026 \
   --s0 1.30 \
-  --ensemble-dir data/particle_states/after_zeeman/corrected_projectant_19ring_20261005 \
-  --zeeman-profile corrected_projectant_19ring_20261005 \
+  --ensemble-dir data/particle_states/after_zeeman/<SOURCE_DIRECTORY> \
+  --zeeman-profile <PROFILE_RECORDED_IN_SOURCE_METADATA> \
   --output-dir data/optimization/mot_2d/s0_campaign_2026
 ```
 
@@ -105,6 +106,6 @@ also saves every captured `(N, 6)` state ensemble under
 `data/particle_states/after_2d_mot/final_ensemble_s0_<value>/` for later 3D-MOT
 optimization.
 
-The historical accepted `s0=1.474497` ensemble remains in the deliberately
-shorter directory `final_ensemble_s0_1.47`; the exact value is preserved in its
-metadata.
+Campaign outputs are runtime artifacts. Archive accepted sealed ensembles and
+their metadata in the approved scientific-data store; do not rely on them being
+present in Git.

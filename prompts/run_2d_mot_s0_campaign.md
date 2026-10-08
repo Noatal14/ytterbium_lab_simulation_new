@@ -69,9 +69,10 @@ If this prompt, the campaign guide, scientific plan, configuration, and
 implementation disagree, stop before submission, report the discrepancy, and
 do not silently select one source.
 
-The current canonical example uses fixed `s0=1.3`, ensemble directory
-`data/particle_states/after_zeeman/corrected_projectant_19ring_20261005` and
-profile `corrected_projectant_19ring_20261005`. Seed roles are discovery
+Use the fixed `s0` value supplied by the operator and an explicitly selected,
+versioned source under `data/particle_states/after_zeeman/<SOURCE_DIRECTORY>`.
+The source is a generated or imported runtime input, not a repository fixture.
+Seed roles are discovery
 `3000-3004`, refinement `3005-3009`, held-out confirmation/tuning `3010-3014`,
 and sealed validation `3015-3034`. Working/final timesteps are `1.25 us` and
 `0.625 us`; solver is `RK4StHybridCustom`; bounds are `[-1.55,-0.85] Gamma`
@@ -139,8 +140,8 @@ Then create the campaign using actual values in this structure:
 python -m studies.mot_2d_s0_campaign create \
   --name <CAMPAIGN_NAME> \
   --s0 <EXPLICIT_S0_VALUES> \
-  --ensemble-dir data/particle_states/after_zeeman/corrected_projectant_19ring_20261005 \
-  --zeeman-profile corrected_projectant_19ring_20261005 \
+  --ensemble-dir data/particle_states/after_zeeman/<SOURCE_DIRECTORY> \
+  --zeeman-profile <PROFILE_RECORDED_IN_SOURCE_METADATA> \
   --output-dir data/optimization/mot_2d/<CAMPAIGN_DIRECTORY>
 ```
 

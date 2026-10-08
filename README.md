@@ -291,13 +291,10 @@ New outputs are grouped under `data/particle_states/after_zeeman/`,
 `data/particle_states/after_3d_mot/`, and `data/optimization/`. See
 `data/README.md` for the layout and file conventions.
 
-The historical pre-correction input used by the retained 3D-MOT studies is
-`data/particle_states/after_2d_mot/final_ensemble_s0_1.47/`: 20 validated `(N, 6)`
-arrays containing all 15,840 states captured in the accepted final 2D-MOT
-production replay. It remains useful for exact reproduction of the historical
-3D chain, but it is not authoritative for a corrected-profile 3D claim. The
-authoritative downstream input will be the versioned sealed output of the
-corrected 19-ring campaign after its provenance has been validated.
+These runtime directories are empty in a fresh checkout. Generate or import a
+provenance-validated Zeeman ensemble source before creating a 2D campaign. A 3D
+campaign consumes the versioned sealed survivor ensemble produced by the
+selected 2D campaign; no historical survivor ensemble is bundled with the code.
 
 The `graphs/` and `graphs_scripts/` directories are used for plotting and interpretation of these results.
 

@@ -1,9 +1,9 @@
 # Project handoff: Yb-171 laser-cooling simulation
 
-> Active corrected-Zeeman campaign: fixed `s0=1.3`, profile
-> `corrected_projectant_19ring_20261005`, with non-overlapping discovery,
-> refinement, held-out and sealed seed roles. Never mix legacy and corrected
-> ensembles. If the guide, plan, configuration, implementation, and prompt
+> Runtime campaign inputs and outputs are not bundled with this repository.
+> Generate or import a provenance-validated, versioned Zeeman source before
+> creating a 2D campaign; a 3D campaign consumes the selected 2D campaign's
+> sealed output. If the guide, plan, configuration, implementation, and prompt
 > disagree, stop before submission and report the discrepancy.
 
 Last updated: 2026-10-06
@@ -169,17 +169,12 @@ data/particle_states/after_2d_mot/
 data/particle_states/after_3d_mot/
 ```
 
-The historical pre-correction input used by the retained 3D-MOT chain is
-`data/particle_states/after_2d_mot/final_ensemble_s0_1.47/`. It contains 20 paired
-state arrays with layout `(x, y, z, vx, vy, vz)` in SI units, plus adjacent
-metadata. The replay validated all arrays as finite `float64` data with shape
-`(N, 6)` and reproduced 15,840 captures from 592,319 Zeeman survivors
-(2.6742347%). It is retained for reproducibility and method development, but it
-is not authoritative for a corrected-profile 3D performance claim. That input
-will be the versioned sealed output of the corrected 19-ring campaign after
-provenance validation.
+Runtime particle states are not present in a fresh checkout. Generate or import
+a provenance-validated Zeeman source before starting a 2D campaign. The 3D
+campaign must then consume the selected 2D campaign's versioned sealed output;
+do not assume a historical `final_ensemble_*` directory exists locally.
 
-Accepted Optuna summaries and stochastic-seed results belong under:
+Generated Optuna summaries and stochastic-seed results are written under:
 
 ```text
 data/optimization/

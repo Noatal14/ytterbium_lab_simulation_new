@@ -23,7 +23,7 @@ from config import (
     MOT_3D_SIM_CONFIG,
 )
 from simulations.mot_3d import mot_3d_simulation
-from studies.mot_3d.analysis.retention import DEFAULT_INPUT, analyze_results
+from studies.mot_3d.analysis.retention import analyze_results
 from utils.data_paths import load_particle_states
 
 
@@ -541,7 +541,11 @@ def parse_args(argv=None):
     parser.add_argument("--worker-index", type=int, required=True)
     parser.add_argument("--target-completed-trials", type=int, required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--input", default=str(DEFAULT_INPUT))
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="2D-MOT survivor-state file or directory used as the optimization input.",
+    )
     parser.add_argument("--input-manifest")
     parser.add_argument("--input-role", default="discovery")
     parser.add_argument("--ensemble-count", type=int, default=12)

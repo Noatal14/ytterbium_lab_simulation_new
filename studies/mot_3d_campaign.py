@@ -11,6 +11,7 @@ import hashlib
 import json
 import math
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -397,9 +398,11 @@ def _cumulative_targets(final_targets, round_index, round_count):
     )
 
 
-def write_discovery_jobs(root, revision):
+def write_discovery_jobs(root, revision, input_directory):
     jobs = root / "jobs"
     manifest_path = root / "campaign.json"
+    quoted_input = shlex.quote(str(Path(input_directory).resolve()))
+    quoted_manifest = shlex.quote(str(manifest_path))
     dt = MOT_3D_SIM_CONFIG["screening_dt_s"]
     smoke_paths = {}
     for index, family in enumerate(FAMILIES):
@@ -409,8 +412,10 @@ def write_discovery_jobs(root, revision):
             _header(f"m3d2_{short}_smoke", revision, "01:00:00", 12, "8gb")
             + f"python -u -m studies.mot_3d.discovery.optimize --family {family} "
             f"--worker-index 0 --target-completed-trials 1 "
-            f"--sampler-seed {281001 + index} --output-dir {root/'smoke'/family} "
-            f"--input-manifest {manifest_path} --input-role discovery "
+            f"--sampler-seed {281001 + index} "
+            f"--output-dir {shlex.quote(str(root/'smoke'/family))} "
+            f"--input {quoted_input} "
+            f"--input-manifest {quoted_manifest} --input-role discovery "
             f"--particles-per-ensemble 1 --npools 12 --dt {dt} --timeout-s 3000\n",
         )
 
@@ -439,8 +444,9 @@ def write_discovery_jobs(root, revision):
                     f"--family {family} --worker-index \"$worker\" "
                     f"--target-completed-trials \"$target\" "
                     f"--sampler-seed \"$sampler\" "
-                    f"--output-dir {root/'discovery'/family} "
-                    f"--input-manifest {manifest_path} --input-role discovery "
+                    f"--output-dir {shlex.quote(str(root/'discovery'/family))} "
+                    f"--input {quoted_input} "
+                    f"--input-manifest {quoted_manifest} --input-role discovery "
                     f"--particles-per-ensemble 50 --npools 200 --dt {dt} "
                     f"--timeout-s 68400\n",
                 )
@@ -1438,7 +1444,9 @@ def create(args):
         },
     }
     save_file_json(root / "campaign.json", manifest)
-    smoke, rounds, submitter = write_discovery_jobs(root, revision)
+    smoke, rounds, submitter = write_discovery_jobs(
+        root, revision, manifest["input_directory"]
+    )
     manifest["jobs"] = {
         "smoke": {key: str(value) for key, value in smoke.items()},
         "discovery_rounds": {

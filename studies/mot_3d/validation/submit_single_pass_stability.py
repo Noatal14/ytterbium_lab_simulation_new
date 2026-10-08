@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import argparse
 import json
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -56,7 +58,49 @@ def _submit(path, dependency=None):
     return job_id
 
 
-def main():
+def _array_body(input_path, selection_path):
+    input_arg = shlex.quote(str(input_path))
+    selection_arg = shlex.quote(str(selection_path))
+    return f"""python -u -m studies.mot_3d.validation.single_pass_stability \\
+    --input {input_arg} --selection {selection_arg} \\
+    --shard-index "$PBS_ARRAY_INDEX" --num-shards 3 --max-atoms 600 \\
+    --npools 200 --t-max 0.1 --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
+"""
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="2D-MOT survivor-state file or directory used by every array task.",
+    )
+    parser.add_argument(
+        "--selection",
+        required=True,
+        help="Single-pass finalist-selection JSON produced by the active campaign.",
+    )
+    return parser.parse_args(argv)
+
+
+def _validate_inputs(input_path, selection_path):
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input ensemble does not exist: {input_path}")
+    if not selection_path.is_file():
+        raise FileNotFoundError(f"Finalist selection does not exist: {selection_path}")
+    try:
+        selection = json.loads(selection_path.read_text())
+    except (OSError, json.JSONDecodeError) as error:
+        raise ValueError(f"Could not read finalist selection: {selection_path}") from error
+    if selection.get("family") != "single_pass" or not selection.get("candidates"):
+        raise ValueError("Finalist selection must contain single-pass candidates.")
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    input_path = Path(args.input)
+    selection_path = Path(args.selection)
+    _validate_inputs(input_path, selection_path)
     manifest = ROOT / "submission_manifest.json"
     if manifest.exists():
         raise FileExistsError(f"Refusing duplicate stability submission: {manifest}")
@@ -65,10 +109,7 @@ def main():
     array = _write(
         pbs_root / "01_stability_array.pbs",
         _header("m3d_sp_stab", revision, array="0-2")
-        + f"""python -u -m studies.mot_3d.validation.single_pass_stability \\
-    --shard-index "$PBS_ARRAY_INDEX" --num-shards 3 --max-atoms 600 \\
-    --npools 200 --t-max 0.1 --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
-""",
+        + _array_body(input_path, selection_path),
     )
     array_job = _submit(array)
     merge = _write(
@@ -94,6 +135,8 @@ def main():
                 "revision": revision,
                 "array_job": array_job,
                 "merge_job": merge_job,
+                "input": str(input_path),
+                "selection": str(selection_path),
                 "design": "600 paired atoms; 4 angle/aperture variants; dense blue-s0 scan",
             },
             indent=2,

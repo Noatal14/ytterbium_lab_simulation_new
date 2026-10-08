@@ -1,12 +1,13 @@
 # Data directory
 
-The authoritative corrected-Zeeman source for the active fixed-`s0=1.3`
-campaign is `particle_states/after_zeeman/corrected_projectant_19ring_20261005`.
-Every array must have adjacent metadata identifying the same corrected profile,
+Runtime particle ensembles and campaign outputs are intentionally not shipped
+in the repository. Import or generate a versioned Zeeman source under
+`particle_states/after_zeeman/<source-name>/` before creating a 2D campaign.
+Every array must have adjacent metadata identifying the same profile,
 seed, shape, survivor count, SHA-256 and source Git revision. Discovery,
 refinement, held-out confirmation, and sealed final-validation seeds are
 non-overlapping. All required seeds `3000-3034` must exist and pass these checks
-before campaign creation. Only the sealed production outputs may support the final
+before campaign creation. Only sealed production outputs may support a final
 unbiased performance claim and downstream 3D-MOT state ensemble.
 
 Generated data is grouped by its role in the stage-based workflow:
@@ -32,10 +33,11 @@ The three state directories are created automatically when a stage saves an
 output. Particle-state files use NumPy's ``(N, 6)`` format: position
 ``(x, y, z)`` followed by velocity ``(vx, vy, vz)`` in SI units.
 
-Particle-state ``.npy`` ensembles are intentional scientific artifacts and
-should be committed together with provenance metadata. They are the interfaces
-between simulation stages and are required to reproduce downstream runs. Do not
-delete or replace an accepted ensemble silently.
+Particle-state ``.npy`` ensembles are runtime scientific artifacts stored with
+provenance metadata. They are the interfaces between simulation stages and
+must be backed up in the approved scientific-data store when they are accepted.
+Adding a runtime artifact to source control requires an explicit archival
+decision; generation alone does not make it canonical.
 
 Each important state file should have an adjacent metadata JSON recording, at a
 minimum, its purpose, array shape, units, generating code commit, input ensemble,
@@ -46,17 +48,10 @@ explicitly rather than inferring them.
 The Zeeman production command creates this adjacent metadata automatically,
 including runtime, software versions, and a SHA-256 hash of the saved ``.npy``.
 
-The historical pre-correction 2D-MOT production replay used
-``--save-survivor-states``. Its downstream ensembles are stored under
-``data/particle_states/after_2d_mot/final_ensemble_s0_1.47/``. The directory
-contains one ``(N, 6)`` state array and adjacent metadata file for each of the
-20 Zeeman/MOT seed pairs. Together they contain 15,840 captured states from
-592,319 Zeeman survivors and reproduce the locked conditional efficiency of
-2.6742347%. These remain the fixed inputs for reproducing the historical 3D-MOT
-studies, but they are not authoritative for a corrected-profile 3D claim. The
-authoritative replacement will be the versioned sealed output of the corrected
-19-ring campaign after provenance validation; do not overwrite this historical
-directory.
+The 2D campaign generates downstream ensembles under
+``data/particle_states/after_2d_mot/final_ensemble_s0_<value>/``. A 3D campaign
+must consume a provenance-validated sealed output from the selected 2D
+campaign, never an assumed repository fixture.
 
 The historical full-source Zeeman campaign is stored under
 ``data/validation/zeeman/full_thermal_flux_v1/``. It contains one survivor-state
@@ -67,10 +62,10 @@ corrected 19-ring campaign and must not be combined with the corrected 2D-MOT
 results. Keep it as historical evidence until a full-angular campaign is rerun
 with explicit corrected-profile provenance.
 
-GitHub rejects individual files larger than 100 MB. If future state ensembles
-approach that size, use Git LFS or documented external storage instead of adding
-them to ordinary Git history. Historical optimization summaries are stored in
-``data/optimization``.
+Keep large runtime ensembles in documented external storage rather than adding
+them to ordinary Git history. Campaign manifests and summaries are created
+under ``data/optimization`` at runtime. Decide explicitly where an accepted
+campaign is archived together with its input provenance.
 
 ## Stage commands
 

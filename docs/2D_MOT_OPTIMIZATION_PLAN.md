@@ -1,10 +1,10 @@
 # 2D-MOT optimization and prediction plan
 
-## Corrected-Zeeman rerun contract (2026-10)
+## Zeeman-input campaign contract
 
-The current corrected campaign instance supplies fixed `s0=1.3` and uses profile
-`corrected_projectant_19ring_20261005`, the four-way seed split in the campaign
-guide, five-by-10,000 refinement, held-out candidate confirmation, and a
+The current campaign design accepts an explicitly selected versioned Zeeman
+source with the four-way seed split in the campaign guide, five-by-10,000
+refinement, held-out candidate confirmation, and a
 separate 20-ensemble sealed final validation. Selection intervals are not
 unbiased performance intervals. Robustness and epsilon-near-optimality remain
 `not established` unless adaptive challenger testing and familywise paired

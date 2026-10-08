@@ -13,7 +13,6 @@ import numpy as np
 from config import Geometry, MOT_3D_SIM_CONFIG
 from simulations.mot_3d import mot_3d_simulation
 from studies.mot_3d.analysis.retention import (
-    DEFAULT_INPUT,
     analyze_results,
     load_shared_ensemble,
     select_particle_shard,
@@ -21,10 +20,6 @@ from studies.mot_3d.analysis.retention import (
 
 
 ROOT = Path("data/validation/mot_3d/single_pass_stability_v1")
-SELECTION = Path(
-    "data/optimization/mot_3d/finalist_selection_v1/selection/"
-    "single_pass_finalists.json"
-)
 REFERENCE_S0 = 0.20308958176149428
 DENSE_S0_VALUES = tuple(np.round(np.arange(0.16, 0.281, 0.01), 8)) + (REFERENCE_S0,)
 GREEN_APERTURE_RADIUS_M = 5e-3
@@ -45,14 +40,14 @@ def _atomic_json(path, payload):
     os.replace(temporary, path)
 
 
-def finalist_profile(selection=SELECTION):
+def finalist_profile(selection):
     payload = json.loads(Path(selection).read_text())
     if payload["family"] != "single_pass":
         raise ValueError("Expected a single-pass finalist selection.")
     return copy.deepcopy(payload["candidates"][0]["resolved_profile"])
 
 
-def stability_profile(variant, blue_s0, selection=SELECTION):
+def stability_profile(variant, blue_s0, selection):
     if variant not in VARIANTS:
         raise ValueError(f"Unknown stability variant: {variant}")
     specification = VARIANTS[variant]
@@ -215,8 +210,16 @@ def run(args):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", default=str(DEFAULT_INPUT))
-    parser.add_argument("--selection", default=str(SELECTION))
+    parser.add_argument(
+        "--input",
+        required=True,
+        help="2D-MOT survivor-state file or directory used as the shared input ensemble.",
+    )
+    parser.add_argument(
+        "--selection",
+        required=True,
+        help="Single-pass finalist-selection JSON produced by the active 3D campaign.",
+    )
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-atoms", type=int, default=600)
     parser.add_argument("--num-shards", type=int, default=3)

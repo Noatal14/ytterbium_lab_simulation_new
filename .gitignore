@@ -15,6 +15,13 @@ ui/test-results/
 *.db-wal
 data/zeeman_survivors_states.json
 
+# Generated campaign outputs and particle-state ensembles are runtime data.
+# Keep validated local/Zeus copies outside Git; manifests record their provenance.
+/data/optimization/mot_2d/**
+/data/optimization/mot_3d/**
+/data/particle_states/after_2d_mot/**
+/data/particle_states/after_zeeman/**
+
 # PBS/Zeus scheduler output. Scientific summaries belong under data/ instead.
 *.zeus-master.out
 *.zeus-master.err
