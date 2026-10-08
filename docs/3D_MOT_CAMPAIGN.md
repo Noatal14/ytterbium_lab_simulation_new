@@ -98,3 +98,30 @@ newly generated sealed ensembles, crossed recoil seeds, and a hierarchical
 bootstrap over ensembles, recoil realizations and particles within ensembles.
 New-ensemble variation is reported separately and does not control the stopping
 rule.
+
+## Required post-campaign validation: 2D-to-3D transferability
+
+Before deciding that every fixed 2D-MOT `s0` (or every small laboratory
+retuning of the 2D MOT) requires an independent full 3D-MOT optimization,
+perform a paired transferability study. Using identical Zeeman and MOT seeds,
+generate 2D-MOT survivor ensembles at the canonical operating point and at
+nearby 2D-MOT settings. Compare both:
+
+- total survivor count and the resulting atomic flux; and
+- the conditional survivor phase-space distribution, including positions,
+  velocities, correlations, and other diagnostics relevant to 3D capture.
+
+Then cross-evaluate frozen 3D-MOT operating points: run the 3D optimum selected
+for each 2D setting on survivor ensembles produced by the other settings. Report
+both conditional 3D capture efficiency and end-to-end flux. The decision is:
+
+- if only survivor count changes materially and conditional 3D performance is
+  stable, reuse the 3D optimum and update only the flux prediction;
+- if survivor distributions change but cross-evaluated 3D performance remains
+  stable, a separate full 3D optimization is not required;
+- if the distribution shift causes a meaningful loss of conditional 3D
+  performance, require at least a local 3D refinement, and use a full separate
+  optimization when the local refinement is insufficient.
+
+This validation is a required follow-up after the current canonical 2D and 3D
+campaigns; it must not use the sealed final-validation ensembles for tuning.
