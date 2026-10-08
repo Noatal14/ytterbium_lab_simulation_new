@@ -13,6 +13,7 @@ from workflow_api.models import (
     Mot3dCampaignSummary,
     StageProgress,
 )
+from workflow_api.safe_json import read_json
 
 SUPPORTED_KIND = "mot_3d_campaign_v2"
 SELECTION_STAGES = (
@@ -52,7 +53,7 @@ def _count(root: Path, pattern: str) -> int:
 
 def _valid_json(path: Path, expected: dict[str, Any]) -> bool:
     try:
-        payload = _mapping(json.loads(path.read_text(encoding="utf-8")))
+        payload = _mapping(read_json(path))
     except (OSError, ValueError, TypeError):
         return False
     return all(payload.get(key) == value for key, value in expected.items())
@@ -216,7 +217,7 @@ def _stage_progress(
         completed = 0
         if input_manifest is not None and input_manifest.is_file():
             try:
-                payload = _mapping(json.loads(input_manifest.read_text(encoding="utf-8")))
+                payload = _mapping(read_json(input_manifest))
                 ensembles = payload.get("ensembles", [])
                 expected_seeds = input_stage.get("zeeman_seeds", [])
                 if (
@@ -263,7 +264,7 @@ def _submission_state(
     if not path.is_file():
         return None, ()
     try:
-        record = _mapping(json.loads(path.read_text(encoding="utf-8")))
+        record = _mapping(read_json(path))
     except (OSError, ValueError, TypeError):
         return "invalid", ("Submission record is unreadable or invalid; recovery is required.",)
     status = record.get("status")
@@ -411,10 +412,10 @@ def _next_plan(
     return plan, ()
 
 
-def read_campaign(path: str | Path) -> Mot3dCampaignSummary:
+def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -> Mot3dCampaignSummary:
     """Inspect a 3D campaign without importing simulation code or changing files."""
     manifest_path = _manifest_path(path)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = read_json(manifest_path) if manifest is None else manifest
     if manifest.get("kind") != SUPPORTED_KIND:
         raise ValueError(
             f"Unsupported campaign kind {manifest.get('kind')!r}; expected {SUPPORTED_KIND!r}."

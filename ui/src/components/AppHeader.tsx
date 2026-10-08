@@ -2,7 +2,7 @@ import { Atom, BriefcaseBusiness, Home, Server } from "lucide-react";
 
 const links = [
   { label: "Home", href: "#main", icon: Home, current: true },
-  { label: "Campaigns", icon: BriefcaseBusiness, later: true },
+  { label: "Campaigns", href: "#existing-campaigns", icon: BriefcaseBusiness },
   { label: "Zeus jobs", icon: Server, later: true },
 ] as const;
 
@@ -29,7 +29,7 @@ export function AppHeader() {
             );
           }
           return (
-            <a key={item.label} href={item.href} aria-current="page">
+            <a key={item.label} href={item.href} aria-current={"current" in item ? "page" : undefined}>
               <Icon aria-hidden="true" />
               <span>{item.label}</span>
             </a>

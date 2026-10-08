@@ -1,10 +1,11 @@
 import axe from "axe-core";
 import { render, screen } from "@testing-library/react";
 import { App } from "../App";
+import { fixtureApi } from "./campaignFixture";
 
 describe("accessibility contract", () => {
   it("provides landmarks, a single page title, and an explained disabled action", () => {
-    render(<App />);
+    render(<App api={fixtureApi} />);
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
@@ -14,7 +15,7 @@ describe("accessibility contract", () => {
   });
 
   it("has no automatically detectable accessibility violations", async () => {
-    const { container } = render(<App />);
+    const { container } = render(<App api={fixtureApi} />);
     const result = await axe.run(container, {
       rules: { "color-contrast": { enabled: false } },
     });

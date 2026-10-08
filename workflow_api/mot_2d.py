@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import math
 from pathlib import Path
 from typing import Any
@@ -13,8 +12,18 @@ from workflow_api.models import (
     JobPlan,
     StageProgress,
 )
+from workflow_api.safe_json import read_json
 
 SUPPORTED_KIND = "mot_2d_s0_campaign"
+SUPPORTED_STAGES = {
+    "smoke",
+    "screen",
+    "refine",
+    "confirmation",
+    "sensitivity",
+    "production",
+    "complete",
+}
 
 
 def _manifest_path(path: str | Path) -> Path:
@@ -23,7 +32,7 @@ def _manifest_path(path: str | Path) -> Path:
 
 
 def _read_json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return read_json(path)
 
 
 def _count_files(root: Path, pattern: str) -> int:
@@ -62,18 +71,48 @@ def _repository_root(campaign_root: Path) -> Path | None:
     return None
 
 
-def _resolve_artifact(campaign_root: Path, recorded_path: str | Path) -> Path:
+def _within(path: Path, root: Path) -> bool:
+    try:
+        path.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def _contains_symlink(path: Path, root: Path) -> bool:
+    try:
+        relative = path.absolute().relative_to(root.absolute())
+    except ValueError:
+        return True
+    current = root.absolute()
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            return True
+    return False
+
+
+def _resolve_artifact(campaign_root: Path, recorded_path: str | Path) -> Path | None:
     path = Path(recorded_path)
-    if path.is_absolute():
-        return path.resolve()
     repository_root = _repository_root(campaign_root)
+    allowed_roots = (campaign_root.resolve(),)
+    if repository_root is not None:
+        allowed_roots += (repository_root.resolve(),)
+    if path.is_absolute():
+        resolved = path.resolve()
+        return resolved if any(_within(resolved, root) and not _contains_symlink(path, root) for root in allowed_roots) else None
     if repository_root is not None:
         repository_path = (repository_root / path).resolve()
         campaign_path = (campaign_root / path).resolve()
-        if repository_path.exists() or not campaign_path.exists():
+        if _within(repository_path, repository_root.resolve()) and not _contains_symlink(repository_root / path, repository_root) and (
+            repository_path.exists() or not campaign_path.exists()
+        ):
             return repository_path
-        return campaign_path
-    return (campaign_root / path).resolve()
+        if _within(campaign_path, campaign_root.resolve()) and not _contains_symlink(campaign_root / path, campaign_root):
+            return campaign_path
+        return None
+    resolved = (campaign_root / path).resolve()
+    return resolved if _within(resolved, campaign_root.resolve()) and not _contains_symlink(campaign_root / path, campaign_root) else None
 
 
 def _stage_progress(root: Path, manifest: dict[str, Any]) -> tuple[StageProgress, ...]:
@@ -135,13 +174,19 @@ def _next_plan(
     stage = manifest.get("stage")
     if stage == "complete":
         return None, ()
+    if stage not in SUPPORTED_STAGES:
+        return None, ("Campaign stage is unknown; no next action is available.",)
     stages = _mapping(manifest.get("stages"))
     stage_record = _mapping(stages.get(stage))
     if stage_record.get("submit_chain"):
         chain = _resolve_artifact(root, stage_record["submit_chain"])
+        resolved_jobs = tuple(
+            _resolve_artifact(root, item) for item in stage_record.get("round_job_files", [])
+        )
+        if chain is None or any(item is None for item in resolved_jobs):
+            return None, ("A recorded job artifact is outside the trusted repository.",)
         round_jobs = tuple(
-            ArtifactRef(_resolve_artifact(root, item), "pbs", _resolve_artifact(root, item).exists())
-            for item in stage_record.get("round_job_files", [])
+            ArtifactRef(item, "pbs", item.exists()) for item in resolved_jobs if item is not None
         )
         artifacts = (ArtifactRef(chain, "submission-script", chain.exists()), *round_jobs)
         warnings = () if all(item.exists for item in artifacts) else (
@@ -159,6 +204,8 @@ def _next_plan(
     recorded_job = stage_record.get("job_file")
     if recorded_job:
         job = _resolve_artifact(root, recorded_job)
+        if job is None:
+            return None, ("The recorded job artifact is outside the trusted repository.",)
         warning = () if job.exists() else (
             "The recorded next-job artifact is missing locally.",
         )
@@ -186,10 +233,10 @@ def _next_plan(
     return None, ("Current stage has no recorded job artifact; no action was inferred.",)
 
 
-def read_campaign(path: str | Path) -> CampaignSummary:
+def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -> CampaignSummary:
     """Read a campaign without changing its files or importing submit modules."""
     manifest_path = _manifest_path(path)
-    manifest = _read_json(manifest_path)
+    manifest = _read_json(manifest_path) if manifest is None else manifest
     if manifest.get("kind") != SUPPORTED_KIND:
         raise ValueError(
             f"Unsupported campaign kind {manifest.get('kind')!r}; expected {SUPPORTED_KIND!r}."
@@ -204,6 +251,8 @@ def read_campaign(path: str | Path) -> CampaignSummary:
     if not isinstance(stage, str) or not stage.strip():
         stage = "unknown"
         warnings.append("Campaign manifest does not record a valid current stage.")
+    elif stage not in SUPPORTED_STAGES:
+        warnings.append("Campaign manifest records an unsupported current stage.")
     s0_values = _s0_values(manifest.get("s0_values"))
     normalized_manifest = {**manifest, "name": name, "stage": stage, "s0_values": s0_values}
     provenance = _mapping(manifest.get("provenance"))

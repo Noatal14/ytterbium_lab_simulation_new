@@ -266,6 +266,26 @@ Do not yet include:
 - background monitoring; or
 - mutation of campaign files.
 
+## Milestone 2 implementation scope
+
+Milestone 2 discovers campaign records only from the repository's fixed
+`data/optimization/mot_2d` and `data/optimization/mot_3d` roots. The service
+issues opaque campaign identifiers; the browser never supplies an arbitrary
+filesystem path. Campaign detail shows validated local-output progress, the
+prepared workflow stage, scientific evidence role, trust warnings, and—only
+when the record passes conservative checks—a command that can be copied for
+manual review.
+
+The prepared stage is not scheduler state. This milestone must always describe
+Zeus status as unchecked and must not call a scheduler, infer that a job is
+running, or execute a displayed command. Legacy, incomplete, malformed, or
+inconsistent records fail closed and never receive a continuation action.
+Candidate-selection evidence is kept distinct from sealed final validation.
+
+Campaign creation and the already approved creation screens remain Milestone 3.
+This milestone adds no write endpoint, subprocess, SSH, Zeus connection, job
+submission, arbitrary directory picker, or background monitoring.
+
 ## Approval log
 
 - Product goal, safety direction, proposed screens, and delivery sequence were
@@ -273,3 +293,5 @@ Do not yet include:
 - The no-active-campaign home, 2D creation wizard designs, Zeus connection
   design, run review, and running campaign design were approved as product
   direction on 2026-10-08. Milestone 1 remains fixture-only and read-only.
+- Milestone 2 is read-only discovery and inspection. Approved creation and
+  execution designs remain later phases and do not authorize mutation.

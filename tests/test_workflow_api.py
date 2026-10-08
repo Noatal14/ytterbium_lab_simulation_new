@@ -136,6 +136,42 @@ def test_relative_job_path_is_resolved_from_repository_not_cwd(
     assert summary.next_plan.artifacts[0].exists
 
 
+def test_2d_campaign_rejects_job_artifact_outside_repository(tmp_path):
+    repository = tmp_path / "repository"
+    (repository / ".git").mkdir(parents=True)
+    root = repository / "data" / "optimization" / "mot_2d" / "campaign"
+    root.mkdir(parents=True)
+    outside = tmp_path / "outside.pbs"
+    outside.write_text("", encoding="utf-8")
+    (root / "campaign.json").write_text(json.dumps({
+        "kind": "mot_2d_s0_campaign", "name": "unsafe", "stage": "screen",
+        "s0_values": [1.3], "stages": {"screen": {"tasks": 1, "job_file": str(outside)}},
+        "provenance": {"git_commit": "abc"}, "ensemble_source": {"zeeman_profile": "profile"},
+    }))
+
+    summary = read_campaign(root)
+
+    assert summary.next_plan is None
+    assert any("outside the trusted repository" in warning for warning in summary.warnings)
+
+
+def test_2d_campaign_rejects_artifact_through_parent_symlink(tmp_path):
+    repository = tmp_path / "repository"; (repository / ".git").mkdir(parents=True)
+    root = repository / "data" / "optimization" / "mot_2d" / "campaign"; root.mkdir(parents=True)
+    outside = tmp_path / "outside"; outside.mkdir(); (outside / "job.pbs").write_text("")
+    (root / "linked").symlink_to(outside, target_is_directory=True)
+    (root / "campaign.json").write_text(json.dumps({
+        "kind": "mot_2d_s0_campaign", "name": "unsafe", "stage": "screen", "s0_values": [1.3],
+        "stages": {"screen": {"tasks": 1, "job_file": "linked/job.pbs"}},
+        "provenance": {"git_commit": "abc"}, "ensemble_source": {"zeeman_profile": "profile"},
+    }))
+
+    summary = read_campaign(root)
+
+    assert summary.next_plan is None
+    assert any("outside the trusted repository" in warning for warning in summary.warnings)
+
+
 def test_complete_campaign_has_no_submission_plan(tmp_path):
     root = tmp_path / "campaign"
     (root / "jobs").mkdir(parents=True)
