@@ -3,8 +3,8 @@ import json
 from types import SimpleNamespace
 
 from config import ZEEMAN_MAGNET_PROFILES
-from studies.estimate_oven_flux import estimate_oven_flux
-from studies.full_thermal_zeeman_flux import (
+from studies.beam_source.estimate_oven_flux import estimate_oven_flux
+from studies.beam_source.full_thermal_flux import (
     DEFAULT_OUTPUT_DIR,
     clopper_pearson_interval,
     field_config,

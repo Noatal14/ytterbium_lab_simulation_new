@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from lab_setup.laser_setup_3d import setup_3dmot_lasers
-from studies.run_3d_mot_single_pass_stability import (
+from studies.mot_3d.validation.single_pass_stability import (
     BLUE_APERTURE_RADIUS_M,
     GREEN_APERTURE_RADIUS_M,
     REFERENCE_S0,

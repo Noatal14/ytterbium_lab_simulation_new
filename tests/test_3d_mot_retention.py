@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from studies.compare_3d_mot_retention import (
+from studies.mot_3d.analysis.retention import (
     analyze_masks,
     analyze_results,
     capture_diagnostics,
@@ -14,7 +14,7 @@ from studies.compare_3d_mot_retention import (
     retention_from_masks,
     select_particle_shard,
 )
-from studies.merge_3d_mot_retention_shards import retained_at_end_mask
+from studies.mot_3d.analysis.retention_shards import retained_at_end_mask
 
 
 def _trajectory(times, x_positions, x_velocities):

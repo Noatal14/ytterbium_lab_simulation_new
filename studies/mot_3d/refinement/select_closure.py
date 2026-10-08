@@ -5,8 +5,8 @@ import json
 from pathlib import Path
 
 from config import MOT_3D_OPTIMIZATION_CONFIG
-from studies.optimize_3d_mot_full import build_profile_from_parameters
-from studies.select_3d_mot_refinement_candidates import _bounds
+from studies.mot_3d.discovery.optimize import build_profile_from_parameters
+from studies.mot_3d.refinement.select import _bounds
 
 
 def _candidate(family, index, role, parameters):

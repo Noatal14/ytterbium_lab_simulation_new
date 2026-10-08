@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 
 from studies import mot_3d_campaign
-from studies.mot_3d_final_validation import RECOIL_SEEDS, merge
-from studies.mot_3d_stage_integrity import sha256
+from studies.mot_3d.final_validation import RECOIL_SEEDS, merge
+from studies.mot_3d.integrity import sha256
 
 
 def test_final_validation_merge_reports_sealed_unbiased_interval(tmp_path):

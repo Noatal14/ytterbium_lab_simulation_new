@@ -13,7 +13,7 @@ from config import (
     ZEEMAN_SIM_CONFIG,
 )
 from simulations.zeeman import run_and_save_zeeman
-from studies.estimate_oven_flux import estimate_oven_flux
+from studies.beam_source.estimate_oven_flux import estimate_oven_flux
 from utils.data_paths import VALIDATION_DIR
 from utils.file_helpers import save_file_json
 

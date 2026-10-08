@@ -12,7 +12,7 @@ import numpy as np
 
 from config import Geometry, MOT_3D_SIM_CONFIG
 from simulations.mot_3d import mot_3d_simulation
-from studies.compare_3d_mot_retention import (
+from studies.mot_3d.analysis.retention import (
     DEFAULT_INPUT,
     analyze_results,
     load_shared_ensemble,

@@ -1,6 +1,6 @@
 import numpy as np
 
-from studies.generate_corrected_zeeman_ensembles import (
+from studies.zeeman.generate_ensembles import (
     PROFILE_NAME,
     corrected_field,
     output_path,

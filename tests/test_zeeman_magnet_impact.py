@@ -1,6 +1,6 @@
 import numpy as np
 
-from studies.run_zeeman_magnet_impact import PROFILE_NAME, corrected_field
+from studies.zeeman.magnet_impact import PROFILE_NAME, corrected_field
 from config import ZEEMAN_MAGNET_PROFILES
 
 

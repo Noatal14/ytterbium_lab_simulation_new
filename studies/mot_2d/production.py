@@ -18,7 +18,7 @@ import numpy as np
 from scipy.stats import t as student_t
 
 from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
-from studies.optimize_2d_mot_joint import evaluate_configuration
+from studies.mot_2d.optimization import evaluate_configuration
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.data_paths import AFTER_2D_MOT_DIR, save_particle_states

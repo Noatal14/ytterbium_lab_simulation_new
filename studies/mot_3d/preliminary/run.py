@@ -9,10 +9,10 @@ import numpy as np
 
 from config import DEFAULT_RANDOM_SEED, MOT_3D_SIM_CONFIG
 from simulations.mot_3d import mot_3d_simulation
-from studies.compare_3d_mot_retention import analyze_results
+from studies.mot_3d.analysis.retention import analyze_results
 from studies.mot_3d_campaign import load_role_particles
 from utils.file_helpers import save_file_json
-from studies.mot_3d_stage_integrity import (
+from studies.mot_3d.integrity import (
     frozen_stage_design, sha256, validate_completed_result,
 )
 

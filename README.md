@@ -70,7 +70,7 @@ Before generating a survivor ensemble, validate the active field, laser,
 polarization, and resonance conventions:
 
 ```bash
-python -m studies.validate_zeeman_configuration
+python -m studies.zeeman.validate_configuration
 ```
 
 This writes a JSON audit and a four-panel diagnostic plot under
@@ -81,7 +81,7 @@ Then inspect a few deterministic, on-axis trajectories around the expected
 capture velocity:
 
 ```bash
-python -m studies.diagnose_zeeman_trajectories
+python -m studies.zeeman.trajectories
 ```
 
 This is a fast local physics diagnostic, not an estimate of capture efficiency.
@@ -90,21 +90,21 @@ It stores its report and plot under `data/validation/zeeman/trajectories/`.
 To bracket the ideal on-axis capture velocity more precisely, run:
 
 ```bash
-python -m studies.scan_zeeman_capture_velocity
+python -m studies.zeeman.capture_velocity
 ```
 
 Before a new production ensemble, validate the stochastic RK4 timestep with
 several shared seeds. Each cluster task must write a separate result file:
 
 ```bash
-python -m studies.zeeman_stochastic_convergence run \
+python -m studies.zeeman.stochastic_convergence run \
   --n-atoms 5000 --dt-us 40 --seed 1000 --npools 80
 ```
 
 After all timestep/seed jobs finish, aggregate them with:
 
 ```bash
-python -m studies.zeeman_stochastic_convergence summarize
+python -m studies.zeeman.stochastic_convergence summarize
 ```
 
 The summary reports the mean and 95% across-seed interval for every timestep,
@@ -124,9 +124,9 @@ historical and uses the former 20-ring profile; do not combine it with corrected
 19-ring campaign results. A new run must record the corrected profile explicitly:
 
 ```bash
-python -m studies.full_thermal_zeeman_flux run --n-atoms 50000 --seed 9000 --npools 150 \
+python -m studies.beam_source.full_thermal_flux run --n-atoms 50000 --seed 9000 --npools 150 \
   --magnet-profile corrected_projectant_19ring_20261005
-python -m studies.full_thermal_zeeman_flux summarize \
+python -m studies.beam_source.full_thermal_flux summarize \
   --magnet-profile corrected_projectant_19ring_20261005
 ```
 
@@ -196,7 +196,7 @@ Existing Zeus PBS commands must be updated to the package-based entry points.
 
 ## Completed optimization workflow
 
-The retained joint optimizer, `python -m studies.optimize_2d_mot_joint`, scans:
+The retained joint optimizer, `python -m studies.mot_2d.optimization`, scans:
 
 - `s0` (saturation parameter)
 - `detuning_gamma`

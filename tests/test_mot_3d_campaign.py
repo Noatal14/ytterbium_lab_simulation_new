@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from studies import mot_3d_campaign
-from studies.mot_3d_stage_integrity import (
+from studies.mot_3d.integrity import (
     frozen_stage_design,
     simultaneous_intervals,
     validate_artifact_registry,
@@ -193,7 +193,7 @@ def test_discovery_loader_accepts_frozen_role_manifest(input_dir, tmp_path, monk
     manifest.write_text(json.dumps(payload))
     monkeypatch.setattr(mot_3d_campaign, "_revision", lambda: "abc")
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "hash")
-    from studies.optimize_3d_mot_full import _manifest_input_files
+    from studies.mot_3d.discovery.optimize import _manifest_input_files
 
     paths = _manifest_input_files(manifest, "discovery")
 
@@ -257,6 +257,56 @@ def test_create_rejects_dirty_relevant_code(
 def test_model_closure_includes_vendored_physics_engine():
     files = mot_3d_campaign.relevant_files()
     assert any(path.startswith("atomsmltr/src/atomsmltr/") for path in files)
+    assert "studies/mot_2d/optimization.py" in files
+    assert "studies/mot_2d/production.py" in files
+
+
+def test_final_input_jobs_use_domain_module_paths(tmp_path, monkeypatch):
+    import studies.mot_3d.discovery.optimize as optimizer
+
+    monkeypatch.setattr(
+        optimizer,
+        "build_profile_from_parameters",
+        lambda family, parameters: ({"family": family}, parameters, {}),
+    )
+    root = tmp_path / "campaign"
+    (root / "selection").mkdir(parents=True)
+    parameters = {"green_s0": 1.0}
+    for family in mot_3d_campaign.FAMILIES:
+        path = root / "finalist_selection" / family / "merged"
+        path.mkdir(parents=True)
+        (path / "finalist_summary.json").write_text(
+            json.dumps(
+                {
+                    "ranked_candidates": [
+                        {"candidate_id": f"{family}_winner", "parameters": parameters}
+                    ]
+                }
+            )
+        )
+    manifest = {
+        "provenance": {"git_commit": "abc123"},
+        "upstream_2d_campaign": {
+            "expected_survivor_parameters": {
+                "s0": 1.3,
+                "detuning_gamma": -1.0,
+                "magnet_radius": 0.046,
+            },
+            "expected_survivor_design": {"zeeman_profile": "corrected"},
+        },
+        "stages": {},
+    }
+    (root / "campaign.json").write_text(json.dumps(manifest))
+
+    mot_3d_campaign.prepare_final_validation_inputs(root, manifest)
+
+    zeeman = (root / "jobs/final_validation_inputs/01_generate_zeeman.pbs").read_text()
+    mot_2d = (root / "jobs/final_validation_inputs/02_generate_2d_survivors.pbs").read_text()
+    combined = zeeman + mot_2d
+    assert "studies.zeeman.generate_ensembles" in zeeman
+    assert "studies.mot_2d.production" in mot_2d
+    assert "studies.generate_corrected_zeeman_ensembles" not in combined
+    assert "studies.run_2d_mot_final_production" not in combined
 
 
 def test_upstream_report_must_be_registered(input_dir, upstream_campaign):

@@ -32,23 +32,24 @@ CAMPAIGN_FILES = (
     "lab_setup/laser_setup_3d.py",
     "simulations/mot_3d.py",
     "studies/mot_3d_campaign.py",
-    "studies/optimize_3d_mot_full.py",
-    "studies/compare_3d_mot_retention.py",
-    "studies/merge_3d_mot_full_optimization.py",
-    "studies/select_3d_mot_discovery_candidates.py",
-    "studies/run_3d_mot_early_independent_check.py",
-    "studies/merge_3d_mot_early_independent_check.py",
-    "studies/select_3d_mot_refinement_candidates.py",
-    "studies/run_3d_mot_focused_refinement.py",
-    "studies/merge_3d_mot_focused_refinement.py",
-    "studies/select_3d_mot_closure_candidates.py",
-    "studies/select_3d_mot_finalists.py",
-    "studies/run_3d_mot_finalist_selection.py",
-    "studies/merge_3d_mot_finalist_selection.py",
-    "studies/mot_3d_stage_integrity.py",
-    "studies/mot_3d_final_validation.py",
-    "studies/generate_corrected_zeeman_ensembles.py",
-    "studies/run_2d_mot_final_production.py",
+    "studies/mot_3d/discovery/optimize.py",
+    "studies/mot_3d/analysis/retention.py",
+    "studies/mot_3d/discovery/merge.py",
+    "studies/mot_3d/discovery/select.py",
+    "studies/mot_3d/preliminary/run.py",
+    "studies/mot_3d/preliminary/merge.py",
+    "studies/mot_3d/refinement/select.py",
+    "studies/mot_3d/refinement/run.py",
+    "studies/mot_3d/refinement/merge.py",
+    "studies/mot_3d/refinement/select_closure.py",
+    "studies/mot_3d/finalists/select.py",
+    "studies/mot_3d/finalists/run.py",
+    "studies/mot_3d/finalists/merge.py",
+    "studies/mot_3d/integrity.py",
+    "studies/mot_3d/final_validation.py",
+    "studies/zeeman/generate_ensembles.py",
+    "studies/mot_2d/optimization.py",
+    "studies/mot_2d/production.py",
 )
 
 
@@ -406,7 +407,7 @@ def write_discovery_jobs(root, revision):
         smoke_paths[family] = _write(
             jobs / f"01_smoke_{family}.pbs",
             _header(f"m3d2_{short}_smoke", revision, "01:00:00", 12, "8gb")
-            + f"python -u -m studies.optimize_3d_mot_full --family {family} "
+            + f"python -u -m studies.mot_3d.discovery.optimize --family {family} "
             f"--worker-index 0 --target-completed-trials 1 "
             f"--sampler-seed {281001 + index} --output-dir {root/'smoke'/family} "
             f"--input-manifest {manifest_path} --input-role discovery "
@@ -434,7 +435,7 @@ def write_discovery_jobs(root, revision):
                     + 'worker="${PBS_ARRAY_INDEX}"\n'
                     + 'target="${targets[$worker]}"\n'
                     + 'sampler="${samplers[$worker]}"\n'
-                    + f"python -u -m studies.optimize_3d_mot_full "
+                    + f"python -u -m studies.mot_3d.discovery.optimize "
                     f"--family {family} --worker-index \"$worker\" "
                     f"--target-completed-trials \"$target\" "
                     f"--sampler-seed \"$sampler\" "
@@ -531,14 +532,14 @@ def _selection_stage_jobs(
     manifest_path = root / "campaign.json"
     dt = manifest["design"]["screening_dt_s"]
     runner_module = (
-        "studies.run_3d_mot_early_independent_check"
+        "studies.mot_3d.preliminary.run"
         if stage == "preliminary_check"
-        else "studies.run_3d_mot_focused_refinement"
+        else "studies.mot_3d.refinement.run"
     )
     merger_module = (
-        "studies.merge_3d_mot_early_independent_check"
+        "studies.mot_3d.preliminary.merge"
         if stage == "preliminary_check"
-        else "studies.merge_3d_mot_focused_refinement"
+        else "studies.mot_3d.refinement.merge"
     )
     worker_jobs, merge_jobs = {}, {}
     for family in FAMILIES:
@@ -579,7 +580,7 @@ def _selection_stage_jobs(
 
 def validate_discovery_complete(root, manifest, family):
     """Reject incomplete, foreign, or stale discovery trial registries."""
-    from studies.optimize_3d_mot_full import load_balanced_discovery_particles
+    from studies.mot_3d.discovery.optimize import load_balanced_discovery_particles
 
     root = Path(root)
     family_root = root / "discovery" / family
@@ -650,8 +651,8 @@ def validate_discovery_complete(root, manifest, family):
 
 
 def prepare_preliminary_check(root, manifest):
-    from studies.merge_3d_mot_full_optimization import merge
-    from studies.select_3d_mot_discovery_candidates import select_candidates
+    from studies.mot_3d.discovery.merge import merge
+    from studies.mot_3d.discovery.select import select_candidates
 
     selections = {}
     for family in FAMILIES:
@@ -687,7 +688,7 @@ def prepare_preliminary_check(root, manifest):
 
 
 def prepare_refinement(root, manifest):
-    from studies.select_3d_mot_refinement_candidates import select
+    from studies.mot_3d.refinement.select import select
 
     selections = {}
     for family in FAMILIES:
@@ -714,7 +715,7 @@ def prepare_refinement(root, manifest):
 
 
 def prepare_closure(root, manifest):
-    from studies.select_3d_mot_closure_candidates import select
+    from studies.mot_3d.refinement.select_closure import select
 
     selections = {}
     for family in FAMILIES:
@@ -741,7 +742,7 @@ def prepare_closure(root, manifest):
 
 
 def prepare_finalist_selection(root, manifest):
-    from studies.select_3d_mot_finalists import select
+    from studies.mot_3d.finalists.select import select
 
     selections, worker_jobs, merge_jobs = {}, {}, {}
     jobs = root / "jobs" / "finalist_selection"
@@ -760,7 +761,7 @@ def prepare_finalist_selection(root, manifest):
         worker_jobs[family] = _write(
             jobs / f"{family}_array.pbs",
             _header(f"m3d2_{short}_fin", manifest["provenance"]["git_commit"])
-            + f"python -u -m studies.run_3d_mot_finalist_selection "
+            + f"python -u -m studies.mot_3d.finalists.run "
             f"--family {family} --selection {selection} "
             '--finalist-index "$PBS_ARRAY_INDEX" '
             f"--input-manifest {manifest_path} --npools 200 --dt {dt} "
@@ -769,7 +770,7 @@ def prepare_finalist_selection(root, manifest):
         merge_jobs[family] = _write(
             jobs / f"{family}_merge.pbs",
             _header(f"m3d2_{short}_finm", manifest["provenance"]["git_commit"], "01:00:00", 1, "4gb")
-            + f"python -u -m studies.merge_3d_mot_finalist_selection "
+            + f"python -u -m studies.mot_3d.finalists.merge "
             f"--selection {selection} --input-root {family_root} "
             f"--output-dir {family_root}/merged --bootstrap-seed 82001\n",
         )
@@ -786,7 +787,7 @@ def prepare_finalist_selection(root, manifest):
 
 def prepare_final_validation_inputs(root, manifest):
     """Lock nominal winners before creating any new validation ensemble."""
-    from studies.optimize_3d_mot_full import build_profile_from_parameters
+    from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
     locked = {
         "kind": "mot_3d_locked_nominals",
@@ -822,7 +823,7 @@ def prepare_final_validation_inputs(root, manifest):
         jobs / "01_generate_zeeman.pbs",
         _header("m3d2_val_z", revision, "08:00:00")
         + 'seed=$((3035 + PBS_ARRAY_INDEX))\n'
-        + f"python -u -m studies.generate_corrected_zeeman_ensembles --seed \"$seed\" "
+        + f"python -u -m studies.zeeman.generate_ensembles --seed \"$seed\" "
         f"--npools 200 --output-dir {zeeman_dir}\n",
     )
     mot_job = _write(
@@ -830,7 +831,7 @@ def prepare_final_validation_inputs(root, manifest):
         _header("m3d2_val_2d", revision, "12:00:00")
         + 'zseed=$((3035 + PBS_ARRAY_INDEX))\n'
         + 'mseed=$((43035 + PBS_ARRAY_INDEX))\n'
-        + f"python -u -m studies.run_2d_mot_final_production --zeeman-seeds \"$zseed\" "
+        + f"python -u -m studies.mot_2d.production --zeeman-seeds \"$zseed\" "
         f"--mot-seeds \"$mseed\" --ensemble-dir {zeeman_dir} "
         f"--expected-zeeman-profile {profile} --expected-git-commit {revision} "
         f"--s0 {params['s0']} --detuning-gamma {params['detuning_gamma']} "
@@ -1037,7 +1038,7 @@ def prepare_final_validation(root, manifest):
             jobs / f"{family}_array.pbs",
             _header(f"m3d2_{short}_val", manifest["provenance"]["git_commit"])
             + 'seeds=(44001 44002 44003)\nseed="${seeds[$PBS_ARRAY_INDEX]}"\n'
-            + f"python -u -m studies.mot_3d_final_validation run --family {family} "
+            + f"python -u -m studies.mot_3d.final_validation run --family {family} "
             f"--recoil-seed \"$seed\" --locked-nominals {locked} "
             f"--input-manifest {input_manifest} --campaign-manifest {root/'campaign.json'} "
             f"--output {family_root}/seed_${{seed}}.json --npools 200 --dt {dt}\n",
@@ -1045,7 +1046,7 @@ def prepare_final_validation(root, manifest):
         merge_jobs[family] = _write(
             jobs / f"{family}_merge.pbs",
             _header(f"m3d2_{short}_valm", manifest["provenance"]["git_commit"], "02:00:00", 1, "8gb")
-            + f"python -u -m studies.mot_3d_final_validation merge "
+            + f"python -u -m studies.mot_3d.final_validation merge "
             f"--family {family} --input-root {family_root} "
             f"--locked-nominals {locked} --input-manifest {input_manifest} "
             f"--campaign-manifest {root/'campaign.json'} --dt {dt} "

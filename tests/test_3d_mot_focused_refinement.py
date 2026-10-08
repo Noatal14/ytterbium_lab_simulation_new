@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from studies.select_3d_mot_refinement_candidates import select
+from studies.mot_3d.refinement.select import select
 
 
 ROOT = Path("data/validation/mot_3d/early_independent_check_v1")

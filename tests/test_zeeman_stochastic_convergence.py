@@ -1,6 +1,6 @@
 import numpy as np
 
-from studies.zeeman_stochastic_convergence import (
+from studies.zeeman.stochastic_convergence import (
     infer_scan_axis,
     paired_differences,
     reproducibility_comparison,

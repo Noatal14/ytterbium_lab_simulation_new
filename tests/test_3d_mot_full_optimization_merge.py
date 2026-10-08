@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from studies.merge_3d_mot_full_optimization import merge
+from studies.mot_3d.discovery.merge import merge
 
 
 def _trial(root, worker, number):

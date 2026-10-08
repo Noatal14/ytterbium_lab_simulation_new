@@ -26,7 +26,7 @@ _WORKFLOWS = (
         workflow_id="zeeman_validation",
         label="Zeeman validation tools",
         maturity="reusable-validation",
-        entrypoint="studies.validate_zeeman_configuration",
+        entrypoint="studies.zeeman.validate_configuration",
         capabilities=(),
         notes="Validation commands remain independent CLI tools.",
     ),

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from studies.compare_3d_mot_retention import (
+from studies.mot_3d.analysis.retention import (
     DEFAULT_MIN_FIT_R_SQUARED,
     DEFAULT_MIN_LOSS_FRACTION,
     _json_ready_analysis,

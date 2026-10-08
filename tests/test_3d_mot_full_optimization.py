@@ -5,7 +5,7 @@ import optuna
 import pytest
 
 from config import MOT_3D_OPTIMIZATION_CONFIG
-from studies.optimize_3d_mot_full import (
+from studies.mot_3d.discovery.optimize import (
     _seed_parameters,
     _single_pass_reference_field_G,
     build_trial_profile,

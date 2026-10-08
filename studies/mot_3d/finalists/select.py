@@ -4,7 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
-from studies.optimize_3d_mot_full import build_profile_from_parameters
+from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
 
 def select(family, closure_summary, count=3):

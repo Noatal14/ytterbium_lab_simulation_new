@@ -21,7 +21,7 @@ from config import (
 )
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_zeeman_only_zone
-from studies.validate_zeeman_configuration import analyze_zeeman_configuration
+from studies.zeeman.validate_configuration import analyze_zeeman_configuration
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from utils.data_paths import ZEEMAN_TRAJECTORY_VALIDATION_DIR
 from utils.simulation_helpers import generate_timepoints, run_multiple_atoms_simulation

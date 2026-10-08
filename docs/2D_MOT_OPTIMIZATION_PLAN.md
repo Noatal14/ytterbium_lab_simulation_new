@@ -193,7 +193,7 @@ that 95.1738% of laser-step evaluations had `Ni < 15`, accounting for 14.3490%
 of the expected photons. The corresponding photon fractions were 8.7943% for
 captured trajectories and 17.2808% for non-captured trajectories. The low-count
 regime is therefore material, which is precisely why the accepted solver uses
-Poisson sampling there. Re-run `studies.diagnose_2d_mot_photon_counts` if the
+Poisson sampling there. Re-run `studies.mot_2d.validation.photon_counts` if the
 laser settings, recoil model, or solver transition rule changes.
 
 ## Stage 4: establish near-optimality within experimental resolution

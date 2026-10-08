@@ -12,9 +12,9 @@ import sys
 from pathlib import Path
 
 from config import MOT_2D_SIM_CONFIG
-from studies.optimize_2d_mot_joint import BOUNDS_DETUNING, BOUNDS_MAGNET_RADIUS_M
-from studies.optimize_2d_mot_joint import evaluate_configuration
-from studies.run_2d_mot_final_production import summarize
+from studies.mot_2d.optimization import BOUNDS_DETUNING, BOUNDS_MAGNET_RADIUS_M
+from studies.mot_2d.optimization import evaluate_configuration
+from studies.mot_2d.production import summarize
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
@@ -44,7 +44,7 @@ STAGE_ROLE = {"smoke": "discovery", "screen": "discovery",
               "sensitivity": "held_out_confirmation", "production": "sealed_validation"}
 RELEVANT_CODE_FILES = [
     "config.py", "simulations/mot_2d.py", "studies/mot_2d_s0_campaign.py",
-    "studies/optimize_2d_mot_joint.py", "studies/run_2d_mot_final_production.py",
+    "studies/mot_2d/optimization.py", "studies/mot_2d/production.py",
     "utils/mot_2d_study.py", "utils/file_helpers.py",
     "utils/RK4StHybridCustom.py",
 ]
@@ -266,7 +266,7 @@ def smoke(args):
     value = manifest["s0_values"][args.s0_index]
     output = root / "smoke" / key(value)
     subprocess.run([
-        sys.executable, "-m", "studies.optimize_2d_mot_joint", "--fixed-s0", str(value),
+        sys.executable, "-m", "studies.mot_2d.optimization", "--fixed-s0", str(value),
         "--n-trials", "1", "--n-ensembles", "1", "--particles-per-ensemble", "2",
         "--npools", "1", "--dt", str(WORKING_DT_S),
         "--stochastic-solver", "hybrid",
@@ -310,7 +310,7 @@ def optuna_task(root, stage, spec, trials, particles, sampler_seed, bounds=None)
     role = STAGE_ROLE[stage]
     output = root / stage / key(spec["s0"]) / f"worker{spec['worker']}"
     command = [
-        sys.executable, "-m", "studies.optimize_2d_mot_joint", "--fixed-s0", str(spec["s0"]),
+        sys.executable, "-m", "studies.mot_2d.optimization", "--fixed-s0", str(spec["s0"]),
         "--n-trials", str(trials), "--n-ensembles", str(len(manifest["seed_roles"][role])),
         "--particles-per-ensemble", str(particles), "--npools", "200",
         "--dt", str(WORKING_DT_S), "--stochastic-solver", "hybrid",
@@ -661,7 +661,7 @@ def production_task(args):
         print(f"Already complete: {result}")
         return
     p = spec["parameters"]
-    subprocess.run([sys.executable, "-m", "studies.run_2d_mot_final_production",
+    subprocess.run([sys.executable, "-m", "studies.mot_2d.production",
                     "--zeeman-seeds", str(spec["zeeman_seed"]), "--s0", str(spec["s0"]),
                     "--mot-seeds", str(spec["mot_seed"]),
                     "--detuning-gamma", str(p["detuning_gamma"]),

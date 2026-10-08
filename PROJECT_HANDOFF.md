@@ -235,7 +235,7 @@ survivors, repeatability across independent particles/seeds, and robustness to
 realistic laboratory parameter-setting uncertainty. A high Optuna value alone
 does not satisfy the campaign goal.
 
-The completed campaign used `python -m studies.optimize_2d_mot_joint` to
+The completed campaign used `python -m studies.mot_2d.optimization` to
 optimize `s0`, detuning, and magnet radius simultaneously. Superseded fixed-`s0`,
 candidate-validation, robustness, and early production scripts were removed
 after closure; Git history retains them for historical reconstruction.
@@ -261,7 +261,7 @@ separate result file so an interrupted worker can resume safely.
 
 The following result is the historical pre-correction conditional-capture
 prediction. It must not be used as the canonical corrected-Zeeman claim. It was produced with
-`python -m studies.run_2d_mot_final_production`. Its stopping rule required the
+`python -m studies.mot_2d.production`. Its stopping rule required the
 95% prediction for 10,000,000 Zeeman survivors to have a half-width no larger
 than 0.05 percentage points.
 
@@ -284,7 +284,7 @@ future binomial counting noise. The sealed-production stopping rule is a 95%
 prediction half-width no larger than 0.05 percentage points.
 
 The retained generic diagnostic is
-`python -m studies.diagnose_2d_mot_photon_counts`. It established that the
+`python -m studies.mot_2d.validation.photon_counts`. It established that the
 original Gaussian-only solver was not adequate in the low-photon-count regime:
 found that `Ni < 15` evaluations contribute 14.3490% of all expected photons,
 8.7943% on captured trajectories, and 17.2808% on non-captured trajectories.

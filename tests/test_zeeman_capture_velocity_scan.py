@@ -1,4 +1,4 @@
-from studies.scan_zeeman_capture_velocity import summarize_capture_boundary
+from studies.zeeman.capture_velocity import summarize_capture_boundary
 
 
 def test_capture_boundary_uses_adjacent_slowed_and_unslowed_speeds():

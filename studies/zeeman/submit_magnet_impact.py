@@ -5,7 +5,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from studies.run_zeeman_magnet_impact import ROOT, SEEDS
+from studies.zeeman.magnet_impact import ROOT, SEEDS
 
 
 PBS_ROOT = ROOT / "pbs"
@@ -82,7 +82,7 @@ def main():
         PBS_ROOT / "01_corrected_upstream_array.pbs",
         _header("m3d_zcorr_up", revision, array="0-3")
         + f"""SEEDS=({seed_words})
-python -u -m studies.run_zeeman_magnet_impact upstream \\
+python -u -m studies.zeeman.magnet_impact upstream \\
     --seed "${{SEEDS[$PBS_ARRAY_INDEX]}}" --npools 200
 """,
     )
@@ -99,7 +99,7 @@ SEED_INDEX=$((INDEX % 3))
 INDEX=$((INDEX / 3))
 FAMILY_INDEX=$((INDEX % 2))
 POPULATION_INDEX=$((INDEX / 2))
-python -u -m studies.run_zeeman_magnet_impact mot3d \\
+python -u -m studies.zeeman.magnet_impact mot3d \\
     --population "${POPULATIONS[$POPULATION_INDEX]}" \\
     --family "${FAMILIES[$FAMILY_INDEX]}" \\
     --recoil-seed "${RECOIL_SEEDS[$SEED_INDEX]}" --npools 200
@@ -110,7 +110,7 @@ python -u -m studies.run_zeeman_magnet_impact mot3d \\
     merge = _write(
         PBS_ROOT / "03_merge.pbs",
         _header("m3d_zcorr_m", revision, ncpus=1, memory="8gb", walltime="00:30:00")
-        + "python -u -m studies.run_zeeman_magnet_impact merge\n",
+        + "python -u -m studies.zeeman.magnet_impact merge\n",
     )
     merge_job = _submit(merge, (mot3d_job,))
     manifest.write_text(

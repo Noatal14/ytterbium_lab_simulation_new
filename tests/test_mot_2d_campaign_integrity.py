@@ -67,6 +67,63 @@ def test_campaign_manifest_has_nonoverlapping_roles_and_pinned_jobs(tmp_path, mo
     assert manifest["mot_seeds"]["sealed_validation"] == list(range(43015, 43035))
 
 
+def test_campaign_worker_commands_use_domain_module_paths(tmp_path, monkeypatch):
+    import studies.mot_2d_s0_campaign as campaign
+
+    root = tmp_path / "campaign"
+    manifest = {
+        "name": "paths",
+        "seed_roles": {"discovery": [3000], "sealed_validation": [3015]},
+        "mot_seeds": {"discovery": [43000], "sealed_validation": [43015]},
+        "ensemble_source": {"directory": "ensembles", "zeeman_profile": "corrected"},
+        "provenance": {
+            "physical_model_sha256": "design",
+            "git_commit": "abc123",
+        },
+    }
+    (root / "campaign.json").parent.mkdir(parents=True)
+    (root / "campaign.json").write_text(json.dumps(manifest))
+    monkeypatch.setattr(campaign, "assert_design", lambda value: None)
+    monkeypatch.setattr(campaign, "stage_ensembles", lambda *args, **kwargs: [])
+    commands = []
+    monkeypatch.setattr(
+        campaign.subprocess,
+        "run",
+        lambda command, check: commands.append(command),
+    )
+
+    campaign.optuna_task(
+        root,
+        "screen",
+        {"s0": 1.3, "worker": 0},
+        trials=1,
+        particles=2,
+        sampler_seed=137,
+    )
+    assert "studies.mot_2d.optimization" in commands[0]
+    assert "studies.optimize_2d_mot_joint" not in commands[0]
+
+    tasks = root / "production"
+    tasks.mkdir()
+    (tasks / "tasks.json").write_text(
+        json.dumps(
+            [
+                {
+                    "s0": 1.3,
+                    "zeeman_seed": 3015,
+                    "mot_seed": 43015,
+                    "parameters": {"detuning_gamma": -1.0, "magnet_radius": 0.046},
+                }
+            ]
+        )
+    )
+    campaign.production_task(
+        type("Args", (), {"campaign": str(root), "task_index": 0})()
+    )
+    assert "studies.mot_2d.production" in commands[1]
+    assert "studies.run_2d_mot_final_production" not in commands[1]
+
+
 def test_frozen_ensemble_replacement_is_rejected(tmp_path):
     import studies.mot_2d_s0_campaign as campaign
 
@@ -124,7 +181,7 @@ def test_force_override_is_not_supported():
 
 
 def test_production_records_exact_manifest_seed_pair(tmp_path, monkeypatch):
-    import studies.run_2d_mot_final_production as production
+    import studies.mot_2d.production as production
 
     output = tmp_path / "output"
     states = tmp_path / "states"
@@ -173,7 +230,7 @@ def test_status_uses_manifest_sealed_seed_count(tmp_path, capsys):
 
 
 def test_final_summary_rejects_wrong_manifest_mot_seed(tmp_path):
-    from studies.run_2d_mot_final_production import summarize
+    from studies.mot_2d.production import summarize
 
     directory = tmp_path / "replicates"
     directory.mkdir()
@@ -331,7 +388,7 @@ def test_atomic_json_does_not_leave_temporary_file(tmp_path):
 
 def test_optuna_resume_targets_total_complete_trials():
     import optuna
-    from studies.optimize_2d_mot_joint import remaining_complete_trials
+    from studies.mot_2d.optimization import remaining_complete_trials
     states = [optuna.trial.TrialState.COMPLETE] * 7
     states += [optuna.trial.TrialState.FAIL, optuna.trial.TrialState.RUNNING]
     assert remaining_complete_trials(10, states) == 3

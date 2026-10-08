@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from studies.select_3d_mot_finalists import select
+from studies.mot_3d.finalists.select import select
 
 
 ROOT = Path("data/optimization/mot_3d/closure_refinement_v1")

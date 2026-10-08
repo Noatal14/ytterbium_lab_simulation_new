@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from config import ZEEMAN_LASER_CONFIG, ZEEMAN_SIM_CONFIG
-from studies.diagnose_zeeman_trajectories import (
+from studies.zeeman.trajectories import (
     SLOWED_EXIT_SPEED_THRESHOLD_M_S,
     run_diagnostics,
 )

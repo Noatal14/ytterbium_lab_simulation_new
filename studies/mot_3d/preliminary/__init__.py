@@ -1,0 +1,1 @@
+"""Preliminary independent-check stage."""

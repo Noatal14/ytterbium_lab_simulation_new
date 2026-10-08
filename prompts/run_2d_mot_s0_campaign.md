@@ -61,8 +61,8 @@ PROJECT_HANDOFF.md
 data/README.md
 config.py
 studies/mot_2d_s0_campaign.py
-studies/optimize_2d_mot_joint.py
-studies/run_2d_mot_final_production.py
+studies/mot_2d/optimization.py
+studies/mot_2d/production.py
 ```
 
 If this prompt, the campaign guide, scientific plan, configuration, and

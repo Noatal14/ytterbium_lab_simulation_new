@@ -17,8 +17,8 @@ from config import (
 )
 from simulations.mot_3d import mot_3d_simulation
 from simulations.zeeman import run_and_save_zeeman
-from studies.compare_3d_mot_retention import analyze_results
-from studies.optimize_2d_mot_joint import evaluate_configuration
+from studies.mot_3d.analysis.retention import analyze_results
+from studies.mot_2d.optimization import evaluate_configuration
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import load_particle_states, save_particle_states
 

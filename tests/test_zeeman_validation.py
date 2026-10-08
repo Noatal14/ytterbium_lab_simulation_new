@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-import studies.validate_zeeman_configuration as zeeman_validation
-from studies.validate_zeeman_configuration import analyze_zeeman_configuration
+import studies.zeeman.validate_configuration as zeeman_validation
+from studies.zeeman.validate_configuration import analyze_zeeman_configuration
 
 
 def test_active_zeeman_configuration_has_consistent_structure_and_directions():

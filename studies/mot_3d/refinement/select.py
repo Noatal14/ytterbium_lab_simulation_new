@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 
 from config import MOT_3D_OPTIMIZATION_CONFIG
-from studies.optimize_3d_mot_full import build_profile_from_parameters
+from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
 
 COMMON_BOUNDS = {

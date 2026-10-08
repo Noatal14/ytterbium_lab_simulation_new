@@ -12,7 +12,7 @@ from utils.mot_2d_study import (
 
 
 def test_joint_followup_uses_updated_experimental_bounds():
-    from studies.optimize_2d_mot_joint import (
+    from studies.mot_2d.optimization import (
         BOUNDS_DETUNING,
         BOUNDS_MAGNET_RADIUS_M,
         BOUNDS_S0,
@@ -24,7 +24,7 @@ def test_joint_followup_uses_updated_experimental_bounds():
 
 
 def test_joint_optimizer_accepts_refinement_bounds():
-    from studies.optimize_2d_mot_joint import parse_args
+    from studies.mot_2d.optimization import parse_args
 
     args = parse_args(
         [
@@ -52,7 +52,7 @@ def test_joint_optimizer_accepts_refinement_bounds():
 
 
 def test_joint_optimizer_accepts_fixed_s0():
-    from studies.optimize_2d_mot_joint import parse_args
+    from studies.mot_2d.optimization import parse_args
 
     args = parse_args(
         [
@@ -86,7 +86,7 @@ def test_2d_mot_uses_hybrid_solver_by_default():
     import inspect
 
     from simulations.mot_2d import mot_simulation, mot_simulation_paired_ensembles
-    from studies.optimize_2d_mot_joint import evaluate_configuration, parse_args
+    from studies.mot_2d.optimization import evaluate_configuration, parse_args
     from utils.RK4StHybridCustom import RK4StHybridCustom
 
     assert (
@@ -109,7 +109,7 @@ def test_2d_mot_uses_hybrid_solver_by_default():
 
 
 def test_final_production_can_save_downstream_states():
-    from studies.run_2d_mot_final_production import parse_args
+    from studies.mot_2d.production import parse_args
 
     args = parse_args(
         [
@@ -131,7 +131,7 @@ def test_final_production_can_save_downstream_states():
 
 
 def test_joint_evaluation_returns_requested_survivor_states(monkeypatch):
-    import studies.optimize_2d_mot_joint as study
+    import studies.mot_2d.optimization as study
 
     expected_states = np.ones((1, 6))
 
@@ -362,7 +362,7 @@ def test_campaign_advances_five_confirmed_finalists_to_sensitivity(
 
 
 def test_final_production_prediction_uses_conservative_variance():
-    from studies.run_2d_mot_final_production import final_prediction, parse_args
+    from studies.mot_2d.production import final_prediction, parse_args
 
     replicates = [
         {
@@ -407,7 +407,7 @@ def test_final_production_prediction_uses_conservative_variance():
 
 
 def test_cluster_bootstrap_targets_survivor_weighted_pooled_efficiency():
-    from studies.run_2d_mot_final_production import cluster_bootstrap_prediction
+    from studies.mot_2d.production import cluster_bootstrap_prediction
 
     unequal = [
         {"n_input": 1_000, "captured": 10},

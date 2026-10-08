@@ -6,7 +6,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from studies.run_3d_mot_single_pass_stability import ROOT
+from studies.mot_3d.validation.single_pass_stability import ROOT
 
 
 def _write(path, text):
@@ -65,7 +65,7 @@ def main():
     array = _write(
         pbs_root / "01_stability_array.pbs",
         _header("m3d_sp_stab", revision, array="0-2")
-        + f"""python -u -m studies.run_3d_mot_single_pass_stability \\
+        + f"""python -u -m studies.mot_3d.validation.single_pass_stability \\
     --shard-index "$PBS_ARRAY_INDEX" --num-shards 3 --max-atoms 600 \\
     --npools 200 --t-max 0.1 --output-dir "{ROOT}/shard_${{PBS_ARRAY_INDEX}}"
 """,
@@ -80,7 +80,7 @@ def main():
             memory="4gb",
             walltime="00:20:00",
         )
-        + f"""python -u -m studies.merge_3d_mot_single_pass_stability \\
+        + f"""python -u -m studies.mot_3d.validation.merge_single_pass_stability \\
     --input-root "{ROOT}" --output-dir "{ROOT}/merged" \\
     --graph-path "graphs/mot_3d_configuration_decision/single_pass_stability_v1.png"
 """,

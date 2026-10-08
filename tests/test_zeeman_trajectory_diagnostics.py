@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from config import ZEEMAN_BEAM_DIRECTION, ZEEMAN_SIM_CONFIG
-from studies.diagnose_zeeman_trajectories import (
+from studies.zeeman.trajectories import (
     make_on_axis_initial_states,
     summarize_trajectories,
 )
