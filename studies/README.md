@@ -1,5 +1,8 @@
 # Studies command catalog
 
+For the project-wide dependency and data-flow map, see
+`docs/ARCHITECTURE.md`.
+
 `studies` exposes two canonical campaign managers at its root. Implementation
 modules live in scientific-domain packages so that orchestration, workers,
 validation tools, and historical evidence are not mixed in one flat directory.

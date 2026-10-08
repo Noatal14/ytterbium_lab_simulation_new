@@ -34,6 +34,9 @@ report, and export of survivor states for the 3D MOT.
 
 ## Repository structure
 
+For the responsibility boundaries, scientific data flow, and the supported way
+to extend the project, start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
 - `config.py` — the single source of truth for physical constants, atomic parameters, geometry, laser settings, magnetic-field configuration, and runtime defaults.
 - `simulations/` — stage engines for the thermal beam, Zeeman slower, 2D MOT, 3D MOT, and the compatibility pipeline.
 - `studies/` — research workflows that use the stage engines for optimization and stochastic-seed analysis.
