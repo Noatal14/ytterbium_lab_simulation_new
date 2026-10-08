@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clipboard, Clock3, FolderSearch, LoaderCircle, RefreshCw, Server, ShieldAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { SmokeLifecycleApiError, SubmissionApiError, type Campaign, type ScreeningPreview, type ScreeningResult, type SmokeLifecycle, type SmokeLifecycleApi, type SmokeSubmissionPreview, type SmokeSubmissionResult, type SubmissionApi, type TransferApi, type ZeusSnapshot, type ZeusTransferPreview, type ZeusTransferResult } from "../api/campaigns";
+import { ScreeningSubmissionApiError, SmokeLifecycleApiError, SubmissionApiError, type Campaign, type ScreeningPreview, type ScreeningResult, type ScreeningSubmissionApi, type ScreeningSubmissionPreview, type ScreeningSubmissionResult, type SmokeLifecycle, type SmokeLifecycleApi, type SmokeSubmissionPreview, type SmokeSubmissionResult, type SubmissionApi, type TransferApi, type ZeusSnapshot, type ZeusTransferPreview, type ZeusTransferResult } from "../api/campaigns";
 
 type ListProps = { campaigns: Campaign[]; invalidCount: number; loading: boolean; error: string | null; onOpen: (id: string) => void; restoreFocusId?: string | null };
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
@@ -26,7 +26,7 @@ export function CampaignExplorer({ campaigns, invalidCount, loading, error, onOp
 const bytes = (value: number) => new Intl.NumberFormat("en", { style: "unit", unit: value >= 1_000_000 ? "megabyte" : "kilobyte", unitDisplay: "short", maximumFractionDigits: 1 }).format(value / (value >= 1_000_000 ? 1_000_000 : 1_000));
 const timestamp = (value: string) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value));
 
-export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
+export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, screeningSubmission, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; screeningSubmission: ScreeningSubmissionApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
   const trusted = campaign.trust === "trusted-current";
   const command = campaign.next_plan?.display_command ?? "";
   const [copyStatus, setCopyStatus] = useState("");
@@ -42,10 +42,15 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const [remoteState, setRemoteState] = useState<SmokeLifecycle | null>(null);
   const [remoteCheck, setRemoteCheck] = useState<"idle" | "checking" | "ready" | "error">("idle");
   const [remoteError, setRemoteError] = useState("");
+  const [remoteEvidenceFresh, setRemoteEvidenceFresh] = useState(false);
   const [screeningState, setScreeningState] = useState<"idle" | "previewing" | "review" | "preparing" | "success" | "terminal">("idle");
   const [screeningPreview, setScreeningPreview] = useState<ScreeningPreview | null>(null);
   const [screeningResult, setScreeningResult] = useState<ScreeningResult | null>(null);
   const [screeningError, setScreeningError] = useState("");
+  const [screenSubmitState, setScreenSubmitState] = useState<"idle" | "previewing" | "review" | "submitting" | "submitted" | "unknown" | "terminal" | "error">("idle");
+  const [screenSubmitPreview, setScreenSubmitPreview] = useState<ScreeningSubmissionPreview | null>(null);
+  const [screenSubmitResult, setScreenSubmitResult] = useState<ScreeningSubmissionResult | null>(null);
+  const [screenSubmitError, setScreenSubmitError] = useState("");
   const title = useRef<HTMLHeadingElement>(null);
   const reviewButton = useRef<HTMLButtonElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
@@ -62,10 +67,15 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const screeningHeading = useRef<HTMLHeadingElement>(null);
   const screeningSuccess = useRef<HTMLDivElement>(null);
   const screeningErrorPanel = useRef<HTMLDivElement>(null);
+  const screenSubmitButton = useRef<HTMLButtonElement>(null);
+  const screenSubmitHeading = useRef<HTMLHeadingElement>(null);
+  const screenSubmitPanel = useRef<HTMLDivElement>(null);
+  const screenSubmitRequestActive = useRef(false);
   const previousTransferState = useRef(transferState);
   const previousSubmissionState = useRef(submissionState);
   const previousRemoteCheck = useRef(remoteCheck);
   const previousScreeningState = useRef(screeningState);
+  const previousScreenSubmitState = useRef(screenSubmitState);
   useEffect(() => { title.current?.focus(); }, []);
   useEffect(() => {
     const previous = previousTransferState.current;
@@ -95,6 +105,13 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     else if (screeningState === "idle" && previousScreeningState.current === "review") screeningButton.current?.focus();
     previousScreeningState.current = screeningState;
   }, [screeningState, screeningError]);
+  useEffect(() => {
+    const previous = previousScreenSubmitState.current;
+    if (screenSubmitState === "review") screenSubmitHeading.current?.focus();
+    else if (["submitted", "unknown", "terminal", "error"].includes(screenSubmitState)) screenSubmitPanel.current?.focus();
+    else if (screenSubmitState === "idle" && previous === "review") screenSubmitButton.current?.focus();
+    previousScreenSubmitState.current = screenSubmitState;
+  }, [screenSubmitState]);
   async function copyCommand() {
     try { await navigator.clipboard.writeText(command); setCopyStatus("Command copied."); }
     catch { setCopyStatus("Copy failed. Select the command text and copy it manually."); }
@@ -152,8 +169,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   async function refreshRemoteStatus() {
     if (!zeusSnapshot || remoteCheck === "checking") return;
     setRemoteCheck("checking"); setRemoteError(""); setScreeningError("");
-    try { setRemoteState(await lifecycle.status(campaign.id, zeusSnapshot.profile)); setRemoteCheck("ready"); }
-    catch (error) { setRemoteState(null); setRemoteError(error instanceof Error ? error.message : "The smoke status check stopped safely."); setRemoteCheck("error"); }
+    try { setRemoteState(await lifecycle.status(campaign.id, zeusSnapshot.profile)); setRemoteEvidenceFresh(true); setRemoteCheck("ready"); }
+    catch (error) { setRemoteState(null); setRemoteEvidenceFresh(false); setRemoteError(error instanceof Error ? error.message : "The smoke status check stopped safely."); setRemoteCheck("error"); }
   }
   async function previewScreening() {
     if (!zeusSnapshot || !remoteState || remoteState.lifecycle !== "ready_to_prepare_screen") return;
@@ -168,7 +185,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   async function confirmScreening() {
     if (!screeningPreview) return;
     setScreeningState("preparing"); setScreeningError("");
-    try { setScreeningResult(await lifecycle.confirm(screeningPreview.preview_token)); setScreeningState("success"); setRemoteState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "screen" }, lifecycle: "screen_prepared", next_action: "none" } : current); }
+    try { setScreeningResult(await lifecycle.confirm(screeningPreview.preview_token)); setScreeningState("success"); setRemoteEvidenceFresh(false); setRemoteState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "screen" }, lifecycle: "screen_prepared", next_action: "none" } : current); }
     catch (error) {
       if (error instanceof SmokeLifecycleApiError && error.code === "screening_already_prepared") { setScreeningPreview(null); setScreeningState("idle"); await refreshRemoteStatus(); return; }
       const retryReview = error instanceof SmokeLifecycleApiError && ["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(error.code);
@@ -178,8 +195,27 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
       else setScreeningState(terminal ? "terminal" : "review");
     }
   }
+  async function previewScreenSubmission() {
+    if (!zeusSnapshot || !remoteEvidenceFresh || remoteState?.lifecycle !== "screen_prepared" || screenSubmitRequestActive.current) return;
+    screenSubmitRequestActive.current = true; setScreenSubmitState("previewing"); setScreenSubmitError("");
+    try { setScreenSubmitPreview(await screeningSubmission.preview(campaign.id, zeusSnapshot.profile)); setScreenSubmitState("review"); }
+    catch (error) { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission review stopped safely."); setScreenSubmitState(error instanceof ScreeningSubmissionApiError && ["screening_submission_outcome_unknown", "screening_submission_record_invalid", "screening_already_submitted", "screening_already_started"].includes(error.code) ? "terminal" : "error"); }
+    finally { screenSubmitRequestActive.current = false; }
+  }
+  async function confirmScreenSubmission() {
+    if (!screenSubmitPreview || screenSubmitRequestActive.current) return;
+    screenSubmitRequestActive.current = true; setScreenSubmitState("submitting"); setScreenSubmitError("");
+    try { setScreenSubmitResult(await screeningSubmission.confirm(screenSubmitPreview.preview_token)); setScreenSubmitState("submitted"); }
+    catch (error) {
+      const code = error instanceof ScreeningSubmissionApiError ? error.code : "";
+      if (["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(code)) { setScreenSubmitPreview(null); setScreenSubmitError(code === "local_files_changed" ? "The campaign files changed after review. Start a fresh review before submitting." : "The review expired or is no longer valid. Start a fresh review before submitting."); setScreenSubmitState("error"); }
+      else if (code === "screening_submission_outcome_unknown") { setScreenSubmitError("The submission outcome could not be verified. Do not submit again; inspect Zeus jobs."); setScreenSubmitState("unknown"); }
+      else if (["screening_submission_record_invalid", "screening_already_submitted", "screening_already_started", "transition_conflict"].includes(code)) { setScreenSubmitError(error instanceof Error ? error.message : "The Screening submission needs manual verification."); setScreenSubmitState("terminal"); }
+      else { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission stopped safely."); setScreenSubmitState("error"); }
+    } finally { screenSubmitRequestActive.current = false; }
+  }
   const remoteLifecycle = remoteState?.lifecycle;
-  const remotePriority = remoteLifecycle === "ready_to_prepare_screen" ? "Action required" : ["queued", "running", "awaiting_outputs"].includes(remoteLifecycle ?? "") ? "No action needed" : remoteLifecycle === "screen_prepared" ? "Screening is prepared" : remoteLifecycle ? "Smoke check needs attention" : null;
+  const remotePriority = screenSubmitState === "submitted" ? "No action needed" : ["unknown", "terminal"].includes(screenSubmitState) ? "Check Zeus jobs before continuing" : remoteLifecycle === "ready_to_prepare_screen" ? "Action required" : ["queued", "running", "awaiting_outputs"].includes(remoteLifecycle ?? "") ? "No action needed" : remoteLifecycle === "screen_prepared" ? (remoteEvidenceFresh ? "Action required" : "Refresh Zeus status") : remoteLifecycle ? "Smoke check needs attention" : null;
   return <main id="main" className="detail-page">
     <button className="text-button back-button" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" /> Back to campaigns</button>
     <header className="detail-hero"><p className="eyebrow">{campaign.family === "mot_2d" ? "2D-MOT campaign" : "3D-MOT campaign"}</p><h1 ref={title} tabIndex={-1}>{campaign.name}</h1><p className="path-text">{campaign.path}</p><div className="detail-badges"><span>{words(campaign.scientific_role)}</span><span className={trusted ? "badge-ok" : "badge-blocked"}>{words(campaign.trust)}</span></div></header>
@@ -190,7 +226,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
         {["queued", "running"].includes(remoteLifecycle ?? "") && <><p>Job {remoteState.submission.job_id} is {remoteLifecycle}. Zeus continues independently; you can safely close this application.</p><p>Screening remains locked until every smoke output is complete and validated.</p></>}
         {remoteLifecycle === "awaiting_outputs" && <><p>Job {remoteState.submission.job_id} completed successfully. Zeus is still publishing the expected smoke output files.</p><p>No action is needed. Refresh later; Screening remains locked until every output is present and validated.</p></>}
         {remoteLifecycle === "ready_to_prepare_screen" && <><p>All {remoteState.validation.artifact_count} smoke artifacts passed the frozen scientific checks.</p><p>The smoke check confirms execution and data integrity. Its capture values are not a performance result.</p></>}
-        {remoteLifecycle === "screen_prepared" && <><p>The screening files are ready on Zeus. No screening job was submitted and no simulation started.</p><p>The local campaign record has not been synchronized; Zeus is the current source of truth.</p></>}
+        {remoteLifecycle === "screen_prepared" && screenSubmitState === "submitted" ? <><p>Screening has been submitted successfully.</p><p>No later stage was submitted; full details are recorded below.</p></> : remoteLifecycle === "screen_prepared" && <><p>The screening files are ready on Zeus. No screening job was submitted and no simulation started.</p><p>{remoteEvidenceFresh ? "A fresh Zeus check confirms that the submission is ready for review." : "Refresh the Zeus status before reviewing submission; this local transition is not evidence of remote readiness."}</p><p>The local campaign record has not been synchronized; Zeus is the current source of truth.</p></>}
         {remoteLifecycle === "held_attention" && <p>The smoke job is held. Inspect the scheduler details on Zeus before continuing.</p>}
         {remoteLifecycle === "failed" && <p>The smoke job ended unsuccessfully. Screening cannot be prepared.</p>}
         {remoteLifecycle === "outputs_invalid" && <p>The job completed, but its smoke outputs did not pass scientific validation. Screening cannot be prepared.</p>}
@@ -230,6 +266,14 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
       {screeningError && <div ref={screeningErrorPanel} className="state-panel state-panel--error" role="alert" tabIndex={-1}><AlertTriangle aria-hidden="true" /><div><strong>{screeningState === "terminal" ? "Screening state needs manual verification" : "Screening preparation stopped safely"}</strong><p>{screeningError}</p>{screeningState === "terminal" && <button className="secondary-button compact-action" type="button" onClick={onViewJobs}>View Zeus jobs</button>}</div></div>}
     </section>}
     {screeningState === "success" && screeningResult && <section className="section-block" aria-labelledby="screening-success-heading"><div ref={screeningSuccess} className="connection-panel connection-panel--connected" role="status" tabIndex={-1}><CheckCircle2 aria-hidden="true" /><div><strong id="screening-success-heading">Screening prepared on Zeus</strong><p>{screeningResult.artifacts.created} files created and {screeningResult.artifacts.updated} campaign record updated.</p><p>No Screening job was submitted and no simulation started.</p><p>Zeus is current; the local campaign record has not been synchronized.</p></div></div></section>}
+    {remoteState?.lifecycle === "screen_prepared" && screenSubmitState !== "submitted" && <section className="section-block" aria-labelledby="screen-submit-section-heading"><div className="section-heading"><h2 id="screen-submit-section-heading">Submit Screening</h2><p>Submission is a separate guarded action. Review the exact PBS array before sending any work to Zeus.</p></div>
+      {!remoteEvidenceFresh && <div className="prepare-card"><div><strong>Fresh Zeus evidence required</strong><p>The prepared state shown above was created locally in this session or is no longer fresh enough for submission review.</p></div><button className="secondary-button" type="button" disabled={remoteCheck === "checking"} onClick={() => void refreshRemoteStatus()}>{remoteCheck === "checking" ? <><LoaderCircle aria-hidden="true" /> Checking…</> : <><RefreshCw aria-hidden="true" /> Refresh Zeus status</>}</button></div>}
+      {remoteEvidenceFresh && screenSubmitState === "idle" && <div className="prepare-card"><div><strong>Screening is prepared and verified on Zeus</strong><p>A review will revalidate the remote checkout, smoke evidence, inputs, and scheduler request. It will not submit anything.</p></div><button ref={screenSubmitButton} className="primary-button" type="button" onClick={() => void previewScreenSubmission()}>Review Screening submission</button></div>}
+      {screenSubmitState === "previewing" && <div className="state-panel" role="status" aria-busy="true"><LoaderCircle aria-hidden="true" /><div><strong>Reviewing the Screening submission</strong><p>No job is being submitted.</p></div></div>}
+      {screenSubmitPreview && ["review", "submitting"].includes(screenSubmitState) && <div className="transfer-review" aria-busy={screenSubmitState === "submitting"}><div className="section-heading"><p className="eyebrow">Final review</p><h3 ref={screenSubmitHeading} tabIndex={-1}>Submit Screening to Zeus</h3><p>{screenSubmitPreview.stage.purpose}</p></div><dl className="transfer-facts"><div><dt>Campaign</dt><dd>{screenSubmitPreview.campaign.name}</dd></div><div><dt>Stage</dt><dd>{screenSubmitPreview.stage.label}</dd></div><div><dt>Fixed s₀ values</dt><dd>{screenSubmitPreview.campaign.s0_values.join(", ")}</dd></div><div><dt>PBS file</dt><dd><code>{screenSubmitPreview.job.file}</code></dd></div><div><dt>Scheduler request</dt><dd>1 array job · {screenSubmitPreview.job.task_count} tasks</dd></div><div><dt>Concurrent-task limit</dt><dd>At most {screenSubmitPreview.job.array_throttle} tasks at once</dd></div><div><dt>Queue</dt><dd><code>{screenSubmitPreview.job.queue}</code></dd></div><div><dt>Resources per task</dt><dd>{screenSubmitPreview.job.cores_per_task} CPU cores · {Math.round(screenSubmitPreview.job.memory_per_task_bytes / 1024 ** 3)} GB memory</dd></div><div><dt>Walltime limit per task</dt><dd>{screenSubmitPreview.job.walltime_seconds / 3600} hours</dd></div><div><dt>Validated smoke job</dt><dd><code>{screenSubmitPreview.smoke.job_id}</code> · {screenSubmitPreview.smoke.point_count} points</dd></div><div><dt>Remote code</dt><dd>Branch {screenSubmitPreview.remote.branch} · exact commit <code>{screenSubmitPreview.remote.commit.slice(0, 12)}</code> · clean worktree</dd></div><div><dt>Campaign inputs</dt><dd>Ready · all {screenSubmitPreview.inputs.verified_count} artifacts verified</dd></div></dl><ul className="effect-list"><li><CheckCircle2 aria-hidden="true" /> Submits Screening only.</li><li><CheckCircle2 aria-hidden="true" /> Does not submit any later stage.</li><li><CheckCircle2 aria-hidden="true" /> Does not modify campaign files.</li><li><CheckCircle2 aria-hidden="true" /> Later stages remain locked.</li></ul><div className="submission-attention"><strong>One real Zeus submission</strong><p>Confirming performs exactly one <code>qsub</code> for this PBS array. Nothing is submitted automatically.</p></div><div className="form-actions"><button className="text-button" type="button" disabled={screenSubmitState === "submitting"} onClick={() => { setScreenSubmitPreview(null); setScreenSubmitError(""); setScreenSubmitState("idle"); }}>Back</button><button className="primary-button" type="button" disabled={screenSubmitState === "submitting"} onClick={() => void confirmScreenSubmission()}>{screenSubmitState === "submitting" ? <><LoaderCircle aria-hidden="true" /> Submitting…</> : "Submit Screening to Zeus"}</button></div></div>}
+      {screenSubmitError && <div ref={screenSubmitPanel} className="state-panel state-panel--error" role="alert" tabIndex={-1}><AlertTriangle aria-hidden="true" /><div><strong>{screenSubmitState === "unknown" ? "Submission outcome needs manual verification" : screenSubmitState === "terminal" ? "Screening will not be submitted again" : "Screening submission stopped safely"}</strong><p>{screenSubmitError}</p>{["unknown", "terminal"].includes(screenSubmitState) ? <button className="secondary-button compact-action" type="button" onClick={onViewJobs}>View Zeus jobs</button> : <button className="secondary-button compact-action" type="button" onClick={() => { setScreenSubmitError(""); setScreenSubmitPreview(null); setScreenSubmitState("idle"); }}>Review again</button>}</div></div>}
+    </section>}
+    {screenSubmitState === "submitted" && screenSubmitResult && <section className="section-block" aria-labelledby="screen-submit-success-heading"><div ref={screenSubmitPanel} className="connection-panel connection-panel--connected" role="status" tabIndex={-1}><CheckCircle2 aria-hidden="true" /><div><strong id="screen-submit-success-heading">Screening submitted</strong><p>Zeus job <code>{screenSubmitResult.job_id}</code> was recorded at <time dateTime={screenSubmitResult.submitted_at}>{timestamp(screenSubmitResult.submitted_at)}</time>.</p><p>No later stage was submitted. Zeus continues independently; no action is needed and it is safe to close this application.</p><button className="secondary-button compact-action" type="button" onClick={onViewJobs}>View in Zeus jobs</button></div></div></section>}
     <section className="section-block" aria-labelledby="timeline-heading"><div className="section-heading"><h2 id="timeline-heading">Campaign timeline</h2><p>Progress reflects validated local output files only.</p></div><div className="timeline-legend" aria-label="Timeline color legend"><span><i className="dot dot--empty" /> Not started</span><span><i className="dot dot--active" /> Partial output</span><span><i className="dot dot--complete" /> Complete</span><span><i className="dot dot--blocked" /> Unknown or inconsistent</span></div>{campaign.progress.length ? <ol className="timeline">{campaign.progress.map((stage) => <li className={`timeline-item timeline-item--${stage.status}`} key={stage.stage}><span className="timeline-marker" aria-hidden="true" /><div><strong>{words(stage.stage)}</strong><p>{stage.expected === null ? `${stage.completed} validated outputs; expected total unavailable` : `${stage.completed} of ${stage.expected} validated outputs`}</p><span className="sr-only">Status: {words(stage.status)}</span></div></li>)}</ol> : <div className="state-panel">No validated stage progress is available.</div>}</section>
     {campaign.warnings.length > 0 && <section className="section-block" aria-labelledby="warnings-heading"><div className="section-heading"><h2 id="warnings-heading">Checks and warnings</h2></div><ul className="warning-list">{campaign.warnings.map((warning, index) => <li className={`warning warning--${warning.severity}`} key={`${warning.message}-${index}`}><strong>{warning.severity}</strong><span>{warning.message}</span></li>)}</ul></section>}
   </main>;

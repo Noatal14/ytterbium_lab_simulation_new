@@ -22,6 +22,7 @@ from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.zeus_transfer import ZeusPreparationError
 from workflow_api.zeus_submission import ZeusSubmissionError
 from workflow_api.zeus_screening import ZeusScreeningError
+from workflow_api.zeus_screen_submission import ZeusScreenSubmissionError
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
@@ -260,7 +261,7 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None, screening_service=None):
+def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None, screening_service=None, screen_submission_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     handler.creation_service = creation_service
@@ -268,6 +269,7 @@ def running_server(request_count=2, repository_root=None, creation_service=None,
     handler.transfer_service = transfer_service
     handler.submission_service = submission_service
     handler.screening_service = screening_service
+    handler.screen_submission_service = screen_submission_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -781,3 +783,22 @@ def test_screening_errors_are_sanitized():
         status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
         assert status==409 and payload["error"]["code"]=="transition_outcome_unknown"
         assert "/home/" not in payload["error"]["message"]
+
+
+class _FakeScreenSubmissionService:
+    def preview(self,payload,*,session_id):
+        return {"preview_token":"t","expires_in_seconds":300,"campaign":{"id":"mot_2d-id","name":"C","git_commit":"a"*40,"s0_values":[1.3]},"stage":{"id":"screen","label":"Screening","purpose":"Broad search."},"job":{"file":"jobs/02_screen.pbs","kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":86400},"remote":{"host":"zeus.technion.ac.il","project_directory":payload["project_directory"],"commit":"a"*40,"branch":"main","dirty":False},"inputs":{"verified_count":72,"status":"ready"},"smoke":{"status":"validated","job_id":"1.zeus-master","point_count":1},"effects":{"submit_screening":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
+    def confirm(self,payload,*,session_id):
+        return {"status":"submitted","campaign_id":"mot_2d-id","stage":"screen","job_id":"2[].zeus-master","submitted_at":"2026-10-08T21:00:00+00:00","later_stages_locked":True}
+
+
+def test_screen_submission_endpoints_require_explicit_session_confirmation():
+    service=_FakeScreenSubmissionService()
+    with running_server(request_count=3,screen_submission_service=service) as base_url:
+        _,headers,payload=request_json(f"{base_url}/api/v1/session",headers={"Sec-Fetch-Site":"same-origin"})
+        trusted=_session_headers(base_url,headers["Set-Cookie"].split(";",1)[0],payload["data"]["csrf_token"])
+        request={"campaign_id":"mot_2d-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
+        status,_,payload=request_json(f"{base_url}/api/v1/zeus/submissions/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
+        assert status==200 and payload["data"]["job"]["array_throttle"]==3
+        status,_,payload=request_json(f"{base_url}/api/v1/zeus/submissions/screening/confirm",method="POST",headers=trusted,body=json.dumps({"preview_token":"t"}))
+        assert status==201 and payload["data"]["job_id"]=="2[].zeus-master"

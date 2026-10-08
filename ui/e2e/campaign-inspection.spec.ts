@@ -89,10 +89,13 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.route("**/api/v1/zeus/smoke/status", (route) => {
     statusChecks += 1;
     const running = statusChecks === 1;
-    return route.fulfill({ json: { data: { source: "zeus", queried_at: new Date().toISOString(), campaign: { id: smoke.id, name: smoke.name, stage: "smoke" }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: running ? "running" : "completed_success", raw_state: running ? "R" : "F", exit_status: running ? null : 0 }, validation: running ? { status: "not_ready", points: [], artifact_count: 0 } : { status: "valid", points: [{ s0: 1.3, captured: 0, input: 2, efficiency: 0 }], artifact_count: 3 }, lifecycle: running ? "running" : "ready_to_prepare_screen", next_action: running ? "wait" : "review_screening_preparation" } } });
+    const prepared = statusChecks >= 3;
+    return route.fulfill({ json: { data: { source: "zeus", queried_at: new Date().toISOString(), campaign: { id: smoke.id, name: smoke.name, stage: prepared ? "screen" : "smoke" }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: running ? "running" : "completed_success", raw_state: running ? "R" : "F", exit_status: running ? null : 0 }, validation: running ? { status: "not_ready", points: [], artifact_count: 0 } : { status: "valid", points: [{ s0: 1.3, captured: 0, input: 2, efficiency: 0 }], artifact_count: 3 }, lifecycle: running ? "running" : prepared ? "screen_prepared" : "ready_to_prepare_screen", next_action: running ? "wait" : prepared ? "none" : "review_screening_preparation" } } });
   });
   await page.route("**/api/v1/zeus/screening/preview", (route) => route.fulfill({ json: { data: { preview_token: "screen-token", expires_in_seconds: 300, campaign: { id: smoke.id, name: smoke.name, git_commit: "b".repeat(40) }, from_stage: "smoke", to_stage: "screen", smoke: { job_id: "4759999.zeus-master", points: [{ s0: 1.3, captured: 0, input: 2, efficiency: 0 }], artifact_count: 3 }, artifacts: { create: ["screen/tasks.json", "jobs/02_screen.pbs"], update: ["campaign.json"] }, effects: { prepare_screening: true, submit_screening: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } } } }));
   await page.route("**/api/v1/zeus/screening/confirm", (route) => route.fulfill({ json: { data: { status: "screening_prepared", campaign_id: smoke.id, stage: "screen", artifacts: { created: 2, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } } } }));
+  await page.route("**/api/v1/zeus/submissions/screening/preview", (route) => route.fulfill({ json: { data: { preview_token: "screen-submit-token", expires_in_seconds: 300, campaign: { id: smoke.id, name: smoke.name, git_commit: "b".repeat(40), s0_values: [1.3] }, stage: { id: "screen", label: "Screening", purpose: "Search broadly for promising settings." }, job: { file: "jobs/02_screen.pbs", kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 86400 }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false }, inputs: { verified_count: 72, status: "ready" }, smoke: { status: "validated", job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true } } }));
+  await page.route("**/api/v1/zeus/submissions/screening/confirm", (route) => route.fulfill({ json: { data: { status: "submitted", campaign_id: smoke.id, stage: "screen", job_id: "4760000[].zeus-master", submitted_at: new Date().toISOString(), later_stages_locked: true } } }));
   await page.goto("/");
   await page.getByRole("link", { name: "Zeus jobs" }).click();
   await page.getByLabel("Technion username").fill("tal.noa");
@@ -123,6 +126,14 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.getByRole("button", { name: "Prepare Screening on Zeus" }).click();
   await expect(page.getByText("Screening prepared on Zeus")).toBeVisible();
   await expect(page.getByText(/No Screening job was submitted/)).toBeVisible();
+  await page.getByRole("button", { name: "Refresh Zeus status" }).click();
+  await page.getByRole("button", { name: "Review Screening submission" }).click();
+  await expect(page.getByRole("heading", { name: "Submit Screening to Zeus" })).toBeFocused();
+  await expect(page.getByText("At most 3 tasks at once")).toBeVisible();
+  await expect(page.getByText(/exactly one/)).toBeVisible();
+  await page.getByRole("button", { name: "Submit Screening to Zeus" }).click();
+  await expect(page.getByText("4760000[].zeus-master").first()).toBeVisible();
+  await expect(page.getByText(/safe to close this application/i)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

@@ -381,6 +381,61 @@ export const smokeLifecycleApi = {
 };
 export type SmokeLifecycleApi = typeof smokeLifecycleApi;
 
+export type ScreeningSubmissionPreview = {
+  preview_token: string; expires_in_seconds: number;
+  campaign: { id: string; name: string; git_commit: string; s0_values: number[] };
+  stage: { id: "screen"; label: "Screening"; purpose: string };
+  job: { file: "jobs/02_screen.pbs"; kind: "array"; task_count: number; array_throttle: 3; queue: "zeus_combined_q"; cores_per_task: 200; memory_per_task_bytes: 68719476736; walltime_seconds: 86400 };
+  remote: { host: "zeus.technion.ac.il"; project_directory: string; commit: string; branch: string; dirty: false };
+  inputs: { verified_count: 72; status: "ready" };
+  smoke: { status: "validated"; job_id: string; point_count: number };
+  effects: { submit_screening: true; submit_later_stages: false; modify_files: false };
+  later_stages_locked: true;
+};
+export type ScreeningSubmissionResult = { status: "submitted"; campaign_id: string; stage: "screen"; job_id: string; submitted_at: string; later_stages_locked: true };
+export class ScreeningSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
+
+function parseScreeningSubmissionPreview(value: Record<string, unknown>): ScreeningSubmissionPreview {
+  const campaign = value.campaign as Record<string, unknown>; const stage = value.stage as Record<string, unknown>; const job = value.job as Record<string, unknown>; const remote = value.remote as Record<string, unknown>; const inputs = value.inputs as Record<string, unknown>; const smoke = value.smoke as Record<string, unknown>; const effects = value.effects as Record<string, unknown>;
+  if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "stage", "job", "remote", "inputs", "smoke", "effects", "later_stages_locked"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || !finiteNonnegative(value.expires_in_seconds)
+    || !campaign || !exactKeys(campaign, ["id", "name", "git_commit", "s0_values"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit)) || !Array.isArray(campaign.s0_values) || campaign.s0_values.length === 0 || !campaign.s0_values.every((item) => typeof item === "number" && Number.isFinite(item) && item > 0)
+    || !stage || !exactKeys(stage, ["id", "label", "purpose"]) || stage.id !== "screen" || stage.label !== "Screening" || !boundedPrintable(stage.purpose, 512)
+    || !job || !exactKeys(job, ["file", "kind", "task_count", "array_throttle", "queue", "cores_per_task", "memory_per_task_bytes", "walltime_seconds"]) || job.file !== "jobs/02_screen.pbs" || job.kind !== "array" || !Number.isInteger(job.task_count) || job.task_count !== campaign.s0_values.length * 3 || job.array_throttle !== 3 || job.queue !== "zeus_combined_q" || job.cores_per_task !== 200 || job.memory_per_task_bytes !== 68719476736 || job.walltime_seconds !== 86400
+    || !remote || !exactKeys(remote, ["host", "project_directory", "commit", "branch", "dirty"]) || remote.host !== "zeus.technion.ac.il" || !/^\/home\/[A-Za-z][A-Za-z0-9._-]{0,31}\/ytterbium_lab_simulation_new$/.test(String(remote.project_directory)) || remote.commit !== campaign.git_commit || !boundedPrintable(remote.branch, 256) || remote.dirty !== false
+    || !inputs || !exactKeys(inputs, ["verified_count", "status"]) || inputs.verified_count !== 72 || inputs.status !== "ready"
+    || !smoke || !exactKeys(smoke, ["status", "job_id", "point_count"]) || smoke.status !== "validated" || !text(smoke.job_id) || !smokeJobId.test(smoke.job_id) || !Number.isInteger(smoke.point_count) || smoke.point_count !== campaign.s0_values.length
+    || !effects || !exactKeys(effects, ["submit_screening", "submit_later_stages", "modify_files"]) || effects.submit_screening !== true || effects.submit_later_stages !== false || effects.modify_files !== false || value.later_stages_locked !== true) throw new Error("Invalid Screening submission preview response.");
+  return value as unknown as ScreeningSubmissionPreview;
+}
+function parseScreeningSubmissionResult(value: Record<string, unknown>): ScreeningSubmissionResult {
+  if (!exactKeys(value, ["status", "campaign_id", "stage", "job_id", "submitted_at", "later_stages_locked"]) || value.status !== "submitted" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "screen" || !text(value.job_id) || !/^\d+\[\]\.zeus-master$/.test(value.job_id) || !text(value.submitted_at) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(value.submitted_at) || Number.isNaN(Date.parse(value.submitted_at)) || value.later_stages_locked !== true) throw new Error("Invalid Screening submission result.");
+  return value as unknown as ScreeningSubmissionResult;
+}
+let screeningSubmissionSession: Promise<string> | null = null;
+let screeningSubmissionContext: { token: string; campaignId: string } | null = null;
+const getScreeningSubmissionSession = () => screeningSubmissionSession ??= creationApi.session();
+async function screeningSubmissionMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
+  const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
+  const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } };
+  if (!response.ok || !payload.data) throw new ScreeningSubmissionApiError(text(payload.error?.code) ? payload.error.code : "screening_submission_failed", text(payload.error?.message) ? payload.error.message : "Screening submission stopped safely.");
+  return payload.data;
+}
+export const screeningSubmissionApi = {
+  async preview(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<ScreeningSubmissionPreview> {
+    const csrf = await getScreeningSubmissionSession();
+    try { const preview = parseScreeningSubmissionPreview(await screeningSubmissionMutation("/api/v1/zeus/submissions/screening/preview", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf)); if (preview.campaign.id !== campaign_id || preview.remote.project_directory !== profile.project_directory) throw new Error("Screening submission preview did not match the selected campaign and profile."); screeningSubmissionContext = { token: preview.preview_token, campaignId: campaign_id }; return preview; }
+    catch (error) { screeningSubmissionSession = null; screeningSubmissionContext = null; throw error; }
+  },
+  async confirm(preview_token: string): Promise<ScreeningSubmissionResult> {
+    if (!screeningSubmissionContext || screeningSubmissionContext.token !== preview_token) throw new Error("The Screening submission preview is no longer active.");
+    const csrf = await getScreeningSubmissionSession();
+    try { const result = parseScreeningSubmissionResult(await screeningSubmissionMutation("/api/v1/zeus/submissions/screening/confirm", { preview_token }, csrf)); if (result.campaign_id !== screeningSubmissionContext.campaignId) throw new Error("Screening submission result did not match the reviewed campaign."); return result; }
+    catch (error) { if (error instanceof ScreeningSubmissionApiError) throw error; throw new ScreeningSubmissionApiError("screening_submission_outcome_unknown", "The submission result could not be verified. Do not submit again; inspect Zeus jobs."); }
+    finally { screeningSubmissionSession = null; screeningSubmissionContext = null; }
+  },
+};
+export type ScreeningSubmissionApi = typeof screeningSubmissionApi;
+
 function parsePreview(value: Record<string, unknown>): CreationPreview {
   const provenance = value.provenance as Record<string, unknown>;
   const plan = value.plan as Record<string, unknown> | null;

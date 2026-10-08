@@ -1,4 +1,4 @@
-import { campaignApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
+import { campaignApi, screeningSubmissionApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
 
 const smokePreviewData = (kind: "job" | "array" = "job") => ({
   preview_token: "submit-token", expires_in_seconds: 300,
@@ -12,6 +12,17 @@ const smokePreviewData = (kind: "job" | "array" = "job") => ({
 const smokeResultData = (job_id: string) => ({ status: "submitted", campaign_id: "mot_2d-x", stage: "smoke", job_id, submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true });
 
 describe("campaign API runtime validation", () => {
+  it("strictly previews and confirms one Screening array submission", async () => {
+    const preview = { preview_token: "screen-submit-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "screen", label: "Screening", purpose: "Find promising candidates" }, job: { file: "jobs/02_screen.pbs", kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 86400 }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false }, inputs: { verified_count: 72, status: "ready" }, smoke: { status: "validated", job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true };
+    const result = { status: "submitted", campaign_id: "mot_2d-x", stage: "screen", job_id: "4760000[].zeus-master", submitted_at: "2026-10-08T13:00:00Z", later_stages_locked: true };
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: result }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    expect((await screeningSubmissionApi.preview("mot_2d-x", profile)).job.array_throttle).toBe(3);
+    expect((await screeningSubmissionApi.confirm("screen-submit-token")).job_id).toBe("4760000[].zeus-master");
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/submissions/screening/confirm", expect.objectContaining({ body: JSON.stringify({ preview_token: "screen-submit-token" }) }));
+    vi.unstubAllGlobals();
+  });
   it("rejects malformed nested status data instead of rendering it", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
