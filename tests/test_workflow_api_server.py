@@ -21,6 +21,7 @@ from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.zeus_transfer import ZeusPreparationError
 from workflow_api.zeus_submission import ZeusSubmissionError
+from workflow_api.zeus_screening import ZeusScreeningError
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
@@ -259,13 +260,14 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None):
+def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None, screening_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     handler.creation_service = creation_service
     handler.zeus_service = zeus_service
     handler.transfer_service = transfer_service
     handler.submission_service = submission_service
+    handler.screening_service = screening_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -737,3 +739,45 @@ def test_smoke_submission_unavailable_and_uncertain_errors_are_sanitized():
             assert payload["error"]["code"] == code
             assert expected_message in payload["error"]["message"]
             assert "/home/" not in payload["error"]["message"]
+
+
+class _FakeScreeningService:
+    def __init__(self, error=None): self.calls=[];self.error=error
+    def status(self,payload,*,session_id):
+        self.calls.append(("status",payload,session_id))
+        if self.error: raise self.error
+        return {"source":"zeus","queried_at":"2026-10-08T20:00:00+00:00","campaign":{"id":"mot_2d-id","name":"Campaign","stage":"smoke"},"submission":{"job_id":"12345.zeus-master"},"scheduler":{"state":"completed_success","raw_state":"F","exit_status":0},"validation":{"status":"valid","points":[{"s0":1.3,"captured":0,"input":2,"efficiency":0.0}],"artifact_count":3},"lifecycle":"ready_to_prepare_screen","next_action":"review_screening_preparation"}
+    def preview(self,payload,*,session_id):
+        self.calls.append(("preview",payload,session_id))
+        if self.error: raise self.error
+        return {"preview_token":"screen-token","expires_in_seconds":300,"campaign":{"id":"mot_2d-id","name":"Campaign","git_commit":"a"*40},"from_stage":"smoke","to_stage":"screen","smoke":{"job_id":"12345.zeus-master","points":[{"s0":1.3,"captured":0,"input":2,"efficiency":0.0}],"artifact_count":3},"artifacts":{"create":["screen/tasks.json","jobs/02_screen.pbs"],"update":["campaign.json"]},"effects":{"prepare_screening":True,"submit_screening":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
+    def confirm(self,payload,*,session_id):
+        self.calls.append(("confirm",payload,session_id))
+        if self.error: raise self.error
+        return {"status":"screening_prepared","campaign_id":"mot_2d-id","stage":"screen","artifacts":{"created":2,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}}
+
+
+def test_screening_endpoints_are_session_bound_and_do_not_submit():
+    service=_FakeScreeningService()
+    with running_server(request_count=4,screening_service=service) as base_url:
+        _,headers,payload=request_json(f"{base_url}/api/v1/session",headers={"Sec-Fetch-Site":"same-origin"})
+        trusted=_session_headers(base_url,headers["Set-Cookie"].split(";",1)[0],payload["data"]["csrf_token"])
+        request={"campaign_id":"mot_2d-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
+        status,_,payload=request_json(f"{base_url}/api/v1/zeus/smoke/status",method="POST",headers=trusted,body=json.dumps(request))
+        assert status==200 and payload["data"]["source"]=="zeus"
+        status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
+        assert status==200 and payload["data"]["effects"]["submit_screening"] is False
+        status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/confirm",method="POST",headers=trusted,body=json.dumps({"preview_token":"screen-token"}))
+        assert status==201 and payload["data"]["submitted_to_zeus"] is False
+        assert len({call[2] for call in service.calls})==1
+
+
+def test_screening_errors_are_sanitized():
+    service=_FakeScreeningService(ZeusScreeningError("transition_outcome_unknown"))
+    with running_server(request_count=2,screening_service=service) as base_url:
+        _,headers,payload=request_json(f"{base_url}/api/v1/session",headers={"Sec-Fetch-Site":"same-origin"})
+        trusted=_session_headers(base_url,headers["Set-Cookie"].split(";",1)[0],payload["data"]["csrf_token"])
+        request={"campaign_id":"mot_2d-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
+        status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
+        assert status==409 and payload["error"]["code"]=="transition_outcome_unknown"
+        assert "/home/" not in payload["error"]["message"]

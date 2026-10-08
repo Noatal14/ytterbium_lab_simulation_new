@@ -20,6 +20,7 @@ from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
 from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS
+from workflow_api.mot_2d_smoke import validate_smoke_outputs
 from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
@@ -303,10 +304,10 @@ def prepare(root, manifest, stage, specs, number, ncpus, walltime):
 
 
 def prepare_screen(root, manifest):
-    missing = [v for v in manifest["s0_values"]
-               if not (root / "smoke" / key(v) / "summary.json").exists()]
-    if missing:
-        raise RuntimeError(f"Smoke tests incomplete: {missing}")
+    # A summary file alone is not evidence that the smoke calculation was
+    # complete or used the frozen scientific design.  Keep the CLI and UI on
+    # one strict validation boundary.
+    validate_smoke_outputs(root, manifest)
     specs = [{"s0": value, "worker": worker}
              for value in manifest["s0_values"] for worker in range(3)]
     prepare(root, manifest, "screen", specs, "02", 200, SCREEN_WALLTIME)

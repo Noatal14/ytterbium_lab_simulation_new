@@ -12,6 +12,7 @@ import shutil
 import tempfile
 import ctypes
 import sys
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -95,6 +96,61 @@ python -m studies.mot_2d_s0_campaign smoke --campaign {shlex.quote(campaign_argu
     return {
         "campaign.json": (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode(),
         "jobs/01_smoke.pbs": pbs,
+    }
+
+
+def render_screen_transition(
+    manifest: dict[str, Any], destination: Path, repository_root: Path
+) -> dict[str, bytes]:
+    """Purely render the canonical smoke-to-screen transition artifacts."""
+    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "smoke":
+        raise ValueError("Campaign is not awaiting screening preparation.")
+    try:
+        campaign_argument = destination.relative_to(repository_root).as_posix()
+    except ValueError as error:
+        raise ValueError("Campaign destination must be inside the repository.") from error
+    if not campaign_argument.startswith("data/optimization/mot_2d/"):
+        raise ValueError("Campaign destination is outside the canonical 2D-MOT location.")
+    values = manifest.get("s0_values")
+    if not isinstance(values, list) or not values:
+        raise ValueError("Campaign has no fixed s0 values.")
+    tasks = [{"s0": float(value), "worker": worker} for value in values for worker in range(3)]
+    commit = manifest["provenance"]["git_commit"]
+    task_path = f"{campaign_argument}/screen/tasks.json"
+    job_path = f"{campaign_argument}/jobs/02_screen.pbs"
+    pbs = f"""#!/bin/bash
+#PBS -N mot2d_scree
+#PBS -q zeus_combined_q
+#PBS -J 0-{len(tasks)-1}%3
+#PBS -l select=1:ncpus=200:mem=64gb
+#PBS -l walltime=24:00:00
+
+set -euo pipefail
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
+module load SPACK/apps
+module load gcc/14.1.0
+module load python/3.14.2
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
+EXPECTED_COMMIT={shlex.quote(commit)}
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
+  echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2
+  exit 42
+fi
+RUN_TMP="/tmp/${{USER}}_mot2d_scree_${{PBS_JOBID}}_${{PBS_ARRAY_INDEX:-0}}"
+mkdir -p "${{RUN_TMP}}"
+export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
+trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
+python -m studies.mot_2d_s0_campaign screen-task --campaign {shlex.quote(campaign_argument)} --task-index $PBS_ARRAY_INDEX
+""".encode()
+    updated = deepcopy(manifest)
+    updated["stage"] = "screen"
+    updated.setdefault("stages", {})["screen"] = {"tasks": len(tasks), "job_file": job_path}
+    return {
+        "screen/tasks.json": (json.dumps(tasks, indent=2, sort_keys=True) + "\n").encode(),
+        "jobs/02_screen.pbs": pbs,
+        "campaign.json": (json.dumps(updated, indent=2, sort_keys=True) + "\n").encode(),
     }
 
 

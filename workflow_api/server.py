@@ -27,6 +27,7 @@ from workflow_api.repository_snapshot import RepositorySnapshotProvider
 from workflow_api.zeus_snapshot import ZeusSnapshotError, ZeusSnapshotProvider, ZeusSnapshotService
 from workflow_api.zeus_transfer import ZeusPreparationCoordinator, ZeusPreparationError
 from workflow_api.zeus_submission import ZeusSmokeSubmissionCoordinator, ZeusSubmissionError
+from workflow_api.zeus_screening import ZeusScreeningCoordinator, ZeusScreeningError
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -48,6 +49,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     zeus_service: ZeusSnapshotService | None = None
     transfer_service: ZeusPreparationCoordinator | None = None
     submission_service: ZeusSmokeSubmissionCoordinator | None = None
+    screening_service: ZeusScreeningCoordinator | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -66,7 +68,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None:
                 self._error("session_unavailable", "Local actions are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -122,7 +124,8 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
         target = urlsplit(self.path)
         transfer_paths = {"/api/v1/zeus/transfers/preview", "/api/v1/zeus/transfers/confirm"}
         submission_paths = {"/api/v1/zeus/submissions/smoke/preview", "/api/v1/zeus/submissions/smoke/confirm"}
-        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths}
+        screening_paths = {"/api/v1/zeus/smoke/status", "/api/v1/zeus/screening/preview", "/api/v1/zeus/screening/confirm"}
+        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths, *screening_paths}
         if target.query or target.path not in allowed:
             self._method_not_allowed(); return
         if target.path == "/api/v1/zeus/snapshot" and self.zeus_service is None:
@@ -131,7 +134,9 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._error("zeus_preparation_unavailable", "Zeus campaign preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if target.path in submission_paths and self.submission_service is None:
             self._error("zeus_submission_unavailable", "Zeus smoke submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path not in transfer_paths | submission_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
+        if target.path in screening_paths and self.screening_service is None:
+            self._error("zeus_screening_unavailable", "Zeus smoke inspection is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
+        if target.path not in transfer_paths | submission_paths | screening_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
             self._error("creation_unavailable", "Local campaign creation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if not self._trusted_mutation_headers(): return
         try:
@@ -147,6 +152,12 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 data = self.submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path == "/api/v1/zeus/submissions/smoke/confirm":
                 data = self.submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/smoke/status":
+                data = self.screening_service.status(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/screening/preview":
+                data = self.screening_service.preview(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/screening/confirm":
+                data = self.screening_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path.endswith("/preview"):
                 data = self.creation_service.preview(payload, session)
             else:
@@ -254,6 +265,31 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 "submission_busy": "Another submission operation is already checking this campaign.",
             }
             self._error(error.code, messages.get(error.code, "Zeus smoke submission stopped safely."), statuses.get(error.code, HTTPStatus.PRECONDITION_FAILED)); return
+        except ZeusScreeningError as error:
+            if error.code in {"request_invalid", "profile_invalid"}: status = HTTPStatus.BAD_REQUEST
+            elif error.code == "campaign_not_found": status = HTTPStatus.NOT_FOUND
+            elif error.code == "zeus_authentication_required": status = HTTPStatus.UNAUTHORIZED
+            elif error.code in {"zeus_unreachable", "scheduler_unavailable"}: status = HTTPStatus.SERVICE_UNAVAILABLE
+            elif error.code == "zeus_timeout": status = HTTPStatus.GATEWAY_TIMEOUT
+            elif error.code in {"transition_busy", "transition_conflict", "transition_outcome_unknown", "screening_already_prepared"}: status = HTTPStatus.CONFLICT
+            else: status = HTTPStatus.PRECONDITION_FAILED
+            messages = {
+                "smoke_running": "The smoke check is still running.", "smoke_held": "The smoke job needs attention on Zeus.",
+                "smoke_failed": "The smoke job finished with an error.", "smoke_status_unknown": "The smoke outcome could not be established safely.",
+                "smoke_outputs_pending": "The smoke job succeeded; its output files are still becoming visible.",
+                "smoke_outputs_invalid": "The smoke outputs failed validation.", "screening_already_prepared": "Screening is already prepared on Zeus.",
+                "transition_outcome_unknown": "Screening preparation may have changed Zeus. Inspect it before retrying.",
+                "confirmation_invalid": "The screening preview is invalid or belongs to another session.",
+                "confirmation_expired": "The screening preview expired. Review it again.",
+                "local_checkout_mismatch": "The local checkout no longer matches the campaign commit.",
+                "remote_checkout_mismatch": "The Zeus checkout no longer matches the campaign commit.",
+                "zeus_authentication_required": "An existing SSH key or agent is required.",
+                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
+                "zeus_timeout": "The Zeus inspection timed out.", "zeus_unreachable": "Zeus could not be reached.",
+                "scheduler_unavailable": "The Zeus scheduler history could not be read.", "transition_busy": "Another screening preparation is in progress.",
+                "transition_conflict": "A screening artifact conflicts with the reviewed plan.",
+            }
+            self._error(error.code, messages.get(error.code, "Smoke inspection or screening preparation stopped safely."), status); return
         except BlockingIOError:
             self._error("rate_limited", "Too many local creation requests.", HTTPStatus.TOO_MANY_REQUESTS); return
         except FileExistsError:
@@ -367,6 +403,9 @@ def main() -> None:
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     ReadOnlyWorkflowHandler.submission_service = ZeusSmokeSubmissionCoordinator(
+        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    ReadOnlyWorkflowHandler.screening_service = ZeusScreeningCoordinator(
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), ReadOnlyWorkflowHandler)

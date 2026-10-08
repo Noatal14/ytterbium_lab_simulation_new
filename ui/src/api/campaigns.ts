@@ -279,6 +279,108 @@ export const submissionApi = {
 };
 export type SubmissionApi = typeof submissionApi;
 
+export type SmokePoint = { s0: number; captured: number; input: 2; efficiency: number };
+export type SmokeLifecycle = {
+  source: "zeus"; queried_at: string;
+  campaign: { id: string; name: string; stage: "smoke" | "screen" };
+  submission: { job_id: string };
+  scheduler: { state: "queued" | "running" | "held_attention" | "completed_success" | "completed_failed" | "unknown"; raw_state: string; exit_status: number | null };
+  validation: { status: "not_ready" | "valid" | "invalid"; points: SmokePoint[]; artifact_count: number };
+  lifecycle: "queued" | "running" | "awaiting_outputs" | "held_attention" | "failed" | "outputs_invalid" | "ready_to_prepare_screen" | "screen_prepared" | "unknown";
+  next_action: "wait" | "inspect_on_zeus" | "review_screening_preparation" | "none";
+};
+export type ScreeningPreview = {
+  preview_token: string; expires_in_seconds: number;
+  campaign: { id: string; name: string; git_commit: string };
+  from_stage: "smoke"; to_stage: "screen";
+  smoke: { job_id: string; points: SmokePoint[]; artifact_count: number };
+  artifacts: { create: ["screen/tasks.json", "jobs/02_screen.pbs"]; update: ["campaign.json"] };
+  effects: { prepare_screening: true; submit_screening: false; start_simulation: false; overwrite_existing: false };
+  local_sync: { status: "not_synchronized" };
+};
+export type ScreeningResult = {
+  status: "screening_prepared"; campaign_id: string; stage: "screen";
+  artifacts: { created: 2; updated: 1 };
+  submitted_to_zeus: false; simulation_started: false;
+  local_sync: { status: "not_synchronized" };
+};
+export class SmokeLifecycleApiError extends Error {
+  constructor(public code: string, message: string) { super(message); }
+}
+
+const smokeJobId = /^\d+(?:\[\])?\.zeus-master$/;
+function parseSmokePoint(value: unknown): SmokePoint {
+  if (!value || typeof value !== "object") throw new Error("Invalid smoke lifecycle response.");
+  const row = value as Record<string, unknown>;
+  if (!exactKeys(row, ["s0", "captured", "input", "efficiency"]) || typeof row.s0 !== "number" || !Number.isFinite(row.s0) || row.s0 <= 0 || !Number.isInteger(row.captured) || !finiteNonnegative(row.captured) || row.input !== 2 || Number(row.captured) > 2 || typeof row.efficiency !== "number" || !Number.isFinite(row.efficiency) || row.efficiency < 0 || row.efficiency > 1 || Math.abs(row.efficiency - Number(row.captured) / 2) > 1e-12) throw new Error("Invalid smoke lifecycle response.");
+  return row as unknown as SmokePoint;
+}
+function parseSmokeLifecycle(value: Record<string, unknown>): SmokeLifecycle {
+  const campaign = value.campaign as Record<string, unknown>;
+  const submission = value.submission as Record<string, unknown>;
+  const scheduler = value.scheduler as Record<string, unknown>;
+  const validation = value.validation as Record<string, unknown>;
+  if (!exactKeys(value, ["source", "queried_at", "campaign", "submission", "scheduler", "validation", "lifecycle", "next_action"]) || value.source !== "zeus" || !text(value.queried_at) || Number.isNaN(Date.parse(String(value.queried_at)))
+    || !campaign || !exactKeys(campaign, ["id", "name", "stage"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !["smoke", "screen"].includes(String(campaign.stage))
+    || !submission || !exactKeys(submission, ["job_id"]) || !text(submission.job_id) || !smokeJobId.test(submission.job_id)
+    || !scheduler || !exactKeys(scheduler, ["state", "raw_state", "exit_status"]) || !["queued", "running", "held_attention", "completed_success", "completed_failed", "unknown"].includes(String(scheduler.state)) || !boundedPrintable(scheduler.raw_state, 8) || (scheduler.exit_status !== null && !Number.isInteger(scheduler.exit_status))
+    || !validation || !exactKeys(validation, ["status", "points", "artifact_count"]) || !["not_ready", "valid", "invalid"].includes(String(validation.status)) || !Array.isArray(validation.points) || validation.points.length > 100 || !Number.isInteger(validation.artifact_count) || !finiteNonnegative(validation.artifact_count)
+    || !["queued", "running", "awaiting_outputs", "held_attention", "failed", "outputs_invalid", "ready_to_prepare_screen", "screen_prepared", "unknown"].includes(String(value.lifecycle)) || !["wait", "inspect_on_zeus", "review_screening_preparation", "none"].includes(String(value.next_action))) throw new Error("Invalid smoke lifecycle response.");
+  const points = validation.points.map(parseSmokePoint);
+  const expected = {
+    queued: ["queued", "not_ready", "wait", "smoke"], running: ["running", "not_ready", "wait", "smoke"], awaiting_outputs: ["completed_success", "not_ready", "wait", "smoke"], held_attention: ["held_attention", "not_ready", "inspect_on_zeus", "smoke"], failed: ["completed_failed", "not_ready", "inspect_on_zeus", "smoke"], outputs_invalid: ["completed_success", "invalid", "inspect_on_zeus", "smoke"], ready_to_prepare_screen: ["completed_success", "valid", "review_screening_preparation", "smoke"], screen_prepared: ["completed_success", "valid", "none", "screen"], unknown: ["unknown", "not_ready", "inspect_on_zeus", "smoke"],
+  }[String(value.lifecycle)] as string[];
+  if (scheduler.state !== expected[0] || validation.status !== expected[1] || value.next_action !== expected[2] || campaign.stage !== expected[3] || (validation.status === "valid" && (points.length === 0 || validation.artifact_count !== points.length * 3)) || (validation.status === "not_ready" && (points.length !== 0 || validation.artifact_count !== 0))) throw new Error("Inconsistent smoke lifecycle response.");
+  return { ...(value as unknown as SmokeLifecycle), validation: { ...(validation as unknown as SmokeLifecycle["validation"]), points } };
+}
+function parseScreeningPreview(value: Record<string, unknown>): ScreeningPreview {
+  const campaign = value.campaign as Record<string, unknown>; const smoke = value.smoke as Record<string, unknown>; const artifacts = value.artifacts as Record<string, unknown>; const effects = value.effects as Record<string, unknown>; const sync = value.local_sync as Record<string, unknown>;
+  if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "from_stage", "to_stage", "smoke", "artifacts", "effects", "local_sync"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || !finiteNonnegative(value.expires_in_seconds)
+    || !campaign || !exactKeys(campaign, ["id", "name", "git_commit"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit)) || value.from_stage !== "smoke" || value.to_stage !== "screen"
+    || !smoke || !exactKeys(smoke, ["job_id", "points", "artifact_count"]) || !text(smoke.job_id) || !smokeJobId.test(smoke.job_id) || !Array.isArray(smoke.points) || smoke.points.length === 0 || smoke.points.length > 100 || !Number.isInteger(smoke.artifact_count) || smoke.artifact_count !== smoke.points.length * 3
+    || !artifacts || !exactKeys(artifacts, ["create", "update"]) || JSON.stringify(artifacts.create) !== JSON.stringify(["screen/tasks.json", "jobs/02_screen.pbs"]) || JSON.stringify(artifacts.update) !== JSON.stringify(["campaign.json"])
+    || !effects || !exactKeys(effects, ["prepare_screening", "submit_screening", "start_simulation", "overwrite_existing"]) || effects.prepare_screening !== true || effects.submit_screening !== false || effects.start_simulation !== false || effects.overwrite_existing !== false
+    || !sync || !exactKeys(sync, ["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid screening preparation preview response.");
+  return { ...(value as unknown as ScreeningPreview), smoke: { ...(smoke as unknown as ScreeningPreview["smoke"]), points: smoke.points.map(parseSmokePoint) } };
+}
+function parseScreeningResult(value: Record<string, unknown>): ScreeningResult {
+  const artifacts = value.artifacts as Record<string, unknown>; const sync = value.local_sync as Record<string, unknown>;
+  if (!exactKeys(value, ["status", "campaign_id", "stage", "artifacts", "submitted_to_zeus", "simulation_started", "local_sync"]) || value.status !== "screening_prepared" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "screen" || !artifacts || !exactKeys(artifacts, ["created", "updated"]) || artifacts.created !== 2 || artifacts.updated !== 1 || value.submitted_to_zeus !== false || value.simulation_started !== false || !sync || !exactKeys(sync, ["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid screening preparation result.");
+  return value as unknown as ScreeningResult;
+}
+async function lifecycleMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
+  const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
+  const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } };
+  if (!response.ok || !payload.data) throw new SmokeLifecycleApiError(text(payload.error?.code) ? payload.error.code : "smoke_check_failed", text(payload.error?.message) ? payload.error.message : "The smoke status check stopped safely.");
+  return payload.data;
+}
+let screeningSession: Promise<string> | null = null;
+let screeningContext: { token: string; campaignId: string } | null = null;
+const getScreeningSession = () => screeningSession ??= creationApi.session();
+export const smokeLifecycleApi = {
+  async status(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<SmokeLifecycle> {
+    const csrf = await creationApi.session();
+    const result = parseSmokeLifecycle(await lifecycleMutation("/api/v1/zeus/smoke/status", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf));
+    if (result.campaign.id !== campaign_id) throw new Error("Smoke status did not match the selected campaign.");
+    return result;
+  },
+  async preview(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<ScreeningPreview> {
+    const csrf = await getScreeningSession();
+    try {
+      const preview = parseScreeningPreview(await lifecycleMutation("/api/v1/zeus/screening/preview", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf));
+      if (preview.campaign.id !== campaign_id) throw new Error("Screening preparation preview did not match the selected campaign.");
+      screeningContext = { token: preview.preview_token, campaignId: campaign_id }; return preview;
+    } catch (error) { screeningSession = null; screeningContext = null; throw error; }
+  },
+  async confirm(preview_token: string): Promise<ScreeningResult> {
+    if (!screeningContext || screeningContext.token !== preview_token) throw new Error("The screening preparation preview is no longer active.");
+    const csrf = await getScreeningSession();
+    try { const result = parseScreeningResult(await lifecycleMutation("/api/v1/zeus/screening/confirm", { preview_token }, csrf)); if (result.campaign_id !== screeningContext.campaignId) throw new Error("Screening preparation result did not match the reviewed campaign."); return result; }
+    finally { screeningSession = null; screeningContext = null; }
+  },
+};
+export type SmokeLifecycleApi = typeof smokeLifecycleApi;
+
 function parsePreview(value: Record<string, unknown>): CreationPreview {
   const provenance = value.provenance as Record<string, unknown>;
   const plan = value.plan as Record<string, unknown> | null;

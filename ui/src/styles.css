@@ -166,6 +166,14 @@ footer { padding: 18px 24px; color: #d5e4e3; background: var(--ink-dark); text-a
 .transfer-review h3 { margin-bottom: 8px; font-size: 1.35rem; }.transfer-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 22px; margin: 0; }.transfer-facts > div { min-width: 0; padding: 13px 0; border-top: 1px solid #e3eceb; }.transfer-facts dt { color: var(--muted); font-size: .77rem; font-weight: 750; text-transform: uppercase; }.transfer-facts dd { margin: 5px 0 0; overflow-wrap: anywhere; color: #1c3439; font-weight: 650; }.effect-list { display: grid; gap: 8px; margin: 22px 0 0; padding: 0; list-style: none; }.effect-list li { display: flex; align-items: center; gap: 8px; color: #285347; }.effect-list svg { width: 18px; flex: 0 0 auto; }
 .submission-attention { margin-top: 22px; padding: 16px 18px; color: #674900; background: #fff0c2; border-left: 4px solid #b98112; border-radius: 10px; }
 .submission-attention strong { display: block; margin-bottom: 4px; color: #594000; }.submission-attention p { margin: 0; line-height: 1.5; }
+.remote-status-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 16px; padding: 18px 20px; background: white; border: 1px solid var(--line); border-radius: 14px; }
+.remote-status-toolbar strong { display: block; color: #1c3035; }.remote-status-toolbar p { margin: 5px 0 0; color: var(--muted); font-size: .88rem; }.remote-status-toolbar time { font-weight: 650; }
+.remote-status-card { padding: clamp(20px, 3vw, 28px); background: white; border: 1px solid var(--line); border-left: 5px solid #5d8290; border-radius: 14px; }
+.remote-status-card--running,.remote-status-card--awaiting_outputs { border-left-color: #d6a026; }.remote-status-card--ready_to_prepare_screen,.remote-status-card--screen_prepared { border-left-color: #2c9678; }.remote-status-card--held_attention,.remote-status-card--failed,.remote-status-card--outputs_invalid,.remote-status-card--unknown { border-left-color: #b24e3e; }
+.remote-status-title { display: flex; align-items: flex-start; gap: 12px; }.remote-status-title > svg { width: 23px; flex: 0 0 auto; color: var(--ink); }.remote-status-title h3 { margin: 0 0 5px; color: #1d3439; font-size: 1.2rem; }.remote-status-title p { margin: 0; color: var(--muted); }
+.validation-note { display: flex; align-items: flex-start; gap: 9px; margin: 18px 0; color: #285347; line-height: 1.5; }.validation-note svg { width: 20px; flex: 0 0 auto; margin-top: 2px; }
+.smoke-points { max-width: 680px; overflow-x: auto; border: 1px solid var(--line); border-radius: 11px; }.smoke-points:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }.smoke-points table { width: 100%; border-collapse: collapse; }.smoke-points caption { padding: 12px 14px; color: #1d3439; font-weight: 750; text-align: left; }.smoke-points th,.smoke-points td { padding: 10px 14px; border-top: 1px solid #e3eceb; text-align: left; }.smoke-points th { color: var(--muted); font-size: .78rem; text-transform: uppercase; }
+.status-actions { display: flex; margin-top: 18px; }.stacked-code { display: block; width: fit-content; max-width: 100%; overflow-wrap: anywhere; }.stacked-code + .stacked-code { margin-top: 6px; }
 .job-legend { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 20px; color: var(--muted); font-size: .86rem; }.job-legend span { display: inline-flex; align-items: center; gap: 7px; }
 .job-dot { width: 11px; height: 11px; display: inline-block; border-radius: 50%; background: #8ba0a3; }.job-dot--queued { background: #5d8290; }.job-dot--running { background: #d6a026; }.job-dot--completed { background: #2c9678; }.job-dot--blocked { background: #b24e3e; }
 .job-list, .readiness-list { display: grid; gap: 14px; }
@@ -203,6 +211,7 @@ footer { padding: 18px 24px; color: #d5e4e3; background: var(--ink-dark); text-a
   .campaign-facts { grid-template-columns: 1fr; }
   .copy-command { align-items: stretch; flex-direction: column; }
   .prepare-card { align-items: stretch; flex-direction: column; }.prepare-card .secondary-button { justify-content: center; }.transfer-facts { grid-template-columns: 1fr; }
+  .remote-status-toolbar { align-items: stretch; flex-direction: column; }.remote-status-toolbar .secondary-button { justify-content: center; }.status-actions .secondary-button { width: 100%; justify-content: center; }
   .copy-command .secondary-button { justify-content: center; }
   .warning { grid-template-columns: 1fr; gap: 5px; }
   .review-grid { grid-template-columns: 1fr; }

@@ -1,4 +1,4 @@
-import { campaignApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
+import { campaignApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
 
 const smokePreviewData = (kind: "job" | "array" = "job") => ({
   preview_token: "submit-token", expires_in_seconds: 300,
@@ -144,6 +144,32 @@ describe("campaign API runtime validation", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/zeus/submissions/smoke/preview", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "submit-csrf" }) }));
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/submissions/smoke/confirm", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "submit-csrf" }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it("accepts a zero-capture scientifically valid smoke result and prepares no job", async () => {
+    const status = { source: "zeus", queried_at: "2026-10-08T12:10:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "smoke" }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "completed_success", raw_state: "F", exit_status: 0 }, validation: { status: "valid", points: [{ s0: 1.3, captured: 0, input: 2, efficiency: 0 }], artifact_count: 3 }, lifecycle: "ready_to_prepare_screen", next_action: "review_screening_preparation" };
+    const preview = { preview_token: "screen-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40) }, from_stage: "smoke", to_stage: "screen", smoke: { job_id: "4759999.zeus-master", points: status.validation.points, artifact_count: 3 }, artifacts: { create: ["screen/tasks.json", "jobs/02_screen.pbs"], update: ["campaign.json"] }, effects: { prepare_screening: true, submit_screening: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } };
+    const result = { status: "screening_prepared", campaign_id: "mot_2d-x", stage: "screen", artifacts: { created: 2, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "status-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: status }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "screen-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: preview }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: result }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    expect((await smokeLifecycleApi.status("mot_2d-x", profile)).validation.points[0].captured).toBe(0);
+    expect((await smokeLifecycleApi.preview("mot_2d-x", profile)).effects.submit_screening).toBe(false);
+    expect((await smokeLifecycleApi.confirm("screen-token")).submitted_to_zeus).toBe(false);
+    expect(fetchMock).toHaveBeenNthCalledWith(5, "/api/v1/zeus/screening/confirm", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "screen-csrf" }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects a contradictory smoke lifecycle instead of enabling screening", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "csrf" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { source: "zeus", queried_at: "2026-10-08T12:10:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "smoke" }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "running", raw_state: "R", exit_status: null }, validation: { status: "valid", points: [{ s0: 1.3, captured: 0, input: 2, efficiency: 0 }], artifact_count: 3 }, lifecycle: "ready_to_prepare_screen", next_action: "review_screening_preparation" } }) }));
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    await expect(smokeLifecycleApi.status("mot_2d-x", profile)).rejects.toThrow("Inconsistent smoke lifecycle response");
     vi.unstubAllGlobals();
   });
 

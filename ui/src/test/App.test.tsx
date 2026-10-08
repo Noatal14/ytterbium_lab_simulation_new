@@ -429,4 +429,52 @@ describe("onboarding home", () => {
     expect(screen.getByText("No jobs were returned")).toBeInTheDocument();
     expect(screen.getByText(/Status does not update automatically/)).toBeInTheDocument();
   });
+
+  it("shows Zeus smoke evidence, accepts zero capture, and prepares Screening without submitting it", async () => {
+    const user = userEvent.setup();
+    const smokeCampaign = { ...campaignFixture, stage: "smoke", progress: [], next_plan: null, git_commit: "a".repeat(40) };
+    const api = { async list() { return { campaigns: [smokeCampaign], invalid_count: 0, total: 1 }; }, async get() { return smokeCampaign; } };
+    const status = vi.fn(async () => ({ source: "zeus" as const, queried_at: "2026-10-08T12:10:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "smoke" as const }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "completed_success" as const, raw_state: "F", exit_status: 0 }, validation: { status: "valid" as const, points: [{ s0: 1.3, captured: 0, input: 2 as const, efficiency: 0 }], artifact_count: 3 }, lifecycle: "ready_to_prepare_screen" as const, next_action: "review_screening_preparation" as const }));
+    const preview = vi.fn(async () => ({ preview_token: "screen-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, git_commit: "a".repeat(40) }, from_stage: "smoke" as const, to_stage: "screen" as const, smoke: { job_id: "4759999.zeus-master", points: [{ s0: 1.3, captured: 0, input: 2 as const, efficiency: 0 }], artifact_count: 3 }, artifacts: { create: ["screen/tasks.json", "jobs/02_screen.pbs"] as ["screen/tasks.json", "jobs/02_screen.pbs"], update: ["campaign.json"] as ["campaign.json"] }, effects: { prepare_screening: true as const, submit_screening: false as const, start_simulation: false as const, overwrite_existing: false as const }, local_sync: { status: "not_synchronized" as const } }));
+    const confirm = vi.fn(async () => ({ status: "screening_prepared" as const, campaign_id: smokeCampaign.id, stage: "screen" as const, artifacts: { created: 2 as const, updated: 1 as const }, submitted_to_zeus: false as const, simulation_started: false as const, local_sync: { status: "not_synchronized" as const } }));
+    render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={{ status, preview, confirm }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.type(screen.getByLabelText("Technion username"), "tal.noa");
+    await user.click(screen.getByRole("button", { name: "Connect and check status" }));
+    await user.click(await screen.findByRole("button", { name: "Inspect campaign" }));
+    await user.click(screen.getByRole("button", { name: "Check smoke status" }));
+    expect(await screen.findByRole("heading", { name: "Action required" })).toBeInTheDocument();
+    expect(screen.getByText(/zero-capture smoke point is valid/i)).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "0 of 2" })).toBeInTheDocument();
+    expect(screen.getByText(/Zeus is the execution source/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review screening preparation" }));
+    expect(await screen.findByRole("heading", { name: "Prepare Screening on Zeus" })).toHaveFocus();
+    expect(screen.getByText("screen/tasks.json")).toBeInTheDocument();
+    expect(screen.getByText("jobs/02_screen.pbs")).toBeInTheDocument();
+    expect(screen.getAllByText(/Does not submit a Zeus job/i).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "Prepare Screening on Zeus" }));
+    expect(await screen.findByText("Screening prepared on Zeus")).toBeInTheDocument();
+    expect(screen.getByText(/No Screening job was submitted/)).toBeInTheDocument();
+    expect(screen.getAllByText(/local campaign record has not been synchronized/i)).toHaveLength(2);
+    expect(confirm).toHaveBeenCalledWith("screen-token");
+  });
+
+  it("leads with no action needed while the remote smoke job is running", async () => {
+    const user = userEvent.setup();
+    const smokeCampaign = { ...campaignFixture, stage: "smoke", progress: [], next_plan: null, git_commit: "a".repeat(40) };
+    const api = { async list() { return { campaigns: [smokeCampaign], invalid_count: 0, total: 1 }; }, async get() { return smokeCampaign; } };
+    const status = vi.fn()
+      .mockResolvedValueOnce({ source: "zeus" as const, queried_at: "2026-10-08T12:10:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "smoke" as const }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "running" as const, raw_state: "R", exit_status: null }, validation: { status: "not_ready" as const, points: [], artifact_count: 0 }, lifecycle: "running" as const, next_action: "wait" as const })
+      .mockResolvedValueOnce({ source: "zeus" as const, queried_at: "2026-10-08T12:11:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "smoke" as const }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "completed_success" as const, raw_state: "F", exit_status: 0 }, validation: { status: "not_ready" as const, points: [], artifact_count: 0 }, lifecycle: "awaiting_outputs" as const, next_action: "wait" as const });
+    const lifecycle = { status, preview: vi.fn(), confirm: vi.fn() };
+    render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={lifecycle} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
+    expect(await screen.findByRole("heading", { name: "No action needed" })).toBeInTheDocument();
+    expect(screen.getByText(/safely close this application/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review screening preparation" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Refresh smoke status" }));
+    expect(await screen.findByText(/still publishing the expected smoke output files/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "No action needed" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review screening preparation" })).not.toBeInTheDocument();
+  });
 });
