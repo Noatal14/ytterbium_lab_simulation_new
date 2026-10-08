@@ -77,7 +77,9 @@ def run_seeds(args):
                 "stochastic_solver": RK4StHybridCustom.__name__,
                 "uses_all_available_particles": True,
                 "npools": args.npools,
-                "ensemble_dir": str(args.ensemble_dir) if args.ensemble_dir else None,
+                "ensemble_dir": getattr(args, "ensemble_identity", None) if getattr(args, "ensemble_identity", None) else (
+                    str(args.ensemble_dir) if args.ensemble_dir else None
+                ),
                 "zeeman_profile": args.expected_zeeman_profile,
                 "git_commit": current_commit,
             },
@@ -97,7 +99,10 @@ def run_seeds(args):
                 states_path.with_suffix(".json"),
                 {
                     "kind": "mot_2d_final_survivor_ensemble",
-                    "source_zeeman_ensemble": row["ensemble_file"],
+                    "source_zeeman_ensemble": (
+                        f"{args.ensemble_identity}/{Path(row['ensemble_file']).name}"
+                        if getattr(args, "ensemble_identity", None) else row["ensemble_file"]
+                    ),
                     "zeeman_seed": row["zeeman_seed"],
                     "mot_seed": row["mot_seed"],
                     "n_input": row["n_input"],
@@ -318,6 +323,10 @@ def parse_args(argv=None):
     parser.add_argument(
         "--ensemble-dir",
         help="Directory containing the authoritative Zeeman ensemble files.",
+    )
+    parser.add_argument(
+        "--ensemble-identity",
+        help="Portable repository-relative ensemble identity recorded in outputs.",
     )
     parser.add_argument("--expected-zeeman-profile")
     parser.add_argument("--expected-git-commit")

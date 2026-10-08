@@ -90,6 +90,7 @@ h1 { margin-bottom: 14px; color: #1c2f34; font-size: clamp(2rem, 4vw, 3.25rem); 
 .inspection-card { display: grid; grid-template-columns: minmax(220px, 1.2fr) minmax(320px, 1fr) auto; align-items: center; gap: 22px; padding: 22px; background: white; border: 1px solid var(--line); border-radius: 16px; }
 .inspection-card h3 { margin: 5px 0; color: #183138; font-size: 1.25rem; }
 .type-label { color: var(--mint-ink); font-size: .77rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.status-badge { display: inline-flex; margin-left: .55rem; padding: .2rem .55rem; border-radius: 999px; background: var(--surface-soft); color: var(--muted); font-size: .76rem; font-weight: 750; }
 .path-text { max-width: 100%; margin: 0; overflow-wrap: anywhere; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; }
 .campaign-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
 .campaign-facts dt { color: var(--muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; }

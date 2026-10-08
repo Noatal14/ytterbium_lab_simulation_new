@@ -64,6 +64,53 @@ describe("onboarding home", () => {
     expect(screen.getByRole("button", { name: "Open campaign" })).toHaveFocus();
   });
 
+  it("keeps legacy campaigns inspectable while hiding every Zeus command", async () => {
+    const user = userEvent.setup();
+    const legacyCampaign = {
+      ...campaignFixture,
+      id: "mot_2d-legacy",
+      name: "legacy fixed s0 1.3",
+      trust: "legacy-incomplete" as const,
+      scientific_role: "historical-evidence" as const,
+      remote_preparation: { status: "legacy-local-only" as const, reason_code: "absolute-input-paths" as const },
+    };
+    const legacyApi = {
+      async list() { return { campaigns: [legacyCampaign], invalid_count: 0, total: 1 }; },
+      async get() { return legacyCampaign; },
+    };
+    render(<App api={legacyApi} creation={creationFixture} />);
+    expect(await screen.findByText("Local-only campaign")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Open campaign" }));
+    expect(screen.getByRole("heading", { name: "Recreate this campaign before using Zeus" })).toBeInTheDocument();
+    expect(screen.getByText(/created with file locations tied to another computer/i)).toBeInTheDocument();
+    expect(screen.getByText(/Nothing in this campaign will be changed or deleted/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Campaign timeline" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copy command" })).not.toBeInTheDocument();
+    expect(screen.queryByText("qsub data/example.pbs")).not.toBeInTheDocument();
+  });
+
+  it("explains an unavailable campaign and keeps its command hidden", async () => {
+    const user = userEvent.setup();
+    const unavailableCampaign = {
+      ...campaignFixture,
+      id: "mot_2d-unavailable",
+      name: "incomplete portable campaign",
+      remote_preparation: { status: "unavailable" as const, reason_code: "incomplete-portability-record" as const },
+    };
+    const unavailableApi = {
+      async list() { return { campaigns: [unavailableCampaign], invalid_count: 0, total: 1 }; },
+      async get() { return unavailableCampaign; },
+    };
+    render(<App api={unavailableApi} creation={creationFixture} />);
+    expect(await screen.findByText("Zeus preparation unavailable")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Open campaign" }));
+    expect(screen.getByRole("heading", { name: "Zeus preparation is unavailable" })).toBeInTheDocument();
+    expect(screen.getByText(/does not pass the required portability and validation checks/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Campaign timeline" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copy command" })).not.toBeInTheDocument();
+    expect(screen.queryByText("qsub data/example.pbs")).not.toBeInTheDocument();
+  });
+
   it("reviews and confirms a local campaign without implying Zeus submission", async () => {
     const user = userEvent.setup();
     render(<App api={fixtureApi} creation={creationFixture} />);
@@ -79,6 +126,27 @@ describe("onboarding home", () => {
     await user.click(screen.getByRole("button", { name: "Create campaign" }));
     expect(await screen.findByRole("heading", { name: "Campaign created and validated" })).toHaveFocus();
     expect(screen.getByText(/No simulation was run and no work was submitted to Zeus/)).toBeInTheDocument();
+  });
+
+  it("never labels a non-portable campaign ready on the Zeus jobs page", async () => {
+    const user = userEvent.setup();
+    const blockedCampaign = {
+      ...campaignFixture,
+      id: "mot_2d-blocked",
+      name: "blocked portable campaign",
+      remote_preparation: { status: "unavailable" as const, reason_code: "incomplete-portability-record" as const },
+    };
+    const blockedApi = {
+      async list() { return { campaigns: [blockedCampaign], invalid_count: 0, total: 1 }; },
+      async get() { return blockedCampaign; },
+    };
+    render(<App api={blockedApi} creation={creationFixture} />);
+    await screen.findByRole("button", { name: "Open campaign" });
+    await user.click(screen.getByRole("link", { name: /Zeus jobs/i }));
+    expect(screen.getByRole("heading", { name: "Campaign job readiness" })).toBeInTheDocument();
+    expect(screen.getByText("This campaign cannot safely prepare or expose a Zeus action.")).toBeInTheDocument();
+    expect(screen.getByText("Blocked")).toBeInTheDocument();
+    expect(screen.queryByText("Ready to copy")).not.toBeInTheDocument();
   });
 
   it("explains an unavailable local source service and retries successfully", async () => {

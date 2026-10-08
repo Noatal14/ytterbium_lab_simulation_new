@@ -82,6 +82,36 @@ def test_joint_optimizer_accepts_fixed_s0():
     assert args.enqueue_point == [[-1.2, 0.049]]
 
 
+def test_joint_optimizer_summary_records_portable_ensemble_identity(tmp_path, monkeypatch):
+    import studies.mot_2d.optimization as study
+
+    runtime_source = tmp_path / "runtime-checkout/data/particle_states/after_zeeman/source"
+    runtime_source.mkdir(parents=True)
+    monkeypatch.setattr(
+        study,
+        "load_production_ensembles",
+        lambda **kwargs: [{"zeeman_seed": 3000}],
+    )
+    monkeypatch.setattr(study.subprocess, "check_output", lambda *args, **kwargs: "a" * 40)
+    output = tmp_path / "optimization"
+    args = study.parse_args([
+        "--fixed-s0", "1.3",
+        "--n-trials", "0",
+        "--ensemble-dir", str(runtime_source),
+        "--ensemble-identity", "data/particle_states/after_zeeman/source",
+        "--zeeman-seeds", "3000",
+        "--mot-seeds", "43000",
+        "--output-dir", str(output),
+    ])
+
+    study.optimize_mot(args)
+
+    summary_path = output / "summary.json"
+    summary = json.loads(summary_path.read_text())
+    assert summary["design"]["ensemble_dir"] == "data/particle_states/after_zeeman/source"
+    assert str(runtime_source) not in summary_path.read_text()
+
+
 def test_2d_mot_uses_hybrid_solver_by_default():
     import inspect
 
@@ -179,8 +209,10 @@ def test_s0_campaign_accepts_multiple_locked_fixed_s0_values(tmp_path, monkeypat
         parse_args,
     )
 
-    output = tmp_path / "campaign"
+    output = tmp_path / "data/optimization/mot_2d/campaign"
     import studies.mot_2d_s0_campaign as campaign
+    monkeypatch.setattr(campaign, "REPOSITORY_ROOT", tmp_path)
+    (tmp_path / "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005").mkdir(parents=True)
     monkeypatch.setattr(campaign, "assert_relevant_worktree_clean", lambda: None)
     monkeypatch.setattr(
         campaign,
@@ -228,7 +260,9 @@ def test_s0_campaign_accepts_noncanonical_positive_fixed_value(tmp_path, monkeyp
             for role, seeds in roles.items()
         },
     )
-    root = tmp_path / "noncanonical"
+    monkeypatch.setattr(campaign, "REPOSITORY_ROOT", tmp_path)
+    (tmp_path / "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005").mkdir(parents=True)
+    root = tmp_path / "data/optimization/mot_2d/noncanonical"
     campaign.create(campaign.parse_args([
         "create", "--name", "s0_1p25", "--s0", "1.25",
         "--output-dir", str(root),

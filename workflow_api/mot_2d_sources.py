@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from workflow_api.repository_paths import canonical_repo_relative
 
 SOURCE_ROOT = Path("data/particle_states/after_zeeman")
 EXPECTED_SEEDS = tuple(range(3000, 3035))
@@ -101,8 +102,10 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
         commits.add(str(software["git_commit"]))
         survivor_counts.append(len(array)); identities.append(f"{seed}:{digest}:{metadata_digest}")
         records.append({
-            "zeeman_seed": seed, "path": str(state.resolve()),
-            "metadata_path": str(metadata_path.resolve()), "sha256": digest,
+            "zeeman_seed": seed,
+            "path": canonical_repo_relative(repository_root, state, allowed_root=SOURCE_ROOT, require="file"),
+            "metadata_path": canonical_repo_relative(repository_root, metadata_path, allowed_root=SOURCE_ROOT, require="file"),
+            "sha256": digest,
             "metadata_sha256": metadata_digest,
             "shape": list(array.shape), "dtype": str(array.dtype),
             "survivor_count": len(array),

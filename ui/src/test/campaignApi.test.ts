@@ -9,7 +9,7 @@ describe("campaign API runtime validation", () => {
         stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked",
         trust: "trusted-current", scientific_role: "candidate-selection",
         progress: [{ stage: "screen", completed: 1, expected: 2, status: "executing" }],
-        warnings: [], next_plan: null, s0_values: [1.3], families: [], git_commit: "abc",
+        warnings: [], next_plan: null, s0_values: [1.3], families: [], git_commit: "abc", remote_preparation: { status: "ready", reason_code: null },
       }], invalid_count: 0, total: 1 } }),
     })));
     await expect(campaignApi.list()).rejects.toThrow("Invalid campaign progress response");
@@ -27,16 +27,49 @@ describe("campaign API runtime validation", () => {
       id: "x", family: "mot_2d", kind: "mot_2d_s0_campaign", name: "bad", path: "data/x", stage: "screen",
       stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current",
       scientific_role: "candidate-selection", progress: [], warnings: [], next_plan: null,
-      s0_values: [1.3], families: [], git_commit: "abc",
+      s0_values: [1.3], families: [], git_commit: "abc", remote_preparation: { status: "ready", reason_code: null },
     };
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ data: { campaigns: [{ ...base, ...override }], invalid_count: 0, total: 1 } }) })));
     await expect(campaignApi.list()).rejects.toThrow();
     vi.unstubAllGlobals();
   });
 
+  it.each([
+    ["ready campaign with a legacy reason", { status: "ready", reason_code: "absolute-input-paths" }],
+    ["legacy campaign without a reason", { status: "legacy-local-only", reason_code: null }],
+    ["legacy campaign with an unavailable reason", { status: "legacy-local-only", reason_code: "incomplete-portability-record" }],
+    ["unavailable campaign without a reason", { status: "unavailable", reason_code: null }],
+    ["unavailable campaign with a legacy reason", { status: "unavailable", reason_code: "fixed-checkout-path" }],
+    ["remote preparation with an unexpected key", { status: "ready", reason_code: null, command: "qsub unsafe.pbs" }],
+  ])("rejects %s", async (_label, remotePreparation) => {
+    const campaign = {
+      id: "x", family: "mot_2d", kind: "mot_2d_s0_campaign", name: "bad", path: "data/x", stage: "screen",
+      stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current",
+      scientific_role: "candidate-selection", progress: [], warnings: [], next_plan: null,
+      s0_values: [1.3], families: [], git_commit: "abc", remote_preparation: remotePreparation,
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ data: { campaigns: [campaign], invalid_count: 0, total: 1 } }) })));
+    await expect(campaignApi.list()).rejects.toThrow("Invalid campaign response");
+    vi.unstubAllGlobals();
+  });
+
   it("rejects inconsistent list totals", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ data: { campaigns: [], invalid_count: 0, total: 1 } }) })));
     await expect(campaignApi.list()).rejects.toThrow("Invalid campaign list response");
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects a non-ready campaign that still exposes a next action", async () => {
+    const campaign = {
+      id: "x", family: "mot_2d", kind: "mot_2d_s0_campaign", name: "contradictory", path: "data/x", stage: "screen",
+      stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current",
+      scientific_role: "candidate-selection", progress: [], warnings: [],
+      next_plan: { label: "Submit", command: ["qsub", "unsafe.pbs"], display_command: "qsub unsafe.pbs", mode: "copy-only", scheduler_status: "unchecked", operation_scope: "remote-submission", executes_automatically: false },
+      s0_values: [1.3], families: [], git_commit: "abc",
+      remote_preparation: { status: "unavailable", reason_code: "incomplete-portability-record" },
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ data: { campaigns: [campaign], invalid_count: 0, total: 1 } }) })));
+    await expect(campaignApi.list()).rejects.toThrow("Invalid campaign action response");
     vi.unstubAllGlobals();
   });
 

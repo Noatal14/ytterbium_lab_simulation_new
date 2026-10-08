@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from workflow_api.repository_paths import resolve_repo_relative
 
 from workflow_api.models import StageProgress
 
@@ -84,6 +85,8 @@ def modern_contract(
 ) -> tuple[bool, tuple[str, ...]]:
     errors: list[str] = []
     provenance = _mapping(manifest.get("provenance"))
+    if provenance.get("path_contract") != "repository-relative-v1":
+        errors.append("campaign uses a legacy non-portable path contract")
     fixed = _mapping(manifest.get("fixed_design"))
     source = _mapping(manifest.get("ensemble_source"))
     roles = _mapping(manifest.get("seed_roles"))
@@ -103,6 +106,11 @@ def modern_contract(
         errors.append("fixed scientific design is incomplete")
     if not isinstance(source.get("directory"), str) or not isinstance(source.get("zeeman_profile"), str):
         errors.append("ensemble source is incomplete")
+    else:
+        try:
+            resolve_repo_relative(repository_root, source["directory"], allowed_root="data/particle_states/after_zeeman", require="dir")
+        except ValueError:
+            errors.append("ensemble source path is not a trusted repository-relative directory")
     all_seeds: list[int] = []
     for role in ROLE_NAMES:
         seeds = roles.get(role)
@@ -123,22 +131,28 @@ def modern_contract(
             observed = []
             for record in records:
                 item = _mapping(record)
-                required = ("zeeman_seed", "path", "metadata_path", "sha256", "shape", "dtype", "survivor_count", "zeeman_profile", "source_git_commit", "generation")
+                required = ("zeeman_seed", "path", "metadata_path", "sha256", "metadata_sha256", "shape", "dtype", "survivor_count", "zeeman_profile", "source_git_commit", "generation")
                 if any(item.get(key) is None for key in required):
                     errors.append(f"{role} frozen input record is incomplete")
                     break
                 paths: list[Path] = []
                 for key in ("path", "metadata_path"):
                     recorded = Path(item[key])
-                    resolved = recorded.resolve() if recorded.is_absolute() else (repository_root / recorded).resolve()
-                    unresolved = recorded if recorded.is_absolute() else repository_root / recorded
-                    if not _trusted_file(unresolved, repository_root):
+                    try:
+                        unresolved = resolve_repo_relative(repository_root, item[key], allowed_root="data/particle_states/after_zeeman", require="file")
+                    except ValueError:
                         errors.append(f"{role} frozen input artifact is unavailable or outside the repository")
                         paths = []
                         break
                     paths.append(unresolved)
                 if paths:
                     try:
+                        source_directory = resolve_repo_relative(
+                            repository_root, source["directory"],
+                            allowed_root="data/particle_states/after_zeeman", require="dir",
+                        )
+                        if any(not path.is_relative_to(source_directory) for path in paths):
+                            raise ValueError("frozen input is outside the selected source")
                         metadata = _mapping(_json(paths[1], root=repository_root))
                         parameters = _mapping(metadata.get("parameters"))
                         software = _mapping(metadata.get("software"))
@@ -150,6 +164,7 @@ def modern_contract(
                         if (
                             item.get("zeeman_profile") != source.get("zeeman_profile")
                             or _sha256(paths[0]) != item["sha256"]
+                            or _sha256(paths[1]) != item["metadata_sha256"]
                             or metadata.get("output_sha256") != item["sha256"]
                             or metadata.get("shape") != item["shape"]
                             or metadata.get("dtype") != item["dtype"]
@@ -176,16 +191,13 @@ def _design_matches(
     repository_root: Path,
 ) -> bool:
     source = _mapping(manifest["ensemble_source"])
-    recorded = Path(source["directory"])
-    actual_dir = str(recorded.resolve() if recorded.is_absolute() else (repository_root / recorded).resolve())
     return (
         design.get("dt_s") == dt
         and design.get("stochastic_solver", design.get("solver")) == "RK4StHybridCustom"
         and design.get("git_commit") == manifest["provenance"]["git_commit"]
         and design.get("zeeman_seeds") == manifest["seed_roles"][role]
         and design.get("mot_seeds") == manifest["mot_seeds"][role]
-        and isinstance(design.get("ensemble_dir"), str)
-        and str(Path(design["ensemble_dir"]).resolve()) == actual_dir
+        and design.get("ensemble_dir") == source["directory"]
     )
 
 
@@ -196,11 +208,7 @@ def _optimization_design_id(
     repository_root: Path | None = None,
 ) -> str:
     role = STAGE_ROLE[stage]
-    recorded_source = Path(manifest["ensemble_source"]["directory"])
-    source = str(
-        recorded_source.resolve() if recorded_source.is_absolute()
-        else ((repository_root or Path.cwd()) / recorded_source).resolve()
-    )
+    source = manifest["ensemble_source"]["directory"]
     design = {
         "fixed_s0": s0,
         "dt_s": manifest["fixed_design"]["working_dt_s"],
@@ -266,11 +274,7 @@ def _valid_smoke_trial(path: Path, manifest: dict[str, Any], s0: float, root: Pa
             sampler_seed=42, bounds=bounds, zeeman_seeds=zeeman, mot_seeds=mot,
             repository_root=root.parents[3],
         )
-        recorded_source = Path(manifest["ensemble_source"]["directory"])
-        source = str(
-            recorded_source.resolve() if recorded_source.is_absolute()
-            else (root.parents[3] / recorded_source).resolve()
-        )
+        source = manifest["ensemble_source"]["directory"]
         return (
             row.get("kind") == "mot_2d_joint_optimization_trial"
             and row.get("trial_number") == 0
@@ -282,7 +286,7 @@ def _valid_smoke_trial(path: Path, manifest: dict[str, Any], s0: float, root: Pa
             and design.get("mot_seeds") == mot
             and design.get("stochastic_solver") == "RK4StHybridCustom"
             and design.get("dt_s") == manifest["fixed_design"]["working_dt_s"]
-            and str(Path(design.get("ensemble_dir", "")).resolve()) == source
+            and design.get("ensemble_dir") == source
         )
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return False
@@ -543,9 +547,13 @@ def sealed_final_is_valid(
                 or result.get("prediction") != summary.get("prediction_for_10m_zeeman_survivors")
             ):
                 return False
-            recorded_states = Path(result["survivor_states_directory"])
-            states = recorded_states.resolve() if recorded_states.is_absolute() else (repository_root / recorded_states).resolve()
-            if not _within(states, repository_root.resolve()) or not states.is_dir():
+            states = resolve_repo_relative(
+                repository_root,
+                result["survivor_states_directory"],
+                allowed_root="data/particle_states/after_2d_mot",
+                require="dir",
+            )
+            if not states.is_dir():
                 return False
             for seed, mot_seed in zip(sealed, mot_seeds):
                 state = states / f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy"
@@ -555,7 +563,16 @@ def sealed_final_is_valid(
                     return False
                 array = np.load(state, mmap_mode="r", allow_pickle=False)
                 replicate = replicate_by_seed[seed]
-                source_path = str(Path(frozen_by_seed[seed]["path"]).resolve())
+                source_identity = frozen_by_seed[seed]["path"]
+                source_recorded = meta.get("source_zeeman_ensemble", "")
+                resolve_repo_relative(
+                    repository_root, source_identity,
+                    allowed_root="data/particle_states/after_zeeman", require="file",
+                )
+                resolve_repo_relative(
+                    repository_root, source_recorded,
+                    allowed_root="data/particle_states/after_zeeman", require="file",
+                )
                 if (
                     meta.get("kind") != "mot_2d_final_survivor_ensemble"
                     or meta.get("zeeman_seed") != seed or meta.get("mot_seed") != mot_seed
@@ -567,7 +584,7 @@ def sealed_final_is_valid(
                     or not np.all(np.isfinite(array))
                     or meta.get("parameters") != parameters
                     or meta.get("design") != expected_design
-                    or str(Path(meta.get("source_zeeman_ensemble", "")).resolve()) != source_path
+                    or source_recorded != source_identity
                 ):
                     return False
     except (OSError, ValueError, TypeError, KeyError, StopIteration, json.JSONDecodeError):

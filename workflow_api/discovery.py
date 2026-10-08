@@ -217,9 +217,22 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
         raise DiscoveryError("invalid_campaign", "Campaign files could not be validated for inspection.") from error
     raw_warnings = [str(item) for item in summary.get("warnings", [])]
     contract_errors: tuple[str, ...] = ()
+    remote_preparation = {"status": "unavailable", "reason_code": "incomplete-portability-record"}
     sealed_final = False
     if summary["kind"] == "mot_2d_s0_campaign":
         contract_ok, contract_errors = modern_contract(payload, repository_root)
+        portability = payload.get("provenance", {}).get("path_contract") if isinstance(payload.get("provenance"), dict) else None
+        remote_preparation = (
+            {"status": "ready", "reason_code": None}
+            if contract_ok else
+            {"status": "legacy-local-only", "reason_code": "absolute-input-paths"}
+            if portability is None else
+            {"status": "unavailable", "reason_code": (
+                "incomplete-portability-record"
+                if any("path" in error or "portable" in error for error in contract_errors)
+                else "campaign-validation-failed"
+            )}
+        )
         try:
             validated = validated_progress(entry.manifest.parent, payload) if contract_ok else ()
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
@@ -274,6 +287,7 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
         "s0_values": summary.get("s0_values", []),
         "families": summary.get("families", []),
         "git_commit": summary.get("git_commit"),
+        "remote_preparation": remote_preparation,
     }
 
 

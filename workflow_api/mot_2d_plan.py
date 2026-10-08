@@ -60,8 +60,10 @@ def render_campaign_files(
     values = manifest["s0_values"]
     try:
         campaign_argument = destination.relative_to(repository_root).as_posix()
-    except ValueError:
-        campaign_argument = str(destination)
+    except ValueError as error:
+        raise ValueError("Campaign destination must be inside the repository.") from error
+    if not campaign_argument.startswith("data/optimization/mot_2d/"):
+        raise ValueError("Campaign destination is outside the canonical 2D-MOT location.")
     array = "" if len(values) == 1 else f"#PBS -J 0-{len(values)-1}%1\n"
     scalar = "export PBS_ARRAY_INDEX=0\n" if len(values) == 1 else ""
     commit = manifest["provenance"]["git_commit"]
@@ -72,11 +74,12 @@ def render_campaign_files(
 #PBS -l walltime=00:20:00
 
 set -euo pipefail
-cd /home/tal.noa/ytterbium_lab_simulation_new || exit 1
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
 module load SPACK/apps
 module load gcc/14.1.0
 module load python/3.14.2
-source ~/venvs/atomsmltr/bin/activate
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
 {scalar}EXPECTED_COMMIT={shlex.quote(commit)}
 ACTUAL_COMMIT=$(git rev-parse HEAD)
 if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then

@@ -45,9 +45,10 @@ def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
                 },
                 "software": {"git_commit": "source"},
             }))
+            metadata_digest = hashlib.sha256(metadata.read_bytes()).hexdigest()
             frozen[role].append({
                 "zeeman_seed": seed, "path": str(state.relative_to(repository_root)), "metadata_path": str(metadata.relative_to(repository_root)),
-                "sha256": digest, "shape": [10, 6], "dtype": "float64", "survivor_count": 10,
+                "sha256": digest, "metadata_sha256": metadata_digest, "shape": [10, 6], "dtype": "float64", "survivor_count": 10,
                 "zeeman_profile": "profile", "source_git_commit": "source",
                 "generation": {"n_initial_atoms": 50000, "dt_s": 4e-5, "stochastic": True, "collimation_angle_deg": 0.02},
             })
@@ -56,7 +57,7 @@ def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
         "ensemble_source": {"directory": "data/particle_states/after_zeeman/profile", "zeeman_profile": "profile"},
         "seed_roles": roles, "input_ensembles": frozen,
         "mot_seeds": {role: [40000 + seed for seed in seeds] for role, seeds in roles.items()},
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "b" * 64, "hashed_files": ["config.py"], "capture_criterion_version": "v1"},
+        "provenance": {"git_commit": "abc", "physical_model_sha256": "b" * 64, "hashed_files": ["config.py"], "capture_criterion_version": "v1", "path_contract": "repository-relative-v1"},
         "fixed_design": {"working_dt_s": 1.25e-6, "final_dt_s": 0.625e-6, "solver": "RK4StHybridCustom",
             "detuning_bounds_gamma": [-2, -0.5], "magnet_radius_bounds_m": [0.04, 0.05],
             "particle_counts": {}, "trial_budgets": {"screen_per_worker": 17, "refine_per_worker": 10},
@@ -70,7 +71,7 @@ def write_valid_smoke(campaign, manifest):
     s0 = 1.3
     design_input = {
         "fixed_s0": s0, "dt_s": 1.25e-6, "solver": "RK4StHybridCustom",
-        "ensemble_dir": str((campaign.parents[3] / "data/particle_states/after_zeeman/profile").resolve()),
+        "ensemble_dir": "data/particle_states/after_zeeman/profile",
         "zeeman_seeds": [3000], "mot_seeds": [43000],
         "particles_per_ensemble": 2, "sampler_seed": 42,
         "bounds": {"s0": [s0, s0], "detuning_gamma": [-2, -0.5], "magnet_radius_m": [0.04, 0.05]},
@@ -167,6 +168,50 @@ def test_malformed_3d_sibling_is_isolated_from_valid_listing(tmp_path):
     result = list_campaigns(root)
     assert [row["name"] for row in result["campaigns"]] == ["modern"]
     assert result["invalid_count"] == 1
+
+
+def test_legacy_2d_campaign_is_inspectable_but_cannot_prepare_remote_work(tmp_path):
+    root = tmp_path / "repo"
+    campaign = root / "data/optimization/mot_2d/legacy"
+    campaign.mkdir(parents=True)
+    manifest = modern_2d_manifest(root, name="legacy")
+    manifest["provenance"].pop("path_contract")
+    (campaign / "campaign.json").write_text(json.dumps(manifest))
+
+    result = list_campaigns(root)
+
+    assert result["invalid_count"] == 0
+    assert result["total"] == 1
+    record = result["campaigns"][0]
+    assert record["name"] == "legacy"
+    assert record["trust"] == "legacy-incomplete"
+    assert record["remote_preparation"] == {
+        "status": "legacy-local-only",
+        "reason_code": "absolute-input-paths",
+    }
+    assert record["next_plan"] is None
+
+
+def test_explicit_portable_2d_campaign_with_invalid_path_is_unavailable(tmp_path):
+    root = tmp_path / "repo"
+    campaign = root / "data/optimization/mot_2d/incomplete-portability"
+    campaign.mkdir(parents=True)
+    manifest = modern_2d_manifest(root, name="incomplete portability")
+    manifest["ensemble_source"]["directory"] = "../../outside-repository"
+    (campaign / "campaign.json").write_text(json.dumps(manifest))
+
+    result = list_campaigns(root)
+
+    assert result["invalid_count"] == 0
+    assert result["total"] == 1
+    record = result["campaigns"][0]
+    assert record["name"] == "incomplete portability"
+    assert record["trust"] == "legacy-incomplete"
+    assert record["remote_preparation"] == {
+        "status": "unavailable",
+        "reason_code": "incomplete-portability-record",
+    }
+    assert record["next_plan"] is None
 
 
 def test_progress_aware_plan_never_resubmits_partial_stage(tmp_path):

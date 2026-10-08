@@ -7,6 +7,7 @@ export type Campaign = {
   progress: StageProgress[]; warnings: Warning[];
   next_plan: null | { label: string; command: string[]; display_command: string; mode: "copy-only"; scheduler_status: "unchecked"; operation_scope: "remote-submission" | "local-mutation"; executes_automatically: false };
   s0_values: number[]; families: string[]; git_commit: string | null;
+  remote_preparation: { status: "ready" | "legacy-local-only" | "unavailable"; reason_code: null | "absolute-input-paths" | "fixed-checkout-path" | "incomplete-portability-record" | "campaign-validation-failed" };
 };
 type CampaignListEnvelope = { data: { campaigns: Campaign[]; invalid_count: number; total: number } };
 type CampaignEnvelope = { data: Campaign };
@@ -18,13 +19,16 @@ async function request<T>(path: string): Promise<T> {
 
 const text = (value: unknown): value is string => typeof value === "string";
 const finiteNonnegative = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0;
+const exactKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 function parseCampaign(value: unknown): Campaign {
   if (!value || typeof value !== "object") throw new Error("Invalid campaign response.");
   const row = value as Record<string, unknown>;
   const families = ["mot_2d", "mot_3d"];
   const trusts = ["trusted-current", "legacy-incomplete"];
   const roles = ["candidate-selection", "sealed-final-validation", "historical-evidence"];
-  if (!text(row.id) || !families.includes(String(row.family)) || !text(row.kind) || !text(row.name) || !text(row.path) || !text(row.stage) || row.stage_semantics !== "prepared-workflow-stage" || row.scheduler_status !== "unchecked" || !trusts.includes(String(row.trust)) || !roles.includes(String(row.scientific_role)) || !Array.isArray(row.progress) || !Array.isArray(row.warnings) || !Array.isArray(row.s0_values) || !row.s0_values.every((item) => typeof item === "number" && Number.isFinite(item)) || !Array.isArray(row.families) || !row.families.every(text) || (row.git_commit !== null && !text(row.git_commit))) throw new Error("Invalid campaign response.");
+  const remote = row.remote_preparation as Record<string, unknown> | undefined;
+  const remotePair = `${String(remote?.status)}/${String(remote?.reason_code)}`;
+  if (!text(row.id) || !families.includes(String(row.family)) || !text(row.kind) || !text(row.name) || !text(row.path) || !text(row.stage) || row.stage_semantics !== "prepared-workflow-stage" || row.scheduler_status !== "unchecked" || !trusts.includes(String(row.trust)) || !roles.includes(String(row.scientific_role)) || !Array.isArray(row.progress) || !Array.isArray(row.warnings) || !Array.isArray(row.s0_values) || !row.s0_values.every((item) => typeof item === "number" && Number.isFinite(item)) || !Array.isArray(row.families) || !row.families.every(text) || (row.git_commit !== null && !text(row.git_commit)) || !remote || !exactKeys(remote, ["status", "reason_code"]) || !["ready/null", "legacy-local-only/absolute-input-paths", "legacy-local-only/fixed-checkout-path", "unavailable/incomplete-portability-record", "unavailable/campaign-validation-failed"].includes(remotePair)) throw new Error("Invalid campaign response.");
   for (const progress of row.progress) {
     const item = progress as Record<string, unknown>;
     if (!progress || typeof progress !== "object" || !text(item.stage) || !finiteNonnegative(item.completed) || (item.expected !== null && !finiteNonnegative(item.expected)) || (typeof item.expected === "number" && item.completed > item.expected) || !["not-started", "in-progress", "complete", "unknown", "inconsistent"].includes(String(item.status))) throw new Error("Invalid campaign progress response.");
@@ -37,6 +41,7 @@ function parseCampaign(value: unknown): Campaign {
     const plan = row.next_plan as Record<string, unknown>;
     if (!text(plan.label) || !Array.isArray(plan.command) || !plan.command.every(text) || !text(plan.display_command) || plan.mode !== "copy-only" || plan.scheduler_status !== "unchecked" || plan.executes_automatically !== false || !["local-mutation", "remote-submission"].includes(String(plan.operation_scope))) throw new Error("Invalid campaign action response.");
   }
+  if (remote.status !== "ready" && row.next_plan !== null && row.next_plan !== undefined) throw new Error("Invalid campaign action response.");
   return row as unknown as Campaign;
 }
 export const campaignApi = {
@@ -99,7 +104,6 @@ export class ZeusApiError extends Error {
   constructor(public code: string, message: string) { super(message); }
 }
 
-const exactKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
 const boundedPrintable = (value: unknown, limit: number): value is string => text(value) && value.length <= limit && !/[\u0000-\u001f\u007f]/.test(value);
 const nullableBoundedPrintable = (value: unknown, limit: number): value is string | null => value === null || boundedPrintable(value, limit);
 function parseZeusSnapshot(value: unknown): ZeusSnapshot {

@@ -5,6 +5,7 @@ export const campaignFixture: Campaign = {
   path: "data/optimization/mot_2d/fixed_s0_1p3", stage: "confirmation",
   stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current",
   scientific_role: "candidate-selection", s0_values: [1.3], families: [], git_commit: "abc123",
+  remote_preparation: { status: "ready", reason_code: null },
   progress: [
     { stage: "smoke", completed: 1, expected: 1, status: "complete" },
     { stage: "screen", completed: 51, expected: 51, status: "complete" },

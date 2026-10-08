@@ -48,6 +48,9 @@ class CreationService:
             if directory.is_symlink() or not manifest_path.is_file() or manifest_path.is_symlink(): continue
             try:
                 manifest = read_json(manifest_path)
+                portable, _ = modern_contract(manifest, self.root)
+                if not portable:
+                    continue
                 records = [row for values in manifest["input_ensembles"].values() for row in values]
                 identities = [
                     f'{int(row["zeeman_seed"])}:{row["sha256"]}:{row["metadata_sha256"]}'

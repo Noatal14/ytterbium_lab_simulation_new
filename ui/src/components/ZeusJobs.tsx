@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { ZeusApiError, type Campaign, type ZeusApi, type ZeusJob, type ZeusSnapshot } from "../api/campaigns";
 
 function readiness(campaign: Campaign) {
+  if (campaign.remote_preparation.status !== "ready") return { label: "Blocked", tone: "blocked", detail: "This campaign cannot safely prepare or expose a Zeus action." };
   if (campaign.trust !== "trusted-current" || campaign.progress.some((row) => ["unknown", "inconsistent"].includes(row.status))) return { label: "Blocked", tone: "blocked", detail: "This campaign is not trusted enough to show a job plan." };
   if (campaign.progress.some((row) => row.status === "in-progress")) return { label: "Partial local outputs", tone: "attention", detail: "Scheduler state is unknown. Refresh Zeus status before deciding what to do." };
   if (campaign.next_plan?.operation_scope === "remote-submission") return { label: "Ready to copy", tone: "ready", detail: "A submission command can be previewed and copied from campaign inspection. It is never run here." };

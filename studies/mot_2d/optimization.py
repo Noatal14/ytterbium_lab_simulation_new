@@ -148,7 +148,9 @@ def optimize_mot(args):
         "fixed_s0": args.fixed_s0,
         "dt_s": args.dt,
         "solver": stochastic_sim_function.__name__,
-        "ensemble_dir": str(Path(args.ensemble_dir).resolve()) if args.ensemble_dir else None,
+        "ensemble_dir": args.ensemble_identity if args.ensemble_identity else (
+            str(Path(args.ensemble_dir).resolve()) if args.ensemble_dir else None
+        ),
         "zeeman_seeds": [row["zeeman_seed"] for row in ensembles],
         "mot_seeds": list(args.mot_seeds) if args.mot_seeds else [args.mot_seed_start+i for i in range(len(ensembles))],
         "particles_per_ensemble": args.particles_per_ensemble,
@@ -303,7 +305,7 @@ def optimize_mot(args):
             "particles_per_ensemble": args.particles_per_ensemble,
             "mot_seed_start": args.mot_seed_start,
             "stochastic_solver": stochastic_sim_function.__name__,
-            "ensemble_dir": str(args.ensemble_dir) if args.ensemble_dir else None,
+            "ensemble_dir": design["ensemble_dir"],
             "zeeman_seeds": [row["zeeman_seed"] for row in ensembles],
             "sampler_seed": args.sampler_seed,
             "bounds": {
@@ -336,6 +338,10 @@ def parse_args(argv=None):
     parser.add_argument(
         "--ensemble-dir",
         help="Directory containing the authoritative Zeeman ensemble files.",
+    )
+    parser.add_argument(
+        "--ensemble-identity",
+        help="Portable repository-relative ensemble identity recorded in results.",
     )
     parser.add_argument(
         "--zeeman-seeds",

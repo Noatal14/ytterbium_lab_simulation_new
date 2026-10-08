@@ -253,6 +253,14 @@ the first implementation milestone or authorize remote execution.
 5. Add explicitly confirmed stage submission only after a dedicated safety and
    scientific review.
 
+After the complete campaign workflow and Zeus integration are stable, add a
+separate single-simulation workspace. It should let an operator choose a
+Zeeman, 2D-MOT, or 3D-MOT simulation and configure the applicable inputs—for
+example particle count, laser parameters, and Zeeman magnet settings—without
+pretending that an exploratory single run is a validated optimization
+campaign. This is a deferred product milestone, not part of campaign execution
+or the current Zeus-submission scope.
+
 Each phase requires its own tests and review. Approval of a later screen is a
 product decision, not permission for an earlier implementation milestone to
 perform that action.
@@ -262,6 +270,14 @@ and reviews an immutable 2D design, then explicitly confirms creation of only
 `campaign.json` and `jobs/01_smoke.pbs`. The service revalidates the 35 frozen
 Zeeman inputs and clean repository snapshot before an atomic local write. It
 does not run the PBS file, execute a simulation, contact Zeus, or submit work.
+
+New 2D-MOT campaigns use the explicit `repository-relative-v1` path contract.
+Scientific inputs are recorded as repository-relative identities plus frozen
+hashes, so the same campaign can be validated on a workstation and on Zeus
+without rewriting its manifest. Runtime locations are resolved only inside the
+trusted repository checkout. Older machine-specific campaigns remain
+inspectable as **Local-only campaign** records; the application never rewrites
+them silently and never offers Zeus preparation or submission for them.
 
 ## Milestone 1 implementation scope
 

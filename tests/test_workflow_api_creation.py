@@ -53,6 +53,40 @@ def test_plan_is_pure_and_materialization_is_atomic(tmp_path):
     assert record["stage"] == "smoke"
 
 
+def test_campaign_plan_is_byte_identical_across_repository_locations(tmp_path):
+    first = tmp_path / "Mac checkout with spaces"
+    second = tmp_path / "Zeus checkout"
+    for root in (first, second):
+        repository(root)
+    source_a = source(first)
+    source_b = source(second)
+    plan_a = build_plan(
+        first, name="Portable", slug="portable", s0_values=[1.3],
+        source=source_a, snapshot=RepositorySnapshot("a" * 40),
+    )
+    plan_b = build_plan(
+        second, name="Portable", slug="portable", s0_values=[1.3],
+        source=source_b, snapshot=RepositorySnapshot("a" * 40),
+    )
+    assert plan_a.files == plan_b.files
+    assert plan_a.plan_digest == plan_b.plan_digest
+    assert plan_a.semantic_fingerprint == plan_b.semantic_fingerprint
+    assert plan_a.source_fingerprint == plan_b.source_fingerprint
+    serialized = b"\n".join(plan_a.files.values())
+    assert str(first).encode() not in serialized
+    assert str(second).encode() not in serialized
+    assert b"/home/tal.noa" not in serialized
+    assert b'PROJECT_ROOT="${HOME}/ytterbium_lab_simulation_new"' in plan_a.files["jobs/01_smoke.pbs"]
+    manifest = json.loads(plan_a.files["campaign.json"])
+    assert manifest["provenance"]["path_contract"] == "repository-relative-v1"
+    assert all(
+        not Path(row[key]).is_absolute()
+        for records in manifest["input_ensembles"].values()
+        for row in records
+        for key in ("path", "metadata_path")
+    )
+
+
 def test_materialize_race_creates_exactly_once(tmp_path):
     repository(tmp_path); plan = build_plan(tmp_path, name="Race", slug="race", s0_values=[1.3], source=source(tmp_path), snapshot=RepositorySnapshot("a" * 40))
     outcomes = []

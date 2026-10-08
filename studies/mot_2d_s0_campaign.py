@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
 from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS
+from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
 WORKING_DT_S = 1.25e-6
@@ -39,6 +41,28 @@ STAGE_ROLE = {"smoke": "discovery", "screen": "discovery",
               "refine": "refinement", "confirmation": "held_out_confirmation",
               "sensitivity": "held_out_confirmation", "production": "sealed_validation"}
 RELEVANT_CODE_FILES = list(RELEVANT_FILES)
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+
+
+def repository_relative(path, *, require):
+    return canonical_repo_relative(
+        REPOSITORY_ROOT, path,
+        allowed_root="data/particle_states/after_zeeman", require=require,
+    )
+
+
+def repository_path(value):
+    return resolve_repo_relative(
+        REPOSITORY_ROOT, value,
+        allowed_root="data/particle_states/after_zeeman", require="dir",
+    )
+
+
+def campaign_identity(path):
+    return canonical_repo_relative(
+        REPOSITORY_ROOT, path,
+        allowed_root="data/optimization/mot_2d", require="dir",
+    )
 
 
 def git_commit():
@@ -70,6 +94,7 @@ def assert_relevant_worktree_clean():
 
 
 def freeze_input_ensembles(directory, profile, seed_roles):
+    directory = repository_path(repository_relative(directory, require="dir"))
     records = {}
     for role, seeds in seed_roles.items():
         ensembles = load_production_ensembles(
@@ -86,8 +111,8 @@ def freeze_input_ensembles(directory, profile, seed_roles):
                 raise ValueError(f"Incomplete immutable provenance in {row['metadata_path']}")
             records[role].append({
                 "zeeman_seed": row["zeeman_seed"],
-                "path": str(Path(row["path"]).resolve()),
-                "metadata_path": str(Path(row["metadata_path"]).resolve()),
+                "path": repository_relative(row["path"], require="file"),
+                "metadata_path": repository_relative(row["metadata_path"], require="file"),
                 "sha256": row["sha256"],
                 "metadata_sha256": hashlib.sha256(Path(row["metadata_path"]).read_bytes()).hexdigest(),
                 "shape": metadata["shape"],
@@ -111,20 +136,27 @@ def assert_design(manifest):
 
 
 def stage_ensembles(manifest, stage, particles):
+    if manifest.get("provenance", {}).get("path_contract") != "repository-relative-v1":
+        raise RuntimeError(
+            "This legacy campaign is not portable and cannot be continued by the current runner."
+        )
     role = STAGE_ROLE[stage]
     seeds = manifest["seed_roles"][role]
     ensembles = load_production_ensembles(
         particles_per_ensemble=particles,
-        directory=manifest["ensemble_source"]["directory"],
+        directory=repository_path(manifest["ensemble_source"]["directory"]),
         zeeman_seeds=seeds,
         expected_profile=manifest["ensemble_source"]["zeeman_profile"],
     )
     frozen = {row["zeeman_seed"]: row for row in manifest["input_ensembles"][role]}
     for row in ensembles:
         record = frozen.get(row["zeeman_seed"])
-        observed = {"path": str(Path(row["path"]).resolve()),
-                    "metadata_path": str(Path(row["metadata_path"]).resolve()),
+        observed = {"path": repository_relative(row["path"], require="file"),
+                    "metadata_path": repository_relative(row["metadata_path"], require="file"),
                     "sha256": row["sha256"], "shape": row["shape"],
+                    "metadata_sha256": hashlib.sha256(
+                        Path(row["metadata_path"]).read_bytes()
+                    ).hexdigest(),
                     "dtype": row["dtype"], "survivor_count": row["n_available"],
                     "zeeman_profile": row["zeeman_profile"],
                     "source_git_commit": row["source_git_commit"],
@@ -170,11 +202,12 @@ def write_pbs(path, name, array, ncpus, walltime, command, revision=None):
 #PBS -l walltime={walltime}
 
 set -euo pipefail
-cd /home/tal.noa/ytterbium_lab_simulation_new || exit 1
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
 module load SPACK/apps
 module load gcc/14.1.0
 module load python/3.14.2
-source ~/venvs/atomsmltr/bin/activate
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
 {scalar_index_line}EXPECTED_COMMIT={revision or git_commit()}
 ACTUAL_COMMIT=$(git rev-parse HEAD)
 if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
@@ -216,12 +249,12 @@ def create(args):
         raise RuntimeError("Canonical seed roles drifted from the shared design.")
     manifest = build_manifest(
         name=args.name, s0_values=values,
-        ensemble_directory=str(Path(args.ensemble_dir)),
+        ensemble_directory=repository_relative(args.ensemble_dir, require="dir"),
         zeeman_profile=args.zeeman_profile, frozen_inputs=frozen_inputs,
         git_commit=revision, physical_model_sha256=model_hash,
         hashed_files=relevant_code_files(),
     )
-    repository_root = Path(__file__).resolve().parents[1]
+    repository_root = REPOSITORY_ROOT
     materialize(plan_from_frozen_manifest(
         repository_root=repository_root, destination=root, manifest=manifest,
     ))
@@ -241,7 +274,8 @@ def smoke(args):
         "--n-trials", "1", "--n-ensembles", "1", "--particles-per-ensemble", "2",
         "--npools", "1", "--dt", str(WORKING_DT_S),
         "--stochastic-solver", "hybrid",
-        "--ensemble-dir", manifest["ensemble_source"]["directory"],
+        "--ensemble-dir", str(repository_path(manifest["ensemble_source"]["directory"])),
+        "--ensemble-identity", manifest["ensemble_source"]["directory"],
         "--zeeman-seeds", str(manifest["seed_roles"]["discovery"][0]),
         "--mot-seeds", str(manifest["mot_seeds"]["discovery"][0]),
         "--campaign-design-id", manifest["provenance"]["physical_model_sha256"],
@@ -252,14 +286,18 @@ def smoke(args):
 
 
 def prepare(root, manifest, stage, specs, number, ncpus, walltime):
+    root_identity = campaign_identity(root)
     save_file_json(root / stage / "tasks.json", specs)
     job = root / "jobs" / f"{number}_{stage}.pbs"
     write_pbs(job, f"mot2d_{stage[:5]}", f"0-{len(specs)-1}", ncpus, walltime,
               f"python -m studies.mot_2d_s0_campaign {stage}-task "
-              f"--campaign {root} --task-index $PBS_ARRAY_INDEX",
+              f"--campaign {shlex.quote(root_identity)} --task-index $PBS_ARRAY_INDEX",
               manifest["provenance"]["git_commit"])
     manifest["stage"] = stage
-    manifest["stages"][stage] = {"tasks": len(specs), "job_file": str(job)}
+    manifest["stages"][stage] = {
+        "tasks": len(specs),
+        "job_file": job.relative_to(REPOSITORY_ROOT).as_posix(),
+    }
     save_file_json(root / "campaign.json", manifest)
     print(f"Next job: qsub {job}")
 
@@ -286,7 +324,8 @@ def optuna_task(root, stage, spec, trials, particles, sampler_seed, bounds=None)
         "--particles-per-ensemble", str(particles), "--npools", "200",
         "--dt", str(WORKING_DT_S), "--stochastic-solver", "hybrid",
         "--sampler-seed", str(sampler_seed + spec["worker"]),
-        "--ensemble-dir", manifest["ensemble_source"]["directory"],
+        "--ensemble-dir", str(repository_path(manifest["ensemble_source"]["directory"])),
+        "--ensemble-identity", manifest["ensemble_source"]["directory"],
         "--zeeman-seeds", *map(str, manifest["seed_roles"][role]),
         "--mot-seeds", *map(str, manifest["mot_seeds"][role]),
         "--campaign-design-id", manifest["provenance"]["physical_model_sha256"],
@@ -318,7 +357,7 @@ def trial_rows(root, stage, value):
         expected = {
             "dt_s": WORKING_DT_S,
             "stochastic_solver": "RK4StHybridCustom",
-            "ensemble_dir": str(Path(manifest["ensemble_source"]["directory"]).resolve()),
+            "ensemble_dir": manifest["ensemble_source"]["directory"],
             "zeeman_seeds": manifest["seed_roles"][role],
             "mot_seeds": manifest["mot_seeds"][role],
             "git_commit": manifest["provenance"]["git_commit"],
@@ -349,6 +388,7 @@ def distinct(rows, count=3):
 
 
 def prepare_refine(root, manifest):
+    root_identity = campaign_identity(root)
     specs, selected = [], {}
     for value in manifest["s0_values"]:
         rows = trial_rows(root, "screen", value)
@@ -376,11 +416,11 @@ def prepare_refine(root, manifest):
             200,
             REFINEMENT_ROUND_WALLTIME,
             "python -m studies.mot_2d_s0_campaign refine-task "
-            f"--campaign {root} --task-index $PBS_ARRAY_INDEX "
+            f"--campaign {shlex.quote(root_identity)} --task-index $PBS_ARRAY_INDEX "
             f"--target-trials {target}",
             manifest["provenance"]["git_commit"],
         )
-        round_jobs.append(str(job))
+        round_jobs.append(job.relative_to(REPOSITORY_ROOT).as_posix())
     submitter = jobs / "03_submit_refinement_chain.sh"
     lines = ["#!/bin/bash", "set -euo pipefail"]
     for index, job in enumerate(round_jobs):
@@ -397,7 +437,7 @@ def prepare_refine(root, manifest):
         "tasks": len(specs),
         "cumulative_trial_targets": list(REFINEMENT_CUMULATIVE_TARGETS),
         "round_job_files": round_jobs,
-        "submit_chain": str(submitter),
+        "submit_chain": submitter.relative_to(REPOSITORY_ROOT).as_posix(),
         "dependency": "afterok",
     }
     save_file_json(root / "campaign.json", manifest)
@@ -637,7 +677,8 @@ def production_task(args):
                     "--mot-seeds", str(spec["mot_seed"]),
                     "--detuning-gamma", str(p["detuning_gamma"]),
                     "--magnet-radius-mm", str(1000*p["magnet_radius"]), "--npools", "150",
-                    "--ensemble-dir", manifest["ensemble_source"]["directory"],
+                    "--ensemble-dir", str(repository_path(manifest["ensemble_source"]["directory"])),
+                    "--ensemble-identity", manifest["ensemble_source"]["directory"],
                     "--expected-zeeman-profile", manifest["ensemble_source"]["zeeman_profile"],
                     "--expected-git-commit", manifest["provenance"]["git_commit"],
                     "--output-dir", str(output), "--save-survivor-states", "--states-dir", str(states)],

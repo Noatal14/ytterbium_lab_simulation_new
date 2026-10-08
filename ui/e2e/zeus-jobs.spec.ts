@@ -6,7 +6,7 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
   let snapshotRequests = 0;
   page.on("request", (request) => requests.push(`${request.method()} ${new URL(request.url()).pathname}`));
   await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [{
-    id: "mot_2d-test", family: "mot_2d", kind: "mot_2d_s0_campaign", name: "Fixed s0 1.3", path: "data/optimization/mot_2d/test", stage: "confirmation", stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current", scientific_role: "candidate-selection", progress: [{ stage: "confirmation", completed: 2, expected: 5, status: "in-progress" }], warnings: [{ severity: "info", message: "Scheduler state is not checked." }], next_plan: null, s0_values: [1.3], families: [], git_commit: "abc"
+    id: "mot_2d-test", family: "mot_2d", kind: "mot_2d_s0_campaign", name: "Fixed s0 1.3", path: "data/optimization/mot_2d/test", stage: "confirmation", stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current", scientific_role: "candidate-selection", progress: [{ stage: "confirmation", completed: 2, expected: 5, status: "in-progress" }], warnings: [{ severity: "info", message: "Scheduler state is not checked." }], next_plan: null, s0_values: [1.3], families: [], git_commit: "abc", remote_preparation: { status: "ready", reason_code: null }
   }], invalid_count: 0, total: 1 } } }));
   await page.route("**/api/v1/session", (route) => route.fulfill({ json: { api_version: 1, data: { csrf_token: "csrf-token" } } }));
   await page.route("**/api/v1/zeus/snapshot", async (route) => {

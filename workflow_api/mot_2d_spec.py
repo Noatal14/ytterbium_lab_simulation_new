@@ -18,6 +18,7 @@ RELEVANT_FILES = (
     "utils/mot_2d_study.py", "utils/file_helpers.py", "utils/RK4StHybridCustom.py",
     "workflow_api/mot_2d_spec.py", "workflow_api/mot_2d_plan.py",
     "workflow_api/mot_2d_sources.py",
+    "workflow_api/repository_paths.py",
 )
 
 FIXED_DESIGN: dict[str, Any] = {
@@ -51,6 +52,7 @@ def build_manifest(
             "git_commit": git_commit, "physical_model_sha256": physical_model_sha256,
             "hashed_files": list(hashed_files),
             "capture_criterion_version": "mot_2d_extract_survivors_v1",
+            "path_contract": "repository-relative-v1",
         },
         "fixed_design": deepcopy(FIXED_DESIGN),
     }

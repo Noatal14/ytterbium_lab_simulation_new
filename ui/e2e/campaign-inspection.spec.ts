@@ -9,6 +9,7 @@ const campaign = {
   warnings: [{ severity: "info", message: "Scheduler state is not checked." }],
   next_plan: { label: "Review command", command: ["qsub", "data/job.pbs"], display_command: "qsub data/job.pbs", mode: "copy-only", scheduler_status: "unchecked", operation_scope: "remote-submission", executes_automatically: false },
   s0_values: [1.3], families: [], git_commit: "abc",
+  remote_preparation: { status: "ready", reason_code: null },
 };
 
 test("campaign inspection stays read-only, accessible, and responsive", async ({ page }) => {
@@ -19,6 +20,32 @@ test("campaign inspection stays read-only, accessible, and responsive", async ({
   await expect(page.getByRole("heading", { name: "<sample campaign>" })).toBeVisible();
   await expect(page.getByText(/does not mean a Zeus job is running/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Copy command" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: /Back to campaigns/ }).click();
+  await expect(page.getByRole("button", { name: "Open campaign" })).toBeFocused();
+});
+
+test("legacy campaigns remain inspectable but expose no Zeus command", async ({ page }) => {
+  const legacyCampaign = {
+    ...campaign,
+    id: "mot_2d-legacy",
+    name: "Legacy sample campaign",
+    trust: "legacy-incomplete",
+    scientific_role: "historical-evidence",
+    next_plan: null,
+    remote_preparation: { status: "legacy-local-only", reason_code: "absolute-input-paths" },
+  };
+  await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [legacyCampaign], invalid_count: 0, total: 1 } } }));
+  await page.route("**/api/v1/campaigns/mot_2d-legacy", (route) => route.fulfill({ json: { api_version: 1, data: legacyCampaign } }));
+  await page.goto("/");
+  await expect(page.getByText("Local-only campaign")).toBeVisible();
+  await page.getByRole("button", { name: "Open campaign" }).click();
+  await expect(page.getByRole("heading", { name: "Recreate this campaign before using Zeus" })).toBeVisible();
+  await expect(page.getByText(/created with file locations tied to another computer/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Campaign timeline" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy command" })).toHaveCount(0);
+  await expect(page.getByText("qsub data/job.pbs")).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.getByRole("button", { name: /Back to campaigns/ }).click();
