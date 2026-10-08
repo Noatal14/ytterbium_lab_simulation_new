@@ -87,4 +87,34 @@ describe("onboarding home", () => {
     expect(await screen.findByRole("option", { name: /after_zeeman\/production/ })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Zeeman ensemble source/)).toBeEnabled();
   });
+
+  it("shows read-only Zeus job states without implying a live connection or submission", async () => {
+    const user = userEvent.setup();
+    render(<App api={fixtureApi} creation={creationFixture} jobs={[
+      { id: "12[]", campaignId: campaignFixture.id, name: "Queued array", rawState: "Q", state: "queued", exitStatus: null, recordedAt: "Sample record" },
+      { id: "13", campaignId: campaignFixture.id, name: "Running confirmation", rawState: "R", state: "running", exitStatus: null, recordedAt: "Sample record" },
+      { id: "14", campaignId: campaignFixture.id, name: "Finished merge", rawState: "F", state: "completed", exitStatus: 0, recordedAt: "Sample record" },
+      { id: "15", campaignId: campaignFixture.id, name: "Held dependency", rawState: "H", state: "blocked", exitStatus: null, recordedAt: "Sample record" },
+    ]} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    expect(screen.getByRole("heading", { name: "Monitor job readiness safely" })).toBeInTheDocument();
+    expect(screen.getByText("Zeus connection: Not configured")).toBeInTheDocument();
+    expect(screen.getByText(/No action needed while this job is running/)).toBeInTheDocument();
+    expect(screen.getByText(/Raw PBS state H/)).toBeInTheDocument();
+    expect(screen.getByText(/Viewing or copying a plan is not submission/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /submit/i })).not.toBeInTheDocument();
+  });
+
+  it("shows explicit loading and error states for local campaign readiness", async () => {
+    const user = userEvent.setup();
+    const pending = { list: () => new Promise<never>(() => {}), get: fixtureApi.get };
+    const { unmount } = render(<App api={pending} creation={creationFixture} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    expect(screen.getByText("Checking local campaign records")).toBeInTheDocument();
+    unmount();
+
+    render(<App api={{ list: async () => { throw new Error("unavailable"); }, get: fixtureApi.get }} creation={creationFixture} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Campaign readiness is unavailable");
+  });
 });
