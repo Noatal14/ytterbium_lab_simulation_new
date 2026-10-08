@@ -22,7 +22,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 
-ZEUS_HOST = "zeus-login.zeus.technion.ac.il"
+ZEUS_HOST = "zeus.technion.ac.il"
 USERNAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9._-]{0,31}$")
 JOB_ID_RE = re.compile(r"^\d+(?:\[\d+\]|\[\])?(?:\.zeus-master)?$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")

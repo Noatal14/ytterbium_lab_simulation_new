@@ -16,7 +16,7 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
     expect(route.request().postDataJSON()).toEqual({ username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" });
     await route.fulfill({ json: { api_version: 1, data: {
       connection_status: "connected",
-      profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
       remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: new Date().toISOString(), jobs: [
         { id: "4756504[0]", name: "2D confirmation", raw_state: "R", state: "running", exit_status: null, walltime: "00:12:00", start_time: null, comment: null, dependencies: [] },
@@ -28,6 +28,15 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
   await page.getByRole("link", { name: "Zeus jobs" }).click();
   await expect(page.getByRole("heading", { name: "Monitor jobs safely" })).toBeVisible();
   await expect(page.getByText("Not connected", { exact: true })).toBeVisible();
+  const setupGuide = page.getByText("First time connecting? View setup guide");
+  await setupGuide.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByText(/Connect this computer to the Technion VPN/)).toBeVisible();
+  await expect(page.getByText(/install only the .* public key in your Zeus account/)).toBeVisible();
+  await expect(page.getByText(/compare the displayed server fingerprint with an official Technion source/)).toBeVisible();
+  await expect(page.getByText(/Never paste your Zeus password, private key, or key passphrase/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(requests.filter((request) => request.includes("/api/v1/session") || request.includes("/api/v1/zeus/snapshot"))).toEqual([]);
   await page.getByLabel("Technion username").fill("tal.noa");
   await expect(page.getByLabel("Remote project directory")).toHaveValue("/home/tal.noa/ytterbium_lab_simulation_new");

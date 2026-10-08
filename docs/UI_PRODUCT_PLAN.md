@@ -174,10 +174,22 @@ connection test must verify SSH access, the remote project directory, the
 Python environment, and the expected code version without submitting jobs.
 Only a successful test unlocks the run-review screen.
 
+The first-time connection guide must make the setup sequence explicit: connect
+to the Technion VPN, create the key on the local computer (not on Zeus), and
+load it into the active SSH agent. Before any terminal step that could establish
+the first connection, it must require verification of the displayed server
+fingerprint against an official Technion source. Only then should it direct the
+operator to official Technion instructions for installing the public half in
+the Zeus account. An operating-system credential store may remember the
+passphrase but does not replace the active agent. The guide must never recommend
+bypassing strict host-key checking. The UI must never request the private key,
+passphrase, or Zeus password.
+
 Explain the difference between key/agent and password authentication through
 on-demand help. Derive the normal remote project path from the Technion
-username automatically, while keeping that path editable for non-standard
-checkouts.
+username automatically. The current secure implementation fixes that path to
+the canonical checkout; support for non-standard checkouts is a future,
+separately reviewed capability.
 
 Every Zeus submission requires a final run-review screen. It must name the
 single stage being submitted, explain its purpose, show the requested jobs,

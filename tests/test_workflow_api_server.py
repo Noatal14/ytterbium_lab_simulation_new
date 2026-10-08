@@ -517,7 +517,7 @@ class _FakeZeusService:
         self.payload = payload
         return {
             "connection_status": "connected",
-            "profile": {"host": "zeus-login.zeus.technion.ac.il", "username": payload["username"], "project_directory": payload["project_directory"], "authentication": "ssh-key-or-agent"},
+            "profile": {"host": "zeus.technion.ac.il", "username": payload["username"], "project_directory": payload["project_directory"], "authentication": "ssh-key-or-agent"},
             "remote": {"project_directory": payload["project_directory"], "git_commit": "a" * 40, "branch": "main", "dirty": False},
             "scheduler": {"status": "available", "queried_at": "2026-10-08T00:00:00+00:00", "jobs": []},
         }

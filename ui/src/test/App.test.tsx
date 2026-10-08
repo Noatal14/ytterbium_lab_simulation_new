@@ -12,7 +12,7 @@ const creationFixture = {
 };
 const zeusSnapshot = {
   connection_status: "connected" as const,
-  profile: { host: "zeus-login.zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const },
+  profile: { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const },
   remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
   scheduler: { status: "available" as const, queried_at: new Date().toISOString(), jobs: [
     { id: "12[]", name: "Queued array", raw_state: "Q" as const, state: "queued" as const, exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] },
@@ -145,6 +145,19 @@ describe("onboarding home", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("SSH authentication is required");
     expect(screen.getByRole("button", { name: "About SSH authentication" })).toHaveAccessibleName("About SSH authentication");
     expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+  });
+
+  it("guides a first-time operator through safe local SSH setup", async () => {
+    const user = userEvent.setup();
+    render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    const guide = screen.getByText("First time connecting? View setup guide");
+    await user.click(guide);
+    expect(screen.getByText(/Connect this computer to the Technion VPN/)).toBeVisible();
+    expect(screen.getByText(/Create a dedicated SSH key on this computer/)).toBeVisible();
+    expect(screen.getByText((_, element) => element?.tagName === "LI" && element.textContent?.includes("install only the .pub public key in your Zeus account") === true)).toBeVisible();
+    expect(screen.getByText(/compare the displayed server fingerprint with an official Technion source/)).toBeVisible();
+    expect(screen.getByText(/Never paste your Zeus password, private key, or key passphrase/)).toBeVisible();
   });
 
   it("validates the Technion username before enabling a Zeus check", async () => {

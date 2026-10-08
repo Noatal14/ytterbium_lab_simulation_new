@@ -18,6 +18,10 @@ from workflow_api.zeus_snapshot import (
 )
 
 
+def test_zeus_host_is_pinned_to_the_official_endpoint():
+    assert ZEUS_HOST == "zeus.technion.ac.il"
+
+
 def _fake_ssh(tmp_path: Path, *, stdout: str = "", stderr: str = "", code: int = 0):
     executable = tmp_path / "ssh"
     arguments = tmp_path / "arguments.json"

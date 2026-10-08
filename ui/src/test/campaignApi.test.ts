@@ -45,7 +45,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: {
         connection_status: "connected",
-        profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+        profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
         remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
         scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "test", raw_state: "H", state: "held_attention", exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] }] },
       } }) });
@@ -65,7 +65,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {
         connection_status: "connected",
-        profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+        profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
         remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
         scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "bad", raw_state: "R", state: "finished", exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] }] },
       } }) }));
@@ -76,7 +76,7 @@ describe("campaign API runtime validation", () => {
   it("accepts a bounded signed PBS failure code and rejects contradictory normalization", async () => {
     const response = (state: string) => ({ ok: true, json: async () => ({ data: {
       connection_status: "connected",
-      profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
       remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "terminated", raw_state: "X", state, exit_status: -29, walltime: null, start_time: null, comment: null, dependencies: [] }] },
     } }) });
@@ -93,7 +93,7 @@ describe("campaign API runtime validation", () => {
   it("treats every held job as attention-required even when dependencies are recorded", async () => {
     const response = (state: string) => ({ ok: true, json: async () => ({ data: {
       connection_status: "connected",
-      profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
       remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "held", raw_state: "H", state, exit_status: null, walltime: null, start_time: null, comment: null, dependencies: ["2"] }] },
     } }) });
@@ -116,14 +116,14 @@ describe("campaign API runtime validation", () => {
   });
 
   it.each([
-    ["mismatched profile", { profile: { host: "zeus-login.zeus.technion.ac.il", username: "other", project_directory: "/home/other/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" } }],
+    ["mismatched profile", { profile: { host: "zeus.technion.ac.il", username: "other", project_directory: "/home/other/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" } }],
     ["control character", { remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main\u0007", dirty: false } }],
-    ["unexpected secret field", { profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent", password: "never" } }],
+    ["unexpected secret field", { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent", password: "never" } }],
     ["hostile job id", { scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1; qsub x", name: "bad", raw_state: "Q", state: "queued", exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] }] } }],
   ])("rejects Zeus response with %s", async (_label, override) => {
     const base = {
       connection_status: "connected",
-      profile: { host: "zeus-login.zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
       remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [] },
     };

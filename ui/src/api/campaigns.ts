@@ -90,7 +90,7 @@ export type ZeusJob = {
 };
 export type ZeusSnapshot = {
   connection_status: "connected";
-  profile: { host: "zeus-login.zeus.technion.ac.il"; username: string; project_directory: string; authentication: "ssh-key-or-agent" };
+  profile: { host: "zeus.technion.ac.il"; username: string; project_directory: string; authentication: "ssh-key-or-agent" };
   remote: { project_directory: string; git_commit: string; branch: string; dirty: boolean };
   scheduler: { status: "available"; queried_at: string; jobs: ZeusJob[] };
 };
@@ -108,7 +108,7 @@ function parseZeusSnapshot(value: unknown): ZeusSnapshot {
   const profile = row.profile as Record<string, unknown>;
   const remote = row.remote as Record<string, unknown>;
   const scheduler = row.scheduler as Record<string, unknown>;
-  if (!exactKeys(row, ["connection_status", "profile", "remote", "scheduler"]) || row.connection_status !== "connected" || !profile || !exactKeys(profile, ["host", "username", "project_directory", "authentication"]) || profile.host !== "zeus-login.zeus.technion.ac.il" || !text(profile.username) || !/^[A-Za-z][A-Za-z0-9._-]{0,31}$/.test(profile.username) || !text(profile.project_directory) || profile.project_directory !== `/home/${profile.username}/ytterbium_lab_simulation_new` || profile.authentication !== "ssh-key-or-agent" || !remote || !exactKeys(remote, ["project_directory", "git_commit", "branch", "dirty"]) || remote.project_directory !== profile.project_directory || !text(remote.git_commit) || !/^[0-9a-f]{40}$/.test(remote.git_commit) || !boundedPrintable(remote.branch, 256) || typeof remote.dirty !== "boolean" || !scheduler || !exactKeys(scheduler, ["status", "queried_at", "jobs"]) || scheduler.status !== "available" || !text(scheduler.queried_at) || Number.isNaN(Date.parse(String(scheduler.queried_at))) || !Array.isArray(scheduler.jobs) || scheduler.jobs.length > 500) throw new Error("Invalid Zeus snapshot response.");
+  if (!exactKeys(row, ["connection_status", "profile", "remote", "scheduler"]) || row.connection_status !== "connected" || !profile || !exactKeys(profile, ["host", "username", "project_directory", "authentication"]) || profile.host !== "zeus.technion.ac.il" || !text(profile.username) || !/^[A-Za-z][A-Za-z0-9._-]{0,31}$/.test(profile.username) || !text(profile.project_directory) || profile.project_directory !== `/home/${profile.username}/ytterbium_lab_simulation_new` || profile.authentication !== "ssh-key-or-agent" || !remote || !exactKeys(remote, ["project_directory", "git_commit", "branch", "dirty"]) || remote.project_directory !== profile.project_directory || !text(remote.git_commit) || !/^[0-9a-f]{40}$/.test(remote.git_commit) || !boundedPrintable(remote.branch, 256) || typeof remote.dirty !== "boolean" || !scheduler || !exactKeys(scheduler, ["status", "queried_at", "jobs"]) || scheduler.status !== "available" || !text(scheduler.queried_at) || Number.isNaN(Date.parse(String(scheduler.queried_at))) || !Array.isArray(scheduler.jobs) || scheduler.jobs.length > 500) throw new Error("Invalid Zeus snapshot response.");
   const rawStates = ["Q", "R", "H", "F", "X", "E", "B", "S", "W", "T", "U", "?"];
   const states = ["queued", "running", "held_attention", "completed_success", "completed_failed", "unknown"];
   const jobId = /^\d+(?:\[\d+\]|\[\])?(?:\.zeus-master)?$/;
