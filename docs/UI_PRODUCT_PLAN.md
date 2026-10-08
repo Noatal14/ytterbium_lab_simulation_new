@@ -234,8 +234,10 @@ Start as a local web application:
 
 The approved implementation direction is a React and TypeScript application
 built with Vite. A small local Python service exposes versioned, serializable
-responses from `workflow_api`; it does not import simulation workers or submit
-jobs. UI dependencies remain isolated from the scientific Python runtime.
+responses from `workflow_api`; it does not import simulation workers. Its only
+scheduler mutation is the dedicated, explicitly confirmed 2D smoke-submission
+boundary described below. UI dependencies remain isolated from the scientific
+Python runtime.
 
 The approved campaign-creation, Zeus-connection, run-review, and running-state
 screens describe the intended product. Their approval does not move them into
@@ -252,6 +254,14 @@ the first implementation milestone or authorize remote execution.
 4. Add secure Zeus connection testing and a read-only jobs page.
 5. Add explicitly confirmed stage submission only after a dedicated safety and
    scientific review.
+
+Milestone 5 implements only the initial 2D smoke submission. It independently
+revalidates the prepared 72 artifacts, canonical PBS, commit, tracked tree, and
+absence of untracked executable code. A durable remote pending record is
+written before the fixed `qsub` call and an immutable receipt records a
+verified job ID. Any ambiguous result blocks automatic retry. Screening,
+refinement, confirmation, sensitivity, production, and all 3D stages remain
+outside this milestone.
 
 After the complete campaign workflow and Zeus integration are stable, add a
 separate single-simulation workspace. It should let an operator choose a

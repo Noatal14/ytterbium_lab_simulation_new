@@ -1,8 +1,8 @@
 """Minimal localhost bridge for workflow inspection and guarded actions.
 
 Remote surfaces are explicit and CSRF-protected: a read-only Zeus snapshot and
-a review-before-write campaign preparation.  There is no generic command or
-scheduler-mutation endpoint.
+review-before-write campaign preparation and smoke submission.  There is no
+generic command endpoint or caller-controlled scheduler operation.
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshotProvider
 from workflow_api.zeus_snapshot import ZeusSnapshotError, ZeusSnapshotProvider, ZeusSnapshotService
 from workflow_api.zeus_transfer import ZeusPreparationCoordinator, ZeusPreparationError
+from workflow_api.zeus_submission import ZeusSmokeSubmissionCoordinator, ZeusSubmissionError
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -46,6 +47,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     creation_service: CreationService | None = None
     zeus_service: ZeusSnapshotService | None = None
     transfer_service: ZeusPreparationCoordinator | None = None
+    submission_service: ZeusSmokeSubmissionCoordinator | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -64,7 +66,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None:
                 self._error("session_unavailable", "Local actions are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -119,14 +121,17 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
         if not self._trusted_request_target(): return
         target = urlsplit(self.path)
         transfer_paths = {"/api/v1/zeus/transfers/preview", "/api/v1/zeus/transfers/confirm"}
-        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths}
+        submission_paths = {"/api/v1/zeus/submissions/smoke/preview", "/api/v1/zeus/submissions/smoke/confirm"}
+        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths}
         if target.query or target.path not in allowed:
             self._method_not_allowed(); return
         if target.path == "/api/v1/zeus/snapshot" and self.zeus_service is None:
             self._error("zeus_unavailable", "Read-only Zeus inspection is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if target.path in transfer_paths and self.transfer_service is None:
             self._error("zeus_preparation_unavailable", "Zeus campaign preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path not in transfer_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
+        if target.path in submission_paths and self.submission_service is None:
+            self._error("zeus_submission_unavailable", "Zeus smoke submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
+        if target.path not in transfer_paths | submission_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
             self._error("creation_unavailable", "Local campaign creation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if not self._trusted_mutation_headers(): return
         try:
@@ -138,6 +143,10 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 data = self.transfer_service.preview(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path == "/api/v1/zeus/transfers/confirm":
                 data = self.transfer_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/submissions/smoke/preview":
+                data = self.submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/submissions/smoke/confirm":
+                data = self.submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path.endswith("/preview"):
                 data = self.creation_service.preview(payload, session)
             else:
@@ -207,6 +216,44 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 "remote_checkout_mismatch": "The Zeus checkout is not clean at the campaign commit.",
             }
             self._error(error.code, messages.get(error.code, "Zeus preparation stopped safely."), statuses.get(error.code, HTTPStatus.PRECONDITION_FAILED)); return
+        except ZeusSubmissionError as error:
+            statuses = {
+                "request_invalid": HTTPStatus.BAD_REQUEST, "profile_invalid": HTTPStatus.BAD_REQUEST,
+                "campaign_not_found": HTTPStatus.NOT_FOUND, "campaign_not_smoke": HTTPStatus.PRECONDITION_FAILED,
+                "campaign_not_canonical": HTTPStatus.PRECONDITION_FAILED,
+                "confirmation_invalid": HTTPStatus.PRECONDITION_FAILED, "confirmation_expired": HTTPStatus.PRECONDITION_FAILED,
+                "too_many_pending_previews": HTTPStatus.TOO_MANY_REQUESTS,
+                "zeus_authentication_required": HTTPStatus.UNAUTHORIZED,
+                "zeus_host_key_untrusted": HTTPStatus.PRECONDITION_FAILED, "zeus_timeout": HTTPStatus.GATEWAY_TIMEOUT,
+                "zeus_unreachable": HTTPStatus.SERVICE_UNAVAILABLE, "remote_project_missing": HTTPStatus.PRECONDITION_FAILED,
+                "local_checkout_mismatch": HTTPStatus.PRECONDITION_FAILED, "local_files_changed": HTTPStatus.PRECONDITION_FAILED,
+                "remote_preparation_invalid": HTTPStatus.PRECONDITION_FAILED,
+                "submission_outcome_unknown": HTTPStatus.CONFLICT, "already_submitted": HTTPStatus.CONFLICT,
+                "smoke_already_started": HTTPStatus.CONFLICT,
+                "submission_record_invalid": HTTPStatus.CONFLICT,
+                "submission_busy": HTTPStatus.CONFLICT,
+            }
+            messages = {
+                "request_invalid": "The smoke-submission request is invalid.", "profile_invalid": "The Zeus connection profile is invalid.",
+                "campaign_not_found": "The selected campaign was not found.", "campaign_not_smoke": "Only a campaign awaiting its smoke stage can be submitted.",
+                "campaign_not_canonical": "The campaign does not match the canonical portable smoke plan.",
+                "confirmation_invalid": "The submission preview is invalid or belongs to another session.",
+                "confirmation_expired": "The submission preview has expired. Review it again before continuing.",
+                "too_many_pending_previews": "Too many submission previews are pending.",
+                "zeus_authentication_required": "An existing SSH key or agent is required.",
+                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
+                "zeus_timeout": "The read-only submission check timed out.", "zeus_unreachable": "Zeus could not be reached.",
+                "remote_project_missing": "The remote project directory could not be verified.",
+                "local_checkout_mismatch": "The local checkout is not clean at the campaign commit.",
+                "local_files_changed": "The campaign changed after review. Review it again before submitting.",
+                "remote_preparation_invalid": "The exact prepared campaign could not be verified on Zeus.",
+                "submission_outcome_unknown": "A previous submission attempt has an uncertain outcome. Automatic retry is blocked to prevent a duplicate job.",
+                "already_submitted": "This smoke stage already has a durable Zeus submission record.",
+                "smoke_already_started": "Smoke-stage outputs already exist on Zeus, so automatic submission is blocked.",
+                "submission_record_invalid": "The durable Zeus submission record is invalid or conflicting.",
+                "submission_busy": "Another submission operation is already checking this campaign.",
+            }
+            self._error(error.code, messages.get(error.code, "Zeus smoke submission stopped safely."), statuses.get(error.code, HTTPStatus.PRECONDITION_FAILED)); return
         except BlockingIOError:
             self._error("rate_limited", "Too many local creation requests.", HTTPStatus.TOO_MANY_REQUESTS); return
         except FileExistsError:
@@ -317,6 +364,9 @@ def main() -> None:
         ZeusSnapshotProvider(ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh")),
     )
     ReadOnlyWorkflowHandler.transfer_service = ZeusPreparationCoordinator(
+        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    ReadOnlyWorkflowHandler.submission_service = ZeusSmokeSubmissionCoordinator(
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), ReadOnlyWorkflowHandler)

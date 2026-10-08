@@ -1,4 +1,15 @@
-import { campaignApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
+import { campaignApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
+
+const smokePreviewData = (kind: "job" | "array" = "job") => ({
+  preview_token: "submit-token", expires_in_seconds: 300,
+  campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40), s0_values: kind === "job" ? [1.3] : [1.2, 1.3] },
+  stage: { id: "smoke", label: "Smoke check", purpose: "Validate setup" },
+  job: { file: "jobs/01_smoke.pbs", kind, task_count: kind === "job" ? 1 : 2, queue: "zeus_combined_q", cores_per_task: 1, memory_per_task_bytes: 68719476736, walltime_seconds: 1200 },
+  remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false },
+  inputs: { verified_count: 72, status: "ready" }, effects: { submit_smoke: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true,
+});
+
+const smokeResultData = (job_id: string) => ({ status: "submitted", campaign_id: "mot_2d-x", stage: "smoke", job_id, submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true });
 
 describe("campaign API runtime validation", () => {
   it("rejects malformed nested status data instead of rendering it", async () => {
@@ -111,6 +122,66 @@ describe("campaign API runtime validation", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
     expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/zeus/transfers/preview", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "transfer-csrf" }) }));
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/transfers/confirm", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "transfer-csrf" }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it("uses one bound session for exact smoke preview and confirmation", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "submit-csrf" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {
+        preview_token: "submit-token", expires_in_seconds: 300,
+        campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40), s0_values: [1.3] },
+        stage: { id: "smoke", label: "Smoke check", purpose: "Validate setup" },
+        job: { file: "jobs/01_smoke.pbs", kind: "job", task_count: 1, queue: "zeus_combined_q", cores_per_task: 1, memory_per_task_bytes: 68719476736, walltime_seconds: 1200 },
+        remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false },
+        inputs: { verified_count: 72, status: "ready" }, effects: { submit_smoke: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true,
+      } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { status: "submitted", campaign_id: "mot_2d-x", stage: "smoke", job_id: "4759999.zeus-master", submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true } }) });
+    vi.stubGlobal("fetch", fetchMock);
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    expect((await submissionApi.preview("mot_2d-x", profile)).job.queue).toBe("zeus_combined_q");
+    expect((await submissionApi.confirm("submit-token")).job_id).toBe("4759999.zeus-master");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/zeus/submissions/smoke/preview", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "submit-csrf" }) }));
+    expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/submissions/smoke/confirm", expect.objectContaining({ headers: expect.objectContaining({ "X-CSRF-Token": "submit-csrf" }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it.each(["4759999", "4759999[]", "4759999[0].zeus-master", "4759999.other-server"])("rejects non-canonical smoke parent job id %s", async (jobId) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "submit-csrf" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: smokePreviewData() }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: smokeResultData(jobId) }) }));
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    await submissionApi.preview("mot_2d-x", profile);
+    await expect(submissionApi.confirm("submit-token")).rejects.toEqual(expect.objectContaining({ code: "submission_outcome_unknown" }));
+    vi.unstubAllGlobals();
+  });
+
+  it("rejects a scalar job id for a reviewed array submission", async () => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "submit-csrf" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: smokePreviewData("array") }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: smokeResultData("4759999.zeus-master") }) }));
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    await submissionApi.preview("mot_2d-x", profile);
+    await expect(submissionApi.confirm("submit-token")).rejects.toEqual(expect.objectContaining({ code: "submission_outcome_unknown" }));
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    ["network failure", () => Promise.reject(new TypeError("connection reset"))],
+    ["non-JSON response", () => Promise.resolve({ ok: true, json: async () => { throw new SyntaxError("not json"); } })],
+    ["malformed success", () => Promise.resolve({ ok: true, json: async () => ({ data: { ...smokeResultData("4759999.zeus-master"), later_stages_locked: false } }) })],
+    ["mismatched campaign", () => Promise.resolve({ ok: true, json: async () => ({ data: { ...smokeResultData("4759999.zeus-master"), campaign_id: "mot_2d-other" } }) })],
+  ])("treats %s after confirm starts as an unknown submission outcome", async (_label, confirmResponse) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "submit-csrf" } }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: smokePreviewData() }) })
+      .mockImplementationOnce(confirmResponse));
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    await submissionApi.preview("mot_2d-x", profile);
+    await expect(submissionApi.confirm("submit-token")).rejects.toEqual(expect.objectContaining({ code: "submission_outcome_unknown" }));
     vi.unstubAllGlobals();
   });
 

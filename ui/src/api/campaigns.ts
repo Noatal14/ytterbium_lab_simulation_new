@@ -203,6 +203,82 @@ export const transferApi = {
 };
 export type TransferApi = typeof transferApi;
 
+export type SmokeSubmissionPreview = {
+  preview_token: string; expires_in_seconds: number;
+  campaign: { id: string; name: string; path: string; git_commit: string; s0_values: number[] };
+  stage: { id: "smoke"; label: "Smoke check"; purpose: string };
+  job: { file: "jobs/01_smoke.pbs"; kind: "job" | "array"; task_count: number; queue: "zeus_combined_q"; cores_per_task: 1; memory_per_task_bytes: 68719476736; walltime_seconds: 1200 };
+  remote: { host: "zeus.technion.ac.il"; project_directory: string; commit: string; branch: string; dirty: false };
+  inputs: { verified_count: 72; status: "ready" };
+  effects: { submit_smoke: true; submit_later_stages: false; modify_files: false };
+  later_stages_locked: true;
+};
+export type SmokeSubmissionResult = {
+  status: "submitted"; campaign_id: string; stage: "smoke"; job_id: string;
+  submitted_at: string; later_stages_locked: true;
+};
+export class SubmissionApiError extends Error {
+  constructor(public code: string, message: string) { super(message); }
+}
+
+function parseSmokeSubmissionPreview(value: Record<string, unknown>): SmokeSubmissionPreview {
+  const campaign = value.campaign as Record<string, unknown>;
+  const stage = value.stage as Record<string, unknown>;
+  const job = value.job as Record<string, unknown>;
+  const remote = value.remote as Record<string, unknown>;
+  const inputs = value.inputs as Record<string, unknown>;
+  const effects = value.effects as Record<string, unknown>;
+  if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "stage", "job", "remote", "inputs", "effects", "later_stages_locked"])
+    || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || !finiteNonnegative(value.expires_in_seconds)
+    || !campaign || !exactKeys(campaign, ["id", "name", "path", "git_commit", "s0_values"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !boundedPrintable(campaign.path, 1024) || !String(campaign.path).startsWith("data/optimization/mot_2d/") || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit)) || !Array.isArray(campaign.s0_values) || campaign.s0_values.length === 0 || !campaign.s0_values.every((item) => typeof item === "number" && Number.isFinite(item) && item > 0)
+    || !stage || !exactKeys(stage, ["id", "label", "purpose"]) || stage.id !== "smoke" || stage.label !== "Smoke check" || !boundedPrintable(stage.purpose, 512)
+    || !job || !exactKeys(job, ["file", "kind", "task_count", "queue", "cores_per_task", "memory_per_task_bytes", "walltime_seconds"]) || job.file !== "jobs/01_smoke.pbs" || !["job", "array"].includes(String(job.kind)) || !Number.isInteger(job.task_count) || Number(job.task_count) < 1 || job.task_count !== campaign.s0_values.length || (job.task_count === 1 ? job.kind !== "job" : job.kind !== "array") || job.queue !== "zeus_combined_q" || job.cores_per_task !== 1 || job.memory_per_task_bytes !== 68719476736 || job.walltime_seconds !== 1200
+    || !remote || !exactKeys(remote, ["host", "project_directory", "commit", "branch", "dirty"]) || remote.host !== "zeus.technion.ac.il" || !/^\/home\/[A-Za-z][A-Za-z0-9._-]{0,31}\/ytterbium_lab_simulation_new$/.test(String(remote.project_directory)) || remote.commit !== campaign.git_commit || !boundedPrintable(remote.branch, 256) || remote.dirty !== false
+    || !inputs || !exactKeys(inputs, ["verified_count", "status"]) || inputs.verified_count !== 72 || inputs.status !== "ready"
+    || !effects || !exactKeys(effects, ["submit_smoke", "submit_later_stages", "modify_files"]) || effects.submit_smoke !== true || effects.submit_later_stages !== false || effects.modify_files !== false || value.later_stages_locked !== true) throw new Error("Invalid smoke submission preview response.");
+  return value as unknown as SmokeSubmissionPreview;
+}
+
+function parseSmokeSubmissionResult(value: Record<string, unknown>): SmokeSubmissionResult {
+  if (!exactKeys(value, ["status", "campaign_id", "stage", "job_id", "submitted_at", "later_stages_locked"]) || value.status !== "submitted" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "smoke" || !text(value.job_id) || !/^\d+(?:\[\])?\.zeus-master$/.test(value.job_id) || !text(value.submitted_at) || Number.isNaN(Date.parse(value.submitted_at)) || value.later_stages_locked !== true) throw new Error("Invalid smoke submission result.");
+  return value as unknown as SmokeSubmissionResult;
+}
+
+let submissionSession: Promise<string> | null = null;
+let submissionContext: { token: string; campaignId: string; jobKind: "job" | "array" } | null = null;
+const getSubmissionSession = () => submissionSession ??= creationApi.session();
+async function submissionMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
+  const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
+  const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } };
+  if (!response.ok || !payload.data) throw new SubmissionApiError(text(payload.error?.code) ? payload.error.code : "submission_failed", text(payload.error?.message) ? payload.error.message : "Smoke submission stopped safely.");
+  return payload.data;
+}
+export const submissionApi = {
+  async preview(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<SmokeSubmissionPreview> {
+    const csrf = await getSubmissionSession();
+    try {
+      const preview = parseSmokeSubmissionPreview(await submissionMutation("/api/v1/zeus/submissions/smoke/preview", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf));
+      if (preview.campaign.id !== campaign_id || preview.remote.project_directory !== profile.project_directory) throw new Error("Smoke submission preview did not match the requested campaign and profile.");
+      submissionContext = { token: preview.preview_token, campaignId: preview.campaign.id, jobKind: preview.job.kind };
+      return preview;
+    } catch (error) { submissionSession = null; submissionContext = null; throw error; }
+  },
+  async confirm(preview_token: string): Promise<SmokeSubmissionResult> {
+    if (!submissionContext || submissionContext.token !== preview_token) throw new Error("The smoke submission preview is no longer active.");
+    const csrf = await getSubmissionSession();
+    try {
+      const result = parseSmokeSubmissionResult(await submissionMutation("/api/v1/zeus/submissions/smoke/confirm", { preview_token }, csrf));
+      const resultIsArray = result.job_id.includes("[]");
+      if (result.campaign_id !== submissionContext.campaignId || resultIsArray !== (submissionContext.jobKind === "array")) throw new Error("Smoke submission result did not match the reviewed campaign and job.");
+      return result;
+    } catch (error) {
+      if (error instanceof SubmissionApiError) throw error;
+      throw new SubmissionApiError("submission_outcome_unknown", "The submission result could not be verified. Do not submit again; check Zeus jobs first.");
+    } finally { submissionSession = null; submissionContext = null; }
+  },
+};
+export type SubmissionApi = typeof submissionApi;
+
 function parsePreview(value: Record<string, unknown>): CreationPreview {
   const provenance = value.provenance as Record<string, unknown>;
   const plan = value.plan as Record<string, unknown> | null;

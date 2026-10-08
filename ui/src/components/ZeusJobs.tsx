@@ -5,6 +5,7 @@ import { ZeusApiError, type Campaign, type ZeusApi, type ZeusJob, type ZeusSnaps
 function readiness(campaign: Campaign) {
   if (campaign.remote_preparation.status !== "ready") return { label: "Blocked", tone: "blocked", detail: "This campaign cannot safely prepare or expose a Zeus action." };
   if (campaign.trust !== "trusted-current" || campaign.progress.some((row) => ["unknown", "inconsistent"].includes(row.status))) return { label: "Blocked", tone: "blocked", detail: "This campaign is not trusted enough to show a job plan." };
+  if (campaign.family === "mot_2d" && campaign.stage === "smoke") return { label: "Ready for guarded review", tone: "ready", detail: "Open the campaign to prepare it on Zeus and review the smoke submission. No raw submission command is exposed." };
   if (campaign.progress.some((row) => row.status === "in-progress")) return { label: "Partial local outputs", tone: "attention", detail: "Scheduler state is unknown. Refresh Zeus status before deciding what to do." };
   if (campaign.next_plan?.operation_scope === "remote-submission") return { label: "Ready to copy", tone: "ready", detail: "A submission command can be previewed and copied from campaign inspection. It is never run here." };
   if (campaign.next_plan?.operation_scope === "local-mutation") return { label: "Ready to advance locally", tone: "ready", detail: "The next local workflow command can be copied from campaign inspection." };
@@ -48,7 +49,7 @@ export function ZeusJobs({ campaigns, api, loading, error, onInspect, savedSnaps
   const stale = snapshot ? Date.now() - Date.parse(snapshot.scheduler.queried_at) > 5 * 60_000 : false;
 
   return <main id="main" className="jobs-page">
-    <section className="detail-hero" aria-labelledby="jobs-title"><p className="eyebrow">Zeus jobs</p><h1 id="jobs-title" tabIndex={-1} ref={title}>Monitor jobs safely</h1><p className="hero-copy">Connect only when you choose to perform a read-only status check. The application cannot submit, cancel, or change a Zeus job.</p></section>
+    <section className="detail-hero" aria-labelledby="jobs-title"><p className="eyebrow">Zeus jobs</p><h1 id="jobs-title" tabIndex={-1} ref={title}>Monitor jobs safely</h1><p className="hero-copy">Connect only when you choose to perform a read-only status check. This page cannot submit, cancel, or change a Zeus job.</p></section>
 
     <section className="connection-setup" aria-labelledby="connection-heading">
       <div className="section-heading"><h2 id="connection-heading">Connect to Zeus</h2><p>Enter your Technion username. The project directory is derived automatically.</p></div>

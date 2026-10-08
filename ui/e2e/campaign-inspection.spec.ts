@@ -73,6 +73,18 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.route("**/api/v1/zeus/transfers/confirm", (route) => route.fulfill({ json: { data: {
     status: "prepared", campaign_id: smoke.id, destination: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/sample", transferred_count: 12, reused_identical_count: 60, bytes_transferred: 9_000_000, submitted_to_zeus: false, simulation_started: false,
   } } }));
+  await page.route("**/api/v1/zeus/submissions/smoke/preview", (route) => route.fulfill({ json: { data: {
+    preview_token: "submission-token", expires_in_seconds: 300,
+    campaign: { id: smoke.id, name: smoke.name, path: smoke.path, git_commit: "b".repeat(40), s0_values: [1.3] },
+    stage: { id: "smoke", label: "Smoke check", purpose: "Validate the campaign setup with two-particle test runs" },
+    job: { file: "jobs/01_smoke.pbs", kind: "job", task_count: 1, queue: "zeus_combined_q", cores_per_task: 1, memory_per_task_bytes: 68719476736, walltime_seconds: 1200 },
+    remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false },
+    inputs: { verified_count: 72, status: "ready" },
+    effects: { submit_smoke: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true,
+  } } }));
+  await page.route("**/api/v1/zeus/submissions/smoke/confirm", (route) => route.fulfill({ json: { data: {
+    status: "submitted", campaign_id: smoke.id, stage: "smoke", job_id: "4759999.zeus-master", submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true,
+  } } }));
   await page.goto("/");
   await page.getByRole("link", { name: "Zeus jobs" }).click();
   await page.getByLabel("Technion username").fill("tal.noa");
@@ -85,6 +97,13 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.getByRole("button", { name: "Prepare campaign on Zeus" }).click();
   await expect(page.getByText("Campaign prepared on Zeus")).toBeVisible();
   await expect(page.getByText("No simulation was started and no Zeus job was submitted.")).toBeVisible();
+  await page.getByRole("button", { name: "Review smoke submission" }).click();
+  await expect(page.getByRole("heading", { name: "Submit smoke check to Zeus" })).toBeFocused();
+  await expect(page.getByText("1 CPU core · 64 GB memory")).toBeVisible();
+  await page.getByRole("button", { name: "Submit smoke check to Zeus" }).click();
+  await expect(page.getByRole("heading", { name: "No action needed" })).toBeVisible();
+  await expect(page.getByText("Smoke check submitted", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "View in Zeus jobs" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

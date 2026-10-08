@@ -20,6 +20,7 @@ from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.zeus_transfer import ZeusPreparationError
+from workflow_api.zeus_submission import ZeusSubmissionError
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
@@ -258,12 +259,13 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None):
+def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     handler.creation_service = creation_service
     handler.zeus_service = zeus_service
     handler.transfer_service = transfer_service
+    handler.submission_service = submission_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -658,3 +660,80 @@ def test_zeus_transfer_unavailable_and_errors_are_sanitized():
         status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers=trusted, body=json.dumps(request))
         assert status == 409
         assert payload["error"] == {"code": "remote_input_conflict", "message": "A required Zeus input differs from the frozen campaign input."}
+
+
+class _FakeSubmissionService:
+    def __init__(self, error=None):
+        self.calls = []
+        self.error = error
+
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        if set(payload) != {"campaign_id", "username", "project_directory"}:
+            raise ZeusSubmissionError("request_invalid")
+        if self.error:
+            raise self.error
+        return {
+            "preview_token": "submit-token", "expires_in_seconds": 300,
+            "campaign": {"id": payload["campaign_id"], "name": "Campaign", "path": "data/optimization/mot_2d/c", "git_commit": "a" * 40, "s0_values": [1.3]},
+            "stage": {"id": "smoke", "label": "Smoke check", "purpose": "Validate first."},
+            "job": {"file": "jobs/01_smoke.pbs", "kind": "job", "task_count": 1, "queue": "zeus_combined_q", "cores_per_task": 1, "memory_per_task_bytes": 68719476736, "walltime_seconds": 1200},
+            "remote": {"host": "zeus.technion.ac.il", "project_directory": payload["project_directory"], "commit": "a" * 40, "branch": "main", "dirty": False},
+            "inputs": {"verified_count": 72, "status": "ready"},
+            "effects": {"submit_smoke": True, "submit_later_stages": False, "modify_files": False},
+            "later_stages_locked": True,
+        }
+
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        if set(payload) != {"preview_token"}:
+            raise ZeusSubmissionError("request_invalid")
+        if self.error:
+            raise self.error
+        return {"status": "submitted", "campaign_id": "mot_2d-id", "stage": "smoke", "job_id": "12345.zeus-master", "submitted_at": "2026-10-08T18:00:00+00:00", "later_stages_locked": True}
+
+
+def test_smoke_submission_endpoints_require_same_session_csrf_and_exact_payload():
+    service = _FakeSubmissionService()
+    with running_server(request_count=5, submission_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+        request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+        preview_url = f"{base_url}/api/v1/zeus/submissions/smoke/preview"
+        confirm_url = f"{base_url}/api/v1/zeus/submissions/smoke/confirm"
+        status, _, payload = request_json(preview_url, method="POST", headers={"Content-Type": "application/json"}, body=json.dumps(request))
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(preview_url, method="POST", headers=trusted, body=json.dumps(request))
+        assert status == 200 and payload["data"]["stage"]["id"] == "smoke"
+        token = payload["data"]["preview_token"]
+        status, _, payload = request_json(confirm_url, method="POST", headers=trusted, body=json.dumps({"preview_token": token}))
+        assert status == 201 and payload["data"]["job_id"] == "12345.zeus-master"
+        assert service.calls[0][2] == service.calls[1][2]
+        status, _, payload = request_json(confirm_url, method="POST", headers=trusted, body=json.dumps({"preview_token": token, "command": "qdel 1"}))
+        assert status == 400 and payload["error"]["code"] == "request_invalid"
+
+
+def test_smoke_submission_unavailable_and_uncertain_errors_are_sanitized():
+    with running_server(request_count=1) as base_url:
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/smoke/preview", method="POST",
+            headers={"Content-Type": "application/json"}, body="{}",
+        )
+        assert status == 503
+        assert payload["error"] == {"code": "zeus_submission_unavailable", "message": "Zeus smoke submission is unavailable."}
+
+    for code, expected_message in (
+        ("submission_outcome_unknown", "Automatic retry is blocked"),
+        ("smoke_already_started", "outputs already exist"),
+    ):
+        service = _FakeSubmissionService(ZeusSubmissionError(code))
+        with running_server(request_count=2, submission_service=service) as base_url:
+            _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+            trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+            request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+            status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/smoke/preview", method="POST", headers=trusted, body=json.dumps(request))
+            assert status == 409
+            assert payload["error"]["code"] == code
+            assert expected_message in payload["error"]["message"]
+            assert "/home/" not in payload["error"]["message"]

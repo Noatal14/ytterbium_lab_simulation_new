@@ -128,17 +128,22 @@ campaigns remain tied to the commit and design recorded in their manifests.
 - inspect 2D and 3D manifests;
 - report validated progress and warnings;
 - describe the next safe command; and
-- return serializable artifact references.
+- return serializable artifact references;
+- prepare a reviewed portable 2D smoke campaign on Zeus through the dedicated
+  no-overwrite transfer boundary; and
+- submit that exact smoke PBS only through the dedicated preview/confirmation
+  boundary with a durable at-most-once receipt.
 
 It must not:
 
 - run a simulation;
-- call `qsub` or SSH;
+- expose generic SSH, scheduler commands, paths, or options;
+- submit later campaign stages or retry an uncertain `qsub` outcome;
 - mutate a campaign;
 - infer success from unvalidated filenames; or
 - expose an executable plan when required artifacts are missing or untrusted.
 
-The eventual submission path should remain explicit:
+The submission path remains explicit:
 
 ```text
 UI -> inspect/plan -> show user -> user confirms -> submission adapter -> Zeus

@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../App";
-import { ZeusApiError } from "../api/campaigns";
+import { SubmissionApiError, ZeusApiError } from "../api/campaigns";
 import { campaignFixture, fixtureApi } from "./campaignFixture";
 
 const creationFixture = {
@@ -149,6 +149,22 @@ describe("onboarding home", () => {
     expect(screen.queryByText("Ready to copy")).not.toBeInTheDocument();
   });
 
+  it("routes an eligible smoke campaign to guarded review without exposing raw qsub", async () => {
+    const user = userEvent.setup();
+    const smokeCampaign = { ...campaignFixture, stage: "smoke", progress: [], next_plan: { ...campaignFixture.next_plan!, operation_scope: "remote-submission" as const } };
+    const smokeApi = {
+      async list() { return { campaigns: [smokeCampaign], invalid_count: 0, total: 1 }; },
+      async get() { return smokeCampaign; },
+    };
+    render(<App api={smokeApi} creation={creationFixture} />);
+    await screen.findByRole("button", { name: "Open campaign" });
+    await user.click(screen.getByRole("link", { name: /Zeus jobs/i }));
+    expect(screen.getByText("Ready for guarded review")).toBeInTheDocument();
+    expect(screen.getByText(/Open the campaign to prepare it on Zeus and review the smoke submission/)).toBeInTheDocument();
+    expect(screen.queryByText("Ready to copy")).not.toBeInTheDocument();
+    expect(screen.queryByText("qsub data/example.pbs")).not.toBeInTheDocument();
+  });
+
   it("explains an unavailable local source service and retries successfully", async () => {
     const user = userEvent.setup();
     let attempts = 0;
@@ -258,6 +274,90 @@ describe("onboarding home", () => {
     render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} />);
     await user.click(await screen.findByRole("button", { name: "Open campaign" }));
     expect(screen.queryByRole("heading", { name: "Prepare campaign on Zeus" })).not.toBeInTheDocument();
+  });
+
+  it("reviews and explicitly submits only the prepared smoke check", async () => {
+    const user = userEvent.setup();
+    const smokeCampaign = { ...campaignFixture, stage: "smoke", git_commit: "b".repeat(40), next_plan: null };
+    const api = { async list() { return { campaigns: [smokeCampaign], invalid_count: 0, total: 1 }; }, async get() { return smokeCampaign; } };
+    const transfer = {
+      preview: async () => ({ preview_token: "transfer", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40) }, destination: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}` }, artifacts: { ensemble_count: 35 as const, total_count: 72 as const, missing_count: 0, identical_count: 72, total_bytes: 52_000_000, missing_bytes: 0 }, effects: { copy_missing_only: true as const, overwrite_existing: false as const, submit_jobs: false as const, run_simulation: false as const } }),
+      confirm: async () => ({ status: "prepared" as const, campaign_id: smokeCampaign.id, destination: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}`, transferred_count: 0, reused_identical_count: 72, bytes_transferred: 0, submitted_to_zeus: false as const, simulation_started: false as const }),
+    };
+    const preview = vi.fn(async () => ({ preview_token: "submit-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40), s0_values: [1.3] }, stage: { id: "smoke" as const, label: "Smoke check" as const, purpose: "Validate the campaign setup with two-particle test runs" }, job: { file: "jobs/01_smoke.pbs" as const, kind: "job" as const, task_count: 1, queue: "zeus_combined_q" as const, cores_per_task: 1 as const, memory_per_task_bytes: 68719476736 as const, walltime_seconds: 1200 as const }, remote: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false as const }, inputs: { verified_count: 72 as const, status: "ready" as const }, effects: { submit_smoke: true as const, submit_later_stages: false as const, modify_files: false as const }, later_stages_locked: true as const }));
+    const confirm = vi.fn(async () => ({ status: "submitted" as const, campaign_id: smokeCampaign.id, stage: "smoke" as const, job_id: "4759999.zeus-master", submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true as const }));
+    render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => ({ ...zeusSnapshot, remote: { ...zeusSnapshot.remote, git_commit: "b".repeat(40) } }) }} transfer={transfer} submission={{ preview, confirm }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.type(screen.getByLabelText("Technion username"), "tal.noa");
+    await user.click(screen.getByRole("button", { name: "Connect and check status" }));
+    await screen.findByText("Connected — read-only snapshot received");
+    await user.click(screen.getByRole("button", { name: "Inspect campaign" }));
+    expect(screen.queryByRole("button", { name: "Submit smoke check to Zeus" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Review Zeus preparation" }));
+    await user.click(await screen.findByRole("button", { name: "Prepare campaign on Zeus" }));
+    await user.click(await screen.findByRole("button", { name: "Review smoke submission" }));
+    expect(await screen.findByRole("heading", { name: "Submit smoke check to Zeus" })).toHaveFocus();
+    expect(screen.getByText("1 PBS job · 1 task")).toBeInTheDocument();
+    expect(screen.getByText("1 CPU core · 64 GB memory")).toBeInTheDocument();
+    expect(screen.getByText(/Screening or any later stage/i)).toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Submit smoke check to Zeus" }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("heading", { name: "No action needed" })).toBeInTheDocument();
+    expect(screen.getAllByText(/job 4759999\.zeus-master/i)).toHaveLength(2);
+    expect(screen.getAllByText(/Screening remains locked/i)).toHaveLength(2);
+    expect(screen.getByText("Smoke check submitted").closest('[role="status"]')).toHaveFocus();
+  });
+
+  it("blocks retry when the smoke submission outcome is unknown", async () => {
+    const user = userEvent.setup();
+    const smokeCampaign = { ...campaignFixture, stage: "smoke", git_commit: "b".repeat(40), next_plan: null };
+    const api = { async list() { return { campaigns: [smokeCampaign], invalid_count: 0, total: 1 }; }, async get() { return smokeCampaign; } };
+    const preparedTransfer = {
+      preview: async () => ({ preview_token: "transfer", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40) }, destination: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}` }, artifacts: { ensemble_count: 35 as const, total_count: 72 as const, missing_count: 0, identical_count: 72, total_bytes: 52_000_000, missing_bytes: 0 }, effects: { copy_missing_only: true as const, overwrite_existing: false as const, submit_jobs: false as const, run_simulation: false as const } }),
+      confirm: async () => ({ status: "prepared" as const, campaign_id: smokeCampaign.id, destination: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}`, transferred_count: 0, reused_identical_count: 72, bytes_transferred: 0, submitted_to_zeus: false as const, simulation_started: false as const }),
+    };
+    const submissionPreview = async () => ({ preview_token: "submit-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40), s0_values: [1.3] }, stage: { id: "smoke" as const, label: "Smoke check" as const, purpose: "Validate setup" }, job: { file: "jobs/01_smoke.pbs" as const, kind: "job" as const, task_count: 1, queue: "zeus_combined_q" as const, cores_per_task: 1 as const, memory_per_task_bytes: 68719476736 as const, walltime_seconds: 1200 as const }, remote: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false as const }, inputs: { verified_count: 72 as const, status: "ready" as const }, effects: { submit_smoke: true as const, submit_later_stages: false as const, modify_files: false as const }, later_stages_locked: true as const });
+    render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} transfer={preparedTransfer} submission={{ preview: submissionPreview, confirm: async () => { throw new SubmissionApiError("submission_outcome_unknown", "timeout"); } }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await screen.findByText("Connected — read-only snapshot received"); await user.click(screen.getByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Review Zeus preparation" })); await user.click(await screen.findByRole("button", { name: "Prepare campaign on Zeus" })); await user.click(await screen.findByRole("button", { name: "Review smoke submission" })); await user.click(await screen.findByRole("button", { name: "Submit smoke check to Zeus" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Do not submit again");
+    expect(alert).toHaveFocus();
+    expect(screen.getByRole("heading", { name: "Check Zeus jobs before continuing" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Submit smoke check to Zeus" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Zeus jobs" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "View Zeus jobs" }));
+    expect(await screen.findByRole("heading", { name: "Monitor jobs safely" })).toBeInTheDocument();
+    expect(screen.getByText("No Zeus snapshot loaded")).toBeInTheDocument();
+    expect(screen.queryByText("Connected — read-only snapshot received")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["already_submitted", "No action needed", "durable Zeus submission record"],
+    ["smoke_already_started", "Check Zeus jobs before continuing", "Smoke outputs already exist on Zeus"],
+  ])("locks submission after terminal preview result %s", async (code, priority, copy) => {
+    const user = userEvent.setup();
+    const smokeCampaign = { ...campaignFixture, stage: "smoke", git_commit: "b".repeat(40), next_plan: null };
+    const api = { async list() { return { campaigns: [smokeCampaign], invalid_count: 0, total: 1 }; }, async get() { return smokeCampaign; } };
+    const transfer = {
+      preview: async () => ({ preview_token: "transfer", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40) }, destination: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}` }, artifacts: { ensemble_count: 35 as const, total_count: 72 as const, missing_count: 0, identical_count: 72, total_bytes: 52_000_000, missing_bytes: 0 }, effects: { copy_missing_only: true as const, overwrite_existing: false as const, submit_jobs: false as const, run_simulation: false as const } }),
+      confirm: async () => ({ status: "prepared" as const, campaign_id: smokeCampaign.id, destination: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}`, transferred_count: 0, reused_identical_count: 72, bytes_transferred: 0, submitted_to_zeus: false as const, simulation_started: false as const }),
+    };
+    render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} transfer={transfer} submission={{ preview: async () => { throw new SubmissionApiError(code, "terminal"); }, confirm: async () => { throw new Error("must not confirm"); } }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.type(screen.getByLabelText("Technion username"), "tal.noa");
+    await user.click(screen.getByRole("button", { name: "Connect and check status" }));
+    await screen.findByText("Connected — read-only snapshot received");
+    await user.click(screen.getByRole("button", { name: "Inspect campaign" }));
+    await user.click(screen.getByRole("button", { name: "Review Zeus preparation" }));
+    await user.click(await screen.findByRole("button", { name: "Prepare campaign on Zeus" }));
+    await user.click(await screen.findByRole("button", { name: "Review smoke submission" }));
+    expect(await screen.findByRole("heading", { name: priority })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(copy);
+    expect(screen.queryByRole("button", { name: "Review again" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review smoke submission" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Submit smoke check to Zeus" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Zeus jobs" })).toBeInTheDocument();
   });
 
   it("shows explicit loading and error states for local campaign readiness", async () => {
