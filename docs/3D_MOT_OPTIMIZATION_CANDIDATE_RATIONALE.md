@@ -44,7 +44,7 @@ and repeated access to blue light all contribute to the demonstrated donut
 performance. No reduced-blue geometry tested so far matches it.
 
 Supporting figure:
-[`05_donut_ablation_overview.png`](../graphs/mot_3d_configuration_decision/05_donut_ablation_overview.png).
+[`04_donut_blue_beam_ablation.png`](../graphs/mot_3d_configuration_decision/04_donut_blue_beam_ablation.png).
 
 ## Why the single-pass candidate still merits optimization
 
@@ -98,12 +98,15 @@ The single-pass search is nine-dimensional:
 - the included angle between the two blue beams, constrained to 45-70°; and
 - the z position of their crossing relative to the MOT center.
 
-The green geometry remains fixed at the established 60/120° arrangement. Blue
-s0 is capped at 1.5 for both candidates.
+The green geometry remains fixed at the established 62° full-angle
+arrangement (31° half-angle in the implementation). Blue s0 is capped at 1.5
+for both candidates.
 
 The detailed staged search, uncertainty calculation, independent validation,
 and robust operating-box construction are specified in
 [`3D_MOT_FULL_OPTIMIZATION_PLAN.md`](3D_MOT_FULL_OPTIMIZATION_PLAN.md).
+The numerical conclusions of the exploratory scripts are preserved in
+[`3D_MOT_HISTORICAL_STUDIES.md`](3D_MOT_HISTORICAL_STUDIES.md).
 
 ## Final decision logic
 

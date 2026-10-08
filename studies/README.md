@@ -27,20 +27,23 @@ These paths and command-line interfaces are frozen for existing campaigns.
 - `full_thermal_zeeman_flux.py`
 - `diagnose_2d_mot_photon_counts.py`
 
-## Current 3D-MOT workflow building blocks
+## Active 3D-MOT campaign
 
-The current chain uses the `compare_3d_mot_retention` and
-`optimize_3d_mot_full` engines together with related `select_*`, `run_*`,
-`merge_*`, and `submit_*` modules. The 3D scientific workflow is still
-provisional, so these remain individually callable rather than being presented
-as one frozen campaign manager.
+`mot_3d_campaign.py` is the canonical manifest-driven manager. It generates the
+PBS chains and calls the retained `optimize_*`, `select_*`, `run_*`, and
+`merge_*` engines directly. The old standalone `submit_*` wrappers for these
+same stages were removed because they duplicated the manager and could bypass
+its frozen-manifest and stage-integrity checks.
+
+The module names used by the campaign manager remain a frozen compatibility
+surface for generated PBS files and resumable campaigns.
 
 ## Historical exploratory chains
 
-Donut-velocity/aperture studies and early single-pass screen/diagnostic modules
-are retained as complete worker/merge/submit chains. They encode evidence used
-to choose current bounds. Remove a chain only after its scientific conclusion
-and surviving artifacts have been audited explicitly.
+The decisions from the donut-velocity/aperture and early single-pass scripts,
+together with surviving evidence paths, are recorded in
+`docs/3D_MOT_HISTORICAL_STUDIES.md`. These programs are not part of the active
+campaign command surface.
 
 ## Application boundary
 

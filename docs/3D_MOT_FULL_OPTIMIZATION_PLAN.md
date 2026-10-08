@@ -89,7 +89,8 @@ component toward their shared crossing. The initial physical seed is a
 less than 0.1% of its value on the beam axis. The approved angle domain is
 45--70 degrees, and the screened crossing-position domain is -50 to -40 mm.
 The six green beams retain the fixed angled
-60/120-degree geometry used by the donut candidate.
+62-degree full-angle geometry (31-degree half-angle in the implementation) used
+by the donut candidate.
 
 The magnetic gradient is selected only as part of the green-MOT operating
 point. It is not allowed to move in response to a blue-only proposal. The blue

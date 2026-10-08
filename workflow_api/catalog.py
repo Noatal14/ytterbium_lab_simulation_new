@@ -16,11 +16,11 @@ _WORKFLOWS = (
     ),
     WorkflowDescriptor(
         workflow_id="mot_3d_optimization",
-        label="3D MOT optimization studies",
-        maturity="provisional",
-        entrypoint="studies.submit_3d_mot_weekly_discovery",
+        label="3D MOT optimization campaign",
+        maturity="active",
+        entrypoint="studies.mot_3d_campaign",
         capabilities=(),
-        notes="Scientific workflow is still evolving; UI submission is intentionally disabled.",
+        notes="Canonical manifest-driven workflow; UI submission is intentionally disabled.",
     ),
     WorkflowDescriptor(
         workflow_id="zeeman_validation",

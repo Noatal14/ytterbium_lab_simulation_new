@@ -14,7 +14,10 @@ def test_workflow_catalog_exposes_stable_ui_capabilities():
     mot_2d = workflows["mot_2d_fixed_s0"]
     assert mot_2d.maturity == "active"
     assert "inspect" in mot_2d.capabilities
-    assert workflows["mot_3d_optimization"].capabilities == ()
+    mot_3d = workflows["mot_3d_optimization"]
+    assert mot_3d.maturity == "active"
+    assert mot_3d.entrypoint == "studies.mot_3d_campaign"
+    assert mot_3d.capabilities == ()
     assert workflows["zeeman_validation"].capabilities == ()
 
 
