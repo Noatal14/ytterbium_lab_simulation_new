@@ -40,6 +40,7 @@ You do not need to read everything before starting. When needed, use:
 
 - [`README.md`](README.md) for the project overview;
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the code and data-flow map;
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) before changing code;
 - [`PROJECT_HANDOFF.md`](PROJECT_HANDOFF.md) for the current scientific status;
 - [`prompts/README.md`](prompts/README.md) for the available AI prompts.
 

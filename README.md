@@ -328,11 +328,15 @@ This project relies on Python scientific libraries, plus the local vendored `ato
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 pip install -e ./atomsmltr
 ```
 
-`requirements.txt` contains the core runtime dependencies for the project. The vendored `atomsmltr` package declares Python 3.12 in its metadata, and that is the safest supported version to use unless you have verified compatibility with another interpreter.
+`requirements.txt` contains runtime dependencies. `requirements-dev.txt` adds
+the test tooling used locally and in continuous integration. The vendored
+`atomsmltr` package declares Python 3.12 in its metadata, and the root
+`.python-version` and `pyproject.toml` make that the supported development
+version. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the required checks.
 
 If the local `atomsmltr` package is not installed in editable mode, the project may need the repository root and/or `atomsmltr/src` on `PYTHONPATH` depending on how the environment is configured.
 

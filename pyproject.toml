@@ -1,0 +1,10 @@
+[project]
+name = "ytterbium-lab-simulation"
+version = "0.1.0"
+description = "Yb-171 laser-cooling simulation and reproducible MOT campaigns"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "atomsmltr/tests"]
+pythonpath = [".", "atomsmltr/src"]
+

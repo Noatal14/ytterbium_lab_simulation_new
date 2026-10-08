@@ -3,5 +3,4 @@ scipy
 matplotlib
 optuna
 magpylib
-pytest
 tqdm
