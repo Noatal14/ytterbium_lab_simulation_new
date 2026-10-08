@@ -4,6 +4,7 @@ import shlex
 import subprocess
 import sys
 import threading
+import numpy as np
 from contextlib import contextmanager
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
@@ -12,6 +13,10 @@ from urllib.parse import urlsplit
 from workflow_api.server import ReadOnlyWorkflowHandler, workflow_catalog_payload
 from workflow_api.mot_2d_validation import modern_contract, validated_progress
 from workflow_api.discovery import _progress_aware_plan, list_campaigns
+from workflow_api.mot_2d_sources import list_sources
+from workflow_api.mot_2d_plan import RELEVANT_FILES
+from workflow_api.mutation import CreationService
+from workflow_api.repository_snapshot import RepositorySnapshot
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
@@ -177,9 +182,38 @@ def test_progress_aware_plan_never_resubmits_partial_stage(tmp_path):
     assert "advance" in complete["command"]
 
 
+def write_zeeman_source(root, name="source"):
+    directory = root / "data/particle_states/after_zeeman" / name
+    directory.mkdir(parents=True)
+    for seed in range(3000, 3035):
+        state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
+        np.save(state, np.zeros((2, 6), dtype=float))
+        digest = hashlib.sha256(state.read_bytes()).hexdigest()
+        state.with_suffix(".json").write_text(json.dumps({
+            "shape": [2, 6], "dtype": "float64", "n_survivors": 2,
+            "output_sha256": digest,
+            "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": "profile", "n_initial_atoms": 50000, "dt_s": 4e-5},
+            "software": {"git_commit": "abc"},
+        }))
+    return directory
+
+
+def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
+    root = tmp_path / "repo"; directory = write_zeeman_source(root)
+    result = list_sources(root)
+    assert result["total"] == 1
+    assert result["sources"][0]["ensemble_count"] == 35
+    assert result["sources"][0]["path"] == "data/particle_states/after_zeeman/source"
+    (directory / "production_zeeman_n50000_dt40us_seed3010.json").unlink()
+    result = list_sources(root)
+    assert result == {"sources": [], "invalid_count": 1, "total": 0}
+
+
 @contextmanager
-def running_server(request_count=2, repository_root=None):
+def running_server(request_count=2, repository_root=None, creation_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
+    handler.sessions = {}
+    handler.creation_service = creation_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -200,12 +234,12 @@ def running_server(request_count=2, repository_root=None):
         server.server_close()
 
 
-def request_json(url, *, method="GET", headers=None, request_target=None):
+def request_json(url, *, method="GET", headers=None, request_target=None, body=None):
     parsed = urlsplit(url)
     connection = HTTPConnection(parsed.hostname, parsed.port, timeout=2)
     try:
         target = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-        connection.request(method, request_target or target, headers=headers or {})
+        connection.request(method, request_target or target, body=body, headers=headers or {})
         response = connection.getresponse()
         raw = response.read()
         return response.status, response.headers, json.loads(raw) if raw else None
@@ -254,8 +288,8 @@ def test_loopback_unknown_and_mutating_requests_are_rejected_and_uncached():
         )
         assert status == 405
         assert headers["Cache-Control"] == "no-store"
-        assert headers["Allow"] == "GET"
-        assert payload == {"error": {"code": "read_only", "message": "This API milestone is read-only."}}
+        assert headers["Allow"] == "GET, POST"
+        assert payload == {"error": {"code": "method_not_allowed", "message": "This method is not available."}}
 
 
 def test_every_non_get_method_is_json_read_only_rejection():
@@ -267,7 +301,7 @@ def test_every_non_get_method_is_json_read_only_rejection():
             assert headers["Cache-Control"] == "no-store"
             assert headers["X-Content-Type-Options"] == "nosniff"
             if method != "HEAD":
-                assert payload["error"]["code"] == "read_only"
+                assert payload["error"]["code"] == "method_not_allowed"
 
 
 def test_host_query_and_absolute_targets_fail_closed():
@@ -404,3 +438,61 @@ def test_server_import_does_not_cross_the_simulation_or_study_boundary():
         "or name == 'studies' or name.startswith('studies.') for name in sys.modules)"
     )
     subprocess.run([sys.executable, "-c", code], check=True)
+
+
+class _FixedSnapshots:
+    def capture(self): return RepositorySnapshot("a" * 40)
+
+
+def _creation_service(root):
+    write_zeeman_source(root)
+    for relative in RELEVANT_FILES:
+        path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(relative)
+    lab = root / "lab_setup/model.py"; lab.parent.mkdir(exist_ok=True); lab.write_text("MODEL = 1")
+    return CreationService(root, _FixedSnapshots())
+
+
+def _session_headers(base_url, cookie, csrf):
+    host = urlsplit(base_url).netloc
+    return {"Content-Type": "application/json", "Origin": f"http://{host}", "Sec-Fetch-Site": "same-origin", "X-CSRF-Token": csrf, "Cookie": cookie}
+
+
+def test_creation_requires_same_origin_csrf_and_confirm_is_local_only(tmp_path):
+    root = tmp_path / "repo"; service = _creation_service(root)
+    with running_server(request_count=5, repository_root=root, creation_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200
+        cookie = headers["Set-Cookie"].split(";", 1)[0]; csrf = payload["data"]["csrf_token"]
+        body = json.dumps({"name": "Fixed s0 1.3", "slug": "s0_1p3", "source_id": list_sources(root)["sources"][0]["id"], "s0_values": [1.3]})
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers={"Content-Type": "application/json"}, body=body)
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        trusted = _session_headers(base_url, cookie, csrf)
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=trusted, body=body)
+        assert status == 200 and payload["data"]["preview_token"]
+        confirm = json.dumps({"preview_token": payload["data"]["preview_token"]})
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/confirm", method="POST", headers=trusted, body=confirm)
+        assert status == 201
+        assert payload["data"]["submitted_to_zeus"] is False
+        status, _, replay = request_json(f"{base_url}/api/v1/campaigns/2d/confirm", method="POST", headers=trusted, body=confirm)
+        assert status == 201 and replay == payload
+
+
+def test_creation_rejects_unknown_fields_and_oversized_body(tmp_path):
+    root = tmp_path / "repo"; service = _creation_service(root)
+    with running_server(request_count=3, repository_root=root, creation_service=service) as base_url:
+        _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=trusted, body=json.dumps({"password": "never"}))
+        assert status == 400
+        oversized_headers = {**trusted, "Content-Length": str(33 * 1024)}
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=oversized_headers, body="{}")
+        assert status == 413
+
+
+def test_cross_site_request_cannot_allocate_creation_session(tmp_path):
+    root = tmp_path / "repo"; service = _creation_service(root)
+    with running_server(request_count=2, repository_root=root, creation_service=service) as base_url:
+        status, _, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "cross-site"})
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200 and payload["data"]["csrf_token"]

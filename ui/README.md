@@ -1,8 +1,9 @@
 # Simulation control center UI
 
-This directory contains the local web interface. Milestone 1 is fixture-only
-and read-only: it cannot create a campaign, connect to Zeus, run a simulation,
-or submit a job.
+This directory contains the local web interface. Campaign inspection is
+read-only. Milestone 3 adds an explicitly confirmed, local-only 2D campaign
+creation flow. It can create the frozen campaign record and initial smoke PBS
+file, but it cannot connect to Zeus, run a simulation, or submit a job.
 
 ## Development
 
@@ -20,8 +21,9 @@ The optional local API bridge runs from the repository root:
 python -m workflow_api.server
 ```
 
-Vite proxies `/api` to `http://127.0.0.1:8765`. The current onboarding page
-uses fixtures; the bridge exposes only the read-only workflow catalog.
+Vite proxies `/api` to `http://127.0.0.1:8765`. Creation uses a short-lived,
+same-origin preview token and revalidates the frozen inputs and repository
+snapshot immediately before an atomic local write.
 
 ## Checks
 

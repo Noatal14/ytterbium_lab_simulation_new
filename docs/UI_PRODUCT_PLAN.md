@@ -245,6 +245,12 @@ Each phase requires its own tests and review. Approval of a later screen is a
 product decision, not permission for an earlier implementation milestone to
 perform that action.
 
+Milestone 3's mutation boundary is intentionally narrow: a user first previews
+and reviews an immutable 2D design, then explicitly confirms creation of only
+`campaign.json` and `jobs/01_smoke.pbs`. The service revalidates the 35 frozen
+Zeeman inputs and clean repository snapshot before an atomic local write. It
+does not run the PBS file, execute a simulation, contact Zeus, or submit work.
+
 ## Milestone 1 implementation scope
 
 Include:

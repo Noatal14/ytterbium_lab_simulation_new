@@ -47,4 +47,56 @@ export const campaignApi = {
   },
   async get(id: string) { return parseCampaign((await request<CampaignEnvelope>(`/api/v1/campaigns/${encodeURIComponent(id)}`)).data); },
 };
+export type ZeemanSource = { id: string; path: string; profile: string; ensemble_count: number; minimum_survivors: number; maximum_survivors: number; fingerprint: string };
+export type CreationPreview = {
+  preview_token: string | null; expires_in_seconds: number;
+  plan: null | { name: string; path: string; s0_values: number[]; source_id: string; files: string[]; stage: "smoke" };
+  scientific_design: Record<string, unknown>;
+  provenance: { commit: string; input_count: 35 };
+  duplicate: null | { campaign_id: string | null; path: string; stage: string };
+};
+export type CreationResult = { status: "created"; campaign_id: string; path: string; stage: "smoke"; submitted_to_zeus: false };
+export const creationApi = {
+  async sources(): Promise<ZeemanSource[]> {
+    const payload = await request<{ data: { sources: unknown[]; total: number; invalid_count: number } }>("/api/v1/campaigns/2d/sources");
+    if (!payload.data || !Array.isArray(payload.data.sources) || payload.data.total !== payload.data.sources.length) throw new Error("Invalid Zeeman source response.");
+    return payload.data.sources.map((value) => {
+      if (!value || typeof value !== "object") throw new Error("Invalid Zeeman source response.");
+      const row = value as Record<string, unknown>;
+      if (!text(row.id) || !text(row.path) || !text(row.profile) || row.ensemble_count !== 35 || !finiteNonnegative(row.minimum_survivors) || !finiteNonnegative(row.maximum_survivors) || !text(row.fingerprint)) throw new Error("Invalid Zeeman source response.");
+      return row as unknown as ZeemanSource;
+    });
+  },
+  async session(): Promise<string> {
+    const payload = await request<{ data: { csrf_token: string } }>("/api/v1/session");
+    if (!payload.data || !text(payload.data.csrf_token)) throw new Error("Invalid local creation session.");
+    return payload.data.csrf_token;
+  },
+  async preview(input: { name: string; slug: string; source_id: string; s0_values: number[] }, csrf: string): Promise<CreationPreview> {
+    return parsePreview(await mutationRequest("/api/v1/campaigns/2d/preview", input, csrf));
+  },
+  async confirm(preview_token: string, csrf: string): Promise<CreationResult> {
+    const row = await mutationRequest("/api/v1/campaigns/2d/confirm", { preview_token }, csrf);
+    if (row.status !== "created" || !text(row.campaign_id) || !text(row.path) || row.stage !== "smoke" || row.submitted_to_zeus !== false) throw new Error("Invalid campaign creation response.");
+    return row as unknown as CreationResult;
+  },
+};
+export type CreationApi = typeof creationApi;
+
+function parsePreview(value: Record<string, unknown>): CreationPreview {
+  const provenance = value.provenance as Record<string, unknown>;
+  const plan = value.plan as Record<string, unknown> | null;
+  const duplicate = value.duplicate as Record<string, unknown> | null;
+  if ((value.preview_token !== null && !text(value.preview_token)) || !finiteNonnegative(value.expires_in_seconds) || !provenance || !text(provenance.commit) || provenance.input_count !== 35 || !value.scientific_design || typeof value.scientific_design !== "object") throw new Error("Invalid campaign preview response.");
+  if (plan !== null && (!plan || !text(plan.name) || !text(plan.path) || !Array.isArray(plan.s0_values) || !plan.s0_values.every((item) => typeof item === "number" && Number.isFinite(item) && item > 0) || !text(plan.source_id) || !Array.isArray(plan.files) || !plan.files.every(text) || plan.stage !== "smoke")) throw new Error("Invalid campaign preview response.");
+  if (duplicate !== null && (!duplicate || (duplicate.campaign_id !== null && !text(duplicate.campaign_id)) || !text(duplicate.path) || !text(duplicate.stage))) throw new Error("Invalid campaign preview response.");
+  if ((duplicate === null) === (plan === null) || (plan !== null && !text(value.preview_token))) throw new Error("Invalid campaign preview response.");
+  return value as unknown as CreationPreview;
+}
+async function mutationRequest(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
+  const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
+  const payload = await response.json() as { data?: Record<string, unknown>; error?: { message?: string } };
+  if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Local campaign action failed safely.");
+  return payload.data;
+}
 export type CampaignApi = typeof campaignApi;

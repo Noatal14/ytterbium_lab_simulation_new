@@ -7,9 +7,10 @@ type Props = {
   badge: string;
   readiness: "later-milestone" | "blocked";
   points: readonly ReactNode[];
+  onStart?: () => void;
 };
 
-export function CampaignCard({ title, description, badge, readiness, points }: Props) {
+export function CampaignCard({ title, description, badge, readiness, points, onStart }: Props) {
   const blocked = readiness === "blocked";
   const actionId = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-action-explanation`;
   return (
@@ -28,11 +29,11 @@ export function CampaignCard({ title, description, badge, readiness, points }: P
         ))}
       </ul>
       <div className="card-actions">
-        <button type="button" className="primary-button" disabled aria-describedby={actionId}>
-          {blocked ? `Start ${title}` : `Start ${title} · Milestone 2`}
+        <button type="button" className="primary-button" disabled={blocked || !onStart} aria-describedby={actionId} onClick={onStart}>
+          {blocked ? `Start ${title}` : `Start ${title}`}
         </button>
         <p className="action-explanation" id={actionId}>
-          {blocked ? "Complete and select a canonical 2D-MOT campaign first." : "Campaign creation is not enabled in this read-only milestone."}
+          {blocked ? "Complete and select a canonical 2D-MOT campaign first." : "Review every setting before creating local campaign files."}
         </p>
       </div>
     </article>

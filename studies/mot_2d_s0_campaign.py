@@ -18,6 +18,7 @@ from studies.mot_2d.production import summarize
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
+from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
 WORKING_DT_S = 1.25e-6
@@ -33,21 +34,11 @@ CONFIRMATION_CANDIDATES = 5
 CAPTURE_CRITERION_VERSION = "mot_2d_extract_survivors_v1"
 DEFAULT_PROFILE = "corrected_projectant_19ring_20261005"
 DEFAULT_ENSEMBLE_DIR = str(Path("data/particle_states/after_zeeman") / DEFAULT_PROFILE)
-SEED_ROLES = {
-    "discovery": list(range(3000, 3005)),
-    "refinement": list(range(3005, 3010)),
-    "held_out_confirmation": list(range(3010, 3015)),
-    "sealed_validation": list(range(3015, 3035)),
-}
+SEED_ROLES = ROLE_SEEDS
 STAGE_ROLE = {"smoke": "discovery", "screen": "discovery",
               "refine": "refinement", "confirmation": "held_out_confirmation",
               "sensitivity": "held_out_confirmation", "production": "sealed_validation"}
-RELEVANT_CODE_FILES = [
-    "config.py", "simulations/mot_2d.py", "studies/mot_2d_s0_campaign.py",
-    "studies/mot_2d/optimization.py", "studies/mot_2d/production.py",
-    "utils/mot_2d_study.py", "utils/file_helpers.py",
-    "utils/RK4StHybridCustom.py",
-]
+RELEVANT_CODE_FILES = list(RELEVANT_FILES)
 
 
 def git_commit():
@@ -97,7 +88,9 @@ def freeze_input_ensembles(directory, profile, seed_roles):
                 "zeeman_seed": row["zeeman_seed"],
                 "path": str(Path(row["path"]).resolve()),
                 "metadata_path": str(Path(row["metadata_path"]).resolve()),
-                "sha256": row["sha256"], "shape": metadata["shape"],
+                "sha256": row["sha256"],
+                "metadata_sha256": hashlib.sha256(Path(row["metadata_path"]).read_bytes()).hexdigest(),
+                "shape": metadata["shape"],
                 "dtype": metadata["dtype"], "survivor_count": metadata["n_survivors"],
                 "zeeman_profile": row["zeeman_profile"],
                 "source_git_commit": row["source_git_commit"],
@@ -215,45 +208,23 @@ def create(args):
     if len(all_seeds) != len(set(all_seeds)):
         raise ValueError("Campaign seed roles must be non-overlapping.")
     frozen_inputs = freeze_input_ensembles(args.ensemble_dir, args.zeeman_profile, roles)
-    manifest = {
-        "kind": "mot_2d_s0_campaign", "name": args.name, "stage": "smoke",
-        "s0_values": values, "stages": {},
-        "ensemble_source": {"directory": str(Path(args.ensemble_dir)),
-                            "zeeman_profile": args.zeeman_profile},
-        "seed_roles": roles,
-        "input_ensembles": frozen_inputs,
-        "mot_seeds": {role: [40_000 + seed for seed in seeds]
-                      for role, seeds in roles.items()},
-        "provenance": {"git_commit": revision,
-                       "physical_model_sha256": model_hash,
-                       "hashed_files": relevant_code_files(),
-                       "capture_criterion_version": CAPTURE_CRITERION_VERSION},
-        "fixed_design": {
-            "working_dt_s": WORKING_DT_S,
-            "final_dt_s": FINAL_DT_S,
-            "solver": "RK4StHybridCustom",
-            "detuning_bounds_gamma": list(BOUNDS_DETUNING),
-            "magnet_radius_bounds_m": list(BOUNDS_MAGNET_RADIUS_M),
-            "detuning_resolution_gamma": D_RES,
-            "magnet_radius_resolution_m": R_RES,
-            "target_95_half_width_fraction": TARGET,
-            "reporting_zeeman_survivors": 10_000_000,
-            "particle_counts": {"screen": 2000, "refine": 10000,
-                                "confirmation": 10000, "sensitivity": 10000,
-                                "production": "all_available"},
-            "trial_budgets": {"screen_per_worker": SCREEN_TRIALS,
-                              "refine_per_worker": REFINE_TRIALS},
-            "control_resolution": {"status": "provisional",
-                                   "detuning_gamma": D_RES,
-                                   "magnet_radius_m": R_RES},
-            "stress_test_offsets": {"detuning_gamma": 0.02,
-                                    "magnet_radius_m": 0.0001},
-        },
-    }
-    save_file_json(manifest_path, manifest)
-    write_pbs(jobs / "01_smoke.pbs", "mot2d_smoke", f"0-{len(values)-1}", 1,
-              "00:20:00", "python -m studies.mot_2d_s0_campaign smoke "
-              f"--campaign {root} --s0-index $PBS_ARRAY_INDEX")
+    # Campaign creation uses the same pure renderer and atomic materializer as
+    # the local UI; later campaign stages retain the established writers.
+    from workflow_api.mot_2d_plan import materialize, plan_from_frozen_manifest
+    from workflow_api.mot_2d_spec import build_manifest
+    if roles != ROLE_SEEDS:
+        raise RuntimeError("Canonical seed roles drifted from the shared design.")
+    manifest = build_manifest(
+        name=args.name, s0_values=values,
+        ensemble_directory=str(Path(args.ensemble_dir)),
+        zeeman_profile=args.zeeman_profile, frozen_inputs=frozen_inputs,
+        git_commit=revision, physical_model_sha256=model_hash,
+        hashed_files=relevant_code_files(),
+    )
+    repository_root = Path(__file__).resolve().parents[1]
+    materialize(plan_from_frozen_manifest(
+        repository_root=repository_root, destination=root, manifest=manifest,
+    ))
     print(f"Campaign created: {manifest_path}")
     print(f"First job: qsub {jobs / '01_smoke.pbs'}")
 
