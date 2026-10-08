@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import shlex
+import subprocess
 import threading
 from pathlib import Path
 
@@ -16,10 +17,97 @@ from workflow_api.zeus_snapshot import (
     _REMOTE_SCRIPT,
     _parse_qstat,
 )
+import workflow_api.zeus_snapshot as zeus_snapshot
 
 
 def test_zeus_host_is_pinned_to_the_official_endpoint():
     assert ZEUS_HOST == "zeus.technion.ac.il"
+
+
+def test_remote_wrapper_passes_username_and_project_at_expected_argv_positions(monkeypatch):
+    probe = "import json,sys;print(json.dumps({'username': sys.argv[1], 'project': sys.argv[2]}))"
+    monkeypatch.setattr(zeus_snapshot, "_REMOTE_SCRIPT", probe)
+    profile = ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")
+    completed = subprocess.run(
+        shlex.split(zeus_snapshot._remote_command(profile)),
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    assert json.loads(completed.stdout) == {
+        "username": "tal.noa",
+        "project": "/home/tal.noa/ytterbium_lab_simulation_new",
+    }
+
+
+def _run_remote_script_with_fake_scheduler(tmp_path, *, selected="", select_code=0, qstat_code=0):
+    home_root = tmp_path / "home"
+    project = home_root / "tal.noa" / "ytterbium_lab_simulation_new"
+    project.mkdir(parents=True)
+    commands = tmp_path / "bin"; commands.mkdir()
+    log = tmp_path / "commands.log"
+    git = commands / "git"
+    git.write_text("#!/bin/sh\nprintf 'git %s\\n' \"$*\" >> " + shlex.quote(str(log)) + "\ncase \"$1\" in rev-parse) echo " + "a" * 40 + ";; branch) echo main;; esac\n")
+    qselect = commands / "qselect"
+    qselect.write_text("#!/bin/sh\nprintf 'qselect %s\\n' \"$*\" >> " + shlex.quote(str(log)) + "\nprintf '%s' " + shlex.quote(selected) + "\nexit " + str(select_code) + "\n")
+    qstat = commands / "qstat"
+    qstat.write_text("#!/bin/sh\nprintf 'qstat %s\\n' \"$*\" >> " + shlex.quote(str(log)) + "\nprintf 'Job Id: 10.zeus-master\\n    Job_Name = active\\n    job_state = R\\n'\nexit " + str(qstat_code) + "\n")
+    for command in (git, qselect, qstat): command.chmod(0o755)
+    script = _REMOTE_SCRIPT.replace(
+        'home = pathlib.Path("/home") / username',
+        f'home = pathlib.Path({str(home_root)!r}) / username',
+    ).replace(
+        '"PATH": "/opt/pbs/bin:/usr/local/bin:/usr/bin:/bin"',
+        f'"PATH": {str(commands)!r}',
+    )
+    encoded = base64.urlsafe_b64encode(script.encode()).decode()
+    wrapper = "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
+    completed = subprocess.run(
+        ["python3", "-c", wrapper, encoded, "tal.noa", str(project)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    )
+    calls = log.read_text().splitlines() if log.exists() else []
+    return completed, calls
+
+
+def test_remote_scheduler_stops_after_qselect_failure(tmp_path):
+    completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n", select_code=1)
+    assert completed.returncode == 22
+    assert json.loads(completed.stdout) == {"error": "scheduler_unavailable"}
+    assert not any(call.startswith("qstat ") for call in calls)
+
+
+def test_remote_scheduler_skips_qstat_for_empty_selection(tmp_path):
+    completed, calls = _run_remote_script_with_fake_scheduler(tmp_path)
+    assert completed.returncode == 0
+    assert json.loads(completed.stdout)["qstat"] == ""
+    assert not any(call.startswith("qstat ") for call in calls)
+
+
+def test_remote_scheduler_passes_valid_ids_as_separate_qstat_arguments(tmp_path):
+    completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n11[].zeus-master\n")
+    assert completed.returncode == 0
+    assert "qstat -f 10.zeus-master 11[].zeus-master" in calls
+
+
+@pytest.mark.parametrize("selected", [
+    "invalid;id\n",
+    "10.zeus-master\n10.zeus-master\n",
+    "".join(f"{index}.zeus-master\n" for index in range(501)),
+])
+def test_remote_scheduler_rejects_invalid_duplicate_or_excessive_ids(tmp_path, selected):
+    completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected=selected)
+    assert completed.returncode == 21
+    assert json.loads(completed.stdout) == {"error": "remote_check_failed"}
+    assert not any(call.startswith("qstat ") for call in calls)
+
+
+def test_remote_scheduler_reports_qstat_failure(tmp_path):
+    completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n", qstat_code=1)
+    assert completed.returncode == 22
+    assert json.loads(completed.stdout) == {"error": "scheduler_unavailable"}
+    assert "qstat -f 10.zeus-master" in calls
 
 
 def _fake_ssh(tmp_path: Path, *, stdout: str = "", stderr: str = "", code: int = 0):
@@ -143,7 +231,9 @@ def test_provider_uses_only_pinned_read_only_ssh_contract(tmp_path, monkeypatch)
     assert remote[:2] == ["python3", "-c"]
     decoded = base64.urlsafe_b64decode(remote[3]).decode()
     assert decoded == _REMOTE_SCRIPT
-    assert "qstat" in decoded
+    assert '["qselect", "-u", username]' in decoded
+    assert '["qstat", "-f"] + job_ids' in decoded
+    assert 'qstat", "-x", "-f", "-u"' not in decoded
     assert all(forbidden not in decoded for forbidden in ("qsub", "qdel", "qalter"))
 
 

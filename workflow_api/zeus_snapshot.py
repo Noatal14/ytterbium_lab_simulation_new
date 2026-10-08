@@ -62,7 +62,7 @@ class ZeusProfile:
         return cls(username=username, project_directory=str(candidate))
 
 
-_REMOTE_SCRIPT = r'''import json, os, pathlib, subprocess, sys, tempfile
+_REMOTE_SCRIPT = r'''import json, os, pathlib, re, subprocess, sys, tempfile
 username = sys.argv[1]
 requested = pathlib.Path(sys.argv[2])
 try:
@@ -87,7 +87,17 @@ try:
     head_code, head, _ = run(["git", "rev-parse", "--verify", "HEAD^{commit}"], resolved, 128)
     branch_code, branch, _ = run(["git", "branch", "--show-current"], resolved, 256)
     dirty_code, dirty, _ = run(["git", "status", "--porcelain=v1", "--untracked-files=no"], resolved, 262144)
-    qstat_code, qstat, _ = run(["qstat", "-x", "-f", "-u", username], resolved, 1048576)
+    select_code, selected, _ = run(["qselect", "-u", username], resolved, 65536)
+    if select_code:
+        print(json.dumps({"error": "scheduler_unavailable"})); raise SystemExit(22)
+    job_ids = [line.strip() for line in selected.splitlines() if line.strip()]
+    valid_id = re.compile(r"^\d+(?:\[\d+\]|\[\])?(?:\.zeus-master)?$")
+    if len(job_ids) > 500 or len(job_ids) != len(set(job_ids)) or any(not valid_id.match(identifier) for identifier in job_ids):
+        raise RuntimeError("invalid job selection")
+    if job_ids:
+        qstat_code, qstat, _ = run(["qstat", "-f"] + job_ids, resolved, 1048576)
+    else:
+        qstat_code, qstat = 0, ""
 except (OSError, RuntimeError, UnicodeError):
     print(json.dumps({"error": "remote_check_failed"})); raise SystemExit(21)
 if head_code or branch_code or dirty_code:
@@ -100,7 +110,7 @@ print(json.dumps({"project_directory": str(resolved), "git_commit": head.strip()
 
 def _remote_command(profile: ZeusProfile) -> str:
     script = base64.urlsafe_b64encode(_REMOTE_SCRIPT.encode("utf-8")).decode("ascii")
-    wrapper = "import base64,sys;exec(base64.urlsafe_b64decode(sys.argv[1]).decode('utf-8'))"
+    wrapper = "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
     return shlex.join(("python3", "-c", wrapper, script, profile.username, profile.project_directory))
 
 
