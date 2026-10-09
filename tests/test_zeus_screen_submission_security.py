@@ -16,6 +16,7 @@ from workflow_api.zeus_screen_submission import (
     ZeusScreenSubmissionError,
     PinnedSshScreenSubmissionTransport,
 )
+from workflow_api.zeus_submission import RepositoryRevisionService
 
 
 class _Transport:
@@ -183,6 +184,56 @@ def test_untracked_importable_code_blocks_preview(tmp_path):
     (tmp_path / "sitecustomize.py").write_text("raise RuntimeError('shadowed')\n", encoding="utf-8")
     assert _code(lambda: coordinator.preview(_request(), session_id="owner")) == "local_checkout_mismatch"
     assert transport.submissions == []
+
+
+def test_public_revision_service_uses_exact_read_only_git_contract(tmp_path, monkeypatch):
+    calls = []
+    responses = [b"a" * 40 + b"\n", b""]
+
+    def run(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return subprocess.CompletedProcess(argv, 0, stdout=responses.pop(0), stderr=b"")
+
+    monkeypatch.setattr("workflow_api.zeus_submission.subprocess.run", run)
+    revision = RepositoryRevisionService(tmp_path, Path("/usr/bin/git")).inspect()
+
+    assert revision.commit == "a" * 40 and revision.clean is True
+    assert [call[0][1:] for call in calls] == [
+        ["rev-parse", "--verify", "HEAD^{commit}"],
+        ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
+    ]
+    assert all(call[1]["cwd"] == tmp_path.resolve() for call in calls)
+    assert all(call[1]["stdin"] is subprocess.DEVNULL and call[1]["shell"] is False for call in calls)
+    assert all(call[1]["env"] == {
+        "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+        "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0",
+        "GIT_TERMINAL_PROMPT": "0",
+    } for call in calls)
+
+
+def test_public_revision_service_rejects_symlinked_generated_artifact(tmp_path):
+    subprocess.run(["/usr/bin/git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["/usr/bin/git", "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
+    subprocess.run(["/usr/bin/git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    tracked = tmp_path / "tracked.txt"; tracked.write_text("x", encoding="utf-8")
+    subprocess.run(["/usr/bin/git", "add", "tracked.txt"], cwd=tmp_path, check=True)
+    subprocess.run(["/usr/bin/git", "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
+    (tmp_path / "data").mkdir(); (tmp_path / "data/result.json").symlink_to(tracked)
+
+    assert RepositoryRevisionService(tmp_path, Path("/usr/bin/git")).inspect().clean is False
+
+
+def test_screen_submission_revision_wrapper_matches_public_service(tmp_path):
+    subprocess.run(["/usr/bin/git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["/usr/bin/git", "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
+    subprocess.run(["/usr/bin/git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    tracked = tmp_path / "tracked.txt"; tracked.write_text("x", encoding="utf-8")
+    subprocess.run(["/usr/bin/git", "add", "tracked.txt"], cwd=tmp_path, check=True)
+    subprocess.run(["/usr/bin/git", "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
+    public = RepositoryRevisionService(tmp_path, Path("/usr/bin/git")).inspect()
+    coordinator = ZeusScreenSubmissionCoordinator(tmp_path, Path("/usr/bin/ssh"), Path("/usr/bin/git"))
+
+    assert coordinator._revision() == (public.commit, public.clean)
 
 
 @pytest.mark.parametrize("state", [

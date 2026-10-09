@@ -23,6 +23,7 @@ from workflow_api.mot_2d_plan import render_campaign_files, render_screen_transi
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner, ZeusPreparationError, _load_manifest
 from workflow_api.zeus_submission import SAFE_UNTRACKED_ROOTS, SAFE_UNTRACKED_SUFFIXES
+from workflow_api.zeus_submission import RepositoryRevisionService, ZeusSubmissionError
 
 TOKEN_LIFETIME_SECONDS=300;MAX_PENDING_PREVIEWS=32
 COMMIT_RE=re.compile(r"^[0-9a-f]{40}$");JOB_RE=re.compile(r"^\d+\[\]\.zeus-master$")
@@ -56,16 +57,9 @@ class ZeusScreenSubmissionCoordinator:
         self._pending:dict[str,_Pending]={};self._lock=threading.RLock();self._confirm_lock=threading.Lock()
 
     def _revision(self)->tuple[str,bool]:
-        env={"PATH":str(self.git.parent),"HOME":str(Path.home()),"LC_ALL":"C","GIT_CONFIG_NOSYSTEM":"1","GIT_OPTIONAL_LOCKS":"0","GIT_TERMINAL_PROMPT":"0"}
-        def run(args:list[str])->bytes:
-            try:r=subprocess.run([str(self.git),*args],cwd=self.root,env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False,close_fds=True,timeout=10,check=False)
-            except subprocess.TimeoutExpired:raise ZeusScreenSubmissionError("local_repository_unavailable") from None
-            if r.returncode or len(r.stderr)>65536 or len(r.stdout)>1024*1024:raise ZeusScreenSubmissionError("local_repository_unavailable")
-            return r.stdout
-        try:commit=run(["rev-parse","--verify","HEAD^{commit}"]).decode("ascii").strip();status=run(["status","--porcelain=v1","-z","--untracked-files=all"])
-        except UnicodeError:raise ZeusScreenSubmissionError("local_repository_unavailable") from None
-        if not COMMIT_RE.fullmatch(commit):raise ZeusScreenSubmissionError("local_repository_unavailable")
-        return commit,self._safe_untracked_status(status)
+        try:
+            revision=RepositoryRevisionService(self.root,self.git).inspect();return revision.commit,revision.clean
+        except ZeusSubmissionError as error:raise ZeusScreenSubmissionError(error.code) from error
 
     def _safe_untracked_status(self,raw:bytes)->bool:
         try:

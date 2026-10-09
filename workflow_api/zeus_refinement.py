@@ -10,7 +10,7 @@ from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files,render_screen_transition,render_refine_transition
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner,ZeusPreparationError,_load_manifest
-from workflow_api.zeus_screen_submission import ZeusScreenSubmissionCoordinator
+from workflow_api.zeus_submission import RepositoryRevisionService
 
 TOKEN_LIFETIME_SECONDS=300;MAX_PENDING_PREVIEWS=32
 class ZeusRefinementError(RuntimeError):
@@ -37,7 +37,8 @@ class ZeusRefinementCoordinator:
         try:return ZeusProfile.parse({"username":request.get("username"),"project_directory":request.get("project_directory")})
         except ValueError as error:raise ZeusRefinementError("profile_invalid") from error
     def _revision(self):
-        try:return ZeusScreenSubmissionCoordinator(self.root,self.ssh,self.git)._revision()
+        try:
+            revision=RepositoryRevisionService(self.root,self.git).inspect();return revision.commit,revision.clean
         except Exception as error:raise ZeusRefinementError(getattr(error,"code","local_repository_unavailable")) from error
     def _plan(self,campaign_id:str):
         entry=build_registry(self.root).get(campaign_id)

@@ -263,3 +263,19 @@ def test_receiver_revalidates_under_lock_and_recovery_is_canonical():
     assert source.count("['/usr/local/bin/qstat','-x','-t','-f',job_id]") == 2
     assert "canonical_refine=render_refine_transition" in source
     assert "canonical_rows!=record['rows']" in source
+
+
+def test_refinement_revision_maps_public_service_oserror_to_stable_code(tmp_path, monkeypatch):
+    executable = Path(sys.executable)
+    coordinator = ZeusRefinementCoordinator(tmp_path, executable, executable)
+    monkeypatch.setattr(
+        "workflow_api.zeus_refinement.RepositoryRevisionService.inspect",
+        lambda self: (_ for _ in ()).throw(OSError("redacted operating-system detail")),
+    )
+
+    with pytest.raises(ZeusRefinementError) as caught:
+        coordinator._revision()
+
+    assert caught.value.code == "local_repository_unavailable"
+    assert str(caught.value) == "local_repository_unavailable"
+    assert isinstance(caught.value.__cause__, OSError)

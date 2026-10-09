@@ -54,6 +54,47 @@ class ZeusSubmissionError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class RepositoryRevision:
+    commit: str
+    clean: bool
+
+
+class RepositoryRevisionService:
+    """Read and validate the local Git revision without changing the checkout."""
+
+    def __init__(self, repository_root: Path, git_executable: Path):
+        self.root = repository_root.resolve(strict=True)
+        self.git = git_executable.resolve(strict=True)
+
+    @staticmethod
+    def _safe_untracked_status(root: Path, raw: bytes) -> bool:
+        try:
+            for record in raw.split(b"\0"):
+                if not record: continue
+                if len(record)<4 or record[:2]!=b"??" or record[2:3]!=b" ": return False
+                text=record[3:].decode("utf-8","strict");pure=Path(text)
+                if pure.is_absolute() or pure.as_posix()!=text or any(part in {"",".",".."} for part in pure.parts): return False
+                if not pure.parts or pure.parts[0] not in SAFE_UNTRACKED_ROOTS or pure.suffix.lower() not in SAFE_UNTRACKED_SUFFIXES: return False
+                if not stat_module.S_ISREG((root/pure).lstat().st_mode): return False
+            return True
+        except (OSError,UnicodeError): return False
+
+    def inspect(self) -> RepositoryRevision:
+        env={"PATH":str(self.git.parent),"HOME":str(Path.home()),"LC_ALL":"C","GIT_CONFIG_NOSYSTEM":"1","GIT_OPTIONAL_LOCKS":"0","GIT_TERMINAL_PROMPT":"0"}
+        def run(args: list[str]) -> bytes:
+            try: result=subprocess.run([str(self.git),*args],cwd=self.root,env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False,close_fds=True,timeout=10,check=False)
+            except subprocess.TimeoutExpired: raise ZeusSubmissionError("local_repository_unavailable") from None
+            if result.returncode or len(result.stdout)>1024*1024 or len(result.stderr)>65536: raise ZeusSubmissionError("local_repository_unavailable")
+            return result.stdout
+        try:
+            commit=run(["rev-parse","--verify","HEAD^{commit}"]).decode("ascii").strip()
+            status=run(["status","--porcelain=v1","-z","--untracked-files=all"])
+        except UnicodeError: raise ZeusSubmissionError("local_repository_unavailable") from None
+        if not COMMIT_RE.fullmatch(commit): raise ZeusSubmissionError("local_repository_unavailable")
+        return RepositoryRevision(commit, self._safe_untracked_status(self.root, status))
+
+
+@dataclass(frozen=True)
 class SubmissionRemoteState:
     status: str
     job_id: str | None = None
@@ -375,18 +416,7 @@ class ZeusSmokeSubmissionCoordinator:
 
     def _safe_untracked_status(self, raw: bytes) -> bool:
         """Allow generated data only; reject untracked import/native code."""
-        try:
-            for record in raw.split(b"\0"):
-                if not record: continue
-                if len(record)<4 or record[:2]!=b"??" or record[2:3]!=b" ": return False
-                text=record[3:].decode("utf-8","strict")
-                pure=Path(text)
-                if pure.is_absolute() or pure.as_posix()!=text or any(part in {"",".",".."} for part in pure.parts): return False
-                if not pure.parts or pure.parts[0] not in SAFE_UNTRACKED_ROOTS or pure.suffix.lower() not in SAFE_UNTRACKED_SUFFIXES: return False
-                metadata=(self.root/pure).lstat()
-                if not stat_module.S_ISREG(metadata.st_mode): return False
-            return True
-        except (OSError,UnicodeError): return False
+        return RepositoryRevisionService._safe_untracked_status(self.root, raw)
 
     def _plan(self, campaign_id: str) -> tuple[Path, dict[str, object], str, dict[str, str], str, str]:
         entry=build_registry(self.root).get(campaign_id)
