@@ -168,6 +168,39 @@ def test_future_ts_artifact_contract_is_deterministic():
     assert first.endswith(" as const;\n")
 
 
+def test_checked_in_typescript_artifact_matches_generator_exactly():
+    generated = Path("ui/src/generated/mot2dSpec.v1.ts")
+    assert generated.is_file() and not generated.is_symlink()
+    assert generated.read_bytes() == render_typescript_specification().encode("utf-8")
+
+
+def test_ui_production_code_does_not_duplicate_migrated_canonical_facts():
+    domain = Path("ui/src/api/schema/domain.ts").read_text()
+    creation = Path("ui/src/components/CampaignCreation.tsx").read_text()
+    smoke_flow = Path("ui/src/features/campaign/SmokeFlow.tsx").read_text()
+    for duplicate in (
+        "campaign.s0_values.length * 3 * 17",
+        "campaign.s0_values.length * 30",
+        "const targets = [3, 6, 9, 10]",
+        'job.file !== "jobs/04_confirmation.pbs"',
+        "job.memory_per_task_bytes !== 68719476736",
+        "artifacts.created !== 2",
+        "artifacts.created !== 7",
+        "artifacts.created !== 3",
+        "artifacts.updated !== 1",
+        "updated: 1",
+        "Number(scheduler.task_count) / 3",
+        "worker[012]",
+        "round_job_ids: [string, string, string, string]",
+        'JSON.stringify(["campaign.json"])',
+    ):
+        assert duplicate not in domain
+    assert "RK4StHybridCustom" not in creation
+    assert "all 35 validated Zeeman ensembles" not in creation
+    assert "1 CPU core · 64 GB memory" not in smoke_flow
+    assert "20 minutes" not in smoke_flow
+
+
 @pytest.mark.parametrize(
     "mutation",
     [

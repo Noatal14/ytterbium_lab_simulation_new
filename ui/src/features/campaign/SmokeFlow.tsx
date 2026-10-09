@@ -217,11 +217,11 @@ export function SmokeFlow({
                   </div>
                   <div>
                     <dt>Resources per task</dt>
-                    <dd>1 CPU core · 64 GB memory</dd>
+                    <dd>{submissionPreview.job.cores_per_task} CPU {submissionPreview.job.cores_per_task === 1 ? "core" : "cores"} · {Math.round(submissionPreview.job.memory_per_task_bytes / 1024 ** 3)} GB memory</dd>
                   </div>
                   <div>
                     <dt>Walltime limit per task</dt>
-                    <dd>20 minutes</dd>
+                    <dd>{submissionPreview.job.walltime_seconds / 60} minutes</dd>
                   </div>
                   <div>
                     <dt>Job file</dt>
