@@ -1,0 +1,393 @@
+"""Freeze the current v1 error behavior before handlers adopt the catalog."""
+
+from __future__ import annotations
+
+import ast
+from contextlib import contextmanager
+from http.client import HTTPConnection
+from http.server import ThreadingHTTPServer
+import json
+import re
+import subprocess
+import sys
+import threading
+from dataclasses import FrozenInstanceError
+from pathlib import Path
+from urllib.parse import urlsplit
+
+import pytest
+
+from workflow_api.error_catalog import (
+    ERROR_DOMAINS,
+    ErrorSpec,
+    catalog_payload,
+    render_catalog,
+    resolve_error,
+)
+from workflow_api.server import POST_ROUTES, ReadOnlyWorkflowHandler
+from workflow_api.zeus_confirmation import ZeusConfirmationError
+from workflow_api.zeus_refinement import ZeusRefinementError
+from workflow_api.zeus_refinement_submission import ZeusRefinementSubmissionError
+from workflow_api.zeus_screen_submission import ZeusScreenSubmissionError
+from workflow_api.zeus_screening import ZeusScreeningError
+from workflow_api.zeus_snapshot import ZeusSnapshotError
+from workflow_api.zeus_submission import ZeusSubmissionError
+from workflow_api.zeus_transfer import ZeusPreparationError
+
+ROOT = Path(__file__).resolve().parents[1]
+SNAPSHOT = ROOT / "tests/contracts/v1/workflow_api_error_catalog.json"
+
+
+def _handler_dicts(exception_name: str) -> dict[str, dict[str, object]]:
+    tree = ast.parse((ROOT / "workflow_api/server.py").read_text())
+    for node in ast.walk(tree):
+        if (
+            not isinstance(node, ast.ExceptHandler)
+            or not isinstance(node.type, ast.Name)
+            or node.type.id != exception_name
+        ):
+            continue
+        found: dict[str, dict[str, object]] = {}
+        for child in node.body:
+            if (
+                not isinstance(child, ast.Assign)
+                or len(child.targets) != 1
+                or not isinstance(child.targets[0], ast.Name)
+                or not isinstance(child.value, ast.Dict)
+            ):
+                continue
+            name = child.targets[0].id
+            if name not in {"messages", "statuses"}:
+                continue
+            rows: dict[str, object] = {}
+            for key_node, value_node in zip(
+                child.value.keys, child.value.values, strict=True
+            ):
+                key = ast.literal_eval(key_node)
+                if name == "messages":
+                    rows[key] = ast.literal_eval(value_node)
+                elif isinstance(value_node, ast.Attribute):
+                    rows[key] = value_node.attr
+            found[name] = rows
+        return found
+    raise AssertionError(f"No handler found for {exception_name}")
+
+
+@pytest.mark.parametrize(
+    ("exception_name", "domain"),
+    [
+        ("ZeusSnapshotError", "snapshot"),
+        ("ZeusPreparationError", "transfer"),
+        ("ZeusSubmissionError", "smoke_submission"),
+    ],
+)
+def test_catalog_matches_active_explicit_handler_maps(exception_name, domain):
+    active = _handler_dicts(exception_name)
+    catalog = ERROR_DOMAINS[domain]
+    for code, message in active["messages"].items():
+        assert catalog.entries[code].message == message
+    for code, status_name in active["statuses"].items():
+        assert catalog.entries[code].status.name == status_name
+
+
+def test_route_unavailable_catalog_matches_active_registry_exactly():
+    expected = {
+        (route.unavailable_code, 503, route.unavailable_message)
+        for route in POST_ROUTES.values()
+    }
+    observed = {
+        (code, int(spec.status), spec.message)
+        for code, spec in ERROR_DOMAINS["route_unavailable"].entries.items()
+    }
+    assert observed == expected
+
+
+def test_every_literal_coordinator_error_is_explicitly_catalogued():
+    file_domains = {
+        "zeus_snapshot.py": "snapshot",
+        "zeus_transfer.py": "transfer",
+        "zeus_submission.py": "smoke_submission",
+        "zeus_screening.py": "smoke_transition",
+        "zeus_screen_submission.py": "screen_submission",
+        "zeus_refinement.py": "refinement_transition",
+        "zeus_refinement_submission.py": "refinement_submission",
+        "zeus_confirmation.py": "confirmation_transition",
+    }
+    for filename, domain in file_domains.items():
+        tree = ast.parse((ROOT / "workflow_api" / filename).read_text())
+        emitted = set()
+        for node in ast.walk(tree):
+            if (
+                not isinstance(node, ast.Raise)
+                or not isinstance(node.exc, ast.Call)
+                or not node.exc.args
+            ):
+                continue
+            name = node.exc.func.id if isinstance(node.exc.func, ast.Name) else ""
+            if not name.startswith("Zeus") or not name.endswith("Error"):
+                continue
+            error_code = node.exc.args[0]
+            if (
+                isinstance(error_code, ast.Constant)
+                and isinstance(error_code.value, str)
+                and re.fullmatch(r"[a-z0-9_]+", error_code.value)
+            ):
+                emitted.add(error_code.value)
+        missing = emitted - set(ERROR_DOMAINS[domain].entries)
+        assert (
+            not missing
+        ), f"{domain} missing statically emitted/mapped codes: {sorted(missing)}"
+
+
+def test_propagated_and_remote_receiver_codes_are_explicit_not_hidden_by_fallbacks():
+    assert set(ERROR_DOMAINS["transfer"].entries) <= set(
+        ERROR_DOMAINS["refinement_transition"].entries
+    )
+    assert set(ERROR_DOMAINS["refinement_transition"].entries) <= set(
+        ERROR_DOMAINS["refinement_submission"].entries
+    )
+    assert set(ERROR_DOMAINS["refinement_submission"].entries) <= set(
+        ERROR_DOMAINS["confirmation_transition"].entries
+    )
+    receiver_domains = {
+        "zeus_screening_remote.py": "smoke_transition",
+        "zeus_screen_submission_remote.py": "screen_submission",
+        "zeus_refinement_remote.py": "refinement_transition",
+        "zeus_refinement_submission_remote.py": "refinement_submission",
+        "zeus_confirmation_remote.py": "confirmation_transition",
+    }
+    pattern = re.compile(r'fail\("([a-z0-9_]+)"')
+    for filename, domain in receiver_domains.items():
+        emitted = set(pattern.findall((ROOT / "workflow_api" / filename).read_text()))
+        missing = emitted - set(ERROR_DOMAINS[domain].entries)
+        assert not missing, f"{domain} missing remote receiver codes: {sorted(missing)}"
+
+
+def test_catalog_snapshot_is_deterministic_and_declares_unversioned_wire_errors():
+    assert json.loads(SNAPSHOT.read_text()) == catalog_payload()
+    assert SNAPSHOT.read_bytes() == render_catalog().encode()
+    assert catalog_payload()["wire_envelope"] == "unversioned-error"
+    existing = json.loads(
+        (ROOT / "tests/contracts/v1/workflow_api_errors.json").read_text()
+    )
+    assert all(
+        set(case["body"]) == {"error"} and "api_version" not in case["body"]
+        for case in existing["cases"]
+    )
+
+
+def test_generator_is_byte_deterministic(tmp_path):
+    first, second = tmp_path / "first.json", tmp_path / "second.json"
+    command = [
+        sys.executable,
+        str(ROOT / "scripts/generate_workflow_error_catalog.py"),
+        "--output",
+    ]
+    subprocess.run([*command, str(first)], cwd=ROOT, check=True)
+    subprocess.run([*command, str(second)], cwd=ROOT, check=True)
+    assert first.read_bytes() == second.read_bytes() == SNAPSHOT.read_bytes()
+    subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts/generate_workflow_error_catalog.py"),
+            "--check",
+        ],
+        cwd=ROOT,
+        check=True,
+    )
+    first.write_text(first.read_text() + "drift\n")
+    drift = subprocess.run([*command, str(first), "--check"], cwd=ROOT, check=False)
+    assert drift.returncode != 0
+
+
+def test_catalog_is_immutable_and_domain_qualified():
+    with pytest.raises(TypeError):
+        ERROR_DOMAINS["snapshot"].entries["new"] = ErrorSpec(400, "bad")  # type: ignore[arg-type,index]
+    with pytest.raises((FrozenInstanceError, AttributeError)):
+        ERROR_DOMAINS["snapshot"].fallback = ErrorSpec(400, "bad")  # type: ignore[misc]
+    assert (
+        ERROR_DOMAINS["transfer"].entries["confirmation_invalid"].message
+        != ERROR_DOMAINS["smoke_submission"].entries["confirmation_invalid"].message
+    )
+
+
+def test_unknown_codes_remain_safe_fallbacks_and_never_enter_snapshot_as_real_codes():
+    for domain_name, domain in ERROR_DOMAINS.items():
+        assert "unexpected_remote_detail" not in domain.entries
+        if domain.fallback is not None:
+            assert domain.fallback.message.endswith(("safely.", "failed safely."))
+            assert domain.fallback_code
+        assert all(code != "<fallback>" for code in domain.entries)
+    assert all(case["code"] != "<dynamic>" for case in catalog_payload()["cases"])
+
+
+@pytest.mark.parametrize(
+    "untrusted",
+    [
+        "unexpected_remote_detail",
+        "internal_database_password",
+        "x" * 10_000,
+        "bad\ncode",
+        "bad\x00code",
+        "",
+        None,
+        {"error": "secret"},
+    ],
+)
+def test_unknown_or_untrusted_codes_resolve_to_fixed_allowlisted_fallback(untrusted):
+    resolved = resolve_error("smoke_submission", untrusted)
+    assert resolved.code == "zeus_submission_failed"
+    assert int(resolved.status) == 412
+    assert resolved.message == "Zeus smoke submission stopped safely."
+    if str(untrusted):
+        assert str(untrusted) not in resolved.code
+        assert str(untrusted) not in resolved.message
+
+
+def test_known_case_ids_resolve_exact_wire_codes_including_aliases():
+    ordinary = resolve_error("smoke_submission", "confirmation_expired")
+    assert ordinary.code == "confirmation_expired"
+    assert int(ordinary.status) == 412
+    assert (
+        ordinary.message
+        == "The submission preview has expired. Review it again before continuing."
+    )
+
+    aliased = resolve_error("creation", "invalid_request#too_large")
+    assert aliased.code == "invalid_request"
+    assert int(aliased.status) == 413
+    assert aliased.message == "Request body is too large."
+
+
+def test_dynamic_propagation_boundary_never_inherits_untrusted_wire_codes():
+    for domain_name in (
+        "snapshot",
+        "transfer",
+        "smoke_submission",
+        "smoke_transition",
+        "screen_submission",
+        "refinement_transition",
+        "refinement_submission",
+        "confirmation_transition",
+    ):
+        catalog = ERROR_DOMAINS[domain_name]
+        resolved = resolve_error(domain_name, "remote_secret_from_error.code\n")
+        assert resolved.code == catalog.fallback_code
+        assert "remote_secret" not in resolved.code
+        assert "remote_secret" not in resolved.message
+
+
+class _RaisingService:
+    def __init__(self, error):
+        self.error = error
+
+    def snapshot(self, _payload):
+        raise self.error
+
+    def status(self, _payload, **_kwargs):
+        raise self.error
+
+    def preview(self, _payload, **_kwargs):
+        raise self.error
+
+    def confirm(self, _payload, **_kwargs):
+        raise self.error
+
+
+@contextmanager
+def _real_handler(error):
+    handler = type("ErrorCatalogHandler", (ReadOnlyWorkflowHandler,), {})
+    handler.sessions = {}
+    service = _RaisingService(error)
+    handler.creation_service = None
+    handler.zeus_service = service
+    handler.transfer_service = service
+    handler.submission_service = service
+    handler.screening_service = service
+    handler.screen_submission_service = service
+    handler.refinement_service = service
+    handler.refinement_submission_service = service
+    handler.confirmation_service = service
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    server.daemon_threads = True
+    server.block_on_close = False
+    thread = threading.Thread(
+        target=lambda: [server.handle_request() for _ in range(2)], daemon=True
+    )
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}"
+    finally:
+        thread.join(timeout=5)
+        server.server_close()
+
+
+def _request(base, method, path, headers=None, body=None):
+    target = urlsplit(base)
+    connection = HTTPConnection(target.hostname, target.port, timeout=2)
+    try:
+        connection.request(method, path, body=body, headers=headers or {})
+        response = connection.getresponse()
+        return (
+            response.status,
+            {key.lower(): value for key, value in response.headers.items()},
+            json.loads(response.read()),
+        )
+    finally:
+        connection.close()
+
+
+@pytest.mark.parametrize(
+    ("domain", "error_type", "path"),
+    [
+        ("snapshot", ZeusSnapshotError, "/api/v1/zeus/snapshot"),
+        ("transfer", ZeusPreparationError, "/api/v1/zeus/transfers/preview"),
+        (
+            "smoke_submission",
+            ZeusSubmissionError,
+            "/api/v1/zeus/submissions/smoke/preview",
+        ),
+        ("smoke_transition", ZeusScreeningError, "/api/v1/zeus/smoke/status"),
+        (
+            "screen_submission",
+            ZeusScreenSubmissionError,
+            "/api/v1/zeus/submissions/screening/preview",
+        ),
+        ("refinement_transition", ZeusRefinementError, "/api/v1/zeus/screen/status"),
+        (
+            "refinement_submission",
+            ZeusRefinementSubmissionError,
+            "/api/v1/zeus/submissions/refinement/status",
+        ),
+        (
+            "confirmation_transition",
+            ZeusConfirmationError,
+            "/api/v1/zeus/refinement-chain/status",
+        ),
+    ],
+)
+def test_every_catalogued_coordinator_error_matches_the_real_handler(
+    domain, error_type, path
+):
+    for case, spec in ERROR_DOMAINS[domain].entries.items():
+        code = spec.wire_code or case
+        with _real_handler(error_type(code)) as base:
+            session_status, session_headers, session_body = _request(
+                base, "GET", "/api/v1/session", {"Sec-Fetch-Site": "same-origin"}
+            )
+            assert session_status == 200
+            cookie = session_headers["set-cookie"].split(";", 1)[0]
+            headers = {
+                "Content-Type": "application/json",
+                "Origin": base,
+                "Sec-Fetch-Site": "same-origin",
+                "Cookie": cookie,
+                "X-CSRF-Token": session_body["data"]["csrf_token"],
+            }
+            status, _, body = _request(base, "POST", path, headers, "{}")
+        assert status == int(spec.status), (domain, case, body)
+        assert body == {"error": {"code": code, "message": spec.message}}, (
+            domain,
+            case,
+        )
+        assert "api_version" not in body

@@ -1,0 +1,2219 @@
+{
+  "schema_version": 1,
+  "catalog_version": 1,
+  "wire_envelope": "unversioned-error",
+  "cases": [
+    {
+      "domain": "confirmation_transition",
+      "case": "<fallback>",
+      "code": "confirmation_preparation_failed",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_commit_invalid",
+      "code": "campaign_commit_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_inputs_changed",
+      "code": "campaign_inputs_changed",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_inputs_invalid",
+      "code": "campaign_inputs_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_manifest_invalid",
+      "code": "campaign_manifest_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_not_portable_smoke",
+      "code": "campaign_not_portable_smoke",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_not_refine",
+      "code": "campaign_not_refine",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_path_untrusted",
+      "code": "campaign_path_untrusted",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "campaign_smoke_job_invalid",
+      "code": "campaign_smoke_job_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "confirmation_already_prepared",
+      "code": "confirmation_already_prepared",
+      "status": 409,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "local_repository_unavailable",
+      "code": "local_repository_unavailable",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refine_outputs_invalid",
+      "code": "refine_outputs_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refine_outputs_pending",
+      "code": "refine_outputs_pending",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refine_status_unknown",
+      "code": "refine_status_unknown",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_already_prepared",
+      "code": "refinement_already_prepared",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_already_started",
+      "code": "refinement_already_started",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_chain_already_submitted",
+      "code": "refinement_chain_already_submitted",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_chain_not_complete",
+      "code": "refinement_chain_not_complete",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_chain_partially_submitted",
+      "code": "refinement_chain_partially_submitted",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_not_prepared",
+      "code": "refinement_not_prepared",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_submission_busy",
+      "code": "refinement_submission_busy",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "refinement_submission_outcome_unknown",
+      "code": "refinement_submission_outcome_unknown",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_campaign_conflict",
+      "code": "remote_campaign_conflict",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_campaign_incomplete",
+      "code": "remote_campaign_incomplete",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_input_conflict",
+      "code": "remote_input_conflict",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_inputs_incomplete",
+      "code": "remote_inputs_incomplete",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_preparation_invalid",
+      "code": "remote_preparation_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "scheduler_unavailable",
+      "code": "scheduler_unavailable",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_failed",
+      "code": "screen_failed",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_held",
+      "code": "screen_held",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_outputs_invalid",
+      "code": "screen_outputs_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_outputs_pending",
+      "code": "screen_outputs_pending",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_queued",
+      "code": "screen_queued",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_running",
+      "code": "screen_running",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "screen_status_unknown",
+      "code": "screen_status_unknown",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "session_invalid",
+      "code": "session_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "submission_record_invalid",
+      "code": "submission_record_invalid",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "target_exists",
+      "code": "target_exists",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "transfer_too_large",
+      "code": "transfer_too_large",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 409,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 409,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "confirmation_transition",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Confirmation preparation stopped safely."
+    },
+    {
+      "domain": "creation",
+      "case": "campaign_exists",
+      "code": "campaign_exists",
+      "status": 409,
+      "message": "A campaign already exists at this destination."
+    },
+    {
+      "domain": "creation",
+      "case": "creation_failed",
+      "code": "creation_failed",
+      "status": 412,
+      "message": "Local campaign creation failed safely."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#bounded_body",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "A bounded JSON request body is required."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#confirmation",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Confirmation payload is invalid."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#content_length",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Content-Length is required."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#json_object",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "JSON body must be an object."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#preview_fields",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Preview fields are invalid."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#source_unavailable",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "The selected Zeeman source is unavailable."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#string_keys",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "JSON object keys must be strings."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#too_deep",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "JSON body is too deeply nested."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#too_large",
+      "code": "invalid_request",
+      "status": 413,
+      "message": "Request body is too large."
+    },
+    {
+      "domain": "creation",
+      "case": "rate_limited",
+      "code": "rate_limited",
+      "status": 429,
+      "message": "Too many local creation requests."
+    },
+    {
+      "domain": "protocol",
+      "case": "inspection_failed",
+      "code": "inspection_failed",
+      "status": 500,
+      "message": "Campaign inspection failed safely."
+    },
+    {
+      "domain": "protocol",
+      "case": "invalid_campaign_id",
+      "code": "invalid_campaign_id",
+      "status": 400,
+      "message": "Campaign identifier is invalid."
+    },
+    {
+      "domain": "protocol",
+      "case": "invalid_csrf",
+      "code": "invalid_csrf",
+      "status": 403,
+      "message": "Local creation request could not be verified."
+    },
+    {
+      "domain": "protocol",
+      "case": "invalid_preview",
+      "code": "invalid_preview",
+      "status": 412,
+      "message": "Preview confirmation is invalid or expired."
+    },
+    {
+      "domain": "protocol",
+      "case": "invalid_request_target",
+      "code": "invalid_request_target",
+      "status": 400,
+      "message": "Absolute request targets are not accepted."
+    },
+    {
+      "domain": "protocol",
+      "case": "invalid_session",
+      "code": "invalid_session",
+      "status": 403,
+      "message": "Local creation session is missing or expired."
+    },
+    {
+      "domain": "protocol",
+      "case": "method_not_allowed",
+      "code": "method_not_allowed",
+      "status": 405,
+      "message": "This method is not available."
+    },
+    {
+      "domain": "protocol",
+      "case": "not_found",
+      "code": "not_found",
+      "status": 404,
+      "message": "Not found."
+    },
+    {
+      "domain": "protocol",
+      "case": "session_unavailable",
+      "code": "session_unavailable",
+      "status": 503,
+      "message": "Local actions are unavailable."
+    },
+    {
+      "domain": "protocol",
+      "case": "source_inspection_failed",
+      "code": "source_inspection_failed",
+      "status": 500,
+      "message": "Zeeman sources could not be inspected safely."
+    },
+    {
+      "domain": "protocol",
+      "case": "unsupported_query",
+      "code": "unsupported_query",
+      "status": 400,
+      "message": "Query parameters are not supported."
+    },
+    {
+      "domain": "protocol",
+      "case": "untrusted_host",
+      "code": "untrusted_host",
+      "status": 400,
+      "message": "This local service accepts only localhost requests."
+    },
+    {
+      "domain": "protocol",
+      "case": "untrusted_origin",
+      "code": "untrusted_origin",
+      "status": 403,
+      "message": "Local creation requires a same-origin request."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "<fallback>",
+      "code": "refinement_submission_failed",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_commit_invalid",
+      "code": "campaign_commit_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_inputs_changed",
+      "code": "campaign_inputs_changed",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_inputs_invalid",
+      "code": "campaign_inputs_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_manifest_invalid",
+      "code": "campaign_manifest_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_not_portable_smoke",
+      "code": "campaign_not_portable_smoke",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_path_untrusted",
+      "code": "campaign_path_untrusted",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "campaign_smoke_job_invalid",
+      "code": "campaign_smoke_job_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "local_repository_unavailable",
+      "code": "local_repository_unavailable",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_already_prepared",
+      "code": "refinement_already_prepared",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_already_started",
+      "code": "refinement_already_started",
+      "status": 409,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_chain_already_submitted",
+      "code": "refinement_chain_already_submitted",
+      "status": 409,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_chain_partially_submitted",
+      "code": "refinement_chain_partially_submitted",
+      "status": 409,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_not_prepared",
+      "code": "refinement_not_prepared",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_submission_busy",
+      "code": "refinement_submission_busy",
+      "status": 409,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "refinement_submission_outcome_unknown",
+      "code": "refinement_submission_outcome_unknown",
+      "status": 409,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_campaign_conflict",
+      "code": "remote_campaign_conflict",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_campaign_incomplete",
+      "code": "remote_campaign_incomplete",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_input_conflict",
+      "code": "remote_input_conflict",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_inputs_incomplete",
+      "code": "remote_inputs_incomplete",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_preparation_invalid",
+      "code": "remote_preparation_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "scheduler_unavailable",
+      "code": "scheduler_unavailable",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_failed",
+      "code": "screen_failed",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_held",
+      "code": "screen_held",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_outputs_invalid",
+      "code": "screen_outputs_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_outputs_pending",
+      "code": "screen_outputs_pending",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_queued",
+      "code": "screen_queued",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_running",
+      "code": "screen_running",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "screen_status_unknown",
+      "code": "screen_status_unknown",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "session_invalid",
+      "code": "session_invalid",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "target_exists",
+      "code": "target_exists",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "transfer_too_large",
+      "code": "transfer_too_large",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Refinement submission stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "<fallback>",
+      "code": "refinement_preparation_failed",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_commit_invalid",
+      "code": "campaign_commit_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_inputs_changed",
+      "code": "campaign_inputs_changed",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_inputs_invalid",
+      "code": "campaign_inputs_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_manifest_invalid",
+      "code": "campaign_manifest_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_not_portable_smoke",
+      "code": "campaign_not_portable_smoke",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_path_untrusted",
+      "code": "campaign_path_untrusted",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "campaign_smoke_job_invalid",
+      "code": "campaign_smoke_job_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "local_repository_unavailable",
+      "code": "local_repository_unavailable",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "refinement_already_prepared",
+      "code": "refinement_already_prepared",
+      "status": 409,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_campaign_conflict",
+      "code": "remote_campaign_conflict",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_campaign_incomplete",
+      "code": "remote_campaign_incomplete",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_input_conflict",
+      "code": "remote_input_conflict",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_inputs_incomplete",
+      "code": "remote_inputs_incomplete",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_preparation_invalid",
+      "code": "remote_preparation_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "scheduler_unavailable",
+      "code": "scheduler_unavailable",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_failed",
+      "code": "screen_failed",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_held",
+      "code": "screen_held",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_outputs_invalid",
+      "code": "screen_outputs_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_outputs_pending",
+      "code": "screen_outputs_pending",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_queued",
+      "code": "screen_queued",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_running",
+      "code": "screen_running",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_status_unknown",
+      "code": "screen_status_unknown",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "session_invalid",
+      "code": "session_invalid",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "target_exists",
+      "code": "target_exists",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "transfer_too_large",
+      "code": "transfer_too_large",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 409,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 409,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Refinement preparation stopped safely."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "creation_unavailable",
+      "code": "creation_unavailable",
+      "status": 503,
+      "message": "Local campaign creation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_confirmation_unavailable",
+      "code": "zeus_confirmation_unavailable",
+      "status": 503,
+      "message": "Zeus confirmation preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_preparation_unavailable",
+      "code": "zeus_preparation_unavailable",
+      "status": 503,
+      "message": "Zeus campaign preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_refinement_submission_unavailable",
+      "code": "zeus_refinement_submission_unavailable",
+      "status": 503,
+      "message": "Zeus refinement submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_refinement_unavailable",
+      "code": "zeus_refinement_unavailable",
+      "status": 503,
+      "message": "Zeus refinement preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_screen_submission_unavailable",
+      "code": "zeus_screen_submission_unavailable",
+      "status": 503,
+      "message": "Zeus screening submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_screening_unavailable",
+      "code": "zeus_screening_unavailable",
+      "status": 503,
+      "message": "Zeus smoke inspection is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_submission_unavailable",
+      "code": "zeus_submission_unavailable",
+      "status": 503,
+      "message": "Zeus smoke submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_unavailable",
+      "code": "zeus_unavailable",
+      "status": 503,
+      "message": "Read-only Zeus inspection is unavailable."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "<fallback>",
+      "code": "screening_submission_failed",
+      "status": 412,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "The selected campaign does not match its frozen design."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "The submission preview expired. Review it again."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "The submission preview is invalid or belongs to another session."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "The local checkout no longer matches the campaign commit."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "The campaign changed after review. Review it again."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "The Zeus checkout no longer matches the campaign commit."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "remote_preparation_invalid",
+      "code": "remote_preparation_invalid",
+      "status": 412,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "screening_already_started",
+      "code": "screening_already_started",
+      "status": 409,
+      "message": "Screening outputs already exist, so submission is blocked."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "screening_already_submitted",
+      "code": "screening_already_submitted",
+      "status": 409,
+      "message": "Screening already has a durable Zeus submission record."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "screening_not_prepared",
+      "code": "screening_not_prepared",
+      "status": 412,
+      "message": "The exact Screening plan is not prepared on Zeus."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "screening_submission_busy",
+      "code": "screening_submission_busy",
+      "status": 409,
+      "message": "Another Screening submission check is in progress."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "screening_submission_outcome_unknown",
+      "code": "screening_submission_outcome_unknown",
+      "status": 409,
+      "message": "A Screening submission attempt has an uncertain outcome. Automatic retry is blocked."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "screening_submission_record_invalid",
+      "code": "screening_submission_record_invalid",
+      "status": 409,
+      "message": "The Screening submission record is invalid or conflicting."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Screening submission stopped safely."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "An existing SSH key or agent is required."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "The Zeus host key must be verified outside this application."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 504,
+      "message": "The Zeus submission check timed out."
+    },
+    {
+      "domain": "screen_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 503,
+      "message": "Zeus could not be reached."
+    },
+    {
+      "domain": "session",
+      "case": "rate_limited",
+      "code": "rate_limited",
+      "status": 429,
+      "message": "Too many local creation sessions."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "<fallback>",
+      "code": "zeus_submission_failed",
+      "status": 412,
+      "message": "Zeus smoke submission stopped safely."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "already_submitted",
+      "code": "already_submitted",
+      "status": 409,
+      "message": "This smoke stage already has a durable Zeus submission record."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "The campaign does not match the canonical portable smoke plan."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "The selected campaign was not found."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "campaign_not_smoke",
+      "code": "campaign_not_smoke",
+      "status": 412,
+      "message": "Only a campaign awaiting its smoke stage can be submitted."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "The submission preview has expired. Review it again before continuing."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "The submission preview is invalid or belongs to another session."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "The local checkout is not clean at the campaign commit."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "The campaign changed after review. Review it again before submitting."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "local_repository_unavailable",
+      "code": "local_repository_unavailable",
+      "status": 412,
+      "message": "Zeus smoke submission stopped safely."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "The Zeus connection profile is invalid."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "remote_preparation_invalid",
+      "code": "remote_preparation_invalid",
+      "status": 412,
+      "message": "The exact prepared campaign could not be verified on Zeus."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "The remote project directory could not be verified."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Zeus smoke submission stopped safely."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "The smoke-submission request is invalid."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "smoke_already_started",
+      "code": "smoke_already_started",
+      "status": 409,
+      "message": "Smoke-stage outputs already exist on Zeus, so automatic submission is blocked."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "submission_busy",
+      "code": "submission_busy",
+      "status": 409,
+      "message": "Another submission operation is already checking this campaign."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "submission_outcome_unknown",
+      "code": "submission_outcome_unknown",
+      "status": 409,
+      "message": "A previous submission attempt has an uncertain outcome. Automatic retry is blocked to prevent a duplicate job."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "submission_record_invalid",
+      "code": "submission_record_invalid",
+      "status": 409,
+      "message": "The durable Zeus submission record is invalid or conflicting."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 429,
+      "message": "Too many submission previews are pending."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "An existing SSH key or agent is required."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "The Zeus host key must be verified outside this application."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 504,
+      "message": "The read-only submission check timed out."
+    },
+    {
+      "domain": "smoke_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 503,
+      "message": "Zeus could not be reached."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "<fallback>",
+      "code": "zeus_screening_failed",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "campaign_not_smoke",
+      "code": "campaign_not_smoke",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "The screening preview expired. Review it again."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "The screening preview is invalid or belongs to another session."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "The local checkout no longer matches the campaign commit."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "local_repository_unavailable",
+      "code": "local_repository_unavailable",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "The Zeus checkout no longer matches the campaign commit."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "remote_preparation_invalid",
+      "code": "remote_preparation_invalid",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "scheduler_unavailable",
+      "code": "scheduler_unavailable",
+      "status": 503,
+      "message": "The Zeus scheduler history could not be read."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "screening_already_prepared",
+      "code": "screening_already_prepared",
+      "status": 409,
+      "message": "Screening is already prepared on Zeus."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_failed",
+      "code": "smoke_failed",
+      "status": 412,
+      "message": "The smoke job finished with an error."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_held",
+      "code": "smoke_held",
+      "status": 412,
+      "message": "The smoke job needs attention on Zeus."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_not_submitted",
+      "code": "smoke_not_submitted",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_outputs_invalid",
+      "code": "smoke_outputs_invalid",
+      "status": 412,
+      "message": "The smoke outputs failed validation."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_outputs_pending",
+      "code": "smoke_outputs_pending",
+      "status": 412,
+      "message": "The smoke job succeeded; its output files are still becoming visible."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_running",
+      "code": "smoke_running",
+      "status": 412,
+      "message": "The smoke check is still running."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "smoke_status_unknown",
+      "code": "smoke_status_unknown",
+      "status": 412,
+      "message": "The smoke outcome could not be established safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "submission_record_invalid",
+      "code": "submission_record_invalid",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Smoke inspection or screening preparation stopped safely."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 409,
+      "message": "Another screening preparation is in progress."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 409,
+      "message": "A screening artifact conflicts with the reviewed plan."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "Screening preparation may have changed Zeus. Inspect it before retrying."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "An existing SSH key or agent is required."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "The Zeus host key must be verified outside this application."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 504,
+      "message": "The Zeus inspection timed out."
+    },
+    {
+      "domain": "smoke_transition",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 503,
+      "message": "Zeus could not be reached."
+    },
+    {
+      "domain": "snapshot",
+      "case": "<fallback>",
+      "code": "zeus_check_failed",
+      "status": 502,
+      "message": "The read-only Zeus check failed safely."
+    },
+    {
+      "domain": "snapshot",
+      "case": "malformed_remote_response",
+      "code": "malformed_remote_response",
+      "status": 502,
+      "message": "Zeus returned an invalid read-only snapshot."
+    },
+    {
+      "domain": "snapshot",
+      "case": "rate_limited",
+      "code": "rate_limited",
+      "status": 429,
+      "message": "Wait before checking Zeus again."
+    },
+    {
+      "domain": "snapshot",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "The remote project directory could not be verified."
+    },
+    {
+      "domain": "snapshot",
+      "case": "scheduler_unavailable",
+      "code": "scheduler_unavailable",
+      "status": 503,
+      "message": "The Zeus scheduler is unavailable."
+    },
+    {
+      "domain": "snapshot",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "An existing SSH key or agent is required."
+    },
+    {
+      "domain": "snapshot",
+      "case": "zeus_check_failed",
+      "code": "zeus_check_failed",
+      "status": 502,
+      "message": "The read-only Zeus check failed safely."
+    },
+    {
+      "domain": "snapshot",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "The Zeus host key must be verified outside this application."
+    },
+    {
+      "domain": "snapshot",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 504,
+      "message": "The read-only Zeus check timed out."
+    },
+    {
+      "domain": "snapshot",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 503,
+      "message": "Zeus could not be reached."
+    },
+    {
+      "domain": "transfer",
+      "case": "<fallback>",
+      "code": "zeus_preparation_failed",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_commit_invalid",
+      "code": "campaign_commit_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_inputs_changed",
+      "code": "campaign_inputs_changed",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_inputs_invalid",
+      "code": "campaign_inputs_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_manifest_invalid",
+      "code": "campaign_manifest_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "The selected campaign was not found."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_not_portable_smoke",
+      "code": "campaign_not_portable_smoke",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_path_untrusted",
+      "code": "campaign_path_untrusted",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_smoke_job_invalid",
+      "code": "campaign_smoke_job_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "The preparation preview has expired. Review it again before continuing."
+    },
+    {
+      "domain": "transfer",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "The preparation preview is invalid or belongs to another session."
+    },
+    {
+      "domain": "transfer",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "The local checkout is not clean at the campaign commit."
+    },
+    {
+      "domain": "transfer",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "local_repository_unavailable",
+      "code": "local_repository_unavailable",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "The Zeus connection profile is invalid."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_campaign_conflict",
+      "code": "remote_campaign_conflict",
+      "status": 409,
+      "message": "The Zeus campaign destination already contains different or incomplete files."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_campaign_incomplete",
+      "code": "remote_campaign_incomplete",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "The Zeus checkout is not clean at the campaign commit."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_input_conflict",
+      "code": "remote_input_conflict",
+      "status": 409,
+      "message": "A required Zeus input differs from the frozen campaign input."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_inputs_incomplete",
+      "code": "remote_inputs_incomplete",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_project_missing",
+      "code": "remote_project_missing",
+      "status": 412,
+      "message": "The remote project directory could not be verified."
+    },
+    {
+      "domain": "transfer",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "The Zeus preparation request is invalid."
+    },
+    {
+      "domain": "transfer",
+      "case": "session_invalid",
+      "code": "session_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "target_exists",
+      "code": "target_exists",
+      "status": 409,
+      "message": "A remote file appeared after review. Review the preparation again."
+    },
+    {
+      "domain": "transfer",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 429,
+      "message": "Too many preparation previews are pending."
+    },
+    {
+      "domain": "transfer",
+      "case": "transfer_too_large",
+      "code": "transfer_too_large",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "An existing SSH key or agent is required."
+    },
+    {
+      "domain": "transfer",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "The Zeus host key must be verified outside this application."
+    },
+    {
+      "domain": "transfer",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 504,
+      "message": "The Zeus preparation check timed out."
+    },
+    {
+      "domain": "transfer",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 503,
+      "message": "Zeus could not be reached."
+    }
+  ]
+}
