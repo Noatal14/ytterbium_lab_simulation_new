@@ -17,11 +17,13 @@ from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 class ReceiverKind(Enum):
     REFINEMENT_TRANSITION = "refinement_transition"
     CONFIRMATION_PREPARATION = "confirmation_preparation"
+    REFINEMENT_SUBMISSION = "refinement_submission"
 
 
 class ReceiverOperation(Enum):
     INSPECT = "inspect"
     PREPARE = "prepare"
+    SUBMIT = "submit"
 
 
 class PinnedSshProcessError(RuntimeError):
@@ -48,6 +50,12 @@ _RECEIVERS = {
         "<confirmation>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
         True,
+    ),
+    ReceiverKind.REFINEMENT_SUBMISSION: _ReceiverDefinition(
+        "zeus_refinement_submission_remote.py",
+        "<refine-submit>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT}),
+        False,
     ),
 }
 
@@ -86,6 +94,21 @@ class PinnedSshPolicy:
     ) -> PinnedSshPolicy:
         return cls(
             ReceiverKind.CONFIRMATION_PREPARATION,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def refinement_submission(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.REFINEMENT_SUBMISSION,
             repository_root,
             ssh_executable,
             timeout,

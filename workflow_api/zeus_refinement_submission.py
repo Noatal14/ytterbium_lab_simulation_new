@@ -1,6 +1,6 @@
 """Explicit, at-most-once submission of the canonical refinement chain."""
 from __future__ import annotations
-import base64,hashlib,json,os,re,secrets,shlex,subprocess,threading,time
+import hashlib,json,re,secrets,subprocess,threading,time
 from dataclasses import dataclass,replace
 from datetime import datetime,timezone
 from pathlib import Path
@@ -9,6 +9,7 @@ from types import MappingProxyType
 from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.zeus_refinement import ZeusRefinementCoordinator,ZeusRefinementError
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
+from workflow_api.pinned_ssh import PinnedSshPolicy,PinnedSshRunner,ReceiverOperation
 
 TOKEN_LIFETIME_SECONDS=300;MAX_PENDING_PREVIEWS=32;JOB_RE=re.compile(r"^\d+\[\]\.zeus-master$")
 TARGETS=(3,6,9,10);FILES=tuple(f"jobs/03_refine_round_{i:02d}.pbs" for i in range(1,5))
@@ -103,10 +104,11 @@ class ZeusRefinementSubmissionCoordinator:
             return result
 
 class PinnedSshRefinementSubmissionTransport:
-    def __init__(self,root,ssh,profile,*,timeout=150):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout
+    def __init__(self,root,ssh,profile,*,timeout=150):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.refinement_submission(root,ssh,timeout=timeout))
     def _call(self,operation,payload):
-        receiver=Path(__file__).with_name("zeus_refinement_submission_remote.py").read_bytes();encoded=base64.urlsafe_b64encode(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).decode();script=base64.urlsafe_b64encode(receiver).decode();wrapper="import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);sys.argv=sys.argv[2:];exec(compile(code,'<refine-submit>','exec'),{'__name__':'__main__'})";remote=shlex.join(("python3","-c",wrapper,script,operation,self.profile.username,self.profile.project_directory,encoded));argv=[str(self.ssh),"-F","none","-T","-o","BatchMode=yes","-o","PasswordAuthentication=no","-o","KbdInteractiveAuthentication=no","-o","StrictHostKeyChecking=yes","-o","ForwardAgent=no","-o","ClearAllForwardings=yes",f"{self.profile.username}@{ZEUS_HOST}",remote]
-        try:r=subprocess.run(argv,cwd=self.root,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=self.timeout,check=False)
+        pinned_operation={"inspect":ReceiverOperation.INSPECT,"submit":ReceiverOperation.SUBMIT}.get(operation)
+        if pinned_operation is None:raise ZeusRefinementSubmissionError("remote_response_invalid")
+        try:r=self.runner.run(pinned_operation,self.profile,payload)
         except subprocess.TimeoutExpired:raise ZeusRefinementSubmissionError("refinement_submission_outcome_unknown" if operation=="submit" else "zeus_timeout") from None
         if r.returncode or r.stderr:raise ZeusRefinementSubmissionError("refinement_submission_outcome_unknown" if operation=="submit" else "remote_response_invalid")
         try:data=json.loads(r.stdout)
