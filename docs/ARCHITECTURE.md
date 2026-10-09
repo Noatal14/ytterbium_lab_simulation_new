@@ -20,7 +20,7 @@ studies/  -------------------->  data/ + graphs/
 workflow_api/
         |
         v
-future UI  ---- explicit approval boundary ---->  Zeus scheduler / SSH
+ui/  ---- explicit review + confirmation boundary ---->  Zeus scheduler / SSH
 ```
 
 - `config.py` and `lab_setup/` define the apparatus, atomic parameters, laser
@@ -30,10 +30,29 @@ future UI  ---- explicit approval boundary ---->  Zeus scheduler / SSH
 - `atomsmltr/` is the bundled simulation library used by those engines.
 - `studies/` contains reproducible scientific workflows built on the engines.
   Its two root managers are the canonical campaign entry points.
-- `workflow_api/` is the side-effect-free application boundary. It translates
-  manifests into serializable summaries and safe next-action plans.
-- A UI must consume `workflow_api`; it must not import simulation workers or
-  submit jobs merely because a page was opened.
+- `workflow_api/` is the guarded local application boundary. Reads translate
+  manifests into serializable summaries and safe next-action plans. Mutations
+  require a short-lived preview followed by an explicit confirmation.
+- `ui/` consumes only `workflow_api`. It does not import simulation workers,
+  and opening or refreshing a page never submits work.
+
+### UI and API ownership
+
+- `ui/src/api/http/` owns HTTP envelopes and typed API errors.
+- `ui/src/api/schema/` performs exact runtime validation of response data.
+- `ui/src/api/clients/` contains campaign and stage clients. Each application
+  client owns its CSRF acquisition state and review-token contexts. The
+  HTTP-only same-origin session cookie remains browser-scoped and may be shared
+  by tabs.
+- `ui/src/features/campaign/` owns stage-specific workflow presentation;
+  reusable status, review, resource, candidate, and error views live under
+  `ui/src/features/shared/`.
+- Successful v1 responses use `{api_version: 1, data: ...}`. For compatibility,
+  v1 error responses intentionally remain `{error: {code, message}}` without an
+  `api_version` field. Both shapes are strict and covered by tracked contracts.
+- The checked-in 2D-MOT TypeScript specification and frontend error semantics
+  are generated views. Their Python/JSON sources remain authoritative, and CI
+  rejects drift.
 
 ## Canonical entry points
 
@@ -122,24 +141,30 @@ campaigns remain tied to the commit and design recorded in their manifests.
 
 ## Campaign and UI boundary
 
-`workflow_api` may:
+After explicit review and confirmation, `workflow_api` may:
 
 - list supported workflows;
 - inspect 2D and 3D manifests;
 - report validated progress and warnings;
 - describe the next safe command; and
 - return serializable artifact references;
-- prepare a reviewed portable 2D smoke campaign on Zeus through the dedicated
-  no-overwrite transfer boundary; and
-- submit that exact smoke PBS only through the dedicated preview/confirmation
-  boundary with a durable at-most-once receipt.
+- prepare a reviewed portable 2D campaign on Zeus through the dedicated
+  no-overwrite transfer boundary;
+- submit the exact smoke and Screening PBS files;
+- prepare Screening, the four-round Refinement chain, and Confirmation; and
+- submit the prepared Refinement dependency chain.
+
+Scheduler submissions use durable remote intent and receipt records. Stage
+preparation publishes only the exact reviewed artifact set and never submits a
+job as a side effect.
 
 It must not:
 
-- run a simulation;
-- expose generic SSH, scheduler commands, paths, or options;
-- submit later campaign stages or retry an uncertain `qsub` outcome;
-- mutate a campaign;
+- expose or execute a generic simulation, SSH, scheduler, or shell command;
+- accept a caller-selected host, executable, receiver, SSH option, or scheduler
+  option;
+- submit any stage automatically or retry an uncertain `qsub` outcome;
+- advance a campaign using stale, incomplete, ambiguous, or invalid evidence;
 - infer success from unvalidated filenames; or
 - expose an executable plan when required artifacts are missing or untrusted.
 
@@ -148,6 +173,14 @@ The submission path remains explicit:
 ```text
 UI -> inspect/plan -> show user -> user confirms -> submission adapter -> Zeus
 ```
+
+Local Zeus infrastructure is deliberately closed. Coordinators share a
+session-bound `PreviewRegistry` and a pinned SSH runner whose receiver kind and
+operation are fixed allowlisted enums. Each workflow still owns its typed
+pending record, confirmation lock, expiry/capacity policy, response validation,
+and ambiguity mapping. Pinned transports remain workflow-specific, and remote
+receivers remain self-contained audited programs; they are not deduplicated
+through imports and cannot be selected by callers.
 
 Credentials must be handled by the operating system or SSH tooling, never
 stored in project source, manifests, logs, or ordinary configuration files.
@@ -184,8 +217,14 @@ At minimum:
 
 ```bash
 python -m pytest -q
+python scripts/generate_workflow_error_catalog.py --check
+python scripts/generate_ui_error_catalog.py --check
+python -m pytest -q tests/test_mot_2d_specification.py::test_checked_in_typescript_artifact_matches_generator_exactly
 git diff --check
 ```
+
+For UI changes, also run `npm test`, `npm run build`, and `npm run test:e2e`
+from `ui/`.
 
 Use a non-interactive Matplotlib backend when running the complete suite on a
 machine where GUI plotting is unavailable:

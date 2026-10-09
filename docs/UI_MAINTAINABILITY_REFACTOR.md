@@ -6,11 +6,16 @@
 - Scope: the local UI, its `workflow_api` backend, and their tests and CI.
 - Goal: make stage development safer and easier without changing scientific
   behavior, Zeus behavior, or existing public API contracts by accident.
-- Phase 0 changes documentation only. No production behavior is changed.
+- Status: completed through P9. The implementation was delivered as small,
+  independently reviewed commits; this file is the final closure record.
+- Phase 0 (`92c9d5c`) changed documentation only. No scientific campaign or Zeus
+  operation was run by any refactor phase.
 
 ## Verified findings
 
-The audit was rechecked against the baseline commit. The main findings are:
+The audit was rechecked against the baseline commit. The findings below describe
+that baseline, not the current tree. Their resolution is recorded in the phase
+outcome table.
 
 1. CI runs the Python suite but does not exercise the frontend unit tests,
    TypeScript build, browser tests, or accessibility checks.
@@ -73,86 +78,30 @@ otherwise:
 - File moves use compatibility imports where an external or generated reference
   may still depend on the old path.
 
-## Phased order
+## Phase outcomes
 
-### P1 — Frontend CI
+| Phase | Commits | Verified outcome |
+| --- | --- | --- |
+| P1 — Frontend CI | `790a197` | Added frozen frontend install, unit/launcher, production build, and Chromium viewport/accessibility jobs while preserving the Python job. |
+| P2 — App state correctness | `0d153e4` | Separated list/detail failures, refreshed after creation, and protected navigation and overlapping requests from stale results. |
+| P3 — Versioned contracts | `2f70108` | Enforced strict v1 success envelopes, preserved intentionally unversioned v1 errors, and added backend-generated success/error contract snapshots consumed by frontend tests. |
+| P4 — Scoped API clients | `3c40e2f` | Split HTTP, schema, campaign, and stage clients; moved CSRF acquisition and review contexts into isolated application-client instances. The browser-scoped HTTP-only session cookie remains shared by same-origin tabs. |
+| P5 — Stage-focused UI | `2003486` | Split campaign detail into stage features and shared accessible status/review/error components without a visual or scientific redesign. |
+| P6 — Public backend services | `09ee67c`, `a2dab3c`, `821bff0`, `3ea69bf` | Added public artifact-planning, repository-revision, refinement-inspection, and chain-plan seams and removed the audited cross-coordinator private coupling. |
+| P7 — Declarative routing | `e2da84c` | Replaced manual dispatch with a typed route registry while preserving exact routes, methods, CSRF, statuses, headers, and error behavior. |
+| P8 — Versioned specifications and errors | `f1efe0c`, `7b3141a`, `dab6411`–`26de5ff` | Added the shared 2D-MOT specification, deterministic TypeScript view, exhaustive domain-qualified backend error catalog, catalog-backed handlers, and message-free frontend error semantics. Unknown or wrong-domain confirmation failures remain fail-closed. |
+| P9 — Shared infrastructure | `dc20d50`–`d0d37db`, `237d0c0`–`2269f4a`, `fd1b758` | Migrated Zeus coordinators and CreationService to the shared local preview registry, and every local pinned transport to a closed receiver/operation runner, one workflow at a time, with policy-equivalence and adversarial tests. Workflow-specific pending DTOs, locks, expiry/capacity rules, receivers, receipts, response validation, and ambiguity policies remain independent. |
 
-Add an isolated frontend CI job for frozen dependency installation, unit and
-launcher tests, TypeScript/production build, and a Chromium browser/accessibility
-smoke. Wider browser and viewport coverage may run separately if CI time is high.
-
-### P2 — App state correctness
-
-Reload the campaign list after creation and separate list, detail, and mutation
-errors. Add regressions for successful refresh, failed detail loading, retry,
-and navigation that clears only the relevant error.
-
-### P3 — Versioned contracts and real integration
-
-Centralize HTTP envelope parsing and enforce `api_version` before payload
-parsing. Add backend-generated contract fixtures and a thin integration test
-that runs the real local server with fake Zeus transports. Do not move API
-modules in the same change. Roll version enforcement out compatibly: successful
-responses already carry the versioned envelope, while several current error
-responses are intentionally unversioned. Snapshot both families first; do not
-silently reject or reshape existing errors while centralizing success parsing.
-
-### P4 — Frontend API modules and scoped clients
-
-Split HTTP, errors, common schemas, campaign endpoints, and Zeus stage endpoints.
-Replace module-global preview/session contexts with per-client or per-flow state.
-Preserve exact wire contracts and parser strictness.
-
-### P5 — Stage-focused UI
-
-Split campaign detail by stage and introduce small shared review, status, facts,
-and error components plus a tested lifecycle reducer or hook. Preserve wording,
-DOM accessibility, focus behavior, responsive behavior, and visible effects.
-
-### P6 — Public backend services
-
-Replace cross-module calls to private methods and `object()` placeholder
-construction with narrow public services for repository revisions, artifact
-planning, and stage evidence. The verified seams are four external uses of
-`_campaign_files`, the refinement flow's use of `_revision`, the
-refinement-submission flow's use of refinement `_inspect`, and the confirmation
-flow's use of refinement-submission `_plan`. Introduce frozen public plan and
-evidence DTOs plus compatibility wrappers before removing any private entry
-point. Preserve output bytes, validation order, exception behavior, and call
-sites that may still use the old wrapper during migration.
-
-### P7 — Declarative HTTP routing
-
-Rename or alias the misleading handler, then introduce a typed route registry in
-a separate step. Preserve exact methods, routes, service requirements, HTTP
-statuses, CSRF rules, payload limits, and error responses. Contract snapshots
-must include the current, sometimes unusual behavior: POST CSRF handling,
-method/route `405` behavior, the exact service-unavailable error family, session
-method call style, typed exception translation, and the present `201` success
-status for routes whose path ends in `/confirm`. Add a stable error catalog only
-after this route equivalence is proven.
-
-### P8 — Central capability and lifecycle specifications
-
-Move stages, statuses, public errors, and displayable scheduler/scientific facts
-to versioned specifications or backend responses. Generate or validate the
-Python and TypeScript views from the same source without weakening runtime
-validation.
-
-### P9 — Shared Zeus infrastructure
-
-Extract preview stores, pinned SSH transport, response protocol, and receipt
-helpers one coordinator at a time. Each migration requires adversarial replay,
-concurrency, timeout, and ambiguity tests plus behavior equivalence.
-Every remote invocation must still select a fixed audited receiver and a closed
-operation enum, validate an operation-specific exact request and response
-schema, and retain explicit allowlists. No abstraction may accept a caller-
-provided executable, shell fragment, generic command, or arbitrary receiver.
+Every phase received independent review. Applicable gates included the complete
+Python suite, frontend unit and launcher tests, TypeScript production build,
+Chromium responsive/accessibility tests, focused security and ambiguity suites,
+contract or byte-equivalence checks, and `git diff --check`. No phase contacted
+Zeus or changed a scientific model, campaign manifest, generated PBS contract,
+or active campaign.
 
 ## Deferred work
 
-The following are deliberately deferred until P1–P9 establish stable contracts
-and smaller modules:
+The following remain deliberately deferred:
 
 - A broad directory move or repository-wide architecture rewrite.
 - Deduplicating remote receivers through normal imports. Any future solution
@@ -162,6 +111,13 @@ and smaller modules:
 - A wholesale migration to Pydantic or another DTO framework.
 - A generic SSH command runner or generic scheduler abstraction.
 - Coverage targets chosen only to raise a global percentage.
+- Unifying workflow-specific pending DTOs, confirmation locks, expiry/capacity
+  rules, or error policies. Those differences remain explicit by design.
+- Unifying pinned transport response parsing or hardening the legacy transport
+  policies. P9 preserved each audited argv, environment, timeout, output, and
+  ambiguity policy exactly; any convergence is a separate behavior change.
+- Replacing protocol- or security-specific module constants merely to reduce
+  their count.
 
 Ruff may be introduced earlier in check-only mode for touched, non-remote files.
 Formatting, typing, and complexity enforcement should expand gradually with no
@@ -198,3 +154,9 @@ can be attributed and reverted without mixing concerns.
 | Move remote-helper deduplication to the end. | Remote receivers are standalone security boundaries and require stronger equivalence evidence. |
 | Keep strict frontend validation. | Defense in depth is intentional; single source of truth does not mean trusting unvalidated responses. |
 | Avoid a mega-refactor. | Small reviewed commits protect active campaigns and scientific reproducibility. |
+| Version successful v1 envelopes but preserve unversioned v1 errors. | This closes success-schema drift without silently breaking the established error contract. |
+| Generate frontend error semantics without server messages. | The server remains the message authority; the UI consumes only domain-qualified safe-interaction metadata. |
+| Treat unknown or wrong-domain confirmation failures as manual verification. | A client must never turn an unfamiliar mutation outcome into a retry path. |
+| Keep application clients instance-scoped. | CSRF acquisition and review-token contexts do not leak between client instances or tests. The browser-scoped HTTP-only session cookie remains intentionally shared by same-origin tabs. |
+| Share only closed local Zeus infrastructure. | Preview storage and SSH execution are reusable, but callers still cannot select a command, receiver, host, or operation outside fixed enums. |
+| Keep remote receivers self-contained. | Zeus cannot be assumed to have importable local packages, and each transmitted program remains independently auditable. |

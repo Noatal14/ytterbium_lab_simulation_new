@@ -43,6 +43,12 @@ jobs:
         run: |
           python -m compileall -q config.py lab_setup simulations studies utils workflow_api
 
+      - name: Verify generated contracts
+        run: |
+          python scripts/generate_workflow_error_catalog.py --check
+          python scripts/generate_ui_error_catalog.py --check
+          python -m pytest -q tests/test_mot_2d_specification.py::test_checked_in_typescript_artifact_matches_generator_exactly
+
       - name: Run complete test suite
         run: python -m pytest -q
 
