@@ -1,14 +1,15 @@
 """Guarded Refinement completion and Confirmation preparation."""
 from __future__ import annotations
-import base64,hashlib,json,math,os,re,secrets,shlex,subprocess,threading,time
+import hashlib,json,math,re,secrets,subprocess,threading,time
 from dataclasses import dataclass,replace
 from datetime import datetime,timezone
 from pathlib import Path
 from typing import Any,Mapping
 from workflow_api.zeus_refinement_submission import ZeusRefinementSubmissionCoordinator,ZeusRefinementSubmissionError
-from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
+from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.mot_2d_plan import render_confirmation_transition
 from workflow_api.preview_registry import PreviewRegistry
+from workflow_api.pinned_ssh import PinnedSshPolicy,PinnedSshProcessError,PinnedSshRunner,ReceiverOperation
 
 TOKEN_LIFETIME_SECONDS=300
 class ZeusConfirmationError(RuntimeError):
@@ -81,11 +82,12 @@ class ZeusConfirmationCoordinator:
             result={"status":"confirmation_prepared","campaign_id":pending.campaign_id,"stage":"confirmation","artifacts":{"created":3,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}};self._previews.replace(request["preview_token"],replace(pending,result=result));return result
 
 class PinnedSshConfirmationTransport:
-    def __init__(self,root,ssh,profile,*,timeout=90):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout
+    def __init__(self,root,ssh,profile,*,timeout=90):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.confirmation_preparation(root,ssh,timeout=timeout))
     def _call(self,operation,payload):
-        receiver=Path(__file__).with_name("zeus_confirmation_remote.py").read_bytes();encoded=base64.urlsafe_b64encode(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).decode();script=base64.urlsafe_b64encode(receiver).decode();wrapper="import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);sys.argv=sys.argv[2:];exec(compile(code,'<confirmation>','exec'),{'__name__':'__main__'})";remote=shlex.join(("python3","-c",wrapper,script,operation,self.profile.username,self.profile.project_directory,encoded))
-        try:result=subprocess.run([str(self.ssh),"-F","none","-T","-o","BatchMode=yes","-o","PasswordAuthentication=no","-o","KbdInteractiveAuthentication=no","-o","StrictHostKeyChecking=yes","-o","ForwardAgent=no","-o","ClearAllForwardings=yes",f"{self.profile.username}@{ZEUS_HOST}",remote],cwd=self.root,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=self.timeout,check=False)
-        except (subprocess.TimeoutExpired,OSError):raise ZeusConfirmationError("transition_outcome_unknown" if operation=="prepare" else "zeus_timeout") from None
+        pinned_operation={"inspect":ReceiverOperation.INSPECT,"prepare":ReceiverOperation.PREPARE}.get(operation)
+        if pinned_operation is None:raise ZeusConfirmationError("remote_response_invalid")
+        try:result=self.runner.run(pinned_operation,self.profile,payload)
+        except (subprocess.TimeoutExpired,PinnedSshProcessError):raise ZeusConfirmationError("transition_outcome_unknown" if operation=="prepare" else "zeus_timeout") from None
         if result.returncode or result.stderr:raise ZeusConfirmationError("transition_outcome_unknown" if operation=="prepare" else "remote_response_invalid")
         try:data=json.loads(result.stdout)
         except Exception:raise ZeusConfirmationError("remote_response_invalid") from None

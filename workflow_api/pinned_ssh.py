@@ -16,6 +16,7 @@ from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 
 class ReceiverKind(Enum):
     REFINEMENT_TRANSITION = "refinement_transition"
+    CONFIRMATION_PREPARATION = "confirmation_preparation"
 
 
 class ReceiverOperation(Enum):
@@ -23,11 +24,16 @@ class ReceiverOperation(Enum):
     PREPARE = "prepare"
 
 
+class PinnedSshProcessError(RuntimeError):
+    """A process-launch OSError, distinct from receiver file read failures."""
+
+
 @dataclass(frozen=True)
 class _ReceiverDefinition:
     filename: str
     compile_name: str
     operations: frozenset[ReceiverOperation]
+    wrap_process_oserror: bool
 
 
 _RECEIVERS = {
@@ -35,6 +41,13 @@ _RECEIVERS = {
         "zeus_refinement_remote.py",
         "<refine>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        False,
+    ),
+    ReceiverKind.CONFIRMATION_PREPARATION: _ReceiverDefinition(
+        "zeus_confirmation_remote.py",
+        "<confirmation>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        True,
     ),
 }
 
@@ -58,6 +71,21 @@ class PinnedSshPolicy:
     ) -> PinnedSshPolicy:
         return cls(
             ReceiverKind.REFINEMENT_TRANSITION,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def confirmation_preparation(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.CONFIRMATION_PREPARATION,
             repository_root,
             ssh_executable,
             timeout,
@@ -126,12 +154,17 @@ class PinnedSshRunner:
             f"{profile.username}@{ZEUS_HOST}",
             remote,
         ]
-        return subprocess.run(
-            argv,
-            cwd=self._policy.repository_root,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=self._policy.timeout,
-            check=False,
-        )
+        try:
+            return subprocess.run(
+                argv,
+                cwd=self._policy.repository_root,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=self._policy.timeout,
+                check=False,
+            )
+        except OSError as error:
+            if definition.wrap_process_oserror:
+                raise PinnedSshProcessError from error
+            raise

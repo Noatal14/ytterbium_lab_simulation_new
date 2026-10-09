@@ -18,6 +18,10 @@ from workflow_api.zeus_refinement import (
     PinnedSshRefinementTransport,
     ZeusRefinementError,
 )
+from workflow_api.zeus_confirmation import (
+    PinnedSshConfirmationTransport,
+    ZeusConfirmationError,
+)
 from workflow_api.zeus_snapshot import ZeusProfile
 
 
@@ -38,6 +42,16 @@ def _valid_response() -> bytes:
         "counts": {"queued": 0, "running": 3, "held": 0, "succeeded": 0, "failed": 0},
         "rows": [],
         "branch": "main",
+    }).encode()
+
+
+def _valid_confirmation_response() -> bytes:
+    return json.dumps({
+        "lifecycle": "running",
+        "rounds": [{}, {}, {}, {}],
+        "rows": [],
+        "branch": "main",
+        "receipt": None,
     }).encode()
 
 
@@ -187,6 +201,19 @@ def test_refinement_timeout_translation_is_unchanged(
     assert caught.value.code == expected
 
 
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+def test_refinement_process_oserror_remains_raw(tmp_path, monkeypatch, operation):
+    def fail(*_args, **_kwargs):
+        raise OSError("ssh unavailable")
+
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", fail)
+    transport = PinnedSshRefinementTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(OSError, match="ssh unavailable"):
+        getattr(transport, operation)(example=True)
+
+
 @pytest.mark.parametrize("operation,returncode,stderr,stdout,expected", [
     ("inspect", 1, b"", b"", "remote_response_invalid"),
     ("prepare", 1, b"", b"", "transition_outcome_unknown"),
@@ -208,3 +235,156 @@ def test_refinement_process_and_decode_error_translation_is_unchanged(
     with pytest.raises(ZeusRefinementError) as caught:
         getattr(transport, operation)(example=True)
     assert caught.value.code == expected
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
+    tmp_path, monkeypatch, operation,
+):
+    observed = {}
+
+    def run(argv, **kwargs):
+        observed["argv"] = argv
+        observed["kwargs"] = kwargs
+        return subprocess.CompletedProcess(
+            argv, 0, _valid_confirmation_response(), b"",
+        )
+
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
+    transport = PinnedSshConfirmationTransport(
+        tmp_path,
+        Path("/usr/bin/ssh"),
+        _profile(),
+    )
+    state = getattr(transport, operation)(**payload)
+    assert state.lifecycle == "running"
+
+    receiver = (Path(__file__).parents[1] / "workflow_api/zeus_confirmation_remote.py").read_bytes()
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    ).decode()
+    script = base64.urlsafe_b64encode(receiver).decode()
+    wrapper = (
+        "import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);"
+        "sys.argv=sys.argv[2:];exec(compile(code,'<confirmation>','exec'),"
+        "{'__name__':'__main__'})"
+    )
+    remote = shlex.join((
+        "python3", "-c", wrapper, script, operation, "tal.noa",
+        "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
+    ))
+    assert observed["argv"] == [
+        "/usr/bin/ssh", "-F", "none", "-T",
+        "-o", "BatchMode=yes",
+        "-o", "PasswordAuthentication=no",
+        "-o", "KbdInteractiveAuthentication=no",
+        "-o", "StrictHostKeyChecking=yes",
+        "-o", "ForwardAgent=no",
+        "-o", "ClearAllForwardings=yes",
+        "tal.noa@zeus.technion.ac.il", remote,
+    ]
+    assert observed["kwargs"] == {
+        "cwd": tmp_path,
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "timeout": 90,
+        "check": False,
+    }
+    assert "env" not in observed["kwargs"]
+    assert "close_fds" not in observed["kwargs"]
+    remote_parts = shlex.split(observed["argv"][-1])
+    assert base64.urlsafe_b64decode(remote_parts[3]) == receiver
+    assert json.loads(base64.urlsafe_b64decode(remote_parts[7])) == payload
+
+
+@pytest.mark.parametrize("exception", [
+    subprocess.TimeoutExpired([], 90),
+    OSError("ssh unavailable"),
+])
+@pytest.mark.parametrize("operation,expected", [
+    ("inspect", "zeus_timeout"),
+    ("prepare", "transition_outcome_unknown"),
+])
+def test_confirmation_timeout_and_oserror_translation_is_unchanged(
+    tmp_path, monkeypatch, exception, operation, expected,
+):
+    def fail(*_args, **_kwargs):
+        raise exception
+
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", fail)
+    transport = PinnedSshConfirmationTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusConfirmationError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == expected
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+def test_confirmation_receiver_read_oserror_remains_raw(
+    tmp_path, monkeypatch, operation,
+):
+    process_calls = []
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda *args, **kwargs: process_calls.append((args, kwargs)),
+    )
+    original_read_bytes = Path.read_bytes
+
+    def fail_confirmation_receiver(path):
+        if path.name == "zeus_confirmation_remote.py":
+            raise OSError("receiver unreadable")
+        return original_read_bytes(path)
+
+    monkeypatch.setattr(Path, "read_bytes", fail_confirmation_receiver)
+    transport = PinnedSshConfirmationTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(OSError, match="receiver unreadable"):
+        getattr(transport, operation)(example=True)
+    assert process_calls == []
+
+
+@pytest.mark.parametrize("operation,returncode,stderr,stdout,expected", [
+    ("inspect", 1, b"", b"", "remote_response_invalid"),
+    ("prepare", 1, b"", b"", "transition_outcome_unknown"),
+    ("inspect", 0, b"warning", _valid_confirmation_response(), "remote_response_invalid"),
+    ("prepare", 0, b"warning", _valid_confirmation_response(), "transition_outcome_unknown"),
+    ("inspect", 0, b"", b"not-json", "remote_response_invalid"),
+    ("prepare", 0, b"", b"not-json", "remote_response_invalid"),
+])
+def test_confirmation_process_and_decode_error_translation_is_unchanged(
+    tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
+):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, returncode, stdout, stderr,
+        ),
+    )
+    transport = PinnedSshConfirmationTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusConfirmationError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == expected
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+def test_confirmation_remote_error_code_translation_is_unchanged(
+    tmp_path, monkeypatch, operation,
+):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, 0, b'{"error":"refinement_not_ready"}', b"",
+        ),
+    )
+    transport = PinnedSshConfirmationTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusConfirmationError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == "refinement_not_ready"
