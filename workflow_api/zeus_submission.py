@@ -26,6 +26,7 @@ from typing import Mapping, Protocol
 
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files
+from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 from workflow_api.zeus_transfer import (
     COMMIT_RE,
@@ -388,15 +389,17 @@ class _Pending:
     nonce: str
     expires_at: float
     result: Mapping[str, object] | None = None
+    terminal_error: str | None = None
 
 
 class ZeusSmokeSubmissionCoordinator:
     """HTTP-facing preview/confirm coordinator for exactly one smoke PBS."""
 
-    def __init__(self, repository_root: Path, ssh_executable: Path, git_executable: Path, *, clock=time.time, transport_factory=None):
+    def __init__(self, repository_root: Path, ssh_executable: Path, git_executable: Path, *, clock=time.time, token_factory=None, transport_factory=None):
         self.root = repository_root.resolve(strict=True); self.ssh = ssh_executable.resolve(strict=True); self.git = git_executable.resolve(strict=True)
         self.clock = clock; self.transport_factory = transport_factory or (lambda profile: PinnedSshSmokeSubmissionTransport(self.root, self.ssh, profile))
-        self._pending: dict[str, _Pending] = {}; self._lock = threading.RLock(); self._confirm_lock = threading.Lock()
+        self._previews = PreviewRegistry[_Pending](clock=clock, token_factory=token_factory)
+        self._confirm_lock = threading.Lock()
         if not self.git.is_file() or not os.access(self.git,os.X_OK) or self.root in self.git.parents:
             raise ValueError("The trusted Git executable is unavailable.")
 
@@ -450,12 +453,16 @@ class ZeusSmokeSubmissionCoordinator:
         if state.branch is None: raise ZeusSubmissionError("remote_response_invalid")
         if state.status=="ambiguous": raise ZeusSubmissionError("submission_outcome_unknown")
         if state.status=="submitted": raise ZeusSubmissionError("already_submitted")
-        token=secrets.token_urlsafe(32); nonce=secrets.token_hex(16); expires=self.clock()+TOKEN_LIFETIME_SECONDS
+        nonce=secrets.token_hex(16); expires=self.clock()+TOKEN_LIFETIME_SECONDS
         pending=_Pending(session_id,campaign_id,campaign,profile,commit,files,job,key,nonce,expires)
-        with self._lock:
-            self._pending={k:v for k,v in self._pending.items() if v.expires_at>=self.clock()}
-            if len(self._pending)>=MAX_PENDING_PREVIEWS: raise ZeusSubmissionError("too_many_pending_previews")
-            self._pending[token]=pending
+        try:
+            token = self._previews.add(
+                pending,
+                expires_at=expires,
+                capacity=MAX_PENDING_PREVIEWS,
+            )
+        except OverflowError as error:
+            raise ZeusSubmissionError("too_many_pending_previews") from error
         name=manifest.get("name") if isinstance(manifest.get("name"),str) else campaign.name
         s0_values=manifest.get("s0_values")
         if not isinstance(s0_values,list) or not s0_values: raise ZeusSubmissionError("campaign_not_canonical")
@@ -465,22 +472,39 @@ class ZeusSmokeSubmissionCoordinator:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str): raise ZeusSubmissionError("request_invalid")
         token=str(request["preview_token"])
         with self._confirm_lock:
-            with self._lock: pending=self._pending.get(token)
+            record = self._previews.get(token)
+            pending = record.value if record is not None else None
             if pending is None or not secrets.compare_digest(pending.session_id,session_id): raise ZeusSubmissionError("confirmation_invalid")
             if pending.result is not None: return dict(pending.result)
+            if pending.terminal_error is not None: raise ZeusSubmissionError(pending.terminal_error)
             if self.clock()>pending.expires_at:
-                with self._lock: self._pending.pop(token,None)
+                self._previews.pop(token)
                 raise ZeusSubmissionError("confirmation_expired")
             campaign,_,commit,files,job,key=self._plan(pending.campaign_id); local_commit,clean=self._revision()
             if campaign!=pending.campaign_root or not clean or local_commit!=commit or commit!=pending.commit or files!=pending.files or job!=pending.job_file or key!=pending.submission_key: raise ZeusSubmissionError("local_files_changed")
-            transport=self.transport_factory(pending.profile); state=transport.submit(files=files,campaign=campaign.relative_to(self.root).as_posix(),job_file=job,commit=commit,submission_key=key,nonce=pending.nonce)
-            if state.status!="submitted" or state.job_id is None or state.submitted_unix_s is None: raise ZeusSubmissionError("submission_outcome_unknown")
-            if state.nonce!=pending.nonce: raise ZeusSubmissionError("already_submitted")
+            transport=self.transport_factory(pending.profile)
+            try:
+                state=transport.submit(files=files,campaign=campaign.relative_to(self.root).as_posix(),job_file=job,commit=commit,submission_key=key,nonce=pending.nonce)
+            except ZeusSubmissionError as error:
+                if error.code in {
+                    "submission_outcome_unknown",
+                    "already_submitted",
+                    "smoke_already_started",
+                }:
+                    self._previews.replace(token, replace(pending, terminal_error=error.code))
+                raise
+            if state.status!="submitted" or state.job_id is None or state.submitted_unix_s is None:
+                self._previews.replace(token, replace(pending, terminal_error="submission_outcome_unknown"))
+                raise ZeusSubmissionError("submission_outcome_unknown")
+            if state.nonce!=pending.nonce:
+                self._previews.replace(token, replace(pending, terminal_error="already_submitted"))
+                raise ZeusSubmissionError("already_submitted")
             try: submitted_at=datetime.fromtimestamp(state.submitted_unix_s,tz=timezone.utc).isoformat()
-            except (OverflowError,OSError,ValueError): raise ZeusSubmissionError("submission_outcome_unknown") from None
+            except (OverflowError,OSError,ValueError):
+                self._previews.replace(token, replace(pending, terminal_error="submission_outcome_unknown"))
+                raise ZeusSubmissionError("submission_outcome_unknown") from None
             result={"status":"submitted","campaign_id":pending.campaign_id,"stage":"smoke","job_id":state.job_id,"submitted_at":submitted_at,"later_stages_locked":True}
-            with self._lock:
-                # Publish the terminal result before releasing _confirm_lock so
-                # concurrent retries cannot invoke the transport a second time.
-                self._pending[token] = replace(pending, result=result)
+            # Publish the terminal result before releasing _confirm_lock so
+            # concurrent retries cannot invoke the transport a second time.
+            self._previews.replace(token, replace(pending, result=result))
             return dict(result)

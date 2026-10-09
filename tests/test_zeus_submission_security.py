@@ -20,6 +20,7 @@ from workflow_api.mot_2d_plan import RELEVANT_FILES, build_plan, materialize
 from workflow_api.mot_2d_sources import inspect_source
 from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.zeus_submission import (
+    MAX_PENDING_PREVIEWS,
     PinnedSshSmokeSubmissionTransport,
     SubmissionRemoteState,
     ZeusSmokeSubmissionCoordinator,
@@ -110,12 +111,19 @@ class RecordingTransport:
         return SubmissionRemoteState("submitted", "12345.zeus-master", str(nonce), submitted_unix_s=123)
 
 
-def _coordinator(root: Path, transport: RecordingTransport, *, clock=lambda: 100.0):
+def _coordinator(
+    root: Path,
+    transport: RecordingTransport,
+    *,
+    clock=lambda: 100.0,
+    token_factory=None,
+):
     return ZeusSmokeSubmissionCoordinator(
         root,
         Path("/usr/bin/ssh"),
         Path("/usr/bin/git"),
         clock=clock,
+        token_factory=token_factory,
         transport_factory=lambda _profile: transport,
     )
 
@@ -240,18 +248,159 @@ def test_confirm_is_session_bound_idempotent_and_concurrent_at_most_once(tmp_pat
 
     results: list[object] = []
     failures: list[BaseException] = []
+    barrier = threading.Barrier(9)
     def confirm() -> None:
         try:
+            barrier.wait()
             results.append(coordinator.confirm({"preview_token": token}, session_id="owner"))
         except BaseException as error:  # retain concurrent failures for assertion
             failures.append(error)
     threads = [threading.Thread(target=confirm) for _ in range(8)]
     for thread in threads: thread.start()
+    barrier.wait()
     for thread in threads: thread.join()
 
     assert failures == []
     assert len(results) == 8 and all(row == results[0] for row in results)
     assert len(transport.submissions) == 1
+
+
+def test_smoke_submission_preview_registry_boundary_expiry_and_capacity(tmp_path):
+    _campaign(tmp_path)
+    from workflow_api.discovery import build_registry
+    campaign_id = next(iter(build_registry(tmp_path)))
+    now = [100.0]
+    tokens = iter(f"token-{index}" for index in range(MAX_PENDING_PREVIEWS + 1))
+    transport = RecordingTransport()
+    coordinator = _coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: next(tokens),
+    )
+    plan = coordinator._plan(campaign_id)
+    coordinator._plan = lambda _campaign_id: plan
+    coordinator._revision = lambda: (plan[2], True)
+    for _ in range(MAX_PENDING_PREVIEWS):
+        coordinator.preview(_request(campaign_id), session_id="owner")
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert _code(lambda: coordinator.preview(
+        _request(campaign_id), session_id="owner")) == "too_many_pending_previews"
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert transport.submissions == []
+
+    now[0] = 400.0
+    assert _code(lambda: coordinator.preview(
+        _request(campaign_id), session_id="owner")) == "too_many_pending_previews"
+    now[0] = 401.0
+    preview = coordinator.preview(_request(campaign_id), session_id="owner")
+    assert preview["preview_token"] == f"token-{MAX_PENDING_PREVIEWS}"
+    assert len(coordinator._previews) == 1
+
+    assert _code(lambda: coordinator.confirm(
+        {"preview_token": "missing"}, session_id="owner")) == "confirmation_invalid"
+    assert _code(lambda: coordinator.confirm(
+        {"preview_token": preview["preview_token"]}, session_id="other")) == "confirmation_invalid"
+    now[0] = 702.0
+    assert _code(lambda: coordinator.confirm(
+        {"preview_token": preview["preview_token"]}, session_id="owner")) == "confirmation_expired"
+    assert coordinator._previews.get(preview["preview_token"]) is None
+    assert transport.submissions == []
+
+
+def test_smoke_submission_exact_expiry_boundary_remains_confirmable(tmp_path):
+    _campaign(tmp_path)
+    from workflow_api.discovery import build_registry
+    campaign_id = next(iter(build_registry(tmp_path)))
+    now = [100.0]
+    transport = RecordingTransport()
+    coordinator = _coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: "boundary-token",
+    )
+    preview = coordinator.preview(_request(campaign_id), session_id="owner")
+    now[0] = 400.0
+    result = coordinator.confirm(
+        {"preview_token": preview["preview_token"]}, session_id="owner")
+    assert result["status"] == "submitted"
+    assert len(transport.submissions) == 1
+
+
+@pytest.mark.parametrize("after_effect", [False, True])
+def test_smoke_submission_ambiguous_confirm_reuses_nonce_without_second_effect(
+    tmp_path, after_effect,
+):
+    _campaign(tmp_path)
+    from workflow_api.discovery import build_registry
+    campaign_id = next(iter(build_registry(tmp_path)))
+
+    class AmbiguousTransport(RecordingTransport):
+        def __init__(self):
+            super().__init__()
+            self.remote_effects = 0
+
+        def submit(self, **kwargs):
+            self.submissions.append(dict(kwargs))
+            if after_effect and self.remote_effects == 0:
+                self.remote_effects += 1
+            raise ZeusSubmissionError("submission_outcome_unknown")
+
+    transport = AmbiguousTransport()
+    coordinator = _coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "ambiguous-token",
+    )
+    preview = coordinator.preview(_request(campaign_id), session_id="owner")
+    request = {"preview_token": preview["preview_token"]}
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == "submission_outcome_unknown"
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == "submission_outcome_unknown"
+    assert len(transport.submissions) == 1
+    assert transport.remote_effects == (1 if after_effect else 0)
+    record = coordinator._previews.get("ambiguous-token")
+    assert record is not None and record.value.result is None
+    assert record.value.terminal_error == "submission_outcome_unknown"
+    assert record.value.nonce == transport.submissions[0]["nonce"]
+
+
+@pytest.mark.parametrize("mode,code", [
+    ("wrong_nonce", "already_submitted"),
+    ("already_started", "smoke_already_started"),
+])
+def test_smoke_submission_definitive_post_invocation_error_is_terminal(
+    tmp_path, mode, code,
+):
+    _campaign(tmp_path)
+    from workflow_api.discovery import build_registry
+    campaign_id = next(iter(build_registry(tmp_path)))
+
+    class TerminalTransport(RecordingTransport):
+        def submit(self, **kwargs):
+            self.submissions.append(dict(kwargs))
+            if mode == "already_started":
+                raise ZeusSubmissionError("smoke_already_started")
+            return SubmissionRemoteState(
+                "submitted",
+                "12345.zeus-master",
+                "f" * 32,
+                submitted_unix_s=123,
+            )
+
+    transport = TerminalTransport()
+    coordinator = _coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "terminal-token",
+    )
+    preview = coordinator.preview(_request(campaign_id), session_id="owner")
+    request = {"preview_token": preview["preview_token"]}
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert len(transport.submissions) == 1
+    record = coordinator._previews.get("terminal-token")
+    assert record is not None and record.value.terminal_error == code
 
 
 @pytest.mark.parametrize("remote", [
