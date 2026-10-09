@@ -13,7 +13,8 @@ from urllib.parse import urlsplit
 
 from workflow_api.server import ReadOnlyWorkflowHandler, workflow_catalog_payload
 from workflow_api.mot_2d_validation import modern_contract, validated_progress
-from workflow_api.discovery import _progress_aware_plan, list_campaigns
+from workflow_api.discovery import DiscoveryError, _progress_aware_plan, list_campaigns
+from workflow_api.error_catalog import ERROR_DOMAINS
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mot_2d_plan import RELEVANT_FILES
 from workflow_api.mutation import CreationService
@@ -409,6 +410,45 @@ def test_campaign_endpoint_rejects_encoded_or_unknown_ids(tmp_path):
         status, _, payload = request_json(f"{base_url}/api/v1/campaigns/mot_2d-missing")
         assert status == 404
         assert payload["error"]["code"] == "campaign_not_found"
+
+
+def test_every_catalogued_local_read_error_matches_the_real_handler(monkeypatch, tmp_path):
+    for case, spec in ERROR_DOMAINS["local_read"].entries.items():
+        wire_code = spec.wire_code or case
+
+        def fail(_root, _campaign_id, *, code=wire_code, message=spec.message):
+            raise DiscoveryError(code, message)
+
+        monkeypatch.setattr("workflow_api.server.get_campaign", fail)
+        with running_server(request_count=1, repository_root=tmp_path) as base_url:
+            status, headers, payload = request_json(f"{base_url}/api/v1/campaigns/catalog-case")
+        assert status == int(spec.status), case
+        assert headers["Cache-Control"] == "no-store"
+        assert payload == {"error": {"code": wire_code, "message": spec.message}}, case
+
+
+def test_unknown_local_read_error_fails_closed_without_leaking(monkeypatch, tmp_path):
+    def fail(_root, _campaign_id):
+        raise DiscoveryError("internal_secret_code", "secret /absolute/path")
+
+    monkeypatch.setattr("workflow_api.server.get_campaign", fail)
+    with running_server(request_count=1, repository_root=tmp_path) as base_url:
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/campaigns/catalog-case"
+        )
+    assert status == 500
+    assert headers["Cache-Control"] == "no-store"
+    assert headers["X-Content-Type-Options"] == "nosniff"
+    assert payload == {
+        "error": {
+            "code": "inspection_failed",
+            "message": "Campaign inspection failed safely.",
+        }
+    }
+    serialized = json.dumps(payload)
+    assert "internal_secret_code" not in serialized
+    assert "secret" not in serialized
+    assert "/absolute/path" not in serialized
 
 
 def test_unexpected_discovery_error_returns_safe_json(monkeypatch):

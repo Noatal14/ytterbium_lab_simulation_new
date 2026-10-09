@@ -21,6 +21,7 @@ from urllib.parse import unquote, urlsplit
 
 from workflow_api import list_workflows
 from workflow_api.discovery import DiscoveryError, get_campaign, list_campaigns
+from workflow_api.error_catalog import resolve_error, resolve_wire_error
 from workflow_api.models import SCHEMA_VERSION
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mutation import CreationService
@@ -122,7 +123,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         target = urlsplit(self.path)
         path = target.path
         if target.query:
-            self._error("unsupported_query", "Query parameters are not supported.", HTTPStatus.BAD_REQUEST)
+            self._catalog_error("protocol", "unsupported_query")
             return
         if path == "/api/health":
             self._json({"api_version": SCHEMA_VERSION, "status": "ok"})
@@ -132,10 +133,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/v1/session":
             if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None:
-                self._error("session_unavailable", "Local actions are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
+                self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
-                self._error("untrusted_origin", "Local creation requires a same-origin request.", HTTPStatus.FORBIDDEN)
+                self._catalog_error("protocol", "untrusted_origin")
                 return
             now = time.monotonic()
             with type(self).sessions_lock:
@@ -151,7 +152,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             try:
                 data = list_campaigns(self.repository_root)
             except Exception:
-                self._error("inspection_failed", "Campaign inspection failed safely.", HTTPStatus.INTERNAL_SERVER_ERROR)
+                self._catalog_error("protocol", "inspection_failed")
                 return
             self._json({"api_version": SCHEMA_VERSION, "data": data})
             return
@@ -159,7 +160,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             try:
                 data = list_sources(self.repository_root)
             except Exception:
-                self._error("source_inspection_failed", "Zeeman sources could not be inspected safely.", HTTPStatus.INTERNAL_SERVER_ERROR)
+                self._catalog_error("protocol", "source_inspection_failed")
                 return
             self._json({"api_version": SCHEMA_VERSION, "data": data})
             return
@@ -167,20 +168,20 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         if path.startswith(prefix):
             encoded_id = path[len(prefix):]
             if not encoded_id or "/" in encoded_id or unquote(encoded_id) != encoded_id:
-                self._error("invalid_campaign_id", "Campaign identifier is invalid.", HTTPStatus.BAD_REQUEST)
+                self._catalog_error("protocol", "invalid_campaign_id")
                 return
             try:
                 campaign = get_campaign(self.repository_root, encoded_id)
             except DiscoveryError as error:
-                status = HTTPStatus.NOT_FOUND if error.code == "campaign_not_found" else HTTPStatus.BAD_REQUEST
-                self._error(error.code, error.message, status)
+                resolved = resolve_wire_error("local_read", error.code, error.message)
+                self._error(resolved.code, resolved.message, resolved.status)
                 return
             except Exception:
-                self._error("inspection_failed", "Campaign inspection failed safely.", HTTPStatus.INTERNAL_SERVER_ERROR)
+                self._catalog_error("protocol", "inspection_failed")
                 return
             self._json({"api_version": SCHEMA_VERSION, "data": campaign})
             return
-        self._error("not_found", "Not found.", HTTPStatus.NOT_FOUND)
+        self._catalog_error("protocol", "not_found")
 
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
         if not self._trusted_request_target(): return
@@ -197,7 +198,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             session = self._session_id()
             data = _invoke_post_route(route, service, payload, session)
         except PermissionError:
-            self._error("invalid_preview", "Preview confirmation is invalid or expired.", HTTPStatus.PRECONDITION_FAILED); return
+            self._catalog_error("protocol", "invalid_preview"); return
         except ZeusSnapshotError as error:
             statuses = {
                 "rate_limited": HTTPStatus.TOO_MANY_REQUESTS,
@@ -361,12 +362,12 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     def _trusted_request_target(self) -> bool:
         target = urlsplit(self.path)
         if target.scheme or target.netloc:
-            self._error("invalid_request_target", "Absolute request targets are not accepted.", HTTPStatus.BAD_REQUEST)
+            self._catalog_error("protocol", "invalid_request_target")
             return False
         host = self.headers.get("Host", "")
         hostname = host.rsplit(":", 1)[0].lower()
         if hostname not in {"127.0.0.1", "localhost"}:
-            self._error("untrusted_host", "This local service accepts only localhost requests.", HTTPStatus.BAD_REQUEST)
+            self._catalog_error("protocol", "untrusted_host")
             return False
         return True
 
@@ -380,14 +381,14 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     def _trusted_mutation_headers(self) -> bool:
         host = self.headers.get("Host", ""); origin = self.headers.get("Origin", "")
         if origin != f"http://{host}" or self.headers.get("Sec-Fetch-Site") != "same-origin":
-            self._error("untrusted_origin", "Local creation requires a same-origin request.", HTTPStatus.FORBIDDEN); return False
+            self._catalog_error("protocol", "untrusted_origin"); return False
         try: session = self._session_id()
         except PermissionError:
-            self._error("invalid_session", "Local creation session is missing or expired.", HTTPStatus.FORBIDDEN); return False
+            self._catalog_error("protocol", "invalid_session"); return False
         with type(self).sessions_lock:
             expected_csrf = type(self).sessions.get(session, (None, 0))[0]
         if self.headers.get("X-CSRF-Token") != expected_csrf:
-            self._error("invalid_csrf", "Local creation request could not be verified.", HTTPStatus.FORBIDDEN); return False
+            self._catalog_error("protocol", "invalid_csrf"); return False
         return True
 
     def _read_json_body(self) -> dict[str, Any]:
@@ -412,11 +413,16 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         return payload
 
     def _method_not_allowed(self) -> None:
+        error = resolve_error("protocol", "method_not_allowed")
         self._json(
-            {"error": {"code": "method_not_allowed", "message": "This method is not available."}},
-            status=HTTPStatus.METHOD_NOT_ALLOWED,
+            {"error": {"code": error.code, "message": error.message}},
+            status=error.status,
             extra_headers={"Allow": "GET, POST"},
         )
+
+    def _catalog_error(self, domain: str, case: str) -> None:
+        error = resolve_error(domain, case)
+        self._error(error.code, error.message, error.status)
 
     def _error(self, code: str, message: str, status: HTTPStatus) -> None:
         self._json({"error": {"code": code, "message": message}}, status=status)

@@ -501,6 +501,76 @@
       "message": "Too many local creation requests."
     },
     {
+      "domain": "local_read",
+      "case": "<fallback>",
+      "code": "inspection_failed",
+      "status": 500,
+      "message": "Campaign inspection failed safely."
+    },
+    {
+      "domain": "local_read",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Campaign was not found."
+    },
+    {
+      "domain": "local_read",
+      "case": "invalid_campaign",
+      "code": "invalid_campaign",
+      "status": 400,
+      "message": "Campaign files could not be validated for inspection."
+    },
+    {
+      "domain": "local_read",
+      "case": "invalid_campaign_id",
+      "code": "invalid_campaign_id",
+      "status": 400,
+      "message": "Campaign identifier is invalid."
+    },
+    {
+      "domain": "local_read",
+      "case": "invalid_manifest#json",
+      "code": "invalid_manifest",
+      "status": 400,
+      "message": "Campaign record is not valid JSON."
+    },
+    {
+      "domain": "local_read",
+      "case": "invalid_manifest#not_regular",
+      "code": "invalid_manifest",
+      "status": 400,
+      "message": "Campaign record is not a trusted regular file."
+    },
+    {
+      "domain": "local_read",
+      "case": "invalid_manifest#object",
+      "code": "invalid_manifest",
+      "status": 400,
+      "message": "Campaign record must contain a JSON object."
+    },
+    {
+      "domain": "local_read",
+      "case": "oversized_manifest",
+      "code": "oversized_manifest",
+      "status": 400,
+      "message": "Campaign record is too large to inspect safely."
+    },
+    {
+      "domain": "local_read",
+      "case": "unavailable_manifest",
+      "code": "unavailable_manifest",
+      "status": 400,
+      "message": "Campaign record is unavailable."
+    },
+    {
+      "domain": "local_read",
+      "case": "unsupported_campaign",
+      "code": "unsupported_campaign",
+      "status": 400,
+      "message": "Campaign record has an unsupported workflow kind."
+    },
+    {
       "domain": "protocol",
       "case": "inspection_failed",
       "code": "inspection_failed",

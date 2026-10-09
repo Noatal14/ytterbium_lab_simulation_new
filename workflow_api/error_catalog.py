@@ -100,6 +100,45 @@ PROTOCOL = _frozen(
     }
 )
 
+LOCAL_READ = _frozen(
+    {
+        "invalid_campaign_id": _spec(
+            HTTPStatus.BAD_REQUEST, "Campaign identifier is invalid."
+        ),
+        "campaign_not_found": _spec(HTTPStatus.NOT_FOUND, "Campaign was not found."),
+        "invalid_manifest#not_regular": ErrorSpec(
+            HTTPStatus.BAD_REQUEST,
+            "Campaign record is not a trusted regular file.",
+            "invalid_manifest",
+        ),
+        "invalid_manifest#json": ErrorSpec(
+            HTTPStatus.BAD_REQUEST,
+            "Campaign record is not valid JSON.",
+            "invalid_manifest",
+        ),
+        "invalid_manifest#object": ErrorSpec(
+            HTTPStatus.BAD_REQUEST,
+            "Campaign record must contain a JSON object.",
+            "invalid_manifest",
+        ),
+        "unavailable_manifest": _spec(
+            HTTPStatus.BAD_REQUEST, "Campaign record is unavailable."
+        ),
+        "oversized_manifest": _spec(
+            HTTPStatus.BAD_REQUEST, "Campaign record is too large to inspect safely."
+        ),
+        "unsupported_campaign": _spec(
+            HTTPStatus.BAD_REQUEST, "Campaign record has an unsupported workflow kind."
+        ),
+        "invalid_campaign": _spec(
+            HTTPStatus.BAD_REQUEST,
+            "Campaign files could not be validated for inspection.",
+        ),
+    },
+    _spec(HTTPStatus.INTERNAL_SERVER_ERROR, "Campaign inspection failed safely."),
+    "inspection_failed",
+)
+
 SESSION = _frozen(
     {
         "rate_limited": _spec(
@@ -729,6 +768,7 @@ CONFIRMATION_TRANSITION = _include_fallback_codes(
 ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
     {
         "protocol": PROTOCOL,
+        "local_read": LOCAL_READ,
         "session": SESSION,
         "creation": CREATION,
         "route_unavailable": ROUTE_UNAVAILABLE,
@@ -804,3 +844,19 @@ def resolve_error(domain_name: str, case_or_code: object) -> ResolvedError:
     return ResolvedError(
         domain.fallback_code, domain.fallback.status, domain.fallback.message
     )
+
+
+def resolve_wire_error(
+    domain_name: str, wire_code: object, message: object
+) -> ResolvedError:
+    """Resolve a closed, already-safe wire pair without passing it through."""
+    domain = ERROR_DOMAINS[domain_name]
+    matches = [
+        (case, spec)
+        for case, spec in domain.entries.items()
+        if (spec.wire_code or case) == wire_code and spec.message == message
+    ]
+    if len(matches) != 1:
+        return resolve_error(domain_name, object())
+    case, _ = matches[0]
+    return resolve_error(domain_name, case)
