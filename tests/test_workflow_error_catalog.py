@@ -148,6 +148,24 @@ def test_generator_is_byte_deterministic(tmp_path):
     assert drift.returncode != 0
 
 
+def test_frontend_semantic_catalog_generator_is_checked_and_detects_drift(tmp_path):
+    script = ROOT / "scripts/generate_ui_error_catalog.py"
+    tracked = ROOT / "ui/src/generated/errorCatalog.v1.ts"
+    subprocess.run([sys.executable, str(script), "--check"], cwd=ROOT, check=True)
+    generated = tmp_path / "errorCatalog.v1.ts"
+    subprocess.run(
+        [sys.executable, str(script), "--output", str(generated)], cwd=ROOT, check=True
+    )
+    assert generated.read_bytes() == tracked.read_bytes()
+    generated.write_text(generated.read_text() + "// drift\n")
+    result = subprocess.run(
+        [sys.executable, str(script), "--output", str(generated), "--check"],
+        cwd=ROOT,
+        check=False,
+    )
+    assert result.returncode != 0
+
+
 def test_catalog_is_immutable_and_domain_qualified():
     with pytest.raises(TypeError):
         ERROR_DOMAINS["snapshot"].entries["new"] = ErrorSpec(400, "bad")  # type: ignore[arg-type,index]

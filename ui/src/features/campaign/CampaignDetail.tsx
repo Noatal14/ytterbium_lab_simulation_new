@@ -5,6 +5,7 @@ import { RefinementLifecycleApiError, RefinementSubmissionApiError, type Confirm
 import { ScreeningLifecycleApiError, ScreeningSubmissionApiError, type RefinementPreview, type RefinementResult, type ScreeningLifecycle, type ScreeningLifecycleApi, type ScreeningSubmissionApi, type ScreeningSubmissionPreview, type ScreeningSubmissionResult } from "../../api/clients/screening";
 import { SmokeLifecycleApiError, SubmissionApiError, type ScreeningPreview, type ScreeningResult, type SmokeLifecycle, type SmokeLifecycleApi, type SmokeSubmissionPreview, type SmokeSubmissionResult, type SubmissionApi } from "../../api/clients/smoke";
 import type { TransferApi, ZeusSnapshot, ZeusTransferPreview, ZeusTransferResult } from "../../api/clients/zeus";
+import { errorHasSemantic, requiresManualVerification } from "../../api/errorSemantics";
 import { ConfirmationStage } from "./ConfirmationStage";
 import { TransferStage } from "./TransferStage";
 import { SmokePointsTable } from "./SmokeStage";
@@ -30,7 +31,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const [submissionPreview, setSubmissionPreview] = useState<SmokeSubmissionPreview | null>(null);
   const [submissionResult, setSubmissionResult] = useState<SmokeSubmissionResult | null>(null);
   const [submissionError, setSubmissionError] = useState("");
-  const [submissionTerminalCode, setSubmissionTerminalCode] = useState<"already_submitted" | "smoke_already_started" | null>(null);
+  const [submissionTerminalCode, setSubmissionTerminalCode] = useState<"already_submitted" | "smoke_already_started" | "submission_record_invalid" | null>(null);
   const [remoteState, setRemoteState] = useState<SmokeLifecycle | null>(null);
   const [remoteCheck, setRemoteCheck] = useState<"idle" | "checking" | "ready" | "error">("idle");
   const [remoteError, setRemoteError] = useState("");
@@ -102,14 +103,14 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     setSubmissionState("previewing"); setSubmissionError("");
     try { setSubmissionPreview(await submission.preview(campaign.id, zeusSnapshot.profile)); setSubmissionState("review"); }
     catch (error) {
-      if (error instanceof SubmissionApiError && error.code === "submission_outcome_unknown") {
+      if (error instanceof SubmissionApiError && errorHasSemantic("smoke_submission", error.code, "outcome_unknown")) {
         setSubmissionError("Submission outcome could not be verified. Do not submit again. Check Zeus jobs first."); setSubmissionState("unknown");
-      } else if (error instanceof SubmissionApiError && ["already_submitted", "smoke_already_started"].includes(error.code)) {
-        const code = error.code as "already_submitted" | "smoke_already_started";
+      } else if (error instanceof SubmissionApiError && errorHasSemantic("smoke_submission", error.code, "manual_verification")) {
+        const code = error.code as "already_submitted" | "smoke_already_started" | "submission_record_invalid";
         setSubmissionTerminalCode(code);
-        setSubmissionError(code === "already_submitted" ? "This smoke stage already has a durable Zeus submission record. Do not submit it again." : "Smoke outputs already exist on Zeus. Do not submit this stage again; inspect the jobs and campaign status.");
+        setSubmissionError(code === "already_submitted" ? "This smoke stage already has a durable Zeus submission record. Do not submit it again." : code === "smoke_already_started" ? "Smoke outputs already exist on Zeus. Do not submit this stage again; inspect the jobs and campaign status." : error.message);
         setSubmissionState("terminal");
-      } else { setSubmissionError(error instanceof Error ? error.message : "Smoke submission review stopped safely."); setSubmissionState("error"); }
+      } else { setSubmissionError(error instanceof Error ? error.message : "Smoke submission review stopped safely."); setSubmissionState(error instanceof SubmissionApiError && requiresManualVerification("smoke_submission", error.code) ? "terminal" : "error"); }
     }
     finally { submissionRequestActive.current = false; }
   }
@@ -119,17 +120,17 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     setSubmissionState("submitting"); setSubmissionError("");
     try { setSubmissionResult(await submission.confirm(submissionPreview.preview_token)); setSubmissionState("submitted"); }
     catch (error) {
-      if (error instanceof SubmissionApiError && error.code === "submission_outcome_unknown") {
+      if (error instanceof SubmissionApiError && errorHasSemantic("smoke_submission", error.code, "outcome_unknown")) {
         setSubmissionError("Submission outcome could not be verified. Do not submit again. Check Zeus jobs first.");
         setSubmissionState("unknown");
-      } else if (error instanceof SubmissionApiError && ["already_submitted", "smoke_already_started"].includes(error.code)) {
-        const code = error.code as "already_submitted" | "smoke_already_started";
+      } else if (error instanceof SubmissionApiError && errorHasSemantic("smoke_submission", error.code, "manual_verification")) {
+        const code = error.code as "already_submitted" | "smoke_already_started" | "submission_record_invalid";
         setSubmissionTerminalCode(code);
-        setSubmissionError(code === "already_submitted" ? "This smoke stage already has a durable Zeus submission record. Do not submit it again." : "Smoke outputs already exist on Zeus. Do not submit this stage again; inspect the jobs and campaign status.");
+        setSubmissionError(code === "already_submitted" ? "This smoke stage already has a durable Zeus submission record. Do not submit it again." : code === "smoke_already_started" ? "Smoke outputs already exist on Zeus. Do not submit this stage again; inspect the jobs and campaign status." : error.message);
         setSubmissionState("terminal");
       } else {
         setSubmissionError(error instanceof Error ? error.message : "Smoke submission stopped safely.");
-        setSubmissionState("error");
+        setSubmissionState(error instanceof SubmissionApiError && requiresManualVerification("smoke_submission", error.code) ? "terminal" : "error");
       }
     }
     finally { submissionRequestActive.current = false; }
@@ -145,8 +146,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     setScreeningState("previewing"); setScreeningError("");
     try { setScreeningPreview(await lifecycle.preview(campaign.id, zeusSnapshot.profile)); setScreeningState("review"); }
     catch (error) {
-      if (error instanceof SmokeLifecycleApiError && error.code === "screening_already_prepared") { setScreeningPreview(null); setScreeningState("idle"); await refreshRemoteStatus(); return; }
-      const terminal = error instanceof SmokeLifecycleApiError && ["transition_conflict", "transition_outcome_unknown"].includes(error.code);
+      if (error instanceof SmokeLifecycleApiError && errorHasSemantic("smoke_transition", error.code, "already_prepared")) { setScreeningPreview(null); setScreeningState("idle"); await refreshRemoteStatus(); return; }
+      const terminal = error instanceof SmokeLifecycleApiError && requiresManualVerification("smoke_transition", error.code);
       setScreeningError(error instanceof Error ? error.message : "Screening preparation review stopped safely."); setScreeningState(terminal ? "terminal" : "idle");
     }
   }
@@ -155,9 +156,9 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     setScreeningState("preparing"); setScreeningError("");
     try { setScreeningResult(await lifecycle.confirm(screeningPreview.preview_token)); setScreeningState("success"); setRemoteEvidenceFresh(false); setRemoteState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "screen" }, lifecycle: "screen_prepared", next_action: "none" } : current); }
     catch (error) {
-      if (error instanceof SmokeLifecycleApiError && error.code === "screening_already_prepared") { setScreeningPreview(null); setScreeningState("idle"); await refreshRemoteStatus(); return; }
-      const retryReview = error instanceof SmokeLifecycleApiError && ["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(error.code);
-      const terminal = error instanceof SmokeLifecycleApiError && ["transition_conflict", "transition_outcome_unknown"].includes(error.code);
+      if (error instanceof SmokeLifecycleApiError && errorHasSemantic("smoke_transition", error.code, "already_prepared")) { setScreeningPreview(null); setScreeningState("idle"); await refreshRemoteStatus(); return; }
+      const retryReview = error instanceof SmokeLifecycleApiError && errorHasSemantic("smoke_transition", error.code, "fresh_review");
+      const terminal = error instanceof SmokeLifecycleApiError && requiresManualVerification("smoke_transition", error.code);
       setScreeningError(error instanceof Error ? error.message : "Screening preparation stopped safely.");
       if (retryReview) { setScreeningPreview(null); setScreeningState("idle"); }
       else setScreeningState(terminal ? "terminal" : "review");
@@ -167,7 +168,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     if (!zeusSnapshot || !remoteEvidenceFresh || remoteState?.lifecycle !== "screen_prepared" || screenSubmitRequestActive.current) return;
     screenSubmitRequestActive.current = true; setScreenSubmitState("previewing"); setScreenSubmitError("");
     try { setScreenSubmitPreview(await screeningSubmission.preview(campaign.id, zeusSnapshot.profile)); setScreenSubmitState("review"); }
-    catch (error) { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission review stopped safely."); setScreenSubmitState(error instanceof ScreeningSubmissionApiError && ["screening_submission_outcome_unknown", "screening_submission_record_invalid", "screening_already_submitted", "screening_already_started"].includes(error.code) ? "terminal" : "error"); }
+    catch (error) { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission review stopped safely."); setScreenSubmitState(error instanceof ScreeningSubmissionApiError && requiresManualVerification("screen_submission", error.code) ? "terminal" : "error"); }
     finally { screenSubmitRequestActive.current = false; }
   }
   async function confirmScreenSubmission() {
@@ -176,10 +177,10 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     try { setScreenSubmitResult(await screeningSubmission.confirm(screenSubmitPreview.preview_token)); setScreenSubmitState("submitted"); }
     catch (error) {
       const code = error instanceof ScreeningSubmissionApiError ? error.code : "";
-      if (["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(code)) { setScreenSubmitPreview(null); setScreenSubmitError(code === "local_files_changed" ? "The campaign files changed after review. Start a fresh review before submitting." : "The review expired or is no longer valid. Start a fresh review before submitting."); setScreenSubmitState("error"); }
-      else if (code === "screening_submission_outcome_unknown") { setScreenSubmitError("The submission outcome could not be verified. Do not submit again; inspect Zeus jobs."); setScreenSubmitState("unknown"); }
-      else if (["screening_submission_record_invalid", "screening_already_submitted", "screening_already_started", "transition_conflict"].includes(code)) { setScreenSubmitError(error instanceof Error ? error.message : "The Screening submission needs manual verification."); setScreenSubmitState("terminal"); }
-      else { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission stopped safely."); setScreenSubmitState("error"); }
+      if (errorHasSemantic("screen_submission", code, "fresh_review")) { setScreenSubmitPreview(null); setScreenSubmitError(code === "local_files_changed" ? "The campaign files changed after review. Start a fresh review before submitting." : "The review expired or is no longer valid. Start a fresh review before submitting."); setScreenSubmitState("error"); }
+      else if (errorHasSemantic("screen_submission", code, "outcome_unknown")) { setScreenSubmitError("The submission outcome could not be verified. Do not submit again; inspect Zeus jobs."); setScreenSubmitState("unknown"); }
+      else if (errorHasSemantic("screen_submission", code, "manual_verification")) { setScreenSubmitError(error instanceof Error ? error.message : "The Screening submission needs manual verification."); setScreenSubmitState("terminal"); }
+      else { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission stopped safely."); setScreenSubmitState(error instanceof ScreeningSubmissionApiError && requiresManualVerification("screen_submission", code) ? "terminal" : "error"); }
     } finally { screenSubmitRequestActive.current = false; }
   }
   async function refreshScreenStatus() {
@@ -192,13 +193,13 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     if (!zeusSnapshot || screenState?.lifecycle !== "ready_to_prepare_refinement") return;
     setRefineState("previewing"); setRefineError("");
     try { setRefinePreview(await screeningLifecycle.preview(campaign.id, zeusSnapshot.profile)); setRefineState("review"); }
-    catch (error) { if (error instanceof ScreeningLifecycleApiError && error.code === "refinement_already_prepared") { setRefinePreview(null); setRefineState("idle"); await refreshScreenStatus(); return; } const terminal = error instanceof ScreeningLifecycleApiError && ["transition_conflict", "transition_outcome_unknown"].includes(error.code); setRefineError(error instanceof Error ? error.message : "Refinement preparation review stopped safely."); setRefineState(terminal ? "terminal" : "idle"); }
+    catch (error) { if (error instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", error.code, "already_prepared")) { setRefinePreview(null); setRefineState("idle"); await refreshScreenStatus(); return; } const terminal = error instanceof ScreeningLifecycleApiError && requiresManualVerification("refinement_transition", error.code); setRefineError(error instanceof Error ? error.message : "Refinement preparation review stopped safely."); setRefineState(terminal ? "terminal" : "idle"); }
   }
   async function confirmRefinement() {
     if (!refinePreview) return;
     setRefineState("preparing"); setRefineError("");
     try { setRefineResult(await screeningLifecycle.confirm(refinePreview.preview_token)); setRefineState("success"); setScreenState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "refine" }, lifecycle: "refinement_prepared", next_action: "none" } : current); }
-    catch (error) { if (error instanceof ScreeningLifecycleApiError && error.code === "refinement_already_prepared") { setRefinePreview(null); setRefineState("idle"); await refreshScreenStatus(); return; } const fresh = error instanceof ScreeningLifecycleApiError && ["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(error.code); const terminal = error instanceof ScreeningLifecycleApiError && ["transition_conflict", "transition_outcome_unknown"].includes(error.code); setRefineError(error instanceof Error ? error.message : "Refinement preparation stopped safely."); if (fresh) { setRefinePreview(null); setRefineState("idle"); } else setRefineState(terminal ? "terminal" : "review"); }
+    catch (error) { if (error instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", error.code, "already_prepared")) { setRefinePreview(null); setRefineState("idle"); await refreshScreenStatus(); return; } const fresh = error instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", error.code, "fresh_review"); const terminal = error instanceof ScreeningLifecycleApiError && requiresManualVerification("refinement_transition", error.code); setRefineError(error instanceof Error ? error.message : "Refinement preparation stopped safely."); if (fresh) { setRefinePreview(null); setRefineState("idle"); } else setRefineState(terminal ? "terminal" : "review"); }
   }
   async function refreshChainStatus() {
     if (!zeusSnapshot || chainCheck === "checking") return;
@@ -210,7 +211,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     if (!zeusSnapshot || chainStatus?.chain.status !== "not_submitted" || chainRequestActive.current) return;
     chainRequestActive.current = true; setChainState("previewing"); setChainError("");
     try { setChainPreview(await refinementSubmission.preview(campaign.id, zeusSnapshot.profile)); setChainState("review"); }
-    catch (error) { const code = error instanceof RefinementSubmissionApiError ? error.code : ""; const blocked = ["refinement_chain_partially_submitted", "refinement_submission_outcome_unknown", "refinement_chain_already_submitted", "refinement_already_started"].includes(code); setChainError(error instanceof Error ? error.message : "Refinement chain review stopped safely."); setChainState(blocked ? "blocked" : "error"); if (blocked) await refreshChainStatus(); }
+    catch (error) { const code = error instanceof RefinementSubmissionApiError ? error.code : ""; const blocked = error instanceof RefinementSubmissionApiError && requiresManualVerification("refinement_submission", code); setChainError(error instanceof Error ? error.message : "Refinement chain review stopped safely."); setChainState(blocked ? "blocked" : "error"); if (blocked) await refreshChainStatus(); }
     finally { chainRequestActive.current = false; }
   }
   async function confirmChainSubmission() {
@@ -218,7 +219,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     chainRequestActive.current = true; setChainState("submitting"); setChainError("");
     const poll = window.setInterval(() => { void refinementSubmission.status(campaign.id, zeusSnapshot.profile).then(setChainStatus).catch(() => undefined); }, 1000);
     try { const result = await refinementSubmission.confirm(chainPreview.preview_token); setChainResult(result); setChainState("submitted"); setChainStatus({ source: "zeus", queried_at: result.submitted_at, campaign: { id: result.campaign_id, name: chainPreview.campaign.name, stage: "refine" }, chain: { status: "submitted", dependency: "afterok", rounds: result.chain.rounds.map((row) => ({ ...row, state: "submitted" })) }, next_action: "none", local_sync: { status: "not_synchronized" } }); }
-    catch (error) { const code = error instanceof RefinementSubmissionApiError ? error.code : ""; if (["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(code)) { setChainPreview(null); setChainError(code === "local_files_changed" ? "The remote files changed after review. Start a fresh review." : "The review expired or is no longer valid. Start a fresh review."); setChainState("error"); } else { setChainError(error instanceof Error ? error.message : "The Refinement chain outcome needs manual verification."); setChainState("blocked"); await refreshChainStatus(); } }
+    catch (error) { const code = error instanceof RefinementSubmissionApiError ? error.code : ""; if (errorHasSemantic("refinement_submission", code, "fresh_review")) { setChainPreview(null); setChainError(code === "local_files_changed" ? "The remote files changed after review. Start a fresh review." : "The review expired or is no longer valid. Start a fresh review."); setChainState("error"); } else { setChainError(error instanceof Error ? error.message : "The Refinement chain outcome needs manual verification."); setChainState("blocked"); await refreshChainStatus(); } }
     finally { window.clearInterval(poll); chainRequestActive.current = false; }
   }
   async function refreshRefinementLifecycle(preserveError = false) {
@@ -231,13 +232,13 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     if (!zeusSnapshot || refinementLifecycleState?.chain.status !== "ready_to_prepare_confirmation") return;
     setConfirmationState("previewing"); setConfirmationError("");
     try { setConfirmationPreview(await refinementLifecycle.preview(campaign.id, zeusSnapshot.profile)); setConfirmationState("review"); }
-    catch (error) { if (error instanceof RefinementLifecycleApiError && error.code === "confirmation_already_prepared") { setConfirmationPreview(null); setConfirmationState("idle"); await refreshRefinementLifecycle(); return; } const terminal = error instanceof RefinementLifecycleApiError && ["transition_conflict", "transition_outcome_unknown"].includes(error.code); setConfirmationError(error instanceof Error ? error.message : "Confirmation preparation review stopped safely."); setConfirmationState(terminal ? "terminal" : "idle"); }
+    catch (error) { if (error instanceof RefinementLifecycleApiError && errorHasSemantic("confirmation_transition", error.code, "already_prepared")) { setConfirmationPreview(null); setConfirmationState("idle"); await refreshRefinementLifecycle(); return; } const terminal = error instanceof RefinementLifecycleApiError && requiresManualVerification("confirmation_transition", error.code); setConfirmationError(error instanceof Error ? error.message : "Confirmation preparation review stopped safely."); setConfirmationState(terminal ? "terminal" : "idle"); }
   }
   async function confirmConfirmation() {
     if (!confirmationPreview) return;
     setConfirmationState("preparing"); setConfirmationError("");
     try { setConfirmationResult(await refinementLifecycle.confirm(confirmationPreview.preview_token)); setConfirmationState("success"); setRefinementLifecycleState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "confirmation" }, chain: { ...current.chain, status: "confirmation_prepared" }, next_action: "none" } : current); }
-    catch (error) { if (error instanceof RefinementLifecycleApiError && error.code === "confirmation_already_prepared") { setConfirmationPreview(null); setConfirmationState("idle"); await refreshRefinementLifecycle(); return; } const fresh = error instanceof RefinementLifecycleApiError && ["confirmation_expired", "confirmation_invalid", "local_files_changed"].includes(error.code); setConfirmationError(error instanceof Error ? error.message : "The Confirmation preparation outcome could not be verified. Do not retry automatically."); setConfirmationPreview(null); setConfirmationState(fresh ? "idle" : "terminal"); if (!fresh) await refreshRefinementLifecycle(true); }
+    catch (error) { if (error instanceof RefinementLifecycleApiError && errorHasSemantic("confirmation_transition", error.code, "already_prepared")) { setConfirmationPreview(null); setConfirmationState("idle"); await refreshRefinementLifecycle(); return; } const fresh = error instanceof RefinementLifecycleApiError && errorHasSemantic("confirmation_transition", error.code, "fresh_review"); setConfirmationError(error instanceof Error ? error.message : "The Confirmation preparation outcome could not be verified. Do not retry automatically."); setConfirmationPreview(null); setConfirmationState(fresh ? "idle" : "terminal"); if (!fresh) await refreshRefinementLifecycle(true); }
   }
   const remoteLifecycle = remoteState?.lifecycle;
   const screenLifecycle = screenState?.lifecycle;
