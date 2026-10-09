@@ -96,6 +96,10 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.route("**/api/v1/zeus/screening/confirm", (route) => route.fulfill({ json: { data: { status: "screening_prepared", campaign_id: smoke.id, stage: "screen", artifacts: { created: 2, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } } } }));
   await page.route("**/api/v1/zeus/submissions/screening/preview", (route) => route.fulfill({ json: { data: { preview_token: "screen-submit-token", expires_in_seconds: 300, campaign: { id: smoke.id, name: smoke.name, git_commit: "b".repeat(40), s0_values: [1.3] }, stage: { id: "screen", label: "Screening", purpose: "Search broadly for promising settings." }, job: { file: "jobs/02_screen.pbs", kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 86400 }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false }, inputs: { verified_count: 72, status: "ready" }, smoke: { status: "validated", job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true } } }));
   await page.route("**/api/v1/zeus/submissions/screening/confirm", (route) => route.fulfill({ json: { data: { status: "submitted", campaign_id: smoke.id, stage: "screen", job_id: "4760000[].zeus-master", submitted_at: new Date().toISOString(), later_stages_locked: true } } }));
+  const candidates = [1, 2, 3].map((rank, worker) => ({ s0: 1.3, rank, detuning_gamma: -0.9 - rank / 100, magnet_radius_m: 0.046 + rank / 100000, mean_conditional_efficiency: 0.02 + rank / 1000, source: `screen/s0_1p300000/worker${worker}/trials/trial_000${rank}.json` }));
+  await page.route("**/api/v1/zeus/screen/status", (route) => route.fulfill({ json: { data: { source: "zeus", queried_at: new Date().toISOString(), campaign: { id: smoke.id, name: smoke.name, stage: "screen" }, submission: { job_id: "4760000[].zeus-master" }, scheduler: { state: "completed_success", raw_state: "F", exit_status: 0, task_count: 3, counts: { queued: 0, running: 0, held: 0, succeeded: 3, failed: 0 } }, validation: { status: "valid", completed_trials: 51, expected_trials: 51, candidate_count: 3 }, lifecycle: "ready_to_prepare_refinement", next_action: "review_refinement_preparation" } } }));
+  await page.route("**/api/v1/zeus/refinement/preview", (route) => route.fulfill({ json: { data: { preview_token: "refine-token", expires_in_seconds: 300, campaign: { id: smoke.id, name: smoke.name, git_commit: "b".repeat(40), s0_values: [1.3] }, from_stage: "screen", to_stage: "refine", bounds: { detuning_gamma: { low: -3, high: -0.1 }, magnet_radius_m: { low: 0.03, high: 0.06 } }, screening: { job_id: "4760000[].zeus-master", completed_trials: 51, expected_trials: 51, candidates }, artifacts: { create: ["screening_candidates.json", "refine/tasks.json", "jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs", "jobs/03_submit_refinement_chain.sh"], update: ["campaign.json"] }, effects: { prepare_refinement: true, submit_refinement: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } } } }));
+  await page.route("**/api/v1/zeus/refinement/confirm", (route) => route.fulfill({ status: 201, json: { data: { status: "refinement_prepared", campaign_id: smoke.id, stage: "refine", artifacts: { created: 7, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } } } }));
   await page.goto("/");
   await page.getByRole("link", { name: "Zeus jobs" }).click();
   await page.getByLabel("Technion username").fill("tal.noa");
@@ -134,6 +138,16 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.getByRole("button", { name: "Submit Screening to Zeus" }).click();
   await expect(page.getByText("4760000[].zeus-master").first()).toBeVisible();
   await expect(page.getByText(/safe to close this application/i)).toBeVisible();
+  await page.getByRole("button", { name: "Check Screening status" }).click();
+  await expect(page.getByRole("heading", { name: "Action required" })).toBeVisible();
+  await expect(page.getByText(/3 candidates were selected/)).toBeVisible();
+  await page.getByRole("button", { name: "Review Refinement preparation" }).click();
+  await expect(page.getByRole("heading", { name: "Prepare Refinement on Zeus" })).toBeFocused();
+  await expect(page.getByText(/Screening estimates, not final performance/)).toBeVisible();
+  await expect(page.getByText("jobs/03_submit_refinement_chain.sh")).toBeVisible();
+  await page.getByRole("button", { name: "Prepare Refinement on Zeus" }).click();
+  await expect(page.getByText("Refinement prepared on Zeus")).toBeVisible();
+  await expect(page.getByText(/No Refinement job was submitted/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

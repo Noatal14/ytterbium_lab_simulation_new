@@ -21,6 +21,7 @@ from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, student_mean_interval
 from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS
 from workflow_api.mot_2d_smoke import validate_smoke_outputs
+from workflow_api.mot_2d_screen import validate_screen_outputs
 from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
@@ -389,60 +390,12 @@ def distinct(rows, count=3):
 
 
 def prepare_refine(root, manifest):
-    root_identity = campaign_identity(root)
-    specs, selected = [], {}
-    for value in manifest["s0_values"]:
-        rows = trial_rows(root, "screen", value)
-        if len(rows) != 3 * SCREEN_TRIALS:
-            raise RuntimeError(f"Screening incomplete for s0={value}: {len(rows)}/{3*SCREEN_TRIALS}")
-        selected[key(value)] = distinct(rows)
-        for worker, candidate in enumerate(selected[key(value)]):
-            specs.append({"s0": value, "worker": worker, "center": candidate,
-                          "bounds": {
-                              "detuning": [max(BOUNDS_DETUNING[0], candidate["detuning_gamma"]-0.08),
-                                           min(BOUNDS_DETUNING[1], candidate["detuning_gamma"]+0.08)],
-                              "radius": [max(BOUNDS_MAGNET_RADIUS_M[0], candidate["magnet_radius"]-0.5e-3),
-                                         min(BOUNDS_MAGNET_RADIUS_M[1], candidate["magnet_radius"]+0.5e-3)],
-                          }})
-    save_file_json(root / "screening_candidates.json", selected)
-    save_file_json(root / "refine" / "tasks.json", specs)
-    jobs = root / "jobs"
-    round_jobs = []
-    for round_index, target in enumerate(REFINEMENT_CUMULATIVE_TARGETS, start=1):
-        job = jobs / f"03_refine_round_{round_index:02d}.pbs"
-        write_pbs(
-            job,
-            f"mot2d_ref{round_index}",
-            f"0-{len(specs)-1}",
-            200,
-            REFINEMENT_ROUND_WALLTIME,
-            "python -m studies.mot_2d_s0_campaign refine-task "
-            f"--campaign {shlex.quote(root_identity)} --task-index $PBS_ARRAY_INDEX "
-            f"--target-trials {target}",
-            manifest["provenance"]["git_commit"],
-        )
-        round_jobs.append(job.relative_to(REPOSITORY_ROOT).as_posix())
-    submitter = jobs / "03_submit_refinement_chain.sh"
-    lines = ["#!/bin/bash", "set -euo pipefail"]
-    for index, job in enumerate(round_jobs):
-        if index == 0:
-            lines.append(f'previous=$(qsub "{job}")')
-        else:
-            lines.append(
-                f'previous=$(qsub -W depend=afterok:"${{previous}}" "{job}")'
-            )
-        lines.append(f'echo "submitted refinement round {index + 1}: ${{previous}}"')
-    submitter.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    manifest["stage"] = "refine"
-    manifest["stages"]["refine"] = {
-        "tasks": len(specs),
-        "cumulative_trial_targets": list(REFINEMENT_CUMULATIVE_TARGETS),
-        "round_job_files": round_jobs,
-        "submit_chain": submitter.relative_to(REPOSITORY_ROOT).as_posix(),
-        "dependency": "afterok",
-    }
-    save_file_json(root / "campaign.json", manifest)
-    print(f"Next jobs: bash {submitter}")
+    validated_rows = validate_screen_outputs(root, manifest)
+    from workflow_api.mot_2d_plan import render_refine_transition
+    files = render_refine_transition(manifest, root, REPOSITORY_ROOT, validated_rows)
+    for name, content in files.items():
+        path = root / name; path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(content)
+    print(f"Next jobs: bash {root/'jobs/03_submit_refinement_chain.sh'}")
 
 
 def refine_task(args):

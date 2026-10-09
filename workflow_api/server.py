@@ -29,6 +29,7 @@ from workflow_api.zeus_transfer import ZeusPreparationCoordinator, ZeusPreparati
 from workflow_api.zeus_submission import ZeusSmokeSubmissionCoordinator, ZeusSubmissionError
 from workflow_api.zeus_screening import ZeusScreeningCoordinator, ZeusScreeningError
 from workflow_api.zeus_screen_submission import ZeusScreenSubmissionCoordinator, ZeusScreenSubmissionError
+from workflow_api.zeus_refinement import ZeusRefinementCoordinator, ZeusRefinementError
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -52,6 +53,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     submission_service: ZeusSmokeSubmissionCoordinator | None = None
     screening_service: ZeusScreeningCoordinator | None = None
     screen_submission_service: ZeusScreenSubmissionCoordinator | None = None
+    refinement_service: ZeusRefinementCoordinator | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -70,7 +72,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None:
                 self._error("session_unavailable", "Local actions are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -128,7 +130,8 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
         submission_paths = {"/api/v1/zeus/submissions/smoke/preview", "/api/v1/zeus/submissions/smoke/confirm"}
         screening_paths = {"/api/v1/zeus/smoke/status", "/api/v1/zeus/screening/preview", "/api/v1/zeus/screening/confirm"}
         screen_submission_paths = {"/api/v1/zeus/submissions/screening/preview", "/api/v1/zeus/submissions/screening/confirm"}
-        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths, *screening_paths, *screen_submission_paths}
+        refinement_paths = {"/api/v1/zeus/screen/status", "/api/v1/zeus/refinement/preview", "/api/v1/zeus/refinement/confirm"}
+        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths, *screening_paths, *screen_submission_paths, *refinement_paths}
         if target.query or target.path not in allowed:
             self._method_not_allowed(); return
         if target.path == "/api/v1/zeus/snapshot" and self.zeus_service is None:
@@ -141,7 +144,9 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._error("zeus_screening_unavailable", "Zeus smoke inspection is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if target.path in screen_submission_paths and self.screen_submission_service is None:
             self._error("zeus_screen_submission_unavailable", "Zeus screening submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path not in transfer_paths | submission_paths | screening_paths | screen_submission_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
+        if target.path in refinement_paths and self.refinement_service is None:
+            self._error("zeus_refinement_unavailable", "Zeus refinement preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
+        if target.path not in transfer_paths | submission_paths | screening_paths | screen_submission_paths | refinement_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
             self._error("creation_unavailable", "Local campaign creation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if not self._trusted_mutation_headers(): return
         try:
@@ -167,6 +172,12 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 data = self.screen_submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path == "/api/v1/zeus/submissions/screening/confirm":
                 data = self.screen_submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/screen/status":
+                data = self.refinement_service.status(payload)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/refinement/preview":
+                data = self.refinement_service.preview(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/refinement/confirm":
+                data = self.refinement_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path.endswith("/preview"):
                 data = self.creation_service.preview(payload, session)
             else:
@@ -309,6 +320,9 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             else: status=HTTPStatus.PRECONDITION_FAILED
             messages={"campaign_not_canonical":"The selected campaign does not match its frozen design.","screening_not_prepared":"The exact Screening plan is not prepared on Zeus.","screening_already_submitted":"Screening already has a durable Zeus submission record.","screening_already_started":"Screening outputs already exist, so submission is blocked.","screening_submission_busy":"Another Screening submission check is in progress.","screening_submission_record_invalid":"The Screening submission record is invalid or conflicting.","screening_submission_outcome_unknown":"A Screening submission attempt has an uncertain outcome. Automatic retry is blocked.","confirmation_invalid":"The submission preview is invalid or belongs to another session.","confirmation_expired":"The submission preview expired. Review it again.","local_checkout_mismatch":"The local checkout no longer matches the campaign commit.","local_files_changed":"The campaign changed after review. Review it again.","remote_checkout_mismatch":"The Zeus checkout no longer matches the campaign commit.","zeus_authentication_required":"An existing SSH key or agent is required.","zeus_host_key_untrusted":"The Zeus host key must be verified outside this application.","zeus_timeout":"The Zeus submission check timed out.","zeus_unreachable":"Zeus could not be reached."}
             self._error(error.code,messages.get(error.code,"Screening submission stopped safely."),status);return
+        except ZeusRefinementError as error:
+            status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.UNAUTHORIZED if error.code=="zeus_authentication_required" else HTTPStatus.CONFLICT if error.code in {"transition_busy","transition_conflict","transition_outcome_unknown","refinement_already_prepared"} else HTTPStatus.PRECONDITION_FAILED
+            self._error(error.code,"Refinement preparation stopped safely.",status);return
         except BlockingIOError:
             self._error("rate_limited", "Too many local creation requests.", HTTPStatus.TOO_MANY_REQUESTS); return
         except FileExistsError:
@@ -428,6 +442,9 @@ def main() -> None:
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     ReadOnlyWorkflowHandler.screen_submission_service = ZeusScreenSubmissionCoordinator(
+        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    ReadOnlyWorkflowHandler.refinement_service = ZeusRefinementCoordinator(
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), ReadOnlyWorkflowHandler)

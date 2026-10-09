@@ -1,4 +1,4 @@
-import { campaignApi, screeningSubmissionApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
+import { campaignApi, screeningLifecycleApi, screeningSubmissionApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
 
 const smokePreviewData = (kind: "job" | "array" = "job") => ({
   preview_token: "submit-token", expires_in_seconds: 300,
@@ -21,6 +21,19 @@ describe("campaign API runtime validation", () => {
     expect((await screeningSubmissionApi.preview("mot_2d-x", profile)).job.array_throttle).toBe(3);
     expect((await screeningSubmissionApi.confirm("screen-submit-token")).job_id).toBe("4760000[].zeus-master");
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/submissions/screening/confirm", expect.objectContaining({ body: JSON.stringify({ preview_token: "screen-submit-token" }) }));
+    vi.unstubAllGlobals();
+  });
+
+  it("strictly validates Screening completion and prepares Refinement without qsub", async () => {
+    const candidate = (rank: number, worker: number) => ({ s0: 1.3, rank, detuning_gamma: -0.9 - rank / 100, magnet_radius_m: 0.046 + rank / 100000, mean_conditional_efficiency: 0.02 + rank / 1000, source: `screen/s0_1p300000/worker${worker}/trials/trial_000${rank}.json` });
+    const status = { source: "zeus", queried_at: "2026-10-09T08:00:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "screen" }, submission: { job_id: "4760000[].zeus-master" }, scheduler: { state: "completed_success", raw_state: "F", exit_status: 0, task_count: 3, counts: { queued: 0, running: 0, held: 0, succeeded: 3, failed: 0 } }, validation: { status: "valid", completed_trials: 51, expected_trials: 51, candidate_count: 3 }, lifecycle: "ready_to_prepare_refinement", next_action: "review_refinement_preparation" };
+    const preview = { preview_token: "refine-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, from_stage: "screen", to_stage: "refine", bounds: { detuning_gamma: { low: -3, high: -0.1 }, magnet_radius_m: { low: 0.03, high: 0.06 } }, screening: { job_id: "4760000[].zeus-master", completed_trials: 51, expected_trials: 51, candidates: [candidate(1, 0), candidate(2, 1), candidate(3, 2)] }, artifacts: { create: ["screening_candidates.json", "refine/tasks.json", "jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs", "jobs/03_submit_refinement_chain.sh"], update: ["campaign.json"] }, effects: { prepare_refinement: true, submit_refinement: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } };
+    const result = { status: "refinement_prepared", campaign_id: "mot_2d-x", stage: "refine", artifacts: { created: 7, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } };
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "status-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: status }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "refine-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: result }) });
+    vi.stubGlobal("fetch", fetchMock); const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    expect((await screeningLifecycleApi.status("mot_2d-x", profile)).validation.candidate_count).toBe(3);
+    expect((await screeningLifecycleApi.preview("mot_2d-x", profile)).effects.submit_refinement).toBe(false);
+    expect((await screeningLifecycleApi.confirm("refine-token")).submitted_to_zeus).toBe(false);
     vi.unstubAllGlobals();
   });
   it("rejects malformed nested status data instead of rendering it", async () => {

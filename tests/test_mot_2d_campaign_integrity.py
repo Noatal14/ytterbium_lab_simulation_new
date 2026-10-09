@@ -436,7 +436,7 @@ def test_refinement_chain_is_byte_identical_across_repository_roots(tmp_path, mo
          "source": f"trial_{index}.json"}
         for index in range(3 * campaign.SCREEN_TRIALS)
     ]
-    monkeypatch.setattr(campaign, "trial_rows", lambda *args: rows)
+    monkeypatch.setattr(campaign, "validate_screen_outputs", lambda *args: rows)
     artifacts = []
     for directory in ("checkout_a", "a-different-checkout-root"):
         repository_root = tmp_path / directory
@@ -444,7 +444,10 @@ def test_refinement_chain_is_byte_identical_across_repository_roots(tmp_path, mo
         (root / "jobs").mkdir(parents=True)
         monkeypatch.setattr(campaign, "REPOSITORY_ROOT", repository_root)
         manifest = {
+            "kind": "mot_2d_s0_campaign", "stage": "screen",
             "name": "fixed_s0", "s0_values": [1.3], "stages": {},
+            "fixed_design": {"detuning_bounds_gamma": [-2.0, -0.5],
+                             "magnet_radius_bounds_m": [0.045, 0.052]},
             "provenance": {"git_commit": "abc"},
         }
         campaign.prepare_refine(root, manifest)

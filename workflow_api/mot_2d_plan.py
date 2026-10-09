@@ -154,6 +154,76 @@ python -m studies.mot_2d_s0_campaign screen-task --campaign {shlex.quote(campaig
     }
 
 
+def render_refine_transition(
+    manifest: dict[str, Any], destination: Path, repository_root: Path,
+    validated_rows: list[dict[str, Any]],
+) -> dict[str, bytes]:
+    """Purely render the canonical Screening-to-Refinement transition."""
+    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "screen":
+        raise ValueError("Campaign is not awaiting Refinement preparation.")
+    campaign_argument = destination.relative_to(repository_root).as_posix()
+    if not campaign_argument.startswith("data/optimization/mot_2d/"):
+        raise ValueError("Campaign destination is outside the canonical 2D-MOT location.")
+    d_res=0.01; r_res=0.01e-3
+    selected: dict[str,list[dict[str,Any]]] = {}; specs=[]
+    detuning_bounds=manifest["fixed_design"]["detuning_bounds_gamma"]
+    radius_bounds=manifest["fixed_design"]["magnet_radius_bounds_m"]
+    for raw in manifest["s0_values"]:
+        value=float(raw); rows=sorted((row for row in validated_rows if row["s0"]==value),key=lambda row:(-row["mean_conditional_efficiency"],row["detuning_gamma"],row["magnet_radius"]))
+        chosen=[];cells=set()
+        for row in rows:
+            cell=(round(row["detuning_gamma"]/d_res),round(row["magnet_radius"]/r_res))
+            if cell in cells:continue
+            cells.add(cell);chosen.append(row)
+            if len(chosen)==3:break
+        if len(chosen)!=3:raise ValueError("Screening has fewer than three distinguishable candidates.")
+        label=f"s0_{value:.6f}".replace(".","p");selected[label]=chosen
+        for worker,candidate in enumerate(chosen):
+            specs.append({"s0":value,"worker":worker,"center":candidate,"bounds":{"detuning":[max(detuning_bounds[0],candidate["detuning_gamma"]-0.08),min(detuning_bounds[1],candidate["detuning_gamma"]+0.08)],"radius":[max(radius_bounds[0],candidate["magnet_radius"]-0.5e-3),min(radius_bounds[1],candidate["magnet_radius"]+0.5e-3)]}})
+    commit=manifest["provenance"]["git_commit"];files={
+        "screening_candidates.json":(json.dumps(selected,indent=2,sort_keys=True)+"\n").encode(),
+        "refine/tasks.json":(json.dumps(specs,indent=2,sort_keys=True)+"\n").encode(),
+    };round_paths=[]
+    def pbs(name:str,target:int)->bytes:
+        command=f"python -m studies.mot_2d_s0_campaign refine-task --campaign {shlex.quote(campaign_argument)} --task-index $PBS_ARRAY_INDEX --target-trials {target}"
+        return f'''#!/bin/bash
+#PBS -N {name}
+#PBS -q zeus_combined_q
+#PBS -J 0-{len(specs)-1}%3
+#PBS -l select=1:ncpus=200:mem=64gb
+#PBS -l walltime=20:00:00
+
+set -euo pipefail
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
+module load SPACK/apps
+module load gcc/14.1.0
+module load python/3.14.2
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
+EXPECTED_COMMIT={commit}
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
+  echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2
+  exit 42
+fi
+RUN_TMP="/tmp/${{USER}}_{name}_${{PBS_JOBID}}_${{PBS_ARRAY_INDEX:-0}}"
+mkdir -p "${{RUN_TMP}}"
+export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
+trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
+{command}
+'''.encode()
+    for index,target in enumerate((3,6,9,10),start=1):
+        name=f"jobs/03_refine_round_{index:02d}.pbs";files[name]=pbs(f"mot2d_ref{index}",target);round_paths.append(f"{campaign_argument}/{name}")
+    lines=["#!/bin/bash","set -euo pipefail"]
+    for index,path in enumerate(round_paths):
+        lines.append(f'previous=$(qsub "{path}")' if index==0 else f'previous=$(qsub -W depend=afterok:"${{previous}}" "{path}")')
+        lines.append(f'echo "submitted refinement round {index+1}: ${{previous}}"')
+    files["jobs/03_submit_refinement_chain.sh"]=("\n".join(lines)+"\n").encode()
+    updated=deepcopy(manifest);updated["stage"]="refine";updated.setdefault("stages",{})["refine"]={"tasks":len(specs),"cumulative_trial_targets":[3,6,9,10],"round_job_files":round_paths,"submit_chain":f"{campaign_argument}/jobs/03_submit_refinement_chain.sh","dependency":"afterok"}
+    files["campaign.json"]=(json.dumps(updated,indent=2,sort_keys=True)+"\n").encode()
+    return files
+
+
 def plan_from_frozen_manifest(
     *, repository_root: Path, destination: Path, manifest: dict[str, Any]
 ) -> CampaignPlan:
