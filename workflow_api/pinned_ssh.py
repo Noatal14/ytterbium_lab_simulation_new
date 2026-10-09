@@ -21,6 +21,7 @@ class ReceiverKind(Enum):
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
+    SMOKE_SUBMISSION = "smoke_submission"
 
 
 class ReceiverOperation(Enum):
@@ -35,7 +36,7 @@ class PinnedSshProcessError(RuntimeError):
 
 @dataclass(frozen=True)
 class _ReceiverDefinition:
-    filename: str
+    filename: str | None
     compile_name: str
     operations: frozenset[ReceiverOperation]
     wrap_process_oserror: bool
@@ -51,6 +52,7 @@ class _ReceiverDefinition:
     pinned_environment: bool = False
     explicit_process_safety: bool = False
     payload_before_receiver: bool = False
+    embedded_smoke_receiver: bool = False
 
 
 _RECEIVERS = {
@@ -122,6 +124,34 @@ _RECEIVERS = {
             "-o", "CanonicalizeHostname=no",
             "-o", "LogLevel=ERROR",
         ),
+        True,
+        True,
+        True,
+    ),
+    ReceiverKind.SMOKE_SUBMISSION: _ReceiverDefinition(
+        None,
+        "<smoke-submit>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT}),
+        False,
+        (
+            "-F", "none", "-T",
+            "-o", "BatchMode=yes",
+            "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+            "-o", "NumberOfPasswordPrompts=0",
+            "-o", "ConnectTimeout=8",
+            "-o", "ConnectionAttempts=1",
+            "-o", "StrictHostKeyChecking=yes",
+            "-o", "ForwardAgent=no",
+            "-o", "ClearAllForwardings=yes",
+            "-o", "PermitLocalCommand=no",
+            "-o", "ProxyCommand=none",
+            "-o", "ProxyJump=none",
+            "-o", "KnownHostsCommand=none",
+            "-o", "CanonicalizeHostname=no",
+            "-o", "LogLevel=ERROR",
+        ),
+        True,
         True,
         True,
         True,
@@ -213,6 +243,21 @@ class PinnedSshPolicy:
             timeout,
         )
 
+    @classmethod
+    def smoke_submission(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.SMOKE_SUBMISSION,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
 
 class PinnedSshRunner:
     """Run one closed receiver without accepting commands or SSH options."""
@@ -247,19 +292,34 @@ class PinnedSshRunner:
                 json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
             ).decode()
 
+        def read_receiver() -> bytes:
+            if definition.embedded_smoke_receiver:
+                from workflow_api.zeus_submission import _REMOTE_SCRIPT
+
+                return _REMOTE_SCRIPT.encode()
+            if definition.filename is None:
+                raise RuntimeError("Pinned SSH receiver is unavailable.")
+            return Path(__file__).with_name(definition.filename).read_bytes()
+
         if definition.payload_before_receiver:
             encoded = encode_payload()
-            receiver = Path(__file__).with_name(definition.filename).read_bytes()
+            receiver = read_receiver()
         else:
-            receiver = Path(__file__).with_name(definition.filename).read_bytes()
+            receiver = read_receiver()
             encoded = encode_payload()
         script = base64.urlsafe_b64encode(receiver).decode()
-        wrapper = (
-            "import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);"
-            "sys.argv=sys.argv[2:];exec(compile(code,'"
-            + definition.compile_name
-            + "','exec'),{'__name__':'__main__'})"
-        )
+        if definition.embedded_smoke_receiver:
+            wrapper = (
+                "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
+                "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
+            )
+        else:
+            wrapper = (
+                "import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);"
+                "sys.argv=sys.argv[2:];exec(compile(code,'"
+                + definition.compile_name
+                + "','exec'),{'__name__':'__main__'})"
+            )
         remote = shlex.join((
             "python3",
             "-c",

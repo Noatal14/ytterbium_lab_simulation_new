@@ -35,6 +35,12 @@ from workflow_api.zeus_screen_submission import (
     ZeusScreenSubmissionError,
 )
 from workflow_api.zeus_snapshot import ZeusProfile
+from workflow_api.zeus_submission import (
+    MAX_REMOTE_OUTPUT,
+    PinnedSshSmokeSubmissionTransport,
+    ZeusSubmissionError,
+    _REMOTE_SCRIPT,
+)
 
 
 def _profile() -> ZeusProfile:
@@ -1039,3 +1045,203 @@ def test_screen_submission_remote_error_propagates_unchanged(
     with pytest.raises(ZeusScreenSubmissionError) as caught:
         getattr(transport, operation)(example=True)
     assert caught.value.code == "screening_submission_busy"
+
+
+def _smoke_payload() -> dict[str, object]:
+    return {
+        "files": {f"data/f{i}": "a" * 64 for i in range(72)},
+        "campaign": "data/optimization/mot_2d/c",
+        "job_file": "data/optimization/mot_2d/c/jobs/01_smoke.pbs",
+        "commit": "b" * 40,
+        "submission_key": "c" * 64,
+    }
+
+
+@pytest.mark.parametrize("operation", ["inspect", "submit"])
+def test_smoke_submission_runner_preserves_exact_embedded_invocation(
+    tmp_path, monkeypatch, operation,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    observed = {}
+    payload = _smoke_payload()
+    if operation == "submit":
+        payload["nonce"] = "d" * 32
+
+    def run(argv, **kwargs):
+        observed["argv"] = argv
+        observed["kwargs"] = kwargs
+        response = {"status": "eligible", "branch": "main"}
+        if operation == "submit":
+            response = {
+                "status": "submitted",
+                "job_id": "123.zeus-master",
+                "nonce": payload["nonce"],
+                "submitted_unix_s": 1,
+            }
+        return subprocess.CompletedProcess(argv, 0, json.dumps(response).encode(), b"")
+
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    transport = PinnedSshSmokeSubmissionTransport(
+        root, Path("/usr/bin/ssh"), _profile(),
+    )
+    state = getattr(transport, operation)(**payload)
+    assert state.status == ("eligible" if operation == "inspect" else "submitted")
+
+    parts = shlex.split(observed["argv"][-1])
+    assert base64.urlsafe_b64decode(parts[3]).decode() == _REMOTE_SCRIPT
+    expected_payload = dict(payload)
+    if operation == "inspect":
+        expected_payload["nonce"] = None
+    assert json.loads(base64.urlsafe_b64decode(parts[7])) == expected_payload
+    assert parts[2] == (
+        "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
+        "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
+    )
+    assert parts[4:7] == [
+        operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
+    ]
+    assert observed["argv"][:-2] == [
+        "/usr/bin/ssh", "-F", "none", "-T",
+        "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
+        "-o", "KbdInteractiveAuthentication=no",
+        "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+        "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+        "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+        "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+        "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR",
+    ]
+    assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
+    assert observed["kwargs"] == {
+        "cwd": root,
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "timeout": 45,
+        "check": False,
+        "env": {
+            "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+            "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
+        },
+        "shell": False,
+        "close_fds": True,
+    }
+
+
+def test_smoke_submission_serializes_before_embedded_receiver(tmp_path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    calls = []
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    transport = PinnedSshSmokeSubmissionTransport(
+        root, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(TypeError):
+        transport.inspect(unserializable=object())
+    assert calls == []
+
+
+@pytest.mark.parametrize("operation", ["inspect", "submit"])
+def test_smoke_submission_process_oserror_remains_raw(
+    tmp_path, monkeypatch, operation,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ssh unavailable")),
+    )
+    transport = PinnedSshSmokeSubmissionTransport(
+        root, Path("/usr/bin/ssh"), _profile(),
+    )
+    payload = _smoke_payload()
+    if operation == "submit":
+        payload["nonce"] = "d" * 32
+    with pytest.raises(OSError, match="ssh unavailable"):
+        getattr(transport, operation)(**payload)
+
+
+@pytest.mark.parametrize("operation", ["inspect", "submit"])
+def test_smoke_submission_stdout_cap_allows_exact_boundary(
+    tmp_path, monkeypatch, operation,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    payload = _smoke_payload()
+    response = {"status": "eligible", "branch": "main"}
+    if operation == "submit":
+        payload["nonce"] = "d" * 32
+        response = {
+            "status": "submitted", "job_id": "123.zeus-master",
+            "nonce": payload["nonce"], "submitted_unix_s": 1,
+        }
+    encoded = json.dumps(response).encode()
+    stdout = encoded + b" " * (MAX_REMOTE_OUTPUT - len(encoded))
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, stdout, b""),
+    )
+    transport = PinnedSshSmokeSubmissionTransport(
+        root, Path("/usr/bin/ssh"), _profile(),
+    )
+    assert getattr(transport, operation)(**payload).status == response["status"]
+
+
+@pytest.mark.parametrize("operation,expected", [
+    ("inspect", "remote_response_invalid"),
+    ("submit", "submission_outcome_unknown"),
+])
+def test_smoke_submission_stdout_cap_rejects_one_byte_over(
+    tmp_path, monkeypatch, operation, expected,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, 0, b" " * (MAX_REMOTE_OUTPUT + 1), b"",
+        ),
+    )
+    transport = PinnedSshSmokeSubmissionTransport(
+        root, Path("/usr/bin/ssh"), _profile(),
+    )
+    payload = _smoke_payload()
+    if operation == "submit":
+        payload["nonce"] = "d" * 32
+    with pytest.raises(ZeusSubmissionError) as caught:
+        getattr(transport, operation)(**payload)
+    assert caught.value.code == expected
+
+
+@pytest.mark.parametrize("operation,overflow,expected", [
+    ("inspect", False, "zeus_authentication_required"),
+    ("submit", False, "zeus_authentication_required"),
+    ("inspect", True, "remote_response_invalid"),
+    ("submit", True, "submission_outcome_unknown"),
+])
+def test_smoke_submission_stderr_cap_precedes_authentication_mapping(
+    tmp_path, monkeypatch, operation, overflow, expected,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+    prefix = b"Permission denied"
+    size = MAX_REMOTE_OUTPUT + int(overflow)
+    stderr = prefix + b" " * (size - len(prefix))
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
+    )
+    transport = PinnedSshSmokeSubmissionTransport(
+        root, Path("/usr/bin/ssh"), _profile(),
+    )
+    payload = _smoke_payload()
+    if operation == "submit":
+        payload["nonce"] = "d" * 32
+    with pytest.raises(ZeusSubmissionError) as caught:
+        getattr(transport, operation)(**payload)
+    assert caught.value.code == expected

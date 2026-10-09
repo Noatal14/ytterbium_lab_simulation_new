@@ -8,13 +8,11 @@ a remote lock before invoking the fixed qsub executable once.
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
 import os
 import re
 import secrets
-import shlex
 import stat as stat_module
 import subprocess
 import threading
@@ -27,6 +25,11 @@ from typing import Mapping, Protocol
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files
 from workflow_api.preview_registry import PreviewRegistry
+from workflow_api.pinned_ssh import (
+    PinnedSshPolicy,
+    PinnedSshRunner,
+    ReceiverOperation,
+)
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 from workflow_api.zeus_transfer import (
     COMMIT_RE,
@@ -306,20 +309,24 @@ class PinnedSshSmokeSubmissionTransport:
         self.timeout = timeout
         if not self.ssh.is_file() or not os.access(self.ssh, os.X_OK) or self.root in self.ssh.parents:
             raise ValueError("The trusted SSH executable is unavailable.")
+        self.runner = PinnedSshRunner(
+            PinnedSshPolicy.smoke_submission(
+                self.root, self.ssh, timeout=self.timeout,
+            )
+        )
 
     def _request(self, operation: str, **payload: object) -> SubmissionRemoteState:
         if operation not in {"inspect", "submit"}:
             raise ZeusSubmissionError("remote_response_invalid")
         integrity_code = "submission_outcome_unknown" if operation == "submit" else "remote_response_invalid"
-        encoded = base64.urlsafe_b64encode(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).decode("ascii")
-        script = base64.urlsafe_b64encode(_REMOTE_SCRIPT.encode()).decode("ascii")
-        wrapper = "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
-        remote = shlex.join(("python3", "-c", wrapper, script, operation, self.profile.username, self.profile.project_directory, encoded))
-        argv = [str(self.ssh), "-F", "none", "-T", "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no", "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes", "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes", "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none", "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none", "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR", f"{self.profile.username}@{ZEUS_HOST}", remote]
-        env = {"PATH": str(self.ssh.parent), "HOME": str(Path.home()), "LC_ALL": "C"}
-        if os.environ.get("SSH_AUTH_SOCK"): env["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
+        pinned_operation = {
+            "inspect": ReceiverOperation.INSPECT,
+            "submit": ReceiverOperation.SUBMIT,
+        }.get(operation)
+        if pinned_operation is None:
+            raise ZeusSubmissionError("remote_response_invalid")
         try:
-            result = subprocess.run(argv, cwd=self.root, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=False, close_fds=True, timeout=self.timeout, check=False)
+            result = self.runner.run(pinned_operation, self.profile, payload)
         except subprocess.TimeoutExpired:
             raise ZeusSubmissionError("submission_outcome_unknown" if operation == "submit" else "zeus_timeout") from None
         if len(result.stdout) > MAX_REMOTE_OUTPUT or len(result.stderr) > MAX_REMOTE_OUTPUT:
