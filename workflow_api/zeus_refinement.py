@@ -1,6 +1,6 @@
 """Guarded Screening completion and Refinement preparation coordinator."""
 from __future__ import annotations
-import base64,hashlib,json,os,re,secrets,shlex,subprocess,threading,time
+import hashlib,json,re,secrets,subprocess,threading,time
 from dataclasses import dataclass,replace
 from datetime import datetime,timezone
 from pathlib import Path
@@ -9,7 +9,8 @@ from typing import Mapping,Protocol,Any
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files,render_screen_transition,render_refine_transition
 from workflow_api.preview_registry import PreviewRegistry
-from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
+from workflow_api.pinned_ssh import PinnedSshPolicy,PinnedSshRunner,ReceiverOperation
+from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner,ZeusPreparationError,_load_manifest
 from workflow_api.zeus_submission import RepositoryRevisionService
 
@@ -107,10 +108,11 @@ class ZeusRefinementCoordinator:
             return result
 
 class PinnedSshRefinementTransport:
-    def __init__(self,root:Path,ssh:Path,profile:ZeusProfile,*,timeout=60):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout
+    def __init__(self,root:Path,ssh:Path,profile:ZeusProfile,*,timeout=60):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.refinement_transition(root,ssh,timeout=timeout))
     def _call(self,operation,payload):
-        receiver=Path(__file__).with_name("zeus_refinement_remote.py").read_bytes();encoded=base64.urlsafe_b64encode(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).decode();script=base64.urlsafe_b64encode(receiver).decode();wrapper="import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);sys.argv=sys.argv[2:];exec(compile(code,'<refine>','exec'),{'__name__':'__main__'})";remote=shlex.join(("python3","-c",wrapper,script,operation,self.profile.username,self.profile.project_directory,encoded));argv=[str(self.ssh),"-F","none","-T","-o","BatchMode=yes","-o","PasswordAuthentication=no","-o","KbdInteractiveAuthentication=no","-o","StrictHostKeyChecking=yes","-o","ForwardAgent=no","-o","ClearAllForwardings=yes",f"{self.profile.username}@{ZEUS_HOST}",remote]
-        try:r=subprocess.run(argv,cwd=self.root,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=self.timeout,check=False)
+        pinned_operation={"inspect":ReceiverOperation.INSPECT,"prepare":ReceiverOperation.PREPARE}.get(operation)
+        if pinned_operation is None:raise ZeusRefinementError("remote_response_invalid")
+        try:r=self.runner.run(pinned_operation,self.profile,payload)
         except subprocess.TimeoutExpired:raise ZeusRefinementError("transition_outcome_unknown" if operation=="prepare" else "zeus_timeout") from None
         if r.returncode or r.stderr:raise ZeusRefinementError("transition_outcome_unknown" if operation=="prepare" else "remote_response_invalid")
         try:data=json.loads(r.stdout)
