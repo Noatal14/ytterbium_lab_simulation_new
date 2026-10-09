@@ -31,8 +31,8 @@ from workflow_api.zeus_transfer import (
     COMMIT_RE,
     TOKEN_LIFETIME_SECONDS,
     MAX_PENDING_PREVIEWS,
+    CampaignArtifactPlanner,
     ZeusPreparationError,
-    ZeusPreparationService,
     _load_manifest,
 )
 
@@ -396,8 +396,8 @@ class ZeusSmokeSubmissionCoordinator:
         campaign=entry.manifest.parent
         if manifest.get("stage")!="smoke": raise ZeusSubmissionError("campaign_not_smoke")
         try:
-            service=ZeusPreparationService(self.root, object())  # validation only; transport is unused
-            selected,commit=service._campaign_files(campaign)
+            artifact_plan = CampaignArtifactPlanner(self.root).plan(campaign)
+            selected, commit = artifact_plan.files, artifact_plan.commit
             canonical=render_campaign_files(manifest, campaign, self.root)
         except (ZeusPreparationError, ValueError, OSError) as error:
             raise ZeusSubmissionError("campaign_not_canonical") from error

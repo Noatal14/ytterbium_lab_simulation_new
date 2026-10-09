@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 import threading
 import time
+from types import MappingProxyType
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping, Protocol
@@ -592,22 +593,22 @@ def _load_manifest(path: Path) -> dict[str, object]:
     return value
 
 
-class ZeusPreparationService:
-    """Create session-bound previews and confirm exactly their reviewed plan."""
+@dataclass(frozen=True)
+class CampaignArtifactPlan:
+    """Canonical local artifacts and revision bound to one portable campaign."""
 
-    def __init__(
-        self, repository_root: Path, transport: ZeusPreparationTransport, *,
-        clock=time.time, token_lifetime: float = TOKEN_LIFETIME_SECONDS,
-    ):
+    campaign_root: Path
+    commit: str
+    files: Mapping[str, tuple[Path, str, int, str]]
+
+
+class CampaignArtifactPlanner:
+    """Validate and enumerate the exact files safe to transfer to Zeus."""
+
+    def __init__(self, repository_root: Path):
         self.root = repository_root.resolve(strict=True)
-        self.transport = transport
-        self.clock = clock
-        self.token_lifetime = token_lifetime
-        self._pending: dict[str, _Pending] = {}
-        self._lock = threading.RLock()
-        self._confirm_lock = threading.Lock()
 
-    def _campaign_files(self, campaign: Path) -> tuple[dict[str, tuple[Path, str, int, str]], str]:
+    def plan(self, campaign: Path) -> CampaignArtifactPlan:
         try:
             campaign_identity = canonical_repo_relative(
                 self.root, campaign, allowed_root=CAMPAIGN_ROOT, require="dir",
@@ -631,7 +632,6 @@ class ZeusPreparationService:
             )
         except ValueError as error:
             raise ZeusPreparationError("campaign_smoke_job_invalid") from error
-
         selected: dict[str, tuple[Path, str, int, str]] = {}
         input_records = manifest.get("input_ensembles")
         if not isinstance(input_records, dict):
@@ -652,9 +652,7 @@ class ZeusPreparationService:
                     if not isinstance(identity, str) or not isinstance(expected_hash, str):
                         raise ZeusPreparationError("campaign_inputs_invalid")
                     try:
-                        local = resolve_repo_relative(
-                            self.root, identity, allowed_root=INPUT_ROOT, require="file",
-                        )
+                        local = resolve_repo_relative(self.root, identity, allowed_root=INPUT_ROOT, require="file")
                     except ValueError as error:
                         raise ZeusPreparationError("campaign_inputs_invalid") from error
                     if _sha256(local) != expected_hash:
@@ -663,11 +661,29 @@ class ZeusPreparationService:
         if len(seen_seeds) != 35 or len(selected) != 70:
             raise ZeusPreparationError("campaign_inputs_invalid")
         for local in (manifest_path, smoke_path):
-            identity = canonical_repo_relative(
-                self.root, local, allowed_root=CAMPAIGN_ROOT, require="file",
-            )
+            identity = canonical_repo_relative(self.root, local, allowed_root=CAMPAIGN_ROOT, require="file")
             selected[identity] = (local, _sha256(local), local.stat().st_size, "campaign")
-        return selected, commit
+        return CampaignArtifactPlan(campaign, commit, MappingProxyType(selected))
+
+
+class ZeusPreparationService:
+    """Create session-bound previews and confirm exactly their reviewed plan."""
+
+    def __init__(
+        self, repository_root: Path, transport: ZeusPreparationTransport, *,
+        clock=time.time, token_lifetime: float = TOKEN_LIFETIME_SECONDS,
+    ):
+        self.root = repository_root.resolve(strict=True)
+        self.transport = transport
+        self.clock = clock
+        self.token_lifetime = token_lifetime
+        self._pending: dict[str, _Pending] = {}
+        self._lock = threading.RLock()
+        self._confirm_lock = threading.Lock()
+
+    def _campaign_files(self, campaign: Path) -> tuple[dict[str, tuple[Path, str, int, str]], str]:
+        plan = CampaignArtifactPlanner(self.root).plan(campaign)
+        return dict(plan.files), plan.commit
 
     @staticmethod
     def _validate_snapshot(snapshot: RemoteSnapshot, commit: str, expected: Mapping[str, tuple[Path, str, int, str]]) -> None:

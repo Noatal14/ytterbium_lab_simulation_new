@@ -9,7 +9,7 @@ from typing import Mapping,Protocol,Any
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files,render_screen_transition,render_refine_transition
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
-from workflow_api.zeus_transfer import ZeusPreparationService,ZeusPreparationError,_load_manifest
+from workflow_api.zeus_transfer import CampaignArtifactPlanner,ZeusPreparationError,_load_manifest
 from workflow_api.zeus_screen_submission import ZeusScreenSubmissionCoordinator
 
 TOKEN_LIFETIME_SECONDS=300;MAX_PENDING_PREVIEWS=32
@@ -42,7 +42,7 @@ class ZeusRefinementCoordinator:
     def _plan(self,campaign_id:str):
         entry=build_registry(self.root).get(campaign_id)
         if entry is None or entry.family!="mot_2d":raise ZeusRefinementError("campaign_not_found")
-        try:manifest=_load_manifest(entry.manifest);campaign=entry.manifest.parent;selected,commit=ZeusPreparationService(self.root,object())._campaign_files(campaign);initial=render_campaign_files(manifest,campaign,self.root);screen=render_screen_transition(manifest,campaign,self.root)
+        try:manifest=_load_manifest(entry.manifest);campaign=entry.manifest.parent;artifact_plan=CampaignArtifactPlanner(self.root).plan(campaign);selected,commit=artifact_plan.files,artifact_plan.commit;initial=render_campaign_files(manifest,campaign,self.root);screen=render_screen_transition(manifest,campaign,self.root)
         except Exception as error:raise ZeusRefinementError("campaign_not_canonical") from error
         if manifest.get("stage")!="smoke" or entry.manifest.read_bytes()!=initial["campaign.json"]:raise ZeusRefinementError("campaign_not_canonical")
         prepared={path:item[1] for path,item in selected.items()};relative=campaign.relative_to(self.root).as_posix();screen_hashes={name:hashlib.sha256(content).hexdigest() for name,content in screen.items()};screen_digest=hashlib.sha256(json.dumps(screen_hashes,sort_keys=True).encode()).hexdigest();screening_key=hashlib.sha256(json.dumps({"campaign":relative,"commit":commit,"screen_manifest":screen_hashes["campaign.json"],"screen_pbs":screen_hashes["jobs/02_screen.pbs"],"transition":screen_digest},sort_keys=True,separators=(",",":")).encode()).hexdigest();remote_manifest=json.loads(screen["campaign.json"])

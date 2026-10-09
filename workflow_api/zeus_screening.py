@@ -24,7 +24,7 @@ from typing import Any, Mapping, Protocol
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files, render_screen_transition
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
-from workflow_api.zeus_transfer import ZeusPreparationError, ZeusPreparationService, _load_manifest
+from workflow_api.zeus_transfer import CampaignArtifactPlanner, ZeusPreparationError, _load_manifest
 
 TOKEN_LIFETIME_SECONDS = 300
 MAX_PENDING_PREVIEWS = 32
@@ -92,7 +92,7 @@ class ZeusScreeningCoordinator:
         campaign=entry.manifest.parent
         if manifest.get("stage")!="smoke": raise ZeusScreeningError("campaign_not_smoke")
         try:
-            selected,commit=ZeusPreparationService(self.root,object())._campaign_files(campaign)
+            artifact_plan=CampaignArtifactPlanner(self.root).plan(campaign);selected,commit=artifact_plan.files,artifact_plan.commit
             canonical=render_campaign_files(manifest,campaign,self.root)
             transition=render_screen_transition(manifest,campaign,self.root)
         except Exception as error: raise ZeusScreeningError("campaign_not_canonical") from error

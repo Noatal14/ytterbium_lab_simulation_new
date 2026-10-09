@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from workflow_api.zeus_transfer import (
+    CampaignArtifactPlanner,
     MAX_REMOTE_OUTPUT,
     PinnedSshZeusPreparationTransport,
     RemoteSnapshot,
@@ -113,6 +114,27 @@ def test_preview_is_read_only_and_exactly_plans_70_inputs_plus_two_campaign_file
     assert len(transport.inspections) == 1
     assert tuple(sorted(item.path for item in preview.files)) == transport.inspections[0]
     assert not any(word in repr(transport.inspections).lower() for word in ("qsub", "qdel", "git reset", "simulate"))
+
+
+def test_public_artifact_planner_and_compatibility_wrapper_are_exactly_equivalent(tmp_path, monkeypatch):
+    root, campaign, _ = portable_campaign(tmp_path, monkeypatch)
+
+    public = CampaignArtifactPlanner(root).plan(campaign)
+    legacy_files, legacy_commit = ZeusPreparationService(root, RecordingTransport())._campaign_files(campaign)
+
+    assert public.campaign_root == campaign.resolve()
+    assert public.commit == legacy_commit == COMMIT
+    assert dict(public.files) == legacy_files
+    assert len(public.files) == 72
+    assert {
+        path: (item[1], item[2], item[3], item[0].read_bytes())
+        for path, item in public.files.items()
+    } == {
+        path: (item[1], item[2], item[3], item[0].read_bytes())
+        for path, item in legacy_files.items()
+    }
+    with pytest.raises(TypeError):
+        public.files["replacement"] = next(iter(public.files.values()))
 
 
 @pytest.mark.parametrize("clean,commit", [(False, COMMIT), (True, "b" * 40)])
