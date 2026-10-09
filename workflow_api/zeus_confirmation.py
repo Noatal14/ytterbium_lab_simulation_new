@@ -8,6 +8,7 @@ from typing import Any,Mapping
 from workflow_api.zeus_refinement_submission import ZeusRefinementSubmissionCoordinator,ZeusRefinementSubmissionError
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
 from workflow_api.mot_2d_plan import render_confirmation_transition
+from workflow_api.preview_registry import PreviewRegistry
 
 TOKEN_LIFETIME_SECONDS=300
 class ZeusConfirmationError(RuntimeError):
@@ -19,7 +20,7 @@ class RemoteRefineState:
 class _Pending:
     session_id:str;campaign_id:str;profile:ZeusProfile;commit:str;relative:str;chain_key:str;rows_digest:str;files:Mapping[str,str];nonce:str;expires:float;result:Mapping[str,object]|None=None
 class ZeusConfirmationCoordinator:
-    def __init__(self,root:Path,ssh:Path,git:Path,*,clock=time.time,transport_factory=None):self.root=root.resolve(strict=True);self.ssh=ssh.resolve(strict=True);self.git=git.resolve(strict=True);self.clock=clock;self.transport_factory=transport_factory or (lambda p:PinnedSshConfirmationTransport(self.root,self.ssh,p));self._pending={};self._lock=threading.RLock();self._confirm=threading.Lock()
+    def __init__(self,root:Path,ssh:Path,git:Path,*,clock=time.time,token_factory=None,transport_factory=None):self.root=root.resolve(strict=True);self.ssh=ssh.resolve(strict=True);self.git=git.resolve(strict=True);self.clock=clock;self.transport_factory=transport_factory or (lambda p:PinnedSshConfirmationTransport(self.root,self.ssh,p));self._previews=PreviewRegistry[_Pending](clock=clock,token_factory=token_factory);self._confirm=threading.Lock()
     def _plan(self,request):
         try:
             base=ZeusRefinementSubmissionCoordinator(self.root,self.ssh,self.git);prepared=base.prepare_chain_plan(request);campaign_id,profile,campaign,manifest,commit,refine_files,key,screen_digest,screening_key=prepared.campaign_id,prepared.profile,prepared.campaign,prepared.manifest,prepared.commit,prepared.refine_files,prepared.chain_key,prepared.screen_digest,prepared.screening_submission_key
@@ -54,8 +55,7 @@ class ZeusConfirmationCoordinator:
     def preview(self,request,*,session_id):
         plan,state=self._inspect(request);campaign_id,profile,campaign,manifest,commit,_,key,_,_=plan
         if state.lifecycle!="ready_to_prepare_confirmation":raise ZeusConfirmationError({"awaiting_outputs":"refine_outputs_pending","outputs_invalid":"refine_outputs_invalid","confirmation_prepared":"confirmation_already_prepared"}.get(state.lifecycle,"refinement_chain_not_complete"))
-        rows=[dict(x) for x in state.rows];rendered=render_confirmation_transition(self._remote_manifest(manifest,campaign,self.root),campaign,self.root,rows);files={name:hashlib.sha256(data).hexdigest() for name,data in rendered.items()};digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest();token=secrets.token_urlsafe(32);pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),key,digest,files,secrets.token_hex(16),self.clock()+TOKEN_LIFETIME_SECONDS)
-        with self._lock:self._pending[token]=pending
+        rows=[dict(x) for x in state.rows];rendered=render_confirmation_transition(self._remote_manifest(manifest,campaign,self.root),campaign,self.root,rows);files={name:hashlib.sha256(data).hexdigest() for name,data in rendered.items()};digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest();expires=self.clock()+TOKEN_LIFETIME_SECONDS;pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),key,digest,files,secrets.token_hex(16),expires);token=self._previews.add(pending,expires_at=expires,capacity=None,prune_expired=False)
         candidates=[];selected=json.loads(rendered["refined_candidates.json"])
         for group in selected.values():
             for rank,row in enumerate(group,1):candidates.append({"s0":row["s0"],"rank":rank,"detuning_gamma":row["detuning_gamma"],"magnet_radius_m":row["magnet_radius"],"mean_conditional_efficiency":row["mean_conditional_efficiency"],"source":row["source"]})
@@ -69,7 +69,7 @@ class ZeusConfirmationCoordinator:
     def confirm(self,request,*,session_id):
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusConfirmationError("request_invalid")
         with self._confirm:
-            pending=self._pending.get(request["preview_token"])
+            record=self._previews.get(request["preview_token"]);pending=None if record is None else record.value
             if pending is None or not secrets.compare_digest(pending.session_id,session_id):raise ZeusConfirmationError("confirmation_invalid")
             if pending.result:return dict(pending.result)
             if self.clock()>pending.expires:raise ZeusConfirmationError("confirmation_expired")
@@ -78,7 +78,7 @@ class ZeusConfirmationCoordinator:
             result_state=self.transport_factory(profile).prepare(campaign=pending.relative,commit=commit,refine_files=plan[5],chain_key=key,screen_digest=plan[7],screening_submission_key=plan[8],rows_digest=pending.rows_digest,confirmation_files=pending.files,nonce=pending.nonce)
             receipt=result_state.receipt;exact={"status","nonce","chain_key","commit","rows_digest","rows","files","rounds","completed_unix_s"}
             if result_state.lifecycle!="confirmation_prepared" or not isinstance(receipt,dict) or set(receipt)!=exact or receipt.get("status")!="confirmation_prepared" or receipt.get("nonce")!=pending.nonce or receipt.get("chain_key")!=key or receipt.get("commit")!=commit or receipt.get("rows_digest")!=pending.rows_digest or receipt.get("rows")!=rows or receipt.get("files")!=pending.files or receipt.get("rounds")!=[dict(row) for row in result_state.rounds] or not isinstance(receipt.get("completed_unix_s"),int) or isinstance(receipt.get("completed_unix_s"),bool) or not 0<=receipt["completed_unix_s"]<=253402300799:raise ZeusConfirmationError("transition_outcome_unknown")
-            result={"status":"confirmation_prepared","campaign_id":pending.campaign_id,"stage":"confirmation","artifacts":{"created":3,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}};self._pending[request["preview_token"]]=replace(pending,result=result);return result
+            result={"status":"confirmation_prepared","campaign_id":pending.campaign_id,"stage":"confirmation","artifacts":{"created":3,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}};self._previews.replace(request["preview_token"],replace(pending,result=result));return result
 
 class PinnedSshConfirmationTransport:
     def __init__(self,root,ssh,profile,*,timeout=90):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout

@@ -32,15 +32,23 @@ class PreviewRegistry(Generic[T]):
         self._records: dict[str, PreviewRecord[T]] = {}
         self._lock = threading.RLock()
 
-    def add(self, value: T, *, expires_at: float, capacity: int) -> str:
+    def add(
+        self,
+        value: T,
+        *,
+        expires_at: float,
+        capacity: int | None,
+        prune_expired: bool = True,
+    ) -> str:
         with self._lock:
             now = self._clock()
-            self._records = {
-                token: record
-                for token, record in self._records.items()
-                if record.expires_at >= now
-            }
-            if len(self._records) >= capacity:
+            if prune_expired:
+                self._records = {
+                    token: record
+                    for token, record in self._records.items()
+                    if record.expires_at >= now
+                }
+            if capacity is not None and len(self._records) >= capacity:
                 raise OverflowError("preview registry capacity reached")
             token = self._token_factory()
             if not isinstance(token, str) or not token or token in self._records:
