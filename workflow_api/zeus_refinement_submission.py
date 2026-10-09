@@ -5,6 +5,7 @@ from dataclasses import dataclass,replace
 from datetime import datetime,timezone
 from pathlib import Path
 from typing import Mapping,Protocol
+from types import MappingProxyType
 from workflow_api.zeus_refinement import ZeusRefinementCoordinator,ZeusRefinementError
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
 
@@ -15,6 +16,13 @@ class ZeusRefinementSubmissionError(RuntimeError):
 @dataclass(frozen=True)
 class RemoteChainState:
     status:str;branch:str|None=None;job_ids:tuple[str,...]=();nonce:str|None=None;completed_unix_s:int|None=None
+@dataclass(frozen=True)
+class PreparedRefinementChainPlan:
+    campaign_id:str;profile:ZeusProfile;campaign:Path;commit:str
+    refine_files:Mapping[str,str];chain_key:str;screen_digest:str;screening_submission_key:str
+    _manifest_json:str
+    @property
+    def manifest(self)->dict[str,object]:return json.loads(self._manifest_json)
 class ChainTransport(Protocol):
     def inspect(self,**payload:object)->RemoteChainState:...
     def submit(self,**payload:object)->RemoteChainState:...
@@ -30,7 +38,7 @@ class ZeusRefinementSubmissionCoordinator:
     def _profile(request):
         try:return ZeusProfile.parse({"username":request.get("username"),"project_directory":request.get("project_directory")})
         except ValueError as error:raise ZeusRefinementSubmissionError("profile_invalid") from error
-    def _plan(self,request):
+    def prepare_chain_plan(self,request)->PreparedRefinementChainPlan:
         if set(request)!={"campaign_id","username","project_directory"} or not isinstance(request.get("campaign_id"),str):raise ZeusRefinementSubmissionError("request_invalid")
         profile=self._profile(request);coordinator=ZeusRefinementCoordinator(self.root,self.ssh,self.git)
         try:
@@ -41,7 +49,10 @@ class ZeusRefinementSubmissionCoordinator:
         from workflow_api.mot_2d_plan import render_refine_transition
         rendered=render_refine_transition(remote_manifest,campaign,self.root,rows);files={name:hashlib.sha256(rendered[name]).hexdigest() for name in (*FILES,"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh")}
         key=hashlib.sha256(json.dumps({"campaign":campaign.relative_to(self.root).as_posix(),"commit":commit,"files":files,"screen_digest":screen_digest,"screening_key":screening_key},sort_keys=True,separators=(",",":")).encode()).hexdigest()
-        return campaign_id,profile,campaign,manifest,commit,files,key,screen_digest,screening_key
+        return PreparedRefinementChainPlan(campaign_id,profile,campaign,commit,MappingProxyType(files),key,screen_digest,screening_key,json.dumps(manifest,sort_keys=True,separators=(",",":")))
+    def _plan(self,request):
+        plan=self.prepare_chain_plan(request)
+        return plan.campaign_id,plan.profile,plan.campaign,plan.manifest,plan.commit,dict(plan.refine_files),plan.chain_key,plan.screen_digest,plan.screening_submission_key
     def preview(self,request,*,session_id):
         campaign_id,profile,campaign,manifest,commit,files,key,screen_digest,screening_key=self._plan(request);relative=campaign.relative_to(self.root).as_posix()
         state=self.transport_factory(profile).inspect(campaign=relative,commit=commit,refine_files=files,chain_key=key,screen_digest=screen_digest,screening_submission_key=screening_key,nonce=None)

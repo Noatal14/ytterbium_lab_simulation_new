@@ -21,9 +21,10 @@ class _Pending:
 class ZeusConfirmationCoordinator:
     def __init__(self,root:Path,ssh:Path,git:Path,*,clock=time.time,transport_factory=None):self.root=root.resolve(strict=True);self.ssh=ssh.resolve(strict=True);self.git=git.resolve(strict=True);self.clock=clock;self.transport_factory=transport_factory or (lambda p:PinnedSshConfirmationTransport(self.root,self.ssh,p));self._pending={};self._lock=threading.RLock();self._confirm=threading.Lock()
     def _plan(self,request):
-        try:base=ZeusRefinementSubmissionCoordinator(self.root,self.ssh,self.git);campaign_id,profile,campaign,manifest,commit,refine_files,key,screen_digest,screening_key=base._plan(request)
+        try:
+            base=ZeusRefinementSubmissionCoordinator(self.root,self.ssh,self.git);prepared=base.prepare_chain_plan(request);campaign_id,profile,campaign,manifest,commit,refine_files,key,screen_digest,screening_key=prepared.campaign_id,prepared.profile,prepared.campaign,prepared.manifest,prepared.commit,prepared.refine_files,prepared.chain_key,prepared.screen_digest,prepared.screening_submission_key
         except ZeusRefinementSubmissionError as error:raise ZeusConfirmationError(error.code) from error
-        return campaign_id,profile,campaign,manifest,commit,refine_files,key,screen_digest,screening_key
+        return campaign_id,profile,campaign,manifest,commit,dict(refine_files),key,screen_digest,screening_key
     def _inspect(self,request):
         plan=self._plan(request);campaign_id,profile,campaign,_,commit,files,key,screen_digest,screening_key=plan
         state=self.transport_factory(profile).inspect(campaign=campaign.relative_to(self.root).as_posix(),commit=commit,refine_files=files,chain_key=key,screen_digest=screen_digest,screening_submission_key=screening_key)

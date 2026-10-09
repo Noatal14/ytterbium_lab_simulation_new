@@ -13,6 +13,7 @@ from workflow_api.zeus_refinement_submission import (
     ZeusRefinementSubmissionCoordinator,
     ZeusRefinementSubmissionError,
 )
+from workflow_api.zeus_refinement import RefinementInspection, RemoteScreenState
 from workflow_api.zeus_snapshot import ZeusProfile
 
 
@@ -47,6 +48,28 @@ def test_remote_receiver_has_only_fixed_qsub_and_never_runs_chain_script():
     assert "03_submit_refinement_chain.sh\")" not in source
     assert source.count("write_record(step_pending[index-1]") == 1
     assert source.index("write_record(step_pending[index-1]") < source.index("subprocess.run(argv,input=data")
+
+
+def test_public_prepared_chain_plan_and_legacy_wrapper_are_exact_and_immutable(tmp_path, monkeypatch):
+    executable=Path(sys.executable);coordinator=ZeusRefinementSubmissionCoordinator(tmp_path,executable,executable)
+    campaign=tmp_path/"data/optimization/mot_2d/campaign";campaign.mkdir(parents=True)
+    profile=ZeusProfile.parse({"username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"})
+    manifest={"name":"campaign","s0_values":[1.3]};remote_manifest={"stage":"screen"};rows=({"source":"trial"},)
+    canonical=(campaign,manifest,remote_manifest,"a"*40,{}, {},"b"*64,"c"*64)
+    state=RemoteScreenState("refinement_prepared","1[].zeus-master","F",0,3,{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0},rows,"main")
+    evidence=RefinementInspection("id",profile,canonical,state)
+    monkeypatch.setattr("workflow_api.zeus_refinement.ZeusRefinementCoordinator.inspect_evidence",lambda self,request:evidence)
+    names=(*("jobs/03_refine_round_%02d.pbs"%i for i in range(1,5)),"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh")
+    rendered={name:(name+"\n").encode() for name in names}
+    monkeypatch.setattr("workflow_api.mot_2d_plan.render_refine_transition",lambda *args:rendered)
+
+    public=coordinator.prepare_chain_plan({"campaign_id":"id","username":"tal.noa","project_directory":profile.project_directory})
+    legacy=coordinator._plan({"campaign_id":"id","username":"tal.noa","project_directory":profile.project_directory})
+
+    assert legacy==(public.campaign_id,public.profile,public.campaign,public.manifest,public.commit,dict(public.refine_files),public.chain_key,public.screen_digest,public.screening_submission_key)
+    assert dict(public.refine_files)=={name:hashlib.sha256(content).hexdigest() for name,content in rendered.items()}
+    changed=public.manifest;changed["name"]="mutated";assert public.manifest==manifest
+    with pytest.raises(TypeError):public.refine_files["x"]="y"
 
 
 def test_remote_receiver_revalidates_before_every_qsub_and_binds_receipts():
