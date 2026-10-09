@@ -13,6 +13,7 @@ import pytest
 
 from workflow_api.mot_2d_smoke import SmokeValidationError, validate_smoke_outputs
 from workflow_api.zeus_screening import (
+    MAX_PENDING_PREVIEWS,
     RemoteSmokeState,
     ZeusScreeningCoordinator,
     ZeusScreeningError,
@@ -246,7 +247,13 @@ class _ScreeningTransport:
         return self._state("screen_prepared")
 
 
-def _screening_coordinator(tmp_path, transport, *, clock=lambda: 100.0):
+def _screening_coordinator(
+    tmp_path,
+    transport,
+    *,
+    clock=lambda: 100.0,
+    token_factory=None,
+):
     campaign = tmp_path / "data/optimization/mot_2d/campaign"
     campaign.mkdir(parents=True, exist_ok=True)
     manifest = _manifest()
@@ -254,6 +261,7 @@ def _screening_coordinator(tmp_path, transport, *, clock=lambda: 100.0):
                   "campaign.json": "3" * 64}
     coordinator = ZeusScreeningCoordinator(
         tmp_path, Path("/usr/bin/ssh"), Path("/usr/bin/git"), clock=clock,
+        token_factory=token_factory,
         transport_factory=lambda profile: transport,
     )
     prepared = {f"artifact-{index}": f"{index:064x}" for index in range(72)}
@@ -371,6 +379,94 @@ def test_concurrent_confirmation_performs_one_remote_transition(tmp_path):
     for thread in threads: thread.start()
     for thread in threads: thread.join(timeout=5)
     assert errors == [] and len(results) == 8
+    assert len(transport.preparations) == 1
+
+
+def test_screening_preview_registry_preserves_boundary_unknown_and_removal(tmp_path):
+    now = [100.0]
+    transport = _ScreeningTransport()
+    coordinator, _ = _screening_coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: "boundary-token",
+    )
+    preview = coordinator.preview(_screening_request(), session_id="owner")
+    assert preview["preview_token"] == "boundary-token"
+    assert _screening_code(lambda: coordinator.confirm(
+        {"preview_token": "missing"}, session_id="owner")) == "confirmation_invalid"
+    assert _screening_code(lambda: coordinator.confirm(
+        {"preview_token": "boundary-token"}, session_id="intruder")) == "confirmation_invalid"
+
+    now[0] = 400.0
+    result = coordinator.confirm(
+        {"preview_token": "boundary-token"}, session_id="owner")
+    assert result["status"] == "screening_prepared"
+    assert len(transport.preparations) == 1
+
+    expired_transport = _ScreeningTransport()
+    coordinator, _ = _screening_coordinator(
+        tmp_path / "expired",
+        expired_transport,
+        clock=lambda: now[0],
+        token_factory=lambda: "expired-token",
+    )
+    coordinator.preview(_screening_request(), session_id="owner")
+    now[0] = 701.0
+    assert _screening_code(lambda: coordinator.confirm(
+        {"preview_token": "expired-token"}, session_id="owner")) == "confirmation_expired"
+    assert coordinator._previews.get("expired-token") is None
+    assert expired_transport.preparations == []
+
+
+def test_screening_preview_capacity_maps_error_and_reclaims_expired_records(tmp_path):
+    now = [100.0]
+    tokens = iter(f"token-{index}" for index in range(MAX_PENDING_PREVIEWS + 1))
+    transport = _ScreeningTransport()
+    coordinator, _ = _screening_coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: next(tokens),
+    )
+    for _ in range(MAX_PENDING_PREVIEWS):
+        coordinator.preview(_screening_request(), session_id="owner")
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert _screening_code(lambda: coordinator.preview(
+        _screening_request(), session_id="owner")) == "too_many_pending_previews"
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert transport.preparations == []
+
+    now[0] = 401.0
+    preview = coordinator.preview(_screening_request(), session_id="owner")
+    assert preview["preview_token"] == f"token-{MAX_PENDING_PREVIEWS}"
+    assert len(coordinator._previews) == 1
+
+
+def test_screening_confirmation_is_single_effect_under_barrier(tmp_path):
+    transport = _ScreeningTransport()
+    coordinator, _ = _screening_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "barrier-token",
+    )
+    coordinator.preview(_screening_request(), session_id="owner")
+    barrier = threading.Barrier(5)
+    results = []
+
+    def confirm():
+        barrier.wait()
+        results.append(coordinator.confirm(
+            {"preview_token": "barrier-token"}, session_id="owner"))
+
+    threads = [threading.Thread(target=confirm) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    barrier.wait()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert all(not thread.is_alive() for thread in threads)
+    assert len(results) == 4 and all(result == results[0] for result in results)
     assert len(transport.preparations) == 1
 
 

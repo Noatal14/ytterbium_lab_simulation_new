@@ -206,78 +206,14 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             resolved = resolve_error("transfer", error.code)
             self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusSubmissionError as error:
-            statuses = {
-                "request_invalid": HTTPStatus.BAD_REQUEST, "profile_invalid": HTTPStatus.BAD_REQUEST,
-                "campaign_not_found": HTTPStatus.NOT_FOUND, "campaign_not_smoke": HTTPStatus.PRECONDITION_FAILED,
-                "campaign_not_canonical": HTTPStatus.PRECONDITION_FAILED,
-                "confirmation_invalid": HTTPStatus.PRECONDITION_FAILED, "confirmation_expired": HTTPStatus.PRECONDITION_FAILED,
-                "too_many_pending_previews": HTTPStatus.TOO_MANY_REQUESTS,
-                "zeus_authentication_required": HTTPStatus.UNAUTHORIZED,
-                "zeus_host_key_untrusted": HTTPStatus.PRECONDITION_FAILED, "zeus_timeout": HTTPStatus.GATEWAY_TIMEOUT,
-                "zeus_unreachable": HTTPStatus.SERVICE_UNAVAILABLE, "remote_project_missing": HTTPStatus.PRECONDITION_FAILED,
-                "local_checkout_mismatch": HTTPStatus.PRECONDITION_FAILED, "local_files_changed": HTTPStatus.PRECONDITION_FAILED,
-                "remote_preparation_invalid": HTTPStatus.PRECONDITION_FAILED,
-                "submission_outcome_unknown": HTTPStatus.CONFLICT, "already_submitted": HTTPStatus.CONFLICT,
-                "smoke_already_started": HTTPStatus.CONFLICT,
-                "submission_record_invalid": HTTPStatus.CONFLICT,
-                "submission_busy": HTTPStatus.CONFLICT,
-            }
-            messages = {
-                "request_invalid": "The smoke-submission request is invalid.", "profile_invalid": "The Zeus connection profile is invalid.",
-                "campaign_not_found": "The selected campaign was not found.", "campaign_not_smoke": "Only a campaign awaiting its smoke stage can be submitted.",
-                "campaign_not_canonical": "The campaign does not match the canonical portable smoke plan.",
-                "confirmation_invalid": "The submission preview is invalid or belongs to another session.",
-                "confirmation_expired": "The submission preview has expired. Review it again before continuing.",
-                "too_many_pending_previews": "Too many submission previews are pending.",
-                "zeus_authentication_required": "An existing SSH key or agent is required.",
-                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
-                "zeus_timeout": "The read-only submission check timed out.", "zeus_unreachable": "Zeus could not be reached.",
-                "remote_project_missing": "The remote project directory could not be verified.",
-                "local_checkout_mismatch": "The local checkout is not clean at the campaign commit.",
-                "local_files_changed": "The campaign changed after review. Review it again before submitting.",
-                "remote_preparation_invalid": "The exact prepared campaign could not be verified on Zeus.",
-                "submission_outcome_unknown": "A previous submission attempt has an uncertain outcome. Automatic retry is blocked to prevent a duplicate job.",
-                "already_submitted": "This smoke stage already has a durable Zeus submission record.",
-                "smoke_already_started": "Smoke-stage outputs already exist on Zeus, so automatic submission is blocked.",
-                "submission_record_invalid": "The durable Zeus submission record is invalid or conflicting.",
-                "submission_busy": "Another submission operation is already checking this campaign.",
-            }
-            self._error(error.code, messages.get(error.code, "Zeus smoke submission stopped safely."), statuses.get(error.code, HTTPStatus.PRECONDITION_FAILED)); return
+            resolved = resolve_error("smoke_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusScreeningError as error:
-            if error.code in {"request_invalid", "profile_invalid"}: status = HTTPStatus.BAD_REQUEST
-            elif error.code == "campaign_not_found": status = HTTPStatus.NOT_FOUND
-            elif error.code == "zeus_authentication_required": status = HTTPStatus.UNAUTHORIZED
-            elif error.code in {"zeus_unreachable", "scheduler_unavailable"}: status = HTTPStatus.SERVICE_UNAVAILABLE
-            elif error.code == "zeus_timeout": status = HTTPStatus.GATEWAY_TIMEOUT
-            elif error.code in {"transition_busy", "transition_conflict", "transition_outcome_unknown", "screening_already_prepared"}: status = HTTPStatus.CONFLICT
-            else: status = HTTPStatus.PRECONDITION_FAILED
-            messages = {
-                "smoke_running": "The smoke check is still running.", "smoke_held": "The smoke job needs attention on Zeus.",
-                "smoke_failed": "The smoke job finished with an error.", "smoke_status_unknown": "The smoke outcome could not be established safely.",
-                "smoke_outputs_pending": "The smoke job succeeded; its output files are still becoming visible.",
-                "smoke_outputs_invalid": "The smoke outputs failed validation.", "screening_already_prepared": "Screening is already prepared on Zeus.",
-                "transition_outcome_unknown": "Screening preparation may have changed Zeus. Inspect it before retrying.",
-                "confirmation_invalid": "The screening preview is invalid or belongs to another session.",
-                "confirmation_expired": "The screening preview expired. Review it again.",
-                "local_checkout_mismatch": "The local checkout no longer matches the campaign commit.",
-                "remote_checkout_mismatch": "The Zeus checkout no longer matches the campaign commit.",
-                "zeus_authentication_required": "An existing SSH key or agent is required.",
-                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
-                "zeus_timeout": "The Zeus inspection timed out.", "zeus_unreachable": "Zeus could not be reached.",
-                "scheduler_unavailable": "The Zeus scheduler history could not be read.", "transition_busy": "Another screening preparation is in progress.",
-                "transition_conflict": "A screening artifact conflicts with the reviewed plan.",
-            }
-            self._error(error.code, messages.get(error.code, "Smoke inspection or screening preparation stopped safely."), status); return
+            resolved = resolve_error("smoke_transition", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusScreenSubmissionError as error:
-            if error.code in {"request_invalid","profile_invalid"}: status=HTTPStatus.BAD_REQUEST
-            elif error.code=="campaign_not_found": status=HTTPStatus.NOT_FOUND
-            elif error.code=="zeus_authentication_required": status=HTTPStatus.UNAUTHORIZED
-            elif error.code in {"zeus_unreachable"}: status=HTTPStatus.SERVICE_UNAVAILABLE
-            elif error.code=="zeus_timeout": status=HTTPStatus.GATEWAY_TIMEOUT
-            elif error.code in {"screening_already_submitted","screening_already_started","screening_submission_busy","screening_submission_record_invalid","screening_submission_outcome_unknown"}: status=HTTPStatus.CONFLICT
-            else: status=HTTPStatus.PRECONDITION_FAILED
-            messages={"campaign_not_canonical":"The selected campaign does not match its frozen design.","screening_not_prepared":"The exact Screening plan is not prepared on Zeus.","screening_already_submitted":"Screening already has a durable Zeus submission record.","screening_already_started":"Screening outputs already exist, so submission is blocked.","screening_submission_busy":"Another Screening submission check is in progress.","screening_submission_record_invalid":"The Screening submission record is invalid or conflicting.","screening_submission_outcome_unknown":"A Screening submission attempt has an uncertain outcome. Automatic retry is blocked.","confirmation_invalid":"The submission preview is invalid or belongs to another session.","confirmation_expired":"The submission preview expired. Review it again.","local_checkout_mismatch":"The local checkout no longer matches the campaign commit.","local_files_changed":"The campaign changed after review. Review it again.","remote_checkout_mismatch":"The Zeus checkout no longer matches the campaign commit.","zeus_authentication_required":"An existing SSH key or agent is required.","zeus_host_key_untrusted":"The Zeus host key must be verified outside this application.","zeus_timeout":"The Zeus submission check timed out.","zeus_unreachable":"Zeus could not be reached."}
-            self._error(error.code,messages.get(error.code,"Screening submission stopped safely."),status);return
+            resolved = resolve_error("screen_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusRefinementError as error:
             status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.UNAUTHORIZED if error.code=="zeus_authentication_required" else HTTPStatus.CONFLICT if error.code in {"transition_busy","transition_conflict","transition_outcome_unknown","refinement_already_prepared"} else HTTPStatus.PRECONDITION_FAILED
             self._error(error.code,"Refinement preparation stopped safely.",status);return

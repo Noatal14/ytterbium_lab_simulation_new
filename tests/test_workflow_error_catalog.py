@@ -38,56 +38,6 @@ ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = ROOT / "tests/contracts/v1/workflow_api_error_catalog.json"
 
 
-def _handler_dicts(exception_name: str) -> dict[str, dict[str, object]]:
-    tree = ast.parse((ROOT / "workflow_api/server.py").read_text())
-    for node in ast.walk(tree):
-        if (
-            not isinstance(node, ast.ExceptHandler)
-            or not isinstance(node.type, ast.Name)
-            or node.type.id != exception_name
-        ):
-            continue
-        found: dict[str, dict[str, object]] = {}
-        for child in node.body:
-            if (
-                not isinstance(child, ast.Assign)
-                or len(child.targets) != 1
-                or not isinstance(child.targets[0], ast.Name)
-                or not isinstance(child.value, ast.Dict)
-            ):
-                continue
-            name = child.targets[0].id
-            if name not in {"messages", "statuses"}:
-                continue
-            rows: dict[str, object] = {}
-            for key_node, value_node in zip(
-                child.value.keys, child.value.values, strict=True
-            ):
-                key = ast.literal_eval(key_node)
-                if name == "messages":
-                    rows[key] = ast.literal_eval(value_node)
-                elif isinstance(value_node, ast.Attribute):
-                    rows[key] = value_node.attr
-            found[name] = rows
-        return found
-    raise AssertionError(f"No handler found for {exception_name}")
-
-
-@pytest.mark.parametrize(
-    ("exception_name", "domain"),
-    [
-        ("ZeusSubmissionError", "smoke_submission"),
-    ],
-)
-def test_catalog_matches_active_explicit_handler_maps(exception_name, domain):
-    active = _handler_dicts(exception_name)
-    catalog = ERROR_DOMAINS[domain]
-    for code, message in active["messages"].items():
-        assert catalog.entries[code].message == message
-    for code, status_name in active["statuses"].items():
-        assert catalog.entries[code].status.name == status_name
-
-
 def test_route_unavailable_catalog_matches_active_registry_exactly():
     expected = {
         (route.unavailable_code, 503, route.unavailable_message)
@@ -444,6 +394,27 @@ def test_every_catalogued_creation_error_matches_the_real_handler():
             "/api/v1/zeus/transfers/preview",
             "zeus_preparation_failed",
             "Zeus preparation stopped safely.",
+            412,
+        ),
+        (
+            ZeusSubmissionError,
+            "/api/v1/zeus/submissions/smoke/preview",
+            "zeus_submission_failed",
+            "Zeus smoke submission stopped safely.",
+            412,
+        ),
+        (
+            ZeusScreeningError,
+            "/api/v1/zeus/smoke/status",
+            "zeus_screening_failed",
+            "Smoke inspection or screening preparation stopped safely.",
+            412,
+        ),
+        (
+            ZeusScreenSubmissionError,
+            "/api/v1/zeus/submissions/screening/preview",
+            "screening_submission_failed",
+            "Screening submission stopped safely.",
             412,
         ),
     ],
