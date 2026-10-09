@@ -1,0 +1,24 @@
+{
+  "spec_version": "mot_2d-v1",
+  "stage_order": ["smoke", "screen", "refine", "confirmation", "sensitivity", "production"],
+  "design": {
+    "solver": "RK4StHybridCustom",
+    "working_dt_s": 0.00000125,
+    "final_dt_s": 0.000000625,
+    "ensemble_count": 35,
+    "prepared_file_count": 72,
+    "workers_per_s0": 3,
+    "screen_trials_per_worker": 17,
+    "refine_trials_per_worker": 10,
+    "screen_candidates_per_s0": 3,
+    "confirmation_candidates_per_s0": 5
+  },
+  "stages": {
+    "smoke": {"label": "Smoke check", "job_file": "jobs/01_smoke.pbs", "cores_per_task": 1, "memory_per_task_bytes": 68719476736, "walltime_seconds": 1200, "array_throttle": 1, "artifacts": ["campaign.json", "jobs/01_smoke.pbs"]},
+    "screen": {"label": "Screening", "job_file": "jobs/02_screen.pbs", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 86400, "array_throttle": 3, "artifacts": ["screen/tasks.json", "jobs/02_screen.pbs", "campaign.json"]},
+    "refine": {"label": "Refinement", "round_job_files": ["jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs"], "submit_chain": "jobs/03_submit_refinement_chain.sh", "cumulative_trial_targets": [3, 6, 9, 10], "dependency": "afterok", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 72000, "array_throttle": 3, "artifacts": ["screening_candidates.json", "refine/tasks.json", "jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs", "jobs/03_submit_refinement_chain.sh", "campaign.json"]},
+    "confirmation": {"label": "Confirmation", "job_file": "jobs/04_confirmation.pbs", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 36000, "array_throttle": 3, "artifacts": ["refined_candidates.json", "confirmation/tasks.json", "jobs/04_confirmation.pbs", "campaign.json"]},
+    "sensitivity": {"label": "Sensitivity"},
+    "production": {"label": "Production"}
+  }
+}
