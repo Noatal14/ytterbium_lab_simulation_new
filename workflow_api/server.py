@@ -215,14 +215,14 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             resolved = resolve_error("screen_submission", error.code)
             self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusRefinementError as error:
-            status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.UNAUTHORIZED if error.code=="zeus_authentication_required" else HTTPStatus.CONFLICT if error.code in {"transition_busy","transition_conflict","transition_outcome_unknown","refinement_already_prepared"} else HTTPStatus.PRECONDITION_FAILED
-            self._error(error.code,"Refinement preparation stopped safely.",status);return
+            resolved = resolve_error("refinement_transition", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusRefinementSubmissionError as error:
-            status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.UNAUTHORIZED if error.code=="zeus_authentication_required" else HTTPStatus.CONFLICT if error.code in {"refinement_chain_already_submitted","refinement_chain_partially_submitted","refinement_submission_busy","refinement_submission_outcome_unknown","refinement_already_started"} else HTTPStatus.PRECONDITION_FAILED
-            self._error(error.code,"Refinement submission stopped safely.",status);return
+            resolved = resolve_error("refinement_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusConfirmationError as error:
-            status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.CONFLICT if error.code in {"transition_busy","transition_conflict","transition_outcome_unknown","confirmation_already_prepared"} else HTTPStatus.PRECONDITION_FAILED
-            self._error(error.code,"Confirmation preparation stopped safely.",status);return
+            resolved = resolve_error("confirmation_transition", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except BlockingIOError:
             self._catalog_error("creation", "rate_limited"); return
         except FileExistsError:

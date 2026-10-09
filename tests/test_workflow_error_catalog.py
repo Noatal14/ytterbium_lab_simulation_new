@@ -417,6 +417,27 @@ def test_every_catalogued_creation_error_matches_the_real_handler():
             "Screening submission stopped safely.",
             412,
         ),
+        (
+            ZeusRefinementError,
+            "/api/v1/zeus/refinement/preview",
+            "refinement_preparation_failed",
+            "Refinement preparation stopped safely.",
+            412,
+        ),
+        (
+            ZeusRefinementSubmissionError,
+            "/api/v1/zeus/submissions/refinement/preview",
+            "refinement_submission_failed",
+            "Refinement submission stopped safely.",
+            412,
+        ),
+        (
+            ZeusConfirmationError,
+            "/api/v1/zeus/confirmation/preview",
+            "confirmation_preparation_failed",
+            "Confirmation preparation stopped safely.",
+            412,
+        ),
     ],
 )
 def test_unknown_remote_error_codes_fail_closed_in_real_handler(
