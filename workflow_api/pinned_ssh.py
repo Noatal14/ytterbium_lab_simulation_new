@@ -24,12 +24,19 @@ class ReceiverKind(Enum):
     SCREENING_SUBMISSION = "screening_submission"
     SMOKE_SUBMISSION = "smoke_submission"
     SNAPSHOT = "snapshot"
+    TRANSFER = "transfer"
 
 
 class ReceiverOperation(Enum):
     INSPECT = "inspect"
     PREPARE = "prepare"
     SUBMIT = "submit"
+
+
+class TransferOperation(Enum):
+    INSPECT = "inspect"
+    INPUTS = "inputs"
+    CAMPAIGN = "campaign"
 
 
 class PinnedSshProcessError(RuntimeError):
@@ -188,6 +195,32 @@ _RECEIVERS = {
         False,
         True,
     ),
+    ReceiverKind.TRANSFER: _ReceiverDefinition(
+        None,
+        "<transfer>",
+        frozenset(),
+        False,
+        (
+            "-F", "none", "-T",
+            "-o", "BatchMode=yes",
+            "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+            "-o", "NumberOfPasswordPrompts=0",
+            "-o", "ConnectTimeout=8",
+            "-o", "ConnectionAttempts=1",
+            "-o", "StrictHostKeyChecking=yes",
+            "-o", "ForwardAgent=no",
+            "-o", "ClearAllForwardings=yes",
+            "-o", "PermitLocalCommand=no",
+            "-o", "ProxyCommand=none",
+            "-o", "ProxyJump=none",
+            "-o", "KnownHostsCommand=none",
+            "-o", "CanonicalizeHostname=no",
+            "-o", "LogLevel=ERROR",
+        ),
+        True,
+        True,
+    ),
 }
 
 
@@ -300,6 +333,21 @@ class PinnedSshPolicy:
     ) -> PinnedSshPolicy:
         return cls(
             ReceiverKind.SNAPSHOT,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def transfer(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.TRANSFER,
             repository_root,
             ssh_executable,
             timeout,
@@ -501,4 +549,138 @@ class PinnedSshRunner:
         if exceeded.is_set() or any(reader.is_alive() for reader in readers):
             process.kill()
             raise ZeusSnapshotError("malformed_remote_response")
+        return returncode, bytes(output), bytes(errors)
+
+    def transfer(
+        self,
+        operation: TransferOperation,
+        profile: ZeusProfile,
+        paths: tuple[str, ...],
+        expected_commit: str,
+        payload: bytes,
+    ) -> tuple[int, bytes, bytes]:
+        """Run one fixed streaming transfer receiver operation."""
+        if self._policy.receiver is not ReceiverKind.TRANSFER:
+            raise ValueError("Unsupported pinned SSH transfer receiver.")
+        if type(operation) is not TransferOperation:
+            raise ValueError("Unsupported pinned SSH transfer operation.")
+        if type(profile) is not ZeusProfile:
+            raise ValueError("Invalid pinned SSH profile.")
+        try:
+            validated_profile = ZeusProfile.parse({
+                "username": profile.username,
+                "project_directory": profile.project_directory,
+            })
+        except ValueError as error:
+            raise ValueError("Invalid pinned SSH profile.") from error
+        if validated_profile != profile:
+            raise ValueError("Invalid pinned SSH profile.")
+
+        from workflow_api.zeus_transfer import (
+            MAX_REMOTE_OUTPUT,
+            MAX_TRANSFER_BYTES,
+            _REMOTE_TRANSFER_SCRIPT,
+            ZeusPreparationError,
+        )
+
+        if type(payload) is not bytes:
+            raise ValueError("Invalid pinned SSH transfer payload.")
+        if len(payload) > MAX_TRANSFER_BYTES:
+            raise ZeusPreparationError("transfer_too_large")
+
+        definition = _RECEIVERS[ReceiverKind.TRANSFER]
+        encoded = base64.urlsafe_b64encode(
+            json.dumps(paths, separators=(",", ":")).encode()
+        ).decode("ascii")
+        script = base64.urlsafe_b64encode(
+            _REMOTE_TRANSFER_SCRIPT.encode()
+        ).decode("ascii")
+        wrapper = (
+            "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
+            "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
+        )
+        command = shlex.join((
+            "python3", "-c", wrapper, script, operation.value,
+            profile.username, profile.project_directory, encoded,
+            expected_commit,
+        ))
+        arguments = [
+            str(self._policy.ssh_executable),
+            *definition.ssh_arguments,
+            f"{profile.username}@{ZEUS_HOST}",
+            command,
+        ]
+        environment = {
+            "PATH": str(self._policy.ssh_executable.parent),
+            "HOME": str(Path.home()),
+            "LC_ALL": "C",
+        }
+        if os.environ.get("SSH_AUTH_SOCK"):
+            environment["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
+        process = subprocess.Popen(
+            arguments,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            cwd=self._policy.repository_root,
+            env=environment,
+            shell=False,
+            close_fds=True,
+        )
+        output = bytearray()
+        errors = bytearray()
+        exceeded = threading.Event()
+
+        def drain(stream: Any, limit: int, destination: bytearray) -> None:
+            while True:
+                chunk = stream.read(64 * 1024)
+                if not chunk:
+                    return
+                if len(destination) + len(chunk) > limit:
+                    exceeded.set()
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                    return
+                destination.extend(chunk)
+
+        def feed() -> None:
+            try:
+                if payload:
+                    process.stdin.write(payload)
+                process.stdin.close()
+            except (BrokenPipeError, OSError):
+                return
+
+        readers = [
+            threading.Thread(
+                target=drain,
+                args=(process.stdout, MAX_REMOTE_OUTPUT, output),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=drain,
+                args=(process.stderr, 65536, errors),
+                daemon=True,
+            ),
+        ]
+        writer = threading.Thread(target=feed, daemon=True)
+        for thread in readers:
+            thread.start()
+        writer.start()
+        try:
+            returncode = process.wait(timeout=self._policy.timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise ZeusPreparationError("zeus_timeout") from None
+        writer.join(timeout=1)
+        for reader in readers:
+            reader.join(timeout=1)
+        if exceeded.is_set() or writer.is_alive() or any(
+            reader.is_alive() for reader in readers
+        ):
+            process.kill()
+            raise ZeusPreparationError("remote_response_invalid")
         return returncode, bytes(output), bytes(errors)

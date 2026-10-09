@@ -8,12 +8,10 @@ strictly read-only and makes the mutation boundary straightforward to test.
 from __future__ import annotations
 
 import hashlib
-import base64
 import json
 import os
 import re
 import secrets
-import shlex
 import stat as stat_module
 import struct
 import subprocess
@@ -28,6 +26,11 @@ from typing import Mapping, Protocol
 from workflow_api.mot_2d_validation import modern_contract
 from workflow_api.discovery import build_registry
 from workflow_api.preview_registry import PreviewRegistry
+from workflow_api.pinned_ssh import (
+    PinnedSshPolicy,
+    PinnedSshRunner,
+    TransferOperation,
+)
 from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 
@@ -265,68 +268,27 @@ class PinnedSshZeusPreparationTransport:
         self.timeout = timeout
         if not self.ssh.is_file() or not os.access(self.ssh, os.X_OK) or self.root in self.ssh.parents:
             raise ValueError("The trusted SSH executable is unavailable.")
-
-    def _arguments(self, operation: str, paths: tuple[str, ...]) -> list[str]:
-        encoded = base64.urlsafe_b64encode(json.dumps(paths, separators=(",", ":")).encode()).decode("ascii")
-        script = base64.urlsafe_b64encode(_REMOTE_TRANSFER_SCRIPT.encode()).decode("ascii")
-        wrapper = "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
-        command = shlex.join(("python3", "-c", wrapper, script, operation, self.profile.username, self.profile.project_directory, encoded, self.expected_commit))
-        return [
-            str(self.ssh), "-F", "none", "-T", "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none", "-o", "ProxyJump=none",
-            "-o", "KnownHostsCommand=none", "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR",
-            f"{self.profile.username}@{ZEUS_HOST}", command,
-        ]
+        self.runner = PinnedSshRunner(
+            PinnedSshPolicy.transfer(self.root, self.ssh, timeout=self.timeout)
+        )
 
     def _run(self, operation: str, paths: tuple[str, ...], payload: bytes = b"") -> dict[str, object]:
         if len(payload) > MAX_TRANSFER_BYTES:
             raise ZeusPreparationError("transfer_too_large")
-        environment = {"PATH": str(self.ssh.parent), "HOME": str(Path.home()), "LC_ALL": "C"}
-        if os.environ.get("SSH_AUTH_SOCK"):
-            environment["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
-        process = subprocess.Popen(
-            self._arguments(operation, paths), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            cwd=self.root, env=environment, shell=False, close_fds=True,
-        )
-        output = bytearray(); errors = bytearray(); exceeded = threading.Event()
-        def drain(stream: object, limit: int, destination: bytearray) -> None:
-            while True:
-                chunk = stream.read(64 * 1024)  # type: ignore[attr-defined]
-                if not chunk: return
-                if len(destination) + len(chunk) > limit:
-                    exceeded.set()
-                    try: process.kill()
-                    except OSError: pass
-                    return
-                destination.extend(chunk)
-        def feed() -> None:
-            try:
-                if payload: process.stdin.write(payload)  # type: ignore[union-attr]
-                process.stdin.close()  # type: ignore[union-attr]
-            except (BrokenPipeError, OSError):
-                return
-        readers = [
-            threading.Thread(target=drain, args=(process.stdout, MAX_REMOTE_OUTPUT, output), daemon=True),
-            threading.Thread(target=drain, args=(process.stderr, 65536, errors), daemon=True),
-        ]
-        writer = threading.Thread(target=feed, daemon=True)
-        for thread in readers: thread.start()
-        writer.start()
-        try:
-            returncode = process.wait(timeout=self.timeout)
-        except subprocess.TimeoutExpired:
-            process.kill(); process.wait()
-            raise ZeusPreparationError("zeus_timeout") from None
-        writer.join(timeout=1)
-        for reader in readers: reader.join(timeout=1)
-        if exceeded.is_set() or writer.is_alive() or any(reader.is_alive() for reader in readers):
-            process.kill()
+        pinned_operation = {
+            "inspect": TransferOperation.INSPECT,
+            "inputs": TransferOperation.INPUTS,
+            "campaign": TransferOperation.CAMPAIGN,
+        }.get(operation)
+        if pinned_operation is None:
             raise ZeusPreparationError("remote_response_invalid")
-        stdout = bytes(output); stderr_bytes = bytes(errors)
+        returncode, stdout, stderr_bytes = self.runner.transfer(
+            pinned_operation,
+            self.profile,
+            paths,
+            self.expected_commit,
+            payload,
+        )
         stderr = stderr_bytes.decode("utf-8", "replace").lower()
         if returncode and not stdout.strip():
             if "host key verification failed" in stderr or "remote host identification has changed" in stderr:

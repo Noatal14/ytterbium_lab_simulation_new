@@ -15,6 +15,7 @@ from workflow_api.pinned_ssh import (
     PinnedSshPolicy,
     PinnedSshRunner,
     ReceiverOperation,
+    TransferOperation,
 )
 from workflow_api.zeus_refinement import (
     PinnedSshRefinementTransport,
@@ -46,6 +47,12 @@ from workflow_api.zeus_submission import (
     PinnedSshSmokeSubmissionTransport,
     ZeusSubmissionError,
     _REMOTE_SCRIPT,
+)
+from workflow_api.zeus_transfer import (
+    MAX_TRANSFER_BYTES,
+    PinnedSshZeusPreparationTransport,
+    ZeusPreparationError,
+    _REMOTE_TRANSFER_SCRIPT,
 )
 
 
@@ -1530,3 +1537,473 @@ def test_snapshot_runner_omits_absent_agent_socket(tmp_path, monkeypatch):
     assert observed["env"] == {
         "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
     }
+
+
+@pytest.mark.parametrize("operation", list(TransferOperation))
+def test_transfer_runner_preserves_exact_closed_streaming_contract(
+    tmp_path, monkeypatch, operation,
+):
+    observed = {}
+
+    class Sink:
+        def __init__(self):
+            self.value = bytearray()
+            self.closed = False
+
+        def write(self, value):
+            self.value.extend(value)
+
+        def close(self):
+            self.closed = True
+
+    class Process:
+        def __init__(self):
+            self.stdin = Sink()
+            self.stdout = io.BytesIO(b'{"ok":true}')
+            self.stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            observed["wait"] = timeout
+            return 0
+
+        def kill(self):
+            raise AssertionError("successful transfer must not be killed")
+
+    process = Process()
+
+    def popen(argv, **kwargs):
+        observed["argv"] = argv
+        observed["kwargs"] = kwargs
+        return process
+
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    paths = ("data/particle_states/after_zeeman/p/a.npy",)
+    payload = b"payload" if operation is not TransferOperation.INSPECT else b""
+    assert runner.transfer(
+        operation, _profile(), paths, "a" * 40, payload,
+    ) == (0, b'{"ok":true}', b"")
+    remote = shlex.split(observed["argv"][-1])
+    assert remote[:3] == [
+        "python3", "-c",
+        "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
+        "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))",
+    ]
+    assert base64.urlsafe_b64decode(remote[3]).decode() == _REMOTE_TRANSFER_SCRIPT
+    assert remote[4:7] == [
+        operation.value, "tal.noa",
+        "/home/tal.noa/ytterbium_lab_simulation_new",
+    ]
+    assert json.loads(base64.urlsafe_b64decode(remote[7])) == list(paths)
+    assert remote[8] == "a" * 40
+    assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
+    assert observed["kwargs"] == {
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "cwd": tmp_path,
+        "env": {
+            "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+            "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
+        },
+        "shell": False,
+        "close_fds": True,
+    }
+    assert observed["wait"] == 120
+    assert bytes(process.stdin.value) == payload
+    assert process.stdin.closed
+
+
+def test_transfer_runner_enforces_input_cap_before_popen(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    with pytest.raises(Exception) as caught:
+        runner.transfer(
+            TransferOperation.INPUTS, _profile(), (), "a" * 40,
+            b"x" * (MAX_TRANSFER_BYTES + 1),
+        )
+    assert getattr(caught.value, "code", None) == "transfer_too_large"
+    assert calls == []
+
+
+def test_transfer_runner_rejects_non_bytes_before_popen(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    with pytest.raises(ValueError, match="Invalid pinned SSH transfer payload"):
+        runner.transfer(
+            TransferOperation.INPUTS, _profile(), (), "a" * 40,
+            bytearray(),  # type: ignore[arg-type]
+        )
+    assert calls == []
+
+
+@pytest.mark.parametrize("stream,limit", [
+    ("stdout", 2 * 1024 * 1024),
+    ("stderr", 65536),
+])
+@pytest.mark.parametrize("overflow", [False, True])
+def test_transfer_runner_preserves_exact_output_boundaries(
+    tmp_path, monkeypatch, stream, limit, overflow,
+):
+    content = b"x" * (limit + int(overflow))
+
+    class Process:
+        stdin = io.BytesIO()
+        stdout = io.BytesIO(content if stream == "stdout" else b"")
+        stderr = io.BytesIO(content if stream == "stderr" else b"")
+
+        def __init__(self):
+            self.kills = 0
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            self.kills += 1
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    if overflow:
+        with pytest.raises(Exception) as caught:
+            runner.transfer(
+                TransferOperation.INSPECT, _profile(), (), "a" * 40, b"",
+            )
+        assert getattr(caught.value, "code", None) == "remote_response_invalid"
+        assert process.kills >= 1
+    else:
+        _, stdout, stderr = runner.transfer(
+            TransferOperation.INSPECT, _profile(), (), "a" * 40, b"",
+        )
+        assert (stdout if stream == "stdout" else stderr) == content
+        assert process.kills == 0
+
+
+def test_transfer_runner_writes_exact_max_payload_and_closes(
+    tmp_path, monkeypatch,
+):
+    class Sink:
+        def __init__(self):
+            self.length = 0
+            self.digest = __import__("hashlib").sha256()
+            self.closed = False
+
+        def write(self, value):
+            self.length += len(value)
+            self.digest.update(value)
+
+        def close(self):
+            self.closed = True
+
+    class Process:
+        stdin = Sink()
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            raise AssertionError("must not kill")
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    payload = b"x" * MAX_TRANSFER_BYTES
+    PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    )).transfer(TransferOperation.INPUTS, _profile(), (), "a" * 40, payload)
+    assert process.stdin.length == MAX_TRANSFER_BYTES
+    assert process.stdin.digest.hexdigest() == __import__("hashlib").sha256(payload).hexdigest()
+    assert process.stdin.closed
+
+
+@pytest.mark.parametrize("failure", ["timeout", "kill", "second_wait", "popen"])
+def test_transfer_runner_preserves_timeout_and_oserror_lifecycle(
+    tmp_path, monkeypatch, failure,
+):
+    events = []
+
+    class Process:
+        stdin = io.BytesIO()
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout=None):
+            events.append(("wait", timeout))
+            if timeout is not None:
+                raise subprocess.TimeoutExpired("ssh", timeout)
+            if failure == "second_wait":
+                raise OSError("wait failed")
+            return -9
+
+        def kill(self):
+            events.append(("kill", None))
+            if failure == "kill":
+                raise OSError("kill failed")
+
+    def popen(*args, **kwargs):
+        if failure == "popen":
+            raise OSError("popen failed")
+        return Process()
+
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    if failure == "timeout":
+        with pytest.raises(Exception) as caught:
+            runner.transfer(
+                TransferOperation.INSPECT, _profile(), (), "a" * 40, b"",
+            )
+        assert getattr(caught.value, "code", None) == "zeus_timeout"
+        assert events == [("wait", 120), ("kill", None), ("wait", None)]
+    else:
+        expected = {
+            "kill": "kill failed", "second_wait": "wait failed",
+            "popen": "popen failed",
+        }[failure]
+        with pytest.raises(OSError, match=expected):
+            runner.transfer(
+                TransferOperation.INSPECT, _profile(), (), "a" * 40, b"",
+            )
+
+
+@pytest.mark.parametrize("failure", [BrokenPipeError, OSError])
+def test_transfer_writer_errors_are_swallowed_with_legacy_close_order(
+    tmp_path, monkeypatch, failure,
+):
+    class Sink:
+        def __init__(self):
+            self.close_attempted = False
+
+        def write(self, _value):
+            raise failure("write failed")
+
+        def close(self):
+            self.close_attempted = True
+            raise failure("close failed")
+
+    class Process:
+        stdin = Sink()
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            raise AssertionError("must not kill")
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    )).transfer(TransferOperation.INPUTS, _profile(), (), "a" * 40, b"x")
+    assert not process.stdin.close_attempted
+
+
+@pytest.mark.parametrize("failure", [BrokenPipeError, OSError])
+def test_transfer_empty_payload_still_attempts_and_swallows_close(
+    tmp_path, monkeypatch, failure,
+):
+    class Sink:
+        def __init__(self):
+            self.close_attempted = False
+
+        def write(self, _value):
+            raise AssertionError("empty payload must not be written")
+
+        def close(self):
+            self.close_attempted = True
+            raise failure("close failed")
+
+    class Process:
+        stdin = Sink()
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            raise AssertionError("must not kill")
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    )).transfer(TransferOperation.INSPECT, _profile(), (), "a" * 40, b"")
+    assert process.stdin.close_attempted
+
+
+@pytest.mark.parametrize("blocked", ["writer", "stdout", "stderr"])
+def test_transfer_stuck_thread_is_killed_and_rejected(
+    tmp_path, monkeypatch, blocked,
+):
+    release = threading.Event()
+
+    class BlockingStream:
+        def read(self, _size):
+            release.wait(timeout=3)
+            return b""
+
+    class Sink:
+        def write(self, _value):
+            if blocked == "writer":
+                release.wait(timeout=3)
+
+        def close(self):
+            pass
+
+    class Process:
+        stdin = Sink()
+        stdout = BlockingStream() if blocked == "stdout" else io.BytesIO(b"")
+        stderr = BlockingStream() if blocked == "stderr" else io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            release.set()
+
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: Process(),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    with pytest.raises(Exception) as caught:
+        runner.transfer(
+            TransferOperation.INPUTS, _profile(), (), "a" * 40, b"x",
+        )
+    assert getattr(caught.value, "code", None) == "remote_response_invalid"
+    assert release.is_set()
+
+
+def test_transfer_overflow_drain_kill_oserror_is_swallowed(tmp_path, monkeypatch):
+    class Process:
+        stdin = io.BytesIO()
+        stdout = io.BytesIO(b"x" * (2 * 1024 * 1024 + 1))
+        stderr = io.BytesIO(b"")
+
+        def __init__(self):
+            self.kills = 0
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            self.kills += 1
+            if self.kills == 1:
+                raise OSError("first kill failed")
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(
+        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+    ))
+    with pytest.raises(ZeusPreparationError, match="remote_response_invalid"):
+        runner.transfer(
+            TransferOperation.INSPECT, _profile(), (), "a" * 40, b"",
+        )
+    assert process.kills == 2
+
+
+@pytest.mark.parametrize("stderr,expected", [
+    (b"Host key verification failed", "zeus_host_key_untrusted"),
+    (b"Remote host identification has changed", "zeus_host_key_untrusted"),
+    (b"Permission denied", "zeus_authentication_required"),
+    (b"Authentication failed", "zeus_authentication_required"),
+    (b"Connection timed out", "zeus_timeout"),
+    (b"Could not resolve hostname", "zeus_unreachable"),
+    (b"Connection refused", "zeus_unreachable"),
+    (b"No route to host", "zeus_unreachable"),
+])
+def test_transfer_transport_connection_mapping_is_unchanged(
+    tmp_path, monkeypatch, stderr, expected,
+):
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    class Process:
+        def __init__(self):
+            self.stdin = io.BytesIO()
+            self.stdout = io.BytesIO(b"")
+            self.stderr = io.BytesIO(stderr)
+
+        def wait(self, timeout):
+            return 255
+
+        def kill(self):
+            raise AssertionError("must not kill")
+
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: Process(),
+    )
+    transport = PinnedSshZeusPreparationTransport(
+        root, Path("/usr/bin/ssh"), _profile(), "a" * 40,
+    )
+    with pytest.raises(ZeusPreparationError) as caught:
+        transport.inspect(())
+    assert caught.value.code == expected
+
+
+def test_transfer_unknown_remote_error_falls_back_unchanged(tmp_path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+
+    class Process:
+        stdin = io.BytesIO()
+        stdout = io.BytesIO(b'{"error":"hostile_internal_code"}')
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 1
+
+        def kill(self):
+            raise AssertionError("must not kill")
+
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: Process(),
+    )
+    transport = PinnedSshZeusPreparationTransport(
+        root, Path("/usr/bin/ssh"), _profile(), "a" * 40,
+    )
+    with pytest.raises(ZeusPreparationError) as caught:
+        transport.inspect(())
+    assert caught.value.code == "zeus_transfer_failed"

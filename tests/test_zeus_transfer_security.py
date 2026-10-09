@@ -547,7 +547,10 @@ def test_pinned_ssh_transport_uses_fixed_argv_and_never_a_shell(tmp_path, monkey
 def test_pinned_ssh_transport_caps_stdout_and_rejects_malformed_schema(tmp_path, monkeypatch):
     root = tmp_path / "repo"; root.mkdir()
     ssh = tmp_path / "ssh"; ssh.write_text("#!/bin/sh\nexit 0\n"); ssh.chmod(0o700)
-    profile = ZeusProfile(username="tal.noa", project_directory="/home/tal.noa/project")
+    profile = ZeusProfile.parse({
+        "username": "tal.noa",
+        "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+    })
     transport = PinnedSshZeusPreparationTransport(root, ssh, profile, COMMIT)
 
     class Process:
