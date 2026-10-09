@@ -11,7 +11,7 @@ import { CampaignCard } from "./components/CampaignCard";
 import { CampaignDetail, CampaignExplorer } from "./components/CampaignExplorer";
 import { CampaignCreation } from "./components/CampaignCreation";
 import { ZeusJobs } from "./components/ZeusJobs";
-import { homeFixture } from "./fixtures/home";
+import { homeFixture } from "./content/home";
 import { useCampaignQuery } from "./hooks/useCampaignQuery";
 
 type AppProps = { client?: WorkflowApiClient; api?: CampaignApi; creation?: CreationApi; zeus?: ZeusApi; transfer?: TransferApi; submission?: SubmissionApi; lifecycle?: SmokeLifecycleApi; screeningSubmission?: ScreeningSubmissionApi; screeningLifecycle?: ScreeningLifecycleApi; refinementSubmission?: RefinementSubmissionApi; refinementLifecycle?: RefinementLifecycleApi };
