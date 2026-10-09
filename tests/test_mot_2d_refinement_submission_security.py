@@ -3,11 +3,13 @@ import base64
 import hashlib
 import sys
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
 
 from workflow_api.zeus_refinement_submission import (
+    MAX_PENDING_PREVIEWS,
     PinnedSshRefinementSubmissionTransport,
     RemoteChainState,
     ZeusRefinementSubmissionCoordinator,
@@ -15,6 +17,64 @@ from workflow_api.zeus_refinement_submission import (
 )
 from workflow_api.zeus_refinement import RefinementInspection, RemoteScreenState
 from workflow_api.zeus_snapshot import ZeusProfile
+
+
+class _CoordinatorTransport:
+    def __init__(self):
+        self.inspections = []
+        self.submissions = []
+
+    def inspect(self, **payload):
+        self.inspections.append(payload)
+        return RemoteChainState("eligible", "main")
+
+    def submit(self, **payload):
+        self.submissions.append(payload)
+        return RemoteChainState(
+            "submitted",
+            "main",
+            tuple(f"{index}[].zeus-master" for index in range(1, 5)),
+            str(payload["nonce"]),
+            100,
+        )
+
+
+def _submission_coordinator(tmp_path, transport, *, clock=lambda: 100.0, token_factory=None):
+    campaign = tmp_path / "data/optimization/mot_2d/campaign"
+    campaign.mkdir(parents=True, exist_ok=True)
+    profile = ZeusProfile.parse({
+        "username": "tal.noa",
+        "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+    })
+    manifest = {"name": "campaign", "s0_values": [1.3]}
+    files = {f"artifact-{index}": f"{index:064x}" for index in range(8)}
+    coordinator = ZeusRefinementSubmissionCoordinator(
+        tmp_path,
+        Path(sys.executable),
+        Path(sys.executable),
+        clock=clock,
+        token_factory=token_factory,
+        transport_factory=lambda _profile: transport,
+    )
+    coordinator._plan = lambda _request: (
+        "campaign-id", profile, campaign, manifest, "a" * 40, dict(files),
+        "b" * 64, "c" * 64, "d" * 64,
+    )
+    return coordinator
+
+
+def _submission_request():
+    return {
+        "campaign_id": "campaign-id",
+        "username": "tal.noa",
+        "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+    }
+
+
+def _error_code(call):
+    with pytest.raises(ZeusRefinementSubmissionError) as caught:
+        call()
+    return caught.value.code
 
 
 def _transport(tmp_path: Path) -> PinnedSshRefinementSubmissionTransport:
@@ -78,6 +138,240 @@ def test_remote_receiver_revalidates_before_every_qsub_and_binds_receipts():
     assert "record[\"nonce\"]!=receipt_nonce" in source
     assert "job in ids" in source
     assert "verify()\n        response(\"submitted\"" in source
+
+
+def test_refinement_submission_registry_capacity_boundary_session_and_expiry(tmp_path):
+    now = [100.0]
+    tokens = iter(f"token-{index}" for index in range(MAX_PENDING_PREVIEWS + 2))
+    transport = _CoordinatorTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: next(tokens),
+    )
+    for _ in range(MAX_PENDING_PREVIEWS):
+        coordinator.preview(_submission_request(), session_id="owner")
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert _error_code(lambda: coordinator.preview(
+        _submission_request(), session_id="owner")) == "too_many_pending_previews"
+    assert transport.submissions == []
+
+    now[0] = 400.0
+    assert _error_code(lambda: coordinator.preview(
+        _submission_request(), session_id="owner")) == "too_many_pending_previews"
+    now[0] = 401.0
+    preview = coordinator.preview(_submission_request(), session_id="owner")
+    token = preview["preview_token"]
+    assert token == f"token-{MAX_PENDING_PREVIEWS}"
+    assert len(coordinator._previews) == 1
+    assert _error_code(lambda: coordinator.confirm(
+        {"preview_token": "missing"}, session_id="owner")) == "confirmation_invalid"
+    assert _error_code(lambda: coordinator.confirm(
+        {"preview_token": token}, session_id="other")) == "confirmation_invalid"
+    now[0] = 702.0
+    assert _error_code(lambda: coordinator.confirm(
+        {"preview_token": token}, session_id="owner")) == "confirmation_expired"
+    # Legacy semantics retain an expired token until the next preview prunes it.
+    assert coordinator._previews.get(token) is not None
+    assert transport.submissions == []
+    next_preview = coordinator.preview(_submission_request(), session_id="owner")
+    assert next_preview["preview_token"] == f"token-{MAX_PENDING_PREVIEWS + 1}"
+    assert coordinator._previews.get(token) is None
+
+
+def test_refinement_submission_exact_expiry_boundary_and_success_replay(tmp_path):
+    now = [100.0]
+    transport = _CoordinatorTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: "boundary-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    now[0] = 400.0
+    first = coordinator.confirm({"preview_token": token}, session_id="owner")
+    second = coordinator.confirm({"preview_token": token}, session_id="owner")
+    assert first == second
+    assert [row["depends_on_job_id"] for row in first["chain"]["rounds"]] == [
+        None, "1[].zeus-master", "2[].zeus-master", "3[].zeus-master",
+    ]
+    assert len(transport.submissions) == 1
+
+
+def test_refinement_submission_barrier_performs_one_chain_submit(tmp_path):
+    transport = _CoordinatorTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "barrier-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    barrier = threading.Barrier(9)
+    results = []
+
+    def confirm():
+        barrier.wait()
+        results.append(coordinator.confirm({"preview_token": token}, session_id="owner"))
+
+    threads = [threading.Thread(target=confirm) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    barrier.wait()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert all(not thread.is_alive() for thread in threads)
+    assert len(results) == 8 and all(result == results[0] for result in results)
+    assert len(transport.submissions) == 1
+
+
+@pytest.mark.parametrize("code", [
+    "refinement_submission_outcome_unknown",
+    "refinement_already_started",
+    "remote_response_invalid",
+])
+def test_refinement_submission_terminal_error_is_never_retried(tmp_path, code):
+    class TerminalTransport(_CoordinatorTransport):
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            raise ZeusRefinementSubmissionError(code)
+
+    transport = TerminalTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "terminal-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _error_code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert _error_code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert len(transport.submissions) == 1
+    record = coordinator._previews.get(token)
+    assert record is not None and record.value.terminal_error == code
+    assert record.value.nonce == transport.submissions[0]["nonce"]
+
+
+@pytest.mark.parametrize("code", [
+    "refinement_submission_busy",
+    "refinement_not_prepared",
+    "remote_checkout_mismatch",
+    "remote_preparation_invalid",
+])
+def test_refinement_submission_pre_effect_error_remains_retryable(tmp_path, code):
+    class RecoveringTransport(_CoordinatorTransport):
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            if len(self.submissions) == 1:
+                raise ZeusRefinementSubmissionError(code)
+            return RemoteChainState(
+                "submitted", "main",
+                tuple(f"{index}[].zeus-master" for index in range(1, 5)),
+                str(payload["nonce"]), 100,
+            )
+
+    transport = RecoveringTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "retryable-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _error_code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert coordinator._previews.get(token).value.terminal_error is None
+    assert coordinator.confirm(request, session_id="owner")["status"] == "submitted"
+    assert len(transport.submissions) == 2
+    assert transport.submissions[0]["nonce"] == transport.submissions[1]["nonce"]
+
+
+@pytest.mark.parametrize("state", [
+    RemoteChainState("partial", "main", ("1[].zeus-master", "3[].zeus-master")),
+    RemoteChainState("ambiguous", "main", tuple(
+        f"{index}[].zeus-master" for index in range(1, 5)
+    )),
+    RemoteChainState("submitted", "main", (
+        "1[].zeus-master", "2[].zeus-master", "2[].zeus-master", "4[].zeus-master",
+    ), "a" * 32, 100),
+    RemoteChainState("submitted", "main", tuple(
+        f"{index}[].zeus-master" for index in range(1, 5)
+    ), "f" * 32, 100),
+])
+def test_refinement_submission_wrong_or_noncontiguous_chain_is_terminal(tmp_path, state):
+    class StateTransport(_CoordinatorTransport):
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            return state
+
+    transport = StateTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "bad-chain-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _error_code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "refinement_submission_outcome_unknown"
+    assert _error_code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "refinement_submission_outcome_unknown"
+    assert len(transport.submissions) == 1
+
+
+@pytest.mark.parametrize("status,confirmed", [
+    *[("partial", count) for count in range(1, 4)],
+    *[("ambiguous", count) for count in range(5)],
+])
+def test_refinement_submission_every_incomplete_chain_shape_is_terminal(
+    tmp_path, status, confirmed,
+):
+    ids = tuple(f"{index}[].zeus-master" for index in range(1, confirmed + 1))
+
+    class StateTransport(_CoordinatorTransport):
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            return RemoteChainState(status, "main", ids, None, None)
+
+    transport = StateTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "incomplete-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _error_code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "refinement_submission_outcome_unknown"
+    assert _error_code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "refinement_submission_outcome_unknown"
+    assert len(transport.submissions) == 1
+
+
+@pytest.mark.parametrize("timestamp", [True, -1, 253402300800])
+def test_refinement_submission_bad_completion_timestamp_is_terminal(tmp_path, timestamp):
+    class StateTransport(_CoordinatorTransport):
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            return RemoteChainState(
+                "submitted", "main",
+                tuple(f"{index}[].zeus-master" for index in range(1, 5)),
+                str(payload["nonce"]), timestamp,
+            )
+
+    transport = StateTransport()
+    coordinator = _submission_coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "timestamp-token",
+    )
+    token = coordinator.preview(_submission_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _error_code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "refinement_submission_outcome_unknown"
+    assert _error_code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "refinement_submission_outcome_unknown"
+    assert len(transport.submissions) == 1
 
 
 def test_receiver_submits_four_verified_byte_streams_with_exact_dependencies(tmp_path, monkeypatch, capsys):

@@ -6,6 +6,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 from typing import Mapping,Protocol
 from types import MappingProxyType
+from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.zeus_refinement import ZeusRefinementCoordinator,ZeusRefinementError
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
 
@@ -28,12 +29,12 @@ class ChainTransport(Protocol):
     def submit(self,**payload:object)->RemoteChainState:...
 @dataclass(frozen=True)
 class _Pending:
-    session_id:str;campaign_id:str;profile:ZeusProfile;commit:str;relative:str;files:Mapping[str,str];chain_key:str;nonce:str;expires:float;result:Mapping[str,object]|None=None
+    session_id:str;campaign_id:str;profile:ZeusProfile;commit:str;relative:str;files:Mapping[str,str];chain_key:str;nonce:str;expires:float;result:Mapping[str,object]|None=None;terminal_error:str|None=None
 
 class ZeusRefinementSubmissionCoordinator:
-    def __init__(self,repository_root:Path,ssh_executable:Path,git_executable:Path,*,clock=time.time,transport_factory=None):
+    def __init__(self,repository_root:Path,ssh_executable:Path,git_executable:Path,*,clock=time.time,token_factory=None,transport_factory=None):
         self.root=repository_root.resolve(strict=True);self.ssh=ssh_executable.resolve(strict=True);self.git=git_executable.resolve(strict=True);self.clock=clock
-        self.transport_factory=transport_factory or (lambda p:PinnedSshRefinementSubmissionTransport(self.root,self.ssh,p));self._pending={};self._lock=threading.RLock();self._confirm=threading.Lock()
+        self.transport_factory=transport_factory or (lambda p:PinnedSshRefinementSubmissionTransport(self.root,self.ssh,p));self._previews=PreviewRegistry[_Pending](clock=clock,token_factory=token_factory);self._confirm=threading.Lock()
     @staticmethod
     def _profile(request):
         try:return ZeusProfile.parse({"username":request.get("username"),"project_directory":request.get("project_directory")})
@@ -60,11 +61,9 @@ class ZeusRefinementSubmissionCoordinator:
         if state.status=="partial":raise ZeusRefinementSubmissionError("refinement_chain_partially_submitted")
         if state.status=="ambiguous":raise ZeusRefinementSubmissionError("refinement_submission_outcome_unknown")
         if state.status!="eligible" or not state.branch:raise ZeusRefinementSubmissionError("remote_response_invalid")
-        token=secrets.token_urlsafe(32);pending=_Pending(session_id,campaign_id,profile,commit,relative,files,key,secrets.token_hex(16),self.clock()+TOKEN_LIFETIME_SECONDS)
-        with self._lock:
-            self._pending={k:v for k,v in self._pending.items() if v.expires>=self.clock()}
-            if len(self._pending)>=MAX_PENDING_PREVIEWS:raise ZeusRefinementSubmissionError("too_many_pending_previews")
-            self._pending[token]=pending
+        expires=self.clock()+TOKEN_LIFETIME_SECONDS;pending=_Pending(session_id,campaign_id,profile,commit,relative,files,key,secrets.token_hex(16),expires)
+        try:token=self._previews.add(pending,expires_at=expires,capacity=MAX_PENDING_PREVIEWS)
+        except OverflowError as error:raise ZeusRefinementSubmissionError("too_many_pending_previews") from error
         tasks=len(manifest["s0_values"])*3;rounds=[]
         for index,(target,file) in enumerate(zip(TARGETS,FILES),1):rounds.append({"round":index,"file":file,"cumulative_target":target,"kind":"array","task_count":tasks,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":72000,"depends_on":None if index==1 else index-1})
         return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"stage":{"id":"refine","label":"Refinement"},"chain":{"dependency":"afterok","rounds":rounds},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"effects":{"submit_refinement_chain":True,"start_simulation":True,"submit_later_stages":False,"modify_files":False},"local_sync":{"status":"not_synchronized"}}
@@ -83,16 +82,24 @@ class ZeusRefinementSubmissionCoordinator:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusRefinementSubmissionError("request_invalid")
         token=request["preview_token"]
         with self._confirm:
-            with self._lock:pending=self._pending.get(token)
+            record=self._previews.get(token);pending=record.value if record is not None else None
             if pending is None or not secrets.compare_digest(pending.session_id,session_id):raise ZeusRefinementSubmissionError("confirmation_invalid")
             if pending.result is not None:return dict(pending.result)
+            if pending.terminal_error is not None:raise ZeusRefinementSubmissionError(pending.terminal_error)
             if self.clock()>pending.expires:raise ZeusRefinementSubmissionError("confirmation_expired")
             plan=self._plan({"campaign_id":pending.campaign_id,"username":pending.profile.username,"project_directory":pending.profile.project_directory});_,profile,campaign,_,commit,files,key,screen_digest,screening_key=plan
             if commit!=pending.commit or files!=pending.files or key!=pending.chain_key or campaign.relative_to(self.root).as_posix()!=pending.relative:raise ZeusRefinementSubmissionError("local_files_changed")
-            state=self.transport_factory(profile).submit(campaign=pending.relative,commit=commit,refine_files=files,chain_key=key,screen_digest=screen_digest,screening_submission_key=screening_key,nonce=pending.nonce)
-            if state.status!="submitted" or len(state.job_ids)!=4 or state.nonce!=pending.nonce or state.completed_unix_s is None:raise ZeusRefinementSubmissionError("refinement_submission_outcome_unknown")
-            result={"status":"submitted","campaign_id":pending.campaign_id,"stage":"refine","chain":{"status":"submitted","rounds":[{"round":i,"job_id":job,"depends_on_job_id":None if i==1 else state.job_ids[i-2]} for i,job in enumerate(state.job_ids,1)]},"submitted_at":datetime.fromtimestamp(state.completed_unix_s,tz=timezone.utc).isoformat(),"local_sync":{"status":"not_synchronized"}}
-            with self._lock:self._pending[token]=replace(pending,result=result)
+            try:state=self.transport_factory(profile).submit(campaign=pending.relative,commit=commit,refine_files=files,chain_key=key,screen_digest=screen_digest,screening_submission_key=screening_key,nonce=pending.nonce)
+            except ZeusRefinementSubmissionError as error:
+                if error.code in {"refinement_submission_outcome_unknown","refinement_already_started","remote_response_invalid"}:self._previews.replace(token,replace(pending,terminal_error=error.code))
+                raise
+            if state.status!="submitted" or len(state.job_ids)!=4 or len(set(state.job_ids))!=4 or state.nonce!=pending.nonce or not isinstance(state.completed_unix_s,int) or isinstance(state.completed_unix_s,bool) or not 0<=state.completed_unix_s<=253402300799:
+                self._previews.replace(token,replace(pending,terminal_error="refinement_submission_outcome_unknown"));raise ZeusRefinementSubmissionError("refinement_submission_outcome_unknown")
+            try:submitted_at=datetime.fromtimestamp(state.completed_unix_s,tz=timezone.utc).isoformat()
+            except (OSError,OverflowError,ValueError):
+                self._previews.replace(token,replace(pending,terminal_error="refinement_submission_outcome_unknown"));raise ZeusRefinementSubmissionError("refinement_submission_outcome_unknown") from None
+            result={"status":"submitted","campaign_id":pending.campaign_id,"stage":"refine","chain":{"status":"submitted","rounds":[{"round":i,"job_id":job,"depends_on_job_id":None if i==1 else state.job_ids[i-2]} for i,job in enumerate(state.job_ids,1)]},"submitted_at":submitted_at,"local_sync":{"status":"not_synchronized"}}
+            self._previews.replace(token,replace(pending,result=result))
             return result
 
 class PinnedSshRefinementSubmissionTransport:
