@@ -23,6 +23,7 @@ from typing import Any, Mapping, Protocol
 
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files, render_screen_transition
+from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner, ZeusPreparationError, _load_manifest
 
@@ -65,10 +66,14 @@ class ZeusScreeningCoordinator:
     """Session-bound orchestration for inspection and one explicit transition."""
 
     def __init__(self, repository_root: Path, ssh_executable: Path, git_executable: Path,
-                 *, clock=time.time, transport_factory=None):
+                 *, clock=time.time, token_factory=None, transport_factory=None):
         self.root=repository_root.resolve(strict=True); self.ssh=ssh_executable.resolve(strict=True); self.git=git_executable.resolve(strict=True)
         self.clock=clock; self.transport_factory=transport_factory or (lambda profile: PinnedSshScreeningTransport(self.root,self.ssh,profile))
-        self._pending: dict[str,_Pending]={}; self._lock=threading.RLock(); self._confirm_lock=threading.Lock()
+        self._previews = PreviewRegistry[_Pending](
+            clock=clock,
+            token_factory=token_factory,
+        )
+        self._confirm_lock=threading.Lock()
 
     def _revision(self) -> tuple[str,bool]:
         env={"PATH":str(self.git.parent),"HOME":str(Path.home()),"LC_ALL":"C","GIT_CONFIG_NOSYSTEM":"1","GIT_OPTIONAL_LOCKS":"0","GIT_TERMINAL_PROMPT":"0"}
@@ -143,29 +148,35 @@ class ZeusScreeningCoordinator:
         if state.lifecycle!="ready_to_prepare_screen": raise ZeusScreeningError(mapping.get(state.lifecycle,"smoke_status_unknown"))
         smoke_digest=hashlib.sha256(json.dumps([dict(row) for row in state.points],sort_keys=True).encode()).hexdigest()
         _,_,_,prepared,_,_=self._unpack_plan(self._plan(campaign_id))
-        token=secrets.token_urlsafe(32); pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),state.job_id,smoke_digest,prepared,submission_key,files,secrets.token_hex(16),self.clock()+TOKEN_LIFETIME_SECONDS)
-        with self._lock:
-            self._pending={key:value for key,value in self._pending.items() if value.expires_at>=self.clock()}
-            if len(self._pending)>=MAX_PENDING_PREVIEWS: raise ZeusScreeningError("too_many_pending_previews")
-            self._pending[token]=pending
+        expires_at = self.clock() + TOKEN_LIFETIME_SECONDS
+        pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),state.job_id,smoke_digest,prepared,submission_key,files,secrets.token_hex(16),expires_at)
+        try:
+            token = self._previews.add(
+                pending,
+                expires_at=expires_at,
+                capacity=MAX_PENDING_PREVIEWS,
+            )
+        except OverflowError as error:
+            raise ZeusScreeningError("too_many_pending_previews") from error
         return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit},"from_stage":"smoke","to_stage":"screen","smoke":{"job_id":state.job_id,"points":[dict(row) for row in state.points],"artifact_count":state.artifact_count},"artifacts":{"create":["screen/tasks.json","jobs/02_screen.pbs"],"update":["campaign.json"]},"effects":{"prepare_screening":True,"submit_screening":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
 
     def confirm(self,request:Mapping[str,object],*,session_id:str)->dict[str,object]:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str): raise ZeusScreeningError("request_invalid")
         token=str(request["preview_token"])
         with self._confirm_lock:
-            with self._lock: pending=self._pending.get(token)
+            record = self._previews.get(token)
+            pending = record.value if record is not None else None
             if pending is None or not secrets.compare_digest(pending.session_id,session_id): raise ZeusScreeningError("confirmation_invalid")
             if pending.result is not None: return dict(pending.result)
             if self.clock()>pending.expires_at:
-                with self._lock:self._pending.pop(token,None)
+                self._previews.pop(token)
                 raise ZeusScreeningError("confirmation_expired")
             campaign,_,commit,prepared,submission_key,files=self._unpack_plan(self._plan(pending.campaign_id)); local,clean=self._revision()
             if not clean or local!=commit or commit!=pending.commit or files!=pending.transition_files or prepared!=pending.prepared_files or submission_key!=pending.submission_key or campaign.relative_to(self.root).as_posix()!=pending.campaign_relative: raise ZeusScreeningError("local_files_changed")
             state=self.transport_factory(pending.profile).prepare(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,submission_key=submission_key,transition_files=files,smoke_digest=pending.smoke_digest,nonce=pending.nonce)
             if state.lifecycle!="screen_prepared": raise ZeusScreeningError("transition_outcome_unknown")
             result={"status":"screening_prepared","campaign_id":pending.campaign_id,"stage":"screen","artifacts":{"created":2,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}}
-            with self._lock:self._pending[token]=replace(pending,result=result)
+            self._previews.replace(token,replace(pending,result=result))
             return result
 
 

@@ -65,6 +65,10 @@ class PreviewRegistry(Generic[T]):
             record = self._records[token]
             self._records[token] = PreviewRecord(value, record.expires_at)
 
+    def pop(self, token: str) -> PreviewRecord[T] | None:
+        with self._lock:
+            return self._records.pop(token, None)
+
     def __len__(self) -> int:
         with self._lock:
             return len(self._records)
