@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "common_headers": {"cache-control":"no-store","content-type":"application/json; charset=utf-8","x-content-type-options":"nosniff"},
+  "cases": [
+    {"id":"not-found","method":"GET","path":"/missing","status":404,"body":{"error":{"code":"not_found","message":"Not found."}}},
+    {"id":"method-not-allowed","method":"PUT","path":"/api/v1/campaigns","status":405,"headers":{"allow":"GET, POST"},"body":{"error":{"code":"method_not_allowed","message":"This method is not available."}}},
+    {"id":"unsupported-query","method":"GET","path":"/api/health?x=1","status":400,"body":{"error":{"code":"unsupported_query","message":"Query parameters are not supported."}}},
+    {"id":"session-unavailable","method":"GET","path":"/api/v1/session","status":503,"body":{"error":{"code":"session_unavailable","message":"Local actions are unavailable."}}},
+    {"id":"zeus-unavailable","method":"POST","path":"/api/v1/zeus/snapshot","status":503,"body":{"error":{"code":"zeus_unavailable","message":"Read-only Zeus inspection is unavailable."}}},
+    {"id":"creation-unavailable","method":"POST","path":"/api/v1/campaigns/2d/preview","status":503,"body":{"error":{"code":"creation_unavailable","message":"Local campaign creation is unavailable."}}}
+  ]
+}

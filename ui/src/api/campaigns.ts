@@ -11,15 +11,47 @@ export type Campaign = {
 };
 type CampaignListEnvelope = { data: { campaigns: Campaign[]; invalid_count: number; total: number } };
 type CampaignEnvelope = { data: Campaign };
+const API_VERSION = 1;
+type ApiErrorPayload = { code: string; message: string };
+
+const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
+const hasExactKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+
+export function parseApiSuccessEnvelope(value: unknown): unknown {
+  if (!isRecord(value) || !hasExactKeys(value, ["api_version", "data"]) || !Number.isInteger(value.api_version) || value.api_version !== API_VERSION) {
+    throw new Error("Invalid API success envelope.");
+  }
+  return value.data;
+}
+
+export function parseApiErrorEnvelope(value: unknown): ApiErrorPayload {
+  if (!isRecord(value) || !hasExactKeys(value, ["error"]) || !isRecord(value.error) || !hasExactKeys(value.error, ["code", "message"]) || typeof value.error.code !== "string" || typeof value.error.message !== "string") {
+    throw new Error("Invalid API error envelope.");
+  }
+  return value.error as unknown as ApiErrorPayload;
+}
+
+async function readJson(response: Response): Promise<unknown> {
+  try { return await response.json() as unknown; }
+  catch { throw new Error("The API returned malformed JSON."); }
+}
+
+async function readResponseData(response: Response, makeError?: (error: ApiErrorPayload) => Error): Promise<unknown> {
+  const payload = await readJson(response);
+  if (response.ok) return parseApiSuccessEnvelope(payload);
+  const error = parseApiErrorEnvelope(payload);
+  throw makeError ? makeError(error) : new Error(error.message);
+}
+
 async function request<T>(path: string): Promise<T> {
   const response = await fetch(path, { headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`The local campaign service returned ${response.status}.`);
-  return response.json() as Promise<T>;
+  const data = await readResponseData(response, () => new Error(`The local campaign service returned ${response.status}.`));
+  return { data } as T;
 }
 
 const text = (value: unknown): value is string => typeof value === "string";
 const finiteNonnegative = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && value >= 0;
-const exactKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+const exactKeys = hasExactKeys;
 function parseCampaign(value: unknown): Campaign {
   if (!value || typeof value !== "object") throw new Error("Invalid campaign response.");
   const row = value as Record<string, unknown>;
@@ -137,9 +169,8 @@ export const zeusApi = {
   async snapshot(username: string, project_directory: string): Promise<ZeusSnapshot> {
     const csrf = await creationApi.session();
     const response = await fetch("/api/v1/zeus/snapshot", { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify({ username, project_directory }) });
-    const payload = await response.json() as { data?: unknown; error?: { code?: unknown; message?: unknown } };
-    if (!response.ok || !payload.data) throw new ZeusApiError(text(payload.error?.code) ? payload.error.code : "check_failed", text(payload.error?.message) ? payload.error.message : "The read-only Zeus check failed safely.");
-    const snapshot = parseZeusSnapshot(payload.data);
+    const data = await readResponseData(response, (error) => new ZeusApiError(error.code, error.message));
+    const snapshot = parseZeusSnapshot(data);
     if (snapshot.profile.username !== username || snapshot.profile.project_directory !== project_directory || snapshot.remote.project_directory !== project_directory) throw new Error("Zeus snapshot did not match the requested profile.");
     return snapshot;
   },
@@ -249,9 +280,9 @@ let submissionContext: { token: string; campaignId: string; jobKind: "job" | "ar
 const getSubmissionSession = () => submissionSession ??= creationApi.session();
 async function submissionMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
   const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
-  const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } };
-  if (!response.ok || !payload.data) throw new SubmissionApiError(text(payload.error?.code) ? payload.error.code : "submission_failed", text(payload.error?.message) ? payload.error.message : "Smoke submission stopped safely.");
-  return payload.data;
+  const data = await readResponseData(response, (error) => new SubmissionApiError(error.code, error.message));
+  if (!isRecord(data)) throw new Error("Invalid smoke submission response.");
+  return data;
 }
 export const submissionApi = {
   async preview(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<SmokeSubmissionPreview> {
@@ -350,9 +381,9 @@ function parseScreeningResult(value: Record<string, unknown>): ScreeningResult {
 }
 async function lifecycleMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
   const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
-  const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } };
-  if (!response.ok || !payload.data) throw new SmokeLifecycleApiError(text(payload.error?.code) ? payload.error.code : "smoke_check_failed", text(payload.error?.message) ? payload.error.message : "The smoke status check stopped safely.");
-  return payload.data;
+  const data = await readResponseData(response, (error) => new SmokeLifecycleApiError(error.code, error.message));
+  if (!isRecord(data)) throw new Error("Invalid smoke lifecycle response.");
+  return data;
 }
 let screeningSession: Promise<string> | null = null;
 let screeningContext: { token: string; campaignId: string } | null = null;
@@ -408,7 +439,7 @@ function parseScreeningSubmissionPreview(value: Record<string, unknown>): Screen
   return value as unknown as ScreeningSubmissionPreview;
 }
 function parseScreeningSubmissionResult(value: Record<string, unknown>): ScreeningSubmissionResult {
-  if (!exactKeys(value, ["status", "campaign_id", "stage", "job_id", "submitted_at", "later_stages_locked"]) || value.status !== "submitted" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "screen" || !text(value.job_id) || !/^\d+\[\]\.zeus-master$/.test(value.job_id) || !text(value.submitted_at) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$/.test(value.submitted_at) || Number.isNaN(Date.parse(value.submitted_at)) || value.later_stages_locked !== true) throw new Error("Invalid Screening submission result.");
+  if (!exactKeys(value, ["status", "campaign_id", "stage", "job_id", "submitted_at", "later_stages_locked"]) || value.status !== "submitted" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "screen" || !text(value.job_id) || !/^\d+\[\]\.zeus-master$/.test(value.job_id) || !validUtc(value.submitted_at) || value.later_stages_locked !== true) throw new Error("Invalid Screening submission result.");
   return value as unknown as ScreeningSubmissionResult;
 }
 let screeningSubmissionSession: Promise<string> | null = null;
@@ -416,9 +447,9 @@ let screeningSubmissionContext: { token: string; campaignId: string } | null = n
 const getScreeningSubmissionSession = () => screeningSubmissionSession ??= creationApi.session();
 async function screeningSubmissionMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
   const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
-  const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } };
-  if (!response.ok || !payload.data) throw new ScreeningSubmissionApiError(text(payload.error?.code) ? payload.error.code : "screening_submission_failed", text(payload.error?.message) ? payload.error.message : "Screening submission stopped safely.");
-  return payload.data;
+  const data = await readResponseData(response, (error) => new ScreeningSubmissionApiError(error.code, error.message));
+  if (!isRecord(data)) throw new Error("Invalid Screening submission response.");
+  return data;
 }
 export const screeningSubmissionApi = {
   async preview(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<ScreeningSubmissionPreview> {
@@ -480,7 +511,7 @@ function parseRefinementPreview(value: Record<string, unknown>): RefinementPrevi
   return value as unknown as RefinementPreview;
 }
 function parseRefinementResult(value: Record<string, unknown>): RefinementResult { const artifacts = value.artifacts as Record<string, unknown>; const sync = value.local_sync as Record<string, unknown>; if (!exactKeys(value, ["status", "campaign_id", "stage", "artifacts", "submitted_to_zeus", "simulation_started", "local_sync"]) || value.status !== "refinement_prepared" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "refine" || !artifacts || !exactKeys(artifacts, ["created", "updated"]) || artifacts.created !== 7 || artifacts.updated !== 1 || value.submitted_to_zeus !== false || value.simulation_started !== false || !sync || !exactKeys(sync, ["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid Refinement preparation result."); return value as unknown as RefinementResult; }
-async function screeningLifecycleMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> { const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) }); const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } }; if (!response.ok || !payload.data) throw new ScreeningLifecycleApiError(text(payload.error?.code) ? payload.error.code : "screening_status_failed", text(payload.error?.message) ? payload.error.message : "The Screening status check stopped safely."); return payload.data; }
+async function screeningLifecycleMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> { const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) }); const data = await readResponseData(response, (error) => new ScreeningLifecycleApiError(error.code, error.message)); if (!isRecord(data)) throw new Error("Invalid Screening lifecycle response."); return data; }
 let refinementSession: Promise<string> | null = null; let refinementContext: { token: string; campaignId: string } | null = null;
 export const screeningLifecycleApi = {
   async status(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<ScreeningLifecycle> { const csrf = await creationApi.session(); const result = parseScreeningLifecycle(await screeningLifecycleMutation("/api/v1/zeus/screen/status", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf)); if (result.campaign.id !== campaign_id) throw new Error("Screening status did not match the selected campaign."); return result; },
@@ -501,7 +532,7 @@ function parseChainRounds(value: unknown): RefinementChainRound[] { if (!Array.i
 function parseRefinementChainStatus(value: Record<string, unknown>): RefinementChainStatus { const campaign = value.campaign as Record<string, unknown>; const chain = value.chain as Record<string, unknown>; const sync = value.local_sync as Record<string, unknown>; if (!exactKeys(value, ["source", "queried_at", "campaign", "chain", "next_action", "local_sync"]) || value.source !== "zeus" || !validUtc(value.queried_at) || !campaign || !exactKeys(campaign, ["id", "name", "stage"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || campaign.stage !== "refine" || !chain || !exactKeys(chain, ["status", "dependency", "rounds"]) || !["not_submitted", "submitting", "submitted", "partial", "outcome_unknown"].includes(String(chain.status)) || chain.dependency !== "afterok" || !["review_submission", "wait", "none", "inspect_zeus"].includes(String(value.next_action)) || !sync || !exactKeys(sync, ["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid Refinement chain status."); const rounds = parseChainRounds(chain.rounds); const uncertain = rounds.some((row) => ["pending", "unknown"].includes(row.state)); const allSubmitted = rounds.every((row) => row.state === "submitted"); const expectedAction = { not_submitted: "review_submission", submitting: "wait", submitted: "none", partial: "inspect_zeus", outcome_unknown: "inspect_zeus" }[String(chain.status)]; if (value.next_action !== expectedAction || (chain.status === "not_submitted" && rounds.some((row) => row.state !== "not_submitted")) || (chain.status === "submitting" && !uncertain) || (chain.status === "submitted" && !allSubmitted) || (chain.status === "partial" && (uncertain || !rounds.some((row) => row.state === "submitted") || allSubmitted)) || (chain.status === "outcome_unknown" && !uncertain && !allSubmitted)) throw new Error("Inconsistent Refinement chain status."); return { ...(value as unknown as RefinementChainStatus), chain: { ...(chain as unknown as RefinementChainStatus["chain"]), rounds } }; }
 function parseRefinementSubmissionPreview(value: Record<string, unknown>): RefinementSubmissionPreview { const campaign = value.campaign as Record<string, unknown>; const stage = value.stage as Record<string, unknown>; const chain = value.chain as Record<string, unknown>; const remote = value.remote as Record<string, unknown>; const effects = value.effects as Record<string, unknown>; const sync = value.local_sync as Record<string, unknown>; if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "stage", "chain", "remote", "effects", "local_sync"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !campaign || !exactKeys(campaign, ["id", "name", "git_commit", "s0_values"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit)) || !Array.isArray(campaign.s0_values) || campaign.s0_values.length === 0 || !campaign.s0_values.every((item) => typeof item === "number" && Number.isFinite(item) && item > 0) || new Set(campaign.s0_values).size !== campaign.s0_values.length || !stage || !exactKeys(stage, ["id", "label"]) || stage.id !== "refine" || stage.label !== "Refinement" || !chain || !exactKeys(chain, ["dependency", "rounds"]) || chain.dependency !== "afterok" || !Array.isArray(chain.rounds) || chain.rounds.length !== 4 || !remote || !exactKeys(remote, ["host", "project_directory", "commit", "branch", "dirty"]) || remote.host !== "zeus.technion.ac.il" || !boundedPrintable(remote.project_directory, 512) || remote.commit !== campaign.git_commit || !boundedPrintable(remote.branch, 256) || remote.dirty !== false || !effects || !exactKeys(effects, ["submit_refinement_chain", "start_simulation", "submit_later_stages", "modify_files"]) || effects.submit_refinement_chain !== true || effects.start_simulation !== true || effects.submit_later_stages !== false || effects.modify_files !== false || !sync || !exactKeys(sync, ["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid Refinement submission preview."); const s0Values = campaign.s0_values as number[]; const targets = [3, 6, 9, 10]; (chain.rounds as Record<string, unknown>[]).forEach((row, index) => { if (!exactKeys(row, ["round", "file", "cumulative_target", "kind", "task_count", "array_throttle", "queue", "cores_per_task", "memory_per_task_bytes", "walltime_seconds", "depends_on"]) || row.round !== index + 1 || row.file !== `jobs/03_refine_round_0${index + 1}.pbs` || row.cumulative_target !== targets[index] || row.kind !== "array" || row.task_count !== s0Values.length * 3 || row.array_throttle !== 3 || row.queue !== "zeus_combined_q" || row.cores_per_task !== 200 || row.memory_per_task_bytes !== 68719476736 || row.walltime_seconds !== 72000 || row.depends_on !== (index === 0 ? null : index)) throw new Error("Invalid Refinement submission round."); }); return value as unknown as RefinementSubmissionPreview; }
 function parseRefinementSubmissionResult(value: Record<string, unknown>): RefinementSubmissionResult { const chain = value.chain as Record<string, unknown>; const sync = value.local_sync as Record<string, unknown>; if (!exactKeys(value, ["status", "campaign_id", "stage", "chain", "submitted_at", "local_sync"]) || value.status !== "submitted" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "refine" || !chain || !exactKeys(chain, ["status", "rounds"]) || chain.status !== "submitted" || !validUtc(value.submitted_at) || !sync || !exactKeys(sync, ["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid Refinement submission result."); const rounds = parseChainRounds((chain.rounds as Record<string, unknown>[]).map((row) => ({ ...row, state: "submitted" }))); return { ...(value as unknown as RefinementSubmissionResult), chain: { status: "submitted", rounds: rounds.map(({ round, job_id, depends_on_job_id }) => ({ round, job_id: job_id as string, depends_on_job_id })) } }; }
-async function refinementSubmissionMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> { const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) }); const payload = await response.json() as { data?: Record<string, unknown>; error?: { code?: unknown; message?: unknown } }; if (!response.ok || !payload.data) throw new RefinementSubmissionApiError(text(payload.error?.code) ? payload.error.code : "refinement_submission_failed", text(payload.error?.message) ? payload.error.message : "Refinement submission stopped safely."); return payload.data; }
+async function refinementSubmissionMutation(path: string, body: object, csrf: string): Promise<Record<string, unknown>> { const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) }); const data = await readResponseData(response, (error) => new RefinementSubmissionApiError(error.code, error.message)); if (!isRecord(data)) throw new Error("Invalid Refinement submission response."); return data; }
 let refinementSubmissionSession: Promise<string> | null = null; let refinementSubmissionContext: { token: string; campaignId: string } | null = null;
 export const refinementSubmissionApi = {
   async status(campaign_id: string, profile: ZeusSnapshot["profile"]): Promise<RefinementChainStatus> { const csrf = await creationApi.session(); const result = parseRefinementChainStatus(await refinementSubmissionMutation("/api/v1/zeus/submissions/refinement/status", { campaign_id, username: profile.username, project_directory: profile.project_directory }, csrf)); if (result.campaign.id !== campaign_id) throw new Error("Refinement chain status did not match the selected campaign."); return result; },
@@ -532,7 +563,7 @@ function parseConfirmationPreview(value: Record<string, unknown>): ConfirmationP
   return value as unknown as ConfirmationPreview;
 }
 function parseConfirmationResult(value: Record<string, unknown>): ConfirmationResult { const artifacts=value.artifacts as Record<string,unknown>; const sync=value.local_sync as Record<string,unknown>; if (!exactKeys(value,["status","campaign_id","stage","artifacts","submitted_to_zeus","simulation_started","local_sync"]) || value.status !== "confirmation_prepared" || !boundedPrintable(value.campaign_id,512) || value.stage !== "confirmation" || !artifacts || !exactKeys(artifacts,["created","updated"]) || artifacts.created !== 3 || artifacts.updated !== 1 || value.submitted_to_zeus !== false || value.simulation_started !== false || !sync || !exactKeys(sync,["status"]) || sync.status !== "not_synchronized") throw new Error("Invalid Confirmation preparation result."); return value as unknown as ConfirmationResult; }
-async function refinementLifecycleMutation(path:string,body:object,csrf:string):Promise<Record<string,unknown>> { const response=await fetch(path,{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify(body)}); const payload=await response.json() as {data?:Record<string,unknown>;error?:{code?:unknown;message?:unknown}}; if(!response.ok||!payload.data) throw new RefinementLifecycleApiError(text(payload.error?.code)?payload.error.code:"refinement_status_failed",text(payload.error?.message)?payload.error.message:"Refinement status stopped safely."); return payload.data; }
+async function refinementLifecycleMutation(path:string,body:object,csrf:string):Promise<Record<string,unknown>> { const response=await fetch(path,{method:"POST",credentials:"same-origin",headers:{Accept:"application/json","Content-Type":"application/json","X-CSRF-Token":csrf},body:JSON.stringify(body)}); const data=await readResponseData(response,(error)=>new RefinementLifecycleApiError(error.code,error.message)); if(!isRecord(data)) throw new Error("Invalid Refinement lifecycle response."); return data; }
 let confirmationSession:Promise<string>|null=null; let confirmationContext:{token:string;campaignId:string}|null=null;
 export const refinementLifecycleApi={
   async status(campaign_id:string,profile:ZeusSnapshot["profile"]):Promise<RefinementLifecycle>{const csrf=await creationApi.session(); const result=parseRefinementLifecycle(await refinementLifecycleMutation("/api/v1/zeus/refinement-chain/status",{campaign_id,username:profile.username,project_directory:profile.project_directory},csrf)); if(result.campaign.id!==campaign_id) throw new Error("Refinement lifecycle did not match the selected campaign."); return result;},
@@ -553,8 +584,8 @@ function parsePreview(value: Record<string, unknown>): CreationPreview {
 }
 async function mutationRequest(path: string, body: object, csrf: string): Promise<Record<string, unknown>> {
   const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) });
-  const payload = await response.json() as { data?: Record<string, unknown>; error?: { message?: string } };
-  if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Local campaign action failed safely.");
-  return payload.data;
+  const data = await readResponseData(response);
+  if (!isRecord(data)) throw new Error("Invalid local campaign response.");
+  return data;
 }
 export type CampaignApi = typeof campaignApi;
