@@ -16,6 +16,7 @@ from workflow_api.repository_snapshot import RepositorySnapshotProvider
 from workflow_api.safe_json import read_json
 from workflow_api.discovery import list_campaigns
 from workflow_api.mot_2d_validation import modern_contract
+from workflow_api.preview_registry import PreviewRegistry
 
 
 @dataclass
@@ -25,15 +26,27 @@ class Pending:
 
 
 class CreationService:
-    def __init__(self, repository_root: Path, snapshot_provider: RepositorySnapshotProvider):
+    def __init__(
+        self,
+        repository_root: Path,
+        snapshot_provider: RepositorySnapshotProvider,
+        *,
+        clock=time.monotonic,
+        token_factory=None,
+    ):
         self.root = repository_root.resolve(); self.snapshots = snapshot_provider
-        self._pending: dict[str, Pending] = {}; self._lock = threading.Lock()
+        self.clock = clock
+        self._previews = PreviewRegistry[Pending](
+            clock=clock,
+            token_factory=token_factory,
+        )
+        self._lock = threading.Lock()
         self._rate_lock = threading.Lock()
         self._requests: dict[str, list[float]] = {}
 
     def _rate_limit(self, session: str) -> None:
         with self._rate_lock:
-            now = time.monotonic()
+            now = self.clock()
             recent = [stamp for stamp in self._requests.get(session, []) if now - stamp < 60]
             if len(recent) >= 12:
                 raise BlockingIOError("Too many local creation requests.")
@@ -91,11 +104,20 @@ class CreationService:
         duplicate = self._duplicate(plan)
         if duplicate:
             return {"preview_token": None, "expires_in_seconds": 0, "plan": None, "scientific_design": plan.manifest["fixed_design"], "provenance": {"commit": plan.snapshot.commit, "input_count": 35}, "duplicate": duplicate}
-        raw = secrets.token_urlsafe(32); digest = hashlib.sha256(raw.encode()).hexdigest()
         with self._lock:
-            now = time.monotonic(); self._pending = {key: value for key, value in self._pending.items() if value.expires > now}
-            if len(self._pending) >= 64: raise RuntimeError("Too many pending previews.")
-            self._pending[digest] = Pending(now + 300, session, dict(request), plan)
+            now = self.clock()
+            try:
+                raw = self._previews.add_factory_keyed(
+                    lambda _token: Pending(
+                        now + 300, session, dict(request), plan,
+                    ),
+                    key_factory=lambda token: hashlib.sha256(token.encode()).hexdigest(),
+                    expires_at=now + 300,
+                    capacity=64,
+                    retain_at_expiry=False,
+                )
+            except OverflowError as error:
+                raise RuntimeError("Too many pending previews.") from error
         return {
             "preview_token": raw, "expires_in_seconds": 300,
             "plan": {"name": plan.name, "path": plan.destination.relative_to(self.root).as_posix(), "s0_values": list(plan.s0_values), "source_id": plan.source_id, "files": sorted(plan.files), "stage": "smoke"},
@@ -108,8 +130,9 @@ class CreationService:
         self._rate_limit(session)
         digest = hashlib.sha256(token.encode()).hexdigest()
         with self._lock:
-            pending = self._pending.get(digest)
-            if pending is None or pending.session != session or pending.expires <= time.monotonic():
+            record = self._previews.get(digest)
+            pending = record.value if record is not None else None
+            if pending is None or pending.session != session or pending.expires <= self.clock():
                 raise PermissionError("Preview token is invalid or expired.")
             if pending.consumed:
                 if pending.result is not None: return pending.result

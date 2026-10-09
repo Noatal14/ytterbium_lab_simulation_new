@@ -68,3 +68,53 @@ def test_registry_capacity_is_atomic_under_barrier_contention():
     assert len(successes) == 3
     assert failures == [OverflowError] * 5
     assert len(registry) == 3
+
+
+def test_keyed_factory_returns_raw_token_and_stores_only_derived_key():
+    registry = PreviewRegistry[str](
+        clock=lambda: 1.0,
+        token_factory=lambda: "raw-token",
+    )
+    token = registry.add_factory_keyed(
+        lambda raw: f"value:{raw}",
+        key_factory=lambda raw: f"digest:{raw}",
+        expires_at=5.0,
+        capacity=2,
+    )
+    assert token == "raw-token"
+    assert registry.get("raw-token") is None
+    assert registry.get("digest:raw-token").value == "value:raw-token"
+
+
+def test_keyed_factory_can_prune_at_exact_expiry_and_rejects_collision():
+    now = [1.0]
+    registry = PreviewRegistry[str](
+        clock=lambda: now[0],
+        token_factory=lambda: "same-token",
+    )
+    registry.add_factory_keyed(
+        lambda _raw: "first",
+        key_factory=lambda raw: f"digest:{raw}",
+        expires_at=2.0,
+        capacity=1,
+        retain_at_expiry=False,
+    )
+    first = registry.get("digest:same-token")
+    with pytest.raises(OverflowError):
+        registry.add_factory_keyed(
+            lambda _raw: "second",
+            key_factory=lambda raw: f"digest:{raw}",
+            expires_at=3.0,
+            capacity=1,
+            retain_at_expiry=False,
+        )
+    assert registry.get("digest:same-token") is first
+    now[0] = 2.0
+    assert registry.add_factory_keyed(
+        lambda _raw: "replacement",
+        key_factory=lambda raw: f"digest:{raw}",
+        expires_at=3.0,
+        capacity=1,
+        retain_at_expiry=False,
+    ) == "same-token"
+    assert registry.get("digest:same-token").value == "replacement"

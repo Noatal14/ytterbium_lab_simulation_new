@@ -136,9 +136,9 @@ def test_snapshot_provider_rejects_repository_execution_helpers(tmp_path):
         RepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
 
 
-def service(tmp_path):
+def service(tmp_path, **kwargs):
     repository(tmp_path); selected = source(tmp_path)
-    return CreationService(tmp_path, FixedSnapshots()), selected
+    return CreationService(tmp_path, FixedSnapshots(), **kwargs), selected
 
 
 def request(selected, slug="campaign"):
@@ -173,8 +173,100 @@ def test_expired_token_and_schema_fail_closed(tmp_path, monkeypatch):
     creator, selected = service(tmp_path)
     with pytest.raises(ValueError): creator.preview({**request(selected), "password": "secret"}, "session")
     preview = creator.preview(request(selected), "session")
-    for pending in creator._pending.values(): pending.expires = time.monotonic() - 1
+    digest = hashlib.sha256(preview["preview_token"].encode()).hexdigest()
+    record = creator._previews.get(digest)
+    assert record is not None
+    record.value.expires = time.monotonic() - 1
     with pytest.raises(PermissionError): creator.confirm(preview["preview_token"], "session")
+
+
+def test_creation_registry_preserves_raw_token_and_sha256_storage_key(tmp_path):
+    creator, selected = service(tmp_path, token_factory=lambda: "raw-preview-token")
+    preview = creator.preview(request(selected), "session")
+    digest = hashlib.sha256(b"raw-preview-token").hexdigest()
+    assert preview["preview_token"] == "raw-preview-token"
+    assert creator._previews.get("raw-preview-token") is None
+    record = creator._previews.get(digest)
+    assert record is not None and record.value.session == "session"
+
+
+def test_creation_registry_expiry_equality_and_capacity_reclamation(tmp_path):
+    now = [100.0]
+    tokens = iter(f"token-{index}" for index in range(65))
+    creator, selected = service(
+        tmp_path, clock=lambda: now[0], token_factory=lambda: next(tokens),
+    )
+    for index in range(64):
+        creator.preview(
+            request(selected, slug=f"campaign-{index}"), f"session-{index}",
+        )
+    with pytest.raises(RuntimeError, match="Too many pending previews"):
+        creator.preview(request(selected, slug="overflow"), "overflow-session")
+    assert len(creator._previews) == 64
+    now[0] = 400.0
+    reclaimed = creator.preview(
+        request(selected, slug="reclaimed"), "reclaimed-session",
+    )
+    assert reclaimed["preview_token"] == "token-64"
+    assert len(creator._previews) == 1
+    with pytest.raises(PermissionError, match="invalid or expired"):
+        creator.confirm(reclaimed["preview_token"], "other-session")
+
+
+def test_creation_registry_expiry_boundary_rejects_confirm(tmp_path):
+    now = [10.0]
+    creator, selected = service(
+        tmp_path, clock=lambda: now[0], token_factory=lambda: "boundary-token",
+    )
+    preview = creator.preview(request(selected), "session")
+    now[0] = 310.0
+    with pytest.raises(PermissionError, match="invalid or expired"):
+        creator.confirm(preview["preview_token"], "session")
+
+
+def test_creation_registry_collision_fails_closed_without_replacing_owner(tmp_path):
+    creator, selected = service(tmp_path, token_factory=lambda: "same-token")
+    first = creator.preview(request(selected, slug="first"), "first-session")
+    digest = hashlib.sha256(b"same-token").hexdigest()
+    first_record = creator._previews.get(digest)
+    with pytest.raises(RuntimeError, match="invalid token"):
+        creator.preview(request(selected, slug="second"), "second-session")
+    assert creator._previews.get(digest) is first_record
+    assert first["preview_token"] == "same-token"
+    with pytest.raises(PermissionError):
+        creator.confirm(first["preview_token"], "second-session")
+
+
+def test_creation_confirm_concurrency_materializes_once_and_replays(tmp_path, monkeypatch):
+    creator, selected = service(tmp_path, token_factory=lambda: "concurrent-token")
+    preview = creator.preview(request(selected), "session")
+    barrier = threading.Barrier(8)
+    calls = []
+    original = materialize
+
+    def counted(plan, final_check):
+        calls.append(plan.destination)
+        return original(plan, final_check)
+
+    monkeypatch.setattr("workflow_api.mutation.materialize", counted)
+    results = []
+    errors = []
+
+    def confirm():
+        try:
+            barrier.wait(timeout=2)
+            results.append(creator.confirm(preview["preview_token"], "session"))
+        except Exception as error:
+            errors.append(error)
+
+    threads = [threading.Thread(target=confirm) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert errors == []
+    assert len(results) == 8 and all(row == results[0] for row in results)
+    assert len(calls) == 1
 
 
 def test_materialize_fault_leaves_no_visible_campaign(tmp_path, monkeypatch):

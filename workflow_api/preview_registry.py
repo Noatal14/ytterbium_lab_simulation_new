@@ -71,6 +71,42 @@ class PreviewRegistry(Generic[T]):
             self._records[token] = PreviewRecord(value_factory(token), expires_at)
             return token
 
+    def add_factory_keyed(
+        self,
+        value_factory: Callable[[str], T],
+        *,
+        key_factory: Callable[[str], str],
+        expires_at: float,
+        capacity: int | None,
+        retain_at_expiry: bool = True,
+    ) -> str:
+        """Return an opaque token while storing under a deterministic key."""
+        with self._lock:
+            now = self._clock()
+            self._records = {
+                key: record
+                for key, record in self._records.items()
+                if (
+                    record.expires_at >= now
+                    if retain_at_expiry
+                    else record.expires_at > now
+                )
+            }
+            if capacity is not None and len(self._records) >= capacity:
+                raise OverflowError("preview registry capacity reached")
+            token = self._token_factory()
+            key = key_factory(token) if isinstance(token, str) else ""
+            if (
+                not isinstance(token, str)
+                or not token
+                or not isinstance(key, str)
+                or not key
+                or key in self._records
+            ):
+                raise RuntimeError("preview token factory returned an invalid token")
+            self._records[key] = PreviewRecord(value_factory(token), expires_at)
+            return token
+
     def put(
         self,
         token: str,
