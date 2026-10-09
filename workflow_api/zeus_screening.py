@@ -6,13 +6,10 @@ screening plan.  It contains no scheduler submission operation.
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
-import os
 import re
 import secrets
-import shlex
 import subprocess
 import threading
 import time
@@ -24,7 +21,12 @@ from typing import Any, Mapping, Protocol
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files, render_screen_transition
 from workflow_api.preview_registry import PreviewRegistry
-from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
+from workflow_api.pinned_ssh import (
+    PinnedSshPolicy,
+    PinnedSshRunner,
+    ReceiverOperation,
+)
+from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner, ZeusPreparationError, _load_manifest
 
 TOKEN_LIFETIME_SECONDS = 300
@@ -183,18 +185,12 @@ class ZeusScreeningCoordinator:
 class PinnedSshScreeningTransport:
     """Fixed SSH adapter.  It can invoke only the repository's pinned receiver."""
     def __init__(self,root:Path,ssh:Path,profile:ZeusProfile,*,timeout:float=45):
-        self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout
+        self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.screening_preparation(root,ssh,timeout=timeout))
     def _call(self,operation:str,payload:Mapping[str,object])->RemoteSmokeState:
         if operation not in {"inspect","prepare"}: raise ZeusScreeningError("remote_response_invalid")
-        encoded=base64.urlsafe_b64encode(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).decode()
-        receiver=(Path(__file__).with_name("zeus_screening_remote.py")).read_bytes()
-        script=base64.urlsafe_b64encode(receiver).decode("ascii")
-        wrapper="import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);sys.argv=sys.argv[2:];exec(compile(code,'<zeus-screening>','exec'),{'__name__':'__main__'})"
-        remote=shlex.join(("python3","-c",wrapper,script,operation,self.profile.username,self.profile.project_directory,encoded))
-        argv=[str(self.ssh),"-F","none","-T","-o","BatchMode=yes","-o","PasswordAuthentication=no","-o","KbdInteractiveAuthentication=no","-o","NumberOfPasswordPrompts=0","-o","ConnectTimeout=8","-o","ConnectionAttempts=1","-o","StrictHostKeyChecking=yes","-o","ForwardAgent=no","-o","ClearAllForwardings=yes","-o","PermitLocalCommand=no","-o","ProxyCommand=none","-o","ProxyJump=none","-o","KnownHostsCommand=none","-o","CanonicalizeHostname=no","-o","LogLevel=ERROR",f"{self.profile.username}@{ZEUS_HOST}",remote]
-        env={"PATH":str(self.ssh.parent),"HOME":str(Path.home()),"LC_ALL":"C"}
-        if os.environ.get("SSH_AUTH_SOCK"):env["SSH_AUTH_SOCK"]=os.environ["SSH_AUTH_SOCK"]
-        try: result=subprocess.run(argv,cwd=self.root,env=env,stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,shell=False,close_fds=True,timeout=self.timeout,check=False)
+        pinned_operation={"inspect":ReceiverOperation.INSPECT,"prepare":ReceiverOperation.PREPARE}.get(operation)
+        if pinned_operation is None:raise ZeusScreeningError("remote_response_invalid")
+        try:result=self.runner.run(pinned_operation,self.profile,payload)
         except subprocess.TimeoutExpired: raise ZeusScreeningError("transition_outcome_unknown" if operation=="prepare" else "zeus_timeout") from None
         stderr=result.stderr.decode("utf-8","replace").lower()
         if result.returncode and not result.stdout:

@@ -26,6 +26,10 @@ from workflow_api.zeus_refinement_submission import (
     PinnedSshRefinementSubmissionTransport,
     ZeusRefinementSubmissionError,
 )
+from workflow_api.zeus_screening import (
+    PinnedSshScreeningTransport,
+    ZeusScreeningError,
+)
 from workflow_api.zeus_snapshot import ZeusProfile
 
 
@@ -56,6 +60,17 @@ def _valid_confirmation_response() -> bytes:
         "rows": [],
         "branch": "main",
         "receipt": None,
+    }).encode()
+
+
+def _valid_screening_response() -> bytes:
+    return json.dumps({
+        "lifecycle": "running",
+        "job_id": "123.zeus-master",
+        "raw_state": "R",
+        "exit_status": None,
+        "points": [],
+        "artifact_count": 0,
     }).encode()
 
 
@@ -573,3 +588,225 @@ def test_refinement_submission_remote_error_code_propagates_unchanged(
     with pytest.raises(ZeusRefinementSubmissionError) as caught:
         getattr(transport, operation)(example=True)
     assert caught.value.code == "refinement_submission_busy"
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+def test_screening_runner_preserves_exact_hardened_invocation(
+    tmp_path, monkeypatch, operation,
+):
+    observed = {}
+
+    def run(argv, **kwargs):
+        observed["argv"] = argv
+        observed["kwargs"] = kwargs
+        return subprocess.CompletedProcess(argv, 0, _valid_screening_response(), b"")
+
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
+    state = getattr(PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(), timeout=37,
+    ), operation)(**payload)
+    assert state.lifecycle == "running"
+
+    receiver = (
+        Path(__file__).parents[1] / "workflow_api/zeus_screening_remote.py"
+    ).read_bytes()
+    parts = shlex.split(observed["argv"][-1])
+    assert base64.urlsafe_b64decode(parts[3]) == receiver
+    assert json.loads(base64.urlsafe_b64decode(parts[7])) == payload
+    assert "compile(code,'<zeus-screening>','exec')" in parts[2]
+    assert parts[4:7] == [
+        operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
+    ]
+    assert observed["argv"][:-2] == [
+        "/usr/bin/ssh", "-F", "none", "-T",
+        "-o", "BatchMode=yes",
+        "-o", "PasswordAuthentication=no",
+        "-o", "KbdInteractiveAuthentication=no",
+        "-o", "NumberOfPasswordPrompts=0",
+        "-o", "ConnectTimeout=8",
+        "-o", "ConnectionAttempts=1",
+        "-o", "StrictHostKeyChecking=yes",
+        "-o", "ForwardAgent=no",
+        "-o", "ClearAllForwardings=yes",
+        "-o", "PermitLocalCommand=no",
+        "-o", "ProxyCommand=none",
+        "-o", "ProxyJump=none",
+        "-o", "KnownHostsCommand=none",
+        "-o", "CanonicalizeHostname=no",
+        "-o", "LogLevel=ERROR",
+    ]
+    assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
+    assert observed["kwargs"] == {
+        "cwd": tmp_path,
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "timeout": 37,
+        "check": False,
+        "env": {
+            "PATH": "/usr/bin",
+            "HOME": str(Path.home()),
+            "LC_ALL": "C",
+            "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
+        },
+        "shell": False,
+        "close_fds": True,
+    }
+
+
+def test_screening_runner_omits_absent_ssh_agent_from_pinned_environment(
+    tmp_path, monkeypatch,
+):
+    observed = {}
+    monkeypatch.delenv("SSH_AUTH_SOCK", raising=False)
+
+    def run(argv, **kwargs):
+        observed.update(kwargs)
+        return subprocess.CompletedProcess(argv, 0, _valid_screening_response(), b"")
+
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    ).inspect(example=True)
+    assert observed["env"] == {
+        "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+    }
+    assert observed["timeout"] == 45
+
+
+def test_screening_serializes_payload_before_receiver_read(tmp_path, monkeypatch):
+    reads = []
+    process_calls = []
+
+    def read_bytes(path):
+        reads.append(path)
+        raise OSError("receiver unreadable")
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda *args, **kwargs: process_calls.append((args, kwargs)),
+    )
+    transport = PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(TypeError):
+        transport.inspect(unserializable=object())
+    assert reads == []
+    assert process_calls == []
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+@pytest.mark.parametrize("failure", ["receiver_read", "process_launch"])
+def test_screening_oserror_boundaries_remain_raw(
+    tmp_path, monkeypatch, operation, failure,
+):
+    calls = []
+    original = Path.read_bytes
+
+    def read_bytes(path):
+        if failure == "receiver_read" and path.name == "zeus_screening_remote.py":
+            raise OSError("receiver unreadable")
+        return original(path)
+
+    def run(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise OSError("ssh unavailable")
+
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    transport = PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    expected = "receiver unreadable" if failure == "receiver_read" else "ssh unavailable"
+    with pytest.raises(OSError, match=expected):
+        getattr(transport, operation)(example=True)
+    assert len(calls) == (0 if failure == "receiver_read" else 1)
+
+
+@pytest.mark.parametrize("operation,expected", [
+    ("inspect", "zeus_timeout"),
+    ("prepare", "transition_outcome_unknown"),
+])
+def test_screening_timeout_mapping_is_unchanged(
+    tmp_path, monkeypatch, operation, expected,
+):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: (_ for _ in ()).throw(
+            subprocess.TimeoutExpired(argv, kwargs["timeout"])
+        ),
+    )
+    transport = PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusScreeningError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == expected
+
+
+@pytest.mark.parametrize("operation,returncode,stderr,stdout,expected", [
+    ("inspect", 1, b"", b"", "remote_response_invalid"),
+    ("prepare", 1, b"", b"", "transition_outcome_unknown"),
+    ("inspect", 0, b"warning", _valid_screening_response(), "remote_response_invalid"),
+    ("prepare", 0, b"warning", _valid_screening_response(), "transition_outcome_unknown"),
+    ("inspect", 0, b"", b"not-json", "remote_response_invalid"),
+    ("prepare", 0, b"", b"not-json", "transition_outcome_unknown"),
+])
+def test_screening_process_and_decode_mapping_is_unchanged(
+    tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
+):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, returncode, stdout, stderr,
+        ),
+    )
+    transport = PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusScreeningError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == expected
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+def test_screening_remote_error_code_propagates_unchanged(
+    tmp_path, monkeypatch, operation,
+):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, 0, b'{"error":"screening_transition_busy"}', b"",
+        ),
+    )
+    transport = PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusScreeningError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == "screening_transition_busy"
+
+
+@pytest.mark.parametrize("operation", ["inspect", "prepare"])
+@pytest.mark.parametrize("stderr,expected", [
+    (b"Host key verification failed", "zeus_host_key_untrusted"),
+    (b"Permission denied (publickey)", "zeus_authentication_required"),
+    (b"Could not resolve hostname zeus", "zeus_unreachable"),
+    (b"Connection refused", "zeus_unreachable"),
+])
+def test_screening_hardened_connection_errors_override_operation_ambiguity(
+    tmp_path, monkeypatch, operation, stderr, expected,
+):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
+    )
+    transport = PinnedSshScreeningTransport(
+        tmp_path, Path("/usr/bin/ssh"), _profile(),
+    )
+    with pytest.raises(ZeusScreeningError) as caught:
+        getattr(transport, operation)(example=True)
+    assert caught.value.code == expected

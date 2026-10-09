@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import shlex
 import subprocess
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ class ReceiverKind(Enum):
     REFINEMENT_TRANSITION = "refinement_transition"
     CONFIRMATION_PREPARATION = "confirmation_preparation"
     REFINEMENT_SUBMISSION = "refinement_submission"
+    SCREENING_PREPARATION = "screening_preparation"
 
 
 class ReceiverOperation(Enum):
@@ -36,6 +38,18 @@ class _ReceiverDefinition:
     compile_name: str
     operations: frozenset[ReceiverOperation]
     wrap_process_oserror: bool
+    ssh_arguments: tuple[str, ...] = (
+        "-F", "none", "-T",
+        "-o", "BatchMode=yes",
+        "-o", "PasswordAuthentication=no",
+        "-o", "KbdInteractiveAuthentication=no",
+        "-o", "StrictHostKeyChecking=yes",
+        "-o", "ForwardAgent=no",
+        "-o", "ClearAllForwardings=yes",
+    )
+    pinned_environment: bool = False
+    explicit_process_safety: bool = False
+    payload_before_receiver: bool = False
 
 
 _RECEIVERS = {
@@ -56,6 +70,33 @@ _RECEIVERS = {
         "<refine-submit>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT}),
         False,
+    ),
+    ReceiverKind.SCREENING_PREPARATION: _ReceiverDefinition(
+        "zeus_screening_remote.py",
+        "<zeus-screening>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        False,
+        (
+            "-F", "none", "-T",
+            "-o", "BatchMode=yes",
+            "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+            "-o", "NumberOfPasswordPrompts=0",
+            "-o", "ConnectTimeout=8",
+            "-o", "ConnectionAttempts=1",
+            "-o", "StrictHostKeyChecking=yes",
+            "-o", "ForwardAgent=no",
+            "-o", "ClearAllForwardings=yes",
+            "-o", "PermitLocalCommand=no",
+            "-o", "ProxyCommand=none",
+            "-o", "ProxyJump=none",
+            "-o", "KnownHostsCommand=none",
+            "-o", "CanonicalizeHostname=no",
+            "-o", "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
     ),
 }
 
@@ -114,6 +155,21 @@ class PinnedSshPolicy:
             timeout,
         )
 
+    @classmethod
+    def screening_preparation(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.SCREENING_PREPARATION,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
 
 class PinnedSshRunner:
     """Run one closed receiver without accepting commands or SSH options."""
@@ -143,10 +199,17 @@ class PinnedSshRunner:
         definition = _RECEIVERS[self._policy.receiver]
         if type(operation) is not ReceiverOperation or operation not in definition.operations:
             raise ValueError("Unsupported pinned SSH operation.")
-        receiver = Path(__file__).with_name(definition.filename).read_bytes()
-        encoded = base64.urlsafe_b64encode(
-            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-        ).decode()
+        def encode_payload() -> str:
+            return base64.urlsafe_b64encode(
+                json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            ).decode()
+
+        if definition.payload_before_receiver:
+            encoded = encode_payload()
+            receiver = Path(__file__).with_name(definition.filename).read_bytes()
+        else:
+            receiver = Path(__file__).with_name(definition.filename).read_bytes()
+            encoded = encode_payload()
         script = base64.urlsafe_b64encode(receiver).decode()
         wrapper = (
             "import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);"
@@ -166,27 +229,32 @@ class PinnedSshRunner:
         ))
         argv = [
             str(self._policy.ssh_executable),
-            "-F", "none",
-            "-T",
-            "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes",
+            *definition.ssh_arguments,
             f"{profile.username}@{ZEUS_HOST}",
             remote,
         ]
+        kwargs: dict[str, object] = {
+            "cwd": self._policy.repository_root,
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "timeout": self._policy.timeout,
+            "check": False,
+        }
+        if definition.pinned_environment:
+            environment = {
+                "PATH": str(self._policy.ssh_executable.parent),
+                "HOME": str(Path.home()),
+                "LC_ALL": "C",
+            }
+            if os.environ.get("SSH_AUTH_SOCK"):
+                environment["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
+            kwargs["env"] = environment
+        if definition.explicit_process_safety:
+            kwargs["shell"] = False
+            kwargs["close_fds"] = True
         try:
-            return subprocess.run(
-                argv,
-                cwd=self._policy.repository_root,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=self._policy.timeout,
-                check=False,
-            )
+            return subprocess.run(argv, **kwargs)
         except OSError as error:
             if definition.wrap_process_oserror:
                 raise PinnedSshProcessError from error
