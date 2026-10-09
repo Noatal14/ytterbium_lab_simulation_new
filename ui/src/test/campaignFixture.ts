@@ -1,4 +1,4 @@
-import type { Campaign, CampaignApi } from "../api/campaigns";
+import type { Campaign, CampaignApi } from "../api/clients/campaign";
 
 export const campaignFixture: Campaign = {
   id: "mot_2d-abc123", family: "mot_2d", kind: "mot_2d_s0_campaign", name: "fixed s0 1.3",

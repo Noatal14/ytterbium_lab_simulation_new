@@ -1,6 +1,7 @@
 import { AlertTriangle, CheckCircle2, CircleHelp, Clock3, CloudOff, LoaderCircle, PlayCircle, Server, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { ZeusApiError, type Campaign, type ZeusApi, type ZeusJob, type ZeusSnapshot } from "../api/campaigns";
+import type { Campaign } from "../api/clients/campaign";
+import { ZeusApiError, type ZeusApi, type ZeusJob, type ZeusSnapshot } from "../api/clients/zeus";
 
 function readiness(campaign: Campaign) {
   if (campaign.remote_preparation.status !== "ready") return { label: "Blocked", tone: "blocked", detail: "This campaign cannot safely prepare or expose a Zeus action." };

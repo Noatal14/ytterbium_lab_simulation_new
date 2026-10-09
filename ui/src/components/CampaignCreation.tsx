@@ -1,6 +1,6 @@
 import { ArrowLeft, HelpCircle, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { creationApi, type CreationApi, type CreationPreview, type CreationResult, type ZeemanSource } from "../api/campaigns";
+import { creationApi, type CreationApi, type CreationPreview, type CreationResult, type ZeemanSource } from "../api/clients/campaign";
 
 type Values = { name: string; slug: string; sourceId: string; s0: string };
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Campaign, CampaignApi } from "../api/campaigns";
+import type { Campaign, CampaignApi } from "../api/clients/campaign";
 
 export function useCampaignQuery(api: CampaignApi) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);

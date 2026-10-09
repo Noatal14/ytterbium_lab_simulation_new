@@ -1,0 +1,11 @@
+import { exactKeys } from "../schema/common";
+
+export const API_VERSION = 1;
+export type ApiErrorPayload = { code: string; message: string };
+export const isRecord = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
+export { exactKeys } from "../schema/common";
+export function parseApiSuccessEnvelope(value: unknown): unknown { if (!isRecord(value) || !exactKeys(value, ["api_version", "data"]) || !Number.isInteger(value.api_version) || value.api_version !== API_VERSION) throw new Error("Invalid API success envelope."); return value.data; }
+export function parseApiErrorEnvelope(value: unknown): ApiErrorPayload { if (!isRecord(value) || !exactKeys(value, ["error"]) || !isRecord(value.error) || !exactKeys(value.error, ["code", "message"]) || typeof value.error.code !== "string" || typeof value.error.message !== "string") throw new Error("Invalid API error envelope."); return value.error as unknown as ApiErrorPayload; }
+export async function readResponseData(response: Response, makeError?: (error: ApiErrorPayload) => Error): Promise<unknown> { let payload: unknown; try { payload = await response.json() as unknown; } catch { throw new Error("The API returned malformed JSON."); } if (response.ok) return parseApiSuccessEnvelope(payload); const error = parseApiErrorEnvelope(payload); throw makeError ? makeError(error) : new Error(error.message); }
+export async function getData(path: string): Promise<unknown> { const response = await fetch(path, { headers: { Accept: "application/json" } }); return readResponseData(response, () => new Error(`The local campaign service returned ${response.status}.`)); }
+export async function postData(path: string, body: object, csrf: string, makeError?: (error: ApiErrorPayload) => Error): Promise<Record<string, unknown>> { const response = await fetch(path, { method: "POST", credentials: "same-origin", headers: { Accept: "application/json", "Content-Type": "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify(body) }); const data = await readResponseData(response, makeError); if (!isRecord(data)) throw new Error("Invalid API data response."); return data; }
