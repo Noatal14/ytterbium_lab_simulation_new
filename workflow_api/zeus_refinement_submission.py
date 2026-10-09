@@ -33,7 +33,8 @@ class ZeusRefinementSubmissionCoordinator:
     def _plan(self,request):
         if set(request)!={"campaign_id","username","project_directory"} or not isinstance(request.get("campaign_id"),str):raise ZeusRefinementSubmissionError("request_invalid")
         profile=self._profile(request);coordinator=ZeusRefinementCoordinator(self.root,self.ssh,self.git)
-        try:campaign_id,_,plan,state=coordinator._inspect(request)
+        try:
+            evidence=coordinator.inspect_evidence(request);campaign_id,plan,state=evidence.campaign_id,evidence.canonical_plan,evidence.state
         except ZeusRefinementError as error:raise ZeusRefinementSubmissionError(error.code) from error
         if state.lifecycle!="refinement_prepared":raise ZeusRefinementSubmissionError("refinement_not_prepared")
         campaign,manifest,remote_manifest,commit,_,_,screen_digest,screening_key=plan;rows=[dict(x) for x in state.rows]

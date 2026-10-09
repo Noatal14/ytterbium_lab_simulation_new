@@ -279,3 +279,41 @@ def test_refinement_revision_maps_public_service_oserror_to_stable_code(tmp_path
     assert caught.value.code == "local_repository_unavailable"
     assert str(caught.value) == "local_repository_unavailable"
     assert isinstance(caught.value.__cause__, OSError)
+
+
+@pytest.mark.parametrize("lifecycle,raw,exit_status,counts,row_count", [
+    ("screen_queued", "Q", None, {"queued": 3, "running": 0, "held": 0, "succeeded": 0, "failed": 0}, 0),
+    ("screen_running", "R", None, {"queued": 0, "running": 3, "held": 0, "succeeded": 0, "failed": 0}, 0),
+    ("screen_held", "H", None, {"queued": 0, "running": 0, "held": 3, "succeeded": 0, "failed": 0}, 0),
+    ("screen_failed", "F", 1, {"queued": 0, "running": 0, "held": 0, "succeeded": 2, "failed": 1}, 0),
+    ("screen_status_unknown", "?", None, {"queued": 0, "running": 0, "held": 0, "succeeded": 3, "failed": 0}, 0),
+    ("awaiting_outputs", "F", 0, {"queued": 0, "running": 0, "held": 0, "succeeded": 3, "failed": 0}, 0),
+    ("outputs_invalid", "F", 0, {"queued": 0, "running": 0, "held": 0, "succeeded": 3, "failed": 0}, 0),
+    ("ready_to_prepare_refinement", "F", 0, {"queued": 0, "running": 0, "held": 0, "succeeded": 3, "failed": 0}, 51),
+    ("refinement_prepared", "F", 0, {"queued": 0, "running": 0, "held": 0, "succeeded": 3, "failed": 0}, 51),
+])
+def test_public_refinement_inspection_and_legacy_wrapper_are_equivalent(
+    tmp_path, monkeypatch, lifecycle, raw, exit_status, counts, row_count,
+):
+    campaign = tmp_path / "data/optimization/mot_2d/campaign"; campaign.mkdir(parents=True)
+    rows = tuple({} for _ in range(row_count))
+    state = RemoteScreenState(lifecycle, "1[].zeus-master", raw, exit_status, 3, counts, rows, "main")
+    calls = []
+    class Transport:
+        def inspect(self, **payload): calls.append(payload); return state
+    executable = Path(sys.executable)
+    coordinator = ZeusRefinementCoordinator(tmp_path, executable, executable, transport_factory=lambda _: Transport())
+    plan = (campaign, {"s0_values": [1.3]}, {}, "a" * 40, {"input": "b" * 64}, {"screen": "c" * 64}, "d" * 64, "e" * 64)
+    monkeypatch.setattr(coordinator, "_plan", lambda _: plan)
+    monkeypatch.setattr(coordinator, "_revision", lambda: ("a" * 40, True))
+    request = {"campaign_id": "mot_2d-campaign", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+
+    evidence = coordinator.inspect_evidence(request)
+    legacy = coordinator._inspect(request)
+
+    assert legacy == (evidence.campaign_id, evidence.profile, evidence.canonical_plan, evidence.state)
+    assert len(calls) == 2 and calls[0] == calls[1] == {
+        "campaign": "data/optimization/mot_2d/campaign", "commit": "a" * 40,
+        "prepared_files": {"input": "b" * 64}, "screen_files": {"screen": "c" * 64},
+        "screen_digest": "d" * 64, "screening_submission_key": "e" * 64,
+    }

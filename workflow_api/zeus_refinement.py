@@ -20,6 +20,13 @@ class ZeusRefinementError(RuntimeError):
 class RemoteScreenState:
     lifecycle:str;job_id:str;raw_state:str;exit_status:int|None;task_count:int;counts:Mapping[str,int];rows:tuple[Mapping[str,Any],...]=();branch:str|None=None
 
+@dataclass(frozen=True)
+class RefinementInspection:
+    campaign_id:str
+    profile:ZeusProfile
+    canonical_plan:tuple[Any,...]
+    state:RemoteScreenState
+
 class RefinementTransport(Protocol):
     def inspect(self,**payload:object)->RemoteScreenState:...
     def prepare(self,**payload:object)->RemoteScreenState:...
@@ -48,7 +55,7 @@ class ZeusRefinementCoordinator:
         if manifest.get("stage")!="smoke" or entry.manifest.read_bytes()!=initial["campaign.json"]:raise ZeusRefinementError("campaign_not_canonical")
         prepared={path:item[1] for path,item in selected.items()};relative=campaign.relative_to(self.root).as_posix();screen_hashes={name:hashlib.sha256(content).hexdigest() for name,content in screen.items()};screen_digest=hashlib.sha256(json.dumps(screen_hashes,sort_keys=True).encode()).hexdigest();screening_key=hashlib.sha256(json.dumps({"campaign":relative,"commit":commit,"screen_manifest":screen_hashes["campaign.json"],"screen_pbs":screen_hashes["jobs/02_screen.pbs"],"transition":screen_digest},sort_keys=True,separators=(",",":")).encode()).hexdigest();remote_manifest=json.loads(screen["campaign.json"])
         return campaign,manifest,remote_manifest,commit,prepared,screen_hashes,screen_digest,screening_key
-    def _inspect(self,request):
+    def inspect_evidence(self,request)->RefinementInspection:
         if set(request)!={"campaign_id","username","project_directory"} or not isinstance(request.get("campaign_id"),str):raise ZeusRefinementError("request_invalid")
         profile=self._profile(request);plan=self._plan(str(request["campaign_id"]));campaign,_,_,commit,prepared,screen,screen_digest,key=plan;local,clean=self._revision()
         if not clean or local!=commit:raise ZeusRefinementError("local_checkout_mismatch")
@@ -57,7 +64,10 @@ class ZeusRefinementCoordinator:
         if state.task_count!=expected_tasks or set(state.counts)!=count_keys or any(not isinstance(value,int) or isinstance(value,bool) or value<0 for value in state.counts.values()):raise ZeusRefinementError("remote_response_invalid")
         coherent=sum(state.counts.values())==expected_tasks and (state.lifecycle not in terminal_lifecycles or state.counts["succeeded"]==expected_tasks and state.exit_status==0 and state.raw_state in {"F","X"}) and (state.lifecycle!="screen_running" or state.counts["running"]>0) and (state.lifecycle!="screen_queued" or state.counts["queued"]>0) and (state.lifecycle!="screen_held" or state.counts["held"]>0) and (state.lifecycle!="screen_failed" or state.counts["failed"]>0)
         if not coherent or state.lifecycle in valid_lifecycles and len(state.rows)!=expected_trials or state.lifecycle not in {"screen_queued","screen_running","screen_held","screen_failed","screen_status_unknown",*terminal_lifecycles}:raise ZeusRefinementError("remote_response_invalid")
-        return str(request["campaign_id"]),profile,plan,state
+        return RefinementInspection(str(request["campaign_id"]),profile,plan,state)
+    def _inspect(self,request):
+        evidence=self.inspect_evidence(request)
+        return evidence.campaign_id,evidence.profile,evidence.canonical_plan,evidence.state
     @staticmethod
     def _scheduler(state):
         mapping={"screen_queued":"queued","screen_running":"running","screen_held":"held","screen_failed":"completed_failed","screen_status_unknown":"unknown","awaiting_outputs":"completed_success","outputs_invalid":"completed_success","ready_to_prepare_refinement":"completed_success","refinement_prepared":"completed_success"}
