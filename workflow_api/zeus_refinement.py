@@ -8,6 +8,7 @@ from typing import Mapping,Protocol,Any
 
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files,render_screen_transition,render_refine_transition
+from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.zeus_snapshot import ZEUS_HOST,ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner,ZeusPreparationError,_load_manifest
 from workflow_api.zeus_submission import RepositoryRevisionService
@@ -36,9 +37,9 @@ class _Pending:
     session_id:str;campaign_id:str;profile:ZeusProfile;commit:str;campaign_relative:str;rows_digest:str;screening_key:str;refine_files:Mapping[str,str];nonce:str;expires_at:float;result:Mapping[str,object]|None=None
 
 class ZeusRefinementCoordinator:
-    def __init__(self,repository_root:Path,ssh_executable:Path,git_executable:Path,*,clock=time.time,transport_factory=None):
+    def __init__(self,repository_root:Path,ssh_executable:Path,git_executable:Path,*,clock=time.time,token_factory=None,transport_factory=None):
         self.root=repository_root.resolve(strict=True);self.ssh=ssh_executable.resolve(strict=True);self.git=git_executable.resolve(strict=True);self.clock=clock
-        self.transport_factory=transport_factory or (lambda profile:PinnedSshRefinementTransport(self.root,self.ssh,profile));self._pending={};self._lock=threading.RLock();self._confirm_lock=threading.Lock()
+        self.transport_factory=transport_factory or (lambda profile:PinnedSshRefinementTransport(self.root,self.ssh,profile));self._previews=PreviewRegistry[_Pending](clock=clock,token_factory=token_factory);self._confirm_lock=threading.Lock()
     @staticmethod
     def _profile(request):
         try:return ZeusProfile.parse({"username":request.get("username"),"project_directory":request.get("project_directory")})
@@ -80,11 +81,9 @@ class ZeusRefinementCoordinator:
         campaign_id,profile,plan,state=self._inspect(request);campaign,manifest,remote_manifest,commit,_,_,_,key=plan
         blockers={"screen_queued":"screen_queued","screen_running":"screen_running","screen_held":"screen_held","screen_failed":"screen_failed","screen_status_unknown":"screen_status_unknown","awaiting_outputs":"screen_outputs_pending","outputs_invalid":"screen_outputs_invalid","refinement_prepared":"refinement_already_prepared"}
         if state.lifecycle!="ready_to_prepare_refinement":raise ZeusRefinementError(blockers.get(state.lifecycle,"remote_response_invalid"))
-        rows=[dict(row) for row in state.rows];files=render_refine_transition(remote_manifest,campaign,self.root,rows);hashes={name:hashlib.sha256(content).hexdigest() for name,content in files.items()};rows_digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest();token=secrets.token_urlsafe(32);pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),rows_digest,key,hashes,secrets.token_hex(16),self.clock()+TOKEN_LIFETIME_SECONDS)
-        with self._lock:
-            self._pending={k:v for k,v in self._pending.items() if v.expires_at>=self.clock()}
-            if len(self._pending)>=MAX_PENDING_PREVIEWS:raise ZeusRefinementError("too_many_pending_previews")
-            self._pending[token]=pending
+        rows=[dict(row) for row in state.rows];files=render_refine_transition(remote_manifest,campaign,self.root,rows);hashes={name:hashlib.sha256(content).hexdigest() for name,content in files.items()};rows_digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest();expires_at=self.clock()+TOKEN_LIFETIME_SECONDS;pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),rows_digest,key,hashes,secrets.token_hex(16),expires_at)
+        try:token=self._previews.add(pending,expires_at=expires_at,capacity=MAX_PENDING_PREVIEWS)
+        except OverflowError as error:raise ZeusRefinementError("too_many_pending_previews") from error
         candidates=[]
         selected=json.loads(files["screening_candidates.json"])
         for s0_rows in selected.values():
@@ -95,7 +94,7 @@ class ZeusRefinementCoordinator:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusRefinementError("request_invalid")
         token=str(request["preview_token"])
         with self._confirm_lock:
-            with self._lock:pending=self._pending.get(token)
+            record=self._previews.get(token);pending=None if record is None else record.value
             if pending is None or not secrets.compare_digest(pending.session_id,session_id):raise ZeusRefinementError("confirmation_invalid")
             if pending.result is not None:return dict(pending.result)
             if self.clock()>pending.expires_at:raise ZeusRefinementError("confirmation_expired")
@@ -104,7 +103,7 @@ class ZeusRefinementCoordinator:
             result_state=self.transport_factory(profile).prepare(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,screen_files=screen,screen_digest=screen_digest,screening_submission_key=key,rows_digest=digest,refine_files=hashes,nonce=pending.nonce)
             if result_state.lifecycle!="refinement_prepared":raise ZeusRefinementError("transition_outcome_unknown")
             result={"status":"refinement_prepared","campaign_id":pending.campaign_id,"stage":"refine","artifacts":{"created":7,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}}
-            with self._lock:self._pending[token]=replace(pending,result=result)
+            self._previews.replace(token,replace(pending,result=result))
             return result
 
 class PinnedSshRefinementTransport:
