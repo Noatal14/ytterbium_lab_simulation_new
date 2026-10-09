@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import base64
 import inspect
+import io
 import json
 import shlex
 import subprocess
+import threading
 from pathlib import Path
 
 import pytest
@@ -35,6 +37,10 @@ from workflow_api.zeus_screen_submission import (
     ZeusScreenSubmissionError,
 )
 from workflow_api.zeus_snapshot import ZeusProfile
+from workflow_api.zeus_snapshot import _REMOTE_SCRIPT as SNAPSHOT_REMOTE_SCRIPT
+from workflow_api.zeus_snapshot import MAX_STDERR as SNAPSHOT_MAX_STDERR
+from workflow_api.zeus_snapshot import MAX_STDOUT as SNAPSHOT_MAX_STDOUT
+from workflow_api.zeus_snapshot import ZeusSnapshotError
 from workflow_api.zeus_submission import (
     MAX_REMOTE_OUTPUT,
     PinnedSshSmokeSubmissionTransport,
@@ -1245,3 +1251,282 @@ def test_smoke_submission_stderr_cap_precedes_authentication_mapping(
     with pytest.raises(ZeusSubmissionError) as caught:
         getattr(transport, operation)(**payload)
     assert caught.value.code == expected
+
+
+def test_snapshot_runner_preserves_exact_bounded_popen_contract(
+    tmp_path, monkeypatch,
+):
+    observed = {}
+
+    class Process:
+        stdout = io.BytesIO(b"snapshot-output")
+        stderr = io.BytesIO(b"snapshot-errors")
+
+        def wait(self, timeout):
+            observed.setdefault("waits", []).append(timeout)
+            return 7
+
+        def kill(self):
+            raise AssertionError("successful snapshot must not be killed")
+
+    def popen(argv, **kwargs):
+        observed["argv"] = argv
+        observed["kwargs"] = kwargs
+        return Process()
+
+    monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    assert runner.snapshot(_profile()) == (7, b"snapshot-output", b"snapshot-errors")
+    remote = shlex.split(observed["argv"][-1])
+    assert remote[:3] == [
+        "python3", "-c",
+        "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
+        "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))",
+    ]
+    assert base64.urlsafe_b64decode(remote[3]).decode() == SNAPSHOT_REMOTE_SCRIPT
+    assert remote[4:] == [
+        "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
+    ]
+    assert observed["argv"][:-2] == [
+        "/usr/bin/ssh", "-F", "none", "-T",
+        "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
+        "-o", "KbdInteractiveAuthentication=no",
+        "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+        "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+        "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+        "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+        "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+        "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR",
+    ]
+    assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
+    assert observed["kwargs"] == {
+        "cwd": tmp_path,
+        "env": {
+            "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+            "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
+        },
+        "shell": False,
+        "close_fds": True,
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+    }
+    assert observed["waits"] == [25]
+
+
+def test_snapshot_runner_rejects_hostile_profile_before_popen(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    with pytest.raises(ValueError, match="Invalid pinned SSH profile"):
+        runner.snapshot(ZeusProfile(
+            "-oProxyCommand=bad",
+            "/home/-oProxyCommand=bad/ytterbium_lab_simulation_new",
+        ))
+    assert calls == []
+
+
+def test_snapshot_runner_preserves_raw_popen_oserror(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ssh unavailable")),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    with pytest.raises(OSError, match="ssh unavailable"):
+        runner.snapshot(_profile())
+
+
+@pytest.mark.parametrize("stream,limit", [
+    ("stdout", SNAPSHOT_MAX_STDOUT),
+    ("stderr", SNAPSHOT_MAX_STDERR),
+])
+@pytest.mark.parametrize("overflow", [False, True])
+def test_snapshot_runner_preserves_exact_stream_cap_boundary(
+    tmp_path, monkeypatch, stream, limit, overflow,
+):
+    content = b"x" * (limit + int(overflow))
+
+    class Process:
+        stdout = io.BytesIO(content if stream == "stdout" else b"")
+        stderr = io.BytesIO(content if stream == "stderr" else b"")
+
+        def __init__(self):
+            self.kills = 0
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            self.kills += 1
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    if overflow:
+        with pytest.raises(ZeusSnapshotError, match="malformed_remote_response"):
+            runner.snapshot(_profile())
+        assert process.kills >= 1
+    else:
+        _, stdout, stderr = runner.snapshot(_profile())
+        assert (stdout if stream == "stdout" else stderr) == content
+        assert process.kills == 0
+
+
+def test_snapshot_runner_timeout_kills_then_waits_again(tmp_path, monkeypatch):
+    events = []
+
+    class Process:
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout=None):
+            events.append(("wait", timeout))
+            if timeout is not None:
+                raise subprocess.TimeoutExpired("ssh", timeout)
+            return -9
+
+        def kill(self):
+            events.append(("kill", None))
+
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: Process(),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    with pytest.raises(ZeusSnapshotError, match="zeus_timeout"):
+        runner.snapshot(_profile())
+    assert events == [("wait", 25), ("kill", None), ("wait", None)]
+
+
+@pytest.mark.parametrize("failure", ["kill", "second_wait"])
+def test_snapshot_timeout_preserves_raw_cleanup_oserror(
+    tmp_path, monkeypatch, failure,
+):
+    class Process:
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout=None):
+            if timeout is not None:
+                raise subprocess.TimeoutExpired("ssh", timeout)
+            if failure == "second_wait":
+                raise OSError("wait failed")
+            return -9
+
+        def kill(self):
+            if failure == "kill":
+                raise OSError("kill failed")
+
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: Process(),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    expected = "kill failed" if failure == "kill" else "wait failed"
+    with pytest.raises(OSError, match=expected):
+        runner.snapshot(_profile())
+
+
+def test_snapshot_overflow_drain_kill_oserror_is_swallowed(tmp_path, monkeypatch):
+    class Process:
+        stdout = io.BytesIO(b"x" * (SNAPSHOT_MAX_STDOUT + 1))
+        stderr = io.BytesIO(b"")
+
+        def __init__(self):
+            self.kills = 0
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            self.kills += 1
+            if self.kills == 1:
+                raise OSError("first kill failed")
+
+    process = Process()
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: process,
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    with pytest.raises(ZeusSnapshotError, match="malformed_remote_response"):
+        runner.snapshot(_profile())
+    assert process.kills == 2
+
+
+def test_snapshot_alive_reader_is_killed_and_rejected(tmp_path, monkeypatch):
+    release = threading.Event()
+
+    class BlockingStream:
+        def read(self, _size):
+            release.wait(timeout=3)
+            return b""
+
+    class Process:
+        stdout = BlockingStream()
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            release.set()
+
+    monkeypatch.setattr(
+        "workflow_api.pinned_ssh.subprocess.Popen",
+        lambda *args, **kwargs: Process(),
+    )
+    runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    ))
+    with pytest.raises(ZeusSnapshotError, match="malformed_remote_response"):
+        runner.snapshot(_profile())
+    assert release.is_set()
+
+
+def test_snapshot_runner_omits_absent_agent_socket(tmp_path, monkeypatch):
+    observed = {}
+
+    class Process:
+        stdout = io.BytesIO(b"")
+        stderr = io.BytesIO(b"")
+
+        def wait(self, timeout):
+            return 0
+
+        def kill(self):
+            raise AssertionError("must not kill")
+
+    def popen(*args, **kwargs):
+        observed.update(kwargs)
+        return Process()
+
+    monkeypatch.delenv("SSH_AUTH_SOCK", raising=False)
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
+    PinnedSshRunner(PinnedSshPolicy.snapshot(
+        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+    )).snapshot(_profile())
+    assert observed["env"] == {
+        "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+    }

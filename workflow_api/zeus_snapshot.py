@@ -189,50 +189,14 @@ class ZeusSnapshotProvider:
         self.timeout = timeout
         if not self.ssh.is_file() or not os.access(self.ssh, os.X_OK) or self.root in self.ssh.parents:
             raise ValueError("The trusted SSH executable is unavailable.")
+        from workflow_api.pinned_ssh import PinnedSshPolicy, PinnedSshRunner
+
+        self.runner = PinnedSshRunner(
+            PinnedSshPolicy.snapshot(self.root, self.ssh, timeout=self.timeout)
+        )
 
     def _run(self, profile: ZeusProfile) -> tuple[int, bytes, bytes]:
-        environment = {"PATH": str(self.ssh.parent), "HOME": str(Path.home()), "LC_ALL": "C"}
-        agent_socket = os.environ.get("SSH_AUTH_SOCK")
-        if agent_socket:
-            environment["SSH_AUTH_SOCK"] = agent_socket
-        arguments = [
-            str(self.ssh), "-F", "none", "-T", "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no", "-o", "NumberOfPasswordPrompts=0",
-            "-o", "ConnectTimeout=8", "-o", "ConnectionAttempts=1",
-            "-o", "StrictHostKeyChecking=yes", "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes", "-o", "PermitLocalCommand=no",
-            "-o", "ProxyCommand=none", "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR",
-            f"{profile.username}@{ZEUS_HOST}", _remote_command(profile),
-        ]
-        process = subprocess.Popen(
-            arguments, cwd=self.root, env=environment, shell=False, close_fds=True,
-            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        )
-        output = bytearray(); errors = bytearray(); exceeded = threading.Event()
-        def drain(stream: Any, limit: int, destination: bytearray) -> None:
-            while True:
-                chunk = stream.read(64 * 1024)
-                if not chunk: return
-                if len(destination) + len(chunk) > limit:
-                    exceeded.set()
-                    try: process.kill()
-                    except OSError: pass
-                    return
-                destination.extend(chunk)
-        readers = [
-            threading.Thread(target=drain, args=(process.stdout, MAX_STDOUT, output), daemon=True),
-            threading.Thread(target=drain, args=(process.stderr, MAX_STDERR, errors), daemon=True),
-        ]
-        for reader in readers: reader.start()
-        try:
-            returncode = process.wait(timeout=self.timeout)
-        except subprocess.TimeoutExpired:
-            process.kill(); process.wait(); raise ZeusSnapshotError("zeus_timeout") from None
-        for reader in readers: reader.join(timeout=1)
-        if exceeded.is_set() or any(reader.is_alive() for reader in readers):
-            process.kill(); raise ZeusSnapshotError("malformed_remote_response")
-        return returncode, bytes(output), bytes(errors)
+        return self.runner.snapshot(profile)
 
     def snapshot(self, profile: ZeusProfile) -> dict[str, Any]:
         returncode, output, errors = self._run(profile)

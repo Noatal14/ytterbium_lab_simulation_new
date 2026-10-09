@@ -7,12 +7,13 @@ import json
 import os
 import shlex
 import subprocess
+import threading
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Mapping
 
-from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
+from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile, ZeusSnapshotError
 
 
 class ReceiverKind(Enum):
@@ -22,6 +23,7 @@ class ReceiverKind(Enum):
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
     SMOKE_SUBMISSION = "smoke_submission"
+    SNAPSHOT = "snapshot"
 
 
 class ReceiverOperation(Enum):
@@ -53,6 +55,7 @@ class _ReceiverDefinition:
     explicit_process_safety: bool = False
     payload_before_receiver: bool = False
     embedded_smoke_receiver: bool = False
+    embedded_snapshot_receiver: bool = False
 
 
 _RECEIVERS = {
@@ -156,6 +159,35 @@ _RECEIVERS = {
         True,
         True,
     ),
+    ReceiverKind.SNAPSHOT: _ReceiverDefinition(
+        None,
+        "<snapshot>",
+        frozenset(),
+        False,
+        (
+            "-F", "none", "-T",
+            "-o", "BatchMode=yes",
+            "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+            "-o", "NumberOfPasswordPrompts=0",
+            "-o", "ConnectTimeout=8",
+            "-o", "ConnectionAttempts=1",
+            "-o", "StrictHostKeyChecking=yes",
+            "-o", "ForwardAgent=no",
+            "-o", "ClearAllForwardings=yes",
+            "-o", "PermitLocalCommand=no",
+            "-o", "ProxyCommand=none",
+            "-o", "ProxyJump=none",
+            "-o", "KnownHostsCommand=none",
+            "-o", "CanonicalizeHostname=no",
+            "-o", "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        False,
+        False,
+        True,
+    ),
 }
 
 
@@ -253,6 +285,21 @@ class PinnedSshPolicy:
     ) -> PinnedSshPolicy:
         return cls(
             ReceiverKind.SMOKE_SUBMISSION,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def snapshot(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.SNAPSHOT,
             repository_root,
             ssh_executable,
             timeout,
@@ -362,3 +409,96 @@ class PinnedSshRunner:
             if definition.wrap_process_oserror:
                 raise PinnedSshProcessError from error
             raise
+
+    def snapshot(self, profile: ZeusProfile) -> tuple[int, bytes, bytes]:
+        """Run the one fixed bounded snapshot receiver."""
+        if self._policy.receiver is not ReceiverKind.SNAPSHOT:
+            raise ValueError("Unsupported pinned SSH snapshot receiver.")
+        if type(profile) is not ZeusProfile:
+            raise ValueError("Invalid pinned SSH profile.")
+        try:
+            validated_profile = ZeusProfile.parse({
+                "username": profile.username,
+                "project_directory": profile.project_directory,
+            })
+        except ValueError as error:
+            raise ValueError("Invalid pinned SSH profile.") from error
+        if validated_profile != profile:
+            raise ValueError("Invalid pinned SSH profile.")
+
+        from workflow_api.zeus_snapshot import (
+            MAX_STDERR,
+            MAX_STDOUT,
+            _REMOTE_SCRIPT,
+            _remote_command,
+        )
+
+        definition = _RECEIVERS[ReceiverKind.SNAPSHOT]
+        arguments = [
+            str(self._policy.ssh_executable),
+            *definition.ssh_arguments,
+            f"{profile.username}@{ZEUS_HOST}",
+            _remote_command(profile),
+        ]
+        environment = {
+            "PATH": str(self._policy.ssh_executable.parent),
+            "HOME": str(Path.home()),
+            "LC_ALL": "C",
+        }
+        agent_socket = os.environ.get("SSH_AUTH_SOCK")
+        if agent_socket:
+            environment["SSH_AUTH_SOCK"] = agent_socket
+        process = subprocess.Popen(
+            arguments,
+            cwd=self._policy.repository_root,
+            env=environment,
+            shell=False,
+            close_fds=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        output = bytearray()
+        errors = bytearray()
+        exceeded = threading.Event()
+
+        def drain(stream: Any, limit: int, destination: bytearray) -> None:
+            while True:
+                chunk = stream.read(64 * 1024)
+                if not chunk:
+                    return
+                if len(destination) + len(chunk) > limit:
+                    exceeded.set()
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                    return
+                destination.extend(chunk)
+
+        readers = [
+            threading.Thread(
+                target=drain,
+                args=(process.stdout, MAX_STDOUT, output),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=drain,
+                args=(process.stderr, MAX_STDERR, errors),
+                daemon=True,
+            ),
+        ]
+        for reader in readers:
+            reader.start()
+        try:
+            returncode = process.wait(timeout=self._policy.timeout)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise ZeusSnapshotError("zeus_timeout") from None
+        for reader in readers:
+            reader.join(timeout=1)
+        if exceeded.is_set() or any(reader.is_alive() for reader in readers):
+            process.kill()
+            raise ZeusSnapshotError("malformed_remote_response")
+        return returncode, bytes(output), bytes(errors)
