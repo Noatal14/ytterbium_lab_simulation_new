@@ -1,5 +1,5 @@
 import { CheckCircle2, GitBranch, Server } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { campaignApi, creationApi, refinementLifecycleApi, refinementSubmissionApi, screeningLifecycleApi, screeningSubmissionApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, type Campaign, type CampaignApi, type CreationApi, type RefinementLifecycleApi, type RefinementSubmissionApi, type ScreeningLifecycleApi, type ScreeningSubmissionApi, type SmokeLifecycleApi, type SubmissionApi, type TransferApi, type ZeusApi, type ZeusSnapshot } from "./api/campaigns";
 import { AppHeader } from "./components/AppHeader";
 import { CampaignCard } from "./components/CampaignCard";
@@ -7,44 +7,34 @@ import { CampaignDetail, CampaignExplorer } from "./components/CampaignExplorer"
 import { CampaignCreation } from "./components/CampaignCreation";
 import { ZeusJobs } from "./components/ZeusJobs";
 import { homeFixture } from "./fixtures/home";
+import { useCampaignQuery } from "./hooks/useCampaignQuery";
 
 export function App({ api = campaignApi, creation = creationApi, zeus = zeusApi, transfer = transferApi, submission = submissionApi, lifecycle = smokeLifecycleApi, screeningSubmission = screeningSubmissionApi, screeningLifecycle = screeningLifecycleApi, refinementSubmission = refinementSubmissionApi, refinementLifecycle = refinementLifecycleApi }: { api?: CampaignApi; creation?: CreationApi; zeus?: ZeusApi; transfer?: TransferApi; submission?: SubmissionApi; lifecycle?: SmokeLifecycleApi; screeningSubmission?: ScreeningSubmissionApi; screeningLifecycle?: ScreeningLifecycleApi; refinementSubmission?: RefinementSubmissionApi; refinementLifecycle?: RefinementLifecycleApi }) {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [invalidCount, setInvalidCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { campaigns, invalidCount, loading, error: listError, refresh: refreshCampaigns } = useCampaignQuery(api);
   const [selected, setSelected] = useState<Campaign | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [restoreCampaignFocus, setRestoreCampaignFocus] = useState<string | null>(null);
   const [page, setPage] = useState<"home" | "jobs">("home");
   const [zeusSnapshot, setZeusSnapshot] = useState<ZeusSnapshot | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    api.list().then((result) => {
-      if (!active) return;
-      setCampaigns(result.campaigns);
-      setInvalidCount(result.invalid_count);
-      setLoading(false);
-    }).catch(() => {
-      if (!active) return;
-      setError("Campaign records are unavailable. Start the local read-only service and try again.");
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [api]);
+  const detailRequest = useRef(0);
 
   async function openCampaign(id: string) {
-    try { setRestoreCampaignFocus(null); setSelected(await api.get(id)); }
-    catch { setError("That campaign could not be opened safely."); }
+    const request = ++detailRequest.current;
+    setDetailError(null); setRestoreCampaignFocus(null);
+    try { const campaign = await api.get(id); if (request === detailRequest.current) setSelected(campaign); }
+    catch { if (request === detailRequest.current) setDetailError("That campaign could not be opened safely. The campaign list is still available."); }
   }
+  function leaveDetail(nextPage: "home" | "jobs" = "home") { detailRequest.current += 1; setDetailError(null); setCreating(false); setSelected(null); setPage(nextPage); }
+  function startCreation() { detailRequest.current += 1; setDetailError(null); setSelected(null); setCreating(true); }
 
   return <div className="app-frame">
-    <AppHeader page={page} onNavigate={(nextPage) => { setCreating(false); setSelected(null); setPage(nextPage); }} />
-    {page === "jobs" ? <ZeusJobs campaigns={campaigns} api={zeus} loading={loading} error={error} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : creating ? <CampaignCreation api={creation} onCancel={() => setCreating(false)} onInspect={(id) => { setCreating(false); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { setSelected(null); setPage("jobs"); }} onViewJobs={() => { setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
+    <AppHeader page={page} onNavigate={(nextPage) => leaveDetail(nextPage)} />
+    {page === "jobs" ? <ZeusJobs campaigns={campaigns} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { setCreating(false); setDetailError(null); }} onInspect={(id) => { setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { setSelected(null); setPage("jobs"); }} onViewJobs={() => { setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { detailRequest.current += 1; setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
       <section className="hero" aria-labelledby="page-title"><p className="eyebrow">Welcome</p><h1 id="page-title">Run or inspect a campaign</h1><p className="hero-copy">A campaign follows several ordered steps. This application will guide you through each one and explain when your input is needed.</p><dl className="status-row" aria-label="Sample environment status"><div className="status-pill"><dt><GitBranch aria-hidden="true" /> {homeFixture.environment.branchLabel}</dt><dd>{homeFixture.environment.branchValue}</dd></div><div className="status-pill"><dt><Server aria-hidden="true" /> {homeFixture.environment.zeusLabel}</dt><dd>{homeFixture.environment.zeusValue}</dd></div></dl></section>
-      <CampaignExplorer campaigns={campaigns} invalidCount={invalidCount} loading={loading} error={error} onOpen={openCampaign} restoreFocusId={restoreCampaignFocus} />
-      <section className="section-block" id="campaigns" aria-labelledby="start-heading"><div className="section-heading"><h2 id="start-heading">Start a campaign</h2><p>Configure and review a local campaign before creating any files.</p></div><div className="campaign-grid">{homeFixture.campaigns.map((campaign) => <CampaignCard key={campaign.id} {...campaign} onStart={campaign.id === "mot-2d" ? () => setCreating(true) : undefined} />)}</div></section>
+      {detailError && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign details are unavailable</strong><p>{detailError}</p><button className="secondary-button compact-action" type="button" onClick={() => setDetailError(null)}>Dismiss</button></div></div>}
+      <CampaignExplorer campaigns={campaigns} invalidCount={invalidCount} loading={loading} error={listError} onRetry={() => void refreshCampaigns()} onOpen={openCampaign} restoreFocusId={restoreCampaignFocus} />
+      <section className="section-block" id="campaigns" aria-labelledby="start-heading"><div className="section-heading"><h2 id="start-heading">Start a campaign</h2><p>Configure and review a local campaign before creating any files.</p></div><div className="campaign-grid">{homeFixture.campaigns.map((campaign) => <CampaignCard key={campaign.id} {...campaign} onStart={campaign.id === "mot-2d" ? startCreation : undefined} />)}</div></section>
       <section className="section-block" aria-labelledby="workflow-heading"><div className="section-heading"><h2 id="workflow-heading">How a campaign works</h2><p>The application guides you through each transition and checks that it is safe to continue.</p></div><ol className="steps">{homeFixture.steps.map((step) => <li key={step.number}><span className="step-number">{step.number}</span><strong>{step.title}</strong><p>{step.description}</p></li>)}</ol></section>
       <p className="read-only-note"><CheckCircle2 aria-hidden="true" /> Local 2D campaign setup is available. Zeus is contacted only after an explicit connection or preparation action; jobs are never submitted automatically.</p>
     </main>}

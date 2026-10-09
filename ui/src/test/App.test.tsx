@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../App";
 import { ScreeningSubmissionApiError, SubmissionApiError, ZeusApiError } from "../api/campaigns";
 import { campaignFixture, fixtureApi } from "./campaignFixture";
+import { useCampaignQuery } from "../hooks/useCampaignQuery";
 
 const creationFixture = {
   sources: async () => [{ id: "source-1", path: "data/particle_states/after_zeeman/production", profile: "production", ensemble_count: 35 as const, minimum_survivors: 31000, maximum_survivors: 32000, fingerprint: "f".repeat(64) }],
@@ -113,7 +114,9 @@ describe("onboarding home", () => {
 
   it("reviews and confirms a local campaign without implying Zeus submission", async () => {
     const user = userEvent.setup();
-    render(<App api={fixtureApi} creation={creationFixture} />);
+    const createdCampaign = { ...campaignFixture, id: "mot_2d-created", name: "Fixed s0 1.3" };
+    const list = vi.fn().mockResolvedValueOnce({ campaigns: [campaignFixture], invalid_count: 0, total: 1 }).mockResolvedValue({ campaigns: [campaignFixture, createdCampaign], invalid_count: 0, total: 2 });
+    render(<App api={{ list, async get(id) { return id === createdCampaign.id ? createdCampaign : campaignFixture; } }} creation={creationFixture} />);
     await user.click(screen.getByRole("button", { name: "Start 2D-MOT campaign" }));
     await screen.findByRole("option", { name: /after_zeeman\/production/ });
     await user.type(screen.getByLabelText(/^Campaign name/), "Fixed s0 1.3");
@@ -126,6 +129,9 @@ describe("onboarding home", () => {
     await user.click(screen.getByRole("button", { name: "Create campaign" }));
     expect(await screen.findByRole("heading", { name: "Campaign created and validated" })).toHaveFocus();
     expect(screen.getByText(/No simulation was run and no work was submitted to Zeus/)).toBeInTheDocument();
+    await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+    await user.click(screen.getByRole("button", { name: "Return to campaigns" }));
+    expect(await screen.findByText("Fixed s0 1.3")).toBeInTheDocument();
   });
 
   it("never labels a non-portable campaign ready on the Zeus jobs page", async () => {
@@ -524,5 +530,86 @@ describe("onboarding home", () => {
     expect(await screen.findByText(/still publishing the expected smoke output files/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "No action needed" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Review screening preparation" })).not.toBeInTheDocument();
+  });
+
+  it("keeps a detail failure isolated from the campaign list and clears it on navigation", async () => {
+    const user = userEvent.setup();
+    const api = { async list() { return { campaigns: [campaignFixture], invalid_count: 0, total: 1 }; }, async get() { throw new Error("detail failed"); } };
+    render(<App api={api} creation={creationFixture} />);
+    await user.click(await screen.findByRole("button", { name: "Open campaign" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Campaign details are unavailable");
+    expect(screen.getByRole("button", { name: "Open campaign" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Home" }));
+    expect(screen.queryByText("Campaign details are unavailable")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open campaign" })).toBeInTheDocument();
+  });
+
+  it("retries a failed campaign list without retaining the old error", async () => {
+    const user = userEvent.setup(); let attempt = 0;
+    const api = { async list() { attempt += 1; if (attempt === 1) throw new Error("offline"); return { campaigns: [campaignFixture], invalid_count: 0, total: 1 }; }, async get() { return campaignFixture; } };
+    render(<App api={api} creation={creationFixture} />);
+    expect(await screen.findByText("Campaign list unavailable")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Retry campaign list" }));
+    expect(await screen.findByRole("button", { name: "Open campaign" })).toBeInTheDocument();
+    expect(screen.queryByText("Campaign list unavailable")).not.toBeInTheDocument();
+  });
+
+  it("ignores an older list response after a newer retry succeeds", async () => {
+    let resolveFirst!: (value: { campaigns: (typeof campaignFixture)[]; invalid_count: number; total: number }) => void;
+    const first = new Promise<{ campaigns: (typeof campaignFixture)[]; invalid_count: number; total: number }>((resolve) => { resolveFirst = resolve; }); let call = 0;
+    const newer = { ...campaignFixture, id: "mot_2d-newer", name: "newer campaign" };
+    const api = { list: vi.fn(async () => { call += 1; return call === 1 ? first : { campaigns: [newer], invalid_count: 0, total: 1 }; }), async get() { return newer; } };
+    const { result } = renderHook(() => useCampaignQuery(api));
+    await act(async () => { await result.current.refresh(); });
+    expect(result.current.campaigns).toEqual([newer]);
+    await act(async () => { resolveFirst({ campaigns: [campaignFixture], invalid_count: 0, total: 1 }); await first; });
+    expect(result.current.campaigns).toEqual([newer]);
+  });
+
+  it("ignores stale detail completion after navigation and preserves the Zeus snapshot", async () => {
+    const user = userEvent.setup(); let resolveDetail!: (value: typeof campaignFixture) => void;
+    const pending = new Promise<typeof campaignFixture>((resolve) => { resolveDetail = resolve; });
+    const api = { async list() { return { campaigns: [campaignFixture], invalid_count: 0, total: 1 }; }, async get() { return pending; } };
+    render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.type(screen.getByLabelText("Technion username"), "tal.noa");
+    await user.click(screen.getByRole("button", { name: "Connect and check status" }));
+    expect(await screen.findByText("Connected — read-only snapshot received")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Inspect campaign" }));
+    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    resolveDetail(campaignFixture);
+    await waitFor(() => expect(screen.getByText("Connected — read-only snapshot received")).toBeInTheDocument());
+    expect(screen.queryByRole("heading", { name: campaignFixture.name, level: 1 })).not.toBeInTheDocument();
+  });
+
+  it("keeps the newer campaign detail when an older request resolves last", async () => {
+    const user = userEvent.setup(); let resolveOlder!: (value: typeof campaignFixture) => void;
+    const olderPending = new Promise<typeof campaignFixture>((resolve) => { resolveOlder = resolve; });
+    const older = { ...campaignFixture, id: "mot_2d-older", name: "older detail" };
+    const newer = { ...campaignFixture, id: "mot_2d-newer", name: "newer detail" };
+    const api = { async list() { return { campaigns: [older, newer], invalid_count: 0, total: 2 }; }, async get(id: string) { return id === older.id ? olderPending : newer; } };
+    render(<App api={api} creation={creationFixture} />);
+    const buttons = await screen.findAllByRole("button", { name: "Open campaign" });
+    await user.click(buttons[0]);
+    await user.click(buttons[1]);
+    expect(await screen.findByRole("heading", { name: "newer detail" })).toBeInTheDocument();
+    await act(async () => { resolveOlder(older); await olderPending; });
+    expect(screen.getByRole("heading", { name: "newer detail" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "older detail" })).not.toBeInTheDocument();
+  });
+
+  it("cancels a pending detail request when campaign creation starts", async () => {
+    const user = userEvent.setup(); let resolveDetail!: (value: typeof campaignFixture) => void;
+    const pending = new Promise<typeof campaignFixture>((resolve) => { resolveDetail = resolve; });
+    const api = { async list() { return { campaigns: [campaignFixture], invalid_count: 0, total: 1 }; }, async get() { return pending; } };
+    render(<App api={api} creation={creationFixture} />);
+    await user.click(await screen.findByRole("button", { name: "Open campaign" }));
+    await user.click(screen.getByRole("button", { name: "Start 2D-MOT campaign" }));
+    expect(screen.getByRole("heading", { name: "Create a 2D-MOT campaign" })).toBeInTheDocument();
+    await act(async () => { resolveDetail(campaignFixture); await pending; });
+    await user.click(screen.getByRole("button", { name: "Back to home" }));
+    expect(screen.getByRole("heading", { name: "Run or inspect a campaign" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: campaignFixture.name, level: 1 })).not.toBeInTheDocument();
   });
 });
