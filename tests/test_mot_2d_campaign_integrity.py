@@ -536,13 +536,14 @@ def test_refinement_task_keeps_same_study_and_exact_total_target(tmp_path, monke
 
 def test_confirmation_refuses_incomplete_refinement(tmp_path, monkeypatch):
     import studies.mot_2d_s0_campaign as campaign
+    import workflow_api.mot_2d_screen as validation
 
     monkeypatch.setattr(
-        campaign,
-        "trial_rows",
-        lambda *args: [{}] * (3 * campaign.REFINE_TRIALS - 1),
+        validation,
+        "validate_refine_outputs",
+        lambda *args: (_ for _ in ()).throw(validation.ScreenValidationError("Refinement incomplete")),
     )
-    with pytest.raises(RuntimeError, match="Refinement incomplete"):
+    with pytest.raises(validation.ScreenValidationError, match="Refinement incomplete"):
         campaign.prepare_confirmation(
             tmp_path, {"s0_values": [1.3]}
         )

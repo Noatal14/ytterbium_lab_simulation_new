@@ -224,6 +224,50 @@ trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
     return files
 
 
+def render_confirmation_transition(manifest:dict[str,Any],destination:Path,repository_root:Path,validated_rows:list[dict[str,Any]])->dict[str,bytes]:
+    """Render the deterministic Refinement-to-Confirmation transition."""
+    selected={};specs=[]
+    for value in manifest["s0_values"]:
+        rows=sorted((row for row in validated_rows if float(row["s0"])==float(value)),key=lambda row:(-row["mean_conditional_efficiency"],row["detuning_gamma"],row["magnet_radius"]));chosen=[];cells=set()
+        for row in rows:
+            cell=(round(row["detuning_gamma"]/0.01),round(row["magnet_radius"]/0.00001))
+            if cell in cells:continue
+            cells.add(cell);chosen.append(row)
+            if len(chosen)==5:break
+        if len(chosen)!=5:raise ValueError("Fewer than five distinguishable Refinement candidates were validated.")
+        label=f"s0_{float(value):.6f}".replace(".","p");selected[label]=chosen
+        for index,row in enumerate(chosen):specs.append({"s0":value,"candidate_index":index,"parameters":{"s0":row["s0"],"detuning_gamma":row["detuning_gamma"],"magnet_radius":row["magnet_radius"]}})
+    argument=destination.relative_to(repository_root).as_posix();commit=manifest["provenance"]["git_commit"];command=f"python -m studies.mot_2d_s0_campaign confirmation-task --campaign {shlex.quote(argument)} --task-index $PBS_ARRAY_INDEX"
+    pbs=f'''#!/bin/bash
+#PBS -N mot2d_confi
+#PBS -q zeus_combined_q
+#PBS -J 0-{len(specs)-1}%3
+#PBS -l select=1:ncpus=200:mem=64gb
+#PBS -l walltime=10:00:00
+
+set -euo pipefail
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
+module load SPACK/apps
+module load gcc/14.1.0
+module load python/3.14.2
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
+EXPECTED_COMMIT={commit}
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
+  echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2
+  exit 42
+fi
+RUN_TMP="/tmp/${{USER}}_mot2d_confi_${{PBS_JOBID}}_${{PBS_ARRAY_INDEX:-0}}"
+mkdir -p "${{RUN_TMP}}"
+export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
+trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
+{command}
+'''.encode()
+    updated=deepcopy(manifest);updated["stage"]="confirmation";updated.setdefault("stages",{})["confirmation"]={"tasks":len(specs),"job_file":f"{argument}/jobs/04_confirmation.pbs"}
+    return {"refined_candidates.json":(json.dumps(selected,indent=2,sort_keys=True)+"\n").encode(),"confirmation/tasks.json":(json.dumps(specs,indent=2,sort_keys=True)+"\n").encode(),"jobs/04_confirmation.pbs":pbs,"campaign.json":(json.dumps(updated,indent=2,sort_keys=True)+"\n").encode()}
+
+
 def plan_from_frozen_manifest(
     *, repository_root: Path, destination: Path, manifest: dict[str, Any]
 ) -> CampaignPlan:

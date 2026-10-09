@@ -31,6 +31,7 @@ from workflow_api.zeus_screening import ZeusScreeningCoordinator, ZeusScreeningE
 from workflow_api.zeus_screen_submission import ZeusScreenSubmissionCoordinator, ZeusScreenSubmissionError
 from workflow_api.zeus_refinement import ZeusRefinementCoordinator, ZeusRefinementError
 from workflow_api.zeus_refinement_submission import ZeusRefinementSubmissionCoordinator, ZeusRefinementSubmissionError
+from workflow_api.zeus_confirmation import ZeusConfirmationCoordinator, ZeusConfirmationError
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -56,6 +57,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     screen_submission_service: ZeusScreenSubmissionCoordinator | None = None
     refinement_service: ZeusRefinementCoordinator | None = None
     refinement_submission_service: ZeusRefinementSubmissionCoordinator | None = None
+    confirmation_service: ZeusConfirmationCoordinator | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -74,7 +76,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None:
                 self._error("session_unavailable", "Local actions are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -134,7 +136,8 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
         screen_submission_paths = {"/api/v1/zeus/submissions/screening/preview", "/api/v1/zeus/submissions/screening/confirm"}
         refinement_paths = {"/api/v1/zeus/screen/status", "/api/v1/zeus/refinement/preview", "/api/v1/zeus/refinement/confirm"}
         refinement_submission_paths = {"/api/v1/zeus/submissions/refinement/status", "/api/v1/zeus/submissions/refinement/preview", "/api/v1/zeus/submissions/refinement/confirm"}
-        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths, *screening_paths, *screen_submission_paths, *refinement_paths, *refinement_submission_paths}
+        confirmation_paths = {"/api/v1/zeus/refinement-chain/status", "/api/v1/zeus/confirmation/preview", "/api/v1/zeus/confirmation/confirm"}
+        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths, *screening_paths, *screen_submission_paths, *refinement_paths, *refinement_submission_paths, *confirmation_paths}
         if target.query or target.path not in allowed:
             self._method_not_allowed(); return
         if target.path == "/api/v1/zeus/snapshot" and self.zeus_service is None:
@@ -151,7 +154,9 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._error("zeus_refinement_unavailable", "Zeus refinement preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if target.path in refinement_submission_paths and self.refinement_submission_service is None:
             self._error("zeus_refinement_submission_unavailable", "Zeus refinement submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path not in transfer_paths | submission_paths | screening_paths | screen_submission_paths | refinement_paths | refinement_submission_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
+        if target.path in confirmation_paths and self.confirmation_service is None:
+            self._error("zeus_confirmation_unavailable", "Zeus confirmation preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
+        if target.path not in transfer_paths | submission_paths | screening_paths | screen_submission_paths | refinement_paths | refinement_submission_paths | confirmation_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
             self._error("creation_unavailable", "Local campaign creation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
         if not self._trusted_mutation_headers(): return
         try:
@@ -189,6 +194,12 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
                 data = self.refinement_submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path == "/api/v1/zeus/submissions/refinement/confirm":
                 data = self.refinement_submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/refinement-chain/status":
+                data = self.confirmation_service.status(payload)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/confirmation/preview":
+                data = self.confirmation_service.preview(payload, session_id=session)  # type: ignore[union-attr]
+            elif target.path == "/api/v1/zeus/confirmation/confirm":
+                data = self.confirmation_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
             elif target.path.endswith("/preview"):
                 data = self.creation_service.preview(payload, session)
             else:
@@ -337,6 +348,9 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
         except ZeusRefinementSubmissionError as error:
             status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.UNAUTHORIZED if error.code=="zeus_authentication_required" else HTTPStatus.CONFLICT if error.code in {"refinement_chain_already_submitted","refinement_chain_partially_submitted","refinement_submission_busy","refinement_submission_outcome_unknown","refinement_already_started"} else HTTPStatus.PRECONDITION_FAILED
             self._error(error.code,"Refinement submission stopped safely.",status);return
+        except ZeusConfirmationError as error:
+            status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.CONFLICT if error.code in {"transition_busy","transition_conflict","transition_outcome_unknown","confirmation_already_prepared"} else HTTPStatus.PRECONDITION_FAILED
+            self._error(error.code,"Confirmation preparation stopped safely.",status);return
         except BlockingIOError:
             self._error("rate_limited", "Too many local creation requests.", HTTPStatus.TOO_MANY_REQUESTS); return
         except FileExistsError:
@@ -462,6 +476,9 @@ def main() -> None:
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     ReadOnlyWorkflowHandler.refinement_submission_service = ZeusRefinementSubmissionCoordinator(
+        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    ReadOnlyWorkflowHandler.confirmation_service = ZeusConfirmationCoordinator(
         ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), ReadOnlyWorkflowHandler)

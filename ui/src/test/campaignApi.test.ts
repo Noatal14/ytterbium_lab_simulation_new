@@ -1,4 +1,4 @@
-import { campaignApi, refinementSubmissionApi, screeningLifecycleApi, screeningSubmissionApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
+import { campaignApi, refinementLifecycleApi, roundTiesToEven, refinementSubmissionApi, screeningLifecycleApi, screeningSubmissionApi, smokeLifecycleApi, submissionApi, transferApi, zeusApi, ZeusApiError } from "../api/campaigns";
 
 const smokePreviewData = (kind: "job" | "array" = "job") => ({
   preview_token: "submit-token", expires_in_seconds: 300,
@@ -12,6 +12,9 @@ const smokePreviewData = (kind: "job" | "array" = "job") => ({
 const smokeResultData = (job_id: string) => ({ status: "submitted", campaign_id: "mot_2d-x", stage: "smoke", job_id, submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true });
 
 describe("campaign API runtime validation", () => {
+  it("matches Python ties-to-even rounding at positive and negative half cells", () => {
+    expect([roundTiesToEven(90.5), roundTiesToEven(91.5), roundTiesToEven(-90.5), roundTiesToEven(-91.5)]).toEqual([90, 92, -90, -92]);
+  });
   it("strictly previews and confirms one Screening array submission", async () => {
     const preview = { preview_token: "screen-submit-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "screen", label: "Screening", purpose: "Find promising candidates" }, job: { file: "jobs/02_screen.pbs", kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 86400 }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false }, inputs: { verified_count: 72, status: "ready" }, smoke: { status: "validated", job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true };
     const result = { status: "submitted", campaign_id: "mot_2d-x", stage: "screen", job_id: "4760000[].zeus-master", submitted_at: "2026-10-08T13:00:00Z", later_stages_locked: true };
@@ -55,6 +58,18 @@ describe("campaign API runtime validation", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "status" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data }) }));
     await expect(refinementSubmissionApi.status("mot_2d-x", { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" })).rejects.toThrow(/Refinement/); vi.unstubAllGlobals();
   });
+  it("strictly validates completed Refinement and prepares Confirmation without qsub", async () => {
+    const ids = ["4770001[].zeus-master", "4770002[].zeus-master", "4770003[].zeus-master", "4770004[].zeus-master"];
+    const counts = { queued: 0, running: 0, held: 0, succeeded: 3, failed: 0 };
+    const status = { source: "zeus", queried_at: "2026-10-09T10:00:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "refine" }, chain: { status: "ready_to_prepare_confirmation", rounds: ids.map((job_id, index) => ({ round: index + 1, job_id, depends_on_job_id: index === 0 ? null : ids[index - 1], scheduler: { state: "completed_success", task_count: 3, counts } })) }, validation: { status: "valid", completed_trials: 30, expected_trials: 30, candidate_count: 5 }, next_action: "review_confirmation_preparation", local_sync: { status: "not_synchronized" } };
+    const candidates = [1, 2, 3, 4, 5].map((rank) => ({ s0: 1.3, rank, detuning_gamma: -0.9 - rank / 100, magnet_radius_m: 0.046 + rank / 100000, mean_conditional_efficiency: 0.02 + rank / 1000, source: `refine/s0_1p300000/worker${(rank - 1) % 3}/trials/trial_000${rank}.json` }));
+    const preview = { preview_token: "confirmation-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, from_stage: "refine", to_stage: "confirmation", bounds: { detuning_gamma: { low: -3, high: -0.1 }, magnet_radius_m: { low: 0.03, high: 0.06 } }, refinement: { round_job_ids: ids, completed_trials: 30, expected_trials: 30, candidates }, artifacts: { create: ["refined_candidates.json", "confirmation/tasks.json", "jobs/04_confirmation.pbs"], update: ["campaign.json"] }, job: { file: "jobs/04_confirmation.pbs", kind: "array", task_count: 5, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 36000 }, effects: { prepare_confirmation: true, submit_confirmation: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } };
+    const result = { status: "confirmation_prepared", campaign_id: "mot_2d-x", stage: "confirmation", artifacts: { created: 3, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } };
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "status" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: status }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: { csrf_token: "preview" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ data: result }) });
+    vi.stubGlobal("fetch", fetchMock); const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    expect((await refinementLifecycleApi.status("mot_2d-x", profile)).next_action).toBe("review_confirmation_preparation"); expect((await refinementLifecycleApi.preview("mot_2d-x", profile)).effects.submit_confirmation).toBe(false); expect((await refinementLifecycleApi.confirm("confirmation-token")).submitted_to_zeus).toBe(false); vi.unstubAllGlobals();
+  });
+
   it("rejects malformed nested status data instead of rendering it", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,

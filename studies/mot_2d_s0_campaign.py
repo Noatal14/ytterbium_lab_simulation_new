@@ -411,20 +411,12 @@ def refine_task(args):
 
 
 def prepare_confirmation(root, manifest):
-    specs, candidates = [], {}
-    for value in manifest["s0_values"]:
-        rows = trial_rows(root, "refine", value)
-        if len(rows) != 3 * REFINE_TRIALS:
-            raise RuntimeError(f"Refinement incomplete for s0={value}: {len(rows)}/{3*REFINE_TRIALS}")
-        candidates[key(value)] = distinct(
-            rows,
-            count=CONFIRMATION_CANDIDATES,
-        )
-        for index, candidate in enumerate(candidates[key(value)]):
-            specs.append({"s0": value, "candidate_index": index,
-                          "parameters": {k: candidate[k] for k in ("s0", "detuning_gamma", "magnet_radius")}})
-    save_file_json(root / "refined_candidates.json", candidates)
-    prepare(root, manifest, "confirmation", specs, "04", 200, "10:00:00")
+    from workflow_api.mot_2d_screen import validate_refine_outputs
+    from workflow_api.mot_2d_plan import render_confirmation_transition
+    files=render_confirmation_transition(manifest,root,REPOSITORY_ROOT,validate_refine_outputs(root,manifest))
+    for name,content in files.items():
+        path=root/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(content)
+    print(f"Next job: qsub {root/'jobs/04_confirmation.pbs'}")
 
 
 def evaluate_task(root, stage, task_index):
