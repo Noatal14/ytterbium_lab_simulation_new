@@ -18,6 +18,7 @@ from workflow_api.zeus_screen_submission import (
     PinnedSshScreenSubmissionTransport,
 )
 from workflow_api.zeus_submission import RepositoryRevisionService
+from workflow_api.zeus_snapshot import ZeusProfile
 
 
 class _Transport:
@@ -403,10 +404,10 @@ def test_screen_submission_pre_effect_ssh_error_remains_safely_retryable(
 
 
 def test_transport_rejects_extra_fields_and_loose_types(tmp_path, monkeypatch):
-    profile = type("Profile", (), {
+    profile = ZeusProfile.parse({
         "username": "tal.noa",
         "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
-    })()
+    })
     transport = PinnedSshScreenSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), profile,
     )

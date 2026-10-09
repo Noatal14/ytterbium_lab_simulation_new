@@ -20,6 +20,7 @@ class ReceiverKind(Enum):
     CONFIRMATION_PREPARATION = "confirmation_preparation"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
+    SCREENING_SUBMISSION = "screening_submission"
 
 
 class ReceiverOperation(Enum):
@@ -75,6 +76,33 @@ _RECEIVERS = {
         "zeus_screening_remote.py",
         "<zeus-screening>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        False,
+        (
+            "-F", "none", "-T",
+            "-o", "BatchMode=yes",
+            "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+            "-o", "NumberOfPasswordPrompts=0",
+            "-o", "ConnectTimeout=8",
+            "-o", "ConnectionAttempts=1",
+            "-o", "StrictHostKeyChecking=yes",
+            "-o", "ForwardAgent=no",
+            "-o", "ClearAllForwardings=yes",
+            "-o", "PermitLocalCommand=no",
+            "-o", "ProxyCommand=none",
+            "-o", "ProxyJump=none",
+            "-o", "KnownHostsCommand=none",
+            "-o", "CanonicalizeHostname=no",
+            "-o", "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+    ),
+    ReceiverKind.SCREENING_SUBMISSION: _ReceiverDefinition(
+        "zeus_screen_submission_remote.py",
+        "<screen-submit>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT}),
         False,
         (
             "-F", "none", "-T",
@@ -165,6 +193,21 @@ class PinnedSshPolicy:
     ) -> PinnedSshPolicy:
         return cls(
             ReceiverKind.SCREENING_PREPARATION,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def screening_submission(
+        cls,
+        repository_root: Path,
+        ssh_executable: Path,
+        *,
+        timeout: float,
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.SCREENING_SUBMISSION,
             repository_root,
             ssh_executable,
             timeout,
