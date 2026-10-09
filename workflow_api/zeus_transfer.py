@@ -27,6 +27,7 @@ from typing import Mapping, Protocol
 
 from workflow_api.mot_2d_validation import modern_contract
 from workflow_api.discovery import build_registry
+from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 
@@ -396,13 +397,23 @@ class PinnedSshZeusPreparationTransport:
 class ZeusPreparationCoordinator:
     """Resolve opaque campaign ids and expose the stable HTTP-facing schema."""
 
-    def __init__(self, repository_root: Path, ssh_executable: Path, git_executable: Path, *, clock=time.time):
+    def __init__(
+        self,
+        repository_root: Path,
+        ssh_executable: Path,
+        git_executable: Path,
+        *,
+        clock=time.time,
+        token_factory=None,
+    ):
         self.root = repository_root.resolve(strict=True)
         self.ssh = ssh_executable.resolve(strict=True)
         self.git = git_executable.resolve(strict=True)
         self.clock = clock
-        self._services: dict[str, tuple[ZeusPreparationService, PreparationPreview, str, dict[str, object]]] = {}
-        self._lock = threading.RLock()
+        self.token_factory = token_factory
+        self._services = PreviewRegistry[
+            tuple[ZeusPreparationService, PreparationPreview, str, dict[str, object]]
+        ](clock=clock)
         if not self.git.is_file() or not os.access(self.git, os.X_OK) or self.root in self.git.parents:
             raise ValueError("The trusted Git executable is unavailable.")
 
@@ -456,7 +467,12 @@ class ZeusPreparationCoordinator:
         if not clean or local_commit != expected_commit:
             raise ZeusPreparationError("local_checkout_mismatch")
         transport = PinnedSshZeusPreparationTransport(self.root, self.ssh, profile, expected_commit)
-        service = ZeusPreparationService(self.root, transport, clock=self.clock)
+        service = ZeusPreparationService(
+            self.root,
+            transport,
+            clock=self.clock,
+            token_factory=self.token_factory,
+        )
         preview = service.preview(entry.manifest.parent, session_id=session_id)
         manifest_name = manifest.get("name")
         if not isinstance(manifest_name, str):
@@ -480,24 +496,25 @@ class ZeusPreparationCoordinator:
             },
             "effects": {"copy_missing_only": True, "overwrite_existing": False, "submit_jobs": False, "run_simulation": False},
         }
-        with self._lock:
-            self._services = {
-                key: value for key, value in self._services.items()
-                if value[1].expires_at >= self.clock()
-            }
-            if len(self._services) >= MAX_PENDING_PREVIEWS:
-                raise ZeusPreparationError("too_many_pending_previews")
-            self._services[preview.token] = (service, preview, campaign_id, destination)
+        try:
+            self._services.put(
+                preview.token,
+                (service, preview, campaign_id, destination),
+                expires_at=preview.expires_at,
+                capacity=MAX_PENDING_PREVIEWS,
+            )
+        except OverflowError as error:
+            raise ZeusPreparationError("too_many_pending_previews") from error
         return response
 
     def confirm(self, request: Mapping[str, object], *, session_id: str) -> dict[str, object]:
         if set(request) != {"preview_token"} or not isinstance(request.get("preview_token"), str):
             raise ZeusPreparationError("request_invalid")
         token = request["preview_token"]
-        with self._lock:
-            stored = self._services.get(token)
-        if stored is None:
+        record = self._services.get(token)
+        if record is None:
             raise ZeusPreparationError("confirmation_invalid")
+        stored = record.value
         service, preview, campaign_id, destination = stored
         local_commit, clean = self._local_revision()
         if not clean or local_commit != preview.git_commit:
@@ -672,13 +689,16 @@ class ZeusPreparationService:
     def __init__(
         self, repository_root: Path, transport: ZeusPreparationTransport, *,
         clock=time.time, token_lifetime: float = TOKEN_LIFETIME_SECONDS,
+        token_factory=None,
     ):
         self.root = repository_root.resolve(strict=True)
         self.transport = transport
         self.clock = clock
         self.token_lifetime = token_lifetime
-        self._pending: dict[str, _Pending] = {}
-        self._lock = threading.RLock()
+        self._previews = PreviewRegistry[_Pending](
+            clock=clock,
+            token_factory=token_factory,
+        )
         self._confirm_lock = threading.Lock()
 
     def _campaign_files(self, campaign: Path) -> tuple[dict[str, tuple[Path, str, int, str]], str]:
@@ -717,22 +737,35 @@ class ZeusPreparationService:
             FilePlan(path, item[1], item[2], "reuse" if path in snapshot.artifacts else "upload")
             for path, item in sorted(expected.items())
         )
-        token = secrets.token_urlsafe(32)
         expires = self.clock() + self.token_lifetime
-        preview = PreparationPreview(
-            token, canonical_repo_relative(self.root, campaign, allowed_root=CAMPAIGN_ROOT, require="dir"),
-            commit, files, already, expires,
-        )
-        with self._lock:
-            now = self.clock()
-            self._pending = {
-                key: value for key, value in self._pending.items()
-                if value.preview.expires_at >= now
-            }
-            if len(self._pending) >= MAX_PENDING_PREVIEWS:
-                raise ZeusPreparationError("too_many_pending_previews")
-            self._pending[token] = _Pending(session_id, campaign.resolve(), expected, preview)
-        return preview
+        preview_holder: list[PreparationPreview] = []
+
+        def pending_for(token: str) -> _Pending:
+            preview = PreparationPreview(
+                token,
+                canonical_repo_relative(
+                    self.root,
+                    campaign,
+                    allowed_root=CAMPAIGN_ROOT,
+                    require="dir",
+                ),
+                commit,
+                files,
+                already,
+                expires,
+            )
+            preview_holder.append(preview)
+            return _Pending(session_id, campaign.resolve(), expected, preview)
+
+        try:
+            self._previews.add_factory(
+                pending_for,
+                expires_at=expires,
+                capacity=MAX_PENDING_PREVIEWS,
+            )
+        except OverflowError as error:
+            raise ZeusPreparationError("too_many_pending_previews") from error
+        return preview_holder[0]
 
     def confirm(self, token: str, *, session_id: str) -> PreparationResult:
         # Confirmation is rare and serializing it closes same-token and
@@ -741,15 +774,15 @@ class ZeusPreparationService:
             return self._confirm(token, session_id=session_id)
 
     def _confirm(self, token: str, *, session_id: str) -> PreparationResult:
-        with self._lock:
-            pending = self._pending.get(token)
-            if pending is None or not secrets.compare_digest(pending.session_id, session_id):
-                raise ZeusPreparationError("confirmation_invalid")
-            if pending.result is not None:
-                return pending.result
-            if self.clock() > pending.preview.expires_at:
-                self._pending.pop(token, None)
-                raise ZeusPreparationError("confirmation_expired")
+        record = self._previews.get(token)
+        pending = record.value if record is not None else None
+        if pending is None or not secrets.compare_digest(pending.session_id, session_id):
+            raise ZeusPreparationError("confirmation_invalid")
+        if pending.result is not None:
+            return pending.result
+        if self.clock() > pending.preview.expires_at:
+            self._previews.pop(token)
+            raise ZeusPreparationError("confirmation_expired")
         # Rebuild from disk: confirmation cannot approve bytes changed after preview.
         current, commit = self._campaign_files(pending.campaign_root)
         if commit != pending.preview.git_commit or {
@@ -782,8 +815,7 @@ class ZeusPreparationService:
             len(current) - len(inputs) - (0 if campaign_present else len(campaign)),
             sum(current[path][2] for path in inputs) + (0 if campaign_present else sum(current[path][2] for path in campaign)),
         )
-        with self._lock:
-            # A server calls confirm serially per token; retain the result to make
-            # transport retries from the same session idempotent.
-            pending.result = result
+        # A server calls confirm serially per token; retain the result to make
+        # transport retries from the same session idempotent.
+        pending.result = result
         return result

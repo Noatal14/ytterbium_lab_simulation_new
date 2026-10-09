@@ -40,6 +40,21 @@ class PreviewRegistry(Generic[T]):
         capacity: int | None,
         prune_expired: bool = True,
     ) -> str:
+        return self.add_factory(
+            lambda _token: value,
+            expires_at=expires_at,
+            capacity=capacity,
+            prune_expired=prune_expired,
+        )
+
+    def add_factory(
+        self,
+        value_factory: Callable[[str], T],
+        *,
+        expires_at: float,
+        capacity: int | None,
+        prune_expired: bool = True,
+    ) -> str:
         with self._lock:
             now = self._clock()
             if prune_expired:
@@ -53,8 +68,31 @@ class PreviewRegistry(Generic[T]):
             token = self._token_factory()
             if not isinstance(token, str) or not token or token in self._records:
                 raise RuntimeError("preview token factory returned an invalid token")
-            self._records[token] = PreviewRecord(value, expires_at)
+            self._records[token] = PreviewRecord(value_factory(token), expires_at)
             return token
+
+    def put(
+        self,
+        token: str,
+        value: T,
+        *,
+        expires_at: float,
+        capacity: int | None,
+        prune_expired: bool = True,
+    ) -> None:
+        with self._lock:
+            now = self._clock()
+            if prune_expired:
+                self._records = {
+                    key: record
+                    for key, record in self._records.items()
+                    if record.expires_at >= now
+                }
+            if capacity is not None and len(self._records) >= capacity:
+                raise OverflowError("preview registry capacity reached")
+            if not isinstance(token, str) or not token or token in self._records:
+                raise RuntimeError("preview token is invalid or already registered")
+            self._records[token] = PreviewRecord(value, expires_at)
 
     def get(self, token: str) -> PreviewRecord[T] | None:
         with self._lock:

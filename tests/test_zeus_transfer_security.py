@@ -9,16 +9,22 @@ import json
 import struct
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from workflow_api.zeus_transfer import (
     CampaignArtifactPlanner,
+    MAX_PENDING_PREVIEWS,
     MAX_REMOTE_OUTPUT,
     PinnedSshZeusPreparationTransport,
     RemoteSnapshot,
+    PreparationPreview,
+    PreparationResult,
+    ZeusPreparationCoordinator,
     ZeusPreparationError,
     ZeusPreparationService,
     _REMOTE_TRANSFER_SCRIPT,
@@ -243,6 +249,197 @@ def test_confirmation_is_session_bound_expires_and_is_idempotent(tmp_path, monke
     assert first == second
     assert len(transport.input_uploads) == 1
     assert len(transport.campaign_publications) == 1
+
+
+def test_transfer_preview_registry_preserves_exact_expiry_boundary_and_removal(
+    tmp_path, monkeypatch,
+):
+    root, campaign, _ = portable_campaign(tmp_path, monkeypatch)
+    now = [100.0]
+    transport = RecordingTransport()
+    service = ZeusPreparationService(
+        root,
+        transport,
+        clock=lambda: now[0],
+        token_lifetime=300,
+        token_factory=lambda: "boundary-token",
+    )
+    preview = service.preview(campaign, session_id="owner")
+    assert preview.token == "boundary-token"
+    assert error_code(lambda: service.confirm("missing", session_id="owner")) == "confirmation_invalid"
+    assert error_code(lambda: service.confirm(preview.token, session_id="other")) == "confirmation_invalid"
+
+    now[0] = 400.0
+    result = service.confirm(preview.token, session_id="owner")
+    assert result.status == "prepared"
+    assert service.confirm(preview.token, session_id="owner") == result
+
+    expired_transport = RecordingTransport()
+    service = ZeusPreparationService(
+        root,
+        expired_transport,
+        clock=lambda: now[0],
+        token_lifetime=300,
+        token_factory=lambda: "expired-token",
+    )
+    expired = service.preview(campaign, session_id="owner")
+    now[0] = 701.0
+    assert error_code(lambda: service.confirm(
+        expired.token, session_id="owner")) == "confirmation_expired"
+    assert service._previews.get(expired.token) is None
+    assert expired_transport.input_uploads == []
+    assert expired_transport.campaign_publications == []
+
+
+def test_transfer_preview_registry_capacity_and_strict_expiry_reclamation(
+    tmp_path, monkeypatch,
+):
+    root, campaign, _ = portable_campaign(tmp_path, monkeypatch)
+    now = [100.0]
+    tokens = iter(f"token-{index}" for index in range(MAX_PENDING_PREVIEWS + 1))
+    transport = RecordingTransport()
+    service = ZeusPreparationService(
+        root,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: next(tokens),
+    )
+    for _ in range(MAX_PENDING_PREVIEWS):
+        service.preview(campaign, session_id="owner")
+    assert len(service._previews) == MAX_PENDING_PREVIEWS
+    assert error_code(lambda: service.preview(
+        campaign, session_id="owner")) == "too_many_pending_previews"
+    assert len(service._previews) == MAX_PENDING_PREVIEWS
+    assert transport.input_uploads == [] and transport.campaign_publications == []
+
+    now[0] = 401.0
+    reclaimed = service.preview(campaign, session_id="owner")
+    assert reclaimed.token == f"token-{MAX_PENDING_PREVIEWS}"
+    assert len(service._previews) == 1
+
+
+def test_transfer_confirmation_remains_single_effect_under_barrier(tmp_path, monkeypatch):
+    root, campaign, _ = portable_campaign(tmp_path, monkeypatch)
+    transport = RecordingTransport()
+    service = ZeusPreparationService(
+        root,
+        transport,
+        token_factory=lambda: "barrier-token",
+    )
+    preview = service.preview(campaign, session_id="owner")
+    barrier = threading.Barrier(5)
+    results = []
+
+    def confirm():
+        barrier.wait()
+        results.append(service.confirm(preview.token, session_id="owner"))
+
+    threads = [threading.Thread(target=confirm) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    barrier.wait()
+    for thread in threads:
+        thread.join(timeout=5)
+    assert all(not thread.is_alive() for thread in threads)
+    assert len(results) == 4 and all(result == results[0] for result in results)
+    assert len(transport.input_uploads) == 1
+    assert len(transport.campaign_publications) == 1
+
+
+def test_transfer_coordinator_outer_registry_capacity_expiry_and_collision(
+    tmp_path, monkeypatch,
+):
+    root = tmp_path / "repo"
+    campaign = root / "data/optimization/mot_2d/campaign"
+    campaign.mkdir(parents=True)
+    manifest = campaign / "campaign.json"
+    manifest.write_text(json.dumps({
+        "name": "Campaign",
+        "provenance": {"git_commit": COMMIT},
+    }))
+    entry = SimpleNamespace(family="mot_2d", manifest=manifest)
+    monkeypatch.setattr(
+        "workflow_api.zeus_transfer.build_registry",
+        lambda _root: {"mot_2d-campaign": entry},
+    )
+    monkeypatch.setattr(
+        "workflow_api.zeus_transfer.PinnedSshZeusPreparationTransport",
+        lambda *_args: object(),
+    )
+    now = [100.0]
+    tokens = iter(f"outer-{index}" for index in range(MAX_PENDING_PREVIEWS + 3))
+
+    class FakeService:
+        preview_calls = 0
+        confirm_calls = 0
+
+        def __init__(self, _root, _transport, *, clock, token_factory):
+            self.clock = clock
+            self.token_factory = token_factory
+
+        def preview(self, _campaign, *, session_id):
+            assert session_id == "owner"
+            type(self).preview_calls += 1
+            return PreparationPreview(
+                self.token_factory(),
+                "data/optimization/mot_2d/campaign",
+                COMMIT,
+                (),
+                False,
+                self.clock() + 300,
+            )
+
+        def confirm(self, _token, *, session_id):
+            assert session_id == "owner"
+            type(self).confirm_calls += 1
+            return PreparationResult("campaign", "prepared", 0, 72, 0)
+
+    monkeypatch.setattr("workflow_api.zeus_transfer.ZeusPreparationService", FakeService)
+    coordinator = ZeusPreparationCoordinator(
+        root,
+        Path("/usr/bin/ssh"),
+        Path("/usr/bin/git"),
+        clock=lambda: now[0],
+        token_factory=lambda: next(tokens),
+    )
+    monkeypatch.setattr(coordinator, "_local_revision", lambda: (COMMIT, True))
+    request = {
+        "campaign_id": "mot_2d-campaign",
+        "username": "tal.noa",
+        "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+    }
+    for _ in range(MAX_PENDING_PREVIEWS):
+        coordinator.preview(request, session_id="owner")
+    assert len(coordinator._services) == MAX_PENDING_PREVIEWS
+    assert error_code(lambda: coordinator.preview(
+        request, session_id="owner")) == "too_many_pending_previews"
+    assert len(coordinator._services) == MAX_PENDING_PREVIEWS
+    assert FakeService.confirm_calls == 0
+
+    now[0] = 400.0
+    assert error_code(lambda: coordinator.preview(
+        request, session_id="owner")) == "too_many_pending_previews"
+    now[0] = 401.0
+    reclaimed = coordinator.preview(request, session_id="owner")
+    assert reclaimed["preview_token"] == f"outer-{MAX_PENDING_PREVIEWS + 2}"
+    assert len(coordinator._services) == 1
+
+    collision = ZeusPreparationCoordinator(
+        root,
+        Path("/usr/bin/ssh"),
+        Path("/usr/bin/git"),
+        clock=lambda: 100.0,
+        token_factory=lambda: "same-token",
+    )
+    monkeypatch.setattr(collision, "_local_revision", lambda: (COMMIT, True))
+    collision.preview(request, session_id="owner")
+    first_record = collision._services.get("same-token")
+    assert first_record is not None
+    with pytest.raises(RuntimeError, match="already registered"):
+        collision.preview(request, session_id="owner")
+    assert len(collision._services) == 1
+    assert collision._services.get("same-token") is first_record
+    assert FakeService.confirm_calls == 0
 
 
 def test_remote_response_must_be_bounded_to_requested_paths_and_valid_hashes(tmp_path, monkeypatch):
