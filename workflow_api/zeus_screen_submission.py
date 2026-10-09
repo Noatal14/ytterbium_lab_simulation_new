@@ -20,6 +20,7 @@ from typing import Any, Mapping, Protocol
 
 from workflow_api.discovery import build_registry
 from workflow_api.mot_2d_plan import render_campaign_files, render_screen_transition
+from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 from workflow_api.zeus_transfer import CampaignArtifactPlanner, ZeusPreparationError, _load_manifest
 from workflow_api.zeus_submission import SAFE_UNTRACKED_ROOTS, SAFE_UNTRACKED_SUFFIXES
@@ -48,13 +49,14 @@ class _Pending:
     session_id:str;campaign_id:str;profile:ZeusProfile;commit:str;campaign_relative:str
     prepared_files:Mapping[str,str];transition_files:Mapping[str,str];transition_digest:str
     submission_key:str;nonce:str;expires_at:float;result:Mapping[str,object]|None=None
+    terminal_error:str|None=None
 
 
 class ZeusScreenSubmissionCoordinator:
-    def __init__(self,repository_root:Path,ssh_executable:Path,git_executable:Path,*,clock=time.time,transport_factory=None):
+    def __init__(self,repository_root:Path,ssh_executable:Path,git_executable:Path,*,clock=time.time,token_factory=None,transport_factory=None):
         self.root=repository_root.resolve(strict=True);self.ssh=ssh_executable.resolve(strict=True);self.git=git_executable.resolve(strict=True);self.clock=clock
         self.transport_factory=transport_factory or (lambda profile:PinnedSshScreenSubmissionTransport(self.root,self.ssh,profile))
-        self._pending:dict[str,_Pending]={};self._lock=threading.RLock();self._confirm_lock=threading.Lock()
+        self._previews=PreviewRegistry[_Pending](clock=clock,token_factory=token_factory);self._confirm_lock=threading.Lock()
 
     def _revision(self)->tuple[str,bool]:
         try:
@@ -105,11 +107,10 @@ class ZeusScreenSubmissionCoordinator:
         if state.status=="ambiguous":raise ZeusScreenSubmissionError("screening_submission_outcome_unknown")
         if state.status=="submitted":raise ZeusScreenSubmissionError("screening_already_submitted")
         if state.status!="eligible" or not state.branch or state.validated_smoke_job_id is None:raise ZeusScreenSubmissionError("remote_response_invalid")
-        token=secrets.token_urlsafe(32);pending=_Pending(session_id,campaign_id,profile,commit,relative,prepared,transition,digest,key,secrets.token_hex(16),self.clock()+TOKEN_LIFETIME_SECONDS)
-        with self._lock:
-            self._pending={k:v for k,v in self._pending.items() if v.expires_at>=self.clock()}
-            if len(self._pending)>=MAX_PENDING_PREVIEWS:raise ZeusScreenSubmissionError("too_many_pending_previews")
-            self._pending[token]=pending
+        expires=self.clock()+TOKEN_LIFETIME_SECONDS
+        pending=_Pending(session_id,campaign_id,profile,commit,relative,prepared,transition,digest,key,secrets.token_hex(16),expires)
+        try:token=self._previews.add(pending,expires_at=expires,capacity=MAX_PENDING_PREVIEWS)
+        except OverflowError as error:raise ZeusScreenSubmissionError("too_many_pending_previews") from error
         tasks=len(manifest["s0_values"])*3
         return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"stage":{"id":"screen","label":"Screening","purpose":"Run the broad paired search for each fixed s₀ value."},"job":{"file":"jobs/02_screen.pbs","kind":"array","task_count":tasks,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":86400},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"inputs":{"verified_count":72,"status":"ready"},"smoke":{"status":"validated","job_id":state.validated_smoke_job_id,"point_count":len(manifest["s0_values"])},"effects":{"submit_screening":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
 
@@ -117,20 +118,32 @@ class ZeusScreenSubmissionCoordinator:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusScreenSubmissionError("request_invalid")
         token=str(request["preview_token"])
         with self._confirm_lock:
-            with self._lock:pending=self._pending.get(token)
+            record=self._previews.get(token);pending=record.value if record is not None else None
             if pending is None or not secrets.compare_digest(pending.session_id,session_id):raise ZeusScreenSubmissionError("confirmation_invalid")
             if pending.result is not None:return dict(pending.result)
+            if pending.terminal_error is not None:raise ZeusScreenSubmissionError(pending.terminal_error)
             if self.clock()>pending.expires_at:
-                with self._lock:self._pending.pop(token,None)
+                self._previews.pop(token)
                 raise ZeusScreenSubmissionError("confirmation_expired")
             campaign,_,commit,prepared,transition,digest,key=self._plan(pending.campaign_id);local,clean=self._revision()
             if not clean or local!=commit or commit!=pending.commit or campaign.relative_to(self.root).as_posix()!=pending.campaign_relative or prepared!=pending.prepared_files or transition!=pending.transition_files or digest!=pending.transition_digest or key!=pending.submission_key:raise ZeusScreenSubmissionError("local_files_changed")
-            state=self.transport_factory(pending.profile).submit(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,transition_files=transition,transition_digest=digest,submission_key=key,nonce=pending.nonce)
-            if state.status!="submitted" or state.job_id is None or state.nonce!=pending.nonce or state.submitted_unix_s is None:raise ZeusScreenSubmissionError("screening_submission_outcome_unknown")
+            try:state=self.transport_factory(pending.profile).submit(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,transition_files=transition,transition_digest=digest,submission_key=key,nonce=pending.nonce)
+            except ZeusScreenSubmissionError as error:
+                if error.code in {
+                    "screening_submission_outcome_unknown",
+                    "screening_already_submitted",
+                    "screening_already_started",
+                    "screening_submission_record_invalid",
+                }:
+                    self._previews.replace(token,replace(pending,terminal_error=error.code))
+                raise
+            if state.status!="submitted" or state.job_id is None or state.nonce!=pending.nonce or state.submitted_unix_s is None:
+                self._previews.replace(token,replace(pending,terminal_error="screening_submission_outcome_unknown"));raise ZeusScreenSubmissionError("screening_submission_outcome_unknown")
             try:submitted_at=datetime.fromtimestamp(state.submitted_unix_s,tz=timezone.utc).isoformat()
-            except (OSError,OverflowError,ValueError):raise ZeusScreenSubmissionError("screening_submission_outcome_unknown") from None
+            except (OSError,OverflowError,ValueError):
+                self._previews.replace(token,replace(pending,terminal_error="screening_submission_outcome_unknown"));raise ZeusScreenSubmissionError("screening_submission_outcome_unknown") from None
             result={"status":"submitted","campaign_id":pending.campaign_id,"stage":"screen","job_id":state.job_id,"submitted_at":submitted_at,"later_stages_locked":True}
-            with self._lock:self._pending[token]=replace(pending,result=result)
+            self._previews.replace(token,replace(pending,result=result))
             return result
 
 

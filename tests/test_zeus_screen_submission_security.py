@@ -11,6 +11,7 @@ from pathlib import Path
 import pytest
 
 from workflow_api.zeus_screen_submission import (
+    MAX_PENDING_PREVIEWS,
     RemoteSubmissionState,
     ZeusScreenSubmissionCoordinator,
     ZeusScreenSubmissionError,
@@ -41,7 +42,13 @@ class _Transport:
                                      nonce=str(payload["nonce"]), submitted_unix_s=100)
 
 
-def _coordinator(tmp_path, transport, *, clock=lambda: 100.0):
+def _coordinator(
+    tmp_path,
+    transport,
+    *,
+    clock=lambda: 100.0,
+    token_factory=None,
+):
     campaign = tmp_path / "data/optimization/mot_2d/campaign"
     campaign.mkdir(parents=True, exist_ok=True)
     manifest = {"name": "Screen fixture", "s0_values": [1.3], "stage": "smoke"}
@@ -50,6 +57,7 @@ def _coordinator(tmp_path, transport, *, clock=lambda: 100.0):
                   "campaign.json": "3" * 64}
     coordinator = ZeusScreenSubmissionCoordinator(
         tmp_path, Path("/usr/bin/ssh"), Path("/usr/bin/git"), clock=clock,
+        token_factory=token_factory,
         transport_factory=lambda profile: transport,
     )
     coordinator._plan = lambda campaign_id: (
@@ -140,11 +148,15 @@ def test_concurrent_confirmation_calls_remote_submit_once(tmp_path):
     coordinator, _ = _coordinator(tmp_path, transport)
     token = coordinator.preview(_request(), session_id="owner")["preview_token"]
     results, errors = [], []
+    barrier = threading.Barrier(9)
     def confirm():
-        try: results.append(coordinator.confirm({"preview_token": token}, session_id="owner"))
+        try:
+            barrier.wait()
+            results.append(coordinator.confirm({"preview_token": token}, session_id="owner"))
         except Exception as error: errors.append(error)
     threads = [threading.Thread(target=confirm) for _ in range(8)]
     for thread in threads: thread.start()
+    barrier.wait()
     for thread in threads: thread.join(timeout=5)
     assert errors == [] and len(results) == 8
     assert len(transport.submissions) == 1
@@ -253,9 +265,141 @@ def test_confirmation_fails_closed_on_noncanonical_or_mismatched_receipt(tmp_pat
     transport = BadTransport()
     coordinator, _ = _coordinator(tmp_path, transport)
     token = coordinator.preview(_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
     assert _code(lambda: coordinator.confirm(
-        {"preview_token": token}, session_id="owner")) == "screening_submission_outcome_unknown"
+        request, session_id="owner")) == "screening_submission_outcome_unknown"
+    assert _code(lambda: coordinator.confirm(
+        request, session_id="owner")) == "screening_submission_outcome_unknown"
     assert len(transport.submissions) == 1
+
+
+def test_screen_submission_preview_registry_capacity_boundary_and_expired_pop(tmp_path):
+    now = [100.0]
+    tokens = iter(f"token-{index}" for index in range(MAX_PENDING_PREVIEWS + 1))
+    transport = _Transport()
+    coordinator, _ = _coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: next(tokens),
+    )
+    for _ in range(MAX_PENDING_PREVIEWS):
+        coordinator.preview(_request(), session_id="owner")
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert _code(lambda: coordinator.preview(
+        _request(), session_id="owner")) == "too_many_pending_previews"
+    assert transport.submissions == []
+
+    now[0] = 400.0
+    assert _code(lambda: coordinator.preview(
+        _request(), session_id="owner")) == "too_many_pending_previews"
+    now[0] = 401.0
+    preview = coordinator.preview(_request(), session_id="owner")
+    assert preview["preview_token"] == f"token-{MAX_PENDING_PREVIEWS}"
+    assert len(coordinator._previews) == 1
+    token = preview["preview_token"]
+    assert _code(lambda: coordinator.confirm(
+        {"preview_token": "missing"}, session_id="owner")) == "confirmation_invalid"
+    assert _code(lambda: coordinator.confirm(
+        {"preview_token": token}, session_id="other")) == "confirmation_invalid"
+    now[0] = 702.0
+    assert _code(lambda: coordinator.confirm(
+        {"preview_token": token}, session_id="owner")) == "confirmation_expired"
+    assert coordinator._previews.get(token) is None
+    assert transport.submissions == []
+
+
+def test_screen_submission_exact_expiry_boundary_is_confirmable(tmp_path):
+    now = [100.0]
+    transport = _Transport()
+    coordinator, _ = _coordinator(
+        tmp_path,
+        transport,
+        clock=lambda: now[0],
+        token_factory=lambda: "boundary-token",
+    )
+    token = coordinator.preview(_request(), session_id="owner")["preview_token"]
+    now[0] = 400.0
+    assert coordinator.confirm(
+        {"preview_token": token}, session_id="owner")["status"] == "submitted"
+    assert len(transport.submissions) == 1
+
+
+@pytest.mark.parametrize("code,after_effect", [
+    ("screening_submission_outcome_unknown", False),
+    ("screening_submission_outcome_unknown", True),
+    ("screening_already_submitted", False),
+    ("screening_already_started", False),
+    ("screening_submission_record_invalid", False),
+])
+def test_screen_submission_terminal_remote_error_is_never_retried(
+    tmp_path, code, after_effect,
+):
+    class TerminalTransport(_Transport):
+        def __init__(self):
+            super().__init__()
+            self.remote_effects = 0
+
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            if after_effect:
+                self.remote_effects += 1
+            raise ZeusScreenSubmissionError(code)
+
+    transport = TerminalTransport()
+    coordinator, _ = _coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "terminal-token",
+    )
+    token = coordinator.preview(_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    assert len(transport.submissions) == 1
+    assert transport.remote_effects == (1 if after_effect else 0)
+    record = coordinator._previews.get(token)
+    assert record is not None and record.value.terminal_error == code
+    assert record.value.nonce == transport.submissions[0]["nonce"]
+
+
+@pytest.mark.parametrize("code", [
+    "zeus_host_key_untrusted",
+    "zeus_authentication_required",
+    "zeus_unreachable",
+    "screening_submission_busy",
+    "screening_not_prepared",
+    "remote_preparation_invalid",
+])
+def test_screen_submission_pre_effect_ssh_error_remains_safely_retryable(
+    tmp_path, code,
+):
+    class RecoveringTransport(_Transport):
+        def submit(self, **payload):
+            self.submissions.append(payload)
+            if len(self.submissions) == 1:
+                raise ZeusScreenSubmissionError(code)
+            return RemoteSubmissionState(
+                "submitted",
+                job_id="222[].zeus-master",
+                nonce=str(payload["nonce"]),
+                submitted_unix_s=100,
+            )
+
+    transport = RecoveringTransport()
+    coordinator, _ = _coordinator(
+        tmp_path,
+        transport,
+        token_factory=lambda: "retryable-token",
+    )
+    token = coordinator.preview(_request(), session_id="owner")["preview_token"]
+    request = {"preview_token": token}
+    assert _code(lambda: coordinator.confirm(request, session_id="owner")) == code
+    record = coordinator._previews.get(token)
+    assert record is not None and record.value.terminal_error is None
+    assert coordinator.confirm(request, session_id="owner")["status"] == "submitted"
+    assert len(transport.submissions) == 2
+    assert transport.submissions[0]["nonce"] == transport.submissions[1]["nonce"]
 
 
 def test_transport_rejects_extra_fields_and_loose_types(tmp_path, monkeypatch):
