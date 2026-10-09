@@ -76,8 +76,6 @@ def _handler_dicts(exception_name: str) -> dict[str, dict[str, object]]:
 @pytest.mark.parametrize(
     ("exception_name", "domain"),
     [
-        ("ZeusSnapshotError", "snapshot"),
-        ("ZeusPreparationError", "transfer"),
         ("ZeusSubmissionError", "smoke_submission"),
     ],
 )
@@ -287,10 +285,10 @@ class _RaisingService:
     def status(self, _payload, **_kwargs):
         raise self.error
 
-    def preview(self, _payload, **_kwargs):
+    def preview(self, _payload, *_args, **_kwargs):
         raise self.error
 
-    def confirm(self, _payload, **_kwargs):
+    def confirm(self, _payload, *_args, **_kwargs):
         raise self.error
 
 
@@ -299,7 +297,7 @@ def _real_handler(error):
     handler = type("ErrorCatalogHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     service = _RaisingService(error)
-    handler.creation_service = None
+    handler.creation_service = service
     handler.zeus_service = service
     handler.transfer_service = service
     handler.submission_service = service
@@ -391,3 +389,96 @@ def test_every_catalogued_coordinator_error_matches_the_real_handler(
             case,
         )
         assert "api_version" not in body
+
+
+def _authorized_headers(base: str) -> dict[str, str]:
+    session_status, session_headers, session_body = _request(
+        base, "GET", "/api/v1/session", {"Sec-Fetch-Site": "same-origin"}
+    )
+    assert session_status == 200
+    return {
+        "Content-Type": "application/json",
+        "Origin": base,
+        "Sec-Fetch-Site": "same-origin",
+        "Cookie": session_headers["set-cookie"].split(";", 1)[0],
+        "X-CSRF-Token": session_body["data"]["csrf_token"],
+    }
+
+
+def test_every_catalogued_creation_error_matches_the_real_handler():
+    for case, spec in ERROR_DOMAINS["creation"].entries.items():
+        if case == "rate_limited":
+            error = BlockingIOError()
+        elif case == "campaign_exists":
+            error = FileExistsError()
+        elif case == "creation_failed":
+            error = RuntimeError("secret internal failure")
+        else:
+            error = ValueError(spec.message)
+        with _real_handler(error) as base:
+            status, _, body = _request(
+                base,
+                "POST",
+                "/api/v1/campaigns/2d/preview",
+                _authorized_headers(base),
+                "{}",
+            )
+        assert status == int(spec.status), (case, body)
+        assert body == {
+            "error": {"code": spec.wire_code or case, "message": spec.message}
+        }, case
+
+
+@pytest.mark.parametrize(
+    ("error_type", "path", "expected_code", "expected_message", "status"),
+    [
+        (
+            ZeusSnapshotError,
+            "/api/v1/zeus/snapshot",
+            "zeus_check_failed",
+            "The read-only Zeus check failed safely.",
+            502,
+        ),
+        (
+            ZeusPreparationError,
+            "/api/v1/zeus/transfers/preview",
+            "zeus_preparation_failed",
+            "Zeus preparation stopped safely.",
+            412,
+        ),
+    ],
+)
+def test_unknown_remote_error_codes_fail_closed_in_real_handler(
+    error_type, path, expected_code, expected_message, status
+):
+    with _real_handler(error_type("internal_secret_code\n/absolute/path")) as base:
+        observed_status, response_headers, body = _request(
+            base, "POST", path, _authorized_headers(base), "{}"
+        )
+    assert observed_status == status
+    assert response_headers["cache-control"] == "no-store"
+    assert response_headers["x-content-type-options"] == "nosniff"
+    assert body == {"error": {"code": expected_code, "message": expected_message}}
+    serialized = json.dumps(body)
+    assert "internal_secret" not in serialized
+    assert "/absolute/path" not in serialized
+
+
+def test_unknown_creation_value_error_fails_closed_in_real_handler():
+    with _real_handler(ValueError("secret /absolute/path")) as base:
+        status, _, body = _request(
+            base,
+            "POST",
+            "/api/v1/campaigns/2d/preview",
+            _authorized_headers(base),
+            "{}",
+        )
+    assert status == 412
+    assert body == {
+        "error": {
+            "code": "creation_failed",
+            "message": "Local campaign creation failed safely.",
+        }
+    }
+    assert "secret" not in json.dumps(body)
+    assert "/absolute/path" not in json.dumps(body)

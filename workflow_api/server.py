@@ -200,66 +200,11 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         except PermissionError:
             self._catalog_error("protocol", "invalid_preview"); return
         except ZeusSnapshotError as error:
-            statuses = {
-                "rate_limited": HTTPStatus.TOO_MANY_REQUESTS,
-                "zeus_authentication_required": HTTPStatus.UNAUTHORIZED,
-                "zeus_host_key_untrusted": HTTPStatus.PRECONDITION_FAILED,
-                "zeus_timeout": HTTPStatus.GATEWAY_TIMEOUT,
-                "zeus_unreachable": HTTPStatus.SERVICE_UNAVAILABLE,
-                "remote_project_missing": HTTPStatus.PRECONDITION_FAILED,
-                "scheduler_unavailable": HTTPStatus.SERVICE_UNAVAILABLE,
-                "malformed_remote_response": HTTPStatus.BAD_GATEWAY,
-            }
-            messages = {
-                "rate_limited": "Wait before checking Zeus again.",
-                "zeus_authentication_required": "An existing SSH key or agent is required.",
-                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
-                "zeus_timeout": "The read-only Zeus check timed out.",
-                "zeus_unreachable": "Zeus could not be reached.",
-                "remote_project_missing": "The remote project directory could not be verified.",
-                "scheduler_unavailable": "The Zeus scheduler is unavailable.",
-                "malformed_remote_response": "Zeus returned an invalid read-only snapshot.",
-                "zeus_check_failed": "The read-only Zeus check failed safely.",
-            }
-            self._error(error.code, messages.get(error.code, messages["zeus_check_failed"]), statuses.get(error.code, HTTPStatus.BAD_GATEWAY)); return
+            resolved = resolve_error("snapshot", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusPreparationError as error:
-            statuses = {
-                "request_invalid": HTTPStatus.BAD_REQUEST,
-                "profile_invalid": HTTPStatus.BAD_REQUEST,
-                "campaign_not_found": HTTPStatus.NOT_FOUND,
-                "confirmation_invalid": HTTPStatus.PRECONDITION_FAILED,
-                "confirmation_expired": HTTPStatus.PRECONDITION_FAILED,
-                "too_many_pending_previews": HTTPStatus.TOO_MANY_REQUESTS,
-                "zeus_authentication_required": HTTPStatus.UNAUTHORIZED,
-                "zeus_host_key_untrusted": HTTPStatus.PRECONDITION_FAILED,
-                "zeus_timeout": HTTPStatus.GATEWAY_TIMEOUT,
-                "zeus_unreachable": HTTPStatus.SERVICE_UNAVAILABLE,
-                "remote_project_missing": HTTPStatus.PRECONDITION_FAILED,
-                "target_exists": HTTPStatus.CONFLICT,
-                "remote_input_conflict": HTTPStatus.CONFLICT,
-                "remote_campaign_conflict": HTTPStatus.CONFLICT,
-                "local_checkout_mismatch": HTTPStatus.PRECONDITION_FAILED,
-                "remote_checkout_mismatch": HTTPStatus.PRECONDITION_FAILED,
-            }
-            messages = {
-                "request_invalid": "The Zeus preparation request is invalid.",
-                "profile_invalid": "The Zeus connection profile is invalid.",
-                "campaign_not_found": "The selected campaign was not found.",
-                "confirmation_invalid": "The preparation preview is invalid or belongs to another session.",
-                "confirmation_expired": "The preparation preview has expired. Review it again before continuing.",
-                "too_many_pending_previews": "Too many preparation previews are pending.",
-                "zeus_authentication_required": "An existing SSH key or agent is required.",
-                "zeus_host_key_untrusted": "The Zeus host key must be verified outside this application.",
-                "zeus_timeout": "The Zeus preparation check timed out.",
-                "zeus_unreachable": "Zeus could not be reached.",
-                "remote_project_missing": "The remote project directory could not be verified.",
-                "target_exists": "A remote file appeared after review. Review the preparation again.",
-                "remote_input_conflict": "A required Zeus input differs from the frozen campaign input.",
-                "remote_campaign_conflict": "The Zeus campaign destination already contains different or incomplete files.",
-                "local_checkout_mismatch": "The local checkout is not clean at the campaign commit.",
-                "remote_checkout_mismatch": "The Zeus checkout is not clean at the campaign commit.",
-            }
-            self._error(error.code, messages.get(error.code, "Zeus preparation stopped safely."), statuses.get(error.code, HTTPStatus.PRECONDITION_FAILED)); return
+            resolved = resolve_error("transfer", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusSubmissionError as error:
             statuses = {
                 "request_invalid": HTTPStatus.BAD_REQUEST, "profile_invalid": HTTPStatus.BAD_REQUEST,
@@ -343,14 +288,14 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             status=HTTPStatus.BAD_REQUEST if error.code in {"request_invalid","profile_invalid"} else HTTPStatus.NOT_FOUND if error.code=="campaign_not_found" else HTTPStatus.CONFLICT if error.code in {"transition_busy","transition_conflict","transition_outcome_unknown","confirmation_already_prepared"} else HTTPStatus.PRECONDITION_FAILED
             self._error(error.code,"Confirmation preparation stopped safely.",status);return
         except BlockingIOError:
-            self._error("rate_limited", "Too many local creation requests.", HTTPStatus.TOO_MANY_REQUESTS); return
+            self._catalog_error("creation", "rate_limited"); return
         except FileExistsError:
-            self._error("campaign_exists", "A campaign already exists at this destination.", HTTPStatus.CONFLICT); return
+            self._catalog_error("creation", "campaign_exists"); return
         except ValueError as error:
-            status = HTTPStatus.REQUEST_ENTITY_TOO_LARGE if str(error) == "Request body is too large." else HTTPStatus.BAD_REQUEST
-            self._error("invalid_request", str(error), status); return
+            resolved = resolve_wire_error("creation", "invalid_request", str(error))
+            self._error(resolved.code, resolved.message, resolved.status); return
         except Exception:
-            self._error("creation_failed", "Local campaign creation failed safely.", HTTPStatus.PRECONDITION_FAILED); return
+            self._catalog_error("creation", "creation_failed"); return
         self._json({"api_version": SCHEMA_VERSION, "data": data}, status=route.success_status)
 
     def do_PUT(self) -> None: self._method_not_allowed()  # noqa: N802

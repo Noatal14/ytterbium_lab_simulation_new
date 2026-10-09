@@ -418,6 +418,13 @@
     },
     {
       "domain": "creation",
+      "case": "<fallback>",
+      "code": "creation_failed",
+      "status": 412,
+      "message": "Local campaign creation failed safely."
+    },
+    {
+      "domain": "creation",
       "case": "campaign_exists",
       "code": "campaign_exists",
       "status": 409,
@@ -467,6 +474,27 @@
     },
     {
       "domain": "creation",
+      "case": "invalid_request#profile_fields",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Connection profile fields are invalid."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#project_checkout",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Remote project directory does not match the supported Zeus checkout."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#project_directory",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Remote project directory is invalid."
+    },
+    {
+      "domain": "creation",
       "case": "invalid_request#source_unavailable",
       "code": "invalid_request",
       "status": 400,
@@ -492,6 +520,13 @@
       "code": "invalid_request",
       "status": 413,
       "message": "Request body is too large."
+    },
+    {
+      "domain": "creation",
+      "case": "invalid_request#username",
+      "code": "invalid_request",
+      "status": 400,
+      "message": "Technion username is invalid."
     },
     {
       "domain": "creation",
@@ -2100,6 +2135,13 @@
       "domain": "transfer",
       "case": "campaign_manifest_invalid",
       "code": "campaign_manifest_invalid",
+      "status": 412,
+      "message": "Zeus preparation stopped safely."
+    },
+    {
+      "domain": "transfer",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
       "status": 412,
       "message": "Zeus preparation stopped safely."
     },

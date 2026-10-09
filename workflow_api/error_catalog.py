@@ -195,7 +195,27 @@ CREATION = _frozen(
             "The selected Zeeman source is unavailable.",
             "invalid_request",
         ),
-    }
+        "invalid_request#profile_fields": ErrorSpec(
+            HTTPStatus.BAD_REQUEST,
+            "Connection profile fields are invalid.",
+            "invalid_request",
+        ),
+        "invalid_request#username": ErrorSpec(
+            HTTPStatus.BAD_REQUEST, "Technion username is invalid.", "invalid_request"
+        ),
+        "invalid_request#project_directory": ErrorSpec(
+            HTTPStatus.BAD_REQUEST,
+            "Remote project directory is invalid.",
+            "invalid_request",
+        ),
+        "invalid_request#project_checkout": ErrorSpec(
+            HTTPStatus.BAD_REQUEST,
+            "Remote project directory does not match the supported Zeus checkout.",
+            "invalid_request",
+        ),
+    },
+    _spec(HTTPStatus.PRECONDITION_FAILED, "Local campaign creation failed safely."),
+    "creation_failed",
 )
 
 ROUTE_UNAVAILABLE = _frozen(
@@ -696,6 +716,7 @@ def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain
 TRANSFER = _include_fallback_codes(
     TRANSFER,
     {
+        "campaign_not_canonical",
         "campaign_commit_invalid",
         "campaign_inputs_changed",
         "campaign_inputs_invalid",
