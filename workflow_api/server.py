@@ -11,6 +11,7 @@ import json
 import secrets
 import time
 import threading
+from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,8 +45,62 @@ def workflow_catalog_payload() -> dict[str, Any]:
     }
 
 
-class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
-    """Serve allowlisted JSON endpoints without filesystem mutation."""
+@dataclass(frozen=True)
+class PostRoute:
+    path: str
+    service_attr: str
+    operation: str
+    call_style: str
+    unavailable_code: str
+    unavailable_message: str
+    success_status: HTTPStatus
+    exception_family: type[Exception]
+
+
+def _post_routes() -> tuple[PostRoute, ...]:
+    rows = [
+        ("/api/v1/campaigns/2d/preview","creation_service","preview","creation_preview","creation_unavailable","Local campaign creation is unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/campaigns/2d/confirm","creation_service","confirm","creation_confirm","creation_unavailable","Local campaign creation is unavailable.",HTTPStatus.CREATED,Exception),
+        ("/api/v1/zeus/snapshot","zeus_service","snapshot","payload","zeus_unavailable","Read-only Zeus inspection is unavailable.",HTTPStatus.OK,ZeusSnapshotError),
+        ("/api/v1/zeus/transfers/preview","transfer_service","preview","session_kw","zeus_preparation_unavailable","Zeus campaign preparation is unavailable.",HTTPStatus.OK,ZeusPreparationError),
+        ("/api/v1/zeus/transfers/confirm","transfer_service","confirm","session_kw","zeus_preparation_unavailable","Zeus campaign preparation is unavailable.",HTTPStatus.CREATED,ZeusPreparationError),
+        ("/api/v1/zeus/submissions/smoke/preview","submission_service","preview","session_kw","zeus_submission_unavailable","Zeus smoke submission is unavailable.",HTTPStatus.OK,ZeusSubmissionError),
+        ("/api/v1/zeus/submissions/smoke/confirm","submission_service","confirm","session_kw","zeus_submission_unavailable","Zeus smoke submission is unavailable.",HTTPStatus.CREATED,ZeusSubmissionError),
+        ("/api/v1/zeus/smoke/status","screening_service","status","session_kw","zeus_screening_unavailable","Zeus smoke inspection is unavailable.",HTTPStatus.OK,ZeusScreeningError),
+        ("/api/v1/zeus/screening/preview","screening_service","preview","session_kw","zeus_screening_unavailable","Zeus smoke inspection is unavailable.",HTTPStatus.OK,ZeusScreeningError),
+        ("/api/v1/zeus/screening/confirm","screening_service","confirm","session_kw","zeus_screening_unavailable","Zeus smoke inspection is unavailable.",HTTPStatus.CREATED,ZeusScreeningError),
+        ("/api/v1/zeus/submissions/screening/preview","screen_submission_service","preview","session_kw","zeus_screen_submission_unavailable","Zeus screening submission is unavailable.",HTTPStatus.OK,ZeusScreenSubmissionError),
+        ("/api/v1/zeus/submissions/screening/confirm","screen_submission_service","confirm","session_kw","zeus_screen_submission_unavailable","Zeus screening submission is unavailable.",HTTPStatus.CREATED,ZeusScreenSubmissionError),
+        ("/api/v1/zeus/screen/status","refinement_service","status","payload","zeus_refinement_unavailable","Zeus refinement preparation is unavailable.",HTTPStatus.OK,ZeusRefinementError),
+        ("/api/v1/zeus/refinement/preview","refinement_service","preview","session_kw","zeus_refinement_unavailable","Zeus refinement preparation is unavailable.",HTTPStatus.OK,ZeusRefinementError),
+        ("/api/v1/zeus/refinement/confirm","refinement_service","confirm","session_kw","zeus_refinement_unavailable","Zeus refinement preparation is unavailable.",HTTPStatus.CREATED,ZeusRefinementError),
+        ("/api/v1/zeus/submissions/refinement/status","refinement_submission_service","status","payload","zeus_refinement_submission_unavailable","Zeus refinement submission is unavailable.",HTTPStatus.OK,ZeusRefinementSubmissionError),
+        ("/api/v1/zeus/submissions/refinement/preview","refinement_submission_service","preview","session_kw","zeus_refinement_submission_unavailable","Zeus refinement submission is unavailable.",HTTPStatus.OK,ZeusRefinementSubmissionError),
+        ("/api/v1/zeus/submissions/refinement/confirm","refinement_submission_service","confirm","session_kw","zeus_refinement_submission_unavailable","Zeus refinement submission is unavailable.",HTTPStatus.CREATED,ZeusRefinementSubmissionError),
+        ("/api/v1/zeus/refinement-chain/status","confirmation_service","status","payload","zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.",HTTPStatus.OK,ZeusConfirmationError),
+        ("/api/v1/zeus/confirmation/preview","confirmation_service","preview","session_kw","zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.",HTTPStatus.OK,ZeusConfirmationError),
+        ("/api/v1/zeus/confirmation/confirm","confirmation_service","confirm","session_kw","zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.",HTTPStatus.CREATED,ZeusConfirmationError),
+    ]
+    return tuple(PostRoute(*row) for row in rows)
+
+
+POST_ROUTES = {route.path: route for route in _post_routes()}
+
+
+def _invoke_post_route(route: PostRoute, service: object, payload: dict[str, Any], session: str) -> Any:
+    operation = getattr(service, route.operation)
+    if route.call_style == "payload": return operation(payload)
+    if route.call_style == "session_kw": return operation(payload, session_id=session)
+    if route.call_style == "creation_preview": return operation(payload, session)
+    if route.call_style == "creation_confirm":
+        if set(payload) != {"preview_token"} or not isinstance(payload.get("preview_token"), str):
+            raise ValueError("Confirmation payload is invalid.")
+        return operation(payload["preview_token"], session)
+    raise RuntimeError("Invalid closed route call style.")
+
+
+class WorkflowHandler(BaseHTTPRequestHandler):
+    """Serve allowlisted inspection and explicitly confirmed action endpoints."""
 
     server_version = "WorkflowAPI/1"
     repository_root = Path(__file__).resolve().parents[1]
@@ -130,82 +185,17 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
         if not self._trusted_request_target(): return
         target = urlsplit(self.path)
-        transfer_paths = {"/api/v1/zeus/transfers/preview", "/api/v1/zeus/transfers/confirm"}
-        submission_paths = {"/api/v1/zeus/submissions/smoke/preview", "/api/v1/zeus/submissions/smoke/confirm"}
-        screening_paths = {"/api/v1/zeus/smoke/status", "/api/v1/zeus/screening/preview", "/api/v1/zeus/screening/confirm"}
-        screen_submission_paths = {"/api/v1/zeus/submissions/screening/preview", "/api/v1/zeus/submissions/screening/confirm"}
-        refinement_paths = {"/api/v1/zeus/screen/status", "/api/v1/zeus/refinement/preview", "/api/v1/zeus/refinement/confirm"}
-        refinement_submission_paths = {"/api/v1/zeus/submissions/refinement/status", "/api/v1/zeus/submissions/refinement/preview", "/api/v1/zeus/submissions/refinement/confirm"}
-        confirmation_paths = {"/api/v1/zeus/refinement-chain/status", "/api/v1/zeus/confirmation/preview", "/api/v1/zeus/confirmation/confirm"}
-        allowed = {"/api/v1/campaigns/2d/preview", "/api/v1/campaigns/2d/confirm", "/api/v1/zeus/snapshot", *transfer_paths, *submission_paths, *screening_paths, *screen_submission_paths, *refinement_paths, *refinement_submission_paths, *confirmation_paths}
-        if target.query or target.path not in allowed:
+        route = POST_ROUTES.get(target.path)
+        if target.query or route is None:
             self._method_not_allowed(); return
-        if target.path == "/api/v1/zeus/snapshot" and self.zeus_service is None:
-            self._error("zeus_unavailable", "Read-only Zeus inspection is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in transfer_paths and self.transfer_service is None:
-            self._error("zeus_preparation_unavailable", "Zeus campaign preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in submission_paths and self.submission_service is None:
-            self._error("zeus_submission_unavailable", "Zeus smoke submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in screening_paths and self.screening_service is None:
-            self._error("zeus_screening_unavailable", "Zeus smoke inspection is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in screen_submission_paths and self.screen_submission_service is None:
-            self._error("zeus_screen_submission_unavailable", "Zeus screening submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in refinement_paths and self.refinement_service is None:
-            self._error("zeus_refinement_unavailable", "Zeus refinement preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in refinement_submission_paths and self.refinement_submission_service is None:
-            self._error("zeus_refinement_submission_unavailable", "Zeus refinement submission is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path in confirmation_paths and self.confirmation_service is None:
-            self._error("zeus_confirmation_unavailable", "Zeus confirmation preparation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
-        if target.path not in transfer_paths | submission_paths | screening_paths | screen_submission_paths | refinement_paths | refinement_submission_paths | confirmation_paths and target.path != "/api/v1/zeus/snapshot" and self.creation_service is None:
-            self._error("creation_unavailable", "Local campaign creation is unavailable.", HTTPStatus.SERVICE_UNAVAILABLE); return
+        service = getattr(self, route.service_attr)
+        if service is None:
+            self._error(route.unavailable_code, route.unavailable_message, HTTPStatus.SERVICE_UNAVAILABLE); return
         if not self._trusted_mutation_headers(): return
         try:
             payload = self._read_json_body()
             session = self._session_id()
-            if target.path == "/api/v1/zeus/snapshot":
-                data = self.zeus_service.snapshot(payload)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/transfers/preview":
-                data = self.transfer_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/transfers/confirm":
-                data = self.transfer_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/smoke/preview":
-                data = self.submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/smoke/confirm":
-                data = self.submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/smoke/status":
-                data = self.screening_service.status(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/screening/preview":
-                data = self.screening_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/screening/confirm":
-                data = self.screening_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/screening/preview":
-                data = self.screen_submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/screening/confirm":
-                data = self.screen_submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/screen/status":
-                data = self.refinement_service.status(payload)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/refinement/preview":
-                data = self.refinement_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/refinement/confirm":
-                data = self.refinement_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/refinement/status":
-                data = self.refinement_submission_service.status(payload)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/refinement/preview":
-                data = self.refinement_submission_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/submissions/refinement/confirm":
-                data = self.refinement_submission_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/refinement-chain/status":
-                data = self.confirmation_service.status(payload)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/confirmation/preview":
-                data = self.confirmation_service.preview(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path == "/api/v1/zeus/confirmation/confirm":
-                data = self.confirmation_service.confirm(payload, session_id=session)  # type: ignore[union-attr]
-            elif target.path.endswith("/preview"):
-                data = self.creation_service.preview(payload, session)
-            else:
-                if set(payload) != {"preview_token"} or not isinstance(payload.get("preview_token"), str):
-                    raise ValueError("Confirmation payload is invalid.")
-                data = self.creation_service.confirm(payload["preview_token"], session)
+            data = _invoke_post_route(route, service, payload, session)
         except PermissionError:
             self._error("invalid_preview", "Preview confirmation is invalid or expired.", HTTPStatus.PRECONDITION_FAILED); return
         except ZeusSnapshotError as error:
@@ -360,7 +350,7 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
             self._error("invalid_request", str(error), status); return
         except Exception:
             self._error("creation_failed", "Local campaign creation failed safely.", HTTPStatus.PRECONDITION_FAILED); return
-        self._json({"api_version": SCHEMA_VERSION, "data": data}, status=HTTPStatus.CREATED if target.path.endswith("/confirm") else HTTPStatus.OK)
+        self._json({"api_version": SCHEMA_VERSION, "data": data}, status=route.success_status)
 
     def do_PUT(self) -> None: self._method_not_allowed()  # noqa: N802
     do_PATCH = do_PUT
@@ -452,36 +442,40 @@ class ReadOnlyWorkflowHandler(BaseHTTPRequestHandler):
         return
 
 
+# Compatibility for external imports and existing test harnesses.
+ReadOnlyWorkflowHandler = WorkflowHandler
+
+
 def main() -> None:
-    ReadOnlyWorkflowHandler.creation_service = CreationService(
-        ReadOnlyWorkflowHandler.repository_root,
-        RepositorySnapshotProvider(ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/git")),
+    WorkflowHandler.creation_service = CreationService(
+        WorkflowHandler.repository_root,
+        RepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
     )
-    ReadOnlyWorkflowHandler.zeus_service = ZeusSnapshotService(
-        ZeusSnapshotProvider(ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh")),
+    WorkflowHandler.zeus_service = ZeusSnapshotService(
+        ZeusSnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/ssh")),
     )
-    ReadOnlyWorkflowHandler.transfer_service = ZeusPreparationCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.transfer_service = ZeusPreparationCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    ReadOnlyWorkflowHandler.submission_service = ZeusSmokeSubmissionCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.submission_service = ZeusSmokeSubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    ReadOnlyWorkflowHandler.screening_service = ZeusScreeningCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.screening_service = ZeusScreeningCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    ReadOnlyWorkflowHandler.screen_submission_service = ZeusScreenSubmissionCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.screen_submission_service = ZeusScreenSubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    ReadOnlyWorkflowHandler.refinement_service = ZeusRefinementCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.refinement_service = ZeusRefinementCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    ReadOnlyWorkflowHandler.refinement_submission_service = ZeusRefinementSubmissionCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.refinement_submission_service = ZeusRefinementSubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    ReadOnlyWorkflowHandler.confirmation_service = ZeusConfirmationCoordinator(
-        ReadOnlyWorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    WorkflowHandler.confirmation_service = ZeusConfirmationCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
-    server = ThreadingHTTPServer((HOST, PORT), ReadOnlyWorkflowHandler)
+    server = ThreadingHTTPServer((HOST, PORT), WorkflowHandler)
     print(f"Local workflow API listening on http://{HOST}:{PORT}")
     try:
         server.serve_forever()

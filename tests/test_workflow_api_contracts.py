@@ -9,14 +9,19 @@ import argparse
 import json
 import re
 import threading
+from dataclasses import replace
 from contextlib import contextmanager
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import pytest
+
 import workflow_api.server as server_module
 from workflow_api.server import ReadOnlyWorkflowHandler
+from workflow_api.server import POST_ROUTES, WorkflowHandler, _invoke_post_route
+from workflow_api.zeus_transfer import ZeusPreparationError
 from tests.workflow_api_contract_payloads import fake_service_payloads
 
 CONTRACT_ROOT = Path(__file__).parent / "contracts" / "v1"
@@ -142,6 +147,78 @@ def test_v1_error_contracts_remain_unversioned():
     assert observed==expected
     assert all(set(row["body"])=={"error"} and "api_version" not in row["body"] for row in observed["cases"])
     assert all(all(value==expected["common_headers"][key] for key,value in header.items() if key in expected["common_headers"]) for header in headers)
+
+
+def test_declarative_post_registry_is_complete_unique_and_compatible():
+    expected = _load("workflow_api_success.json")
+    post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
+
+    assert ReadOnlyWorkflowHandler is WorkflowHandler
+    assert len(POST_ROUTES) == len(post_cases) == 21
+    assert set(POST_ROUTES) == {row["path"] for row in post_cases}
+    assert all(route.path == path for path, route in POST_ROUTES.items())
+    assert all(route.success_status == row["status"] for row in post_cases for route in [POST_ROUTES[row["path"]]])
+    assert all(route.call_style in {"payload", "session_kw", "creation_preview", "creation_confirm"} for route in POST_ROUTES.values())
+    assert all(route.success_status == (201 if route.path.endswith("/confirm") else 200) for route in POST_ROUTES.values())
+    assert all(route.service_attr.endswith("_service") and route.unavailable_code and route.unavailable_message for route in POST_ROUTES.values())
+    actual = [
+        (r.path,r.service_attr,r.operation,r.call_style,int(r.success_status),r.unavailable_code,r.unavailable_message,r.exception_family.__name__)
+        for r in POST_ROUTES.values()
+    ]
+    assert actual == [
+        ("/api/v1/campaigns/2d/preview","creation_service","preview","creation_preview",200,"creation_unavailable","Local campaign creation is unavailable.","Exception"),
+        ("/api/v1/campaigns/2d/confirm","creation_service","confirm","creation_confirm",201,"creation_unavailable","Local campaign creation is unavailable.","Exception"),
+        ("/api/v1/zeus/snapshot","zeus_service","snapshot","payload",200,"zeus_unavailable","Read-only Zeus inspection is unavailable.","ZeusSnapshotError"),
+        ("/api/v1/zeus/transfers/preview","transfer_service","preview","session_kw",200,"zeus_preparation_unavailable","Zeus campaign preparation is unavailable.","ZeusPreparationError"),
+        ("/api/v1/zeus/transfers/confirm","transfer_service","confirm","session_kw",201,"zeus_preparation_unavailable","Zeus campaign preparation is unavailable.","ZeusPreparationError"),
+        ("/api/v1/zeus/submissions/smoke/preview","submission_service","preview","session_kw",200,"zeus_submission_unavailable","Zeus smoke submission is unavailable.","ZeusSubmissionError"),
+        ("/api/v1/zeus/submissions/smoke/confirm","submission_service","confirm","session_kw",201,"zeus_submission_unavailable","Zeus smoke submission is unavailable.","ZeusSubmissionError"),
+        ("/api/v1/zeus/smoke/status","screening_service","status","session_kw",200,"zeus_screening_unavailable","Zeus smoke inspection is unavailable.","ZeusScreeningError"),
+        ("/api/v1/zeus/screening/preview","screening_service","preview","session_kw",200,"zeus_screening_unavailable","Zeus smoke inspection is unavailable.","ZeusScreeningError"),
+        ("/api/v1/zeus/screening/confirm","screening_service","confirm","session_kw",201,"zeus_screening_unavailable","Zeus smoke inspection is unavailable.","ZeusScreeningError"),
+        ("/api/v1/zeus/submissions/screening/preview","screen_submission_service","preview","session_kw",200,"zeus_screen_submission_unavailable","Zeus screening submission is unavailable.","ZeusScreenSubmissionError"),
+        ("/api/v1/zeus/submissions/screening/confirm","screen_submission_service","confirm","session_kw",201,"zeus_screen_submission_unavailable","Zeus screening submission is unavailable.","ZeusScreenSubmissionError"),
+        ("/api/v1/zeus/screen/status","refinement_service","status","payload",200,"zeus_refinement_unavailable","Zeus refinement preparation is unavailable.","ZeusRefinementError"),
+        ("/api/v1/zeus/refinement/preview","refinement_service","preview","session_kw",200,"zeus_refinement_unavailable","Zeus refinement preparation is unavailable.","ZeusRefinementError"),
+        ("/api/v1/zeus/refinement/confirm","refinement_service","confirm","session_kw",201,"zeus_refinement_unavailable","Zeus refinement preparation is unavailable.","ZeusRefinementError"),
+        ("/api/v1/zeus/submissions/refinement/status","refinement_submission_service","status","payload",200,"zeus_refinement_submission_unavailable","Zeus refinement submission is unavailable.","ZeusRefinementSubmissionError"),
+        ("/api/v1/zeus/submissions/refinement/preview","refinement_submission_service","preview","session_kw",200,"zeus_refinement_submission_unavailable","Zeus refinement submission is unavailable.","ZeusRefinementSubmissionError"),
+        ("/api/v1/zeus/submissions/refinement/confirm","refinement_submission_service","confirm","session_kw",201,"zeus_refinement_submission_unavailable","Zeus refinement submission is unavailable.","ZeusRefinementSubmissionError"),
+        ("/api/v1/zeus/refinement-chain/status","confirmation_service","status","payload",200,"zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.","ZeusConfirmationError"),
+        ("/api/v1/zeus/confirmation/preview","confirmation_service","preview","session_kw",200,"zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.","ZeusConfirmationError"),
+        ("/api/v1/zeus/confirmation/confirm","confirmation_service","confirm","session_kw",201,"zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.","ZeusConfirmationError"),
+    ]
+
+
+def test_every_registered_route_preserves_its_service_unavailable_response():
+    with _server(len(POST_ROUTES), services=False) as (base, ledger):
+        for route in POST_ROUTES.values():
+            status, _, body = _request(base, "POST", route.path, {"Content-Type":"application/json"}, "{}")
+            assert status == 503
+            assert body == {"error":{"code":route.unavailable_code,"message":route.unavailable_message}}
+    assert ledger == []
+
+
+def test_unknown_route_call_style_fails_closed_before_service_invocation():
+    called=[]
+    service=type("Service",(),{"snapshot":lambda self,payload:called.append(payload)})()
+    route=replace(POST_ROUTES["/api/v1/zeus/snapshot"],call_style="typo")
+    with pytest.raises(RuntimeError,match="Invalid closed route call style"):
+        _invoke_post_route(route,service,{},"session")
+    assert called==[]
+
+
+def test_cross_family_service_error_preserves_pre_registry_translator(monkeypatch):
+    def raise_preparation(self, payload):
+        raise ZeusPreparationError("campaign_not_canonical")
+    monkeypatch.setattr(_Service,"snapshot",raise_preparation)
+    with _server(2,payloads=fake_service_payloads()) as (base,_):
+        _,session_headers,session_body=_request(base,"GET","/api/v1/session",{"Sec-Fetch-Site":"same-origin"})
+        cookie=session_headers["set-cookie"].split(";",1)[0]
+        headers={"Content-Type":"application/json","Origin":base,"Sec-Fetch-Site":"same-origin","Cookie":cookie,"X-CSRF-Token":session_body["data"]["csrf_token"]}
+        status,_,body=_request(base,"POST","/api/v1/zeus/snapshot",headers,"{}")
+    assert status==412
+    assert body=={"error":{"code":"campaign_not_canonical","message":"Zeus preparation stopped safely."}}
 
 
 def main():
