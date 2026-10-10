@@ -2,10 +2,9 @@ import { AlertTriangle, CheckCircle2, LoaderCircle, Server } from "lucide-react"
 import type { RefObject } from "react";
 import type { ZeusSnapshot, ZeusTransferPreview, ZeusTransferResult } from "../../api/clients/zeus";
 import { ReviewEffects } from "../shared/ReviewEffects";
+import type { TransferUiState } from "./controllers/useTransferController";
 
 const bytes = (value: number) => new Intl.NumberFormat("en", { style: "unit", unit: value >= 1_000_000 ? "megabyte" : "kilobyte", unitDisplay: "short", maximumFractionDigits: 1 }).format(value / (value >= 1_000_000 ? 1_000_000 : 1_000));
-export type TransferUiState = "idle" | "previewing" | "review" | "preparing" | "success";
-
 export function TransferStage(props: { visible: boolean; snapshot: ZeusSnapshot | null; state: TransferUiState; preview: ZeusTransferPreview | null; result: ZeusTransferResult | null; error: string; buttonRef: RefObject<HTMLButtonElement>; headingRef: RefObject<HTMLHeadingElement>; successRef: RefObject<HTMLDivElement>; errorRef: RefObject<HTMLDivElement>; onConnect: () => void; onPreview: () => void; onConfirm: () => void; onReset: () => void }) {
   if (!props.visible) return null;
   return <section className="section-block" aria-labelledby="prepare-heading"><div className="section-heading"><h2 id="prepare-heading">Prepare campaign on Zeus</h2><p>Review and transfer the exact campaign inputs. The preview checks the destination again and never starts a simulation or submits a job.</p></div>

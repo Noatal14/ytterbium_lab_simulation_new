@@ -4,7 +4,7 @@ import type { Campaign } from "../../api/clients/campaign";
 import { RefinementLifecycleApiError, RefinementSubmissionApiError, type ConfirmationPreview, type ConfirmationResult, type RefinementChainStatus, type RefinementLifecycle, type RefinementLifecycleApi, type RefinementSubmissionApi, type RefinementSubmissionPreview, type RefinementSubmissionResult } from "../../api/clients/refinement";
 import { ScreeningLifecycleApiError, ScreeningSubmissionApiError, type RefinementPreview, type RefinementResult, type ScreeningLifecycle, type ScreeningLifecycleApi, type ScreeningSubmissionApi, type ScreeningSubmissionPreview, type ScreeningSubmissionResult } from "../../api/clients/screening";
 import { SmokeLifecycleApiError, SubmissionApiError, type ScreeningPreview, type ScreeningResult, type SmokeLifecycle, type SmokeLifecycleApi, type SmokeSubmissionPreview, type SmokeSubmissionResult, type SubmissionApi } from "../../api/clients/smoke";
-import type { TransferApi, ZeusSnapshot, ZeusTransferPreview, ZeusTransferResult } from "../../api/clients/zeus";
+import type { TransferApi, ZeusSnapshot } from "../../api/clients/zeus";
 import { errorHasSemantic, requiresManualVerification } from "../../api/errorSemantics";
 import { ConfirmationStage } from "./ConfirmationStage";
 import { TransferStage } from "./TransferStage";
@@ -14,6 +14,7 @@ import { RefinementReceipt } from "./RefinementStage";
 import { RefinementFlow } from "./RefinementFlow";
 import { ScreeningFlow } from "./ScreeningFlow";
 import { SmokeFlow } from "./SmokeFlow";
+import { useTransferController } from "./controllers/useTransferController";
 
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
 
@@ -23,10 +24,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const trusted = campaign.trust === "trusted-current";
   const command = campaign.next_plan?.display_command ?? "";
   const [copyStatus, setCopyStatus] = useState("");
-  const [transferState, setTransferState] = useState<"idle" | "previewing" | "review" | "preparing" | "success">("idle");
-  const [transferPreview, setTransferPreview] = useState<ZeusTransferPreview | null>(null);
-  const [transferResult, setTransferResult] = useState<ZeusTransferResult | null>(null);
-  const [transferError, setTransferError] = useState("");
+  const transferController = useTransferController({ campaignId: campaign.id, snapshot: zeusSnapshot, api: transfer });
+  const { state: transferState, preview: transferPreview, result: transferResult, error: transferError } = transferController;
   const [submissionState, setSubmissionState] = useState<"idle" | "previewing" | "review" | "submitting" | "submitted" | "unknown" | "terminal" | "error">("idle");
   const [submissionPreview, setSubmissionPreview] = useState<SmokeSubmissionPreview | null>(null);
   const [submissionResult, setSubmissionResult] = useState<SmokeSubmissionResult | null>(null);
@@ -84,18 +83,6 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   async function copyCommand() {
     try { await navigator.clipboard.writeText(command); setCopyStatus("Command copied."); }
     catch { setCopyStatus("Copy failed. Select the command text and copy it manually."); }
-  }
-  async function previewTransfer() {
-    if (!zeusSnapshot) return;
-    setTransferState("previewing"); setTransferError("");
-    try { setTransferPreview(await transfer.preview(campaign.id, zeusSnapshot.profile)); setTransferState("review"); }
-    catch (error) { setTransferError(error instanceof Error ? error.message : "Zeus preparation preview failed safely."); setTransferState("idle"); }
-  }
-  async function confirmTransfer() {
-    if (!transferPreview) return;
-    setTransferState("preparing"); setTransferError("");
-    try { setTransferResult(await transfer.confirm(transferPreview.preview_token)); setTransferState("success"); }
-    catch (error) { setTransferError(error instanceof Error ? error.message : "Zeus preparation failed safely."); setTransferState("review"); }
   }
   async function previewSubmission() {
     if (!zeusSnapshot || submissionRequestActive.current) return;
@@ -264,7 +251,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
       </> : submissionState === "submitted" && submissionResult ? <><p><strong>Current stage:</strong> Smoke check.</p><p>Smoke check submitted as job {submissionResult.job_id}. You can safely close the application while Zeus runs it.</p><p>Screening remains locked until the smoke outputs are complete and validated.</p></> : submissionState === "unknown" ? <><p>The scheduler response was interrupted, so another submission could create duplicate work.</p><p>Do not submit again. Check the Zeus jobs page first.</p></> : submissionState === "terminal" ? <><p>{submissionError}</p><p>Submission controls are disabled. Check Zeus jobs before making another decision.</p></> : campaign.remote_preparation.status === "legacy-local-only" ? <><p>This campaign was created with file locations tied to another computer. Its existing records remain available for inspection, but the application cannot safely prepare or submit it on Zeus.</p><p>Create a new campaign from the same validated input source. Nothing in this campaign will be changed or deleted.</p></> : campaign.remote_preparation.status === "unavailable" ? <p>This campaign does not pass the required portability and validation checks. It remains available for inspection, but no Zeus action is offered.</p> : <><p><strong>Current prepared stage:</strong> {words(campaign.stage)}. This describes local workflow preparation; it does not mean a Zeus job is running.</p><p><strong>Scheduler status:</strong> not checked.</p></>}
       {campaign.next_plan && trusted && campaign.remote_preparation.status === "ready" && !["smoke", "refine"].includes(campaign.stage) && !remoteState && !["submitted", "unknown", "terminal"].includes(submissionState) && <><div className="copy-command"><div><span className="command-scope">{campaign.next_plan.operation_scope === "local-mutation" ? "Local state change" : "Remote submission"} · copy only</span><code>{command}</code></div><button type="button" className="secondary-button" onClick={copyCommand}><Clipboard aria-hidden="true" /> Copy command</button></div><p className="copy-status" role="status">{copyStatus}</p></>}
     </section>
-    <TransferStage visible={campaign.family === "mot_2d" && trusted && campaign.remote_preparation.status === "ready" && campaign.stage === "smoke" && !remoteState} snapshot={zeusSnapshot} state={transferState} preview={transferPreview} result={transferResult} error={transferError} buttonRef={reviewButton} headingRef={reviewHeading} successRef={successPanel} errorRef={errorPanel} onConnect={onConnectZeus} onPreview={() => void previewTransfer()} onConfirm={() => void confirmTransfer()} onReset={() => { setTransferError(""); setTransferPreview(null); setTransferState("idle"); }} />
+    <TransferStage visible={campaign.family === "mot_2d" && trusted && campaign.remote_preparation.status === "ready" && campaign.stage === "smoke" && !remoteState} snapshot={zeusSnapshot} state={transferState} preview={transferPreview} result={transferResult} error={transferError} buttonRef={reviewButton} headingRef={reviewHeading} successRef={successPanel} errorRef={errorPanel} onConnect={onConnectZeus} onPreview={() => void transferController.previewTransfer()} onConfirm={() => void transferController.confirmTransfer()} onReset={transferController.reset} />
     <SmokeFlow visible={campaign.family === "mot_2d" && trusted && campaign.remote_preparation.status === "ready" && campaign.stage === "smoke" && Boolean(zeusSnapshot)} canSubmit={transferState === "success"} submissionState={submissionState} submissionPreview={submissionPreview} submissionResult={submissionResult} submissionError={submissionError} lifecycle={remoteState} lifecycleCheck={remoteCheck} lifecycleError={remoteError} screeningState={screeningState} screeningPreview={screeningPreview} screeningResult={screeningResult} screeningError={screeningError} onPreviewSubmission={() => void previewSubmission()} onConfirmSubmission={() => void confirmSubmission()} onResetSubmission={() => { setSubmissionError(""); setSubmissionPreview(null); setSubmissionState("idle"); }} onRefreshLifecycle={() => void refreshRemoteStatus()} onPreviewScreening={() => void previewScreening()} onConfirmScreening={() => void confirmScreening()} onResetScreening={() => { setScreeningPreview(null); setScreeningError(""); setScreeningState("idle"); }} onViewJobs={onViewJobs} />
     <ScreeningFlow visible={Boolean(remoteState?.lifecycle === "screen_prepared" || screenSubmitState === "submitted" || screenState)} evidenceFresh={remoteEvidenceFresh} smokeCheck={remoteCheck} submitState={screenSubmitState} submitPreview={screenSubmitPreview} submitResult={screenSubmitResult} submitError={screenSubmitError} lifecycle={screenState} lifecycleCheck={screenCheck} lifecycleError={screenError} prepareState={refineState} preparePreview={refinePreview} prepareResult={refineResult} prepareError={refineError} onRefreshSmoke={() => void refreshRemoteStatus()} onPreviewSubmit={() => void previewScreenSubmission()} onConfirmSubmit={() => void confirmScreenSubmission()} onResetSubmit={() => { setScreenSubmitError(""); setScreenSubmitPreview(null); setScreenSubmitState("idle"); }} onRefreshLifecycle={() => void refreshScreenStatus()} onPreviewPrepare={() => void previewRefinement()} onConfirmPrepare={() => void confirmRefinement()} onResetPrepare={() => { setRefineError(""); setRefinePreview(null); setRefineState("idle"); }} onViewJobs={onViewJobs} />
     <RefinementFlow visible={Boolean(screenState?.lifecycle === "refinement_prepared" || refineState === "success" || campaign.stage === "refine" || chainStatus) && Boolean(zeusSnapshot)} status={chainStatus} check={chainCheck} state={chainState} preview={chainPreview} result={chainResult} error={chainError} onRefresh={() => void refreshChainStatus()} onPreview={() => void previewChainSubmission()} onConfirm={() => void confirmChainSubmission()} onReset={() => { setChainError(""); setChainPreview(null); setChainState("idle"); }} onViewJobs={onViewJobs} />
