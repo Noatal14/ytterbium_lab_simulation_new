@@ -1,0 +1,11 @@
+{
+  "kind": "mot_3d_campaign_v2",
+  "name": "fixture-3d",
+  "stage": "dt_validation_required",
+  "provenance": {"git_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+  "upstream_2d_campaign": {"campaign_path": "data/optimization/mot_2d/upstream/campaign.json"},
+  "design": {"families": ["angled_donut", "single_pass"]},
+  "input_roles": {},
+  "stages": {},
+  "jobs": {}
+}

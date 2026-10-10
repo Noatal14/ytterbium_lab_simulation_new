@@ -14,6 +14,7 @@ from workflow_api.mot_2d_plan import CampaignPlan, build_plan, materialize
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.repository_snapshot import RepositorySnapshotProvider
 from workflow_api.safe_json import read_json
+from workflow_api.manifest_codec import read_manifest
 from workflow_api.discovery import list_campaigns
 from workflow_api.mot_2d_validation import modern_contract
 from workflow_api.mot_2d_specification import MOT_2D_SPECIFICATION
@@ -62,7 +63,9 @@ class CreationService:
             manifest_path = directory / "campaign.json"
             if directory.is_symlink() or not manifest_path.is_file() or manifest_path.is_symlink(): continue
             try:
-                manifest = read_json(manifest_path)
+                manifest = read_manifest(
+                    manifest_path, expected_family="mot_2d"
+                ).model
                 portable, _ = modern_contract(manifest, self.root)
                 if not portable:
                     continue

@@ -354,6 +354,7 @@ def test_transfer_coordinator_outer_registry_capacity_expiry_and_collision(
     campaign.mkdir(parents=True)
     manifest = campaign / "campaign.json"
     manifest.write_text(json.dumps({
+        "kind": "mot_2d_s0_campaign",
         "name": "Campaign",
         "provenance": {"git_commit": COMMIT},
     }))

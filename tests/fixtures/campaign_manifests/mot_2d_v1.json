@@ -1,0 +1,13 @@
+{
+  "kind": "mot_2d_s0_campaign",
+  "name": "fixture-2d",
+  "stage": "complete",
+  "s0_values": [1.3],
+  "ensemble_source": {"zeeman_profile": "corrected_projectant_19ring_20261005"},
+  "fixed_design": {},
+  "seed_roles": {},
+  "mot_seeds": {},
+  "input_ensembles": {},
+  "provenance": {"git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "stages": {}
+}

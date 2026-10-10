@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Mapping, Protocol
 
 from workflow_api.mot_2d_validation import modern_contract
+from workflow_api.manifest_codec import read_manifest
 from workflow_api.discovery import build_registry
 from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.mot_2d_specification import MOT_2D_SPECIFICATION
@@ -563,13 +564,9 @@ def _sha256(path: Path) -> str:
 
 def _load_manifest(path: Path) -> dict[str, object]:
     try:
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > 8 * 1024 * 1024:
-            raise ValueError
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
+        value = read_manifest(path, expected_family="mot_2d").model
+    except (OSError, TypeError, ValueError) as error:
         raise ZeusPreparationError("campaign_manifest_invalid") from error
-    if not isinstance(value, dict):
-        raise ZeusPreparationError("campaign_manifest_invalid")
     return value
 
 

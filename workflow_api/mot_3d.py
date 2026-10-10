@@ -13,6 +13,7 @@ from workflow_api.models import (
     Mot3dCampaignSummary,
     StageProgress,
 )
+from workflow_api.manifest_codec import classify_manifest, read_manifest
 from workflow_api.safe_json import read_json
 
 SUPPORTED_KIND = "mot_3d_campaign_v2"
@@ -415,7 +416,11 @@ def _next_plan(
 def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -> Mot3dCampaignSummary:
     """Inspect a 3D campaign without importing simulation code or changing files."""
     manifest_path = _manifest_path(path)
-    manifest = read_json(manifest_path) if manifest is None else manifest
+    manifest = (
+        read_manifest(manifest_path, expected_family="mot_3d").model
+        if manifest is None else manifest
+    )
+    classify_manifest(manifest, expected_family="mot_3d")
     if manifest.get("kind") != SUPPORTED_KIND:
         raise ValueError(
             f"Unsupported campaign kind {manifest.get('kind')!r}; expected {SUPPORTED_KIND!r}."

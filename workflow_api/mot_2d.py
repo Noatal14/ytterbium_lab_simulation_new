@@ -12,7 +12,7 @@ from workflow_api.models import (
     JobPlan,
     StageProgress,
 )
-from workflow_api.safe_json import read_json
+from workflow_api.manifest_codec import classify_manifest, read_manifest
 
 SUPPORTED_KIND = "mot_2d_s0_campaign"
 SUPPORTED_STAGES = {
@@ -32,7 +32,7 @@ def _manifest_path(path: str | Path) -> Path:
 
 
 def _read_json(path: Path) -> Any:
-    return read_json(path)
+    return read_manifest(path, expected_family="mot_2d").model
 
 
 def _count_files(root: Path, pattern: str) -> int:
@@ -237,6 +237,7 @@ def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -
     """Read a campaign without changing its files or importing submit modules."""
     manifest_path = _manifest_path(path)
     manifest = _read_json(manifest_path) if manifest is None else manifest
+    classify_manifest(manifest, expected_family="mot_2d")
     if manifest.get("kind") != SUPPORTED_KIND:
         raise ValueError(
             f"Unsupported campaign kind {manifest.get('kind')!r}; expected {SUPPORTED_KIND!r}."

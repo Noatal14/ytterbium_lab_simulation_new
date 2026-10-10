@@ -11,6 +11,11 @@ from typing import Any
 
 from workflow_api.mot_2d import read_campaign as read_2d_campaign
 from workflow_api.mot_3d import read_campaign as read_3d_campaign
+from workflow_api.manifest_codec import (
+    ManifestCodecError,
+    ManifestFailure,
+    read_manifest,
+)
 from workflow_api.mot_2d_validation import (
     modern_contract,
     sealed_final_is_valid,
@@ -55,25 +60,40 @@ def _within(path: Path, root: Path) -> bool:
 
 
 def _read_manifest(path: Path) -> dict[str, Any]:
-    if path.is_symlink() or not path.is_file():
-        raise DiscoveryError("invalid_manifest", "Campaign record is not a trusted regular file.")
     try:
-        size = path.stat().st_size
-    except OSError as error:
-        raise DiscoveryError("unavailable_manifest", "Campaign record is unavailable.") from error
-    if size > MAX_MANIFEST_BYTES:
-        raise DiscoveryError("oversized_manifest", "Campaign record is too large to inspect safely.")
-    try:
-        with path.open("rb") as stream:
-            raw = stream.read(MAX_MANIFEST_BYTES + 1)
-        if len(raw) > MAX_MANIFEST_BYTES:
-            raise DiscoveryError("oversized_manifest", "Campaign record is too large to inspect safely.")
-        payload = json.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError, RecursionError) as error:
-        raise DiscoveryError("invalid_manifest", "Campaign record is not valid JSON.") from error
-    if not isinstance(payload, dict):
-        raise DiscoveryError("invalid_manifest", "Campaign record must contain a JSON object.")
-    return payload
+        return read_manifest(path).model
+    except ManifestCodecError as error:
+        translations = {
+            ManifestFailure.NOT_REGULAR: (
+                "invalid_manifest",
+                "Campaign record is not a trusted regular file.",
+            ),
+            ManifestFailure.UNAVAILABLE: (
+                "unavailable_manifest",
+                "Campaign record is unavailable.",
+            ),
+            ManifestFailure.OVERSIZED: (
+                "oversized_manifest",
+                "Campaign record is too large to inspect safely.",
+            ),
+            ManifestFailure.NON_OBJECT: (
+                "invalid_manifest",
+                "Campaign record must contain a JSON object.",
+            ),
+            ManifestFailure.UNSUPPORTED_KIND: (
+                "unsupported_campaign",
+                "Campaign record has an unsupported workflow kind.",
+            ),
+            ManifestFailure.FAMILY_MISMATCH: (
+                "unsupported_campaign",
+                "Campaign record has an unsupported workflow kind.",
+            ),
+        }
+        code, message = translations.get(
+            error.reason,
+            ("invalid_manifest", "Campaign record is not valid JSON."),
+        )
+        raise DiscoveryError(code, message) from error
 
 
 def _identifier(family: str, relative_root: Path) -> str:
