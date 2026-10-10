@@ -1,7 +1,7 @@
 import { AlertTriangle, ArrowLeft, CheckCircle2, Clipboard, Clock3, LoaderCircle, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Campaign } from "../../api/clients/campaign";
-import { RefinementLifecycleApiError, RefinementSubmissionApiError, type ConfirmationPreview, type ConfirmationResult, type RefinementChainStatus, type RefinementLifecycle, type RefinementLifecycleApi, type RefinementSubmissionApi, type RefinementSubmissionPreview, type RefinementSubmissionResult } from "../../api/clients/refinement";
+import { RefinementSubmissionApiError, type RefinementChainStatus, type RefinementLifecycleApi, type RefinementSubmissionApi, type RefinementSubmissionPreview, type RefinementSubmissionResult } from "../../api/clients/refinement";
 import { ScreeningLifecycleApiError, ScreeningSubmissionApiError, type RefinementPreview, type RefinementResult, type ScreeningLifecycle, type ScreeningLifecycleApi, type ScreeningSubmissionApi, type ScreeningSubmissionPreview, type ScreeningSubmissionResult } from "../../api/clients/screening";
 import { SmokeLifecycleApiError, SubmissionApiError, type ScreeningPreview, type ScreeningResult, type SmokeLifecycle, type SmokeLifecycleApi, type SmokeSubmissionPreview, type SmokeSubmissionResult, type SubmissionApi } from "../../api/clients/smoke";
 import type { TransferApi, ZeusSnapshot } from "../../api/clients/zeus";
@@ -15,6 +15,7 @@ import { RefinementFlow } from "./RefinementFlow";
 import { ScreeningFlow } from "./ScreeningFlow";
 import { SmokeFlow } from "./SmokeFlow";
 import { useTransferController } from "./controllers/useTransferController";
+import { useConfirmationController } from "./controllers/useConfirmationController";
 
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
 
@@ -56,12 +57,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const [chainPreview, setChainPreview] = useState<RefinementSubmissionPreview | null>(null);
   const [chainResult, setChainResult] = useState<RefinementSubmissionResult | null>(null);
   const [chainError, setChainError] = useState("");
-  const [refinementLifecycleState, setRefinementLifecycleState] = useState<RefinementLifecycle | null>(null);
-  const [refinementLifecycleCheck, setRefinementLifecycleCheck] = useState<"idle" | "checking" | "ready" | "error">("idle");
-  const [confirmationState, setConfirmationState] = useState<"idle" | "previewing" | "review" | "preparing" | "success" | "terminal">("idle");
-  const [confirmationPreview, setConfirmationPreview] = useState<ConfirmationPreview | null>(null);
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [confirmationError, setConfirmationError] = useState("");
+  const confirmationController = useConfirmationController({ campaignId: campaign.id, snapshot: zeusSnapshot, api: refinementLifecycle });
+  const { lifecycle: refinementLifecycleState, lifecycleCheck: refinementLifecycleCheck, state: confirmationState, preview: confirmationPreview, result: confirmationResult, error: confirmationError } = confirmationController;
   const title = useRef<HTMLHeadingElement>(null);
   const reviewButton = useRef<HTMLButtonElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
@@ -209,24 +206,6 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     catch (error) { const code = error instanceof RefinementSubmissionApiError ? error.code : ""; if (errorHasSemantic("refinement_submission", code, "fresh_review")) { setChainPreview(null); setChainError(code === "local_files_changed" ? "The remote files changed after review. Start a fresh review." : "The review expired or is no longer valid. Start a fresh review."); setChainState("error"); } else { setChainError(error instanceof Error ? error.message : "The Refinement chain outcome needs manual verification."); setChainState("blocked"); await refreshChainStatus(); } }
     finally { window.clearInterval(poll); chainRequestActive.current = false; }
   }
-  async function refreshRefinementLifecycle(preserveError = false) {
-    if (!zeusSnapshot || refinementLifecycleCheck === "checking") return;
-    setRefinementLifecycleCheck("checking"); if (!preserveError) setConfirmationError("");
-    try { const result = await refinementLifecycle.status(campaign.id, zeusSnapshot.profile); setRefinementLifecycleState(result); setRefinementLifecycleCheck("ready"); if (result.chain.status === "confirmation_prepared") setConfirmationState("success"); }
-    catch (error) { setRefinementLifecycleState(null); if (!preserveError) setConfirmationError(error instanceof Error ? error.message : "The Refinement status check stopped safely."); setRefinementLifecycleCheck("error"); }
-  }
-  async function previewConfirmation() {
-    if (!zeusSnapshot || refinementLifecycleState?.chain.status !== "ready_to_prepare_confirmation") return;
-    setConfirmationState("previewing"); setConfirmationError("");
-    try { setConfirmationPreview(await refinementLifecycle.preview(campaign.id, zeusSnapshot.profile)); setConfirmationState("review"); }
-    catch (error) { if (error instanceof RefinementLifecycleApiError && errorHasSemantic("confirmation_transition", error.code, "already_prepared")) { setConfirmationPreview(null); setConfirmationState("idle"); await refreshRefinementLifecycle(); return; } const terminal = error instanceof RefinementLifecycleApiError && requiresManualVerification("confirmation_transition", error.code); setConfirmationError(error instanceof Error ? error.message : "Confirmation preparation review stopped safely."); setConfirmationState(terminal ? "terminal" : "idle"); }
-  }
-  async function confirmConfirmation() {
-    if (!confirmationPreview) return;
-    setConfirmationState("preparing"); setConfirmationError("");
-    try { setConfirmationResult(await refinementLifecycle.confirm(confirmationPreview.preview_token)); setConfirmationState("success"); setRefinementLifecycleState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "confirmation" }, chain: { ...current.chain, status: "confirmation_prepared" }, next_action: "none" } : current); }
-    catch (error) { if (error instanceof RefinementLifecycleApiError && errorHasSemantic("confirmation_transition", error.code, "already_prepared")) { setConfirmationPreview(null); setConfirmationState("idle"); await refreshRefinementLifecycle(); return; } const fresh = error instanceof RefinementLifecycleApiError && errorHasSemantic("confirmation_transition", error.code, "fresh_review"); setConfirmationError(error instanceof Error ? error.message : "The Confirmation preparation outcome could not be verified. Do not retry automatically."); setConfirmationPreview(null); setConfirmationState(fresh ? "idle" : "terminal"); if (!fresh) await refreshRefinementLifecycle(true); }
-  }
   const remoteLifecycle = remoteState?.lifecycle;
   const screenLifecycle = screenState?.lifecycle;
   const chainPriority = chainStatus?.chain.status === "not_submitted" ? "Action required" : ["submitting", "submitted"].includes(chainStatus?.chain.status ?? "") ? "No action needed" : ["partial", "outcome_unknown"].includes(chainStatus?.chain.status ?? "") ? "Manual verification required" : null;
@@ -255,7 +234,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     <SmokeFlow visible={campaign.family === "mot_2d" && trusted && campaign.remote_preparation.status === "ready" && campaign.stage === "smoke" && Boolean(zeusSnapshot)} canSubmit={transferState === "success"} submissionState={submissionState} submissionPreview={submissionPreview} submissionResult={submissionResult} submissionError={submissionError} lifecycle={remoteState} lifecycleCheck={remoteCheck} lifecycleError={remoteError} screeningState={screeningState} screeningPreview={screeningPreview} screeningResult={screeningResult} screeningError={screeningError} onPreviewSubmission={() => void previewSubmission()} onConfirmSubmission={() => void confirmSubmission()} onResetSubmission={() => { setSubmissionError(""); setSubmissionPreview(null); setSubmissionState("idle"); }} onRefreshLifecycle={() => void refreshRemoteStatus()} onPreviewScreening={() => void previewScreening()} onConfirmScreening={() => void confirmScreening()} onResetScreening={() => { setScreeningPreview(null); setScreeningError(""); setScreeningState("idle"); }} onViewJobs={onViewJobs} />
     <ScreeningFlow visible={Boolean(remoteState?.lifecycle === "screen_prepared" || screenSubmitState === "submitted" || screenState)} evidenceFresh={remoteEvidenceFresh} smokeCheck={remoteCheck} submitState={screenSubmitState} submitPreview={screenSubmitPreview} submitResult={screenSubmitResult} submitError={screenSubmitError} lifecycle={screenState} lifecycleCheck={screenCheck} lifecycleError={screenError} prepareState={refineState} preparePreview={refinePreview} prepareResult={refineResult} prepareError={refineError} onRefreshSmoke={() => void refreshRemoteStatus()} onPreviewSubmit={() => void previewScreenSubmission()} onConfirmSubmit={() => void confirmScreenSubmission()} onResetSubmit={() => { setScreenSubmitError(""); setScreenSubmitPreview(null); setScreenSubmitState("idle"); }} onRefreshLifecycle={() => void refreshScreenStatus()} onPreviewPrepare={() => void previewRefinement()} onConfirmPrepare={() => void confirmRefinement()} onResetPrepare={() => { setRefineError(""); setRefinePreview(null); setRefineState("idle"); }} onViewJobs={onViewJobs} />
     <RefinementFlow visible={Boolean(screenState?.lifecycle === "refinement_prepared" || refineState === "success" || campaign.stage === "refine" || chainStatus) && Boolean(zeusSnapshot)} status={chainStatus} check={chainCheck} state={chainState} preview={chainPreview} result={chainResult} error={chainError} onRefresh={() => void refreshChainStatus()} onPreview={() => void previewChainSubmission()} onConfirm={() => void confirmChainSubmission()} onReset={() => { setChainError(""); setChainPreview(null); setChainState("idle"); }} onViewJobs={onViewJobs} />
-    <ConfirmationStage visible={Boolean(chainStatus?.chain.status === "submitted" || chainResult || refinementLifecycleState || campaign.stage === "refine") && Boolean(zeusSnapshot)} lifecycle={refinementLifecycleState} lifecycleCheck={refinementLifecycleCheck} state={confirmationState} preview={confirmationPreview} result={confirmationResult} error={confirmationError} onRefresh={() => void refreshRefinementLifecycle()} onPreview={() => void previewConfirmation()} onConfirm={() => void confirmConfirmation()} onReset={() => { setConfirmationError(""); setConfirmationPreview(null); setConfirmationState("idle"); }} onViewJobs={onViewJobs} />
+    <ConfirmationStage visible={Boolean(chainStatus?.chain.status === "submitted" || chainResult || refinementLifecycleState || campaign.stage === "refine") && Boolean(zeusSnapshot)} lifecycle={refinementLifecycleState} lifecycleCheck={refinementLifecycleCheck} state={confirmationState} preview={confirmationPreview} result={confirmationResult} error={confirmationError} onRefresh={() => void confirmationController.refresh()} onPreview={() => void confirmationController.previewConfirmation()} onConfirm={() => void confirmationController.confirmConfirmation()} onReset={confirmationController.reset} onViewJobs={onViewJobs} />
     <section className="section-block" aria-labelledby="timeline-heading"><div className="section-heading"><h2 id="timeline-heading">Campaign timeline</h2><p>Progress reflects validated local output files only.</p></div><div className="timeline-legend" aria-label="Timeline color legend"><span><i className="dot dot--empty" /> Not started</span><span><i className="dot dot--active" /> Partial output</span><span><i className="dot dot--complete" /> Complete</span><span><i className="dot dot--blocked" /> Unknown or inconsistent</span></div>{campaign.progress.length ? <ol className="timeline">{campaign.progress.map((stage) => <li className={`timeline-item timeline-item--${stage.status}`} key={stage.stage}><span className="timeline-marker" aria-hidden="true" /><div><strong>{words(stage.stage)}</strong><p>{stage.expected === null ? `${stage.completed} validated outputs; expected total unavailable` : `${stage.completed} of ${stage.expected} validated outputs`}</p><span className="sr-only">Status: {words(stage.status)}</span></div></li>)}</ol> : <div className="state-panel">No validated stage progress is available.</div>}</section>
     {campaign.warnings.length > 0 && <section className="section-block" aria-labelledby="warnings-heading"><div className="section-heading"><h2 id="warnings-heading">Checks and warnings</h2></div><ul className="warning-list">{campaign.warnings.map((warning, index) => <li className={`warning warning--${warning.severity}`} key={`${warning.message}-${index}`}><strong>{warning.severity}</strong><span>{warning.message}</span></li>)}</ul></section>}
   </main>;

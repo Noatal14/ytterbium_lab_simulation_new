@@ -15,6 +15,7 @@ import { JobResources } from "../shared/JobResources";
 import { ManualVerification } from "../shared/ActionError";
 import { ReviewEffects } from "../shared/ReviewEffects";
 import { StatusSnapshot } from "../shared/StatusSnapshot";
+import type { ConfirmationLifecycleCheck, ConfirmationUiState } from "./controllers/useConfirmationController";
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
 const timestamp = (value: string) =>
@@ -22,17 +23,10 @@ const timestamp = (value: string) =>
     dateStyle: "medium",
     timeStyle: "medium",
   }).format(new Date(value));
-export type ConfirmationUiState =
-  | "idle"
-  | "previewing"
-  | "review"
-  | "preparing"
-  | "success"
-  | "terminal";
 export function ConfirmationStage(props: {
   visible: boolean;
   lifecycle: RefinementLifecycle | null;
-  lifecycleCheck: "idle" | "checking" | "ready" | "error";
+  lifecycleCheck: ConfirmationLifecycleCheck;
   state: ConfirmationUiState;
   preview: ConfirmationPreview | null;
   result: ConfirmationResult | null;
