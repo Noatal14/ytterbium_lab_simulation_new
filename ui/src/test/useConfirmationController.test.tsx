@@ -14,6 +14,12 @@ const readyLifecycle = parseRefinementLifecycle({
   next_action: "review_confirmation_preparation", local_sync: { status: "not_synchronized" },
 });
 const preparedLifecycle = parseRefinementLifecycle({ ...readyLifecycle, campaign: { ...readyLifecycle.campaign, stage: "confirmation" }, chain: { ...readyLifecycle.chain, status: "confirmation_prepared" }, next_action: "none" });
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
 
 describe("useConfirmationController", () => {
   it("refreshes the authoritative lifecycle and recognizes prepared confirmation", async () => {
@@ -119,5 +125,83 @@ describe("useConfirmationController", () => {
     expect(result.current.error).toBe("");
     expect(result.current.result).toBe(confirmation);
     expect(result.current.lifecycle).toBe(lifecycle);
+  });
+
+  it("serializes refresh, preview, and confirm requests", async () => {
+    const statusRequest = deferred<any>();
+    const previewRequest = deferred<any>();
+    const confirmRequest = deferred<any>();
+    const api = { status: vi.fn(() => statusRequest.promise), preview: vi.fn(() => previewRequest.promise), confirm: vi.fn(() => confirmRequest.promise) };
+    const { result } = renderHook(() => useConfirmationController({ campaignId: "campaign", snapshot, api }));
+    let status!: Promise<void>;
+    act(() => { status = result.current.refresh(); void result.current.refresh(); void result.current.previewConfirmation(); });
+    expect(api.status).toHaveBeenCalledTimes(1);
+    expect(api.preview).not.toHaveBeenCalled();
+    statusRequest.resolve(readyLifecycle);
+    await act(() => status);
+    let review!: Promise<void>;
+    act(() => { review = result.current.previewConfirmation(); void result.current.previewConfirmation(); });
+    expect(api.preview).toHaveBeenCalledTimes(1);
+    previewRequest.resolve({ preview_token: "token" });
+    await act(() => review);
+    let confirmation!: Promise<void>;
+    act(() => { confirmation = result.current.confirmConfirmation(); void result.current.confirmConfirmation(); void result.current.refresh(); });
+    expect(api.confirm).toHaveBeenCalledTimes(1);
+    expect(api.status).toHaveBeenCalledTimes(1);
+    confirmRequest.resolve({ campaign_id: "campaign" });
+    await act(() => confirmation);
+  });
+
+  it.each(["reset", "campaign", "profile", "api", "unmount"] as const)("retires a pending confirmation after %s", async (boundary) => {
+    const pending = deferred<any>();
+    const firstApi = { status: vi.fn().mockResolvedValue(readyLifecycle), preview: vi.fn().mockResolvedValue({ preview_token: "token" }), confirm: vi.fn(() => pending.promise) };
+    const secondApi = { status: vi.fn(), preview: vi.fn(), confirm: vi.fn() };
+    const { result, rerender, unmount } = renderHook(
+      ({ campaignId, value, api }: { campaignId: string; value: ZeusSnapshot; api: typeof firstApi }) => useConfirmationController({ campaignId, snapshot: value, api }),
+      { initialProps: { campaignId: "campaign", value: snapshot, api: firstApi } },
+    );
+    await act(() => result.current.refresh());
+    await act(() => result.current.previewConfirmation());
+    let request!: Promise<void>;
+    act(() => { request = result.current.confirmConfirmation(); });
+    if (boundary === "reset") act(() => result.current.reset());
+    else if (boundary === "campaign") rerender({ campaignId: "other", value: snapshot, api: firstApi });
+    else if (boundary === "profile") rerender({ campaignId: "campaign", value: { ...snapshot, profile: { ...snapshot.profile, username: "other.user" } }, api: firstApi });
+    else if (boundary === "api") rerender({ campaignId: "campaign", value: snapshot, api: secondApi });
+    else unmount();
+    pending.resolve({ campaign_id: "stale" });
+    await act(() => request);
+    if (boundary !== "unmount") {
+      expect(result.current.state).toBe("idle");
+      expect(result.current.result).toBeNull();
+    }
+  });
+
+  it("prevents an older status response from overwriting a newer generation", async () => {
+    const pending = deferred<any>();
+    const firstApi = { status: vi.fn(() => pending.promise), preview: vi.fn(), confirm: vi.fn() };
+    const secondApi = { status: vi.fn().mockResolvedValue(preparedLifecycle), preview: vi.fn(), confirm: vi.fn() };
+    const { result, rerender } = renderHook(
+      ({ api }: { api: typeof firstApi }) => useConfirmationController({ campaignId: "campaign", snapshot, api }),
+      { initialProps: { api: firstApi } },
+    );
+    let stale!: Promise<void>;
+    act(() => { stale = result.current.refresh(); });
+    rerender({ api: secondApi });
+    await act(() => result.current.refresh());
+    pending.resolve(readyLifecycle);
+    await act(() => stale);
+    expect(result.current.lifecycle).toBe(preparedLifecycle);
+    expect(result.current.state).toBe("success");
+  });
+
+  it("releases the lock after a rejected refresh", async () => {
+    const api = { status: vi.fn().mockRejectedValueOnce(new Error("temporary")).mockResolvedValueOnce(readyLifecycle), preview: vi.fn(), confirm: vi.fn() };
+    const { result } = renderHook(() => useConfirmationController({ campaignId: "campaign", snapshot, api }));
+    await act(() => result.current.refresh());
+    await act(() => result.current.refresh());
+    expect(api.status).toHaveBeenCalledTimes(2);
+    expect(result.current.lifecycle).toBe(readyLifecycle);
+    expect(result.current.lifecycleCheck).toBe("ready");
   });
 });
