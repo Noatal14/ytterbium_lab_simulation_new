@@ -15,10 +15,10 @@ from config import (
     MOT_3D_MAGNETIC_FIELD_GRADIENT_G_CM,
     MOT_3D_SIM_CONFIG,
     ZEEMAN_LASER_CONFIG,
+    resolve_stochastic_solver,
 )
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
-from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import (
     DEFAULT_2D_MOT_STATES_FILE,
     DEFAULT_3D_MOT_STATES_FILE,
@@ -30,16 +30,9 @@ from utils.file_helpers import save_file_json
 from utils.simulation_helpers import generate_timepoints, run_multiple_atoms_simulation
 
 
-MOT_3D_SOLVERS = {"RK4StHybridCustom": RK4StHybridCustom}
-
-
 def _configured_3d_solver():
     """Resolve the 3D-MOT solver selected by the central configuration."""
-    solver_name = MOT_3D_SIM_CONFIG["solver"]
-    try:
-        return MOT_3D_SOLVERS[solver_name]
-    except KeyError as error:
-        raise ValueError(f"Unsupported 3D-MOT solver: {solver_name}") from error
+    return resolve_stochastic_solver(MOT_3D_SIM_CONFIG["solver"])
 
 
 def _continuous_final_residence_time(time_points, inside_capture_region):

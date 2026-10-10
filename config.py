@@ -32,6 +32,7 @@ from lab_setup.physical_specification import (
     CANONICAL_ZEEMAN_PROFILE_NAME,
     LABORATORY_PHYSICAL_SPECIFICATION,
 )
+from lab_setup.numerical_policy import NUMERICAL_POLICY
 
 
 # =============================================================================
@@ -89,6 +90,18 @@ _LAB_SPECIES = LABORATORY_PHYSICAL_SPECIFICATION["species"]
 _LAB_TRANSITIONS = LABORATORY_PHYSICAL_SPECIFICATION["transitions"]
 _LAB_SOURCE = LABORATORY_PHYSICAL_SPECIFICATION["source"]
 _LAB_APPARATUS = LABORATORY_PHYSICAL_SPECIFICATION["apparatus"]
+_NUMERICS = NUMERICAL_POLICY
+
+
+def resolve_stochastic_solver(name):
+    """Resolve an allowlisted stochastic solver name to its callable."""
+    if name == "RK4StCustom":
+        from utils.RK4StCustom import RK4StCustom
+        return RK4StCustom
+    if name == "RK4StHybridCustom":
+        from utils.RK4StHybridCustom import RK4StHybridCustom
+        return RK4StHybridCustom
+    raise ValueError(f"Unsupported stochastic solver: {name}")
 
 YB171_NAME = _LAB_SPECIES["name"]
 YB171_MASS_AMU = _LAB_SPECIES["mass_amu"]
@@ -282,8 +295,8 @@ ZEEMAN_LASER_CONFIG = {
 }
 
 ZEEMAN_SIM_CONFIG = {
-    "t_max_s": 20e-3,
-    "dt_s": 4e-5,
+    "t_max_s": _NUMERICS["zeeman"]["t_max_s"],
+    "dt_s": _NUMERICS["zeeman"]["dt_s"],
     "start_distance_m": 0.450,
     "cutoff_distance_m": 0.100,
 }
@@ -302,12 +315,16 @@ MOT_2D_LASER_CONFIG = {
 }
 
 MOT_2D_SIM_CONFIG = {
-    "t_max_s": 25e-3,
+    "t_max_s": _NUMERICS["mot_2d"]["t_max_s"],
     # Accepted hybrid-solver production timestep after convergence validation.
     # All 2D-MOT entry points must read this value rather than duplicate it.
-    "dt_s": 0.625e-6,
+    "dt_s": _NUMERICS["mot_2d"]["dt_s"],
     "start_distance_m": 0.100,
 }
+MOT_2D_STOCHASTIC_SOLVER_NAME = _NUMERICS["mot_2d"]["solver"]
+MOT_2D_STOCHASTIC_SOLVER = resolve_stochastic_solver(
+    MOT_2D_STOCHASTIC_SOLVER_NAME
+)
 
 # Global force scale used across the simulation pipeline.
 # This is the authoritative normalization constant and is not limited to the
@@ -483,20 +500,24 @@ ACTIVE_MOT_3D_CONFIGURATION = "angled_donut"
 MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
 MOT_3D_SIM_CONFIG = {
-    "t_max_s": 25e-3,
+    "t_max_s": _NUMERICS["mot_3d"]["t_max_s"],
     # Provisional values only.  The 0.625-us production value is supported by
     # the 2D-MOT convergence study, not yet by a 3D-MOT convergence study.
     # A new campaign must pass its paired dt-validation gate before discovery.
-    "dt_s": 1.25e-6,
-    "screening_dt_s": 1.25e-6,
-    "production_dt_s": 0.625e-6,
+    "dt_s": _NUMERICS["mot_3d"]["dt_s"],
+    "screening_dt_s": _NUMERICS["mot_3d"]["screening_dt_s"],
+    "production_dt_s": _NUMERICS["mot_3d"]["production_dt_s"],
     # Include deliberately aggressive values so the validation can establish
     # whether a cheaper timestep is defensible instead of only checking the
     # provisional choices selected before canonical 2D survivors existed.
-    "dt_validation_candidates_s": (10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6),
-    "dt_validation_reference_s": 0.3125e-6,
-    "solver": "RK4StHybridCustom",
+    "dt_validation_candidates_s": tuple(_NUMERICS["mot_3d"]["dt_validation_candidates_s"]),
+    "dt_validation_reference_s": _NUMERICS["mot_3d"]["dt_validation_reference_s"],
+    "solver": _NUMERICS["mot_3d"]["solver"],
 }
+MOT_3D_STOCHASTIC_SOLVER_NAME = MOT_3D_SIM_CONFIG["solver"]
+MOT_3D_STOCHASTIC_SOLVER = resolve_stochastic_solver(
+    MOT_3D_STOCHASTIC_SOLVER_NAME
+)
 
 # Provisional operational definition of 3D-MOT capture. These values are
 # intentionally centralized here so they can be tuned against simulation and

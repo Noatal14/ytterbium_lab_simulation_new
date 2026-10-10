@@ -1,7 +1,7 @@
 # Configuration ownership and frozen baseline
 
 Updated from the characterized UI architecture baseline at
-`8bd42b97d8dd6e696561b2efa16667607261a6fc`.
+`b74626f`.
 
 This document records the configuration that the production code currently
 resolves.  It is a characterization, not an endorsement of every value.  The
@@ -13,6 +13,7 @@ to this baseline deliberate and reviewable.
 | Domain | Authoritative definitions | Principal consumers | Change rule |
 | --- | --- | --- | --- |
 | Versioned laboratory identity | `lab_setup/specifications/laboratory_physical_v1.json`, strictly loaded by `lab_setup/physical_specification.py` | `config.py`, Zeeman generation, campaign defaults, characterization tests | New reviewed specification version for laboratory changes |
+| Versioned numerical policy | `lab_setup/specifications/numerical_policy_v1.json`, strictly loaded by `lab_setup/numerical_policy.py` | `config.py` compatibility facade; simulations and campaigns consume the facade | Numerical convergence review and new policy version; no laboratory geometry or campaign budgets belong here |
 | Atomic constants and transitions | `config.py`: `YB171`, `BLUE_TRANSITION`, `GREEN_TRANSITION`, saturation intensities | `lab_setup/atom_species.py`, force and laser setup modules | Scientific review; preserve SI units |
 | Apparatus geometry | `config.py`: `Geometry`, `ZEEMAN_BEAM_DIRECTION` | `lab_setup/zones.py`, `lab_setup/config_builder.py`, laser and magnetic-field setup modules | Laboratory-change review |
 | Zeeman slower | `config.py`: `ZEEMAN_MAGNET_PROFILES`, `ACTIVE_ZEEMAN_MAGNET_PROFILE`, `ZEEMAN_FIELD_CONFIG`, `ZEEMAN_LASER_CONFIG`, `ZEEMAN_SIM_CONFIG` | `lab_setup/config_builder.py`, `lab_setup/zeeman_laser_setup.py`, `simulations/zeeman.py`, `studies/zeeman/*` | Profile identity and generated ensembles must change together |
@@ -25,13 +26,19 @@ to this baseline deliberate and reviewable.
 
 There is no single configuration source for the whole system.  The versioned
 laboratory specification owns stable physical identity and the canonical
-Zeeman array; `config.py` owns the remaining reusable physical/numerical defaults;
+Zeeman array; the numerical-policy specification owns reusable solver,
+timestep, horizon, and 3D timestep-validation defaults; `config.py` preserves
+the public compatibility facade and owns remaining reusable defaults;
 `workflow_api/mot_2d_spec.py` owns executable 2D campaign science; and the
 versioned JSON owns the UI/job presentation contract.  These authorities
 deliberately overlap in solver, timestep, trial-budget, and scheduling fields.
 The characterization tests require exact agreement wherever they overlap so
 drift fails loudly.  A campaign manifest then freezes the values used by one
 concrete run.  Documentation explains intent but is not executable authority.
+
+Campaign working/final timesteps remain explicit campaign-design fields even
+when their present values equal reusable defaults. Search bounds, seeds, trial
+budgets, particle counts, and PBS resources are not numerical-policy fields.
 
 ## Unit contract
 
@@ -54,7 +61,7 @@ direction, oven/source settings, every stored Zeeman profile, complete 2D and
 3D configuration trees, `FULL_SIM_CONFIG`, runtime defaults, executable 2D
 campaign design, the complete versioned 2D UI/job contract, and 3D campaign
 seed/round defaults.  Canonical sorted JSON for this payload has SHA-256
-`e687fab3bcac25721c4b4d03ae826d837b88a05af275924797d1cb57e6b50578`.
+`de6e5625555b6f021dd76193ecf7adba1d3fe53ff7b4ea830400067f5cc2bd9a`.
 
 - 2D production timestep: `0.625 us`; 2D campaign working timestep:
   `1.25 us`; solver: `RK4StHybridCustom`.

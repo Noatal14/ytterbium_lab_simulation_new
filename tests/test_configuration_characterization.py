@@ -17,6 +17,7 @@ from lab_setup.physical_specification import (
     CANONICAL_ZEEMAN_PROFILE_NAME,
     LABORATORY_PHYSICAL_SPECIFICATION,
 )
+from lab_setup.numerical_policy import NUMERICAL_POLICY
 from simulations.zeeman import _resolved_run_parameters
 from studies import mot_2d_s0_campaign, mot_3d_campaign
 from studies.mot_2d.optimization import BOUNDS_DETUNING, BOUNDS_MAGNET_RADIUS_M
@@ -55,6 +56,7 @@ EXPECTED_VERSIONED_SPEC_CONSUMERS = {
     "tools/verify_mot_2d_specification.py", "workflow_api/mutation.py",
     "workflow_api/zeus_transfer.py",
 }
+EXPECTED_NUMERICAL_POLICY_CONSUMERS = {"config.py"}
 
 
 def _normalize(value):
@@ -98,6 +100,7 @@ def _resolved_baseline_payload():
             "GREEN_SATURATION_INTENSITY_MW_CM2": config.GREEN_SATURATION_INTENSITY_MW_CM2,
         },
         "versioned_laboratory_physical_contract": LABORATORY_PHYSICAL_SPECIFICATION,
+        "versioned_numerical_policy": NUMERICAL_POLICY,
         "geometry": geometry,
         "beam_source": {
             "ZEEMAN_BEAM_DIRECTION": config.ZEEMAN_BEAM_DIRECTION,
@@ -191,7 +194,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "e687fab3bcac25721c4b4d03ae826d837b88a05af275924797d1cb57e6b50578"
+        "de6e5625555b6f021dd76193ecf7adba1d3fe53ff7b4ea830400067f5cc2bd9a"
     )
 
 
@@ -225,6 +228,26 @@ def test_atomic_geometry_beam_and_source_cross_field_invariants():
     assert config.Geometry.SCIENCE_REGION_CENTER_Z_M == config.Geometry.MOT_3D_CENTER_M[2]
     assert 0 < config.YB171_NATURAL_ABUNDANCE < 1
     assert config.OVEN_MICROTUBE_COUNT > 0
+
+
+def test_numerical_policy_facade_equivalence_and_separate_campaign_authority():
+    assert config.ZEEMAN_SIM_CONFIG["dt_s"] == NUMERICAL_POLICY["zeeman"]["dt_s"]
+    assert config.ZEEMAN_SIM_CONFIG["t_max_s"] == NUMERICAL_POLICY["zeeman"]["t_max_s"]
+    assert config.MOT_2D_SIM_CONFIG["dt_s"] == NUMERICAL_POLICY["mot_2d"]["dt_s"]
+    assert config.MOT_2D_SIM_CONFIG["t_max_s"] == NUMERICAL_POLICY["mot_2d"]["t_max_s"]
+    assert config.MOT_3D_SIM_CONFIG == {
+        key: (tuple(value) if key == "dt_validation_candidates_s" else value)
+        for key, value in NUMERICAL_POLICY["mot_3d"].items()
+    }
+    assert mot_2d_spec.FIXED_DESIGN["working_dt_s"] == 1.25e-6
+    assert mot_2d_spec.FIXED_DESIGN["final_dt_s"] == 0.625e-6
+    assert "trial_budgets" not in NUMERICAL_POLICY["mot_2d"]
+    assert "particle_counts" not in NUMERICAL_POLICY["mot_2d"]
+
+
+def test_numerical_policy_direct_consumer_ledger_is_complete():
+    consumers, _ = _direct_imports("lab_setup.numerical_policy")
+    assert consumers == EXPECTED_NUMERICAL_POLICY_CONSUMERS
 
 
 def test_zeeman_profiles_and_corrected_generator_metadata_binding():

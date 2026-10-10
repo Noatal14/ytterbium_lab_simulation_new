@@ -39,6 +39,8 @@ CAMPAIGN_FILES = (
     "config.py",
     "lab_setup/physical_specification.py",
     "lab_setup/specifications/laboratory_physical_v1.json",
+    "lab_setup/numerical_policy.py",
+    "lab_setup/specifications/numerical_policy_v1.json",
     "lab_setup/laser_setup_3d.py",
     "simulations/mot_3d.py",
     "studies/mot_3d_campaign.py",

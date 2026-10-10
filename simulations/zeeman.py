@@ -25,6 +25,11 @@ from config import (
     ZEEMAN_SIM_CONFIG,
 )
 from lab_setup.config_builder import build_base_config
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+)
 from lab_setup.zones import get_zeeman_only_zone
 from simulations.thermal_beam import generate_thermal_beam_state
 from utils.RK4StCustom import RK4StCustom
@@ -53,6 +58,7 @@ def zeeman_simulation(
     seed=DEFAULT_RANDOM_SEED,
 ):
     """Generate a thermal beam and return the states that survive Zeeman."""
+    _resolved_run_parameters({"zeeman_field_config": zeeman_field_config})
     atom, simulation_config = build_base_config(
         atom_species="Yb171",
         gravity_enabled=gravity_enabled,
@@ -147,6 +153,8 @@ def _resolved_run_parameters(simulation_kwargs):
         ):
             matched_profile = profile_name
             break
+    if matched_profile != ACTIVE_ZEEMAN_MAGNET_PROFILE:
+        raise ValueError("Zeeman simulations require the canonical magnet profile.")
     return {
         "n_initial_atoms": int(
             simulation_kwargs.get("N_particles", DEFAULT_NUM_PARTICLES)
@@ -186,6 +194,9 @@ def write_zeeman_metadata(output_path, survivors, simulation_kwargs, elapsed_sec
     n_initial = parameters["n_initial_atoms"]
     metadata = {
         "kind": "zeeman_survivor_ensemble",
+        "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+        "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+        "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "output_file": output_path.name,
         "output_sha256": _sha256(output_path),

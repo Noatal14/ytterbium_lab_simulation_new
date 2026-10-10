@@ -10,12 +10,12 @@ from config import (
     MOT_2D_LASER_CONFIG,
     MOT_2D_MAGNET_RADIUS_M,
     MOT_2D_SIM_CONFIG,
+    MOT_2D_STOCHASTIC_SOLVER,
     ZEEMAN_FIELD_CONFIG,
     ZEEMAN_LASER_CONFIG,
 )
 from lab_setup.config_builder import build_base_config
 from lab_setup.zones import get_entire_apparatus_zone
-from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.ScipyIVP_3DCustom import ScipyIVP_3DCustom
 from utils.data_paths import (
     DEFAULT_2D_MOT_STATES_FILE,
@@ -41,7 +41,7 @@ def mot_simulation(
     stochastic=True,
     dt=MOT_2D_SIM_CONFIG["dt_s"],
     seed=DEFAULT_RANDOM_SEED,
-    stochastic_sim_function=RK4StHybridCustom,
+    stochastic_sim_function=MOT_2D_STOCHASTIC_SOLVER,
 ):
     """Propagate saved states through the 2D MOT and return its survivors."""
     if len(survivor_states) == 0:
@@ -83,7 +83,7 @@ def mot_simulation_paired_ensembles(
     npools=DEFAULT_NUM_POOLS,
     stochastic=True,
     dt=MOT_2D_SIM_CONFIG["dt_s"],
-    stochastic_sim_function=RK4StHybridCustom,
+    stochastic_sim_function=MOT_2D_STOCHASTIC_SOLVER,
 ):
     """Run paired ensembles through one shared config and worker pool.
 
