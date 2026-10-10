@@ -14,23 +14,7 @@ import type {
   SmokeSubmissionResult,
 } from "../../api/clients/smoke";
 import { SmokePointsTable } from "./SmokeStage";
-type SubmitState =
-  | "idle"
-  | "previewing"
-  | "review"
-  | "submitting"
-  | "submitted"
-  | "unknown"
-  | "terminal"
-  | "error";
-type CheckState = "idle" | "checking" | "ready" | "error";
-type PrepareState =
-  | "idle"
-  | "previewing"
-  | "review"
-  | "preparing"
-  | "success"
-  | "terminal";
+import type { ScreeningPreparationState, SmokeCheckState, SmokeSubmitState } from "./controllers/useSmokeController";
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
 const timestamp = (value: string) =>
@@ -63,14 +47,14 @@ export function SmokeFlow({
 }: {
   visible: boolean;
   canSubmit: boolean;
-  submissionState: SubmitState;
+  submissionState: SmokeSubmitState;
   submissionPreview: SmokeSubmissionPreview | null;
   submissionResult: SmokeSubmissionResult | null;
   submissionError: string;
   lifecycle: SmokeLifecycle | null;
-  lifecycleCheck: CheckState;
+  lifecycleCheck: SmokeCheckState;
   lifecycleError: string;
-  screeningState: PrepareState;
+  screeningState: ScreeningPreparationState;
   screeningPreview: ScreeningPreview | null;
   screeningResult: ScreeningResult | null;
   screeningError: string;
