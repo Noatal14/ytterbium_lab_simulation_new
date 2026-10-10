@@ -14,23 +14,7 @@ import type {
   ScreeningSubmissionResult,
 } from "../../api/clients/screening";
 import { ScreeningFacts } from "./ScreeningStage";
-type SubmitState =
-  | "idle"
-  | "previewing"
-  | "review"
-  | "submitting"
-  | "submitted"
-  | "unknown"
-  | "terminal"
-  | "error";
-type CheckState = "idle" | "checking" | "ready" | "error";
-type PrepareState =
-  | "idle"
-  | "previewing"
-  | "review"
-  | "preparing"
-  | "success"
-  | "terminal";
+import type { RefinementPreparationState as PrepareState, ScreeningCheckState as CheckState, ScreeningSubmitState as SubmitState } from "./controllers/useScreeningController";
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
 const timestamp = (value: string) =>

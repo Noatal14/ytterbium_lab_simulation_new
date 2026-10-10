@@ -2,10 +2,9 @@ import { AlertTriangle, ArrowLeft, CheckCircle2, Clipboard, Clock3, LoaderCircle
 import { useEffect, useRef, useState } from "react";
 import type { Campaign } from "../../api/clients/campaign";
 import type { RefinementLifecycleApi, RefinementSubmissionApi } from "../../api/clients/refinement";
-import { ScreeningLifecycleApiError, ScreeningSubmissionApiError, type RefinementPreview, type RefinementResult, type ScreeningLifecycle, type ScreeningLifecycleApi, type ScreeningSubmissionApi, type ScreeningSubmissionPreview, type ScreeningSubmissionResult } from "../../api/clients/screening";
+import type { ScreeningLifecycleApi, ScreeningSubmissionApi } from "../../api/clients/screening";
 import type { SmokeLifecycleApi, SubmissionApi } from "../../api/clients/smoke";
 import type { TransferApi, ZeusSnapshot } from "../../api/clients/zeus";
-import { errorHasSemantic, requiresManualVerification } from "../../api/errorSemantics";
 import { ConfirmationStage } from "./ConfirmationStage";
 import { TransferStage } from "./TransferStage";
 import { SmokePointsTable } from "./SmokeStage";
@@ -18,6 +17,7 @@ import { useTransferController } from "./controllers/useTransferController";
 import { useConfirmationController } from "./controllers/useConfirmationController";
 import { useRefinementController } from "./controllers/useRefinementController";
 import { useSmokeController } from "./controllers/useSmokeController";
+import { useScreeningController } from "./controllers/useScreeningController";
 
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
 
@@ -33,17 +33,10 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const { state: submissionState, preview: submissionPreview, result: submissionResult, error: submissionError, terminalCode: submissionTerminalCode } = smokeController.submission;
   const { value: remoteState, check: remoteCheck, error: remoteError, evidenceFresh: remoteEvidenceFresh } = smokeController.lifecycle;
   const { state: screeningState, preview: screeningPreview, result: screeningResult, error: screeningError } = smokeController.screeningPreparation;
-  const [screenSubmitState, setScreenSubmitState] = useState<"idle" | "previewing" | "review" | "submitting" | "submitted" | "unknown" | "terminal" | "error">("idle");
-  const [screenSubmitPreview, setScreenSubmitPreview] = useState<ScreeningSubmissionPreview | null>(null);
-  const [screenSubmitResult, setScreenSubmitResult] = useState<ScreeningSubmissionResult | null>(null);
-  const [screenSubmitError, setScreenSubmitError] = useState("");
-  const [screenState, setScreenState] = useState<ScreeningLifecycle | null>(null);
-  const [screenCheck, setScreenCheck] = useState<"idle" | "checking" | "ready" | "error">("idle");
-  const [screenError, setScreenError] = useState("");
-  const [refineState, setRefineState] = useState<"idle" | "previewing" | "review" | "preparing" | "success" | "terminal">("idle");
-  const [refinePreview, setRefinePreview] = useState<RefinementPreview | null>(null);
-  const [refineResult, setRefineResult] = useState<RefinementResult | null>(null);
-  const [refineError, setRefineError] = useState("");
+  const screeningController = useScreeningController({ campaignId: campaign.id, snapshot: zeusSnapshot, smokeLifecycle: remoteState, smokeEvidenceFresh: remoteEvidenceFresh, submissionApi: screeningSubmission, lifecycleApi: screeningLifecycle });
+  const { state: screenSubmitState, preview: screenSubmitPreview, result: screenSubmitResult, error: screenSubmitError } = screeningController.submission;
+  const { value: screenState, check: screenCheck, error: screenError } = screeningController.lifecycle;
+  const { state: refineState, preview: refinePreview, result: refineResult, error: refineError } = screeningController.refinementPreparation;
   const refinementController = useRefinementController({ campaignId: campaign.id, snapshot: zeusSnapshot, api: refinementSubmission });
   const { status: chainStatus, check: chainCheck, state: chainState, preview: chainPreview, result: chainResult, error: chainError } = refinementController;
   const confirmationController = useConfirmationController({ campaignId: campaign.id, snapshot: zeusSnapshot, api: refinementLifecycle });
@@ -53,7 +46,6 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const successPanel = useRef<HTMLDivElement>(null);
   const errorPanel = useRef<HTMLDivElement>(null);
-  const screenSubmitRequestActive = useRef(false);
   const previousTransferState = useRef(transferState);
   useEffect(() => { title.current?.focus(); }, []);
   useEffect(() => {
@@ -67,43 +59,6 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   async function copyCommand() {
     try { await navigator.clipboard.writeText(command); setCopyStatus("Command copied."); }
     catch { setCopyStatus("Copy failed. Select the command text and copy it manually."); }
-  }
-  async function previewScreenSubmission() {
-    if (!zeusSnapshot || !remoteEvidenceFresh || remoteState?.lifecycle !== "screen_prepared" || screenSubmitRequestActive.current) return;
-    screenSubmitRequestActive.current = true; setScreenSubmitState("previewing"); setScreenSubmitError("");
-    try { setScreenSubmitPreview(await screeningSubmission.preview(campaign.id, zeusSnapshot.profile)); setScreenSubmitState("review"); }
-    catch (error) { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission review stopped safely."); setScreenSubmitState(error instanceof ScreeningSubmissionApiError && requiresManualVerification("screen_submission", error.code) ? "terminal" : "error"); }
-    finally { screenSubmitRequestActive.current = false; }
-  }
-  async function confirmScreenSubmission() {
-    if (!screenSubmitPreview || screenSubmitRequestActive.current) return;
-    screenSubmitRequestActive.current = true; setScreenSubmitState("submitting"); setScreenSubmitError("");
-    try { setScreenSubmitResult(await screeningSubmission.confirm(screenSubmitPreview.preview_token)); setScreenSubmitState("submitted"); }
-    catch (error) {
-      const code = error instanceof ScreeningSubmissionApiError ? error.code : "";
-      if (errorHasSemantic("screen_submission", code, "fresh_review")) { setScreenSubmitPreview(null); setScreenSubmitError(code === "local_files_changed" ? "The campaign files changed after review. Start a fresh review before submitting." : "The review expired or is no longer valid. Start a fresh review before submitting."); setScreenSubmitState("error"); }
-      else if (errorHasSemantic("screen_submission", code, "outcome_unknown")) { setScreenSubmitError("The submission outcome could not be verified. Do not submit again; inspect Zeus jobs."); setScreenSubmitState("unknown"); }
-      else if (errorHasSemantic("screen_submission", code, "manual_verification")) { setScreenSubmitError(error instanceof Error ? error.message : "The Screening submission needs manual verification."); setScreenSubmitState("terminal"); }
-      else { setScreenSubmitError(error instanceof Error ? error.message : "Screening submission stopped safely."); setScreenSubmitState(error instanceof ScreeningSubmissionApiError && requiresManualVerification("screen_submission", code) ? "terminal" : "error"); }
-    } finally { screenSubmitRequestActive.current = false; }
-  }
-  async function refreshScreenStatus() {
-    if (!zeusSnapshot || screenCheck === "checking") return;
-    setScreenCheck("checking"); setScreenError(""); setRefineError("");
-    try { setScreenState(await screeningLifecycle.status(campaign.id, zeusSnapshot.profile)); setScreenCheck("ready"); }
-    catch (error) { setScreenState(null); setScreenError(error instanceof Error ? error.message : "The Screening status check stopped safely."); setScreenCheck("error"); }
-  }
-  async function previewRefinement() {
-    if (!zeusSnapshot || screenState?.lifecycle !== "ready_to_prepare_refinement") return;
-    setRefineState("previewing"); setRefineError("");
-    try { setRefinePreview(await screeningLifecycle.preview(campaign.id, zeusSnapshot.profile)); setRefineState("review"); }
-    catch (error) { if (error instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", error.code, "already_prepared")) { setRefinePreview(null); setRefineState("idle"); await refreshScreenStatus(); return; } const terminal = error instanceof ScreeningLifecycleApiError && requiresManualVerification("refinement_transition", error.code); setRefineError(error instanceof Error ? error.message : "Refinement preparation review stopped safely."); setRefineState(terminal ? "terminal" : "idle"); }
-  }
-  async function confirmRefinement() {
-    if (!refinePreview) return;
-    setRefineState("preparing"); setRefineError("");
-    try { setRefineResult(await screeningLifecycle.confirm(refinePreview.preview_token)); setRefineState("success"); setScreenState((current) => current ? { ...current, campaign: { ...current.campaign, stage: "refine" }, lifecycle: "refinement_prepared", next_action: "none" } : current); }
-    catch (error) { if (error instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", error.code, "already_prepared")) { setRefinePreview(null); setRefineState("idle"); await refreshScreenStatus(); return; } const fresh = error instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", error.code, "fresh_review"); const terminal = error instanceof ScreeningLifecycleApiError && requiresManualVerification("refinement_transition", error.code); setRefineError(error instanceof Error ? error.message : "Refinement preparation stopped safely."); if (fresh) { setRefinePreview(null); setRefineState("idle"); } else setRefineState(terminal ? "terminal" : "review"); }
   }
   const remoteLifecycle = remoteState?.lifecycle;
   const screenLifecycle = screenState?.lifecycle;
@@ -131,7 +86,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
     </section>
     <TransferStage visible={campaign.family === "mot_2d" && trusted && campaign.remote_preparation.status === "ready" && campaign.stage === "smoke" && !remoteState} snapshot={zeusSnapshot} state={transferState} preview={transferPreview} result={transferResult} error={transferError} buttonRef={reviewButton} headingRef={reviewHeading} successRef={successPanel} errorRef={errorPanel} onConnect={onConnectZeus} onPreview={() => void transferController.previewTransfer()} onConfirm={() => void transferController.confirmTransfer()} onReset={transferController.reset} />
     <SmokeFlow visible={campaign.family === "mot_2d" && trusted && campaign.remote_preparation.status === "ready" && campaign.stage === "smoke" && Boolean(zeusSnapshot)} canSubmit={transferState === "success"} submissionState={submissionState} submissionPreview={submissionPreview} submissionResult={submissionResult} submissionError={submissionError} lifecycle={remoteState} lifecycleCheck={remoteCheck} lifecycleError={remoteError} screeningState={screeningState} screeningPreview={screeningPreview} screeningResult={screeningResult} screeningError={screeningError} onPreviewSubmission={() => void smokeController.submission.previewSubmission()} onConfirmSubmission={() => void smokeController.submission.confirmSubmission()} onResetSubmission={smokeController.submission.reset} onRefreshLifecycle={() => void smokeController.lifecycle.refresh()} onPreviewScreening={() => void smokeController.screeningPreparation.previewPreparation()} onConfirmScreening={() => void smokeController.screeningPreparation.confirmPreparation()} onResetScreening={smokeController.screeningPreparation.reset} onViewJobs={onViewJobs} />
-    <ScreeningFlow visible={Boolean(remoteState?.lifecycle === "screen_prepared" || screenSubmitState === "submitted" || screenState)} evidenceFresh={remoteEvidenceFresh} smokeCheck={remoteCheck} submitState={screenSubmitState} submitPreview={screenSubmitPreview} submitResult={screenSubmitResult} submitError={screenSubmitError} lifecycle={screenState} lifecycleCheck={screenCheck} lifecycleError={screenError} prepareState={refineState} preparePreview={refinePreview} prepareResult={refineResult} prepareError={refineError} onRefreshSmoke={() => void smokeController.lifecycle.refresh()} onPreviewSubmit={() => void previewScreenSubmission()} onConfirmSubmit={() => void confirmScreenSubmission()} onResetSubmit={() => { setScreenSubmitError(""); setScreenSubmitPreview(null); setScreenSubmitState("idle"); }} onRefreshLifecycle={() => void refreshScreenStatus()} onPreviewPrepare={() => void previewRefinement()} onConfirmPrepare={() => void confirmRefinement()} onResetPrepare={() => { setRefineError(""); setRefinePreview(null); setRefineState("idle"); }} onViewJobs={onViewJobs} />
+    <ScreeningFlow visible={Boolean(remoteState?.lifecycle === "screen_prepared" || screenSubmitState === "submitted" || screenState)} evidenceFresh={remoteEvidenceFresh} smokeCheck={remoteCheck} submitState={screenSubmitState} submitPreview={screenSubmitPreview} submitResult={screenSubmitResult} submitError={screenSubmitError} lifecycle={screenState} lifecycleCheck={screenCheck} lifecycleError={screenError} prepareState={refineState} preparePreview={refinePreview} prepareResult={refineResult} prepareError={refineError} onRefreshSmoke={() => void smokeController.lifecycle.refresh()} onPreviewSubmit={() => void screeningController.submission.previewSubmission()} onConfirmSubmit={() => void screeningController.submission.confirmSubmission()} onResetSubmit={screeningController.submission.reset} onRefreshLifecycle={() => void screeningController.lifecycle.refresh()} onPreviewPrepare={() => void screeningController.refinementPreparation.previewPreparation()} onConfirmPrepare={() => void screeningController.refinementPreparation.confirmPreparation()} onResetPrepare={screeningController.refinementPreparation.reset} onViewJobs={onViewJobs} />
     <RefinementFlow visible={Boolean(screenState?.lifecycle === "refinement_prepared" || refineState === "success" || campaign.stage === "refine" || chainStatus) && Boolean(zeusSnapshot)} status={chainStatus} check={chainCheck} state={chainState} preview={chainPreview} result={chainResult} error={chainError} onRefresh={() => void refinementController.refresh()} onPreview={() => void refinementController.previewSubmission()} onConfirm={() => void refinementController.confirmSubmission()} onReset={refinementController.reset} onViewJobs={onViewJobs} />
     <ConfirmationStage visible={Boolean(chainStatus?.chain.status === "submitted" || chainResult || refinementLifecycleState || campaign.stage === "refine") && Boolean(zeusSnapshot)} lifecycle={refinementLifecycleState} lifecycleCheck={refinementLifecycleCheck} state={confirmationState} preview={confirmationPreview} result={confirmationResult} error={confirmationError} onRefresh={() => void confirmationController.refresh()} onPreview={() => void confirmationController.previewConfirmation()} onConfirm={() => void confirmationController.confirmConfirmation()} onReset={confirmationController.reset} onViewJobs={onViewJobs} />
     <section className="section-block" aria-labelledby="timeline-heading"><div className="section-heading"><h2 id="timeline-heading">Campaign timeline</h2><p>Progress reflects validated local output files only.</p></div><div className="timeline-legend" aria-label="Timeline color legend"><span><i className="dot dot--empty" /> Not started</span><span><i className="dot dot--active" /> Partial output</span><span><i className="dot dot--complete" /> Complete</span><span><i className="dot dot--blocked" /> Unknown or inconsistent</span></div>{campaign.progress.length ? <ol className="timeline">{campaign.progress.map((stage) => <li className={`timeline-item timeline-item--${stage.status}`} key={stage.stage}><span className="timeline-marker" aria-hidden="true" /><div><strong>{words(stage.stage)}</strong><p>{stage.expected === null ? `${stage.completed} validated outputs; expected total unavailable` : `${stage.completed} of ${stage.expected} validated outputs`}</p><span className="sr-only">Status: {words(stage.status)}</span></div></li>)}</ol> : <div className="state-panel">No validated stage progress is available.</div>}</section>
