@@ -14,7 +14,7 @@ import { ConfirmationStage } from "../features/campaign/ConfirmationStage";
 import type { ScreeningSubmissionPreview } from "../api/clients/screening";
 import type { SmokeLifecycle, SmokeSubmissionPreview } from "../api/clients/smoke";
 import type { ConfirmationPreview, RefinementChainStatus, RefinementLifecycle, RefinementSubmissionPreview } from "../api/clients/refinement";
-import { parseRefinementChainStatus, parseRefinementLifecycle, parseScreeningLifecycle, parseScreeningResult, parseSmokeLifecycle } from "../api/schema/domain";
+import { parseConfirmationResult, parseRefinementChainStatus, parseRefinementLifecycle, parseScreeningLifecycle, parseScreeningResult, parseSmokeLifecycle } from "../api/schema/domain";
 
 const noop = () => undefined;
 const smokeLifecycle: SmokeLifecycle = {
@@ -182,6 +182,102 @@ describe("shared workflow presentation", () => {
     render(<ConfirmationStage visible lifecycle={refinementLifecycle} lifecycleCheck="ready" state="terminal" preview={null} result={null} error="Manual verification required." onRefresh={noop} onPreview={noop} onConfirm={noop} onReset={noop} onViewJobs={noop} />);
     expect(screen.getByText("Validated trials:")).toBeVisible();
     expect(screen.getByRole("alert")).toHaveFocus();
+  });
+
+  it("keeps terminal Confirmation authority focused when lifecycle evidence disappears and refresh fails", () => {
+    const props = {
+      visible: true,
+      state: "terminal" as const,
+      preview: null,
+      result: null,
+      error: "The Confirmation outcome requires manual verification.",
+      onRefresh: noop,
+      onPreview: noop,
+      onConfirm: noop,
+      onReset: noop,
+      onViewJobs: noop,
+    };
+    const view = render(
+      <ConfirmationStage
+        {...props}
+        lifecycle={refinementLifecycle}
+        lifecycleCheck="ready"
+      />,
+    );
+    const terminalAlert = screen
+      .getByText("Confirmation state needs manual verification")
+      .closest('[role="alert"]');
+    expect(terminalAlert).toHaveFocus();
+
+    view.rerender(
+      <ConfirmationStage
+        {...props}
+        lifecycle={null}
+        lifecycleCheck="error"
+      />,
+    );
+
+    expect(terminalAlert).toBeVisible();
+    expect(terminalAlert).toHaveFocus();
+    expect(terminalAlert).toHaveTextContent(
+      "Automatic retry is blocked even if a fresh status check is unavailable.",
+    );
+    expect(screen.getByRole("button", { name: "View Zeus jobs" })).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Review again" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Review Confirmation preparation" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the Confirmation preparation outcome visible and focused after lifecycle advances or clears", () => {
+    const result = parseConfirmationResult({
+      status: "confirmation_prepared",
+      campaign_id: "c",
+      stage: "confirmation",
+      artifacts: { created: 3, updated: 1 },
+      submitted_to_zeus: false,
+      simulation_started: false,
+      local_sync: { status: "not_synchronized" },
+    });
+    const prepared = parseRefinementLifecycle({
+      ...refinementLifecycle,
+      campaign: { ...refinementLifecycle.campaign, stage: "confirmation" },
+      chain: { ...refinementLifecycle.chain, status: "confirmation_prepared" },
+      next_action: "none",
+    });
+    const props = {
+      visible: true,
+      lifecycleCheck: "ready" as const,
+      state: "success" as const,
+      preview: null,
+      result,
+      error: "",
+      onRefresh: noop,
+      onPreview: noop,
+      onConfirm: noop,
+      onReset: noop,
+      onViewJobs: noop,
+    };
+    const view = render(
+      <ConfirmationStage {...props} lifecycle={refinementLifecycle} />,
+    );
+    const receipt = screen
+      .getByText("Confirmation prepared on Zeus")
+      .closest('[role="status"]');
+    expect(receipt).toHaveFocus();
+    expect(receipt).toHaveTextContent(
+      "No Confirmation job was submitted and no simulation started.",
+    );
+
+    view.rerender(<ConfirmationStage {...props} lifecycle={prepared} />);
+    expect(screen.getByText("Confirmation prepared on Zeus")).toBeVisible();
+    expect(receipt).toHaveFocus();
+
+    view.rerender(<ConfirmationStage {...props} lifecycle={null} />);
+    expect(screen.getByText("Confirmation prepared on Zeus")).toBeVisible();
+    expect(receipt).toHaveFocus();
   });
 });
 
