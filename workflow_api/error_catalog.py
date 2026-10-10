@@ -1,8 +1,7 @@
 """Frozen v1 error semantics for the local workflow API.
 
-This module is deliberately not used by the HTTP handler yet.  P8.2A/B keeps
-the active translators untouched while recording the exact behavior they must
-preserve during the later migration.
+The HTTP handler uses this catalog as the authoritative mapping from internal
+workflow failures to stable public API errors.
 """
 
 from __future__ import annotations

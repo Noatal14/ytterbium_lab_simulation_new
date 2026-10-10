@@ -98,24 +98,38 @@ function installContextServer(previewId: string, confirmId: string, blockConfirm
   const previewCase = snapshots.get(previewId)!;
   const confirmCase = snapshots.get(confirmId)!;
   const originalToken = String(previewCase.body.data.preview_token);
-  const contexts = new Map<string, { campaignId: string; csrf: string }>();
+  const contexts = new Map<string, { campaignId: string; csrf: string; projectDirectory: string }>();
   const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : new URL(input.url).pathname;
     if (path === "/api/v1/session") return { ok: true, status: 200, json: async () => ({ api_version: 1, data: { csrf_token: "aggregate-csrf" } }) };
-    const body = JSON.parse(String(init?.body ?? "{}")) as { campaign_id?: string; preview_token?: string };
+    const body = JSON.parse(String(init?.body ?? "{}")) as {
+      campaign_id?: string;
+      preview_token?: string;
+      username?: string;
+      project_directory?: string;
+    };
     const csrf = String(new Headers(init?.headers).get("X-CSRF-Token"));
     if (path === previewCase.path) {
       const campaignId = String(body.campaign_id);
       const token = `${originalToken}-${campaignId}`;
-      contexts.set(token, { campaignId, csrf });
-      const responseBody = JSON.parse(JSON.stringify(previewCase.body).replaceAll(originalToken, token).replaceAll("campaign-id", campaignId));
+      contexts.set(token, { campaignId, csrf, projectDirectory: String(body.project_directory) });
+      const responseBody = JSON.parse(
+        JSON.stringify(previewCase.body)
+          .replaceAll(originalToken, token)
+          .replaceAll("campaign-id", campaignId)
+          .replaceAll(profile.project_directory, String(body.project_directory)),
+      );
       return { ok: true, status: 200, json: async () => responseBody };
     }
     if (path === confirmCase.path) {
       if (blockConfirm) await blockConfirm;
       const context = contexts.get(String(body.preview_token));
       if (!context) throw new Error("Unknown test preview token.");
-      const responseBody = JSON.parse(JSON.stringify(confirmCase.body).replaceAll("campaign-id", context.campaignId));
+      const responseBody = JSON.parse(
+        JSON.stringify(confirmCase.body)
+          .replaceAll("campaign-id", context.campaignId)
+          .replaceAll(profile.project_directory, context.projectDirectory),
+      );
       return { ok: true, status: 201, json: async () => responseBody };
     }
     throw new Error(`Unexpected test request: ${path}`);
@@ -153,6 +167,43 @@ describe.each(contextFlows)("%s preview context", (_name, factory, previewId, co
     release();
     await expect(pending).resolves.toMatchObject({ campaign_id: "campaign-b" });
     expect(fetchMock.mock.calls.filter(([path]) => String(path) === snapshots.get(confirmId)!.path)).toHaveLength(1);
+  });
+
+  it("retires the preview when the backend disappears during confirmation", async () => {
+    const previewCase = snapshots.get(previewId)!;
+    const confirmCase = snapshots.get(confirmId)!;
+    let confirmAttempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request) => {
+      const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : new URL(input.url).pathname;
+      if (path === previewCase.path) return { ok: true, status: 200, json: async () => previewCase.body };
+      if (path === confirmCase.path) {
+        confirmAttempts += 1;
+        throw new TypeError("Network connection lost");
+      }
+      throw new Error(`Unexpected test request: ${path}`);
+    }));
+    const api = factory(async () => "csrf") as PreviewContextApi;
+    const reviewed = await api.preview("campaign-id", profile);
+    await expect(api.confirm(reviewed.preview_token)).rejects.toBeInstanceOf(Error);
+    await expect(api.confirm(reviewed.preview_token)).rejects.toThrow("no longer active");
+    expect(confirmAttempts).toBe(1);
+  });
+
+  it("binds each preview to the profile and CSRF context active when it was reviewed", async () => {
+    const { fetchMock } = installContextServer(previewId, confirmId);
+    let sessions = 0;
+    const api = factory(async () => `csrf-${++sessions}`) as PreviewContextApi;
+    const replacement = { ...profile, username: "replacement.user", project_directory: "/home/replacement.user/ytterbium_lab_simulation_new" };
+    const first = await api.preview("campaign-a", profile);
+    const second = await api.preview("campaign-b", replacement);
+    await api.confirm(first.preview_token);
+    await api.confirm(second.preview_token);
+    const previews = fetchMock.mock.calls.filter(([path]) => String(path) === snapshots.get(previewId)!.path);
+    expect(JSON.parse(String(previews[0][1]?.body))).toMatchObject({ username: profile.username, project_directory: profile.project_directory });
+    expect(JSON.parse(String(previews[1][1]?.body))).toMatchObject({ username: replacement.username, project_directory: replacement.project_directory });
+    const confirms = fetchMock.mock.calls.filter(([path]) => String(path) === snapshots.get(confirmId)!.path);
+    expect(new Headers(confirms[0][1]?.headers).get("X-CSRF-Token")).toBe("csrf-1");
+    expect(new Headers(confirms[1][1]?.headers).get("X-CSRF-Token")).toBe("csrf-2");
   });
 });
 

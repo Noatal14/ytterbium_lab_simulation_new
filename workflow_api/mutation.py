@@ -16,6 +16,7 @@ from workflow_api.repository_snapshot import RepositorySnapshotProvider
 from workflow_api.safe_json import read_json
 from workflow_api.discovery import list_campaigns
 from workflow_api.mot_2d_validation import modern_contract
+from workflow_api.mot_2d_specification import MOT_2D_SPECIFICATION
 from workflow_api.preview_registry import PreviewRegistry
 
 
@@ -53,6 +54,7 @@ class CreationService:
             recent.append(now); self._requests[session] = recent
 
     def _duplicate(self, plan: CampaignPlan) -> dict[str, Any] | None:
+        expected_ensembles = MOT_2D_SPECIFICATION["design"]["ensemble_count"]
         root = self.root / "data/optimization/mot_2d"
         for directory in root.iterdir() if root.is_dir() else ():
             if directory.name.startswith("."):
@@ -69,7 +71,7 @@ class CreationService:
                     f'{int(row["zeeman_seed"])}:{row["sha256"]}:{row["metadata_sha256"]}'
                     for row in sorted(records, key=lambda row: int(row["zeeman_seed"]))
                 ]
-                if len(identities) != 35 or len(set(int(row["zeeman_seed"]) for row in records)) != 35: continue
+                if len(identities) != expected_ensembles or len(set(int(row["zeeman_seed"]) for row in records)) != expected_ensembles: continue
                 source_fingerprint = hashlib.sha256("\n".join(identities).encode()).hexdigest()
                 model = manifest["provenance"]["physical_model_sha256"]
                 same = (
@@ -103,7 +105,7 @@ class CreationService:
         if before != after: raise RuntimeError("Repository changed during preview.")
         duplicate = self._duplicate(plan)
         if duplicate:
-            return {"preview_token": None, "expires_in_seconds": 0, "plan": None, "scientific_design": plan.manifest["fixed_design"], "provenance": {"commit": plan.snapshot.commit, "input_count": 35}, "duplicate": duplicate}
+            return {"preview_token": None, "expires_in_seconds": 0, "plan": None, "scientific_design": plan.manifest["fixed_design"], "provenance": {"commit": plan.snapshot.commit, "input_count": MOT_2D_SPECIFICATION["design"]["ensemble_count"]}, "duplicate": duplicate}
         with self._lock:
             now = self.clock()
             try:
@@ -122,7 +124,7 @@ class CreationService:
             "preview_token": raw, "expires_in_seconds": 300,
             "plan": {"name": plan.name, "path": plan.destination.relative_to(self.root).as_posix(), "s0_values": list(plan.s0_values), "source_id": plan.source_id, "files": sorted(plan.files), "stage": "smoke"},
             "scientific_design": plan.manifest["fixed_design"],
-            "provenance": {"commit": plan.snapshot.commit, "input_count": 35},
+            "provenance": {"commit": plan.snapshot.commit, "input_count": MOT_2D_SPECIFICATION["design"]["ensemble_count"]},
             "duplicate": None,
         }
 

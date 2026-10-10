@@ -14,6 +14,7 @@ import { ConfirmationStage } from "../features/campaign/ConfirmationStage";
 import type { ScreeningSubmissionPreview } from "../api/clients/screening";
 import type { SmokeLifecycle, SmokeSubmissionPreview } from "../api/clients/smoke";
 import type { ConfirmationPreview, RefinementChainStatus, RefinementLifecycle, RefinementSubmissionPreview } from "../api/clients/refinement";
+import { parseRefinementChainStatus, parseRefinementLifecycle, parseScreeningLifecycle, parseSmokeLifecycle } from "../api/schema/domain";
 
 const noop = () => undefined;
 const smokeLifecycle: SmokeLifecycle = {
@@ -112,5 +113,182 @@ describe("shared workflow presentation", () => {
     render(<ConfirmationStage visible lifecycle={refinementLifecycle} lifecycleCheck="ready" state="terminal" preview={null} result={null} error="Manual verification required." onRefresh={noop} onPreview={noop} onConfirm={noop} onReset={noop} onViewJobs={noop} />);
     expect(screen.getByText("Validated trials:")).toBeVisible();
     expect(screen.getByRole("alert")).toHaveFocus();
+  });
+});
+
+describe("stage action visibility matrix", () => {
+  const buttonNames = () => screen.getAllByRole("button").map((button) => button.textContent?.trim()).sort();
+  const smokeProps = {
+    visible: true,
+    canSubmit: false,
+    submissionState: "idle" as const,
+    submissionPreview: null,
+    submissionResult: null,
+    submissionError: "",
+    lifecycleCheck: "ready" as const,
+    lifecycleError: "",
+    screeningState: "idle" as const,
+    screeningPreview: null,
+    screeningResult: null,
+    screeningError: "",
+    onPreviewSubmission: noop,
+    onConfirmSubmission: noop,
+    onResetSubmission: noop,
+    onRefreshLifecycle: noop,
+    onPreviewScreening: noop,
+    onConfirmScreening: noop,
+    onResetScreening: noop,
+    onViewJobs: noop,
+  };
+
+  it.each([
+    ["queued", "queued", "queued", "not_ready", "wait", ["Refresh smoke status"]],
+    ["running", "running", "running", "not_ready", "wait", ["Refresh smoke status"]],
+    ["awaiting outputs", "awaiting_outputs", "completed_success", "not_ready", "wait", ["Refresh smoke status"]],
+    ["held", "held_attention", "held_attention", "not_ready", "inspect_on_zeus", ["Refresh smoke status", "View Zeus jobs"]],
+    ["failed", "failed", "completed_failed", "not_ready", "inspect_on_zeus", ["Refresh smoke status", "View Zeus jobs"]],
+    ["invalid outputs", "outputs_invalid", "completed_success", "invalid", "inspect_on_zeus", ["Refresh smoke status", "View Zeus jobs"]],
+    ["unknown", "unknown", "unknown", "not_ready", "inspect_on_zeus", ["Refresh smoke status", "View Zeus jobs"]],
+    ["ready", "ready_to_prepare_screen", "completed_success", "valid", "review_screening_preparation", ["Refresh smoke status", "Review screening preparation"]],
+    ["success", "screen_prepared", "completed_success", "valid", "none", ["Refresh smoke status"]],
+  ] as const)("shows only safe Smoke actions for %s", (_label, lifecycle, schedulerState, validation, nextAction, expectedButtons) => {
+    const raw = {
+      ...smokeLifecycle,
+      campaign: { ...smokeLifecycle.campaign, stage: lifecycle === "screen_prepared" ? "screen" : "smoke" },
+      scheduler: {
+        state: schedulerState,
+        raw_state: schedulerState === "queued" ? "Q" : schedulerState === "running" ? "R" : schedulerState === "held_attention" ? "H" : schedulerState === "unknown" ? "?" : "F",
+        exit_status: ["queued", "running", "held_attention", "unknown"].includes(schedulerState) ? null : schedulerState === "completed_failed" ? 1 : 0,
+      },
+      validation: validation === "valid" ? smokeLifecycle.validation : { status: validation, points: [], artifact_count: 0 },
+      lifecycle,
+      next_action: nextAction,
+    };
+    const value = parseSmokeLifecycle(raw);
+    render(<SmokeFlow {...smokeProps} lifecycle={value} />);
+    expect(buttonNames()).toEqual([...expectedButtons].sort());
+  });
+
+  const screeningProps = {
+    visible: true,
+    evidenceFresh: true,
+    smokeCheck: "ready" as const,
+    submitState: "submitted" as const,
+    submitPreview: null,
+    submitResult: null,
+    submitError: "",
+    lifecycleCheck: "ready" as const,
+    lifecycleError: "",
+    prepareState: "idle" as const,
+    preparePreview: null,
+    prepareResult: null,
+    prepareError: "",
+    onRefreshSmoke: noop,
+    onPreviewSubmit: noop,
+    onConfirmSubmit: noop,
+    onResetSubmit: noop,
+    onRefreshLifecycle: noop,
+    onPreviewPrepare: noop,
+    onConfirmPrepare: noop,
+    onResetPrepare: noop,
+    onViewJobs: noop,
+  };
+
+  it.each([
+    ["running", "screen_running", "running", "not_ready", "wait", ["Refresh Screening status"]],
+    ["held", "screen_held", "held", "not_ready", "inspect_zeus", ["Refresh Screening status", "View Zeus jobs"]],
+    ["unknown", "screen_status_unknown", "unknown", "not_ready", "inspect_zeus", ["Refresh Screening status", "View Zeus jobs"]],
+    ["invalid outputs", "outputs_invalid", "completed_success", "invalid", "inspect_zeus", ["Refresh Screening status", "View Zeus jobs"]],
+    ["ready", "ready_to_prepare_refinement", "completed_success", "valid", "review_refinement_preparation", ["Refresh Screening status", "Review Refinement preparation"]],
+    ["success", "refinement_prepared", "completed_success", "valid", "none", ["Refresh Screening status"]],
+  ] as const)("shows only safe Screening actions for %s", (_label, lifecycle, schedulerState, validation, nextAction, expectedButtons) => {
+    const active = schedulerState === "running" ? { queued: 0, running: 3, held: 0, succeeded: 0, failed: 0 }
+      : schedulerState === "held" ? { queued: 0, running: 0, held: 3, succeeded: 0, failed: 0 }
+      : schedulerState === "unknown" ? { queued: 3, running: 0, held: 0, succeeded: 0, failed: 0 }
+      : { queued: 0, running: 0, held: 0, succeeded: 3, failed: 0 };
+    const raw = {
+      source: "zeus" as const,
+      queried_at: "2026-10-09T10:00:00Z",
+      campaign: { id: "c", name: "C", stage: lifecycle === "refinement_prepared" ? "refine" as const : "screen" as const },
+      submission: { job_id: "2[].zeus-master" },
+      scheduler: { state: schedulerState, raw_state: schedulerState === "running" ? "R" : schedulerState === "held" ? "H" : schedulerState === "unknown" ? "?" : "F", exit_status: schedulerState === "completed_success" ? 0 : null, task_count: 3, counts: active },
+      validation: validation === "valid" ? { status: "valid" as const, completed_trials: 51, expected_trials: 51, candidate_count: 3 } : { status: validation, completed_trials: 0, expected_trials: 51, candidate_count: 0 },
+      lifecycle,
+      next_action: nextAction,
+    };
+    const value = parseScreeningLifecycle(raw);
+    render(<ScreeningFlow {...screeningProps} lifecycle={value} />);
+    expect(buttonNames()).toEqual([...expectedButtons].sort());
+  });
+
+  it.each([
+    ["ready", "not_submitted", ["not_submitted", "not_submitted", "not_submitted", "not_submitted"], ["Refresh chain status", "Review Refinement submission"]],
+    ["partial", "partial", ["submitted", "not_submitted", "not_submitted", "not_submitted"], ["Refresh chain status", "View Zeus jobs"]],
+    ["unknown outcome", "outcome_unknown", ["submitted", "unknown", "not_submitted", "not_submitted"], ["Refresh chain status", "View Zeus jobs"]],
+    ["success", "submitted", ["submitted", "submitted", "submitted", "submitted"], ["Refresh chain status", "View in Zeus jobs"]],
+  ] as const)("shows only safe Refinement-chain actions for %s", (_label, status, states, expectedButtons) => {
+    let previousId: string | null = null;
+    const rounds = states.map((state, index) => {
+      const jobId = state === "submitted" ? `${index + 1}[].zeus-master` : null;
+      const round = {
+        round: (index + 1) as 1 | 2 | 3 | 4,
+        state,
+        job_id: jobId,
+        depends_on_job_id: state === "submitted" || state === "unknown" ? (index === 0 ? null : previousId) : null,
+      };
+      if (jobId) previousId = jobId;
+      return round;
+    });
+    const value = parseRefinementChainStatus({
+      ...chainStatus,
+      chain: { ...chainStatus.chain, status, rounds },
+      next_action: status === "not_submitted" ? "review_submission" : status === "submitted" ? "none" : "inspect_zeus",
+    });
+    render(
+      <RefinementFlow
+        visible
+        status={value}
+        check="ready"
+        state={status === "partial" || status === "outcome_unknown" ? "blocked" : status === "submitted" ? "submitted" : "idle"}
+        preview={null}
+        result={null}
+        error=""
+        onRefresh={noop}
+        onPreview={noop}
+        onConfirm={noop}
+        onReset={noop}
+        onViewJobs={noop}
+      />,
+    );
+    expect(buttonNames()).toEqual([...expectedButtons].sort());
+  });
+
+  it.each([
+    ["running", "running", "running", "not_ready", "wait", ["Refresh Refinement status"]],
+    ["held", "held", "held", "not_ready", "inspect_zeus", ["Refresh Refinement status", "View Zeus jobs"]],
+    ["unknown", "status_unknown", "unknown", "not_ready", "inspect_zeus", ["Refresh Refinement status", "View Zeus jobs"]],
+    ["invalid outputs", "outputs_invalid", "completed_success", "invalid", "inspect_zeus", ["Refresh Refinement status", "View Zeus jobs"]],
+    ["ready", "ready_to_prepare_confirmation", "completed_success", "valid", "review_confirmation_preparation", ["Refresh Refinement status", "Review Confirmation preparation"]],
+    ["success", "confirmation_prepared", "completed_success", "valid", "none", ["Refresh Refinement status"]],
+  ] as const)("shows only safe Confirmation-preparation actions for %s", (_label, status, activeState, validation, nextAction, expectedButtons) => {
+    const rounds = refinementLifecycle.chain.rounds.map((round, index) => {
+      const state = index === 0 ? activeState : activeState === "completed_success" ? "completed_success" : "queued";
+      const counts = state === "running" ? { queued: 0, running: 3, held: 0, succeeded: 0, failed: 0 }
+        : state === "held" ? { queued: 0, running: 0, held: 3, succeeded: 0, failed: 0 }
+        : state === "unknown" ? { queued: 3, running: 0, held: 0, succeeded: 0, failed: 0 }
+        : state === "queued" ? { queued: 3, running: 0, held: 0, succeeded: 0, failed: 0 }
+        : { queued: 0, running: 0, held: 0, succeeded: 3, failed: 0 };
+      return { ...round, scheduler: { ...round.scheduler, state, counts } };
+    });
+    const raw = {
+      ...refinementLifecycle,
+      campaign: { ...refinementLifecycle.campaign, stage: status === "confirmation_prepared" ? "confirmation" : "refine" },
+      chain: { ...refinementLifecycle.chain, status, rounds },
+      validation: validation === "valid" ? refinementLifecycle.validation : { status: validation, completed_trials: 0, expected_trials: 30, candidate_count: 0 },
+      next_action: nextAction,
+    };
+    const lifecycle = parseRefinementLifecycle(raw);
+    render(<ConfirmationStage visible lifecycle={lifecycle} lifecycleCheck="ready" state={status === "confirmation_prepared" ? "success" : "idle"} preview={null} result={null} error="" onRefresh={noop} onPreview={noop} onConfirm={noop} onReset={noop} onViewJobs={noop} />);
+    expect(buttonNames()).toEqual([...expectedButtons].sort());
   });
 });

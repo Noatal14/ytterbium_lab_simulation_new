@@ -26,6 +26,7 @@ from typing import Mapping, Protocol
 from workflow_api.mot_2d_validation import modern_contract
 from workflow_api.discovery import build_registry
 from workflow_api.preview_registry import PreviewRegistry
+from workflow_api.mot_2d_specification import MOT_2D_SPECIFICATION
 from workflow_api.pinned_ssh import (
     PinnedSshPolicy,
     PinnedSshRunner,
@@ -450,7 +451,7 @@ class ZeusPreparationCoordinator:
             "campaign": {"id": campaign_id, "name": manifest_name, "path": preview.campaign, "git_commit": preview.git_commit},
             "destination": destination,
             "artifacts": {
-                "ensemble_count": 35, "total_count": len(preview.files),
+                "ensemble_count": MOT_2D_SPECIFICATION["design"]["ensemble_count"], "total_count": len(preview.files),
                 "missing_count": sum(item.action == "upload" for item in preview.files),
                 "identical_count": sum(item.action == "reuse" for item in preview.files),
                 "total_bytes": sum(item.size for item in preview.files),
@@ -637,7 +638,8 @@ class CampaignArtifactPlanner:
                     if _sha256(local) != expected_hash:
                         raise ZeusPreparationError("campaign_inputs_changed")
                     selected[identity] = (local, expected_hash, local.stat().st_size, "input")
-        if len(seen_seeds) != 35 or len(selected) != 70:
+        expected_ensembles = MOT_2D_SPECIFICATION["design"]["ensemble_count"]
+        if len(seen_seeds) != expected_ensembles or len(selected) != 2 * expected_ensembles:
             raise ZeusPreparationError("campaign_inputs_invalid")
         for local in (manifest_path, smoke_path):
             identity = canonical_repo_relative(self.root, local, allowed_root=CAMPAIGN_ROOT, require="file")

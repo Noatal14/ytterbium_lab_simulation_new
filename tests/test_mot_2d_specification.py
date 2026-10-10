@@ -155,7 +155,7 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
     )
 
 
-def test_future_ts_artifact_contract_is_deterministic():
+def test_checked_in_ts_artifact_contract_is_deterministic():
     # P8 frontend generation target: a checked-in JSON-compatible const module.
     assert MOT_2D_SPECIFICATION["spec_version"] == "mot_2d-v1"
     assert tuple(MOT_2D_SPECIFICATION["stages"]) == MOT_2D_SPECIFICATION["stage_order"]

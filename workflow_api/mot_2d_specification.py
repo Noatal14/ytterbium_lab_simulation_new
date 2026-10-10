@@ -216,7 +216,7 @@ MOT_2D_SPECIFICATION = load_mot_2d_specification()
 
 
 def render_typescript_specification() -> str:
-    """Render the future checked-in TS artifact; callers choose where to write it."""
+    """Render the checked-in TypeScript artifact; callers choose where to write it."""
     value = _read_validated()
     body = json.dumps(value, indent=2, sort_keys=True)
     return (
