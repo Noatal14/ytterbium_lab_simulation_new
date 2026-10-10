@@ -51,9 +51,15 @@ describe("shared workflow presentation", () => {
   });
 
   it("renders exact resource and effect facts", () => {
-    render(<><div data-testid="resources"><JobResources job={{ cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 36000 }} /></div><ReviewEffects>{[<>Does not submit a Zeus job.</>, <>Does not start a simulation.</>]}</ReviewEffects></>);
-    expect(screen.getByTestId("resources")).toHaveTextContent("200 cores · 64 GB · 10 h");
-    expect(screen.getByText("Does not submit a Zeus job.")).toBeVisible();
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      render(<><div data-testid="resources"><JobResources job={{ cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 36000 }} /></div><ReviewEffects effects={[<>Does not submit a Zeus job.</>, <>Does not start a simulation.</>]} /></>);
+      expect(screen.getByTestId("resources")).toHaveTextContent("200 cores · 64 GB · 10 h");
+      expect(screen.getByText("Does not submit a Zeus job.")).toBeVisible();
+      expect(consoleError).not.toHaveBeenCalled();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 
   it("renders smoke and Screening evidence as stage-specific facts", () => {

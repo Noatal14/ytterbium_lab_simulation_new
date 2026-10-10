@@ -305,8 +305,8 @@ export function ConfirmationStage(props: {
                 caption="Selected candidates from Refinement"
                 estimateLabel="Refinement estimate"
               />
-              <ReviewEffects>
-                {[
+              <ReviewEffects
+                effects={[
                   <>Prepares only Confirmation files.</>,
                   <>Does not submit a Zeus job.</>,
                   <>Does not start a simulation.</>,
@@ -316,7 +316,7 @@ export function ConfirmationStage(props: {
                     safely prepared.
                   </>,
                 ]}
-              </ReviewEffects>
+              />
               <div className="form-actions">
                 <button
                   className="text-button"
