@@ -519,7 +519,10 @@ MOT_3D_SIM_CONFIG = {
     "dt_s": 1.25e-6,
     "screening_dt_s": 1.25e-6,
     "production_dt_s": 0.625e-6,
-    "dt_validation_candidates_s": (2.5e-6, 1.25e-6, 0.625e-6),
+    # Include deliberately aggressive values so the validation can establish
+    # whether a cheaper timestep is defensible instead of only checking the
+    # provisional choices selected before canonical 2D survivors existed.
+    "dt_validation_candidates_s": (10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6),
     "dt_validation_reference_s": 0.3125e-6,
     "solver": "RK4StHybridCustom",
 }

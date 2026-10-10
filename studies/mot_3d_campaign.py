@@ -48,6 +48,7 @@ CAMPAIGN_FILES = (
     "studies/mot_3d/finalists/merge.py",
     "studies/mot_3d/integrity.py",
     "studies/mot_3d/final_validation.py",
+    "studies/mot_3d/timestep_validation.py",
     "studies/zeeman/generate_ensembles.py",
     "studies/mot_2d/optimization.py",
     "studies/mot_2d/production.py",
@@ -1470,13 +1471,29 @@ def status(args):
 
 
 def approve_timestep(args):
+    from studies.mot_3d.timestep_validation import (
+        BOOTSTRAP_REPLICATES,
+        EVIDENCE_FORMAT_VERSION,
+        PARTICLES_PER_ENSEMBLE,
+        PRODUCTION_TOLERANCE,
+        RECOIL_SEEDS,
+        SCREENING_TOLERANCE,
+        T_MAX_S,
+        merge as rebuild_timestep_evidence,
+    )
     root = Path(args.campaign)
     manifest_path = root / "campaign.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     if manifest.get("stage") != "dt_validation_required":
         raise RuntimeError("Campaign is not awaiting timestep validation.")
     evidence_path = Path(args.evidence).resolve()
+    canonical_evidence_path = (root / "dt_validation" / "evidence.json").resolve()
+    if evidence_path != canonical_evidence_path:
+        raise ValueError("Timestep evidence must be the canonical campaign evidence file.")
     evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    rebuilt_evidence = rebuild_timestep_evidence(root, write=False)
+    if evidence != rebuilt_evidence:
+        raise ValueError("Timestep evidence does not match validated raw results.")
     expected = manifest["design"]
     if (
         evidence.get("kind") != "mot_3d_timestep_validation"
@@ -1487,6 +1504,20 @@ def approve_timestep(args):
         or evidence.get("tested_dt_s") != expected["dt_validation_candidates_s"]
         or evidence.get("capture_bias_passed") is not True
         or evidence.get("paired_decision_passed") is not True
+        or evidence.get("campaign_manifest_sha256") != _sha256(manifest_path)
+        or evidence.get("campaign_commit") != manifest["provenance"]["git_commit"]
+        or evidence.get("physical_model_sha256") != manifest["provenance"]["physical_model_sha256"]
+        or evidence.get("ensemble_count") != 20
+        or evidence.get("format_version") != EVIDENCE_FORMAT_VERSION
+        or evidence.get("sentinels_informative") is not True
+        or evidence.get("particles_per_ensemble") != PARTICLES_PER_ENSEMBLE
+        or evidence.get("recoil_seeds") != list(RECOIL_SEEDS)
+        or evidence.get("t_max_s") != T_MAX_S
+        or evidence.get("bootstrap_replicates") != BOOTSTRAP_REPLICATES
+        or evidence.get("screening_absolute_bias_tolerance") != SCREENING_TOLERANCE
+        or evidence.get("production_absolute_bias_tolerance") != PRODUCTION_TOLERANCE
+        or not evidence.get("tasks_sha256")
+        or not evidence.get("raw_result_registry_sha256")
     ):
         raise ValueError("Timestep evidence does not approve the frozen campaign design.")
     manifest["design"]["timestep_status"] = "approved_by_paired_convergence_validation"

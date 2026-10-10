@@ -24,6 +24,12 @@ flux and from oven-to-3D efficiency.
    convergence evidence approves the already frozen screening and production
    timesteps. If different timesteps are needed, update the configuration and
    create a new campaign rather than modifying an existing one.
+   Run `studies.mot_3d.timestep_validation` to compare 10, 5, 2.5, 1.25 and
+   0.625 microseconds with a 0.3125-microsecond reference on the same balanced
+   sample from all 20 frozen ensembles. The test covers both families, three
+   sentinel profiles per family and five recoil seeds. Larger timesteps are
+   exploratory and are accepted only when every simultaneous paired
+   equivalence interval passes.
 3. `submit-discovery` runs independent Optuna workers for the donut and
    single-pass families in restart-safe cumulative rounds.
 4. Repeated `advance` and `submit-stage` commands perform the preliminary
@@ -49,6 +55,12 @@ python -u -m studies.mot_3d_campaign create \
   --upstream-campaign PATH_TO_COMPLETED_2D_CAMPAIGN \
   --output-dir PATH_TO_NEW_3D_CAMPAIGN
 
+python -u -m studies.mot_3d.timestep_validation prepare \
+  --campaign PATH_TO_NEW_3D_CAMPAIGN
+
+python -u -m studies.mot_3d.timestep_validation submit \
+  --campaign PATH_TO_NEW_3D_CAMPAIGN
+
 python -u -m studies.mot_3d_campaign approve-dt \
   --campaign PATH_TO_NEW_3D_CAMPAIGN \
   --evidence PATH_TO_APPROVED_DT_EVIDENCE_JSON
@@ -70,7 +82,7 @@ exactly match the frozen manifest, including the order of `tested_dt_s`):
   "screening_dt_s": 1.25e-6,
   "production_dt_s": 0.625e-6,
   "reference_dt_s": 0.3125e-6,
-  "tested_dt_s": [2.5e-6, 1.25e-6, 0.625e-6],
+  "tested_dt_s": [1e-5, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6],
   "capture_bias_passed": true,
   "paired_decision_passed": true
 }

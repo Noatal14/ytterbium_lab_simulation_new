@@ -147,11 +147,12 @@ def test_create_is_plan_only_and_freezes_new_design(
         "provisional_pending_3d_validation"
     )
     assert manifest["design"]["dt_validation_candidates_s"] == pytest.approx(
-        [2.5e-6, 1.25e-6, 0.625e-6]
+        [10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6]
     )
     assert manifest["design"]["dt_validation_reference_s"] == pytest.approx(
         0.3125e-6
     )
+    assert "studies/mot_3d/timestep_validation.py" in mot_3d_campaign.relevant_files()
 
     jobs = list((output / "jobs").rglob("*.pbs"))
     assert len(jobs) == 7
@@ -595,11 +596,13 @@ def test_stage_design_changes_with_particle_sampling_identity(tmp_path):
     assert first["particle_selection_sha256"] != changed_provenance["particle_selection_sha256"]
 
 
-def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path):
+def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path, monkeypatch):
     root = tmp_path / "campaign"
     root.mkdir()
-    (root / "campaign.json").write_text(json.dumps({
+    manifest_path = root / "campaign.json"
+    manifest_path.write_text(json.dumps({
         "stage": "dt_validation_required",
+        "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
         "design": {
             "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6,
             "dt_validation_reference_s": 0.3125e-6,
@@ -607,14 +610,29 @@ def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path):
             "timestep_status": "provisional_pending_3d_validation",
         },
     }))
-    evidence = tmp_path / "dt.json"
-    evidence.write_text(json.dumps({
+    evidence = root / "dt_validation/evidence.json"
+    evidence.parent.mkdir()
+    payload = {
         "kind": "mot_3d_timestep_validation", "status": "approved",
         "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6,
         "reference_dt_s": 0.3125e-6,
         "tested_dt_s": [2.5e-6, 1.25e-6, 0.625e-6],
         "capture_bias_passed": True, "paired_decision_passed": True,
-    }))
+        "campaign_manifest_sha256": mot_3d_campaign._sha256(manifest_path),
+        "campaign_commit": "abc", "physical_model_sha256": "physics",
+        "ensemble_count": 20,
+        "format_version": 1, "sentinels_informative": True,
+        "particles_per_ensemble": 30,
+        "recoil_seeds": [47001, 47002, 47003, 47004, 47005],
+        "t_max_s": 0.1, "bootstrap_replicates": 20000,
+        "screening_absolute_bias_tolerance": 0.005,
+        "production_absolute_bias_tolerance": 0.0025,
+        "tasks_sha256": "tasks", "raw_result_registry_sha256": "results",
+    }
+    evidence.write_text(json.dumps(payload))
+    monkeypatch.setattr(
+        "studies.mot_3d.timestep_validation.merge", lambda root, write=False: payload
+    )
     mot_3d_campaign.approve_timestep(
         Namespace(campaign=str(root), evidence=str(evidence))
     )
@@ -642,7 +660,7 @@ def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
         "tested_dt_s": [1.25e-6, 0.625e-6],
         "capture_bias_passed": True, "paired_decision_passed": True,
     }))
-    with pytest.raises(ValueError, match="does not approve"):
+    with pytest.raises(ValueError, match="canonical campaign evidence"):
         mot_3d_campaign.approve_timestep(
             Namespace(campaign=str(root), evidence=str(evidence))
         )
