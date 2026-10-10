@@ -12,6 +12,7 @@ import type {
   RefinementSubmissionResult,
 } from "../../api/clients/refinement";
 import { RefinementReceipt } from "./RefinementStage";
+import type { ChainLifecycleCheck, ChainUiState } from "./controllers/useRefinementController";
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
 const timestamp = (value: string) =>
@@ -19,18 +20,10 @@ const timestamp = (value: string) =>
     dateStyle: "medium",
     timeStyle: "medium",
   }).format(new Date(value));
-export type ChainUiState =
-  | "idle"
-  | "previewing"
-  | "review"
-  | "submitting"
-  | "submitted"
-  | "blocked"
-  | "error";
 export function RefinementFlow(props: {
   visible: boolean;
   status: RefinementChainStatus | null;
-  check: "idle" | "checking" | "ready" | "error";
+  check: ChainLifecycleCheck;
   state: ChainUiState;
   preview: RefinementSubmissionPreview | null;
   result: RefinementSubmissionResult | null;
