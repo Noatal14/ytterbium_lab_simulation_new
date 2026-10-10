@@ -223,8 +223,17 @@ def freeze_inputs(
     designs = [records[seed]["source_design"] for seed in EXPECTED_SEEDS]
     if not designs[0] or any(design != designs[0] for design in designs[1:]):
         raise ValueError("2D survivor ensembles have missing or mixed source designs.")
-    if expected_design is not None and designs[0] != expected_design:
-        raise ValueError("2D survivor design does not match the completed campaign.")
+    if expected_design is not None:
+        mismatches = {
+            field: {"expected": expected, "observed": designs[0].get(field)}
+            for field, expected in expected_design.items()
+            if designs[0].get(field) != expected
+        }
+        if mismatches:
+            raise ValueError(
+                "2D survivor design does not match the completed campaign: "
+                f"{mismatches}"
+            )
     parameters = [records[seed]["source_parameters"] for seed in EXPECTED_SEEDS]
     if not parameters[0] or any(value != parameters[0] for value in parameters[1:]):
         raise ValueError("2D survivor ensembles have missing or mixed parameters.")
