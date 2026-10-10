@@ -1,7 +1,7 @@
 import { postData } from "../http/envelope";
 import { creationApi } from "./campaign";
 import { ZeusApiError } from "../http/errors";
-import { parseTransferPreview,parseTransferResult,parseZeusSnapshot,type ZeusJob,type ZeusSnapshot,type ZeusTransferPreview,type ZeusTransferResult } from "../schema/domain";
+import { parseTransferPreview,parseTransferResult,parseZeusSnapshot,type ZeusSnapshot,type ZeusTransferPreview,type ZeusTransferResult } from "../schema/domain";
 export { ZeusApiError } from "../http/errors";
 export {type ZeusJob,type ZeusSnapshot,type ZeusTransferPreview,type ZeusTransferResult} from "../schema/domain";
 export function createZeusApi(session:()=>Promise<string>){return{async snapshot(username:string,project_directory:string):Promise<ZeusSnapshot>{const csrf=await session();const snapshot=parseZeusSnapshot(await postData("/api/v1/zeus/snapshot",{username,project_directory},csrf,(error)=>new ZeusApiError(error.code,error.message)));if(snapshot.profile.username!==username||snapshot.profile.project_directory!==project_directory||snapshot.remote.project_directory!==project_directory)throw new Error("Zeus snapshot did not match the requested profile.");return snapshot;}};}

@@ -7,6 +7,8 @@
     "dev": "node scripts/dev.mjs",
     "dev:ui": "vite",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+    "lint": "eslint . --max-warnings 0",
+    "format:check": "prettier --check README.md eslint.config.js .prettierrc.json package.json vite.config.ts playwright.real-backend.config.ts src/main.tsx",
     "preview": "vite preview",
     "test": "vitest run && node --test scripts/dev.test.mjs",
     "test:a11y": "vitest run src/test/accessibility.test.tsx",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
+    "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.0",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.1.0",
@@ -28,8 +31,13 @@
     "@types/react-dom": "18.3.5",
     "@vitejs/plugin-react": "6.1.2",
     "axe-core": "4.14.0",
+    "eslint": "10.12.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
     "jsdom": "30.1.2",
+    "prettier": "3.9.10",
     "typescript": "5.7.2",
+    "typescript-eslint": "8.71.1",
     "vite": "8.3.3",
     "vitest": "5.0.3"
   }

@@ -1,5 +1,5 @@
 import { ArrowLeft, HelpCircle, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { creationApi, type CreationApi, type CreationPreview, type CreationResult, type ZeemanSource } from "../api/clients/campaign";
 import { MOT_2D_SPECIFICATION_V1 } from "../generated/mot2dSpec.v1";
 
@@ -29,7 +29,7 @@ export function CampaignCreation({ onCancel, onInspect, onCreated, api = creatio
   const validS0 = parsed.length > 0 && parsed.length <= 16 && parsed.every((value) => Number.isFinite(value) && value > 0);
   const valid = values.name.trim() && /^[a-z0-9][a-z0-9._-]{0,63}$/.test(values.slug) && values.sourceId && validS0;
   const field = (key: keyof Values) => ({ value: values[key], onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setValues({ ...values, [key]: event.target.value }) });
-  async function loadLocalInputs() {
+  const loadLocalInputs = useCallback(async () => {
     setSourceState("loading"); setActionError("");
     try {
       const [rows, token] = await Promise.all([api.sources(), api.session()]);
@@ -37,8 +37,8 @@ export function CampaignCreation({ onCancel, onInspect, onCreated, api = creatio
     } catch {
       setSources([]); setCsrf(""); setSourceState("error");
     }
-  }
-  useEffect(() => { void loadLocalInputs(); }, [api]);
+  }, [api]);
+  useEffect(() => { void loadLocalInputs(); }, [loadLocalInputs]);
   useEffect(() => { if (step !== "configure") title.current?.focus(); }, [step]);
   async function review() { setActionState("busy"); setActionError(""); try { const row = await api.preview({ name: values.name.trim(), slug: values.slug, source_id: values.sourceId, s0_values: [...new Set(parsed)] }, csrf); setPreview(row); setStep("review"); } catch (error) { setActionError(error instanceof Error ? error.message : "Preview failed safely."); } finally { setActionState("idle"); } }
   async function create() { const token = preview?.preview_token; if (typeof token !== "string") return; setActionState("busy"); setActionError(""); try { const created = await api.confirm(token, csrf); setResult(created); onCreated?.(created); setStep("success"); } catch (error) { setActionError(error instanceof Error ? error.message : "Creation failed safely."); } finally { setActionState("idle"); } }

@@ -7,9 +7,6 @@ import type { SmokeLifecycleApi, SubmissionApi } from "../../api/clients/smoke";
 import type { TransferApi, ZeusSnapshot } from "../../api/clients/zeus";
 import { ConfirmationStage } from "./ConfirmationStage";
 import { TransferStage } from "./TransferStage";
-import { SmokePointsTable } from "./SmokeStage";
-import { ScreeningFacts } from "./ScreeningStage";
-import { RefinementReceipt } from "./RefinementStage";
 import { RefinementFlow } from "./RefinementFlow";
 import { ScreeningFlow } from "./ScreeningFlow";
 import { SmokeFlow } from "./SmokeFlow";
@@ -21,8 +18,6 @@ import { useScreeningController } from "./controllers/useScreeningController";
 import { CampaignPriorityPanel } from "./CampaignPriorityPanel";
 
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
-
-const timestamp = (value: string) => new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "medium" }).format(new Date(value));
 
 export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, screeningSubmission, screeningLifecycle, refinementSubmission, refinementLifecycle, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; screeningSubmission: ScreeningSubmissionApi; screeningLifecycle: ScreeningLifecycleApi; refinementSubmission: RefinementSubmissionApi; refinementLifecycle: RefinementLifecycleApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
   const trusted = campaign.trust === "trusted-current";

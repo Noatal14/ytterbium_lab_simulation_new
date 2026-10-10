@@ -56,10 +56,19 @@ generated, message-free error catalog only to decide safe interaction behavior.
 ## Checks
 
 ```bash
+npm run lint
+npm run format:check
 npm test
 npm run build
 npm run test:e2e
 ```
+
+ESLint checks all TypeScript and TSX files in the UI, including browser tests
+and build configuration. Prettier is check-only: `format:check` names the
+already-normalized baseline files explicitly, so it does not hide legacy
+formatting debt or rewrite unrelated code. Add a file to that command whenever
+it is normalized in a reviewed change; expand the list incrementally until the
+entire UI is covered.
 
 From the repository root, verify generated contracts with:
 
