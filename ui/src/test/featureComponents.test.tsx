@@ -14,7 +14,7 @@ import { ConfirmationStage } from "../features/campaign/ConfirmationStage";
 import type { ScreeningSubmissionPreview } from "../api/clients/screening";
 import type { SmokeLifecycle, SmokeSubmissionPreview } from "../api/clients/smoke";
 import type { ConfirmationPreview, RefinementChainStatus, RefinementLifecycle, RefinementSubmissionPreview } from "../api/clients/refinement";
-import { parseRefinementChainStatus, parseRefinementLifecycle, parseScreeningLifecycle, parseSmokeLifecycle } from "../api/schema/domain";
+import { parseRefinementChainStatus, parseRefinementLifecycle, parseScreeningLifecycle, parseScreeningResult, parseSmokeLifecycle } from "../api/schema/domain";
 
 const noop = () => undefined;
 const smokeLifecycle: SmokeLifecycle = {
@@ -74,10 +74,73 @@ describe("shared workflow presentation", () => {
     expect(screen.getByRole("table", { name: "Validated smoke points" })).toBeVisible();
   });
 
+  it("keeps the last validated Smoke evidence visible when a refresh fails", () => {
+    render(<SmokeFlow visible canSubmit={false} submissionState="idle" submissionPreview={null} submissionResult={null} submissionError="" lifecycle={smokeLifecycle} lifecycleCheck="error" lifecycleError="The latest Zeus status check failed." screeningState="idle" screeningPreview={null} screeningResult={null} screeningError="" onPreviewSubmission={noop} onConfirmSubmission={noop} onResetSubmission={noop} onRefreshLifecycle={noop} onPreviewScreening={noop} onConfirmScreening={noop} onResetScreening={noop} onViewJobs={noop} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The latest Zeus status check failed.",
+    );
+    expect(screen.getByRole("alert")).toHaveFocus();
+    expect(screen.getByRole("table", { name: "Validated smoke points" })).toBeVisible();
+  });
+
   it("moves focus into the Smoke submission review", () => {
     const view = render(<SmokeFlow visible canSubmit submissionState="idle" submissionPreview={null} submissionResult={null} submissionError="" lifecycle={null} lifecycleCheck="idle" lifecycleError="" screeningState="idle" screeningPreview={null} screeningResult={null} screeningError="" onPreviewSubmission={noop} onConfirmSubmission={noop} onResetSubmission={noop} onRefreshLifecycle={noop} onPreviewScreening={noop} onConfirmScreening={noop} onResetScreening={noop} onViewJobs={noop} />);
     view.rerender(<SmokeFlow visible canSubmit submissionState="review" submissionPreview={smokePreview} submissionResult={null} submissionError="" lifecycle={null} lifecycleCheck="idle" lifecycleError="" screeningState="idle" screeningPreview={null} screeningResult={null} screeningError="" onPreviewSubmission={noop} onConfirmSubmission={noop} onResetSubmission={noop} onRefreshLifecycle={noop} onPreviewScreening={noop} onConfirmScreening={noop} onResetScreening={noop} onViewJobs={noop} />);
     expect(screen.getByRole("heading", { name: "Submit smoke check to Zeus" })).toHaveFocus();
+  });
+
+  it("keeps the Screening preparation receipt visible and focused after Smoke evidence advances or clears", () => {
+    const screeningResult = parseScreeningResult({
+      status: "screening_prepared",
+      campaign_id: "c",
+      stage: "screen",
+      artifacts: { created: 2, updated: 1 },
+      submitted_to_zeus: false,
+      simulation_started: false,
+      local_sync: { status: "not_synchronized" },
+    });
+    const screenPrepared = parseSmokeLifecycle({
+      ...smokeLifecycle,
+      campaign: { ...smokeLifecycle.campaign, stage: "screen" },
+      lifecycle: "screen_prepared",
+      next_action: "none",
+    });
+    const props = {
+      visible: true,
+      canSubmit: false,
+      submissionState: "idle" as const,
+      submissionPreview: null,
+      submissionResult: null,
+      submissionError: "",
+      lifecycleCheck: "ready" as const,
+      lifecycleError: "",
+      screeningState: "success" as const,
+      screeningPreview: null,
+      screeningResult,
+      screeningError: "",
+      onPreviewSubmission: noop,
+      onConfirmSubmission: noop,
+      onResetSubmission: noop,
+      onRefreshLifecycle: noop,
+      onPreviewScreening: noop,
+      onConfirmScreening: noop,
+      onResetScreening: noop,
+      onViewJobs: noop,
+    };
+    const view = render(<SmokeFlow {...props} lifecycle={smokeLifecycle} />);
+    const receipt = screen.getByRole("status");
+    expect(receipt).toHaveFocus();
+    expect(receipt).toHaveTextContent(
+      "No Screening job was submitted and no simulation started.",
+    );
+
+    view.rerender(<SmokeFlow {...props} lifecycle={screenPrepared} />);
+    expect(screen.getByText("Screening prepared on Zeus")).toBeVisible();
+    expect(receipt).toHaveFocus();
+
+    view.rerender(<SmokeFlow {...props} lifecycle={null} />);
+    expect(screen.getByText("Screening prepared on Zeus")).toBeVisible();
+    expect(receipt).toHaveFocus();
   });
 
   it("keeps Screening status evidence visible when its submission action fails", () => {
