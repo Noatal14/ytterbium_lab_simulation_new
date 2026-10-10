@@ -6,6 +6,10 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+)
 
 from studies import mot_3d_campaign
 from studies.mot_3d.integrity import (
@@ -39,7 +43,10 @@ def _write_ensemble(root, seed, mot_seed=None, count=60):
                     "dt_s": 0.625e-6,
                     "stochastic_solver": "RK4StHybridCustom",
                     "ensemble_dir": "corrected-zeeman-inputs",
-                    "zeeman_profile": "corrected-profile",
+                    "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
                 },
             }
         ),
@@ -72,7 +79,8 @@ def upstream_campaign(tmp_path, input_dir):
         "stages": {"final_report": str(root / "final_report.json")},
         "s0_values": [1.3],
         "fixed_design": {"final_dt_s": 0.625e-6, "solver": "RK4StHybridCustom"},
-        "ensemble_source": {"directory": "corrected-zeeman-inputs", "zeeman_profile": "corrected-profile"},
+        "ensemble_source": {"directory": "corrected-zeeman-inputs", "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256},
+        "input_ensembles": {"sealed_validation": [{"zeeman_seed": seed, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256} for seed in seeds]},
     }))
     (root / "final_report.json").write_text(json.dumps({
         "kind": "mot_2d_s0_campaign_final_report",
@@ -357,6 +365,19 @@ def test_upstream_report_must_be_registered(input_dir, upstream_campaign):
     manifest_path.write_text(json.dumps(payload))
 
     with pytest.raises(ValueError, match="does not register"):
+        mot_3d_campaign.validate_upstream_2d_campaign(
+            upstream_campaign, input_dir
+        )
+
+
+def test_upstream_handoff_rejects_laboratory_hash_tampering(
+    input_dir, upstream_campaign
+):
+    manifest_path = upstream_campaign / "campaign.json"
+    payload = json.loads(manifest_path.read_text())
+    payload["ensemble_source"]["zeeman_profile_sha256"] = "0" * 64
+    manifest_path.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="laboratory provenance"):
         mot_3d_campaign.validate_upstream_2d_campaign(
             upstream_campaign, input_dir
         )

@@ -15,6 +15,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+    LABORATORY_PHYSICAL_SPECIFICATION,
+)
 
 from workflow_api.mot_2d_plan import RELEVANT_FILES, build_plan, materialize
 from workflow_api.mot_2d_sources import inspect_source
@@ -40,7 +45,7 @@ def _repository(root: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(relative, encoding="utf-8")
     lab = root / "lab_setup/model.py"
-    lab.parent.mkdir()
+    lab.parent.mkdir(exist_ok=True)
     lab.write_text("MODEL = 1\n", encoding="utf-8")
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
     subprocess.run(["git", "add", "."], cwd=root, check=True)
@@ -54,21 +59,27 @@ def _repository(root: Path) -> None:
 def _source(root: Path) -> dict[str, object]:
     directory = root / "data/particle_states/after_zeeman/source"
     directory.mkdir(parents=True)
+    profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+    field_config = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
     for seed in range(3000, 3035):
         state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
         np.save(state, np.zeros((1, 6)))
         state.with_suffix(".json").write_text(
             json.dumps(
                 {
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
                     "shape": [1, 6],
                     "dtype": "float64",
                     "n_survivors": 1,
                     "output_sha256": _digest(state),
                     "parameters": {
                         "seed": seed,
-                        "resolved_zeeman_magnet_profile": "profile",
+                        "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
                         "n_initial_atoms": 50000,
                         "dt_s": 4e-5,
+                        "zeeman_field_config": field_config,
                     },
                     "software": {"git_commit": "source"},
                 }

@@ -1,6 +1,7 @@
 """Run and summarize Zeeman survival from the full thermal angular distribution."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -12,14 +13,30 @@ from config import (
     ZEEMAN_MAGNET_PROFILES,
     ZEEMAN_SIM_CONFIG,
 )
+from lab_setup.physical_specification import LABORATORY_PHYSICAL_SPECIFICATION
 from simulations.zeeman import run_and_save_zeeman
 from studies.beam_source.estimate_oven_flux import estimate_oven_flux
 from utils.data_paths import VALIDATION_DIR
 from utils.file_helpers import save_file_json
 
 
-DEFAULT_OUTPUT_DIR = VALIDATION_DIR / "zeeman" / "full_thermal_flux_v1"
-CORRECTED_PROFILE = "corrected_projectant_19ring_20261005"
+CORRECTED_PROFILE = ACTIVE_ZEEMAN_MAGNET_PROFILE
+DEFAULT_OUTPUT_DIR = (
+    VALIDATION_DIR / "zeeman" / f"full_thermal_flux_{CORRECTED_PROFILE}_v1"
+)
+HISTORICAL_PROFILE_IDENTITIES = {
+    # Read-only compatibility for manifests produced before the laboratory
+    # profile correction.  The removed field is not available for new runs.
+    "active": {
+        "ring_count": LABORATORY_PHYSICAL_SPECIFICATION[
+            "historical_read_compatibility"
+        ]["active_20ring_ring_count"],
+        "sha256": LABORATORY_PHYSICAL_SPECIFICATION[
+            "historical_read_compatibility"
+        ]["active_20ring_canonical_json_sha256"],
+    },
+}
+HISTORICAL_SUMMARY_IDENTITY = "historical-active-20ring"
 
 
 def field_config(profile):
@@ -61,6 +78,21 @@ def resolve_magnet_profile(parameters):
             matched = name
             break
     if matched is None:
+        arrays = [
+            field[key] for key in ("radii_m", "positions_m", "tilt_angles_deg")
+        ]
+        encoded = json.dumps(
+            arrays, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        digest = hashlib.sha256(encoded).hexdigest()
+        matched = next(
+            (name for name, identity in HISTORICAL_PROFILE_IDENTITIES.items()
+             if len(arrays[0]) == identity["ring_count"]
+             and all(len(row) == identity["ring_count"] for row in arrays)
+             and digest == identity["sha256"]),
+            None,
+        )
+    if matched is None:
         raise ValueError("Zeeman field arrays do not match a registered profile")
     if recorded is not None and recorded != matched:
         raise ValueError(
@@ -99,9 +131,9 @@ def clopper_pearson_interval(successes, trials, confidence=0.95):
 
 def summarize(args):
     requested_profile = getattr(
-        args, "magnet_profile", ACTIVE_ZEEMAN_MAGNET_PROFILE
+        args, "magnet_profile", "auto"
     )
-    output_dir = output_dir_for_profile(args.output_dir, requested_profile)
+    output_dir = Path(args.output_dir)
     metadata_paths = sorted(output_dir.glob("full_thermal_zeeman_n*_seed*.json"))
     if not metadata_paths:
         raise FileNotFoundError(f"No full-thermal metadata found in {output_dir}")
@@ -149,7 +181,11 @@ def summarize(args):
     if len(magnet_profiles) != 1:
         raise ValueError("Full-thermal results contain mixed magnet profiles")
     magnet_profile = magnet_profiles.pop()
-    if magnet_profile != requested_profile:
+    expected_profile = {
+        "auto": magnet_profile,
+        HISTORICAL_SUMMARY_IDENTITY: "active",
+    }.get(requested_profile, requested_profile)
+    if magnet_profile != expected_profile:
         raise ValueError(
             "Requested profile does not match the verified result metadata: "
             f"{requested_profile!r} != {magnet_profile!r}"
@@ -187,7 +223,7 @@ def summarize(args):
     print(f"Summary saved to: {output_path}")
 
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -217,14 +253,14 @@ def parse_args():
     summary_parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     summary_parser.add_argument(
         "--magnet-profile",
-        choices=sorted(ZEEMAN_MAGNET_PROFILES),
-        default=ACTIVE_ZEEMAN_MAGNET_PROFILE,
-        help="Profile used to choose the default versioned result directory.",
+        choices=("auto", ACTIVE_ZEEMAN_MAGNET_PROFILE, HISTORICAL_SUMMARY_IDENTITY),
+        default="auto",
+        help="Read-only identity expected in the selected result directory.",
     )
     summary_parser.add_argument("--temperature-c", type=float, default=400.0)
     summary_parser.set_defaults(func=summarize)
 
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
 if __name__ == "__main__":

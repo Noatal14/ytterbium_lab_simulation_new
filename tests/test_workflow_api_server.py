@@ -5,6 +5,11 @@ import subprocess
 import sys
 import threading
 import numpy as np
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+    LABORATORY_PHYSICAL_SPECIFICATION,
+)
 from pathlib import Path
 from contextlib import contextmanager
 from http.client import HTTPConnection
@@ -27,6 +32,8 @@ from workflow_api.zeus_screen_submission import ZeusScreenSubmissionError
 
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
+    profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+    field_config = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
     roles = {
         "discovery": list(range(3000, 3005)), "refinement": list(range(3005, 3010)),
         "held_out_confirmation": list(range(3010, 3015)), "sealed_validation": list(range(3015, 3035)),
@@ -41,12 +48,16 @@ def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
             state.write_bytes(f"states-{seed}".encode())
             digest = hashlib.sha256(state.read_bytes()).hexdigest()
             metadata.write_text(json.dumps({
+                "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
                 "shape": [10, 6], "dtype": "float64", "n_survivors": 10,
                 "output_sha256": digest,
                 "parameters": {
-                    "seed": seed, "resolved_zeeman_magnet_profile": "profile",
+                    "seed": seed, "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
                     "n_initial_atoms": 50000, "dt_s": 4e-5,
                     "stochastic": True, "collimation_angle_deg": 0.02,
+                    "zeeman_field_config": field_config,
                 },
                 "software": {"git_commit": "source"},
             }))
@@ -54,12 +65,15 @@ def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
             frozen[role].append({
                 "zeeman_seed": seed, "path": str(state.relative_to(repository_root)), "metadata_path": str(metadata.relative_to(repository_root)),
                 "sha256": digest, "metadata_sha256": metadata_digest, "shape": [10, 6], "dtype": "float64", "survivor_count": 10,
-                "zeeman_profile": "profile", "source_git_commit": "source",
+                "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "source_git_commit": "source",
+                "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
                 "generation": {"n_initial_atoms": 50000, "dt_s": 4e-5, "stochastic": True, "collimation_angle_deg": 0.02},
             })
     return {
         "kind": "mot_2d_s0_campaign", "name": name, "stage": stage, "s0_values": [1.3], "stages": {},
-        "ensemble_source": {"directory": "data/particle_states/after_zeeman/profile", "zeeman_profile": "profile"},
+        "ensemble_source": {"directory": "data/particle_states/after_zeeman/profile", "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256},
         "seed_roles": roles, "input_ensembles": frozen,
         "mot_seeds": {role: [40000 + seed for seed in seeds] for role, seeds in roles.items()},
         "provenance": {"git_commit": "abc", "physical_model_sha256": "b" * 64, "hashed_files": ["config.py"], "capture_criterion_version": "v1", "path_contract": "repository-relative-v1"},
@@ -117,6 +131,32 @@ def test_modern_contract_rejects_noncanonical_seeds_and_metadata_mismatch(tmp_pa
     trusted, errors = modern_contract(manifest, root)
     assert not trusted
     assert any("provenance does not match" in message for message in errors)
+
+
+def test_pre_c2_corrected_campaign_is_validated_in_memory_without_rewrite(tmp_path):
+    root = tmp_path / "repo"
+    manifest = modern_2d_manifest(root)
+    laboratory_keys = (
+        "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
+    )
+    for key in laboratory_keys:
+        manifest["ensemble_source"].pop(key)
+    profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+    arrays = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
+    for records in manifest["input_ensembles"].values():
+        for record in records:
+            for key in laboratory_keys:
+                record.pop(key)
+            metadata_path = root / record["metadata_path"]
+            metadata = json.loads(metadata_path.read_text())
+            for key in laboratory_keys:
+                metadata.pop(key)
+            metadata["parameters"]["zeeman_field_config"] = arrays
+            metadata_path.write_text(json.dumps(metadata))
+            record["metadata_sha256"] = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
+    before = json.dumps(manifest, sort_keys=True).encode()
+    assert modern_contract(manifest, root) == (True, ())
+    assert json.dumps(manifest, sort_keys=True).encode() == before
 
 
 def test_smoke_requires_genuine_trial_identity(tmp_path):
@@ -237,6 +277,8 @@ def test_progress_aware_plan_never_resubmits_partial_stage(tmp_path):
 def write_zeeman_source(root, name="source"):
     directory = root / "data/particle_states/after_zeeman" / name
     directory.mkdir(parents=True)
+    profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+    field_config = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
     for seed in range(3000, 3035):
         state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
         np.save(state, np.zeros((2, 6), dtype=float))
@@ -244,7 +286,10 @@ def write_zeeman_source(root, name="source"):
         state.with_suffix(".json").write_text(json.dumps({
             "shape": [2, 6], "dtype": "float64", "n_survivors": 2,
             "output_sha256": digest,
-            "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": "profile", "n_initial_atoms": 50000, "dt_s": 4e-5},
+            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+            "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "n_initial_atoms": 50000, "dt_s": 4e-5, "zeeman_field_config": field_config},
             "software": {"git_commit": "abc"},
         }))
     return directory
@@ -259,6 +304,15 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
     (directory / "production_zeeman_n50000_dt40us_seed3010.json").unlink()
     result = list_sources(root)
     assert result == {"sources": [], "invalid_count": 1, "total": 0}
+
+
+def test_zeeman_source_registry_rejects_laboratory_hash_tampering(tmp_path):
+    root = tmp_path / "repo"; directory = write_zeeman_source(root)
+    metadata = directory / "production_zeeman_n50000_dt40us_seed3000.json"
+    payload = json.loads(metadata.read_text())
+    payload["laboratory_spec_sha256"] = "0" * 64
+    metadata.write_text(json.dumps(payload))
+    assert list_sources(root) == {"sources": [], "invalid_count": 1, "total": 0}
 
 
 @contextmanager

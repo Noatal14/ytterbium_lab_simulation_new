@@ -8,10 +8,11 @@ from pathlib import Path
 import numpy as np
 
 from config import ZEEMAN_MAGNET_PROFILES
+from lab_setup.physical_specification import CANONICAL_ZEEMAN_PROFILE_NAME
 from simulations.zeeman import run_and_save_zeeman
 
 
-PROFILE_NAME = "corrected_projectant_19ring_20261005"
+PROFILE_NAME = CANONICAL_ZEEMAN_PROFILE_NAME
 OUTPUT_DIR = Path("data/particle_states/after_zeeman") / PROFILE_NAME
 N_INITIAL = 50_000
 

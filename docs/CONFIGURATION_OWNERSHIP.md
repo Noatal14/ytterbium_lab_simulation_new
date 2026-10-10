@@ -1,7 +1,7 @@
 # Configuration ownership and frozen baseline
 
-Verified at the current UI architecture commit
-`170d58aa2e5f71f1cbbd1fcafc0ef7d964a0eab9`.
+Updated from the characterized UI architecture baseline at
+`8bd42b97d8dd6e696561b2efa16667607261a6fc`.
 
 This document records the configuration that the production code currently
 resolves.  It is a characterization, not an endorsement of every value.  The
@@ -12,6 +12,7 @@ to this baseline deliberate and reviewable.
 
 | Domain | Authoritative definitions | Principal consumers | Change rule |
 | --- | --- | --- | --- |
+| Versioned laboratory identity | `lab_setup/specifications/laboratory_physical_v1.json`, strictly loaded by `lab_setup/physical_specification.py` | `config.py`, Zeeman generation, campaign defaults, characterization tests | New reviewed specification version for laboratory changes |
 | Atomic constants and transitions | `config.py`: `YB171`, `BLUE_TRANSITION`, `GREEN_TRANSITION`, saturation intensities | `lab_setup/atom_species.py`, force and laser setup modules | Scientific review; preserve SI units |
 | Apparatus geometry | `config.py`: `Geometry`, `ZEEMAN_BEAM_DIRECTION` | `lab_setup/zones.py`, `lab_setup/config_builder.py`, laser and magnetic-field setup modules | Laboratory-change review |
 | Zeeman slower | `config.py`: `ZEEMAN_MAGNET_PROFILES`, `ACTIVE_ZEEMAN_MAGNET_PROFILE`, `ZEEMAN_FIELD_CONFIG`, `ZEEMAN_LASER_CONFIG`, `ZEEMAN_SIM_CONFIG` | `lab_setup/config_builder.py`, `lab_setup/zeeman_laser_setup.py`, `simulations/zeeman.py`, `studies/zeeman/*` | Profile identity and generated ensembles must change together |
@@ -22,8 +23,9 @@ to this baseline deliberate and reviewable.
 | Full-pipeline numerics | `config.py`: `FULL_SIM_CONFIG`, `DEFAULT_NUM_*`, `DEFAULT_RANDOM_SEED` | `simulations/pipeline.py`, simulation entry points and studies | Numerical validation |
 | Campaign serialization and provenance | `workflow_api/mot_2d_spec.py`, `studies/mot_2d_s0_campaign.py`, `studies/mot_3d_campaign.py`, `utils/file_helpers.py` | Generated manifests, PBS files, merge/final-report stages | Schema/design changes require regression tests; manifests freeze exact runs |
 
-There is currently **no single configuration source for the whole system**.
-`config.py` owns reusable physical and numerical defaults;
+There is no single configuration source for the whole system.  The versioned
+laboratory specification owns stable physical identity and the canonical
+Zeeman array; `config.py` owns the remaining reusable physical/numerical defaults;
 `workflow_api/mot_2d_spec.py` owns executable 2D campaign science; and the
 versioned JSON owns the UI/job presentation contract.  These authorities
 deliberately overlap in solver, timestep, trial-budget, and scheduling fields.
@@ -52,7 +54,7 @@ direction, oven/source settings, every stored Zeeman profile, complete 2D and
 3D configuration trees, `FULL_SIM_CONFIG`, runtime defaults, executable 2D
 campaign design, the complete versioned 2D UI/job contract, and 3D campaign
 seed/round defaults.  Canonical sorted JSON for this payload has SHA-256
-`fc1d36c7dca17091f29a4a95a70413a1b1c16d1861c332364a1113d665125179`.
+`e687fab3bcac25721c4b4d03ae826d837b88a05af275924797d1cb57e6b50578`.
 
 - 2D production timestep: `0.625 us`; 2D campaign working timestep:
   `1.25 us`; solver: `RK4StHybridCustom`.
@@ -68,26 +70,27 @@ seed/round defaults.  Canonical sorted JSON for this payload has SHA-256
   the 3D closure additionally includes Python sources under `lab_setup/`,
   `simulations/`, `utils/`, and `atomsmltr/src/atomsmltr/`.
 
-## Scientific decision blocker: active Zeeman profile
+## Canonical Zeeman profile and historical readability
 
-The generic production default and the campaign-specific corrected source are
-not the same profile:
+The scientific decision is now explicit: the only active generic default is
+`corrected_projectant_19ring_20261005`, with 19 radii, positions, and tilts and
+canonical-array SHA-256
+`7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534`.
+The complete normalized laboratory specification has SHA-256
+`8a5fb876dce0825c7cc9154d1a0f0fb4ba01fe9d179e052e747a201246dcd0ab`.
+The mistaken 20-ring profile formerly named `active` is absent from
+`ZEEMAN_MAGNET_PROFILES` and cannot be selected for a new run.
 
-| Identity | Shape (radii, positions, tilts) | Canonical-JSON SHA-256 |
-| --- | --- | --- |
-| `ACTIVE_ZEEMAN_MAGNET_PROFILE = "active"` | `(20, 20, 20)` | `4b8fbea7c7e1721d814db4f062cfcc7b1115462aca8712579dbbf8e56156faf0` |
-| `corrected_projectant_19ring_20261005` | `(19, 19, 19)` | `7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534` |
+Historical manifests and metadata are not rewritten.  The versioned contract
+records the retired name and array hash, and the historical full-thermal
+reader recognizes that exact embedded-array hash as `active`.  This is a
+read-only compatibility path: it does not expose the removed field to any
+simulation entry point.
 
-Meanwhile, `studies/mot_2d_s0_campaign.py` explicitly defaults to the corrected
-19-ring profile.  Therefore generic Zeeman entry points that rely on the
-`config.py` active alias may generate a different physical source from the
-canonical campaign input.  Resolving this requires an explicit scientific and
-provenance decision.  This milestone intentionally does **not** change the
-active alias or any consumer.
-
-The hashes above serialize only the three numerical profile arrays with
-`json.dumps(profile, sort_keys=True, separators=(",", ":"))`, encoded as
-UTF-8.  They are identity checks, not file hashes.
+New full-thermal runs write by default to
+`data/validation/zeeman/full_thermal_flux_corrected_projectant_19ring_20261005_v1`.
+The old `full_thermal_flux_v1` directory is therefore readable for historical
+summaries without being a destination for new canonical results.
 
 ## Direct consumer inventory
 

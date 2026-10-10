@@ -5,6 +5,15 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+    LABORATORY_PHYSICAL_SPECIFICATION,
+)
+
+_PROFILE = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+_FIELD_CONFIG = {key: list(_PROFILE[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
 
 
 def _ensemble(directory, seed=3000, profile="corrected_projectant_19ring_20261005", nonfinite=False):
@@ -14,12 +23,16 @@ def _ensemble(directory, seed=3000, profile="corrected_projectant_19ring_2026100
         states[0, 0] = np.nan
     np.save(path, states)
     path.with_suffix(".json").write_text(json.dumps({
+        "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+        "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+        "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
         "shape": [4, 6], "dtype": "float64", "n_survivors": 4,
         "survival_fraction": 4/50000,
         "output_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         "parameters": {"seed": seed, "n_initial_atoms": 50000, "dt_s": 4e-5,
                        "stochastic": True, "collimation_angle_deg": 1.5,
-                       "resolved_zeeman_magnet_profile": profile},
+                       "resolved_zeeman_magnet_profile": profile,
+                       "zeeman_field_config": _FIELD_CONFIG},
         "software": {"git_commit": "source"},
     }))
     return path
@@ -169,7 +182,7 @@ def test_missing_required_ensemble_hash_is_rejected(tmp_path, monkeypatch):
     metadata = json.loads(path.with_suffix(".json").read_text())
     metadata.pop("output_sha256")
     path.with_suffix(".json").write_text(json.dumps(metadata))
-    with pytest.raises(ValueError, match="Incomplete immutable provenance"):
+    with pytest.raises(ValueError, match="Missing SHA-256 provenance"):
         campaign.freeze_input_ensembles(
             directory, campaign.DEFAULT_PROFILE, {"discovery": [3000]}
         )
@@ -200,6 +213,75 @@ def test_frozen_ensemble_metadata_replacement_is_rejected(tmp_path, monkeypatch)
     metadata_path.write_text(json.dumps(metadata))
 
     with pytest.raises(RuntimeError, match="Frozen Zeeman input changed"):
+        campaign.stage_ensembles(manifest, "screen", 2)
+
+
+def test_pre_c2_campaign_stage_resumes_without_rewriting_inputs(tmp_path, monkeypatch):
+    import studies.mot_2d_s0_campaign as campaign
+
+    repository = tmp_path / "repo"
+    directory = repository / "data/particle_states/after_zeeman/source"
+    directory.mkdir(parents=True)
+    monkeypatch.setattr(campaign, "REPOSITORY_ROOT", repository)
+    path = _ensemble(directory)
+    roles = {"discovery": [3000]}
+    frozen = campaign.freeze_input_ensembles(directory, campaign.DEFAULT_PROFILE, roles)
+    metadata_path = path.with_suffix(".json")
+    metadata = json.loads(metadata_path.read_text())
+    laboratory_keys = (
+        "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
+    )
+    for key in laboratory_keys:
+        metadata.pop(key)
+        frozen["discovery"][0].pop(key)
+    metadata_path.write_text(json.dumps(metadata))
+    frozen["discovery"][0]["metadata_sha256"] = hashlib.sha256(
+        metadata_path.read_bytes()
+    ).hexdigest()
+    manifest = {
+        "seed_roles": roles, "input_ensembles": frozen,
+        "ensemble_source": {
+            "directory": "data/particle_states/after_zeeman/source",
+            "zeeman_profile": campaign.DEFAULT_PROFILE,
+        },
+        "provenance": {"path_contract": "repository-relative-v1"},
+    }
+    before_manifest = json.dumps(manifest, sort_keys=True).encode()
+    before_metadata = metadata_path.read_bytes()
+    ensembles = campaign.stage_ensembles(manifest, "screen", 2)
+    assert len(ensembles) == 1
+    assert json.dumps(manifest, sort_keys=True).encode() == before_manifest
+    assert metadata_path.read_bytes() == before_metadata
+
+
+@pytest.mark.parametrize("failure", ["retired", "tampered"])
+def test_pre_c2_campaign_stage_rejects_unattested_profile(tmp_path, monkeypatch, failure):
+    import studies.mot_2d_s0_campaign as campaign
+
+    repository = tmp_path / "repo"
+    directory = repository / "data/particle_states/after_zeeman/source"
+    directory.mkdir(parents=True)
+    monkeypatch.setattr(campaign, "REPOSITORY_ROOT", repository)
+    path = _ensemble(directory)
+    metadata_path = path.with_suffix(".json")
+    metadata = json.loads(metadata_path.read_text())
+    for key in ("laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"):
+        metadata.pop(key)
+    if failure == "retired":
+        metadata["parameters"]["resolved_zeeman_magnet_profile"] = "active"
+    else:
+        metadata["parameters"]["zeeman_field_config"]["radii_m"][0] += 1e-6
+    metadata_path.write_text(json.dumps(metadata))
+    manifest = {
+        "seed_roles": {"discovery": [3000]},
+        "input_ensembles": {"discovery": []},
+        "ensemble_source": {
+            "directory": "data/particle_states/after_zeeman/source",
+            "zeeman_profile": campaign.DEFAULT_PROFILE,
+        },
+        "provenance": {"path_contract": "repository-relative-v1"},
+    }
+    with pytest.raises(ValueError):
         campaign.stage_ensembles(manifest, "screen", 2)
 
 

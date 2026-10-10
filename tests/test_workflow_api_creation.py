@@ -8,6 +8,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+    LABORATORY_PHYSICAL_SPECIFICATION,
+)
 
 from workflow_api.mot_2d_plan import RELEVANT_FILES, build_plan, materialize, physical_model_hash, plan_from_frozen_manifest
 from workflow_api.mot_2d_sources import inspect_source
@@ -23,21 +28,55 @@ class FixedSnapshots:
 
 def source(root: Path):
     directory = root / "data/particle_states/after_zeeman/source"; directory.mkdir(parents=True)
+    profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+    arrays = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
     for seed in range(3000, 3035):
         state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"; np.save(state, np.zeros((1, 6)))
         digest = hashlib.sha256(state.read_bytes()).hexdigest()
-        state.with_suffix(".json").write_text(json.dumps({"shape": [1, 6], "dtype": "float64", "n_survivors": 1, "output_sha256": digest, "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": "profile", "n_initial_atoms": 50000, "dt_s": 4e-5}, "software": {"git_commit": "source"}}))
+        state.with_suffix(".json").write_text(json.dumps({"shape": [1, 6], "dtype": "float64", "n_survivors": 1, "output_sha256": digest, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256, "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "n_initial_atoms": 50000, "dt_s": 4e-5, "zeeman_field_config": arrays}, "software": {"git_commit": "source"}}))
     return inspect_source(directory, root)
+
+
+def test_pre_c2_corrected_source_is_discovered_without_rewriting_files(tmp_path):
+    directory = tmp_path / "data/particle_states/after_zeeman/legacy"; directory.mkdir(parents=True)
+    profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+    arrays = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
+    for seed in range(3000, 3035):
+        state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
+        np.save(state, np.zeros((1, 6)))
+        digest = hashlib.sha256(state.read_bytes()).hexdigest()
+        state.with_suffix(".json").write_text(json.dumps({
+            "shape": [1, 6], "dtype": "float64", "n_survivors": 1,
+            "output_sha256": digest, "survival_fraction": 1 / 50000,
+            "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                           "n_initial_atoms": 50000, "dt_s": 4e-5, "zeeman_field_config": arrays},
+            "software": {"git_commit": "pre-c2"},
+        }))
+    before = {path: path.read_bytes() for path in directory.iterdir()}
+    inspected = inspect_source(directory, tmp_path, include_records=True)
+    assert all(row["legacy_attested_profile"] for row in inspected["records"])
+    assert {path: path.read_bytes() for path in directory.iterdir()} == before
+    repository(tmp_path)
+    public_source = {key: value for key, value in inspected.items() if key != "records"}
+    with pytest.raises(ValueError, match="cannot create a new campaign"):
+        build_plan(
+            tmp_path, name="Blocked legacy", slug="blocked-legacy", s0_values=[1.3],
+            source=public_source, snapshot=RepositorySnapshot("a" * 40),
+        )
 
 
 def repository(root: Path):
     for relative in RELEVANT_FILES:
         path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(relative)
-    lab = root / "lab_setup/model.py"; lab.parent.mkdir(); lab.write_text("MODEL = 1")
+    lab = root / "lab_setup/model.py"; lab.parent.mkdir(exist_ok=True); lab.write_text("MODEL = 1")
 
 
 def test_plan_is_pure_and_materialization_is_atomic(tmp_path):
     repository(tmp_path); frozen = source(tmp_path)
+    assert set(frozen) == {
+        "id", "path", "profile", "ensemble_count", "minimum_survivors",
+        "maximum_survivors", "fingerprint",
+    }
     plan = build_plan(tmp_path, name="Fixed 1.3", slug="s0_1p3", s0_values=[1.3, 1.3], source=frozen, snapshot=RepositorySnapshot("a" * 40))
     assert not plan.destination.exists()
     assert plan.s0_values == (1.3,)

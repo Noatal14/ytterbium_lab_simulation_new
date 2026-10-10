@@ -23,6 +23,13 @@ from config import (
     MOT_3D_OPTIMIZATION_CONFIG,
     MOT_3D_SIM_CONFIG,
 )
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+    attest_canonical_zeeman_metadata,
+)
 from utils.file_helpers import save_file_json
 from utils.data_paths import load_particle_states
 
@@ -30,6 +37,8 @@ from utils.data_paths import load_particle_states
 FAMILIES = ("angled_donut", "single_pass")
 CAMPAIGN_FILES = (
     "config.py",
+    "lab_setup/physical_specification.py",
+    "lab_setup/specifications/laboratory_physical_v1.json",
     "lab_setup/laser_setup_3d.py",
     "simulations/mot_3d.py",
     "studies/mot_3d_campaign.py",
@@ -135,6 +144,63 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         raise ValueError("Selected 2D result has an unregistered s0 value.")
     fixed = manifest.get("fixed_design", {})
     source = manifest.get("ensemble_source", {})
+    if source.get("zeeman_profile") != CANONICAL_ZEEMAN_PROFILE_NAME:
+        raise ValueError("Upstream 2D campaign has invalid laboratory provenance.")
+    laboratory_keys = {
+        "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
+    }
+    present_source_keys = laboratory_keys.intersection(source)
+    if present_source_keys and (
+        present_source_keys != laboratory_keys
+        or source.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
+        or source.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
+        or source.get("zeeman_profile_sha256") != CANONICAL_ZEEMAN_PROFILE_SHA256
+    ):
+        raise ValueError("Upstream 2D campaign has invalid laboratory provenance.")
+    if (not present_source_keys
+            and len(str(manifest.get("provenance", {}).get("physical_model_sha256", ""))) != 64):
+        raise ValueError("Legacy upstream 2D physical-model provenance is invalid.")
+    frozen_records = [
+        record
+        for records in manifest.get("input_ensembles", {}).values()
+        for record in records
+    ]
+    if not frozen_records:
+        raise ValueError("Upstream 2D frozen inputs have invalid laboratory provenance.")
+    legacy_attested = False
+    for record in frozen_records:
+        record_keys = laboratory_keys.intersection(record)
+        if record_keys and record_keys != laboratory_keys:
+            raise ValueError("Upstream 2D frozen input provenance is incomplete.")
+        if record_keys == laboratory_keys:
+            if (
+                record.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
+                or record.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
+                or record.get("zeeman_profile_sha256") != CANONICAL_ZEEMAN_PROFILE_SHA256
+            ):
+                raise ValueError("Upstream 2D frozen input laboratory provenance mismatch.")
+            continue
+        repository_root = Path(__file__).resolve().parents[1]
+        metadata_path = Path(str(record.get("metadata_path", "")))
+        state_path = Path(str(record.get("path", "")))
+        if not metadata_path.is_absolute():
+            metadata_path = repository_root / metadata_path
+        if not state_path.is_absolute():
+            state_path = repository_root / state_path
+        if not metadata_path.is_file() or not state_path.is_file():
+            raise ValueError("Upstream 2D frozen input is unavailable.")
+        if (_sha256(metadata_path) != record.get("metadata_sha256")
+                or _sha256(state_path) != record.get("sha256")):
+            raise ValueError("Upstream 2D frozen input hash mismatch.")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        laboratory = attest_canonical_zeeman_metadata(metadata, allow_legacy=True)
+        if record_keys and any(record.get(key) != laboratory[key] for key in laboratory_keys):
+            raise ValueError("Upstream 2D frozen input laboratory provenance mismatch.")
+        if metadata.get("output_sha256") != record.get("sha256"):
+            raise ValueError("Upstream 2D frozen input output hash mismatch.")
+        if metadata.get("software", {}).get("git_commit") != record.get("source_git_commit"):
+            raise ValueError("Upstream 2D frozen input code provenance mismatch.")
+        legacy_attested = legacy_attested or laboratory["legacy_attested_profile"]
     expected_design = {
         "git_commit": manifest.get("provenance", {}).get("git_commit"),
         "dt_s": fixed.get("final_dt_s"),
@@ -142,6 +208,8 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         "ensemble_dir": source.get("directory"),
         "zeeman_profile": source.get("zeeman_profile"),
     }
+    if present_source_keys:
+        expected_design.update({key: source[key] for key in laboratory_keys})
     if any(value is None for value in expected_design.values()):
         raise ValueError("Upstream 2D manifest has incomplete production design.")
     return {
@@ -160,6 +228,15 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         "selected_result": matching[0],
         "expected_survivor_design": expected_design,
         "expected_survivor_parameters": matching[0].get("recommended_parameters"),
+        "laboratory_provenance": ({
+            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+            "legacy_attested_profile": True,
+        } if legacy_attested else {
+            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+            "legacy_attested_profile": False,
+        }),
     }
 
 
@@ -902,6 +979,10 @@ def _collect_final_validation_inputs(root, manifest):
             or zeeman_metadata.get("parameters", {}).get("resolved_zeeman_magnet_profile")
             != manifest["upstream_2d_campaign"]["expected_survivor_design"]["zeeman_profile"]
             or zeeman_metadata.get("output_sha256") != _sha256(zeeman_path)
+            or zeeman_metadata.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
+            or zeeman_metadata.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
+            or zeeman_metadata.get("zeeman_profile_sha256")
+            != CANONICAL_ZEEMAN_PROFILE_SHA256
         ):
             raise ValueError(f"Invalid new Zeeman ensemble: {zeeman_path}")
         path = states_dir / f"mot_2d_survivors_zeeman_seed{zseed}_mot_seed{mseed}.npy"
@@ -921,6 +1002,9 @@ def _collect_final_validation_inputs(root, manifest):
             "ensemble_dir": str(zeeman_dir),
             "zeeman_profile": manifest["upstream_2d_campaign"]["expected_survivor_design"]["zeeman_profile"],
             "git_commit": manifest["provenance"]["git_commit"],
+            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
         }
         if (
             metadata.get("kind") != "mot_2d_final_survivor_ensemble"

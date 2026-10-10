@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from config import MOT_2D_SIM_CONFIG
+from lab_setup.physical_specification import CANONICAL_ZEEMAN_PROFILE_NAME
 from studies.mot_2d.optimization import BOUNDS_DETUNING, BOUNDS_MAGNET_RADIUS_M
 from studies.mot_2d.optimization import evaluate_configuration
 from studies.mot_2d.production import summarize
@@ -36,7 +37,7 @@ SCREEN_WALLTIME = "24:00:00"
 REFINEMENT_ROUND_WALLTIME = "20:00:00"
 CONFIRMATION_CANDIDATES = 5
 CAPTURE_CRITERION_VERSION = "mot_2d_extract_survivors_v1"
-DEFAULT_PROFILE = "corrected_projectant_19ring_20261005"
+DEFAULT_PROFILE = CANONICAL_ZEEMAN_PROFILE_NAME
 DEFAULT_ENSEMBLE_DIR = str(Path("data/particle_states/after_zeeman") / DEFAULT_PROFILE)
 SEED_ROLES = ROLE_SEEDS
 STAGE_ROLE = {"smoke": "discovery", "screen": "discovery",
@@ -104,6 +105,11 @@ def freeze_input_ensembles(directory, profile, seed_roles):
         )
         records[role] = []
         for row in ensembles:
+            if row.get("legacy_attested_profile"):
+                raise ValueError(
+                    "Legacy-attested Zeeman inputs may resume an existing campaign "
+                    "but cannot be frozen into a new campaign."
+                )
             metadata = read(row["metadata_path"])
             parameters = metadata["parameters"]
             required = (row["sha256"], metadata.get("shape"), metadata.get("dtype"),
@@ -121,12 +127,47 @@ def freeze_input_ensembles(directory, profile, seed_roles):
                 "dtype": metadata["dtype"], "survivor_count": metadata["n_survivors"],
                 "zeeman_profile": row["zeeman_profile"],
                 "source_git_commit": row["source_git_commit"],
+                "laboratory_spec_version": row["laboratory_spec_version"],
+                "laboratory_spec_sha256": row["laboratory_spec_sha256"],
+                "zeeman_profile_sha256": row["zeeman_profile_sha256"],
                 "generation": {"n_initial_atoms": parameters["n_initial_atoms"],
                                "dt_s": parameters["dt_s"],
                                "stochastic": parameters.get("stochastic"),
                                "collimation_angle_deg": parameters.get("collimation_angle_deg")},
             })
     return records
+
+
+def _project_frozen_ensemble(row):
+    """Project a validated runtime row to its historically honest record."""
+    observed = {
+        "zeeman_seed": row["zeeman_seed"],
+        "path": repository_relative(row["path"], require="file"),
+        "metadata_path": repository_relative(row["metadata_path"], require="file"),
+        "sha256": row["sha256"],
+        "metadata_sha256": hashlib.sha256(
+            Path(row["metadata_path"]).read_bytes()
+        ).hexdigest(),
+        "shape": row["shape"], "dtype": row["dtype"],
+        "survivor_count": row["n_available"],
+        "zeeman_profile": row["zeeman_profile"],
+        "source_git_commit": row["source_git_commit"],
+        "generation": row["generation"],
+    }
+    if not row.get("legacy_attested_profile"):
+        required = (
+            row.get("laboratory_spec_version"),
+            row.get("laboratory_spec_sha256"),
+            row.get("zeeman_profile_sha256"),
+        )
+        if any(value is None for value in required):
+            raise RuntimeError("Modern Zeeman input lacks laboratory provenance.")
+        observed.update({
+            "laboratory_spec_version": row["laboratory_spec_version"],
+            "laboratory_spec_sha256": row["laboratory_spec_sha256"],
+            "zeeman_profile_sha256": row["zeeman_profile_sha256"],
+        })
+    return observed
 
 
 def assert_design(manifest):
@@ -153,17 +194,8 @@ def stage_ensembles(manifest, stage, particles):
     frozen = {row["zeeman_seed"]: row for row in manifest["input_ensembles"][role]}
     for row in ensembles:
         record = frozen.get(row["zeeman_seed"])
-        observed = {"path": repository_relative(row["path"], require="file"),
-                    "metadata_path": repository_relative(row["metadata_path"], require="file"),
-                    "sha256": row["sha256"], "shape": row["shape"],
-                    "metadata_sha256": hashlib.sha256(
-                        Path(row["metadata_path"]).read_bytes()
-                    ).hexdigest(),
-                    "dtype": row["dtype"], "survivor_count": row["n_available"],
-                    "zeeman_profile": row["zeeman_profile"],
-                    "source_git_commit": row["source_git_commit"],
-                    "generation": row["generation"]}
-        if record is None or any(record[field] != value for field, value in observed.items()):
+        observed = _project_frozen_ensemble(row)
+        if record is None or record != observed:
             raise RuntimeError(f"Frozen Zeeman input changed for seed {row['zeeman_seed']}")
     return ensembles
 

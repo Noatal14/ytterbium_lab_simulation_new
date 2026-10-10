@@ -8,13 +8,13 @@ from studies.zeeman.validate_configuration import analyze_zeeman_configuration
 def test_active_zeeman_configuration_has_consistent_structure_and_directions():
     summary, profiles = analyze_zeeman_configuration(
         num_points=201,
-        magnet_profile="active",
-        expected_ring_count=20,
+        magnet_profile="corrected_projectant_19ring_20261005",
+        expected_ring_count=19,
     )
 
     assert summary["checks"]["magnet_arrays_have_equal_length"]
     assert summary["checks"]["magnet_ring_count_matches_expected"]
-    assert summary["evaluated_magnet_profile"] == "active"
+    assert summary["evaluated_magnet_profile"] == "corrected_projectant_19ring_20261005"
     assert summary["checks"]["magnet_positions_are_strictly_increasing"]
     assert summary["checks"]["laser_is_antiparallel_to_atoms"]
     assert summary["checks"]["laser_detuning_is_red"]
@@ -55,20 +55,21 @@ def test_corrected_profile_rejects_wrong_external_ring_expectation():
 
 
 def test_default_ring_expectation_is_independent_of_profile_array_length(monkeypatch):
-    radii, positions, tilts = zeeman_validation.ZEEMAN_MAGNET_PROFILES["active"]
+    profile = "corrected_projectant_19ring_20261005"
+    radii, positions, tilts = zeeman_validation.ZEEMAN_MAGNET_PROFILES[profile]
     monkeypatch.setitem(
         zeeman_validation.ZEEMAN_MAGNET_PROFILES,
-        "active",
+        profile,
         (radii[:-1], positions[:-1], tilts[:-1]),
     )
 
     summary, _ = analyze_zeeman_configuration(
         num_points=201,
-        magnet_profile="active",
+        magnet_profile=profile,
     )
 
-    assert summary["configuration"]["expected_magnet_ring_count"] == 20
-    assert summary["configuration"]["magnet_ring_count"] == 19
+    assert summary["configuration"]["expected_magnet_ring_count"] == 19
+    assert summary["configuration"]["magnet_ring_count"] == 18
     assert not summary["checks"]["magnet_ring_count_matches_expected"]
     assert summary["status"] == "FAIL"
 

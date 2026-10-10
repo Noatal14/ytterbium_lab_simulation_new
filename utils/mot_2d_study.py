@@ -6,6 +6,13 @@ import json
 import hashlib
 from pathlib import Path
 import numpy as np
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+    attest_canonical_zeeman_metadata,
+)
 from scipy.stats import t as student_t
 
 from utils.data_paths import production_zeeman_ensemble_files
@@ -60,17 +67,29 @@ def load_production_ensembles(
                     f"Zeeman profile mismatch in {metadata_path}: "
                     f"expected {expected_profile!r}, found {resolved!r}"
                 )
+        if parameters.get("resolved_zeeman_magnet_profile") != CANONICAL_ZEEMAN_PROFILE_NAME:
+            raise ValueError(
+                f"Zeeman laboratory provenance mismatch in {metadata_path}"
+            )
+        try:
+            laboratory = attest_canonical_zeeman_metadata(metadata, allow_legacy=True)
+        except ValueError as error:
+            raise ValueError(
+                f"Zeeman laboratory provenance mismatch in {metadata_path}"
+            ) from error
         states = np.load(path, mmap_mode="r")
         if states.ndim != 2 or states.shape[1] != 6:
             raise ValueError(f"Invalid particle-state shape in {path}: {states.shape}")
         if not np.all(np.isfinite(states)):
             raise ValueError(f"Non-finite particle states in {path}")
-        if expected_profile is not None and list(states.shape) != metadata.get("shape"):
+        if list(states.shape) != metadata.get("shape"):
             raise ValueError(f"State/metadata shape mismatch in {path}")
-        if expected_profile is not None and len(states) != int(metadata.get("n_survivors", -1)):
+        if len(states) != int(metadata.get("n_survivors", -1)):
             raise ValueError(f"State/metadata survivor-count mismatch in {path}")
         expected_hash = metadata.get("output_sha256")
-        if verify_sha256 and expected_hash:
+        if verify_sha256:
+            if not isinstance(expected_hash, str):
+                raise ValueError(f"Missing SHA-256 provenance in {metadata_path}")
             digest = hashlib.sha256()
             with path.open("rb") as stream:
                 for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -107,6 +126,10 @@ def load_production_ensembles(
                 "zeeman_profile": parameters.get("resolved_zeeman_magnet_profile"),
                 "metadata_path": metadata_path,
                 "source_git_commit": metadata.get("software", {}).get("git_commit"),
+                "laboratory_spec_version": metadata.get("laboratory_spec_version"),
+                "laboratory_spec_sha256": metadata.get("laboratory_spec_sha256"),
+                "zeeman_profile_sha256": laboratory["zeeman_profile_sha256"],
+                "legacy_attested_profile": laboratory["legacy_attested_profile"],
                 "generation": {
                     "n_initial_atoms": parameters.get("n_initial_atoms"),
                     "dt_s": parameters.get("dt_s"),

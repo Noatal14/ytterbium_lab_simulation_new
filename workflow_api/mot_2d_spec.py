@@ -5,6 +5,12 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+)
+
 ROLE_SEEDS = {
     "discovery": list(range(3000, 3005)),
     "refinement": list(range(3005, 3010)),
@@ -19,6 +25,8 @@ RELEVANT_FILES = (
     "workflow_api/mot_2d_spec.py", "workflow_api/mot_2d_plan.py",
     "workflow_api/mot_2d_sources.py",
     "workflow_api/repository_paths.py",
+    "lab_setup/physical_specification.py",
+    "lab_setup/specifications/laboratory_physical_v1.json",
 )
 
 FIXED_DESIGN: dict[str, Any] = {
@@ -45,7 +53,13 @@ def build_manifest(
     return {
         "kind": "mot_2d_s0_campaign", "name": name, "stage": "smoke",
         "s0_values": list(s0_values), "stages": {},
-        "ensemble_source": {"directory": ensemble_directory, "zeeman_profile": zeeman_profile},
+        "ensemble_source": {
+            "directory": ensemble_directory,
+            "zeeman_profile": zeeman_profile,
+            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+        },
         "seed_roles": roles, "input_ensembles": frozen_inputs,
         "mot_seeds": {role: [40_000 + seed for seed in seeds] for role, seeds in roles.items()},
         "provenance": {

@@ -32,7 +32,6 @@ from utils.data_paths import ZEEMAN_VALIDATION_DIR
 DEFAULT_REPORT_FILE = ZEEMAN_VALIDATION_DIR / "zeeman_validation.json"
 DEFAULT_PLOT_FILE = ZEEMAN_VALIDATION_DIR / "zeeman_validation.png"
 EXPECTED_MAGNET_RING_COUNTS = {
-    "active": 20,
     "corrected_projectant_19ring_20261005": 19,
 }
 

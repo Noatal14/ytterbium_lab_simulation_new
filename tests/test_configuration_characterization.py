@@ -13,6 +13,10 @@ from types import MappingProxyType
 import numpy as np
 
 import config
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    LABORATORY_PHYSICAL_SPECIFICATION,
+)
 from simulations.zeeman import _resolved_run_parameters
 from studies import mot_2d_s0_campaign, mot_3d_campaign
 from studies.mot_2d.optimization import BOUNDS_DETUNING, BOUNDS_MAGNET_RADIUS_M
@@ -93,6 +97,7 @@ def _resolved_baseline_payload():
             "GREEN_SATURATION_INTENSITY_W_M2": config.GREEN_SATURATION_INTENSITY_W_M2,
             "GREEN_SATURATION_INTENSITY_MW_CM2": config.GREEN_SATURATION_INTENSITY_MW_CM2,
         },
+        "versioned_laboratory_physical_contract": LABORATORY_PHYSICAL_SPECIFICATION,
         "geometry": geometry,
         "beam_source": {
             "ZEEMAN_BEAM_DIRECTION": config.ZEEMAN_BEAM_DIRECTION,
@@ -186,11 +191,21 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "fc1d36c7dca17091f29a4a95a70413a1b1c16d1861c332364a1113d665125179"
+        "e687fab3bcac25721c4b4d03ae826d837b88a05af275924797d1cb57e6b50578"
     )
 
 
 def test_atomic_geometry_beam_and_source_cross_field_invariants():
+    physical = LABORATORY_PHYSICAL_SPECIFICATION
+    assert physical["species"]["name"] == config.YB171_NAME
+    assert physical["species"]["mass_amu"] == config.YB171_MASS_AMU
+    assert physical["transitions"]["blue"]["wavelength_m"] == config.BLUE_TRANSITION_WAVELENGTH_M
+    assert physical["transitions"]["blue"]["gamma_rad_s"] == config.BLUE_TRANSITION_GAMMA_RAD_S
+    assert physical["transitions"]["green"]["wavelength_m"] == config.GREEN_TRANSITION_WAVELENGTH_M
+    assert physical["transitions"]["green"]["gamma_rad_s"] == config.GREEN_TRANSITION_GAMMA_RAD_S
+    assert physical["source"]["oven_temperature_C"] == config.OVEN_TEMPERATURE_C
+    assert physical["source"]["collimation_angle_deg"] == config.COLLIMATION_ANGLE_DEG
+    assert physical["apparatus"]["science_region_center_z_m"] == config.Geometry.SCIENCE_REGION_CENTER_Z_M
     assert tuple(config.Atom.__dataclass_fields__) == ("name", "mass_kg", "mass_amu")
     assert tuple(config.Transition.__dataclass_fields__) == (
         "wavelength_m", "gamma_rad_s", "lande_g"
@@ -220,9 +235,9 @@ def test_zeeman_profiles_and_corrected_generator_metadata_binding():
         assert all(left < right for left, right in zip(positions_m, positions_m[1:]))
     active = config.ZEEMAN_MAGNET_PROFILES[config.ACTIVE_ZEEMAN_MAGNET_PROFILE]
     corrected = config.ZEEMAN_MAGNET_PROFILES[generate_ensembles.PROFILE_NAME]
-    assert config.ACTIVE_ZEEMAN_MAGNET_PROFILE == "active"
-    assert tuple(map(len, active)) == (20, 20, 20)
-    assert _canonical_sha256(active) == "4b8fbea7c7e1721d814db4f062cfcc7b1115462aca8712579dbbf8e56156faf0"
+    assert "active" not in config.ZEEMAN_MAGNET_PROFILES
+    assert config.ACTIVE_ZEEMAN_MAGNET_PROFILE == CANONICAL_ZEEMAN_PROFILE_NAME
+    assert active is corrected
     assert generate_ensembles.PROFILE_NAME == "corrected_projectant_19ring_20261005"
     assert generate_ensembles.OUTPUT_DIR.name == generate_ensembles.PROFILE_NAME
     assert generate_ensembles.N_INITIAL == config.DEFAULT_NUM_PARTICLES
@@ -233,7 +248,7 @@ def test_zeeman_profiles_and_corrected_generator_metadata_binding():
     }
     resolved = _resolved_run_parameters({"zeeman_field_config": generate_ensembles.corrected_field()})
     assert resolved["resolved_zeeman_magnet_profile"] == generate_ensembles.PROFILE_NAME
-    assert resolved["active_zeeman_magnet_profile"] == "active"
+    assert resolved["active_zeeman_magnet_profile"] == generate_ensembles.PROFILE_NAME
     assert resolved["dt_s"] == config.ZEEMAN_SIM_CONFIG["dt_s"]
     assert resolved["collimation_angle_deg"] == config.COLLIMATION_ANGLE_DEG
 

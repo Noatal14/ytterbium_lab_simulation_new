@@ -1,7 +1,16 @@
 import json
+import hashlib
 from pathlib import Path
 
 import numpy as np
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+    LABORATORY_PHYSICAL_SPECIFICATION,
+)
+
+_PROFILE = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
+_FIELD_CONFIG = {key: list(_PROFILE[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
 
 from utils.mot_2d_study import (
     load_production_ensembles,
@@ -506,7 +515,15 @@ def test_load_production_ensembles_uses_ordered_fixed_subsets(tmp_path):
         path.with_suffix(".json").write_text(
             json.dumps(
                 {
-                    "parameters": {"seed": seed, "n_initial_atoms": 50000},
+                    "shape": list(states.shape), "dtype": str(states.dtype),
+                    "n_survivors": len(states),
+                    "output_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                    "parameters": {"seed": seed, "n_initial_atoms": 50000,
+                                   "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                                   "zeeman_field_config": _FIELD_CONFIG},
                     "survival_fraction": size / 50000,
                 }
             ),
@@ -530,11 +547,20 @@ def test_load_production_ensembles_uses_ordered_fixed_subsets(tmp_path):
 def test_load_production_ensembles_can_select_explicit_seed_order(tmp_path):
     for seed in (3000, 3001, 3002):
         path = tmp_path / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
-        np.save(path, np.full((4, 6), seed, dtype=float))
+        states = np.full((4, 6), seed, dtype=float)
+        np.save(path, states)
         path.with_suffix(".json").write_text(
             json.dumps(
                 {
-                    "parameters": {"seed": seed, "n_initial_atoms": 50000},
+                    "shape": list(states.shape), "dtype": str(states.dtype),
+                    "n_survivors": len(states),
+                    "output_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                    "parameters": {"seed": seed, "n_initial_atoms": 50000,
+                                   "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                                   "zeeman_field_config": _FIELD_CONFIG},
                     "survival_fraction": 4 / 50000,
                 }
             ),

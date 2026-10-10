@@ -18,6 +18,11 @@ import numpy as np
 from scipy.stats import t as student_t
 
 from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+)
 from studies.mot_2d.optimization import evaluate_configuration
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
@@ -81,6 +86,9 @@ def run_seeds(args):
                     str(args.ensemble_dir) if args.ensemble_dir else None
                 ),
                 "zeeman_profile": args.expected_zeeman_profile,
+                "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
                 "git_commit": current_commit,
             },
             "replicate": row,

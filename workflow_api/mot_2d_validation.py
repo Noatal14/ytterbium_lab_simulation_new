@@ -9,6 +9,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+    attest_canonical_zeeman_metadata,
+)
 from workflow_api.repository_paths import resolve_repo_relative
 
 from workflow_api.models import StageProgress
@@ -104,7 +111,21 @@ def modern_contract(
     )
     if any(key not in fixed for key in required_design) or fixed.get("solver") != "RK4StHybridCustom":
         errors.append("fixed scientific design is incomplete")
-    if not isinstance(source.get("directory"), str) or not isinstance(source.get("zeeman_profile"), str):
+    laboratory_keys = {
+        "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
+    }
+    source_laboratory_keys = laboratory_keys.intersection(source)
+    if source_laboratory_keys and source_laboratory_keys != laboratory_keys:
+        errors.append("ensemble source laboratory provenance is incomplete")
+    if (
+        not isinstance(source.get("directory"), str)
+        or source.get("zeeman_profile") != CANONICAL_ZEEMAN_PROFILE_NAME
+        or (source_laboratory_keys and (
+            source.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
+            or source.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
+            or source.get("zeeman_profile_sha256") != CANONICAL_ZEEMAN_PROFILE_SHA256
+        ))
+    ):
         errors.append("ensemble source is incomplete")
     else:
         try:
@@ -131,7 +152,11 @@ def modern_contract(
             observed = []
             for record in records:
                 item = _mapping(record)
-                required = ("zeeman_seed", "path", "metadata_path", "sha256", "metadata_sha256", "shape", "dtype", "survivor_count", "zeeman_profile", "source_git_commit", "generation")
+                required = (
+                    "zeeman_seed", "path", "metadata_path", "sha256",
+                    "metadata_sha256", "shape", "dtype", "survivor_count",
+                    "zeeman_profile", "source_git_commit", "generation",
+                )
                 if any(item.get(key) is None for key in required):
                     errors.append(f"{role} frozen input record is incomplete")
                     break
@@ -161,6 +186,12 @@ def modern_contract(
                             key: parameters.get(key)
                             for key in ("n_initial_atoms", "dt_s", "stochastic", "collimation_angle_deg")
                         }
+                        laboratory = attest_canonical_zeeman_metadata(
+                            metadata, allow_legacy=True
+                        )
+                        record_laboratory_keys = laboratory_keys.intersection(item)
+                        if record_laboratory_keys and record_laboratory_keys != laboratory_keys:
+                            raise ValueError("partial frozen laboratory provenance")
                         if (
                             item.get("zeeman_profile") != source.get("zeeman_profile")
                             or _sha256(paths[0]) != item["sha256"]
@@ -171,12 +202,16 @@ def modern_contract(
                             or metadata.get("n_survivors") != item["survivor_count"]
                             or parameters.get("seed") != item.get("zeeman_seed")
                             or parameters.get("resolved_zeeman_magnet_profile") != source.get("zeeman_profile")
+                            or (record_laboratory_keys and any(
+                                item.get(key) != laboratory[key]
+                                for key in laboratory_keys
+                            ))
                             or software.get("git_commit") != item.get("source_git_commit")
                             or metadata_generation != generation
                         ):
                             errors.append(f"{role} frozen input provenance does not match local files")
                     except (OSError, ValueError, TypeError, json.JSONDecodeError):
-                        errors.append(f"{role} frozen input provenance cannot be validated")
+                        errors.append(f"{role} frozen input provenance does not match local files")
                 observed.append(item.get("zeeman_seed"))
             if observed != seeds:
                 errors.append(f"{role} frozen input seed order does not match")

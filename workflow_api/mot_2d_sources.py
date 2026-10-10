@@ -9,6 +9,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+    attest_canonical_zeeman_metadata,
+)
 from workflow_api.repository_paths import canonical_repo_relative
 
 SOURCE_ROOT = Path("data/particle_states/after_zeeman")
@@ -85,8 +92,11 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
             or not all(parameters.get(key) is not None for key in required_generation)
             or parameters.get("resolved_zeeman_magnet_profile") is None
             or software.get("git_commit") is None
+            or parameters.get("resolved_zeeman_magnet_profile")
+            != CANONICAL_ZEEMAN_PROFILE_NAME
         ):
             raise ValueError("incomplete provenance")
+        provenance = attest_canonical_zeeman_metadata(metadata, allow_legacy=True)
         array = np.load(state, mmap_mode="r", allow_pickle=False)
         digest = _sha256(state)
         metadata_digest = _sha256(metadata_path)
@@ -101,7 +111,7 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
         profiles.add(str(parameters["resolved_zeeman_magnet_profile"]))
         commits.add(str(software["git_commit"]))
         survivor_counts.append(len(array)); identities.append(f"{seed}:{digest}:{metadata_digest}")
-        records.append({
+        record = {
             "zeeman_seed": seed,
             "path": canonical_repo_relative(repository_root, state, allowed_root=SOURCE_ROOT, require="file"),
             "metadata_path": canonical_repo_relative(repository_root, metadata_path, allowed_root=SOURCE_ROOT, require="file"),
@@ -111,8 +121,16 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
             "survivor_count": len(array),
             "zeeman_profile": str(parameters["resolved_zeeman_magnet_profile"]),
             "source_git_commit": str(software["git_commit"]),
+            "zeeman_profile_sha256": provenance["zeeman_profile_sha256"],
+            "legacy_attested_profile": provenance["legacy_attested_profile"],
             "generation": {key: parameters.get(key) for key in ("n_initial_atoms", "dt_s", "stochastic", "collimation_angle_deg")},
-        })
+        }
+        if not provenance["legacy_attested_profile"]:
+            record.update({
+                "laboratory_spec_version": provenance["laboratory_spec_version"],
+                "laboratory_spec_sha256": provenance["laboratory_spec_sha256"],
+            })
+        records.append(record)
     if len(profiles) != 1 or len(commits) != 1:
         raise ValueError("mixed source provenance")
     relative = directory.resolve().relative_to(repository_root)

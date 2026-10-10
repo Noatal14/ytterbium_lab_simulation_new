@@ -2,9 +2,17 @@ import hashlib
 import json
 
 import numpy as np
+import pytest
 
 from config import ZEEMAN_MAGNET_PROFILES
-from simulations.zeeman import _resolved_run_parameters, write_zeeman_metadata
+from simulations.zeeman import (
+    _resolved_run_parameters, write_zeeman_metadata, zeeman_simulation,
+)
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
+)
 
 
 def test_zeeman_metadata_records_shape_parameters_and_file_hash(tmp_path):
@@ -33,6 +41,9 @@ def test_zeeman_metadata_records_shape_parameters_and_file_hash(tmp_path):
     assert metadata["parameters"]["seed"] == 123
     assert metadata["parameters"]["dt_s"] == 4e-5
     assert metadata["output_sha256"] == expected_hash
+    assert metadata["laboratory_spec_version"] == LABORATORY_SPEC_VERSION
+    assert metadata["laboratory_spec_sha256"] == LABORATORY_SPEC_SHA256
+    assert metadata["zeeman_profile_sha256"] == CANONICAL_ZEEMAN_PROFILE_SHA256
 
 
 def test_resolved_parameters_identify_explicit_corrected_magnet_profile():
@@ -50,3 +61,21 @@ def test_resolved_parameters_identify_explicit_corrected_magnet_profile():
     )
 
     assert parameters["resolved_zeeman_magnet_profile"] == profile_name
+
+
+def test_resolved_parameters_reject_noncanonical_field_arrays():
+    radii, positions, tilts = ZEEMAN_MAGNET_PROFILES[
+        "corrected_projectant_19ring_20261005"
+    ]
+    changed = [list(radii), list(positions), list(tilts)]
+    changed[0][0] += 1e-6
+    with pytest.raises(ValueError, match="canonical magnet profile"):
+        _resolved_run_parameters({"zeeman_field_config": {
+            "radii_m": changed[0], "positions_m": changed[1],
+            "tilt_angles_deg": changed[2],
+        }})
+    with pytest.raises(ValueError, match="canonical magnet profile"):
+        zeeman_simulation(N_particles=0, zeeman_field_config={
+            "radii_m": changed[0], "positions_m": changed[1],
+            "tilt_angles_deg": changed[2],
+        })
