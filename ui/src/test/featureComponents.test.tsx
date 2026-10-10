@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { MOT_2D_SPECIFICATION_V1 } from "../generated/mot2dSpec.v1";
 import { CandidateTable } from "../features/shared/CandidateTable";
@@ -14,7 +14,7 @@ import { ConfirmationStage } from "../features/campaign/ConfirmationStage";
 import type { ScreeningSubmissionPreview } from "../api/clients/screening";
 import type { SmokeLifecycle, SmokeSubmissionPreview } from "../api/clients/smoke";
 import type { ConfirmationPreview, RefinementChainStatus, RefinementLifecycle, RefinementSubmissionPreview } from "../api/clients/refinement";
-import { parseConfirmationResult, parseRefinementChainStatus, parseRefinementLifecycle, parseScreeningLifecycle, parseScreeningResult, parseSmokeLifecycle } from "../api/schema/domain";
+import { parseConfirmationResult, parseRefinementChainStatus, parseRefinementLifecycle, parseRefinementSubmissionResult, parseScreeningLifecycle, parseScreeningResult, parseSmokeLifecycle } from "../api/schema/domain";
 
 const noop = () => undefined;
 const smokeLifecycle: SmokeLifecycle = {
@@ -167,6 +167,162 @@ describe("shared workflow presentation", () => {
     const view = render(<RefinementFlow {...common} state="idle" preview={null} />);
     view.rerender(<RefinementFlow {...common} state="review" preview={chainPreview} />);
     expect(screen.getByRole("heading", { name: "Submit four-round Refinement chain" })).toHaveFocus();
+  });
+
+  it("keeps the submitted Refinement receipt visible and focused after its status snapshot clears", () => {
+    const rounds = [1, 2, 3, 4].map((round) => ({
+      round: round as 1 | 2 | 3 | 4,
+      job_id: `${round}[].zeus-master`,
+      depends_on_job_id: round === 1 ? null : `${round - 1}[].zeus-master`,
+    }));
+    const status = parseRefinementChainStatus({
+      ...chainStatus,
+      chain: {
+        status: "submitted",
+        dependency: "afterok",
+        rounds: rounds.map((round) => ({ ...round, state: "submitted" })),
+      },
+      next_action: "none",
+    });
+    const result = parseRefinementSubmissionResult({
+      status: "submitted",
+      campaign_id: "c",
+      stage: "refine",
+      chain: { status: "submitted", rounds },
+      submitted_at: "2026-10-09T10:05:00Z",
+      local_sync: { status: "not_synchronized" },
+    });
+    const props = {
+      visible: true,
+      check: "ready" as const,
+      state: "submitted" as const,
+      preview: null,
+      result,
+      error: "",
+      onRefresh: noop,
+      onPreview: noop,
+      onConfirm: noop,
+      onReset: noop,
+      onViewJobs: noop,
+    };
+    const view = render(<RefinementFlow {...props} status={status} />);
+    const receipt = screen
+      .getByText("All four Zeus acknowledgements were recorded. Later rounds wait for the previous round to succeed.")
+      .closest('[role="status"]');
+    expect(receipt).toHaveFocus();
+    expect(receipt).toHaveTextContent(
+      "no action is needed and it is safe to close this application",
+    );
+
+    view.rerender(<RefinementFlow {...props} status={null} />);
+    expect(screen.getByText("Refinement chain submitted")).toBeVisible();
+    expect(receipt).toHaveFocus();
+  });
+
+  it("recovers the complete submitted Refinement receipt from authoritative status without an in-memory result", () => {
+    const status = parseRefinementChainStatus({
+      ...chainStatus,
+      chain: {
+        status: "submitted",
+        dependency: "afterok",
+        rounds: [1, 2, 3, 4].map((round) => ({
+          round,
+          state: "submitted",
+          job_id: `${round}[].zeus-master`,
+          depends_on_job_id:
+            round === 1 ? null : `${round - 1}[].zeus-master`,
+        })),
+      },
+      next_action: "none",
+    });
+    render(
+      <RefinementFlow
+        visible
+        status={status}
+        check="ready"
+        state="submitted"
+        preview={null}
+        result={null}
+        error=""
+        onRefresh={noop}
+        onPreview={noop}
+        onConfirm={noop}
+        onReset={noop}
+        onViewJobs={noop}
+      />,
+    );
+
+    const receipt = screen
+      .getByText(
+        "All four Zeus acknowledgements were recorded. Later rounds wait for the previous round to succeed.",
+      )
+      .closest('[role="status"]');
+    expect(receipt).toHaveFocus();
+    expect(within(receipt as HTMLElement).getAllByRole("listitem")).toHaveLength(
+      4,
+    );
+    expect(within(receipt as HTMLElement).getAllByRole("listitem")[0]).toHaveTextContent(
+      "Round 1: 1[].zeus-master",
+    );
+    expect(within(receipt as HTMLElement).getAllByRole("listitem")[1]).toHaveTextContent(
+      "Round 2: 2[].zeus-master · afterok 1[].zeus-master",
+    );
+    expect(within(receipt as HTMLElement).getAllByRole("listitem")[2]).toHaveTextContent(
+      "Round 3: 3[].zeus-master · afterok 2[].zeus-master",
+    );
+    expect(within(receipt as HTMLElement).getAllByRole("listitem")[3]).toHaveTextContent(
+      "Round 4: 4[].zeus-master · afterok 3[].zeus-master",
+    );
+    expect(receipt).toHaveTextContent(
+      "No later campaign stage was submitted. Zeus runs independently; no action is needed and it is safe to close this application.",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Review Refinement submission" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: /^Submit four Refinement rounds$/,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps a blocked Refinement outcome focused when its durable receipt disappears", () => {
+    const partial = parseRefinementChainStatus({
+      ...chainStatus,
+      chain: {
+        status: "partial",
+        dependency: "afterok",
+        rounds: [
+          { round: 1, state: "submitted", job_id: "1[].zeus-master", depends_on_job_id: null },
+          { round: 2, state: "not_submitted", job_id: null, depends_on_job_id: null },
+          { round: 3, state: "not_submitted", job_id: null, depends_on_job_id: null },
+          { round: 4, state: "not_submitted", job_id: null, depends_on_job_id: null },
+        ],
+      },
+      next_action: "inspect_zeus",
+    });
+    const props = {
+      visible: true,
+      check: "ready" as const,
+      state: "blocked" as const,
+      preview: null,
+      result: null,
+      error: "Automatic retry is blocked.",
+      onRefresh: noop,
+      onPreview: noop,
+      onConfirm: noop,
+      onReset: noop,
+      onViewJobs: noop,
+    };
+    const view = render(<RefinementFlow {...props} status={partial} />);
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveFocus();
+
+    view.rerender(<RefinementFlow {...props} status={null} check="error" />);
+    expect(alert).toBeVisible();
+    expect(alert).toHaveFocus();
+    expect(screen.getByRole("button", { name: "View Zeus jobs" })).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Review again" })).not.toBeInTheDocument();
   });
 
   it("owns Confirmation lifecycle and review focus", () => {
