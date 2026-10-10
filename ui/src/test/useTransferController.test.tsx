@@ -87,4 +87,111 @@ describe("useTransferController", () => {
     expect(result.current.error).toBe("");
     expect(result.current.result).toBe(completed);
   });
+
+  it("allows only one preview and one confirmation request at a time", async () => {
+    const previewRequest = deferred<any>();
+    const confirmRequest = deferred<any>();
+    const api = { preview: vi.fn(() => previewRequest.promise), confirm: vi.fn(() => confirmRequest.promise) };
+    const { result } = renderHook(() => useTransferController({ campaignId: "campaign", snapshot, api }));
+    let firstPreview!: Promise<void>;
+    act(() => {
+      firstPreview = result.current.previewTransfer();
+      void result.current.previewTransfer();
+    });
+    expect(api.preview).toHaveBeenCalledTimes(1);
+    previewRequest.resolve({ preview_token: "review-token" });
+    await act(() => firstPreview);
+    let firstConfirm!: Promise<void>;
+    act(() => {
+      firstConfirm = result.current.confirmTransfer();
+      void result.current.confirmTransfer();
+    });
+    expect(api.confirm).toHaveBeenCalledTimes(1);
+    confirmRequest.resolve({ campaign_id: "campaign" });
+    await act(() => firstConfirm);
+  });
+
+  it("retires a pending preview when reset is selected", async () => {
+    const pending = deferred<any>();
+    const api = { preview: vi.fn(() => pending.promise), confirm: vi.fn() };
+    const { result } = renderHook(() => useTransferController({ campaignId: "campaign", snapshot, api }));
+    let request!: Promise<void>;
+    act(() => { request = result.current.previewTransfer(); });
+    act(() => result.current.reset());
+    pending.resolve({ preview_token: "stale-token" });
+    await act(() => request);
+    expect(result.current.state).toBe("idle");
+    expect(result.current.preview).toBeNull();
+  });
+
+  it.each([
+    ["campaign", "campaign-b", snapshot],
+    ["profile", "campaign-a", { ...snapshot, profile: { ...snapshot.profile, username: "other.user", project_directory: "/home/other.user/ytterbium_lab_simulation_new" } }],
+  ] as const)("retires a pending preview when the %s changes", async (_label, nextCampaign, nextSnapshot) => {
+    const pending = deferred<any>();
+    const api = { preview: vi.fn(() => pending.promise), confirm: vi.fn() };
+    const { result, rerender } = renderHook(
+      ({ campaignId, value }: { campaignId: string; value: ZeusSnapshot }) => useTransferController({ campaignId, snapshot: value, api }),
+      { initialProps: { campaignId: "campaign-a", value: snapshot } },
+    );
+    let request!: Promise<void>;
+    act(() => { request = result.current.previewTransfer(); });
+    rerender({ campaignId: nextCampaign, value: nextSnapshot });
+    pending.resolve({ preview_token: "stale-token" });
+    await act(() => request);
+    expect(result.current.state).toBe("idle");
+    expect(result.current.preview).toBeNull();
+    expect(result.current.result).toBeNull();
+  });
+
+  it("retires a pending preview when the API instance changes", async () => {
+    const pending = deferred<any>();
+    const firstApi = { preview: vi.fn(() => pending.promise), confirm: vi.fn() };
+    const secondApi = { preview: vi.fn(), confirm: vi.fn() };
+    const { result, rerender } = renderHook(
+      ({ api }: { api: typeof firstApi }) => useTransferController({ campaignId: "campaign", snapshot, api }),
+      { initialProps: { api: firstApi } },
+    );
+    let request!: Promise<void>;
+    act(() => { request = result.current.previewTransfer(); });
+    rerender({ api: secondApi });
+    pending.resolve({ preview_token: "stale-token" });
+    await act(() => request);
+    expect(result.current.state).toBe("idle");
+    expect(result.current.preview).toBeNull();
+  });
+
+  it.each(["reset", "campaign", "profile", "api", "unmount"] as const)("retires a pending confirmation after %s", async (boundary) => {
+    const pending = deferred<any>();
+    const firstApi = { preview: vi.fn().mockResolvedValue({ preview_token: "review-token" }), confirm: vi.fn(() => pending.promise) };
+    const secondApi = { preview: vi.fn(), confirm: vi.fn() };
+    const { result, rerender, unmount } = renderHook(
+      ({ campaignId, value, api }: { campaignId: string; value: ZeusSnapshot; api: typeof firstApi }) => useTransferController({ campaignId, snapshot: value, api }),
+      { initialProps: { campaignId: "campaign-a", value: snapshot, api: firstApi } },
+    );
+    await act(() => result.current.previewTransfer());
+    let request!: Promise<void>;
+    act(() => { request = result.current.confirmTransfer(); });
+    if (boundary === "reset") act(() => result.current.reset());
+    else if (boundary === "campaign") rerender({ campaignId: "campaign-b", value: snapshot, api: firstApi });
+    else if (boundary === "profile") rerender({ campaignId: "campaign-a", value: { ...snapshot, profile: { ...snapshot.profile, username: "other.user" } }, api: firstApi });
+    else if (boundary === "api") rerender({ campaignId: "campaign-a", value: snapshot, api: secondApi });
+    else unmount();
+    pending.resolve({ campaign_id: "stale-campaign" });
+    await act(() => request);
+    if (boundary !== "unmount") {
+      expect(result.current.state).toBe("idle");
+      expect(result.current.result).toBeNull();
+    }
+  });
+
+  it("releases the in-flight lock after a rejected request", async () => {
+    const api = { preview: vi.fn().mockRejectedValueOnce(new Error("temporary")).mockResolvedValueOnce({ preview_token: "retry-token" }), confirm: vi.fn() };
+    const { result } = renderHook(() => useTransferController({ campaignId: "campaign", snapshot, api }));
+    await act(() => result.current.previewTransfer());
+    await act(() => result.current.previewTransfer());
+    expect(api.preview).toHaveBeenCalledTimes(2);
+    expect(result.current.state).toBe("review");
+    expect(result.current.preview?.preview_token).toBe("retry-token");
+  });
 });
