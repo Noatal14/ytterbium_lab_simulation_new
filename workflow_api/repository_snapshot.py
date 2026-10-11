@@ -45,6 +45,7 @@ ZEEMAN_RELEVANT_FILES = (
     "workflow_api/preview_registry.py",
     "workflow_api/repository_snapshot.py",
     "workflow_api/run_records.py",
+    "workflow_api/run_execution.py",
     "workflow_api/run_specification.py",
     "workflow_api/specifications/individual_run_v1.json",
     "workflow_api/specifications/zeeman_individual_v1.json",

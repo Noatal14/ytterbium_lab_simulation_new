@@ -167,6 +167,7 @@ def test_zeeman_snapshot_provider_audits_exact_runtime_and_planner_ledger(tmp_pa
         "utils/data_paths.py",
         "utils/file_helpers.py",
         "workflow_api/run_records.py",
+        "workflow_api/run_execution.py",
         "workflow_api/run_specification.py",
         "workflow_api/zeeman_run_plan.py",
         "workflow_api/zeeman_run_creation.py",
