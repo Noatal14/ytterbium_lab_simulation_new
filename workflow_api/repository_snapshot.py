@@ -45,7 +45,10 @@ ZEEMAN_RELEVANT_FILES = (
     "workflow_api/preview_registry.py",
     "workflow_api/pinned_ssh.py",
     "workflow_api/repository_snapshot.py",
+    "workflow_api/repository_paths.py",
+    "workflow_api/run_discovery.py",
     "workflow_api/run_records.py",
+    "workflow_api/run_results.py",
     "workflow_api/run_execution.py",
     "workflow_api/run_specification.py",
     "workflow_api/specifications/individual_run_v1.json",
@@ -58,6 +61,50 @@ ZEEMAN_RELEVANT_FILES = (
     "workflow_api/zeus_snapshot.py",
     "workflow_api/zeeman_run_plan.py",
     "workflow_api/zeeman_run_specification.py",
+)
+
+# Exact clean-worktree ledger for individual 2D-MOT admission.  Input particle
+# files are not Git inputs: the source catalog independently re-attests every
+# constituent artifact at preview and confirmation time.
+MOT_2D_INDIVIDUAL_RELEVANT_FILES = (
+    "config.py",
+    "pyproject.toml",
+    "requirements.txt",
+    "simulations/mot_2d.py",
+    "lab_setup/_3d_mot_mag_field.py",
+    "lab_setup/atom_species.py",
+    "lab_setup/config_builder.py",
+    "lab_setup/gravity.py",
+    "lab_setup/laser_setup_2d_mot.py",
+    "lab_setup/laser_setup_3d.py",
+    "lab_setup/mag_field_2d_mot.py",
+    "lab_setup/mag_field_Zeeman.py",
+    "lab_setup/numerical_policy.py",
+    "lab_setup/physical_specification.py",
+    "lab_setup/specifications/laboratory_physical_v1.json",
+    "lab_setup/specifications/numerical_policy_v1.json",
+    "lab_setup/zeeman_laser_setup.py",
+    "lab_setup/zones.py",
+    "utils/RK4StHybridCustom.py",
+    "utils/RK4StCustom.py",
+    "utils/ScipyIVP_3DCustom.py",
+    "utils/data_paths.py",
+    "utils/file_helpers.py",
+    "utils/simulation_helpers.py",
+    "workflow_api/mot_2d_individual_sources.py",
+    "workflow_api/mot_2d_run_creation.py",
+    "workflow_api/mot_2d_run_plan.py",
+    "workflow_api/mot_2d_run_specification.py",
+    "workflow_api/mot_2d_sources.py",
+    "workflow_api/preview_registry.py",
+    "workflow_api/repository_snapshot.py",
+    "workflow_api/repository_paths.py",
+    "workflow_api/run_discovery.py",
+    "workflow_api/run_records.py",
+    "workflow_api/run_results.py",
+    "workflow_api/run_specification.py",
+    "workflow_api/specifications/individual_run_v1.json",
+    "workflow_api/specifications/mot_2d_individual_v1.json",
 )
 
 
@@ -204,4 +251,15 @@ class ZeemanRepositorySnapshotProvider(RepositorySnapshotProvider):
             repository_root,
             git_executable,
             audited_paths=ZEEMAN_RELEVANT_FILES,
+        )
+
+
+class Mot2DIndividualRepositorySnapshotProvider(RepositorySnapshotProvider):
+    """Pinned Git provider scoped to individual 2D-MOT admission/runtime."""
+
+    def __init__(self, repository_root: Path, git_executable: Path):
+        super().__init__(
+            repository_root,
+            git_executable,
+            audited_paths=MOT_2D_INDIVIDUAL_RELEVANT_FILES,
         )
