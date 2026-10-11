@@ -248,9 +248,17 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Zeus confirmation preparation is unavailable.",
         ),
+        "zeus_confirmation_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Zeus confirmation submission is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
+        ),
+        "individual_mot_2d_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Individual 2D-MOT runs are unavailable.",
         ),
     }
 )
@@ -704,6 +712,25 @@ CONFIRMATION_TRANSITION = _frozen(
     CONFIRMATION_TRANSITION.fallback,
     CONFIRMATION_TRANSITION.fallback_code,
 )
+CONFIRMATION_SUBMISSION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "campaign_not_canonical", "local_checkout_mismatch",
+        "local_files_changed", "remote_response_invalid",
+        "too_many_pending_previews", "confirmation_invalid",
+        "confirmation_expired", "confirmation_not_prepared",
+        "confirmation_preparation_invalid", "confirmation_already_submitted",
+        "confirmation_submission_busy", "confirmation_submission_outcome_unknown",
+        "zeus_authentication_required", "zeus_host_key_untrusted",
+        "zeus_timeout", "zeus_unreachable",
+    },
+    "Confirmation submission stopped safely.",
+    {
+        "confirmation_already_submitted", "confirmation_submission_busy",
+        "confirmation_submission_outcome_unknown",
+    },
+    "confirmation_submission_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -804,6 +831,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "refinement_transition": REFINEMENT_TRANSITION,
         "refinement_submission": REFINEMENT_SUBMISSION,
         "confirmation_transition": CONFIRMATION_TRANSITION,
+        "confirmation_submission": CONFIRMATION_SUBMISSION,
     }
 )
 

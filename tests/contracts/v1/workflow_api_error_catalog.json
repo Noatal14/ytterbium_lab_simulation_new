@@ -4,6 +4,146 @@
   "wire_envelope": "unversioned-error",
   "cases": [
     {
+      "domain": "confirmation_submission",
+      "case": "<fallback>",
+      "code": "confirmation_submission_failed",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_already_submitted",
+      "code": "confirmation_already_submitted",
+      "status": 409,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_not_prepared",
+      "code": "confirmation_not_prepared",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_preparation_invalid",
+      "code": "confirmation_preparation_invalid",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_submission_busy",
+      "code": "confirmation_submission_busy",
+      "status": 409,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "confirmation_submission_outcome_unknown",
+      "code": "confirmation_submission_outcome_unknown",
+      "status": 409,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
+      "domain": "confirmation_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Confirmation submission stopped safely."
+    },
+    {
       "domain": "confirmation_transition",
       "case": "<fallback>",
       "code": "confirmation_preparation_failed",
@@ -1391,10 +1531,24 @@
     },
     {
       "domain": "route_unavailable",
+      "case": "individual_mot_2d_unavailable",
+      "code": "individual_mot_2d_unavailable",
+      "status": 503,
+      "message": "Individual 2D-MOT runs are unavailable."
+    },
+    {
+      "domain": "route_unavailable",
       "case": "individual_zeeman_unavailable",
       "code": "individual_zeeman_unavailable",
       "status": 503,
       "message": "Individual Zeeman runs are unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_confirmation_submission_unavailable",
+      "code": "zeus_confirmation_submission_unavailable",
+      "status": 503,
+      "message": "Zeus confirmation submission is unavailable."
     },
     {
       "domain": "route_unavailable",

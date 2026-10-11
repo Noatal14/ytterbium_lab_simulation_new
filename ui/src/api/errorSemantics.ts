@@ -37,4 +37,5 @@ export function requiresManualVerification(
 export const synthesizedUncertainty = {
   smoke_submission: "submission_outcome_unknown",
   refinement_submission: "refinement_submission_outcome_unknown",
+  confirmation_submission: "confirmation_submission_outcome_unknown",
 } as const;

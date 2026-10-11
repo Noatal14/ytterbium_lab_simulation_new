@@ -26,6 +26,7 @@ from workflow_api.error_catalog import (
 )
 from workflow_api.server import POST_ROUTES, ReadOnlyWorkflowHandler
 from workflow_api.zeus_confirmation import ZeusConfirmationError
+from workflow_api.zeus_confirmation_submission import ZeusConfirmationSubmissionError
 from workflow_api.zeus_refinement import ZeusRefinementError
 from workflow_api.zeus_refinement_submission import ZeusRefinementSubmissionError
 from workflow_api.zeus_screen_submission import ZeusScreenSubmissionError
@@ -60,6 +61,7 @@ def test_every_literal_coordinator_error_is_explicitly_catalogued():
         "zeus_refinement.py": "refinement_transition",
         "zeus_refinement_submission.py": "refinement_submission",
         "zeus_confirmation.py": "confirmation_transition",
+        "zeus_confirmation_submission.py": "confirmation_submission",
     }
     for filename, domain in file_domains.items():
         tree = ast.parse((ROOT / "workflow_api" / filename).read_text())
@@ -274,6 +276,7 @@ def _real_handler(error):
     handler.refinement_service = service
     handler.refinement_submission_service = service
     handler.confirmation_service = service
+    handler.confirmation_submission_service = service
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     server.daemon_threads = True
     server.block_on_close = False
@@ -329,6 +332,11 @@ def _request(base, method, path, headers=None, body=None):
             "confirmation_transition",
             ZeusConfirmationError,
             "/api/v1/zeus/refinement-chain/status",
+        ),
+        (
+            "confirmation_submission",
+            ZeusConfirmationSubmissionError,
+            "/api/v1/zeus/submissions/confirmation/status",
         ),
     ],
 )
@@ -454,6 +462,13 @@ def test_every_catalogued_creation_error_matches_the_real_handler():
             "/api/v1/zeus/confirmation/preview",
             "confirmation_preparation_failed",
             "Confirmation preparation stopped safely.",
+            412,
+        ),
+        (
+            ZeusConfirmationSubmissionError,
+            "/api/v1/zeus/submissions/confirmation/preview",
+            "confirmation_submission_failed",
+            "Confirmation submission stopped safely.",
             412,
         ),
     ],

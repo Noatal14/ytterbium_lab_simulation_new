@@ -5,6 +5,7 @@ import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.js
 import {
   campaignApi,
   creationApi,
+  confirmationSubmissionApi,
   parseApiErrorEnvelope,
   parseApiSuccessEnvelope,
   refinementLifecycleApi,
@@ -51,7 +52,7 @@ describe("backend-generated workflow API contract snapshots", () => {
     }
   });
 
-  it("drives every frontend route snapshot through its real API and domain parser", async () => {
+  it("drives every campaign-workflow route snapshot through its real API and domain parser", async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const path = typeof input === "string" ? input : input instanceof URL ? input.pathname : new URL(input.url).pathname;
       const method = String(init?.method ?? "GET").toUpperCase();
@@ -90,13 +91,29 @@ describe("backend-generated workflow API contract snapshots", () => {
     await refinementLifecycleApi.status(campaignId, profile);
     const confirmationPreview = await refinementLifecycleApi.preview(campaignId, profile);
     await refinementLifecycleApi.confirm(confirmationPreview.preview_token);
+    await confirmationSubmissionApi.status(campaignId, profile);
+    const confirmationSubmitPreview = await confirmationSubmissionApi.preview(
+      campaignId,
+      profile,
+    );
+    await confirmationSubmissionApi.confirm(
+      confirmationSubmitPreview.preview_token,
+    );
 
     const exercisedPaths = new Set(fetchMock.mock.calls.map(([input, init]) => `${String(init?.method ?? "GET").toUpperCase()} ${typeof input === "string" ? input : String(input)}`));
     for (const entry of successSnapshot.cases) {
-      if (["health", "workflows"].includes(entry.id)) continue;
+      // Individual-run routes have richer stateful fixtures and are exercised by
+      // their dedicated strict client/component suites. This contract walk owns
+      // the campaign workflow APIs, including every guarded stage transition.
+      if (
+        ["health", "workflows"].includes(entry.id) ||
+        entry.id.startsWith("zeeman-") ||
+        entry.id.startsWith("mot2d-")
+      ) continue;
       expect(exercisedPaths).toContain(`${entry.method} ${entry.path}`);
     }
     expect(dataById("confirmation-confirm").status).toBe("confirmation_prepared");
+    expect(dataById("confirmation-submit-confirm").status).toBe("submitted");
     vi.unstubAllGlobals();
   });
 });

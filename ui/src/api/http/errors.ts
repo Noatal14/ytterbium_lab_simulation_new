@@ -5,3 +5,4 @@ export class ScreeningSubmissionApiError extends Error { constructor(public code
 export class ScreeningLifecycleApiError extends Error { constructor(public code: string, message: string) { super(message); } }
 export class RefinementSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
 export class RefinementLifecycleApiError extends Error { constructor(public code: string, message: string) { super(message); } }
+export class ConfirmationSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }

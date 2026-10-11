@@ -10,6 +10,8 @@ import type {
 } from "./controllers/useConfirmationController";
 import { ConfirmationLifecycleSection } from "./confirmation/ConfirmationLifecycleSection";
 import { ConfirmationPreparationView } from "./confirmation/ConfirmationPreparationView";
+import { ConfirmationSubmissionView } from "./confirmation/ConfirmationSubmissionView";
+import type { useConfirmationSubmissionController } from "./controllers/useConfirmationSubmissionController";
 export function ConfirmationStage(props: {
   visible: boolean;
   lifecycle: RefinementLifecycle | null;
@@ -23,7 +25,10 @@ export function ConfirmationStage(props: {
   onConfirm: () => void;
   onReset: () => void;
   onViewJobs: () => void;
+  submissionEnabled?: boolean;
+  submission?: ReturnType<typeof useConfirmationSubmissionController>;
 }) {
+  const submission = props.submission;
   const lifecycleHeading = useRef<HTMLHeadingElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -74,6 +79,21 @@ export function ConfirmationStage(props: {
         onReset={props.onReset}
         onViewJobs={props.onViewJobs}
       />
+      {submission && (
+        <ConfirmationSubmissionView
+          enabled={props.submissionEnabled === true}
+          state={submission.state}
+          status={submission.status}
+          preview={submission.preview}
+          result={submission.result}
+          error={submission.error}
+          onRefresh={() => void submission.refresh()}
+          onReview={() => void submission.review()}
+          onConfirm={() => void submission.confirm()}
+          onReset={submission.reset}
+          onViewJobs={props.onViewJobs}
+        />
+      )}
     </>
   );
 }

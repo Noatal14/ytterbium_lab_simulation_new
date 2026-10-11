@@ -28,6 +28,7 @@ def _bounded_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProce
 class ReceiverKind(Enum):
     REFINEMENT_TRANSITION = "refinement_transition"
     CONFIRMATION_PREPARATION = "confirmation_preparation"
+    CONFIRMATION_SUBMISSION = "confirmation_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -131,6 +132,16 @@ _RECEIVERS = {
         "zeus_confirmation_remote.py",
         "<confirmation>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        True,
+    ),
+    ReceiverKind.CONFIRMATION_SUBMISSION: _ReceiverDefinition(
+        "zeus_confirmation_submission_remote.py",
+        "<confirmation-submit>",
+        frozenset({
+            ReceiverOperation.INSPECT,
+            ReceiverOperation.SUBMIT,
+            ReceiverOperation.STATUS,
+        }),
         True,
     ),
     ReceiverKind.REFINEMENT_SUBMISSION: _ReceiverDefinition(
@@ -315,6 +326,17 @@ class PinnedSshPolicy:
             ReceiverKind.CONFIRMATION_PREPARATION,
             repository_root,
             ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def confirmation_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.CONFIRMATION_SUBMISSION,
+            repository_root,
+            executable,
             timeout,
         )
 
