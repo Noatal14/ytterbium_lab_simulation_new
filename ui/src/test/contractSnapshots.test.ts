@@ -18,6 +18,7 @@ import {
   zeusApi,
 } from "../api/campaigns";
 import { sensitivityApi, sensitivitySubmissionApi } from "../api/clients/sensitivity";
+import { finalizationApi, productionApi, productionSubmissionApi } from "../api/clients/production";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
 const caseById = (id: string) => successSnapshot.cases.find((entry) => entry.id === id) as SnapshotCase;
@@ -106,6 +107,15 @@ describe("backend-generated workflow API contract snapshots", () => {
     await sensitivitySubmissionApi.status(campaignId, profile);
     const sensitivitySubmitPreview = await sensitivitySubmissionApi.preview(campaignId, profile);
     await sensitivitySubmissionApi.confirm(sensitivitySubmitPreview.preview_token);
+    await productionApi.status(campaignId, profile);
+    const productionPreview = await productionApi.preview(campaignId, profile);
+    await productionApi.confirm(productionPreview.preview_token);
+    await productionSubmissionApi.status(campaignId, profile);
+    const productionSubmitPreview = await productionSubmissionApi.preview(campaignId, profile);
+    await productionSubmissionApi.confirm(productionSubmitPreview.preview_token);
+    await finalizationApi.status(campaignId, profile);
+    const finalizationPreview = await finalizationApi.preview(campaignId, profile);
+    await finalizationApi.confirm(finalizationPreview.preview_token);
 
     const exercisedPaths = new Set(fetchMock.mock.calls.map(([input, init]) => `${String(init?.method ?? "GET").toUpperCase()} ${typeof input === "string" ? input : String(input)}`));
     for (const entry of successSnapshot.cases) {
@@ -123,6 +133,9 @@ describe("backend-generated workflow API contract snapshots", () => {
     expect(dataById("confirmation-submit-confirm").status).toBe("submitted");
     expect(dataById("sensitivity-confirm").status).toBe("sensitivity_prepared");
     expect(dataById("sensitivity-submit-confirm").status).toBe("submitted");
+    expect(dataById("production-confirm").status).toBe("production_prepared");
+    expect(dataById("production-submit-confirm").status).toBe("submitted");
+    expect(dataById("finalization-confirm").status).toBe("campaign_complete");
     vi.unstubAllGlobals();
   });
 });

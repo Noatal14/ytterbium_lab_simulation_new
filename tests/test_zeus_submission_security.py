@@ -470,7 +470,7 @@ def test_pinned_transport_uses_fixed_ssh_argv_and_no_shell(tmp_path, monkeypatch
         observed["kwargs"] = kwargs
         return subprocess.CompletedProcess(argv, 0, b'{"status":"eligible","branch":"main"}\n', b"")
 
-    monkeypatch.setattr("workflow_api.zeus_submission.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshSmokeSubmissionTransport(
         root,
         Path("/usr/bin/ssh"),
@@ -507,7 +507,7 @@ def test_submit_rejects_noncanonical_qsub_job_ids(tmp_path, monkeypatch, job_id)
     root = tmp_path / "repo"
     root.mkdir()
     monkeypatch.setattr(
-        "workflow_api.zeus_submission.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv,
             0,
@@ -537,7 +537,7 @@ def test_submit_timeout_or_malformed_output_is_ambiguous_and_never_retried(tmp_p
     def timeout(argv, **kwargs):
         calls.append(argv)
         raise subprocess.TimeoutExpired(argv, 45)
-    monkeypatch.setattr("workflow_api.zeus_submission.subprocess.run", timeout)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshSmokeSubmissionTransport(
         root,
         Path("/usr/bin/ssh"),
@@ -575,7 +575,7 @@ def test_transport_rejects_extra_or_inconsistent_remote_response_fields(tmp_path
     ]
     for response in responses:
         monkeypatch.setattr(
-            "workflow_api.zeus_submission.subprocess.run",
+            "workflow_api.pinned_ssh._bounded_run",
             lambda argv, response=response, **kwargs: subprocess.CompletedProcess(
                 argv, 0, json.dumps(response).encode(), b""
             ),
@@ -594,7 +594,7 @@ def test_transport_rejects_unrepresentable_submission_timestamps(tmp_path, monke
         "submitted_unix_s": timestamp,
     }
     monkeypatch.setattr(
-        "workflow_api.zeus_submission.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, json.dumps(response).encode(), b""),
     )
     transport = PinnedSshSmokeSubmissionTransport(
@@ -783,7 +783,7 @@ def test_transport_rejects_success_json_with_failed_or_noisy_ssh(
         "submitted_unix_s": 123,
     }
     monkeypatch.setattr(
-        "workflow_api.zeus_submission.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, returncode, json.dumps(response).encode(), stderr
         ),

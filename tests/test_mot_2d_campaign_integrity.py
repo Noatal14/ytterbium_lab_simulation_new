@@ -462,17 +462,19 @@ def test_campaign_finish_forwards_frozen_prediction_settings(tmp_path, monkeypat
     }
     observed = {}
 
-    def fake_summarize(*args, **kwargs):
-        observed.update(kwargs)
-        return {
-            "stopping_rule_passes": True,
-            "prediction_for_10m_zeeman_survivors": {
-                "reporting_zeeman_survivors": kwargs["reporting_survivors"],
-            },
-        }
+    def fake_render_finalization(frozen, *_args):
+        observed["reporting_survivors"] = frozen["fixed_design"][
+            "reporting_zeeman_survivors"
+        ]
+        observed["target_half_width_fraction"] = frozen["fixed_design"][
+            "target_95_half_width_fraction"
+        ]
+        return {"final_report.json": b"{}", "campaign.json": b"{}"}, []
 
     monkeypatch.setattr(campaign, "assert_design", lambda _manifest: None)
-    monkeypatch.setattr(campaign, "summarize", fake_summarize)
+    monkeypatch.setattr(
+        "workflow_api.mot_2d_plan.render_finalization", fake_render_finalization
+    )
     campaign.finish(root, manifest)
     assert observed["reporting_survivors"] == 1_000_000
     assert observed["target_half_width_fraction"] == 0.25
@@ -509,9 +511,16 @@ def _write_portable_sealed_campaign(repository_root):
     for seed, mot_seed in zip(seeds, mot_seeds):
         source = source_root / f"zeeman_seed{seed}.npy"
         np.save(source, np.zeros((2, 6)))
+        source_metadata = source.with_suffix(".json")
+        source_metadata.write_text(json.dumps({"seed": seed}))
         source_identity = source.relative_to(repository_root).as_posix()
         frozen.append({
             "zeeman_seed": seed, "path": source_identity,
+            "metadata_path": source_metadata.relative_to(repository_root).as_posix(),
+            "sha256": hashlib.sha256(source.read_bytes()).hexdigest(),
+            "metadata_sha256": hashlib.sha256(
+                source_metadata.read_bytes()
+            ).hexdigest(),
             "survivor_count": 2,
             "generation": {"n_initial_atoms": 4},
         })
@@ -655,6 +664,80 @@ def test_sealed_final_validation_survives_repository_relocation(tmp_path, monkey
             repository_root,
         ))
     assert outcomes == [True, True]
+
+
+def test_finalization_is_derived_from_raw_sealed_evidence(tmp_path, monkeypatch):
+    from workflow_api.mot_2d_plan import render_finalization
+    from workflow_api.mot_2d_prediction import final_prediction
+    from utils.mot_2d_study import summarize_replicates
+
+    _patch_portable_production_transition(monkeypatch)
+    repository_root = tmp_path / "checkout"
+    root, manifest = _write_portable_sealed_campaign(repository_root)
+    old_states = (
+        repository_root
+        / "data/particle_states/after_2d_mot/fixed_s0/s0_1p300000"
+    )
+    states = (
+        repository_root
+        / "data/particle_states/after_2d_mot/final_ensemble_s0_1.3"
+    )
+    states.parent.mkdir(parents=True, exist_ok=True)
+    old_states.rename(states)
+    manifest["stage"] = "production"
+    manifest["stages"] = {"production": {"tasks": 20}}
+    (root / "final_report.json").unlink()
+    (root / "production/s0_1p300000/summary.json").unlink()
+
+    files, public = render_finalization(manifest, root, repository_root)
+
+    assert set(files) == {
+        "production/s0_1p300000/summary.json",
+        "final_report.json",
+        "campaign.json",
+    }
+    summary = json.loads(files["production/s0_1p300000/summary.json"])
+    report = json.loads(files["final_report.json"])
+    assert summary["replicate_statistics"] == summarize_replicates(
+        summary["replicates"]
+    )
+    assert summary["prediction_for_10m_zeeman_survivors"] == final_prediction(
+        summary["replicates"]
+    )
+    assert report["results"][0]["prediction"] == (
+        summary["prediction_for_10m_zeeman_survivors"]
+    )
+    assert report["results"][0]["warnings"][-2:] == [
+        "robust_operating_region_not_established",
+        "epsilon_near_optimality_not_established",
+    ]
+    assert public[0]["n_ensembles"] == 20
+    assert public[0]["total_input"] == 40
+    assert public[0]["total_survivors"] == 20
+    assert public[0]["output_suitability"] == "eligible_as_3d_campaign_input"
+
+
+def test_finalization_rejects_tampered_survivor_state(tmp_path, monkeypatch):
+    from workflow_api.mot_2d_plan import render_finalization
+
+    _patch_portable_production_transition(monkeypatch)
+    repository_root = tmp_path / "checkout"
+    root, manifest = _write_portable_sealed_campaign(repository_root)
+    old_states = (
+        repository_root
+        / "data/particle_states/after_2d_mot/fixed_s0/s0_1p300000"
+    )
+    states = (
+        repository_root
+        / "data/particle_states/after_2d_mot/final_ensemble_s0_1.3"
+    )
+    states.parent.mkdir(parents=True, exist_ok=True)
+    old_states.rename(states)
+    manifest["stage"] = "production"
+    target = states / "mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy"
+    target.write_bytes(target.read_bytes() + b"tampered")
+    with pytest.raises(ValueError, match="digest mismatch"):
+        render_finalization(manifest, root, repository_root)
 
 
 @pytest.mark.parametrize(

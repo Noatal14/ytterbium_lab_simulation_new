@@ -676,6 +676,125 @@
       "message": "Too many local creation requests."
     },
     {
+      "domain": "finalization",
+      "case": "<fallback>",
+      "code": "finalization_failed",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "finalization_outcome_unknown",
+      "code": "finalization_outcome_unknown",
+      "status": 409,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "production_not_complete",
+      "code": "production_not_complete",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "remote_files_changed",
+      "code": "remote_files_changed",
+      "status": 409,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
+      "domain": "finalization",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Campaign finalization stopped safely."
+    },
+    {
       "domain": "local_read",
       "case": "<fallback>",
       "code": "inspection_failed",
@@ -744,6 +863,286 @@
       "code": "unsupported_campaign",
       "status": 400,
       "message": "Campaign record has an unsupported workflow kind."
+    },
+    {
+      "domain": "production_submission",
+      "case": "<fallback>",
+      "code": "production_submission_failed",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_already_submitted",
+      "code": "production_already_submitted",
+      "status": 409,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_expired",
+      "code": "production_expired",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_invalid",
+      "code": "production_invalid",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_not_prepared",
+      "code": "production_not_prepared",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_preparation_invalid",
+      "code": "production_preparation_invalid",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_submission_busy",
+      "code": "production_submission_busy",
+      "status": 409,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "production_submission_outcome_unknown",
+      "code": "production_submission_outcome_unknown",
+      "status": 409,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Production submission stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "<fallback>",
+      "code": "production_preparation_failed",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "sensitivity_not_complete",
+      "code": "sensitivity_not_complete",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "sensitivity_preparation_invalid",
+      "code": "sensitivity_preparation_invalid",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 409,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 409,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Production preparation stopped safely."
+    },
+    {
+      "domain": "production_transition",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Production preparation stopped safely."
     },
     {
       "domain": "protocol",
@@ -1559,10 +1958,31 @@
     },
     {
       "domain": "route_unavailable",
+      "case": "zeus_finalization_unavailable",
+      "code": "zeus_finalization_unavailable",
+      "status": 503,
+      "message": "Zeus campaign finalization is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
       "case": "zeus_preparation_unavailable",
       "code": "zeus_preparation_unavailable",
       "status": 503,
       "message": "Zeus campaign preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_production_submission_unavailable",
+      "code": "zeus_production_submission_unavailable",
+      "status": 503,
+      "message": "Zeus Production submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_production_unavailable",
+      "code": "zeus_production_unavailable",
+      "status": 503,
+      "message": "Zeus Production preparation is unavailable."
     },
     {
       "domain": "route_unavailable",

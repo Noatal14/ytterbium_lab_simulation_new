@@ -530,13 +530,18 @@ def sensitivity_task(args):
 
 
 def prepare_production(root, manifest):
+    from workflow_api.mot_2d_plan import render_production_transition
+
     confirmation_rows = validated_evaluation_outputs(root, manifest, "confirmation")
     validated_rows = validated_evaluation_outputs(root, manifest, "sensitivity")
-    sensitivity, specs = derive_production_transition(
-        manifest, confirmation_rows, validated_rows
+    files = render_production_transition(
+        manifest, root, REPOSITORY_ROOT, confirmation_rows, validated_rows
     )
-    save_file_json(root / "sensitivity_summary.json", sensitivity)
-    prepare(root, manifest, "production", specs, "06", 150, "12:00:00")
+    for name, content in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    print(f"Next job: qsub {root/'jobs/06_production.pbs'}")
 
 
 def production_task(args):
@@ -567,46 +572,15 @@ def production_task(args):
 
 
 def finish(root, manifest):
+    from workflow_api.mot_2d_plan import render_finalization
+
     assert_design(manifest)
-    sensitivity = read(root / "sensitivity_summary.json")
-    results = []
-    for value in manifest["s0_values"]:
-        output = root / "production" / key(value)
-        expected = manifest["seed_roles"]["sealed_validation"]
-        states = Path("data/particle_states/after_2d_mot") / f"final_ensemble_s0_{label(value)}"
-        expected_pairs = dict(zip(
-            expected,
-            manifest["mot_seeds"]["sealed_validation"],
-        ))
-        summary = summarize(output, expected_seeds=expected,
-                            expected_seed_pairs=expected_pairs, states_dir=states,
-                            expected_design={"dt_s": FINAL_DT_S,
-                                             "stochastic_solver": "RK4StHybridCustom",
-                                             "ensemble_dir": manifest["ensemble_source"]["directory"],
-                                             "zeeman_profile": manifest["ensemble_source"]["zeeman_profile"],
-                                             "git_commit": manifest["provenance"]["git_commit"]},
-                            reporting_survivors=manifest["fixed_design"]["reporting_zeeman_survivors"],
-                            target_half_width_fraction=manifest["fixed_design"]["target_95_half_width_fraction"])
-        recommended = sensitivity[key(value)]["production_selection"]["parameters"]
-        warnings = boundary(recommended)
-        if not summary["stopping_rule_passes"]:
-            warnings.append("target_95_prediction_half_width_not_met")
-        if sensitivity[key(value)]["robustness_status"] != "established":
-            warnings.append("robust_operating_region_not_established")
-        if sensitivity[key(value)]["near_optimality_status"] != "established":
-            warnings.append("epsilon_near_optimality_not_established")
-        results.append({"s0": value, "recommended_parameters": recommended,
-                        "warnings": warnings, "sensitivity": sensitivity[key(value)],
-                        "prediction": summary["prediction_for_10m_zeeman_survivors"],
-                        "target_uncertainty_passes": summary["stopping_rule_passes"],
-                        "survivor_states_directory": str(Path("data/particle_states/after_2d_mot") / f"final_ensemble_s0_{label(value)}")})
-    report = root / "final_report.json"
-    save_file_json(report, {"kind": "mot_2d_s0_campaign_final_report",
-                            "always_returns_best_tested_result": True, "results": results})
-    manifest["stage"] = "complete"
-    manifest["stages"]["final_report"] = str(report)
-    save_file_json(root / "campaign.json", manifest)
-    print(f"CAMPAIGN COMPLETE: {report}")
+    files, _ = render_finalization(manifest, root, REPOSITORY_ROOT)
+    for name, content in files.items():
+        path = root / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    print(f"CAMPAIGN COMPLETE: {root/'final_report.json'}")
 
 
 def advance(args):

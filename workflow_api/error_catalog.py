@@ -260,6 +260,15 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Zeus Sensitivity submission is unavailable.",
         ),
+        "zeus_production_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE, "Zeus Production preparation is unavailable."
+        ),
+        "zeus_production_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE, "Zeus Production submission is unavailable."
+        ),
+        "zeus_finalization_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE, "Zeus campaign finalization is unavailable."
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -774,6 +783,24 @@ SENSITIVITY_SUBMISSION = _generic_stage(
      "sensitivity_submission_outcome_unknown"},
     "sensitivity_submission_failed",
 )
+PRODUCTION_TRANSITION = _generic_stage(
+    {"request_invalid","profile_invalid","campaign_not_found","campaign_not_canonical","local_checkout_mismatch","local_files_changed","remote_response_invalid","too_many_pending_previews","confirmation_invalid","confirmation_expired","sensitivity_not_complete","sensitivity_preparation_invalid","transition_busy","transition_conflict","transition_outcome_unknown","zeus_authentication_required","zeus_host_key_untrusted","zeus_timeout","zeus_unreachable"},
+    "Production preparation stopped safely.",
+    {"transition_busy","transition_conflict","transition_outcome_unknown"},
+    "production_preparation_failed",
+)
+PRODUCTION_SUBMISSION = _generic_stage(
+    {"request_invalid","profile_invalid","campaign_not_found","campaign_not_canonical","local_checkout_mismatch","local_files_changed","remote_response_invalid","too_many_pending_previews","production_invalid","production_expired","production_not_prepared","production_preparation_invalid","production_already_submitted","production_submission_busy","production_submission_outcome_unknown","zeus_authentication_required","zeus_host_key_untrusted","zeus_timeout","zeus_unreachable"},
+    "Production submission stopped safely.",
+    {"production_already_submitted","production_submission_busy","production_submission_outcome_unknown"},
+    "production_submission_failed",
+)
+FINALIZATION = _generic_stage(
+    {"request_invalid","profile_invalid","campaign_not_found","campaign_not_canonical","local_checkout_mismatch","remote_response_invalid","too_many_pending_previews","confirmation_invalid","confirmation_expired","production_not_complete","remote_files_changed","finalization_outcome_unknown","zeus_authentication_required","zeus_host_key_untrusted","zeus_timeout","zeus_unreachable"},
+    "Campaign finalization stopped safely.",
+    {"remote_files_changed","finalization_outcome_unknown"},
+    "finalization_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -877,6 +904,9 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "confirmation_submission": CONFIRMATION_SUBMISSION,
         "sensitivity_transition": SENSITIVITY_TRANSITION,
         "sensitivity_submission": SENSITIVITY_SUBMISSION,
+        "production_transition": PRODUCTION_TRANSITION,
+        "production_submission": PRODUCTION_SUBMISSION,
+        "finalization": FINALIZATION,
     }
 )
 

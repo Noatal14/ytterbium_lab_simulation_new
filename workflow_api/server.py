@@ -57,6 +57,9 @@ from workflow_api.zeus_sensitivity_submission import (
     ZeusSensitivitySubmissionCoordinator,
     ZeusSensitivitySubmissionError,
 )
+from workflow_api.zeus_production import ZeusProductionCoordinator, ZeusProductionError
+from workflow_api.zeus_production_submission import ZeusProductionSubmissionCoordinator, ZeusProductionSubmissionError
+from workflow_api.zeus_finalization import ZeusFinalizationCoordinator, ZeusFinalizationError
 from workflow_api.zeeman_individual_api import IndividualZeemanApi
 from workflow_api.zeeman_zeus_execution import ZeemanZeusError
 
@@ -115,6 +118,15 @@ def _post_routes() -> tuple[PostRoute, ...]:
         ("/api/v1/zeus/submissions/sensitivity/status","sensitivity_submission_service","status","payload","zeus_sensitivity_submission_unavailable","Zeus Sensitivity submission is unavailable.",HTTPStatus.OK,ZeusSensitivitySubmissionError),
         ("/api/v1/zeus/submissions/sensitivity/preview","sensitivity_submission_service","preview","session_kw","zeus_sensitivity_submission_unavailable","Zeus Sensitivity submission is unavailable.",HTTPStatus.OK,ZeusSensitivitySubmissionError),
         ("/api/v1/zeus/submissions/sensitivity/confirm","sensitivity_submission_service","confirm","session_kw","zeus_sensitivity_submission_unavailable","Zeus Sensitivity submission is unavailable.",HTTPStatus.CREATED,ZeusSensitivitySubmissionError),
+        ("/api/v1/zeus/sensitivity-results/status","production_service","status","payload","zeus_production_unavailable","Zeus Production preparation is unavailable.",HTTPStatus.OK,ZeusProductionError),
+        ("/api/v1/zeus/production/preview","production_service","preview","session_kw","zeus_production_unavailable","Zeus Production preparation is unavailable.",HTTPStatus.OK,ZeusProductionError),
+        ("/api/v1/zeus/production/confirm","production_service","confirm","session_kw","zeus_production_unavailable","Zeus Production preparation is unavailable.",HTTPStatus.CREATED,ZeusProductionError),
+        ("/api/v1/zeus/submissions/production/status","production_submission_service","status","payload","zeus_production_submission_unavailable","Zeus Production submission is unavailable.",HTTPStatus.OK,ZeusProductionSubmissionError),
+        ("/api/v1/zeus/submissions/production/preview","production_submission_service","preview","session_kw","zeus_production_submission_unavailable","Zeus Production submission is unavailable.",HTTPStatus.OK,ZeusProductionSubmissionError),
+        ("/api/v1/zeus/submissions/production/confirm","production_submission_service","confirm","session_kw","zeus_production_submission_unavailable","Zeus Production submission is unavailable.",HTTPStatus.CREATED,ZeusProductionSubmissionError),
+        ("/api/v1/zeus/production-results/status","finalization_service","status","payload","zeus_finalization_unavailable","Zeus campaign finalization is unavailable.",HTTPStatus.OK,ZeusFinalizationError),
+        ("/api/v1/zeus/finalization/preview","finalization_service","preview","session_kw","zeus_finalization_unavailable","Zeus campaign finalization is unavailable.",HTTPStatus.OK,ZeusFinalizationError),
+        ("/api/v1/zeus/finalization/confirm","finalization_service","confirm","session_kw","zeus_finalization_unavailable","Zeus campaign finalization is unavailable.",HTTPStatus.CREATED,ZeusFinalizationError),
         ("/api/v1/individual-runs/zeeman/preview","individual_zeeman_api","preview","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.OK,Exception),
         ("/api/v1/individual-runs/zeeman/confirm","individual_zeeman_api","confirm","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.CREATED,Exception),
         ("/api/v1/individual-runs/zeeman/local/start","individual_zeeman_api","start_local","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
@@ -176,6 +188,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     confirmation_submission_service: ZeusConfirmationSubmissionCoordinator | None = None
     sensitivity_service: ZeusSensitivityCoordinator | None = None
     sensitivity_submission_service: ZeusSensitivitySubmissionCoordinator | None = None
+    production_service: ZeusProductionCoordinator | None = None
+    production_submission_service: ZeusProductionSubmissionCoordinator | None = None
+    finalization_service: ZeusFinalizationCoordinator | None = None
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
     individual_mot_2d_api: IndividualMot2DApi | None = None
@@ -197,7 +212,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None:
                 self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -367,6 +382,15 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._error(resolved.code, resolved.message, resolved.status); return
         except ZeusSensitivitySubmissionError as error:
             resolved = resolve_error("sensitivity_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
+        except ZeusProductionError as error:
+            resolved = resolve_error("production_transition", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
+        except ZeusProductionSubmissionError as error:
+            resolved = resolve_error("production_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
+        except ZeusFinalizationError as error:
+            resolved = resolve_error("finalization", error.code)
             self._error(resolved.code, resolved.message, resolved.status); return
         except ZeemanZeusError as error:
             status, message = _INDIVIDUAL_ZEUS_ERRORS.get(
@@ -557,6 +581,15 @@ def main() -> None:
         WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     WorkflowHandler.sensitivity_submission_service = ZeusSensitivitySubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    WorkflowHandler.production_service = ZeusProductionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    WorkflowHandler.production_submission_service = ZeusProductionSubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    WorkflowHandler.finalization_service = ZeusFinalizationCoordinator(
         WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), WorkflowHandler)

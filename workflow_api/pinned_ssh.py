@@ -31,6 +31,9 @@ class ReceiverKind(Enum):
     CONFIRMATION_SUBMISSION = "confirmation_submission"
     SENSITIVITY_PREPARATION = "sensitivity_preparation"
     SENSITIVITY_SUBMISSION = "sensitivity_submission"
+    PRODUCTION_PREPARATION = "production_preparation"
+    PRODUCTION_SUBMISSION = "production_submission"
+    FINALIZATION = "finalization"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -160,6 +163,28 @@ _RECEIVERS = {
             ReceiverOperation.SUBMIT,
             ReceiverOperation.STATUS,
         }),
+        True,
+    ),
+    ReceiverKind.PRODUCTION_SUBMISSION: _ReceiverDefinition(
+        "zeus_production_submission_remote.py",
+        "<production-submit>",
+        frozenset({
+            ReceiverOperation.INSPECT,
+            ReceiverOperation.SUBMIT,
+            ReceiverOperation.STATUS,
+        }),
+        True,
+    ),
+    ReceiverKind.PRODUCTION_PREPARATION: _ReceiverDefinition(
+        "zeus_production_remote.py",
+        "<production>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        True,
+    ),
+    ReceiverKind.FINALIZATION: _ReceiverDefinition(
+        "zeus_finalization_remote.py",
+        "<finalization>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
         True,
     ),
     ReceiverKind.REFINEMENT_SUBMISSION: _ReceiverDefinition(
@@ -375,6 +400,39 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.SENSITIVITY_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def production_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.PRODUCTION_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def production_preparation(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.PRODUCTION_PREPARATION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def finalization(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.FINALIZATION,
             repository_root,
             executable,
             timeout,

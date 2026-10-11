@@ -8,3 +8,6 @@ export class RefinementLifecycleApiError extends Error { constructor(public code
 export class ConfirmationSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
 export class SensitivityApiError extends Error { constructor(public code: string, message: string) { super(message); } }
 export class SensitivitySubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
+export class ProductionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
+export class ProductionSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
+export class FinalizationApiError extends Error { constructor(public code: string, message: string) { super(message); } }

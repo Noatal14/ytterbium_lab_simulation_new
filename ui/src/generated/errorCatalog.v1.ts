@@ -406,6 +406,86 @@ export const serverErrorCatalog = [
     "semantic": "other"
   },
   {
+    "domain": "finalization",
+    "code": "campaign_not_canonical",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "finalization",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "finalization",
+    "code": "finalization_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "finalization",
+    "code": "local_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "production_not_complete",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "remote_files_changed",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "zeus_unreachable",
+    "semantic": "other"
+  },
+  {
     "domain": "local_read",
     "code": "campaign_not_found",
     "semantic": "other"
@@ -438,6 +518,196 @@ export const serverErrorCatalog = [
   {
     "domain": "local_read",
     "code": "unsupported_campaign",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "campaign_not_canonical",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "local_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_already_submitted",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_expired",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_not_prepared",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_submission_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "production_submission_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "production_submission",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_submission",
+    "code": "zeus_unreachable",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "campaign_not_canonical",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "production_transition",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "production_transition",
+    "code": "local_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "production_transition",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "sensitivity_not_complete",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "sensitivity_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "transition_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "transition_conflict",
+    "semantic": "manual_verification"
+  },
+  {
+    "domain": "production_transition",
+    "code": "transition_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "production_transition",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "production_transition",
+    "code": "zeus_unreachable",
     "semantic": "other"
   },
   {
@@ -1012,7 +1282,22 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "route_unavailable",
+    "code": "zeus_finalization_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
     "code": "zeus_preparation_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "zeus_production_submission_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "zeus_production_unavailable",
     "semantic": "other"
   },
   {

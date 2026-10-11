@@ -44,7 +44,7 @@ def test_coordinator_contract_rejects_forged_remote_state(tmp_path,mutation):
 def test_prepare_transport_timeout_is_permanently_ambiguous(tmp_path,monkeypatch):
     profile=ZeusProfile.parse({"username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"})
     transport=PinnedSshConfirmationTransport(tmp_path,Path("/usr/bin/true"),profile)
-    monkeypatch.setattr(subprocess,"run",lambda *a,**k:(_ for _ in ()).throw(subprocess.TimeoutExpired([],1)))
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run",lambda *a,**k:(_ for _ in ()).throw(subprocess.TimeoutExpired([],1)))
     with pytest.raises(ZeusConfirmationError,match="transition_outcome_unknown"):
         transport.prepare(example=True)
 

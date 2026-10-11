@@ -10,6 +10,7 @@ from workflow_api.mot_2d_plan import (
     render_campaign_files,
     render_confirmation_transition,
     render_refine_transition,
+    render_production_transition,
     render_screen_transition,
     render_sensitivity_transition,
 )
@@ -114,6 +115,59 @@ def test_finalization_artifacts_expand_in_manifest_s0_order():
         "final_report.json",
         "campaign.json",
     )
+
+
+def test_production_renderer_freezes_twenty_sealed_ensembles_and_resources(
+    tmp_path: Path,
+):
+    root = tmp_path
+    campaign = root / "data/optimization/mot_2d/campaign"
+    campaign.mkdir(parents=True)
+    manifest = _manifest("sensitivity")
+    manifest["seed_roles"] = {"sealed_validation": list(range(3015, 3035))}
+    manifest["mot_seeds"] = {"sealed_validation": list(range(43015, 43035))}
+    confirmation_rows = []
+    for index in range(5):
+        efficiency = 0.02 + index * 0.0001
+        confirmation_rows.append({
+            "s0": 1.3, "candidate_index": index,
+            "parameters": {"s0": 1.3, "detuning_gamma": -1.0,
+                           "magnet_radius": 0.047},
+            "evaluation": {
+                "replicates": [{"zeeman_seed": 3010 + seed,
+                                "mot_seed": 43010 + seed,
+                                "n_input": 10000, "subset_seed": seed,
+                                "conditional_efficiency": efficiency}
+                               for seed in range(5)],
+                "statistics": {"mean_conditional_efficiency": efficiency,
+                               "conditional_95_ci": [efficiency - 0.001,
+                                                      efficiency + 0.001]},
+            },
+        })
+    sensitivity_rows = [{
+        "s0": 1.3, "point_index": 0,
+        "parameters": {"s0": 1.3, "detuning_gamma": -1.0,
+                       "magnet_radius": 0.047},
+        "offsets": {"detuning_gamma": 0.0, "magnet_radius_m": 0.0},
+        "evaluation": confirmation_rows[-1]["evaluation"],
+    }]
+    rendered = render_production_transition(
+        manifest, campaign, root, confirmation_rows, sensitivity_rows
+    )
+    assert set(rendered) == set(
+        MOT_2D_SPECIFICATION["stages"]["production"]["artifacts"]
+    )
+    tasks = json.loads(rendered["production/tasks.json"])
+    assert len(tasks) == 20
+    assert [task["zeeman_seed"] for task in tasks] == list(range(3015, 3035))
+    assert [task["mot_seed"] for task in tasks] == list(range(43015, 43035))
+    directives = _directives(rendered["jobs/06_production.pbs"])
+    assert "#PBS -J 0-19%4" in directives
+    assert "#PBS -l select=1:ncpus=150:mem=64gb" in directives
+    assert "#PBS -l walltime=12:00:00" in directives
+    updated = json.loads(rendered["campaign.json"])
+    assert updated["stage"] == "production"
+    assert updated["stages"]["production"]["tasks"] == 20
 
 
 @pytest.mark.parametrize("values", [[], [1.3, 1.3], [True], [0], [float("nan")]])

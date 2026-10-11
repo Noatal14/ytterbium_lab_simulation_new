@@ -39,4 +39,5 @@ export const synthesizedUncertainty = {
   refinement_submission: "refinement_submission_outcome_unknown",
   confirmation_submission: "confirmation_submission_outcome_unknown",
   sensitivity_submission: "sensitivity_submission_outcome_unknown",
+  production_submission: "production_submission_outcome_unknown",
 } as const;

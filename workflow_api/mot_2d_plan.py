@@ -357,6 +357,174 @@ trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
     }
 
 
+def render_production_transition(
+    manifest: dict[str, Any], destination: Path, repository_root: Path,
+    confirmation_rows: list[dict[str, Any]],
+    sensitivity_rows: list[dict[str, Any]],
+) -> dict[str, bytes]:
+    """Render the validated Sensitivity-to-Production transition exactly.
+
+    This is deliberately a pure renderer.  Both the CLI and the UI use these
+    bytes, so preparation cannot silently choose a different sealed point,
+    seed registry, or Production job design.
+    """
+    from workflow_api.mot_2d_late_stage import derive_production_transition
+
+    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "sensitivity":
+        raise ValueError("Campaign is not awaiting Production preparation.")
+    try:
+        argument = destination.relative_to(repository_root).as_posix()
+    except ValueError as error:
+        raise ValueError("Campaign destination must be inside the repository.") from error
+    if not argument.startswith("data/optimization/mot_2d/"):
+        raise ValueError("Campaign destination is outside the canonical 2D-MOT location.")
+
+    sensitivity, tasks = derive_production_transition(
+        manifest, confirmation_rows, sensitivity_rows
+    )
+    sealed = manifest["seed_roles"]["sealed_validation"]
+    if len(sealed) != 20 or len(tasks) != 20 * len(manifest["s0_values"]):
+        raise ValueError("Production must contain exactly 20 sealed ensembles per s0.")
+    commit = manifest["provenance"]["git_commit"]
+    command = (
+        "python -m studies.mot_2d_s0_campaign production-task "
+        f"--campaign {shlex.quote(argument)} --task-index $PBS_ARRAY_INDEX"
+    )
+    pbs = f'''#!/bin/bash
+#PBS -N mot2d_produ
+#PBS -q zeus_combined_q
+#PBS -J 0-{len(tasks)-1}%4
+#PBS -l select=1:ncpus=150:mem=64gb
+#PBS -l walltime=12:00:00
+
+set -euo pipefail
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
+module load SPACK/apps
+module load gcc/14.1.0
+module load python/3.14.2
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
+EXPECTED_COMMIT={commit}
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
+  echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2
+  exit 42
+fi
+RUN_TMP="/tmp/${{USER}}_mot2d_produ_${{PBS_JOBID}}_${{PBS_ARRAY_INDEX:-0}}"
+mkdir -p "${{RUN_TMP}}"
+export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
+trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
+{command}
+'''.encode()
+    updated = deepcopy(manifest)
+    updated["stage"] = "production"
+    updated.setdefault("stages", {})["production"] = {
+        "tasks": len(tasks),
+        "job_file": f"{argument}/jobs/06_production.pbs",
+    }
+    encode = lambda value: (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+    return {
+        "sensitivity_summary.json": encode(sensitivity),
+        "production/tasks.json": encode(tasks),
+        "jobs/06_production.pbs": pbs,
+        "campaign.json": encode(updated),
+    }
+
+
+def render_finalization(
+    manifest: dict[str, Any], destination: Path, repository_root: Path,
+) -> tuple[dict[str, bytes], list[dict[str, Any]]]:
+    """Validate sealed evidence and render canonical final artifacts."""
+    from studies.mot_2d.production import build_summary
+    from workflow_api.mot_2d_validation import (
+        _expected_production_design,
+        validated_sealed_production_outputs,
+    )
+
+    sensitivity, rows_by_s0 = validated_sealed_production_outputs(
+        destination, manifest, repository_root
+    )
+    fixed = manifest["fixed_design"]
+    target = float(fixed["target_95_half_width_fraction"])
+    reporting = fixed["reporting_zeeman_survivors"]
+    detuning_bounds = fixed["detuning_bounds_gamma"]
+    radius_bounds = fixed["magnet_radius_bounds_m"]
+    detuning_tolerance = float(fixed["detuning_resolution_gamma"]) / 2.0
+    radius_tolerance = float(fixed["magnet_radius_resolution_m"]) / 2.0
+    design = _expected_production_design(manifest)
+    files: dict[str, bytes] = {}
+    results: list[dict[str, Any]] = []
+    public_results: list[dict[str, Any]] = []
+    encode = lambda value: (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
+    for raw in manifest["s0_values"]:
+        value = float(raw)
+        key = f"s0_{value:.6f}".replace(".", "p")
+        selection = sensitivity[key]["production_selection"]
+        parameters = selection["parameters"]
+        summary = build_summary(
+            parameters=parameters, design=design, replicates=rows_by_s0[value],
+            reporting_survivors=reporting,
+            target_half_width_fraction=target,
+        )
+        files[f"production/{key}/summary.json"] = encode(summary)
+        warnings: list[str] = []
+        detuning = float(parameters["detuning_gamma"])
+        radius = float(parameters["magnet_radius"])
+        if abs(detuning - float(detuning_bounds[0])) <= detuning_tolerance:
+            warnings.append("detuning_lower")
+        if abs(detuning - float(detuning_bounds[1])) <= detuning_tolerance:
+            warnings.append("detuning_upper")
+        if abs(radius - float(radius_bounds[0])) <= radius_tolerance:
+            warnings.append("radius_lower")
+        if abs(radius - float(radius_bounds[1])) <= radius_tolerance:
+            warnings.append("radius_upper")
+        if not summary["stopping_rule_passes"]:
+            warnings.append("target_95_prediction_half_width_not_met")
+        if sensitivity[key]["robustness_status"] != "established":
+            warnings.append("robust_operating_region_not_established")
+        if sensitivity[key]["near_optimality_status"] != "established":
+            warnings.append("epsilon_near_optimality_not_established")
+        value_label = f"{value:.6f}".rstrip("0").rstrip(".")
+        states = (
+            "data/particle_states/after_2d_mot/"
+            f"final_ensemble_s0_{value_label}"
+        )
+        result = {
+            "s0": raw, "recommended_parameters": parameters,
+            "warnings": warnings, "sensitivity": sensitivity[key],
+            "prediction": summary["prediction_for_10m_zeeman_survivors"],
+            "target_uncertainty_passes": summary["stopping_rule_passes"],
+            "survivor_states_directory": states,
+        }
+        results.append(result)
+        public_results.append({
+            "s0": raw, "n_ensembles": len(rows_by_s0[value]),
+            "total_input": sum(int(row["n_input"]) for row in rows_by_s0[value]),
+            "total_survivors": sum(int(row["captured"]) for row in rows_by_s0[value]),
+            "recommended_parameters": parameters,
+            "prediction": summary["prediction_for_10m_zeeman_survivors"],
+            "target_uncertainty_passes": summary["stopping_rule_passes"],
+            "robustness_status": sensitivity[key]["robustness_status"],
+            "near_optimality_status": sensitivity[key]["near_optimality_status"],
+            "warnings": warnings,
+            "retention": "retained",
+            "output_suitability": "eligible_as_3d_campaign_input",
+        })
+    report = {
+        "kind": "mot_2d_s0_campaign_final_report",
+        "always_returns_best_tested_result": True,
+        "results": results,
+    }
+    files["final_report.json"] = encode(report)
+    updated = deepcopy(manifest)
+    updated["stage"] = "complete"
+    updated.setdefault("stages", {})["final_report"] = (
+        destination.relative_to(repository_root) / "final_report.json"
+    ).as_posix()
+    files["campaign.json"] = encode(updated)
+    return files, public_results
+
+
 def plan_from_frozen_manifest(
     *, repository_root: Path, destination: Path, manifest: dict[str, Any]
 ) -> CampaignPlan:

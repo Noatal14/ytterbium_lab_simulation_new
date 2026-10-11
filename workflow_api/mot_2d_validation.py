@@ -1057,3 +1057,107 @@ def sealed_final_is_valid(
     except (OSError, ValueError, TypeError, KeyError, StopIteration, json.JSONDecodeError):
         return False
     return True
+
+
+def validated_sealed_production_outputs(
+    root: Path, manifest: dict[str, Any], repository_root: Path,
+) -> tuple[dict[str, Any], dict[float, list[dict[str, Any]]]]:
+    """Validate raw sealed Production evidence without trusting summaries.
+
+    The returned rows are safe inputs to the deterministic final-summary
+    derivation.  Summary/report files are intentionally ignored here because
+    finalization must be able to create them from the raw evidence.
+    """
+    if manifest.get("stage") != "production":
+        raise ValueError("Campaign is not awaiting finalization.")
+    sealed = manifest["seed_roles"]["sealed_validation"]
+    mot_seeds = manifest["mot_seeds"]["sealed_validation"]
+    if sealed != CANONICAL_ROLE_SEEDS["sealed_validation"] or len(mot_seeds) != 20:
+        raise ValueError("Invalid sealed Production seed registry.")
+    sensitivity, tasks = validated_production_transition(root, manifest)
+    task_file = _json(root / "production" / "tasks.json", root=root)
+    if task_file != tasks:
+        raise ValueError("Production task registry is not authoritative.")
+    expected_design = _expected_production_design(manifest)
+    expected_pairs = dict(zip(sealed, mot_seeds))
+    frozen_by_seed = {
+        int(item["zeeman_seed"]): _mapping(item)
+        for item in manifest["input_ensembles"]["sealed_validation"]
+    }
+    values = [float(value) for value in manifest["s0_values"]]
+    result: dict[float, list[dict[str, Any]]] = {}
+    for value in values:
+        key = f"s0_{value:.6f}".replace(".", "p")
+        selected = [task for task in tasks if float(task["s0"]) == value]
+        if len(selected) != 20:
+            raise ValueError("Production must contain exactly 20 sealed ensembles per s0.")
+        replicate_directory = root / "production" / key / "replicates"
+        expected_files = {
+            replicate_directory / f"zeeman_seed{seed}.json" for seed in sealed
+        }
+        if set(replicate_directory.glob("zeeman_seed*.json")) != expected_files:
+            raise ValueError("Production replicate registry is incomplete or contains stale files.")
+        by_seed = {int(task["zeeman_seed"]): task for task in selected}
+        if set(by_seed) != set(sealed):
+            raise ValueError("Production task identities are incomplete.")
+        rows: list[dict[str, Any]] = []
+        value_label = f"{value:.6f}".rstrip("0").rstrip(".")
+        states = resolve_repo_relative(
+            repository_root,
+            f"data/particle_states/after_2d_mot/final_ensemble_s0_{value_label}",
+            allowed_root="data/particle_states/after_2d_mot", require="dir",
+        )
+        expected_state_names = {
+            f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{expected_pairs[seed]}.npy"
+            for seed in sealed
+        }
+        if {path.name for path in states.glob("mot_2d_survivors_*.npy")} != expected_state_names:
+            raise ValueError("Sealed survivor-state registry is incomplete or contains stale files.")
+        for seed in sealed:
+            task = by_seed[seed]
+            evidence = replicate_directory / f"zeeman_seed{seed}.json"
+            row = _validated_production_replicate(evidence, manifest, task, root)
+            mot_seed = expected_pairs[seed]
+            state = states / f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy"
+            metadata = state.with_suffix(".json")
+            meta = _mapping(_json(metadata, root=repository_root))
+            if not _trusted_file(state, repository_root) or meta.get("output_sha256") != _sha256(state):
+                raise ValueError("Sealed survivor-state digest mismatch.")
+            array = np.load(state, mmap_mode="r", allow_pickle=False)
+            frozen_source = frozen_by_seed[seed]
+            source_identity = frozen_source["path"]
+            source_path = resolve_repo_relative(
+                repository_root, source_identity,
+                allowed_root="data/particle_states/after_zeeman", require="file",
+            )
+            source_metadata = resolve_repo_relative(
+                repository_root, frozen_source["metadata_path"],
+                allowed_root="data/particle_states/after_zeeman", require="file",
+            )
+            if (_sha256(source_path) != frozen_source.get("sha256")
+                    or _sha256(source_metadata)
+                    != frozen_source.get("metadata_sha256")):
+                raise ValueError("Frozen Zeeman input digest mismatch.")
+            source_recorded = meta.get("source_zeeman_ensemble", "")
+            resolve_repo_relative(
+                repository_root, source_recorded,
+                allowed_root="data/particle_states/after_zeeman", require="file",
+            )
+            if (
+                meta.get("kind") != "mot_2d_final_survivor_ensemble"
+                or meta.get("zeeman_seed") != seed
+                or meta.get("mot_seed") != mot_seed
+                or meta.get("n_input") != row.get("n_input")
+                or meta.get("n_survivors") != row.get("captured")
+                or meta.get("shape") != list(array.shape)
+                or meta.get("dtype") != str(array.dtype)
+                or array.ndim != 2 or array.shape[1] != 6
+                or not np.all(np.isfinite(array))
+                or meta.get("parameters") != task["parameters"]
+                or meta.get("design") != expected_design
+                or source_recorded != source_identity
+            ):
+                raise ValueError("Invalid sealed survivor-state evidence.")
+            rows.append(row)
+        result[value] = rows
+    return sensitivity, result

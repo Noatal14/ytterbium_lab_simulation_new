@@ -42,6 +42,15 @@ DEFAULT_OUTPUT_DIR = MOT_2D_OPTIMIZATION_DIR / "final_production_v22"
 DEFAULT_STATES_DIR = AFTER_2D_MOT_DIR / "final_production_v22"
 
 
+def _sha256_file(path: Path) -> str:
+    """Hash a potentially large state array without loading it into memory."""
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def parameters_from_args(args):
     return {
         "s0": float(args.s0),
@@ -106,7 +115,7 @@ def run_seeds(args):
                 f"_mot_seed{row['mot_seed']}.npy"
             )
             save_particle_states(states_path, survivor_state_ensembles[index])
-            states_sha256 = hashlib.sha256(states_path.read_bytes()).hexdigest()
+            states_sha256 = _sha256_file(states_path)
             save_file_json(
                 states_path.with_suffix(".json"),
                 {
@@ -219,16 +228,34 @@ def summarize(
                 raise ValueError(f"Sealed survivor count mismatch: {state_path}")
             if metadata.get("shape") != list(states.shape):
                 raise ValueError(f"Sealed survivor shape metadata mismatch: {state_path}")
-            if metadata.get("output_sha256") != hashlib.sha256(state_path.read_bytes()).hexdigest():
+            if metadata.get("output_sha256") != _sha256_file(state_path):
                 raise ValueError(f"Sealed survivor SHA-256 mismatch: {state_path}")
         stale = {path.name for path in states_dir.glob("mot_2d_survivors_*.npy")} - expected_names
         if stale:
             raise ValueError(f"Unexpected stale survivor arrays: {sorted(stale)}")
-    replicates.sort(key=lambda row: row["zeeman_seed"])
-    prediction = final_prediction(
-        replicates, reporting_survivors=reporting_survivors
+    summary = build_summary(
+        parameters=parameters,
+        design=design,
+        replicates=replicates,
+        reporting_survivors=reporting_survivors,
+        target_half_width_fraction=target_half_width_fraction,
     )
-    summary = {
+    output_path = Path(output_dir) / "summary.json"
+    save_file_json(output_path, summary)
+    print(json.dumps(summary, indent=2))
+    print(f"Summary saved to: {output_path}")
+    return summary
+
+
+def build_summary(
+    *, parameters, design, replicates, reporting_survivors,
+    target_half_width_fraction,
+):
+    """Derive the canonical Production summary without filesystem effects."""
+    rows = [dict(row) for row in replicates]
+    rows.sort(key=lambda row: row["zeeman_seed"])
+    prediction = final_prediction(rows, reporting_survivors=reporting_survivors)
+    return {
         "kind": "mot_2d_final_production_summary",
         "parameters": parameters,
         "design": design,
@@ -238,16 +265,11 @@ def summarize(
             prediction["predicted_95_half_width_fraction"]
             <= target_half_width_fraction
         ),
-        "zeeman_seeds": seeds,
-        "replicates": replicates,
-        "replicate_statistics": summarize_replicates(replicates),
+        "zeeman_seeds": [int(row["zeeman_seed"]) for row in rows],
+        "replicates": rows,
+        "replicate_statistics": summarize_replicates(rows),
         "prediction_for_10m_zeeman_survivors": prediction,
     }
-    output_path = Path(output_dir) / "summary.json"
-    save_file_json(output_path, summary)
-    print(json.dumps(summary, indent=2))
-    print(f"Summary saved to: {output_path}")
-    return summary
 
 
 def parse_args(argv=None):
