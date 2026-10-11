@@ -89,7 +89,12 @@ def build_base_config(
 
     # --- 3. Zeeman laser Config ---    
     if include_zeeman:
-        zeeman_beams = setup_zeeman_laser(s0=zeeman_config["s0"], detuning_gamma=zeeman_config["detuning_gamma"], atom_species_name=atom_name)
+        zeeman_beams = setup_zeeman_laser(
+            s0=zeeman_config["s0"],
+            detuning_gamma=zeeman_config["detuning_gamma"],
+            atom_species_name=atom_name,
+            polarization=zeeman_config.get("polarization", "CircularRight"),
+        )
     else:
         zeeman_beams = []
         
@@ -132,8 +137,21 @@ def build_base_config(
             mag_fields.append(ZeemanSlowerField(angle_deg=Geometry.ZEEMAN_ARM_ANGLE_DEG, start_distance=Geometry.ZEEMAN_START_DISTANCE_M))
         else:
             mag_fields.append(ZeemanSlowerField(
-                angle_deg=Geometry.ZEEMAN_ARM_ANGLE_DEG,
-                start_distance=Geometry.ZEEMAN_START_DISTANCE_M,
+                zeeman_axis_offset=zeeman_field_config.get(
+                    "zeeman_axis_offset_m", 0.0
+                ),
+                magnet_dimensions=zeeman_field_config.get(
+                    "magnet_dimensions_m", (0.005, 0.005, 0.005)
+                ),
+                polarization_T=zeeman_field_config.get(
+                    "magnet_polarization_T", -1.24
+                ),
+                angle_deg=zeeman_field_config.get(
+                    "arm_angle_deg", Geometry.ZEEMAN_ARM_ANGLE_DEG
+                ),
+                start_distance=zeeman_field_config.get(
+                    "start_distance_m", Geometry.ZEEMAN_START_DISTANCE_M
+                ),
                 radii=radii,
                 positions_z=positions,
                 tilt_angles=tilt_angles,

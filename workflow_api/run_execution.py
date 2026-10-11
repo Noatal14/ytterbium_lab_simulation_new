@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import fcntl
+import math
 import os
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
@@ -120,6 +121,47 @@ class ExecutionLease:
 
 class WorkerProductError(RunRecordError):
     """Definite worker-contract rejection before durable publication begins."""
+
+
+def _validate_family_metrics(
+    family: str, run: Mapping[str, Any], results: Mapping[str, Any]
+) -> None:
+    """Enforce family-specific scientific relationships before publication."""
+    if family != "zeeman":
+        return
+    metrics = results["metrics"]
+    expected = {
+        "n_initial",
+        "n_survivors",
+        "captured",
+        "survival_fraction",
+        "elapsed_s",
+    }
+    if set(metrics) != expected:
+        raise WorkerProductError("Zeeman result metrics are incomplete or unexpected.")
+    n_initial = metrics["n_initial"]
+    n_survivors = metrics["n_survivors"]
+    captured = metrics["captured"]
+    elapsed = metrics["elapsed_s"]
+    fraction = metrics["survival_fraction"]
+    if (
+        isinstance(n_initial, bool)
+        or not isinstance(n_initial, int)
+        or n_initial != run["particle_count"]
+        or isinstance(n_survivors, bool)
+        or not isinstance(n_survivors, int)
+        or not 0 <= n_survivors <= n_initial
+        or captured != n_survivors
+        or isinstance(fraction, bool)
+        or not isinstance(fraction, (int, float))
+        or not math.isfinite(float(fraction))
+        or float(fraction) != n_survivors / n_initial
+        or isinstance(elapsed, bool)
+        or not isinstance(elapsed, (int, float))
+        or not math.isfinite(float(elapsed))
+        or elapsed < 0
+    ):
+        raise WorkerProductError("Zeeman result metrics are scientifically inconsistent.")
 
 
 class IndividualRunWorker(Protocol):
@@ -481,6 +523,7 @@ class ExecutorLifecycleStore(RunRecordStore):
                     run["retention"]["particle_states"]
                 ):
                     raise WorkerProductError("Worker output contradicts retention policy.")
+                _validate_family_metrics(family, run, results)
                 children: dict[str, int] = {}
                 try:
                     for path, content in sorted(artifacts.items()):
@@ -538,6 +581,7 @@ class ExecutorLifecycleStore(RunRecordStore):
                     product.results,
                     product.receipt,
                 )
+                _validate_family_metrics(family, run, product.results)
                 if current["revision"] != plan.expected_status_revision:
                     raise RunRecordError("Success publication lost its lifecycle race.")
                 verify()
@@ -641,6 +685,7 @@ class ExecutorLifecycleStore(RunRecordStore):
                     results,
                     receipt,
                 )
+                _validate_family_metrics(family, run, results)
                 if plan.results_sha256 != hashlib.sha256(
                     encode_record("results", results)
                 ).hexdigest():

@@ -47,7 +47,8 @@ EXPECTED_CONFIG_CONSUMERS = {
     "studies/zeeman/capture_velocity.py", "studies/zeeman/generate_ensembles.py",
     "studies/zeeman/stochastic_convergence.py", "studies/zeeman/trajectories.py",
     "studies/zeeman/validate_configuration.py", "utils/simulation_helpers.py",
-    "workflow_api/zeeman_run_plan.py", "workflow_api/zeeman_run_specification.py",
+    "workflow_api/zeeman_local_execution.py", "workflow_api/zeeman_run_plan.py",
+    "workflow_api/zeeman_run_specification.py",
 }
 EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
     "studies/mot_2d_s0_campaign.py", "workflow_api/mot_2d_plan.py",

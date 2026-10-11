@@ -50,6 +50,7 @@ ZEEMAN_RELEVANT_FILES = (
     "workflow_api/specifications/individual_run_v1.json",
     "workflow_api/specifications/zeeman_individual_v1.json",
     "workflow_api/zeeman_run_creation.py",
+    "workflow_api/zeeman_local_execution.py",
     "workflow_api/zeeman_run_plan.py",
     "workflow_api/zeeman_run_specification.py",
 )

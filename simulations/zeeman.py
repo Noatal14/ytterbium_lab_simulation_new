@@ -56,6 +56,9 @@ def zeeman_simulation(
     collimation_angle_deg=COLLIMATION_ANGLE_DEG,
     angular_broadening_factor=1.0,
     seed=DEFAULT_RANDOM_SEED,
+    t_max_s=ZEEMAN_SIM_CONFIG["t_max_s"],
+    start_distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
+    cutoff_distance_m=ZEEMAN_SIM_CONFIG["cutoff_distance_m"],
 ):
     """Generate a thermal beam and return the states that survive Zeeman."""
     _resolved_run_parameters({"zeeman_field_config": zeeman_field_config})
@@ -70,7 +73,7 @@ def zeeman_simulation(
         _2d_mot_config=_2d_mot_config,
         zeeman_config=zeeman_config,
         zones=get_zeeman_only_zone(
-            cutoff_distance=ZEEMAN_SIM_CONFIG["cutoff_distance_m"]
+            cutoff_distance=cutoff_distance_m
         ),
     )
     r0_arr, v0_arr, _ = generate_thermal_beam_state(
@@ -78,10 +81,10 @@ def zeeman_simulation(
         collimation_angle_deg=collimation_angle_deg,
         angular_broadening_factor=angular_broadening_factor,
         m=atom.mass,
-        distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
+        distance_m=start_distance_m,
         seed=seed,
     )
-    time_points, _ = generate_timepoints(ZEEMAN_SIM_CONFIG["t_max_s"], dt)
+    time_points, _ = generate_timepoints(t_max_s, dt)
     initial_states = [
         np.concatenate((position, velocity))
         for position, velocity in zip(r0_arr, v0_arr)
@@ -96,7 +99,7 @@ def zeeman_simulation(
         seed_idx=seed,
     )
     survivor_states, survivor_indices = zeeman_extract_survivors(
-        results, ZEEMAN_SIM_CONFIG["cutoff_distance_m"]
+        results, cutoff_distance_m
     )
     return results, survivor_states, survivor_indices
 
