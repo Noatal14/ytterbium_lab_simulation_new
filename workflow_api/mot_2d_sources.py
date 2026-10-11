@@ -24,6 +24,25 @@ MAX_METADATA_BYTES = 128 * 1024
 MAX_SOURCES = 128
 
 
+class SourceScanLimits:
+    """Optional resource bounds for interactive source discovery."""
+
+    def __init__(
+        self,
+        *,
+        maximum_file_bytes: int,
+        maximum_total_bytes: int,
+        maximum_rows_per_file: int,
+        maximum_total_rows: int,
+        maximum_npy_header_bytes: int,
+    ):
+        self.maximum_file_bytes = maximum_file_bytes
+        self.maximum_total_bytes = maximum_total_bytes
+        self.maximum_rows_per_file = maximum_rows_per_file
+        self.maximum_total_rows = maximum_total_rows
+        self.maximum_npy_header_bytes = maximum_npy_header_bytes
+
+
 def _within(path: Path, root: Path) -> bool:
     try:
         path.relative_to(root)
@@ -69,13 +88,21 @@ def _source_id(relative: Path) -> str:
     return "zeeman-" + hashlib.sha256(relative.as_posix().encode()).hexdigest()[:20]
 
 
-def inspect_source(directory: Path, repository_root: Path, *, include_records: bool = False) -> dict[str, Any]:
+def inspect_source(
+    directory: Path,
+    repository_root: Path,
+    *,
+    include_records: bool = False,
+    scan_limits: SourceScanLimits | None = None,
+) -> dict[str, Any]:
     repository_root = repository_root.resolve()
     source_root = (repository_root / SOURCE_ROOT).resolve()
     if directory.is_symlink() or not directory.is_dir() or not _within(directory.resolve(), source_root):
         raise ValueError("invalid source")
     profiles: set[str] = set(); commits: set[str] = set(); survivor_counts: list[int] = []
     identities: list[str] = []; records: list[dict[str, Any]] = []
+    total_bytes = 0
+    total_rows = 0
     for seed in EXPECTED_SEEDS:
         matches = list(directory.glob(f"production_zeeman_n*_dt*_seed{seed}.npy"))
         if len(matches) != 1:
@@ -83,6 +110,13 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
         state = matches[0]; metadata_path = state.with_suffix(".json")
         if not _safe_file(state, source_root):
             raise ValueError("untrusted state")
+        state_bytes = state.stat().st_size
+        total_bytes += state_bytes
+        if scan_limits is not None and (
+            state_bytes > scan_limits.maximum_file_bytes
+            or total_bytes > scan_limits.maximum_total_bytes
+        ):
+            raise ValueError("state source exceeds interactive byte limits")
         metadata = _metadata(metadata_path, source_root)
         parameters = metadata.get("parameters") if isinstance(metadata.get("parameters"), dict) else {}
         software = metadata.get("software") if isinstance(metadata.get("software"), dict) else {}
@@ -97,7 +131,23 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
         ):
             raise ValueError("incomplete provenance")
         provenance = attest_canonical_zeeman_metadata(metadata, allow_legacy=True)
-        array = np.load(state, mmap_mode="r", allow_pickle=False)
+        array = np.load(
+            state,
+            mmap_mode="r",
+            allow_pickle=False,
+            max_header_size=(
+                scan_limits.maximum_npy_header_bytes
+                if scan_limits is not None
+                else 10_000
+            ),
+        )
+        rows = int(array.shape[0]) if array.ndim >= 1 else 0
+        total_rows += rows
+        if scan_limits is not None and (
+            rows > scan_limits.maximum_rows_per_file
+            or total_rows > scan_limits.maximum_total_rows
+        ):
+            raise ValueError("state source exceeds interactive row limits")
         digest = _sha256(state)
         metadata_digest = _sha256(metadata_path)
         if (
@@ -149,20 +199,74 @@ def inspect_source(directory: Path, repository_root: Path, *, include_records: b
     return result
 
 
-def list_sources(repository_root: Path) -> dict[str, Any]:
+def list_sources(
+    repository_root: Path,
+    *,
+    include_pool_counts: bool = False,
+    scan_limits: SourceScanLimits | None = None,
+) -> dict[str, Any]:
+    """List strictly attested campaign folders.
+
+    ``include_pool_counts`` is an internal read-only projection for an
+    individual-run catalog.  The default campaign API remains byte-for-byte
+    compatible and never gains a second, weaker validation path.
+    """
     source_root = (repository_root.resolve() / SOURCE_ROOT).resolve()
     if not source_root.is_dir():
-        return {"sources": [], "invalid_count": 0, "total": 0}
-    sources: list[dict[str, Any]] = []; invalid = 0
-    for directory in itertools.islice(source_root.iterdir(), MAX_SOURCES + 1):
-        if len(sources) + invalid >= MAX_SOURCES:
-            invalid += 1
-            break
-        if directory.is_symlink() or not directory.is_dir() or directory.name.startswith("."):
-            continue
+        result = {"sources": [], "invalid_count": 0, "total": 0}
+        if include_pool_counts:
+            result["truncated"] = False
+        return result
+    sources: list[dict[str, Any]] = []; invalid = 0; truncated = False
+
+    def admit(directory: Path) -> None:
+        nonlocal invalid
         try:
-            sources.append(inspect_source(directory, repository_root))
+            source = inspect_source(
+                directory,
+                repository_root,
+                include_records=include_pool_counts,
+                scan_limits=scan_limits,
+            )
+            if include_pool_counts:
+                source["pooled_survivor_count"] = sum(
+                    record["survivor_count"] for record in source.pop("records")
+                )
+            sources.append(source)
         except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
             invalid += 1
+
+    if not include_pool_counts:
+        # Compatibility branch: preserve the original campaign registry scan
+        # literally.  The raw-entry islice bound and the pre-filter overflow
+        # check are externally characterized legacy behavior.
+        for directory in itertools.islice(source_root.iterdir(), MAX_SOURCES + 1):
+            if len(sources) + invalid >= MAX_SOURCES:
+                invalid += 1
+                break
+            if (
+                directory.is_symlink()
+                or not directory.is_dir()
+                or directory.name.startswith(".")
+            ):
+                continue
+            admit(directory)
+    else:
+        candidate_count = 0
+        for directory in source_root.iterdir():
+            if (
+                directory.is_symlink()
+                or not directory.is_dir()
+                or directory.name.startswith(".")
+            ):
+                continue
+            if candidate_count >= MAX_SOURCES:
+                truncated = True
+                break
+            candidate_count += 1
+            admit(directory)
     sources.sort(key=lambda row: row["path"])
-    return {"sources": sources, "invalid_count": invalid, "total": len(sources)}
+    result = {"sources": sources, "invalid_count": invalid, "total": len(sources)}
+    if include_pool_counts:
+        result["truncated"] = truncated
+    return result
