@@ -188,7 +188,8 @@ def build_mot_2d_run_plan(request_value: Mapping[str, Any], *, repository_root: 
     source = resolve_individual_mot_2d_source(root, request.source_id)
     sampling = _sample(source, request.particle_count, request.selection_seed)
     numerical = NUMERICAL_POLICY["mot_2d"]
-    if numerical["solver"] != "RK4StHybridCustom" or numerical["dt_s"] != 0.625e-6 or MOT_2D_SIM_CONFIG["dt_s"] != numerical["dt_s"]:
+    fixed = MOT_2D_RUN_SPECIFICATION["fixed_classification"]
+    if numerical["solver"] != fixed["solver"] or numerical["dt_s"] != fixed["timestep_s"] or numerical["t_max_s"] != fixed["t_max_s"] or MOT_2D_SIM_CONFIG != {"dt_s": fixed["timestep_s"], "t_max_s": fixed["t_max_s"], "start_distance_m": fixed["start_distance_m"]} or FORCE_SCALE_N != fixed["force_scale_N"]:
         raise RuntimeError("Active 2D-MOT numerics contradict the reviewed policy.")
     physical = LABORATORY_PHYSICAL_SPECIFICATION
     field = resolved_zeeman_field_construction(
@@ -197,22 +198,22 @@ def build_mot_2d_run_plan(request_value: Mapping[str, Any], *, repository_root: 
     )
     resolved = {
         "admission_specification": {"version": MOT_2D_RUN_SPEC_VERSION, "sha256": MOT_2D_RUN_SPEC_SHA256},
-        "physical_specification": _plain(physical), "numerical_policy": _plain(numerical),
+        "physical_specification": _plain(physical), "numerical_policy": {"solver": fixed["solver"], "dt_s": fixed["timestep_s"], "t_max_s": fixed["t_max_s"]},
         "input_source": {"id": source.source_id, "kind": source.source_kind, "qualification": source.source_qualification, "fingerprint": source.fingerprint, "pooled_particle_count": source.pooled_particle_count, "records": [_plain(record) for record in source.records]},
         "sampling": sampling,
         "mot_2d": {"laser": {"s0": request.s0, "detuning_gamma": request.detuning_gamma, "swap_polarization": False}, "magnet_radius_m": request.magnet_radius_m, "capture_criterion_version": "mot_2d_extract_survivors_v1"},
         "upstream_zeeman_boundary": {"field": field, "laser": resolved_zeeman_laser_parameters(**ZEEMAN_LASER_CONFIG)},
-        "simulation": {"particle_count": request.particle_count, "mot_seed": request.mot_seed, "stochastic": True, "gravity_enabled": True, "start_distance_m": float(MOT_2D_SIM_CONFIG["start_distance_m"]), "force_scale_N": float(FORCE_SCALE_N)},
+        "simulation": {"particle_count": request.particle_count, "mot_seed": request.mot_seed, "stochastic": True, "gravity_enabled": True, "start_distance_m": fixed["start_distance_m"], "force_scale_N": fixed["force_scale_N"]},
         "execution": {"mode": request.execution_mode, "workers": MOT_2D_RUN_SPECIFICATION["workers_by_execution_mode"][request.execution_mode]},
     }
     configuration = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["configuration"], "run_id": run_id, "family": "mot_2d", "laboratory_spec": {"version": LABORATORY_SPEC_VERSION, "sha256": LABORATORY_SPEC_SHA256}, "numerical_policy": {"version": NUMERICAL_POLICY_VERSION, "sha256": NUMERICAL_POLICY_SHA256}, "resolved": resolved}
     inputs = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["inputs"], "run_id": run_id, "family": "mot_2d", "artifacts": _artifacts(source)}
-    run = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["run"], "run_id": run_id, "family": "mot_2d", "created_utc": created_utc, "execution_mode": request.execution_mode, "git_revision": git_revision, "configuration_sha256": record_sha256("configuration", configuration), "inputs_sha256": record_sha256("inputs", inputs), "particle_count": request.particle_count, "seed": request.mot_seed, "solver": numerical["solver"], "timestep_s": numerical["dt_s"], "retention": {"particle_states": request.retain_particle_states}, "outputs": _outputs(request.retain_particle_states), "suitability": "individual_only"}
+    run = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["run"], "run_id": run_id, "family": "mot_2d", "created_utc": created_utc, "execution_mode": request.execution_mode, "git_revision": git_revision, "configuration_sha256": record_sha256("configuration", configuration), "inputs_sha256": record_sha256("inputs", inputs), "particle_count": request.particle_count, "seed": request.mot_seed, "solver": fixed["solver"], "timestep_s": fixed["timestep_s"], "retention": {"particle_states": request.retain_particle_states}, "outputs": _outputs(request.retain_particle_states), "suitability": "individual_only"}
     status = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["status"], "run_id": run_id, "revision": 0, "state": "configured", "updated_utc": created_utc, "execution": {"mode": request.execution_mode, "local_pid": None, "zeus_job_id": None}, "error": None}
     for kind, record in (("configuration", configuration), ("inputs", inputs), ("run", run), ("status", status)):
         validate_record(kind, record)
     controls = {"s0": request.s0, "detuning_gamma": request.detuning_gamma, "magnet_radius_m": request.magnet_radius_m}
-    locked = {"solver": numerical["solver"], "timestep_s": numerical["dt_s"], "t_max_s": numerical["t_max_s"], "capture_criterion_version": "mot_2d_extract_survivors_v1", "sampling_algorithm": sampling["algorithm"], "sampling_version": sampling["version"], "workers": resolved["execution"]["workers"]}
+    locked = {"solver": fixed["solver"], "timestep_s": fixed["timestep_s"], "t_max_s": fixed["t_max_s"], "capture_criterion_version": fixed["capture_criterion_version"], "sampling_algorithm": sampling["algorithm"], "sampling_version": sampling["version"], "workers": resolved["execution"]["workers"]}
     review = Mot2DRunReview("mot_2d", source.source_id, source.source_qualification, request.execution_mode, request.particle_count, request.selection_seed, request.mot_seed, _freeze(controls), request.retain_particle_states, "individual_only", _freeze(locked), "retain_survivor_states" if request.retain_particle_states else "discard_survivor_states_after_summary")
     records = {"run": run, "configuration": configuration, "inputs": inputs, "status": status}
     plan_sha256 = hashlib.sha256(json.dumps(records, sort_keys=True, separators=(",", ":")).encode()).hexdigest()

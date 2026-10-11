@@ -31,13 +31,21 @@ MAX_INDIVIDUAL_RUNS = 500
 MAX_CATALOG_SOURCES = MAX_SOURCES + MAX_INDIVIDUAL_RUNS
 _LABEL_LIMIT = 80
 _UNSAFE_LABEL = re.compile(r"[^A-Za-z0-9._ -]+")
-_INTERACTIVE_LIMITS = SourceScanLimits(
+INDIVIDUAL_MOT_2D_SOURCE_SCAN_LIMITS = SourceScanLimits(
     maximum_file_bytes=512 * 1024 * 1024,
     maximum_total_bytes=8 * 1024 * 1024 * 1024,
     maximum_rows_per_file=2_000_000,
     maximum_total_rows=70_000_000,
     maximum_npy_header_bytes=64 * 1024,
 )
+# Backward-compatible private name retained for the focused bounded-scan tests.
+_INTERACTIVE_LIMITS = INDIVIDUAL_MOT_2D_SOURCE_SCAN_LIMITS
+
+
+def individual_mot_2d_source_scan_limits() -> SourceScanLimits:
+    """Return the one authoritative admission/execution source-size policy."""
+
+    return _INTERACTIVE_LIMITS
 
 
 @dataclass(frozen=True)
@@ -89,8 +97,8 @@ def _retained_evidence(inspected: Any, discovered_path: str) -> _RetainedEvidenc
         or state.shape != (state.survivor_count, 6)
         or result["metrics"].get("n_survivors") != state.survivor_count
         or state.survivor_count <= 0
-        or state.survivor_count > _INTERACTIVE_LIMITS.maximum_rows_per_file
-        or state.size_bytes > _INTERACTIVE_LIMITS.maximum_file_bytes
+        or state.survivor_count > individual_mot_2d_source_scan_limits().maximum_rows_per_file
+        or state.size_bytes > individual_mot_2d_source_scan_limits().maximum_file_bytes
     ):
         return None
     public_run_id = "individual-run-" + hashlib.sha256(
@@ -167,7 +175,7 @@ def _canonical_options(repository_root: Path) -> tuple[list[dict[str, Any]], int
     listing = list_sources(
         repository_root,
         include_pool_counts=True,
-        scan_limits=_INTERACTIVE_LIMITS,
+        scan_limits=individual_mot_2d_source_scan_limits(),
     )
     options: list[dict[str, Any]] = []
     for row in listing["sources"]:
@@ -293,7 +301,7 @@ def resolve_individual_mot_2d_source(
         raise ValueError("Individual 2D-MOT source identifier is invalid.")
     root = Path(repository_root).resolve(strict=True)
     listing = list_sources(
-        root, include_pool_counts=True, scan_limits=_INTERACTIVE_LIMITS
+        root, include_pool_counts=True, scan_limits=individual_mot_2d_source_scan_limits()
     )
     for row in listing["sources"]:
         evidence = {
@@ -309,7 +317,7 @@ def resolve_individual_mot_2d_source(
             continue
         inspected = inspect_source(
             root / row["path"], root, include_records=True,
-            scan_limits=_INTERACTIVE_LIMITS,
+            scan_limits=individual_mot_2d_source_scan_limits(),
         )
         records = sorted(inspected["records"], key=lambda item: item["zeeman_seed"])
         pooled = sum(item["survivor_count"] for item in records)

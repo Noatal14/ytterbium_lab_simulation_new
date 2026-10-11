@@ -11,5 +11,5 @@
   },
   "workers_by_execution_mode": {"local": 8, "zeus": 200},
   "sampling": {"algorithm": "pcg64-raw-partial-fisher-yates-unbiased", "version": "v1", "canonical_order": "constituent-record-order-then-row-index"},
-  "fixed_classification": {"suitability": "individual_only", "solver": "RK4StHybridCustom", "timestep_s": 0.000000625, "capture_criterion_version": "mot_2d_extract_survivors_v1"}
+  "fixed_classification": {"suitability": "individual_only", "solver": "RK4StHybridCustom", "timestep_s": 0.000000625, "t_max_s": 0.025, "start_distance_m": 0.1, "force_scale_N": 3.141895058426422e-20, "capture_criterion_version": "mot_2d_extract_survivors_v1"}
 }

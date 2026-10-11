@@ -123,10 +123,81 @@ class WorkerProductError(RunRecordError):
     """Definite worker-contract rejection before durable publication begins."""
 
 
+def mot_2d_result_provenance(
+    run: Mapping[str, Any], configuration: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Build the exact provenance object required for individual 2D results."""
+    resolved = configuration["resolved"]
+    sampling = resolved["sampling"]
+    source = resolved["input_source"]
+    controls = resolved["mot_2d"]
+    return {
+        "git_revision": run["git_revision"],
+        "configuration_sha256": run["configuration_sha256"],
+        "inputs_sha256": run["inputs_sha256"],
+        "laboratory_spec_sha256": configuration["laboratory_spec"]["sha256"],
+        "numerical_policy_sha256": configuration["numerical_policy"]["sha256"],
+        "admission_specification_sha256": resolved["admission_specification"]["sha256"],
+        "source_id": source["id"],
+        "source_fingerprint": source["fingerprint"],
+        "selection_algorithm": sampling["algorithm"],
+        "selection_version": sampling["version"],
+        "selection_seed": sampling["selection_seed"],
+        "mot_seed": resolved["simulation"]["mot_seed"],
+        "s0": controls["laser"]["s0"],
+        "detuning_gamma": controls["laser"]["detuning_gamma"],
+        "magnet_radius_m": controls["magnet_radius_m"],
+        "solver": resolved["numerical_policy"]["solver"],
+        "timestep_s": resolved["numerical_policy"]["dt_s"],
+        "capture_criterion_version": controls["capture_criterion_version"],
+    }
+
+
 def _validate_family_metrics(
-    family: str, run: Mapping[str, Any], results: Mapping[str, Any]
+    family: str,
+    run: Mapping[str, Any],
+    results: Mapping[str, Any],
+    configuration: Mapping[str, Any] | None = None,
 ) -> None:
     """Enforce family-specific scientific relationships before publication."""
+    if family == "mot_2d":
+        if configuration is None:
+            raise WorkerProductError("2D-MOT result validation requires configuration evidence.")
+        metrics = results["metrics"]
+        expected = {
+            "n_input", "n_survivors", "conditional_efficiency", "elapsed_s",
+            "selection_sha256", "provenance",
+        }
+        resolved = configuration["resolved"]
+        sampling = resolved["sampling"]
+        expected_provenance = mot_2d_result_provenance(run, configuration)
+        n_input = metrics.get("n_input")
+        n_survivors = metrics.get("n_survivors")
+        efficiency = metrics.get("conditional_efficiency")
+        elapsed = metrics.get("elapsed_s")
+        if (
+            set(metrics) != expected
+            or isinstance(n_input, bool)
+            or not isinstance(n_input, int)
+            or n_input != run["particle_count"]
+            or n_input != sampling["selected_count"]
+            or isinstance(n_survivors, bool)
+            or not isinstance(n_survivors, int)
+            or not 0 <= n_survivors <= n_input
+            or isinstance(efficiency, bool)
+            or not isinstance(efficiency, (int, float))
+            or not math.isfinite(float(efficiency))
+            or float(efficiency) != n_survivors / n_input
+            or isinstance(elapsed, bool)
+            or not isinstance(elapsed, (int, float))
+            or not math.isfinite(float(elapsed))
+            or elapsed < 0
+            or metrics.get("selection_sha256")
+            != sampling["selected_identities_sha256"]
+            or metrics.get("provenance") != expected_provenance
+        ):
+            raise WorkerProductError("2D-MOT result metrics are scientifically inconsistent.")
+        return
     if family != "zeeman":
         return
     metrics = results["metrics"]
@@ -523,7 +594,10 @@ class ExecutorLifecycleStore(RunRecordStore):
                     run["retention"]["particle_states"]
                 ):
                     raise WorkerProductError("Worker output contradicts retention policy.")
-                _validate_family_metrics(family, run, results)
+                configuration = _read_record_at(
+                    directory, "configuration.json", "configuration"
+                )
+                _validate_family_metrics(family, run, results, configuration)
                 children: dict[str, int] = {}
                 try:
                     for path, content in sorted(artifacts.items()):
@@ -581,7 +655,7 @@ class ExecutorLifecycleStore(RunRecordStore):
                     product.results,
                     product.receipt,
                 )
-                _validate_family_metrics(family, run, product.results)
+                _validate_family_metrics(family, run, product.results, configuration)
                 if current["revision"] != plan.expected_status_revision:
                     raise RunRecordError("Success publication lost its lifecycle race.")
                 verify()
@@ -685,7 +759,7 @@ class ExecutorLifecycleStore(RunRecordStore):
                     results,
                     receipt,
                 )
-                _validate_family_metrics(family, run, results)
+                _validate_family_metrics(family, run, results, configuration)
                 if plan.results_sha256 != hashlib.sha256(
                     encode_record("results", results)
                 ).hexdigest():

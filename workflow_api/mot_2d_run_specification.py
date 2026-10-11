@@ -66,8 +66,8 @@ def _validate(value: Any) -> dict[str, Any]:
     if value["sampling"] != {"algorithm": "pcg64-raw-partial-fisher-yates-unbiased", "version": "v1", "canonical_order": "constituent-record-order-then-row-index"}:
         raise ValueError("Invalid sampling policy.")
     fixed = value["fixed_classification"]
-    expected_fixed = {"suitability": "individual_only", "solver": "RK4StHybridCustom", "timestep_s": 0.000000625, "capture_criterion_version": "mot_2d_extract_survivors_v1"}
-    if fixed != expected_fixed or NUMERICAL_POLICY["mot_2d"]["solver"] != fixed["solver"] or NUMERICAL_POLICY["mot_2d"]["dt_s"] != fixed["timestep_s"]:
+    expected_fixed = {"suitability": "individual_only", "solver": "RK4StHybridCustom", "timestep_s": 0.000000625, "t_max_s": 0.025, "start_distance_m": 0.1, "force_scale_N": 3.141895058426422e-20, "capture_criterion_version": "mot_2d_extract_survivors_v1"}
+    if fixed != expected_fixed or NUMERICAL_POLICY["mot_2d"]["solver"] != fixed["solver"] or NUMERICAL_POLICY["mot_2d"]["dt_s"] != fixed["timestep_s"] or NUMERICAL_POLICY["mot_2d"]["t_max_s"] != fixed["t_max_s"]:
         raise ValueError("Invalid fixed classification.")
     return value
 

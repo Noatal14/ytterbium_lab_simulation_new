@@ -261,6 +261,8 @@ class BoundedLocalExecutionPool:
         coordinator_factory: Callable[..., IndividualRunExecutionCoordinator] = (
             IndividualRunExecutionCoordinator
         ),
+        allowed_family: str = "zeeman",
+        thread_name_prefix: str = "zeeman-local",
     ) -> None:
         if (
             isinstance(max_concurrent, bool)
@@ -275,8 +277,9 @@ class BoundedLocalExecutionPool:
         self._authority = authority
         self._worker_factory = worker_factory
         self._coordinator_factory = coordinator_factory
+        self._allowed_family = allowed_family
         self._executor = ThreadPoolExecutor(
-            max_workers=max_concurrent, thread_name_prefix="zeeman-local"
+            max_workers=max_concurrent, thread_name_prefix=thread_name_prefix
         )
         self._slots = threading.BoundedSemaphore(max_pending)
         self._lock = threading.RLock()
@@ -285,8 +288,8 @@ class BoundedLocalExecutionPool:
         self._closed = False
 
     def submit(self, family: str, run_id: str) -> LocalExecutionHandle:
-        if family != "zeeman":
-            raise ValueError("This pool executes only individual Zeeman runs.")
+        if family != self._allowed_family:
+            raise ValueError("This pool received the wrong individual-run family.")
         with self._lock:
             if self._closed:
                 raise RuntimeError("Local execution pool is closed.")

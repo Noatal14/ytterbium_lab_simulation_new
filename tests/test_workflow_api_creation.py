@@ -17,6 +17,8 @@ from lab_setup.physical_specification import (
 from workflow_api.mot_2d_plan import RELEVANT_FILES, build_plan, materialize, physical_model_hash, plan_from_frozen_manifest
 from workflow_api.mot_2d_sources import inspect_source
 from workflow_api.repository_snapshot import (
+    MOT_2D_INDIVIDUAL_RELEVANT_FILES,
+    Mot2DIndividualRepositorySnapshotProvider,
     RepositorySnapshot,
     RepositorySnapshotProvider,
     ZEEMAN_RELEVANT_FILES,
@@ -195,6 +197,27 @@ def test_zeeman_snapshot_provider_audits_exact_runtime_and_planner_ledger(tmp_pa
     assert provider.paths == ZEEMAN_RELEVANT_FILES
     assert len(provider.capture().commit) == 40
     planner.write_text("# dirty zeeman runtime\n")
+    with pytest.raises(RuntimeError, match="uncommitted"):
+        provider.capture()
+
+
+def test_individual_mot_2d_snapshot_audits_shared_local_execution_runtime(tmp_path):
+    assert "workflow_api/zeeman_local_execution.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/mot_2d_local_execution.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
+    assert len(MOT_2D_INDIVIDUAL_RELEVANT_FILES) == len(set(MOT_2D_INDIVIDUAL_RELEVANT_FILES))
+    runtime = tmp_path / "workflow_api/zeeman_local_execution.py"
+    runtime.parent.mkdir()
+    runtime.write_text("# shared bounded execution runtime\n")
+    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(["/usr/bin/git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["/usr/bin/git", "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"],
+        cwd=tmp_path, check=True, stdout=subprocess.DEVNULL,
+    )
+    provider = Mot2DIndividualRepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    assert provider.paths == MOT_2D_INDIVIDUAL_RELEVANT_FILES
+    assert len(provider.capture().commit) == 40
+    runtime.write_text("# dirty shared bounded execution runtime\n")
     with pytest.raises(RuntimeError, match="uncommitted"):
         provider.capture()
 

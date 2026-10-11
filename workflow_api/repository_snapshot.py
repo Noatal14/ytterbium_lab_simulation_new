@@ -93,6 +93,7 @@ MOT_2D_INDIVIDUAL_RELEVANT_FILES = (
     "utils/simulation_helpers.py",
     "workflow_api/mot_2d_individual_sources.py",
     "workflow_api/mot_2d_run_creation.py",
+    "workflow_api/mot_2d_local_execution.py",
     "workflow_api/mot_2d_run_plan.py",
     "workflow_api/mot_2d_run_specification.py",
     "workflow_api/mot_2d_sources.py",
@@ -100,11 +101,13 @@ MOT_2D_INDIVIDUAL_RELEVANT_FILES = (
     "workflow_api/repository_snapshot.py",
     "workflow_api/repository_paths.py",
     "workflow_api/run_discovery.py",
+    "workflow_api/run_execution.py",
     "workflow_api/run_records.py",
     "workflow_api/run_results.py",
     "workflow_api/run_specification.py",
     "workflow_api/specifications/individual_run_v1.json",
     "workflow_api/specifications/mot_2d_individual_v1.json",
+    "workflow_api/zeeman_local_execution.py",
 )
 
 

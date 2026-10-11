@@ -40,6 +40,7 @@ def mot_simulation(
     npools=DEFAULT_NUM_POOLS,
     stochastic=True,
     dt=MOT_2D_SIM_CONFIG["dt_s"],
+    t_max_s=MOT_2D_SIM_CONFIG["t_max_s"],
     seed=DEFAULT_RANDOM_SEED,
     stochastic_sim_function=MOT_2D_STOCHASTIC_SOLVER,
 ):
@@ -58,7 +59,7 @@ def mot_simulation(
         zeeman_config=zeeman_config,
         zones=get_entire_apparatus_zone(),
     )
-    time_points, _ = generate_timepoints(MOT_2D_SIM_CONFIG["t_max_s"], dt)
+    time_points, _ = generate_timepoints(t_max_s, dt)
     simulation_function = stochastic_sim_function if stochastic else ScipyIVP_3DCustom
     results, _ = run_multiple_atoms_simulation(
         config=simulation_config,
