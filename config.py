@@ -34,6 +34,7 @@ from lab_setup.physical_specification import (
     ZEEMAN_MODEL_CONVENTIONS,
 )
 from lab_setup.numerical_policy import NUMERICAL_POLICY
+from lab_setup.zeeman_operating_specification import ZEEMAN_OPERATING_SPECIFICATION
 
 
 # =============================================================================
@@ -93,6 +94,7 @@ _LAB_SOURCE = LABORATORY_PHYSICAL_SPECIFICATION["source"]
 _LAB_APPARATUS = LABORATORY_PHYSICAL_SPECIFICATION["apparatus"]
 _LAB_ZEEMAN_LASER = LABORATORY_PHYSICAL_SPECIFICATION["zeeman_laser_geometry"]
 _NUMERICS = NUMERICAL_POLICY
+_ZEEMAN_OPERATING = ZEEMAN_OPERATING_SPECIFICATION
 
 
 def resolve_stochastic_solver(name):
@@ -296,15 +298,15 @@ ZEEMAN_FIELD_CONFIG = {
 }
 
 ZEEMAN_LASER_CONFIG = {
-    "s0": 3.0,
-    "detuning_gamma": -13.75,
+    "s0": _ZEEMAN_OPERATING["laser"]["s0"],
+    "detuning_gamma": _ZEEMAN_OPERATING["laser"]["detuning_gamma"],
 }
 
 ZEEMAN_SIM_CONFIG = {
     "t_max_s": _NUMERICS["zeeman"]["t_max_s"],
     "dt_s": _NUMERICS["zeeman"]["dt_s"],
-    "start_distance_m": 0.450,
-    "cutoff_distance_m": 0.100,
+    "start_distance_m": _ZEEMAN_OPERATING["propagation_boundary"]["start_distance_m"],
+    "cutoff_distance_m": _ZEEMAN_OPERATING["propagation_boundary"]["cutoff_distance_m"],
 }
 
 

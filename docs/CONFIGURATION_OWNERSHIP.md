@@ -17,7 +17,7 @@ to this baseline deliberate and reviewable.
 | Historical laboratory identity | Exact pinned `laboratory_physical_v1.json` version and SHA-256, loaded only through the explicit legacy path | Historical display/resume/readers | Read-only; never relabel or rewrite an existing artifact as v2 |
 | Versioned numerical policy | `lab_setup/specifications/numerical_policy_v1.json`, strictly loaded by `lab_setup/numerical_policy.py` | `config.py` compatibility facade; simulations and campaigns consume the facade | Numerical convergence review and new policy version; no laboratory geometry or campaign budgets belong here |
 | Compatibility facade | `config.py` exposes legacy public names and derives `g_F` and the model-effective factor from the v2 measured Zeeman coefficients | Existing simulation and study imports | Moved physical/model/numerical values must not be re-authored here; aliases and derived values must remain characterized |
-| Zeeman operating and numerical defaults | `config.py`: `ZEEMAN_LASER_CONFIG`, `ZEEMAN_SIM_CONFIG`, backed by the numerical policy where applicable | `lab_setup/config_builder.py`, `simulations/zeeman.py`, `studies/zeeman/*` | Scientific or convergence review; operating values do not belong in the physical specification |
+| Zeeman operating point | `lab_setup/specifications/zeeman_operating_v1.json`, strictly loaded by `lab_setup/zeeman_operating_specification.py` | `config.py` compatibility facade, Zeeman engine/studies, individual-run plans | New reviewed version for the default laser s0/detuning or propagation start/cutoff; numerical values remain in numerical policy |
 | Generic 2D MOT defaults | `config.py`: `MOT_2D_*`, `FORCE_SCALE_N`; search bounds in `studies/mot_2d/optimization.py` | `simulations/mot_2d.py`, studies, and executable campaign design | Scientific review |
 | Executable 2D campaign science | `workflow_api/mot_2d_spec.py`: `ROLE_SEEDS`, `RELEVANT_FILES`, `FIXED_DESIGN`; orchestration constants in `studies/mot_2d_s0_campaign.py` | Campaign planner, runner, repository snapshot | Campaign design/provenance review |
 | Versioned 2D UI/job contract | `workflow_api/specifications/mot_2d_v1.json`, validated by `workflow_api/mot_2d_specification.py` | UI mutation and Zeus transfer presentation | Contract/schema review and generated-artifact verification |
@@ -64,7 +64,7 @@ direction, oven/source settings, every stored Zeeman profile, complete 2D and
 3D configuration trees, `FULL_SIM_CONFIG`, runtime defaults, executable 2D
 campaign design, the complete versioned 2D UI/job contract, and 3D campaign
 seed/round defaults.  Canonical sorted JSON for this payload has SHA-256
-`1c7b71b972af5f477a07df9f72f5f1e10845b2d98cb6c706f81158ae382bdfab`.
+`84da93f61f3965efc3eb8065a7555f0685d257cadfe7ac5eac9abab3d26a64bc`.
 
 - 2D production timestep: `0.625 us`; 2D campaign working timestep:
   `1.25 us`; solver: `RK4StHybridCustom`.
@@ -146,8 +146,10 @@ this ledger and are covered by campaign physical-model closures.
 - Individual-run admission: `workflow_api/zeeman_run_plan.py`,
   `workflow_api/zeeman_run_specification.py`.
 
-The same AST characterization freezes the two additional direct-consumer
+The same AST characterization freezes these additional direct-consumer
 ledgers:
+
+- Versioned `lab_setup.zeeman_operating_specification`: `config.py`.
 
 - Versioned `lab_setup.numerical_policy`: `config.py`,
   `workflow_api/zeeman_run_plan.py`.

@@ -263,7 +263,8 @@ claiming a numerically unique optimum.
 Before any long Optuna allocation:
 
 1. expose the single-pass crossing angle and z offset as bounded optimizer variables;
-2. centralize both search spaces and all campaign settings in `config.py`;
+2. centralize both search spaces and campaign settings in their documented
+   executable authorities, with `config.py` retaining only compatibility exports;
 3. verify restoring-force signs on both sides of x, y, and z for sampled trials;
 4. verify exact zero blue intensity inside every protected core;
 5. reject nonphysical or laboratory-infeasible power combinations before a

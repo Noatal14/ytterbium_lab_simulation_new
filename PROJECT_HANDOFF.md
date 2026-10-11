@@ -109,8 +109,10 @@ criteria.
 
 ## 4. Code architecture and stage contracts
 
-`config.py` is the single source of truth for physical configuration and runtime
-defaults. Avoid unexplained constants in simulation scripts.
+`config.py` is the compatibility facade consumed by the simulation stages.
+Versioned specifications own migrated laboratory, model, numerical, and
+Zeeman-operating values; see `docs/CONFIGURATION_OWNERSHIP.md`. Avoid
+unexplained constants or duplicate authorities in simulation scripts.
 
 The production workflow is deliberately split into three stages:
 
@@ -429,8 +431,11 @@ be made through the configuration system rather than by rewriting stage logic.
 Before changing code or interpreting results:
 
 1. Read `README.md`, this file, `data/README.md`, and `lab_setup/README.md`.
-2. Inspect `config.py` and identify which parameter category a proposed change
-   belongs to.
+2. Use `docs/CONFIGURATION_OWNERSHIP.md` to identify the owning specification
+   or policy, then inspect its `config.py` compatibility projection if one
+   exists. A campaign manifest or individual-run record freezes the exact
+   resolved values used by that run; do not silently upgrade or reinterpret
+   those historical values.
 3. Do not treat provisional 3D-MOT values as finalized design choices.
 4. Treat current curated `data/` results as valid unless new concrete evidence
    demonstrates a problem.

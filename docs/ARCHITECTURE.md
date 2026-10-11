@@ -23,7 +23,8 @@ workflow_api/
 ui/  ---- explicit review + confirmation boundary ---->  Zeus scheduler / SSH
 ```
 
-- `config.py` and `lab_setup/` define the apparatus, atomic parameters, laser
+- Versioned specifications in `lab_setup/specifications/` own migrated values;
+  `config.py` exposes their compatibility facade, while `lab_setup/` defines laser
   geometry, magnetic fields, and supported simulation defaults.
 - `simulations/` contains the physical stage engines. It should not know about
   campaign manifests, PBS files, or user interfaces.
@@ -129,7 +130,7 @@ document, not in an active command path.
 
 | Intended change | Primary location | Required follow-up |
 | --- | --- | --- |
-| Apparatus geometry or physical constants | `config.py`, `lab_setup/` | Physics tests, convergence impact, documentation |
+| Apparatus geometry or physical constants | Owning versioned specification under `lab_setup/specifications/` | Physics tests, convergence impact, documentation |
 | Numerical propagation or capture behavior | `simulations/`, possibly `atomsmltr/` | Focused numerical tests and provenance review |
 | Optimization design or campaign lifecycle | Root campaign manager and its domain package | Manifest/version review, PBS dry run, campaign tests |
 | Reusable scientific diagnostic | Relevant `studies/<domain>/validation/` area | Test and document its scientific purpose |

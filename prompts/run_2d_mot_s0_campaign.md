@@ -98,7 +98,8 @@ prediction population: 10,000,000 Zeeman survivors
 target 95% prediction half-width: 0.05 percentage points
 ```
 
-`config.py` is the source of truth for simulation defaults. Verify that the 2D
+Use `docs/CONFIGURATION_OWNERSHIP.md` to resolve the authority for each default;
+`config.py` is the compatibility facade. Verify that the 2D
 MOT uses `RK4StHybridCustom` by default and reads its timestep from
 `MOT_2D_SIM_CONFIG`. Do not alter the physics, capture criterion, search bounds,
 particle counts, seed counts, or winner-selection rule during the campaign.

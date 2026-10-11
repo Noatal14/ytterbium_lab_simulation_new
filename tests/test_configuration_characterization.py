@@ -64,6 +64,7 @@ EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
     "workflow_api/mot_2d_run_plan.py", "workflow_api/mot_2d_run_specification.py",
     "workflow_api/mot_2d_zeus_remote.py",
 }
+EXPECTED_ZEEMAN_OPERATING_CONSUMERS = {"config.py"}
 
 
 def _normalize(value):
@@ -201,7 +202,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "1c7b71b972af5f477a07df9f72f5f1e10845b2d98cb6c706f81158ae382bdfab"
+        "84da93f61f3965efc3eb8065a7555f0685d257cadfe7ac5eac9abab3d26a64bc"
     )
 
 
@@ -255,6 +256,11 @@ def test_numerical_policy_facade_equivalence_and_separate_campaign_authority():
 def test_numerical_policy_direct_consumer_ledger_is_complete():
     consumers, _ = _direct_imports("lab_setup.numerical_policy")
     assert consumers == EXPECTED_NUMERICAL_POLICY_CONSUMERS
+
+
+def test_zeeman_operating_direct_consumer_ledger_is_complete():
+    consumers, _ = _direct_imports("lab_setup.zeeman_operating_specification")
+    assert consumers == EXPECTED_ZEEMAN_OPERATING_CONSUMERS
 
 
 def test_zeeman_profiles_and_corrected_generator_metadata_binding():

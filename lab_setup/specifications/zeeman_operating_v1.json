@@ -1,0 +1,11 @@
+{
+  "spec_version": "zeeman-operating-v1",
+  "laser": {
+    "s0": 3.0,
+    "detuning_gamma": -13.75
+  },
+  "propagation_boundary": {
+    "start_distance_m": 0.45,
+    "cutoff_distance_m": 0.1
+  }
+}

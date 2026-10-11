@@ -37,7 +37,7 @@ report, and export of survivor states for the 3D MOT.
 For the responsibility boundaries, scientific data flow, and the supported way
 to extend the project, start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-- `config.py` — the single source of truth for physical constants, atomic parameters, geometry, laser settings, magnetic-field configuration, and runtime defaults.
+- `config.py` — the compatibility facade used by existing simulations; versioned specifications under `lab_setup/specifications/` own migrated laboratory, model, numerical, and Zeeman-operating values.
 - `simulations/` — stage engines for the thermal beam, Zeeman slower, 2D MOT, 3D MOT, and the compatibility pipeline.
 - `studies/` — research workflows that use the stage engines for optimization and stochastic-seed analysis.
 - `lab_setup/` — apparatus modeling: laser setup, magnetic-field setup, zones, gravity, and config assembly.
@@ -49,7 +49,7 @@ to extend the project, start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
 ## Configuration
 
-`config.py` is the authoritative configuration location for the project. It defines:
+`config.py` is the public compatibility facade for the project. It exposes:
 
 - physical constants and unit conversions
 - Yb-171 mass and optical transitions
@@ -60,7 +60,7 @@ to extend the project, start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - laser settings and simulation defaults
 - runtime defaults such as random seed and particle count
 
-This project follows the refactored naming convention in `config.py` and expects active code to use the updated names instead of older aliases. The configuration module should be the first place to look when adjusting a simulation parameter. When changing the laboratory setup, prefer changing `config.py` rather than introducing stage parameters directly inside simulation scripts.
+Before changing a value, consult `docs/CONFIGURATION_OWNERSHIP.md`. Migrated values must be changed through a new reviewed version of their owning specification, not duplicated in `config.py` or a simulation script.
 
 ## How to run the simulation
 
@@ -300,14 +300,16 @@ The `graphs/` and `graphs_scripts/` directories are used for plotting and interp
 
 ## Reproducibility
 
-The project keeps key default values in `config.py`, including the random seed and main simulation defaults. The current configuration uses explicit defaults such as a reproducible random seed and the main simulation timestep values from the config module.
+Parameter ownership is documented in
+[`docs/CONFIGURATION_OWNERSHIP.md`](docs/CONFIGURATION_OWNERSHIP.md). Consult that
+map before changing a physical value, operating point, numerical policy, or
+workflow setting; `config.py` is a compatibility facade rather than the sole
+authority for all configuration.
 
-For reproducibility, the most important things to preserve are:
-
-- the selected Zeeman magnet profile in `config.py`
-- laser detuning and saturation values in `config.py`
-- simulation timing parameters in `config.py`
-- the same random seed and particle-count defaults when re-running the same workflow
+For reproducibility, each concrete campaign or individual run freezes its
+resolved values and configuration identities in its manifest or run record.
+Those frozen records, together with the referenced versioned specifications,
+are the authority for interpreting or resuming that particular run.
 
 ## atomsmltr
 
@@ -341,7 +343,7 @@ If the local `atomsmltr` package is not installed in editable mode, the project 
 
 This repository is a research codebase rather than a polished end-user package. The main things to understand are:
 
-- `config.py` is the source of truth
+- `config.py` is the compatibility facade; `docs/CONFIGURATION_OWNERSHIP.md` identifies each executable authority
 - the main workflow is split into Zeeman + MOT stages
 - generated survivors are a key reusable artifact
 - plotting and analysis scripts sit next to the simulation code
