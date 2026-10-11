@@ -148,12 +148,12 @@ def main():
         exact={"status","nonce","chain_key","commit","rows_digest","rows","files","rounds","completed_unix_s"}
         if set(record)!=exact or record["status"]!="confirmation_prepared" or record["chain_key"]!=payload["chain_key"] or record["commit"]!=commit or not re.fullmatch(r"[0-9a-f]{32}",str(record["nonce"])) or not timestamp(record["completed_unix_s"]) or hashlib.sha256(json.dumps(record["rows"],sort_keys=True).encode()).hexdigest()!=record["rows_digest"]:fail("transition_outcome_unknown")
         try:
-            prior=json.loads(json.dumps(manifest));prior["stage"]="refine";prior["stages"].pop("confirmation",None)
+            prior=json.loads(json.dumps(manifest));prior["stage"]="refine";prior["stages"].pop("confirmation",None);prior["stages"].pop("sensitivity",None)
             from workflow_api.mot_2d_screen import validate_refine_outputs
             canonical_rows=validate_refine_outputs(campaign,prior)
             from workflow_api.mot_2d_plan import render_confirmation_transition
             canonical=render_confirmation_transition(prior,campaign,root,canonical_rows);hashes={name:hashlib.sha256(data).hexdigest() for name,data in canonical.items()}
-            if record["rows"]!=canonical_rows or record["files"]!=hashes or not completed_rounds(record["rounds"],chain["job_ids"],len(manifest["s0_values"])*3) or any(not (campaign/name).is_file() or sha(campaign/name)!=value for name,value in hashes.items()):raise ValueError()
+            if record["rows"]!=canonical_rows or record["files"]!=hashes or not completed_rounds(record["rounds"],chain["job_ids"],len(manifest["s0_values"])*3) or any(name!="campaign.json" and (not (campaign/name).is_file() or sha(campaign/name)!=value) for name,value in hashes.items()):raise ValueError()
         except Exception:fail("transition_outcome_unknown")
         print(json.dumps({"lifecycle":"confirmation_prepared","rounds":record["rounds"],"rows":record["rows"],"branch":branch,"receipt":record}));return
     if manifest.get("stage")!="refine":fail("campaign_not_refine")

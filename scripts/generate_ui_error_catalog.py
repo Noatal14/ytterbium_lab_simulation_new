@@ -21,6 +21,7 @@ OUTCOME_UNKNOWN = {
     "screening_submission_outcome_unknown",
     "refinement_submission_outcome_unknown",
     "confirmation_submission_outcome_unknown",
+    "sensitivity_submission_outcome_unknown",
     "transition_outcome_unknown",
 }
 MANUAL = {

@@ -82,6 +82,8 @@ def _server(request_count, *, services=True, payloads=None, individual_api=None,
     handler.refinement_submission_service = _Service("refinement-submit",ledger,values,"refinement-submit-status") if services else None
     handler.confirmation_service = _Service("confirmation",ledger,values,"confirmation-status") if services else None
     handler.confirmation_submission_service = _Service("confirmation-submit",ledger,values,"confirmation-submit-status") if services else None
+    handler.sensitivity_service = _Service("sensitivity",ledger,values,"sensitivity-status") if services else None
+    handler.sensitivity_submission_service = _Service("sensitivity-submit",ledger,values,"sensitivity-submit-status") if services else None
     handler.individual_zeeman_api = individual_api if individual_api is not None else (_IndividualService(ledger,values) if services else None)
     handler.individual_mot_2d_api = individual_mot_2d_api if individual_mot_2d_api is not None else (_Mot2DIndividualService(ledger,values) if services else None)
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -148,7 +150,7 @@ def collect_errors():
 def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     expected=_load("workflow_api_success.json");first,ledger,headers=collect_success(monkeypatch);second,_,_=collect_success(monkeypatch)
     assert first==second==expected
-    assert len(first["cases"])==43 and len({(row["method"],row["path"]) for row in first["cases"]})==43
+    assert len(first["cases"])==49 and len({(row["method"],row["path"]) for row in first["cases"]})==49
     assert all(row["body"].get("api_version")==1 for row in first["cases"])
     assert all(all(value==expected["common_headers"][key] for key,value in header.items() if key in expected["common_headers"]) for header in headers)
     assert [entry[0] for entry in ledger] == [
@@ -160,8 +162,11 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "refinement-submit-status", "refinement-submit-preview",
         "refinement-submit-confirm", "confirmation-status",
         "confirmation-preview", "confirmation-confirm",
-        "confirmation-submit-status", "confirmation-submit-preview",
-        "confirmation-submit-confirm",
+            "confirmation-submit-status", "confirmation-submit-preview",
+            "confirmation-submit-confirm",
+            "sensitivity-status", "sensitivity-preview", "sensitivity-confirm",
+            "sensitivity-submit-status", "sensitivity-submit-preview",
+            "sensitivity-submit-confirm",
         "zeeman-run-preview", "zeeman-run-confirm", "zeeman-local-start",
         "zeeman-zeus-preview", "zeeman-zeus-confirm", "zeeman-zeus-refresh",
         "mot2d-run-preview", "mot2d-run-confirm", "mot2d-local-start",
@@ -183,7 +188,7 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
 
     assert ReadOnlyWorkflowHandler is WorkflowHandler
-    assert len(POST_ROUTES) == len(post_cases) == 36
+    assert len(POST_ROUTES) == len(post_cases) == 42
     assert set(POST_ROUTES) == {row["path"] for row in post_cases}
     assert all(route.path == path for path, route in POST_ROUTES.items())
     assert all(route.success_status == row["status"] for row in post_cases for route in [POST_ROUTES[row["path"]]])
@@ -219,6 +224,12 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             ("/api/v1/zeus/submissions/confirmation/status","confirmation_submission_service","status","payload",200,"zeus_confirmation_submission_unavailable","Zeus confirmation submission is unavailable.","ZeusConfirmationSubmissionError"),
             ("/api/v1/zeus/submissions/confirmation/preview","confirmation_submission_service","preview","session_kw",200,"zeus_confirmation_submission_unavailable","Zeus confirmation submission is unavailable.","ZeusConfirmationSubmissionError"),
             ("/api/v1/zeus/submissions/confirmation/confirm","confirmation_submission_service","confirm","session_kw",201,"zeus_confirmation_submission_unavailable","Zeus confirmation submission is unavailable.","ZeusConfirmationSubmissionError"),
+            ("/api/v1/zeus/confirmation-results/status","sensitivity_service","status","payload",200,"zeus_sensitivity_unavailable","Zeus Sensitivity preparation is unavailable.","ZeusSensitivityError"),
+            ("/api/v1/zeus/sensitivity/preview","sensitivity_service","preview","session_kw",200,"zeus_sensitivity_unavailable","Zeus Sensitivity preparation is unavailable.","ZeusSensitivityError"),
+            ("/api/v1/zeus/sensitivity/confirm","sensitivity_service","confirm","session_kw",201,"zeus_sensitivity_unavailable","Zeus Sensitivity preparation is unavailable.","ZeusSensitivityError"),
+            ("/api/v1/zeus/submissions/sensitivity/status","sensitivity_submission_service","status","payload",200,"zeus_sensitivity_submission_unavailable","Zeus Sensitivity submission is unavailable.","ZeusSensitivitySubmissionError"),
+            ("/api/v1/zeus/submissions/sensitivity/preview","sensitivity_submission_service","preview","session_kw",200,"zeus_sensitivity_submission_unavailable","Zeus Sensitivity submission is unavailable.","ZeusSensitivitySubmissionError"),
+            ("/api/v1/zeus/submissions/sensitivity/confirm","sensitivity_submission_service","confirm","session_kw",201,"zeus_sensitivity_submission_unavailable","Zeus Sensitivity submission is unavailable.","ZeusSensitivitySubmissionError"),
         ("/api/v1/individual-runs/zeeman/preview","individual_zeeman_api","preview","session_kw",200,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
         ("/api/v1/individual-runs/zeeman/confirm","individual_zeeman_api","confirm","session_kw",201,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
         ("/api/v1/individual-runs/zeeman/local/start","individual_zeeman_api","start_local","session_kw",202,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),

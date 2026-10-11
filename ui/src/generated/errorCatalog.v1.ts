@@ -1037,6 +1037,16 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "route_unavailable",
+    "code": "zeus_sensitivity_submission_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "zeus_sensitivity_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
     "code": "zeus_submission_unavailable",
     "semantic": "other"
   },
@@ -1162,6 +1172,206 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "screen_submission",
+    "code": "zeus_unreachable",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "campaign_not_canonical",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "local_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_already_submitted",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_expired",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_not_prepared",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_submission_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "sensitivity_submission_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_submission",
+    "code": "zeus_unreachable",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "campaign_not_canonical",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "confirmation_not_complete",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "confirmation_outputs_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "confirmation_outputs_pending",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "local_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "sensitivity_already_prepared",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "transition_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "transition_conflict",
+    "semantic": "manual_verification"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "transition_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "sensitivity_transition",
     "code": "zeus_unreachable",
     "semantic": "other"
   },

@@ -11,6 +11,7 @@ from workflow_api.mot_2d_plan import (
     render_confirmation_transition,
     render_refine_transition,
     render_screen_transition,
+    render_sensitivity_transition,
 )
 from workflow_api.mot_2d_spec import FIXED_DESIGN, ROLE_SEEDS
 from workflow_api.mot_2d_specification import (
@@ -152,11 +153,30 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
     confirmation = render_confirmation_transition(
         _manifest("refine"), campaign, root, refine_rows
     )
+    confirmation_rows = []
+    for index in range(5):
+        efficiency = 0.02 + index * 0.0001
+        confirmation_rows.append({
+            "s0": 1.3, "candidate_index": index,
+            "parameters": {"s0": 1.3, "detuning_gamma": -1.0 + index * 0.01,
+                           "magnet_radius": 0.047 + index * 0.00001},
+            "evaluation": {
+                "replicates": [{"zeeman_seed":3010+seed,"mot_seed":43010+seed,
+                                "n_input":10000,"subset_seed":seed,
+                                "conditional_efficiency":efficiency} for seed in range(5)],
+                "statistics": {"mean_conditional_efficiency":efficiency,
+                               "conditional_95_ci":[efficiency-0.001,efficiency+0.001]},
+            },
+        })
+    sensitivity = render_sensitivity_transition(
+        _manifest("confirmation"), campaign, root, confirmation_rows
+    )
     rendered = {
         "smoke": smoke,
         "screen": screen,
         "refine": refine,
         "confirmation": confirmation,
+        "sensitivity": sensitivity,
     }
     for stage in rendered:
         assert set(rendered[stage]) == set(stages[stage]["artifacts"])
@@ -164,6 +184,7 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
         "smoke": smoke["jobs/01_smoke.pbs"],
         "screen": screen["jobs/02_screen.pbs"],
         "confirmation": confirmation["jobs/04_confirmation.pbs"],
+        "sensitivity": sensitivity["jobs/05_sensitivity.pbs"],
     }
     for stage, data in jobs.items():
         spec = stages[stage]

@@ -13,4 +13,5 @@ export * from "./clients/zeus";
 export * from "./clients/smoke";
 export * from "./clients/screening";
 export * from "./clients/refinement";
+export * from "./clients/sensitivity";
 export * from "./workflowClient";

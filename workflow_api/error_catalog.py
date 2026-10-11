@@ -252,6 +252,14 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Zeus confirmation submission is unavailable.",
         ),
+        "zeus_sensitivity_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Zeus Sensitivity preparation is unavailable.",
+        ),
+        "zeus_sensitivity_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Zeus Sensitivity submission is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -731,6 +739,41 @@ CONFIRMATION_SUBMISSION = _generic_stage(
     },
     "confirmation_submission_failed",
 )
+SENSITIVITY_TRANSITION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "campaign_not_canonical", "local_checkout_mismatch",
+        "local_files_changed", "remote_response_invalid",
+        "too_many_pending_previews", "confirmation_invalid",
+        "confirmation_expired", "confirmation_not_complete",
+        "confirmation_outputs_pending", "confirmation_outputs_invalid",
+        "sensitivity_already_prepared", "transition_busy",
+        "transition_conflict", "transition_outcome_unknown",
+        "zeus_authentication_required", "zeus_host_key_untrusted",
+        "zeus_timeout", "zeus_unreachable",
+    },
+    "Sensitivity preparation stopped safely.",
+    {"sensitivity_already_prepared", "transition_busy", "transition_conflict",
+     "transition_outcome_unknown"},
+    "sensitivity_preparation_failed",
+)
+SENSITIVITY_SUBMISSION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "campaign_not_canonical", "local_checkout_mismatch",
+        "local_files_changed", "remote_response_invalid",
+        "too_many_pending_previews", "sensitivity_invalid",
+        "sensitivity_expired", "sensitivity_not_prepared",
+        "sensitivity_preparation_invalid", "sensitivity_already_submitted",
+        "sensitivity_submission_busy", "sensitivity_submission_outcome_unknown",
+        "zeus_authentication_required", "zeus_host_key_untrusted",
+        "zeus_timeout", "zeus_unreachable",
+    },
+    "Sensitivity submission stopped safely.",
+    {"sensitivity_already_submitted", "sensitivity_submission_busy",
+     "sensitivity_submission_outcome_unknown"},
+    "sensitivity_submission_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -832,6 +875,8 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "refinement_submission": REFINEMENT_SUBMISSION,
         "confirmation_transition": CONFIRMATION_TRANSITION,
         "confirmation_submission": CONFIRMATION_SUBMISSION,
+        "sensitivity_transition": SENSITIVITY_TRANSITION,
+        "sensitivity_submission": SENSITIVITY_SUBMISSION,
     }
 )
 

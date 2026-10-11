@@ -29,6 +29,8 @@ class ReceiverKind(Enum):
     REFINEMENT_TRANSITION = "refinement_transition"
     CONFIRMATION_PREPARATION = "confirmation_preparation"
     CONFIRMATION_SUBMISSION = "confirmation_submission"
+    SENSITIVITY_PREPARATION = "sensitivity_preparation"
+    SENSITIVITY_SUBMISSION = "sensitivity_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -137,6 +139,22 @@ _RECEIVERS = {
     ReceiverKind.CONFIRMATION_SUBMISSION: _ReceiverDefinition(
         "zeus_confirmation_submission_remote.py",
         "<confirmation-submit>",
+        frozenset({
+            ReceiverOperation.INSPECT,
+            ReceiverOperation.SUBMIT,
+            ReceiverOperation.STATUS,
+        }),
+        True,
+    ),
+    ReceiverKind.SENSITIVITY_PREPARATION: _ReceiverDefinition(
+        "zeus_sensitivity_remote.py",
+        "<sensitivity>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        True,
+    ),
+    ReceiverKind.SENSITIVITY_SUBMISSION: _ReceiverDefinition(
+        "zeus_sensitivity_submission_remote.py",
+        "<sensitivity-submit>",
         frozenset({
             ReceiverOperation.INSPECT,
             ReceiverOperation.SUBMIT,
@@ -335,6 +353,28 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.CONFIRMATION_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def sensitivity_preparation(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.SENSITIVITY_PREPARATION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def sensitivity_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.SENSITIVITY_SUBMISSION,
             repository_root,
             executable,
             timeout,

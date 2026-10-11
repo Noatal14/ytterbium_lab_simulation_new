@@ -42,6 +42,7 @@ describe("generated frontend error semantics", () => {
       smoke_submission: "submission_outcome_unknown",
       refinement_submission: "refinement_submission_outcome_unknown",
       confirmation_submission: "confirmation_submission_outcome_unknown",
+      sensitivity_submission: "sensitivity_submission_outcome_unknown",
     });
     for (const [domain, code] of Object.entries(synthesizedUncertainty)) {
       expect(isKnownServerError(domain as ServerErrorDomain, code)).toBe(true);

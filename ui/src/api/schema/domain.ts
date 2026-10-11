@@ -4,6 +4,8 @@ export { roundTiesToEven } from "./common";
 
 const canonicalDesign = MOT_2D_SPECIFICATION_V1.design;
 const canonicalStages = MOT_2D_SPECIFICATION_V1.stages;
+const sensitivityCreates=canonicalStages.sensitivity.artifacts.filter(item=>item!=="campaign.json");
+const sensitivityUpdates=canonicalStages.sensitivity.artifacts.filter(item=>item==="campaign.json");
 const canonicalRanks = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
 const canonicalWorkerSource = (value: unknown, stage: "screen" | "refine"): value is string => {
   if (!text(value)) return false;
@@ -347,6 +349,218 @@ export type ConfirmationSubmissionResult={status:"submitted";campaign_id:string;
 export function parseConfirmationSubmissionStatus(value:Record<string,unknown>):ConfirmationSubmissionStatus{const campaign=value.campaign as Record<string,unknown>,submission=value.submission as Record<string,unknown>,sync=value.local_sync as Record<string,unknown>;const states=["not_submitted","queued","running","held","completed_success","completed_failed","status_unknown","outcome_unknown"];const action={not_submitted:"review_submission",queued:"wait",running:"wait",held:"inspect_zeus",completed_success:"validate_outputs",completed_failed:"inspect_zeus",status_unknown:"inspect_zeus",outcome_unknown:"inspect_zeus"} as Record<string,string>;const needsJob=!['not_submitted','outcome_unknown'].includes(String(submission?.status));if(!exactKeys(value,["source","queried_at","campaign","submission","next_action","local_sync"])||value.source!=="zeus"||!validUtc(value.queried_at)||!campaign||!exactKeys(campaign,["id","name","stage"])||!boundedPrintable(campaign.id,512)||!boundedPrintable(campaign.name,512)||campaign.stage!=="confirmation"||!submission||!exactKeys(submission,["status","job_id"])||!states.includes(String(submission.status))||(submission.job_id!==null&&!canonicalArrayJob.test(String(submission.job_id)))||(needsJob!==(typeof submission.job_id==="string"))||value.next_action!==action[String(submission.status)]||!sync||!exactKeys(sync,["status"])||sync.status!=="not_synchronized")throw new Error("Invalid Confirmation submission status.");return value as unknown as ConfirmationSubmissionStatus;}
 export function parseConfirmationSubmissionPreview(value:Record<string,unknown>):ConfirmationSubmissionPreview{const campaign=value.campaign as Record<string,unknown>,stage=value.stage as Record<string,unknown>,job=value.job as Record<string,unknown>,remote=value.remote as Record<string,unknown>,effects=value.effects as Record<string,unknown>,sync=value.local_sync as Record<string,unknown>;if(!exactKeys(value,["preview_token","expires_in_seconds","campaign","stage","job","remote","effects","local_sync"])||!boundedPrintable(value.preview_token,512)||!Number.isInteger(value.expires_in_seconds)||Number(value.expires_in_seconds)<=0||!campaign||!exactKeys(campaign,["id","name","git_commit","s0_values"])||!boundedPrintable(campaign.id,512)||!boundedPrintable(campaign.name,512)||!/^[0-9a-f]{40}$/.test(String(campaign.git_commit))||!Array.isArray(campaign.s0_values)||campaign.s0_values.length===0||!campaign.s0_values.every(x=>typeof x==="number"&&Number.isFinite(x)&&x>0)||!stage||!exactKeys(stage,["id","label"])||stage.id!=="confirmation"||stage.label!=="Confirmation"||!job||!exactKeys(job,["file","kind","task_count","array_throttle","queue","cores_per_task","memory_per_task_bytes","walltime_seconds"])||job.file!=="jobs/04_confirmation.pbs"||job.kind!=="array"||job.task_count!==campaign.s0_values.length*canonicalDesign.confirmation_candidates_per_s0||job.array_throttle!==canonicalStages.confirmation.array_throttle||job.queue!=="zeus_combined_q"||job.cores_per_task!==canonicalStages.confirmation.cores_per_task||job.memory_per_task_bytes!==canonicalStages.confirmation.memory_per_task_bytes||job.walltime_seconds!==canonicalStages.confirmation.walltime_seconds||!remote||!exactKeys(remote,["host","project_directory","commit","branch","dirty"])||remote.host!=="zeus.technion.ac.il"||!/^\/home\/[A-Za-z][A-Za-z0-9._-]{0,31}\/ytterbium_lab_simulation_new$/.test(String(remote.project_directory))||remote.commit!==campaign.git_commit||!boundedPrintable(remote.branch,256)||remote.dirty!==false||!effects||!exactKeys(effects,["submit_confirmation","start_simulation","submit_later_stages","modify_campaign_files","record_submission_receipt"])||effects.submit_confirmation!==true||effects.start_simulation!==true||effects.submit_later_stages!==false||effects.modify_campaign_files!==false||effects.record_submission_receipt!==true||!sync||!exactKeys(sync,["status"])||sync.status!=="not_synchronized")throw new Error("Invalid Confirmation submission preview.");return value as unknown as ConfirmationSubmissionPreview;}
 export function parseConfirmationSubmissionResult(value:Record<string,unknown>):ConfirmationSubmissionResult{const sync=value.local_sync as Record<string,unknown>;if(!exactKeys(value,["status","campaign_id","stage","job_id","submitted_at","local_sync"])||value.status!=="submitted"||!boundedPrintable(value.campaign_id,512)||value.stage!=="confirmation"||!canonicalArrayJob.test(String(value.job_id))||!validUtc(value.submitted_at)||!sync||!exactKeys(sync,["status"])||sync.status!=="not_synchronized")throw new Error("Invalid Confirmation submission result.");return value as unknown as ConfirmationSubmissionResult;}
+
+export type SensitivityStatus = {
+  source: "zeus";
+  queried_at: string;
+  campaign: { id: string; name: string; stage: "confirmation" | "sensitivity" };
+  confirmation: {
+    status: "queued" | "running" | "held" | "failed" | "status_unknown" | "awaiting_outputs" | "outputs_invalid" | "ready_to_prepare_sensitivity" | "sensitivity_prepared";
+    job_id: string;
+    scheduler: {
+      state: string;
+      task_count: number;
+      counts: {
+        queued: number;
+        running: number;
+        held: number;
+        succeeded: number;
+        failed: number;
+      };
+      job_id: string;
+      submission_nonce: string;
+    };
+  };
+  validation: {
+    status: "valid" | "invalid" | "not_ready";
+    completed_points: number;
+    expected_points: number;
+  };
+  next_action: "review_sensitivity_preparation" | "none" | "inspect_zeus" | "wait";
+  local_sync: { status: "not_synchronized" };
+};
+export type SensitivityPreview = {
+  preview_token: string;
+  expires_in_seconds: number;
+  campaign: {
+    id: string;
+    name: string;
+    git_commit: string;
+    s0_values: number[];
+  };
+  from_stage: "confirmation";
+  to_stage: "sensitivity";
+  confirmation: {
+    job_id: string;
+    completed_points: number;
+    expected_points: number;
+  };
+  artifacts: { create: string[]; update: string[] };
+  job: {
+    file: "jobs/05_sensitivity.pbs";
+    kind: "array";
+    task_count: number;
+    array_throttle: 3;
+    queue: "zeus_combined_q";
+    cores_per_task: 200;
+    memory_per_task_bytes: 68719476736;
+    walltime_seconds: 36000;
+  };
+  effects: {
+    prepare_sensitivity: true;
+    submit_sensitivity: false;
+    start_simulation: false;
+    overwrite_existing: false;
+  };
+  local_sync: { status: "not_synchronized" };
+};
+export type SensitivityResult = {
+  status: "sensitivity_prepared";
+  campaign_id: string;
+  stage: "sensitivity";
+  artifacts: { created: number; updated: number };
+  submitted_to_zeus: false;
+  simulation_started: false;
+  local_sync: { status: "not_synchronized" };
+};
+export type SensitivitySubmissionStatus = {
+  source: "zeus";
+  queried_at: string;
+  campaign: { id: string; name: string; stage: "sensitivity" };
+  submission: {
+    status: "not_submitted" | "queued" | "running" | "held" | "completed_success" | "completed_failed" | "status_unknown" | "outcome_unknown";
+    job_id: string | null;
+  };
+  next_action: "review_submission" | "inspect_zeus" | "wait" | "validate_outputs";
+  local_sync: { status: "not_synchronized" };
+};
+export type SensitivitySubmissionPreview = {
+  preview_token: string;
+  expires_in_seconds: number;
+  campaign: {
+    id: string;
+    name: string;
+    git_commit: string;
+    s0_values: number[];
+  };
+  stage: { id: "sensitivity"; label: "Sensitivity" };
+  job: {
+    file: "jobs/05_sensitivity.pbs";
+    kind: "array";
+    task_count: number;
+    array_throttle: 3;
+    queue: "zeus_combined_q";
+    cores_per_task: 200;
+    memory_per_task_bytes: 68719476736;
+    walltime_seconds: 36000;
+  };
+  remote: {
+    host: "zeus.technion.ac.il";
+    project_directory: string;
+    commit: string;
+    branch: string;
+    dirty: false;
+  };
+  effects: {
+    submit_sensitivity: true;
+    start_simulation: true;
+    submit_later_stages: false;
+    modify_campaign_files: false;
+    record_submission_receipt: true;
+  };
+  local_sync: { status: "not_synchronized" };
+};
+export type SensitivitySubmissionResult = {
+  status: "submitted";
+  campaign_id: string;
+  stage: "sensitivity";
+  job_id: string;
+  submitted_at: string;
+  local_sync: { status: "not_synchronized" };
+};
+const syncOk = (v: unknown) => !!v && typeof v === "object" && exactKeys(v as Record<string, unknown>, ["status"]) && (v as Record<string, unknown>).status === "not_synchronized";
+const campaignCore = (v: unknown) => !!v && typeof v === "object" && boundedPrintable((v as Record<string, unknown>).id, 512) && boundedPrintable((v as Record<string, unknown>).name, 512);
+const sensitivitySchedulerState: Record<string, string> = {
+  queued: "queued",
+  running: "running",
+  held: "held",
+  failed: "completed_failed",
+  status_unknown: "status_unknown",
+  awaiting_outputs: "completed_success",
+  outputs_invalid: "completed_success",
+  ready_to_prepare_sensitivity: "completed_success",
+  sensitivity_prepared: "completed_success",
+};
+const sensitivityCountsMatch = (lifecycle: string, counts: Record<string, unknown>, total: unknown) => {
+  if (lifecycle === "queued") return Number(counts.queued) > 0;
+  if (lifecycle === "running") return Number(counts.running) > 0;
+  if (lifecycle === "held") return Number(counts.held) > 0;
+  if (lifecycle === "failed") return Number(counts.failed) > 0;
+  if (["awaiting_outputs", "outputs_invalid", "ready_to_prepare_sensitivity", "sensitivity_prepared"].includes(lifecycle)) return counts.succeeded === total && counts.failed === 0;
+  return lifecycle === "status_unknown";
+};
+export function parseSensitivityStatus(value: Record<string, unknown>): SensitivityStatus {
+  const c = value.campaign as Record<string, unknown>,
+    x = value.confirmation as Record<string, unknown>,
+    s = x?.scheduler as Record<string, unknown>,
+    n = s?.counts as Record<string, unknown>,
+    v = value.validation as Record<string, unknown>;
+  const states = ["queued", "running", "held", "failed", "status_unknown", "awaiting_outputs", "outputs_invalid", "ready_to_prepare_sensitivity", "sensitivity_prepared"];
+  const state = String(x?.status),
+    ready = ["ready_to_prepare_sensitivity", "sensitivity_prepared"].includes(state),
+    invalid = state === "outputs_invalid",
+    expectedStage = state === "sensitivity_prepared" ? "sensitivity" : "confirmation",
+    expectedAction = state === "ready_to_prepare_sensitivity" ? "review_sensitivity_preparation" : state === "sensitivity_prepared" ? "none" : ["held", "failed", "status_unknown", "outputs_invalid"].includes(state) ? "inspect_zeus" : "wait";
+  if (!exactKeys(value, ["source", "queried_at", "campaign", "confirmation", "validation", "next_action", "local_sync"]) || value.source !== "zeus" || !validUtc(value.queried_at) || !c || !exactKeys(c, ["id", "name", "stage"]) || !campaignCore(c) || c.stage !== expectedStage || !x || !exactKeys(x, ["status", "job_id", "scheduler"]) || !states.includes(state) || !canonicalArrayJob.test(String(x.job_id)) || !s || !exactKeys(s, ["state", "task_count", "counts", "job_id", "submission_nonce"]) || s.state !== sensitivitySchedulerState[state] || s.job_id !== x.job_id || !/^[0-9a-f]{32}$/.test(String(s.submission_nonce)) || !Number.isInteger(s.task_count) || Number(s.task_count) < 1 || Number(s.task_count) > 1000 || !n || !exactKeys(n, ["queued", "running", "held", "succeeded", "failed"]) || !Object.values(n).every((z) => Number.isInteger(z) && Number(z) >= 0) || Object.values(n).reduce((a, z) => a + Number(z), 0) !== s.task_count || !sensitivityCountsMatch(state, n, s.task_count) || !v || !exactKeys(v, ["status", "completed_points", "expected_points"]) || v.status !== (ready ? "valid" : invalid ? "invalid" : "not_ready") || !Number.isInteger(v.completed_points) || !Number.isInteger(v.expected_points) || Number(v.expected_points) < 1 || Number(v.expected_points) > 1000 || s.task_count !== v.expected_points || v.completed_points !== (ready ? v.expected_points : 0) || value.next_action !== expectedAction || !syncOk(value.local_sync)) throw new Error("Invalid Sensitivity status.");
+  return value as unknown as SensitivityStatus;
+}
+export function parseSensitivityPreview(value: Record<string, unknown>): SensitivityPreview {
+  const c = value.campaign as Record<string, unknown>,
+    q = value.confirmation as Record<string, unknown>,
+    j = value.job as Record<string, unknown>,
+    e = value.effects as Record<string, unknown>,
+    a = value.artifacts as Record<string, unknown>;
+  if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "from_stage", "to_stage", "confirmation", "artifacts", "job", "effects", "local_sync"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !c || !exactKeys(c, ["id", "name", "git_commit", "s0_values"]) || !campaignCore(c) || !/^[0-9a-f]{40}$/.test(String(c.git_commit)) || !Array.isArray(c.s0_values) || c.s0_values.length < 1 || !c.s0_values.every((x) => typeof x === "number" && Number.isFinite(x) && x > 0) || value.from_stage !== "confirmation" || value.to_stage !== "sensitivity" || !q || !exactKeys(q, ["job_id", "completed_points", "expected_points"]) || !canonicalArrayJob.test(String(q.job_id)) || !Number.isInteger(q.completed_points) || !Number.isInteger(q.expected_points) || Number(q.expected_points) < 1 || Number(q.expected_points) > 1000 || q.expected_points !== c.s0_values.length * canonicalDesign.confirmation_candidates_per_s0 || q.completed_points !== q.expected_points || !a || !exactKeys(a, ["create", "update"]) || JSON.stringify(a.create) !== JSON.stringify(sensitivityCreates) || JSON.stringify(a.update) !== JSON.stringify(sensitivityUpdates) || !j || !exactKeys(j, ["file", "kind", "task_count", "array_throttle", "queue", "cores_per_task", "memory_per_task_bytes", "walltime_seconds"]) || j.file !== canonicalStages.sensitivity.job_file || j.kind !== "array" || !Number.isInteger(j.task_count) || Number(j.task_count) < 1 || Number(j.task_count) > 1000 || j.array_throttle !== canonicalStages.sensitivity.array_throttle || j.queue !== "zeus_combined_q" || j.cores_per_task !== canonicalStages.sensitivity.cores_per_task || j.memory_per_task_bytes !== canonicalStages.sensitivity.memory_per_task_bytes || j.walltime_seconds !== canonicalStages.sensitivity.walltime_seconds || !e || !exactKeys(e, ["prepare_sensitivity", "submit_sensitivity", "start_simulation", "overwrite_existing"]) || e.prepare_sensitivity !== true || e.submit_sensitivity !== false || e.start_simulation !== false || e.overwrite_existing !== false || !syncOk(value.local_sync)) throw new Error("Invalid Sensitivity preview.");
+  return value as unknown as SensitivityPreview;
+}
+export function parseSensitivityResult(value: Record<string, unknown>): SensitivityResult {
+  const a = value.artifacts as Record<string, unknown>;
+  if (!exactKeys(value, ["status", "campaign_id", "stage", "artifacts", "submitted_to_zeus", "simulation_started", "local_sync"]) || value.status !== "sensitivity_prepared" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "sensitivity" || !a || !exactKeys(a, ["created", "updated"]) || a.created !== sensitivityCreates.length || a.updated !== sensitivityUpdates.length || value.submitted_to_zeus !== false || value.simulation_started !== false || !syncOk(value.local_sync)) throw new Error("Invalid Sensitivity result.");
+  return value as unknown as SensitivityResult;
+}
+export function parseSensitivitySubmissionStatus(value: Record<string, unknown>): SensitivitySubmissionStatus {
+  const c = value.campaign as Record<string, unknown>,
+    s = value.submission as Record<string, unknown>;
+  const states = ["not_submitted", "queued", "running", "held", "completed_success", "completed_failed", "status_unknown", "outcome_unknown"];
+  const actions = {
+    not_submitted: "review_submission",
+    queued: "wait",
+    running: "wait",
+    held: "inspect_zeus",
+    completed_success: "validate_outputs",
+    completed_failed: "inspect_zeus",
+    status_unknown: "inspect_zeus",
+    outcome_unknown: "inspect_zeus",
+  } as Record<string, string>;
+  const needsJob = !["not_submitted", "outcome_unknown"].includes(String(s?.status));
+  if (!exactKeys(value, ["source", "queried_at", "campaign", "submission", "next_action", "local_sync"]) || value.source !== "zeus" || !validUtc(value.queried_at) || !c || !exactKeys(c, ["id", "name", "stage"]) || !campaignCore(c) || c.stage !== "sensitivity" || !s || !exactKeys(s, ["status", "job_id"]) || !states.includes(String(s.status)) || (s.job_id !== null && !canonicalArrayJob.test(String(s.job_id))) || needsJob !== (typeof s.job_id === "string") || value.next_action !== actions[String(s.status)] || !syncOk(value.local_sync)) throw new Error("Invalid Sensitivity submission status.");
+  return value as unknown as SensitivitySubmissionStatus;
+}
+export function parseSensitivitySubmissionPreview(value: Record<string, unknown>): SensitivitySubmissionPreview {
+  const c = value.campaign as Record<string, unknown>,
+    j = value.job as Record<string, unknown>,
+    r = value.remote as Record<string, unknown>,
+    e = value.effects as Record<string, unknown>,
+    s = value.stage as Record<string, unknown>;
+  if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "stage", "job", "remote", "effects", "local_sync"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !c || !exactKeys(c, ["id", "name", "git_commit", "s0_values"]) || !campaignCore(c) || !/^[0-9a-f]{40}$/.test(String(c.git_commit)) || !Array.isArray(c.s0_values) || c.s0_values.length < 1 || !c.s0_values.every((x) => typeof x === "number" && Number.isFinite(x) && x > 0) || !s || !exactKeys(s, ["id", "label"]) || s.id !== "sensitivity" || s.label !== canonicalStages.sensitivity.label || !j || !exactKeys(j, ["file", "kind", "task_count", "array_throttle", "queue", "cores_per_task", "memory_per_task_bytes", "walltime_seconds"]) || j.file !== canonicalStages.sensitivity.job_file || j.kind !== "array" || !Number.isInteger(j.task_count) || Number(j.task_count) < 1 || Number(j.task_count) > 1000 || j.array_throttle !== canonicalStages.sensitivity.array_throttle || j.queue !== "zeus_combined_q" || j.cores_per_task !== canonicalStages.sensitivity.cores_per_task || j.memory_per_task_bytes !== canonicalStages.sensitivity.memory_per_task_bytes || j.walltime_seconds !== canonicalStages.sensitivity.walltime_seconds || !r || !exactKeys(r, ["host", "project_directory", "commit", "branch", "dirty"]) || r.host !== "zeus.technion.ac.il" || !/^\/home\/[A-Za-z][A-Za-z0-9._-]{0,31}\/ytterbium_lab_simulation_new$/.test(String(r.project_directory)) || r.commit !== c.git_commit || !boundedPrintable(r.branch, 256) || r.dirty !== false || !e || !exactKeys(e, ["submit_sensitivity", "start_simulation", "submit_later_stages", "modify_campaign_files", "record_submission_receipt"]) || e.submit_sensitivity !== true || e.start_simulation !== true || e.submit_later_stages !== false || e.modify_campaign_files !== false || e.record_submission_receipt !== true || !syncOk(value.local_sync)) throw new Error("Invalid Sensitivity submission preview.");
+  return value as unknown as SensitivitySubmissionPreview;
+}
+export function parseSensitivitySubmissionResult(value: Record<string, unknown>): SensitivitySubmissionResult {
+  if (!exactKeys(value, ["status", "campaign_id", "stage", "job_id", "submitted_at", "local_sync"]) || value.status !== "submitted" || !boundedPrintable(value.campaign_id, 512) || value.stage !== "sensitivity" || !canonicalArrayJob.test(String(value.job_id)) || !validUtc(value.submitted_at) || !syncOk(value.local_sync)) throw new Error("Invalid Sensitivity submission result.");
+  return value as unknown as SensitivitySubmissionResult;
+}
+
+
 
 export function parsePreview(value: Record<string, unknown>): CreationPreview {
   const provenance = value.provenance as Record<string, unknown>;

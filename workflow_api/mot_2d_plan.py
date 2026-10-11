@@ -268,6 +268,95 @@ trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
     return {"refined_candidates.json":(json.dumps(selected,indent=2,sort_keys=True)+"\n").encode(),"confirmation/tasks.json":(json.dumps(specs,indent=2,sort_keys=True)+"\n").encode(),"jobs/04_confirmation.pbs":pbs,"campaign.json":(json.dumps(updated,indent=2,sort_keys=True)+"\n").encode()}
 
 
+def render_sensitivity_transition(
+    manifest: dict[str, Any], destination: Path, repository_root: Path,
+    confirmation_rows: list[dict[str, Any]],
+) -> dict[str, bytes]:
+    """Render the validated Confirmation-to-Sensitivity transition exactly."""
+    from workflow_api.mot_2d_late_stage import paired_comparison
+    from workflow_api.mot_2d_validation import expected_sensitivity_tasks
+
+    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "confirmation":
+        raise ValueError("Campaign is not awaiting Sensitivity preparation.")
+    argument = destination.relative_to(repository_root).as_posix()
+    if not argument.startswith("data/optimization/mot_2d/"):
+        raise ValueError("Campaign destination is outside the canonical 2D-MOT location.")
+    tasks = expected_sensitivity_tasks(manifest, confirmation_rows)
+    winners: dict[str, Any] = {}
+    fixed = manifest["fixed_design"]
+    detuning_bounds = fixed["detuning_bounds_gamma"]
+    radius_bounds = fixed["magnet_radius_bounds_m"]
+    for raw in manifest["s0_values"]:
+        value = float(raw)
+        rows = sorted(
+            (row for row in confirmation_rows if float(row["s0"]) == value),
+            key=lambda row: (
+                -row["evaluation"]["statistics"]["conditional_95_ci"][0],
+                -row["evaluation"]["statistics"]["mean_conditional_efficiency"],
+                row["candidate_index"],
+            ),
+        )
+        if len(rows) != 5:
+            raise ValueError(f"Invalid confirmation candidate count for s0={value}.")
+        winner = deepcopy(rows[0])
+        parameters = winner["parameters"]
+        flags = []
+        for name, observed, bounds, tolerance in (
+            ("detuning", parameters["detuning_gamma"], detuning_bounds, 0.005),
+            ("radius", parameters["magnet_radius"], radius_bounds, 0.005e-3),
+        ):
+            if abs(observed - bounds[0]) <= tolerance: flags.append(f"{name}_lower")
+            if abs(observed - bounds[1]) <= tolerance: flags.append(f"{name}_upper")
+        winner["boundary_flags"] = flags
+        winner["comparisons_to_other_candidates"] = [
+            paired_comparison(row, winner) for row in rows[1:]
+        ]
+        winners[f"s0_{value:.6f}".replace(".", "p")] = winner
+    commit = manifest["provenance"]["git_commit"]
+    command = (
+        "python -m studies.mot_2d_s0_campaign sensitivity-task "
+        f"--campaign {shlex.quote(argument)} --task-index $PBS_ARRAY_INDEX"
+    )
+    pbs = f'''#!/bin/bash
+#PBS -N mot2d_sensi
+#PBS -q zeus_combined_q
+#PBS -J 0-{len(tasks)-1}%3
+#PBS -l select=1:ncpus=200:mem=64gb
+#PBS -l walltime=10:00:00
+
+set -euo pipefail
+PROJECT_ROOT="${{HOME}}/ytterbium_lab_simulation_new"
+cd -- "${{PROJECT_ROOT}}" || exit 1
+module load SPACK/apps
+module load gcc/14.1.0
+module load python/3.14.2
+source "${{HOME}}/venvs/atomsmltr/bin/activate"
+EXPECTED_COMMIT={commit}
+ACTUAL_COMMIT=$(git rev-parse HEAD)
+if [ "${{ACTUAL_COMMIT}}" != "${{EXPECTED_COMMIT}}" ]; then
+  echo "Commit mismatch: expected ${{EXPECTED_COMMIT}}, found ${{ACTUAL_COMMIT}}" >&2
+  exit 42
+fi
+RUN_TMP="/tmp/${{USER}}_mot2d_sensi_${{PBS_JOBID}}_${{PBS_ARRAY_INDEX:-0}}"
+mkdir -p "${{RUN_TMP}}"
+export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
+trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
+{command}
+'''.encode()
+    updated = deepcopy(manifest)
+    updated["stage"] = "sensitivity"
+    updated.setdefault("stages", {})["sensitivity"] = {
+        "tasks": len(tasks),
+        "job_file": f"{argument}/jobs/05_sensitivity.pbs",
+    }
+    return {
+        "winners.json": (json.dumps(winners, indent=2, sort_keys=True) + "\n").encode(),
+        "sensitivity/tasks.json": (json.dumps(tasks, indent=2, sort_keys=True) + "\n").encode(),
+        "jobs/05_sensitivity.pbs": pbs,
+        "campaign.json": (json.dumps(updated, indent=2, sort_keys=True) + "\n").encode(),
+    }
+
+
 def plan_from_frozen_manifest(
     *, repository_root: Path, destination: Path, manifest: dict[str, Any]
 ) -> CampaignPlan:

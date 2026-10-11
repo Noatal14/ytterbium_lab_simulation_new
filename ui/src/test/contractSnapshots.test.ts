@@ -17,6 +17,7 @@ import {
   transferApi,
   zeusApi,
 } from "../api/campaigns";
+import { sensitivityApi, sensitivitySubmissionApi } from "../api/clients/sensitivity";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
 const caseById = (id: string) => successSnapshot.cases.find((entry) => entry.id === id) as SnapshotCase;
@@ -99,6 +100,12 @@ describe("backend-generated workflow API contract snapshots", () => {
     await confirmationSubmissionApi.confirm(
       confirmationSubmitPreview.preview_token,
     );
+    await sensitivityApi.status(campaignId, profile);
+    const sensitivityPreview = await sensitivityApi.preview(campaignId, profile);
+    await sensitivityApi.confirm(sensitivityPreview.preview_token);
+    await sensitivitySubmissionApi.status(campaignId, profile);
+    const sensitivitySubmitPreview = await sensitivitySubmissionApi.preview(campaignId, profile);
+    await sensitivitySubmissionApi.confirm(sensitivitySubmitPreview.preview_token);
 
     const exercisedPaths = new Set(fetchMock.mock.calls.map(([input, init]) => `${String(init?.method ?? "GET").toUpperCase()} ${typeof input === "string" ? input : String(input)}`));
     for (const entry of successSnapshot.cases) {
@@ -114,6 +121,8 @@ describe("backend-generated workflow API contract snapshots", () => {
     }
     expect(dataById("confirmation-confirm").status).toBe("confirmation_prepared");
     expect(dataById("confirmation-submit-confirm").status).toBe("submitted");
+    expect(dataById("sensitivity-confirm").status).toBe("sensitivity_prepared");
+    expect(dataById("sensitivity-submit-confirm").status).toBe("submitted");
     vi.unstubAllGlobals();
   });
 });

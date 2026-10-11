@@ -1594,6 +1594,20 @@
     },
     {
       "domain": "route_unavailable",
+      "case": "zeus_sensitivity_submission_unavailable",
+      "code": "zeus_sensitivity_submission_unavailable",
+      "status": 503,
+      "message": "Zeus Sensitivity submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_sensitivity_unavailable",
+      "code": "zeus_sensitivity_unavailable",
+      "status": 503,
+      "message": "Zeus Sensitivity preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
       "case": "zeus_submission_unavailable",
       "code": "zeus_submission_unavailable",
       "status": 503,
@@ -1780,6 +1794,300 @@
       "code": "zeus_unreachable",
       "status": 503,
       "message": "Zeus could not be reached."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "<fallback>",
+      "code": "sensitivity_submission_failed",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_already_submitted",
+      "code": "sensitivity_already_submitted",
+      "status": 409,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_expired",
+      "code": "sensitivity_expired",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_invalid",
+      "code": "sensitivity_invalid",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_not_prepared",
+      "code": "sensitivity_not_prepared",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_preparation_invalid",
+      "code": "sensitivity_preparation_invalid",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_submission_busy",
+      "code": "sensitivity_submission_busy",
+      "status": 409,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "sensitivity_submission_outcome_unknown",
+      "code": "sensitivity_submission_outcome_unknown",
+      "status": 409,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Sensitivity submission stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "<fallback>",
+      "code": "sensitivity_preparation_failed",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "campaign_not_canonical",
+      "code": "campaign_not_canonical",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "confirmation_not_complete",
+      "code": "confirmation_not_complete",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "confirmation_outputs_invalid",
+      "code": "confirmation_outputs_invalid",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "confirmation_outputs_pending",
+      "code": "confirmation_outputs_pending",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "local_checkout_mismatch",
+      "code": "local_checkout_mismatch",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "sensitivity_already_prepared",
+      "code": "sensitivity_already_prepared",
+      "status": 409,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 409,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 409,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
+    },
+    {
+      "domain": "sensitivity_transition",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "Sensitivity preparation stopped safely."
     },
     {
       "domain": "session",
