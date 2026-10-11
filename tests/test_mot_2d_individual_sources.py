@@ -60,6 +60,7 @@ def _retained_inspection(
     completed: str = "2026-10-11T10:00:00+00:00",
 ):
     state = SimpleNamespace(
+        path="artifacts/particle_states.npy",
         sha256="d" * 64,
         size_bytes=1024,
         shape=(survivors, 6),
@@ -385,6 +386,48 @@ def test_retained_sources_have_stable_unique_safe_labels_and_summaries(tmp_path,
         }
         for row in first["sources"]
     )
+
+
+@pytest.mark.parametrize(
+    "drift",
+    ["retention", "metric", "dtype", "shape", "hash_identity"],
+)
+def test_catalog_and_resolver_share_one_retained_eligibility_decision(
+    tmp_path, monkeypatch, drift
+):
+    root = tmp_path / "repo"; root.mkdir()
+    record = DiscoveredRun(
+        "zeeman", "private-run-name", "data/runs/zeeman/private-run-name",
+        "succeeded", "complete_verified", None,
+    )
+    monkeypatch.setattr(
+        catalog, "discover_run_snapshot",
+        lambda _root, *, maximum_runs: DiscoverySnapshot((record,), False),
+    )
+    valid = _retained_inspection()
+    monkeypatch.setattr(catalog, "inspect_run", lambda *_args: valid)
+    source_id = catalog.list_individual_mot_2d_sources(root)["sources"][0]["id"]
+
+    changed = _retained_inspection()
+    if drift == "retention":
+        changed.run["retention"]["particle_states"] = False
+    elif drift == "metric":
+        changed.results["metrics"]["n_survivors"] += 1
+    elif drift == "dtype":
+        changed.publication.state_array.dtype = "float32"
+    elif drift == "shape":
+        changed.publication.state_array.shape = (7, 5)
+    else:
+        changed.publication.state_array.sha256 = "e" * 64
+    monkeypatch.setattr(catalog, "inspect_run", lambda *_args: changed)
+    listing = catalog.list_individual_mot_2d_sources(root)
+    if drift == "hash_identity":
+        assert listing["total"] == 1
+        assert listing["sources"][0]["id"] != source_id
+    else:
+        assert listing["sources"] == []
+    with pytest.raises(ValueError, match="unavailable or changed"):
+        catalog.resolve_individual_mot_2d_source(root, source_id)
 
 
 def test_active_unretained_and_other_family_runs_are_not_sources(tmp_path, monkeypatch):

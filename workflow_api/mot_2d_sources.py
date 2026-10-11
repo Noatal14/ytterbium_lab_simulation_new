@@ -118,6 +118,7 @@ def inspect_source(
         ):
             raise ValueError("state source exceeds interactive byte limits")
         metadata = _metadata(metadata_path, source_root)
+        metadata_bytes = metadata_path.stat().st_size
         parameters = metadata.get("parameters") if isinstance(metadata.get("parameters"), dict) else {}
         software = metadata.get("software") if isinstance(metadata.get("software"), dict) else {}
         required_generation = ("n_initial_atoms", "dt_s")
@@ -166,7 +167,9 @@ def inspect_source(
             "path": canonical_repo_relative(repository_root, state, allowed_root=SOURCE_ROOT, require="file"),
             "metadata_path": canonical_repo_relative(repository_root, metadata_path, allowed_root=SOURCE_ROOT, require="file"),
             "sha256": digest,
+            "size_bytes": state_bytes,
             "metadata_sha256": metadata_digest,
+            "metadata_size_bytes": metadata_bytes,
             "shape": list(array.shape), "dtype": str(array.dtype),
             "survivor_count": len(array),
             "zeeman_profile": str(parameters["resolved_zeeman_magnet_profile"]),
