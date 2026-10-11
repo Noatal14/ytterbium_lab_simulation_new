@@ -10,11 +10,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from pathlib import Path
 import re
+from types import MappingProxyType
 from typing import Any, Mapping
 
-from workflow_api.mot_2d_sources import MAX_SOURCES, SourceScanLimits, list_sources
+from workflow_api.mot_2d_sources import (
+    MAX_SOURCES,
+    SourceScanLimits,
+    inspect_source,
+    list_sources,
+)
 from workflow_api.run_discovery import discover_run_snapshot, inspect_run
 from workflow_api.run_records import RunRecordError
 
@@ -31,6 +38,111 @@ _INTERACTIVE_LIMITS = SourceScanLimits(
     maximum_total_rows=70_000_000,
     maximum_npy_header_bytes=64 * 1024,
 )
+
+
+@dataclass(frozen=True)
+class ResolvedMot2DSource:
+    source_id: str
+    source_kind: str
+    source_qualification: str
+    pooled_particle_count: int
+    fingerprint: str
+    records: tuple[Mapping[str, Any], ...]
+
+
+@dataclass(frozen=True)
+class _RetainedEvidence:
+    source_id: str
+    public_run_id: str
+    label: str
+    count: int
+    fingerprint: str
+    completed_at: str
+    scientific_summary: Mapping[str, Any]
+    record: Mapping[str, Any]
+
+
+def _freeze(value: Any) -> Any:
+    if isinstance(value, dict):
+        return MappingProxyType({key: _freeze(child) for key, child in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(child) for child in value)
+    return value
+
+
+def _retained_evidence(inspected: Any, discovered_path: str) -> _RetainedEvidence | None:
+    """One shared admission decision for listing and later resolution."""
+
+    result = inspected.results
+    publication = inspected.publication
+    state = publication.state_array if publication is not None else None
+    if (
+        inspected.family != "zeeman"
+        or inspected.state != "succeeded"
+        or inspected.integrity != "complete_verified"
+        or result is None
+        or result["states_retained"] is not True
+        or result["suitability"] != "individual_only"
+        or inspected.run["retention"]["particle_states"] is not True
+        or state is None
+        or state.dtype != "float64"
+        or state.shape != (state.survivor_count, 6)
+        or result["metrics"].get("n_survivors") != state.survivor_count
+        or state.survivor_count <= 0
+        or state.survivor_count > _INTERACTIVE_LIMITS.maximum_rows_per_file
+        or state.size_bytes > _INTERACTIVE_LIMITS.maximum_file_bytes
+    ):
+        return None
+    public_run_id = "individual-run-" + hashlib.sha256(
+        f"{inspected.family}:{inspected.run_id}".encode("utf-8")
+    ).hexdigest()[:24]
+    resolved = inspected.configuration["resolved"]
+    zeeman = resolved.get("zeeman", {})
+    laser = zeeman.get("laser", {})
+    profile = zeeman.get("magnet_profile_name")
+    summary = {
+        "profile": profile if isinstance(profile, str) else "verified",
+        "laser_s0": laser.get("s0") if isinstance(laser, Mapping) else None,
+        "laser_detuning_gamma": (
+            laser.get("detuning_gamma") if isinstance(laser, Mapping) else None
+        ),
+    }
+    identity = {
+        "family": inspected.family,
+        "run_id": inspected.run_id,
+        "configuration_sha256": inspected.run["configuration_sha256"],
+        "inputs_sha256": inspected.run["inputs_sha256"],
+        "results_sha256": publication.results_sha256,
+        "states_sha256": state.sha256,
+        "states_size_bytes": state.size_bytes,
+        "states_shape": list(state.shape),
+        "survivor_count": state.survivor_count,
+    }
+    fingerprint = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    record = {
+        "source_index": 0,
+        "path": f"{discovered_path}/{state.path}",
+        "sha256": state.sha256,
+        "size_bytes": state.size_bytes,
+        "shape": list(state.shape),
+        "dtype": state.dtype,
+        "survivor_count": state.survivor_count,
+        "source_run_public_id": public_run_id,
+    }
+    return _RetainedEvidence(
+        _opaque_id("retained_individual_zeeman", identity),
+        public_run_id,
+        "Saved Zeeman run "
+        f"{public_run_id.removeprefix('individual-run-')[:8]} · "
+        f"{result['completed_utc'][:10]}",
+        state.survivor_count,
+        fingerprint,
+        result["completed_utc"],
+        _freeze(summary),
+        _freeze(record),
+    )
 
 
 def _opaque_id(kind: str, evidence: dict[str, Any]) -> str:
@@ -114,82 +226,29 @@ def _retained_options(repository_root: Path) -> tuple[list[dict[str, Any]], int,
             inspected = inspect_run(
                 repository_root, discovered.family, discovered.run_id
             )
-            result = inspected.results
-            publication = inspected.publication
-            state = publication.state_array if publication is not None else None
-            if (
-                inspected.state != "succeeded"
-                or inspected.integrity != "complete_verified"
-                or result is None
-                or result["states_retained"] is not True
-                or result["suitability"] != "individual_only"
-                or inspected.run["retention"]["particle_states"] is not True
-                or state is None
-                or state.dtype != "float64"
-                or state.shape != (state.survivor_count, 6)
-                or result["metrics"].get("n_survivors")
-                != state.survivor_count
-            ):
-                continue
-            if (
-                state.survivor_count <= 0
-                or state.survivor_count > _INTERACTIVE_LIMITS.maximum_rows_per_file
-                or state.size_bytes > _INTERACTIVE_LIMITS.maximum_file_bytes
-            ):
+            evidence = _retained_evidence(inspected, discovered.path)
+            if evidence is None:
                 invalid += 1
                 continue
-            public_run_id = "individual-run-" + hashlib.sha256(
-                f"{inspected.family}:{inspected.run_id}".encode("utf-8")
-            ).hexdigest()[:24]
-            resolved = inspected.configuration["resolved"]
-            zeeman = resolved.get("zeeman", {})
-            laser = zeeman.get("laser", {})
-            profile = zeeman.get("magnet_profile_name")
-            summary = {
-                "profile": profile if isinstance(profile, str) else "verified",
-                "laser_s0": laser.get("s0") if isinstance(laser, Mapping) else None,
-                "laser_detuning_gamma": (
-                    laser.get("detuning_gamma")
-                    if isinstance(laser, Mapping)
-                    else None
-                ),
-            }
-            evidence = {
-                "family": inspected.family,
-                "run_id": inspected.run_id,
-                "configuration_sha256": inspected.run["configuration_sha256"],
-                "inputs_sha256": inspected.run["inputs_sha256"],
-                "results_sha256": publication.results_sha256,
-                "states_sha256": state.sha256,
-                "states_shape": list(state.shape),
-            }
             options.append(
                 {
-                    "id": _opaque_id("retained_individual_zeeman", evidence),
+                    "id": evidence.source_id,
                     "source_kind": "retained_individual_zeeman",
-                    "label": (
-                        "Saved Zeeman run "
-                        f"{public_run_id.removeprefix('individual-run-')[:8]} · "
-                        f"{result['completed_utc'][:10]}"
-                    ),
+                    "label": evidence.label,
                     "ensemble_count": 1,
                     "available_particle_count": {
-                        "pooled": state.survivor_count,
-                        "minimum_per_ensemble": state.survivor_count,
-                        "maximum_per_ensemble": state.survivor_count,
+                        "pooled": evidence.count,
+                        "minimum_per_ensemble": evidence.count,
+                        "maximum_per_ensemble": evidence.count,
                     },
                     "source_qualification": "verified_individual_result",
                     "result_suitability": "individual_only",
                     "provenance": {
                         "validation": "verified_retained_individual_result",
-                        "completed_at": result["completed_utc"],
-                        "public_run_id": public_run_id,
-                        "scientific_summary": summary,
-                        "fingerprint": hashlib.sha256(
-                            json.dumps(
-                                evidence, sort_keys=True, separators=(",", ":")
-                            ).encode("utf-8")
-                        ).hexdigest(),
+                        "completed_at": evidence.completed_at,
+                        "public_run_id": evidence.public_run_id,
+                        "scientific_summary": dict(evidence.scientific_summary),
+                        "fingerprint": evidence.fingerprint,
                     },
                 }
             )
@@ -220,3 +279,76 @@ def list_individual_mot_2d_sources(repository_root: Path) -> dict[str, Any]:
         "total": len(sources),
         "truncated": canonical_truncated or retained_truncated,
     }
+
+
+def resolve_individual_mot_2d_source(
+    repository_root: Path, source_id: str
+) -> ResolvedMot2DSource:
+    """Resolve one opaque catalog choice to freshly verified frozen evidence."""
+
+    if (
+        not isinstance(source_id, str)
+        or not re.fullmatch(r"mot2d-source-[0-9a-f]{32}", source_id)
+    ):
+        raise ValueError("Individual 2D-MOT source identifier is invalid.")
+    root = Path(repository_root).resolve(strict=True)
+    listing = list_sources(
+        root, include_pool_counts=True, scan_limits=_INTERACTIVE_LIMITS
+    )
+    for row in listing["sources"]:
+        evidence = {
+            "fingerprint": row["fingerprint"],
+            "profile": row["profile"],
+            "ensemble_count": row["ensemble_count"],
+            "minimum_survivors": row["minimum_survivors"],
+            "maximum_survivors": row["maximum_survivors"],
+            "pooled_survivor_count": row["pooled_survivor_count"],
+            "location": row["path"],
+        }
+        if _opaque_id("canonical_folder", evidence) != source_id:
+            continue
+        inspected = inspect_source(
+            root / row["path"], root, include_records=True,
+            scan_limits=_INTERACTIVE_LIMITS,
+        )
+        records = sorted(inspected["records"], key=lambda item: item["zeeman_seed"])
+        pooled = sum(item["survivor_count"] for item in records)
+        refreshed_evidence = {
+            "fingerprint": inspected["fingerprint"],
+            "profile": inspected["profile"],
+            "ensemble_count": inspected["ensemble_count"],
+            "minimum_survivors": inspected["minimum_survivors"],
+            "maximum_survivors": inspected["maximum_survivors"],
+            "pooled_survivor_count": pooled,
+            "location": inspected["path"],
+        }
+        if (
+            pooled <= 0
+            or _opaque_id("canonical_folder", refreshed_evidence) != source_id
+        ):
+            raise ValueError("Individual 2D-MOT source is unavailable or changed.")
+        return ResolvedMot2DSource(
+            source_id, "canonical_folder", "canonical_campaign_source",
+            pooled, inspected["fingerprint"],
+            tuple(_freeze(item) for item in records),
+        )
+
+    snapshot = discover_run_snapshot(root, maximum_runs=MAX_INDIVIDUAL_RUNS)
+    for discovered in snapshot.records:
+        if discovered.family != "zeeman" or discovered.integrity == "invalid":
+            continue
+        try:
+            inspected = inspect_run(root, "zeeman", discovered.run_id)
+            evidence = _retained_evidence(inspected, discovered.path)
+            if evidence is None:
+                continue
+            if evidence.source_id != source_id:
+                continue
+            return ResolvedMot2DSource(
+                source_id, "retained_individual_zeeman",
+                "verified_individual_result", evidence.count,
+                evidence.fingerprint, (evidence.record,),
+            )
+        except (OSError, RunRecordError, KeyError, TypeError, ValueError):
+            continue
+    raise ValueError("Individual 2D-MOT source is unavailable or changed.")
