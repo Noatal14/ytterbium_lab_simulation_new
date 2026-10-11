@@ -88,10 +88,11 @@ class ZeemanLocalWorker:
         execution = resolved["execution"]
         numerical = resolved["numerical_policy"]
         source = resolved["source"]
-        if run["family"] != "zeeman" or run["execution_mode"] != "local":
+        mode = run["execution_mode"]
+        if run["family"] != "zeeman" or mode not in {"local", "zeus"}:
             raise WorkerProductError("Local Zeeman worker received the wrong run family or mode.")
-        if execution["mode"] != "local" or execution["workers"] != (
-            ZEEMAN_RUN_SPECIFICATION["workers_by_execution_mode"]["local"]
+        if execution["mode"] != mode or execution["workers"] != (
+            ZEEMAN_RUN_SPECIFICATION["workers_by_execution_mode"][mode]
         ):
             raise WorkerProductError("Local worker count is not the server-owned policy value.")
         if simulation["particle_count"] != run["particle_count"]:

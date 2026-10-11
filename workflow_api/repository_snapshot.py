@@ -43,6 +43,7 @@ ZEEMAN_RELEVANT_FILES = (
     "utils/file_helpers.py",
     "utils/simulation_helpers.py",
     "workflow_api/preview_registry.py",
+    "workflow_api/pinned_ssh.py",
     "workflow_api/repository_snapshot.py",
     "workflow_api/run_records.py",
     "workflow_api/run_execution.py",
@@ -51,6 +52,10 @@ ZEEMAN_RELEVANT_FILES = (
     "workflow_api/specifications/zeeman_individual_v1.json",
     "workflow_api/zeeman_run_creation.py",
     "workflow_api/zeeman_local_execution.py",
+    "workflow_api/zeeman_zeus_execution.py",
+    "workflow_api/zeeman_zeus_remote.py",
+    "workflow_api/zeeman_zeus_worker.py",
+    "workflow_api/zeus_snapshot.py",
     "workflow_api/zeeman_run_plan.py",
     "workflow_api/zeeman_run_specification.py",
 )

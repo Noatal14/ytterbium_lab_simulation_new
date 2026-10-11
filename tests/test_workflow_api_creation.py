@@ -172,6 +172,9 @@ def test_zeeman_snapshot_provider_audits_exact_runtime_and_planner_ledger(tmp_pa
         "workflow_api/zeeman_run_plan.py",
         "workflow_api/zeeman_run_creation.py",
         "workflow_api/zeeman_local_execution.py",
+        "workflow_api/zeeman_zeus_execution.py",
+        "workflow_api/zeeman_zeus_remote.py",
+        "workflow_api/zeeman_zeus_worker.py",
         "workflow_api/specifications/zeeman_individual_v1.json",
     }
     assert required <= set(ZEEMAN_RELEVANT_FILES)

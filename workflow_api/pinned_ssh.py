@@ -25,12 +25,16 @@ class ReceiverKind(Enum):
     SMOKE_SUBMISSION = "smoke_submission"
     SNAPSHOT = "snapshot"
     TRANSFER = "transfer"
+    ZEEMAN_INDIVIDUAL = "zeeman_individual"
 
 
 class ReceiverOperation(Enum):
     INSPECT = "inspect"
     PREPARE = "prepare"
     SUBMIT = "submit"
+    STAGE = "stage"
+    STATUS = "status"
+    RETRIEVE = "retrieve"
 
 
 class TransferOperation(Enum):
@@ -66,6 +70,30 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.ZEEMAN_INDIVIDUAL: _ReceiverDefinition(
+        "zeeman_zeus_remote.py",
+        "<zeeman-individual>",
+        frozenset({
+            ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
+            ReceiverOperation.SUBMIT, ReceiverOperation.STATUS,
+            ReceiverOperation.RETRIEVE,
+        }),
+        True,
+        (
+            "-F", "none", "-T", "-o", "BatchMode=yes",
+            "-o", "PasswordAuthentication=no",
+            "-o", "KbdInteractiveAuthentication=no",
+            "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+            "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+            "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+            "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+            "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+            "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+    ),
     ReceiverKind.REFINEMENT_TRANSITION: _ReceiverDefinition(
         "zeus_refinement_remote.py",
         "<refine>",
@@ -348,6 +376,17 @@ class PinnedSshPolicy:
     ) -> PinnedSshPolicy:
         return cls(
             ReceiverKind.TRANSFER,
+            repository_root,
+            ssh_executable,
+            timeout,
+        )
+
+    @classmethod
+    def zeeman_individual(
+        cls, repository_root: Path, ssh_executable: Path, *, timeout: float
+    ) -> PinnedSshPolicy:
+        return cls(
+            ReceiverKind.ZEEMAN_INDIVIDUAL,
             repository_root,
             ssh_executable,
             timeout,
