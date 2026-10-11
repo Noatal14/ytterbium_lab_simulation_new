@@ -204,6 +204,9 @@ def test_zeeman_snapshot_provider_audits_exact_runtime_and_planner_ledger(tmp_pa
 def test_individual_mot_2d_snapshot_audits_shared_local_execution_runtime(tmp_path):
     assert "workflow_api/zeeman_local_execution.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
     assert "workflow_api/mot_2d_local_execution.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/mot_2d_zeus_execution.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/mot_2d_zeus_remote.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/mot_2d_zeus_worker.py" in MOT_2D_INDIVIDUAL_RELEVANT_FILES
     assert len(MOT_2D_INDIVIDUAL_RELEVANT_FILES) == len(set(MOT_2D_INDIVIDUAL_RELEVANT_FILES))
     runtime = tmp_path / "workflow_api/zeeman_local_execution.py"
     runtime.parent.mkdir()

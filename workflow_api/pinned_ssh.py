@@ -16,6 +16,15 @@ from typing import Any, Mapping
 from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile, ZeusSnapshotError
 
 
+_GENERIC_STDOUT_LIMIT = 8 * 1024 * 1024
+_GENERIC_STDERR_LIMIT = 256 * 1024
+
+
+def _bounded_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+    """Narrow injection seam backed by bounded streaming in production."""
+    return PinnedSshRunner._run_bounded(argv, kwargs)
+
+
 class ReceiverKind(Enum):
     REFINEMENT_TRANSITION = "refinement_transition"
     CONFIRMATION_PREPARATION = "confirmation_preparation"
@@ -26,6 +35,7 @@ class ReceiverKind(Enum):
     SNAPSHOT = "snapshot"
     TRANSFER = "transfer"
     ZEEMAN_INDIVIDUAL = "zeeman_individual"
+    MOT_2D_INDIVIDUAL = "mot_2d_individual"
 
 
 class ReceiverOperation(Enum):
@@ -67,9 +77,26 @@ class _ReceiverDefinition:
     payload_before_receiver: bool = False
     embedded_smoke_receiver: bool = False
     embedded_snapshot_receiver: bool = False
+    payload_stdin: bool = False
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_2D_INDIVIDUAL: _ReceiverDefinition(
+        "mot_2d_zeus_remote.py", "<mot-2d-individual>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
+                   ReceiverOperation.SUBMIT, ReceiverOperation.STATUS,
+                   ReceiverOperation.RETRIEVE}),
+        True,
+        ("-F", "none", "-T", "-o", "BatchMode=yes",
+         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
+         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
+        True, True, True, False, False, True,
+    ),
     ReceiverKind.ZEEMAN_INDIVIDUAL: _ReceiverDefinition(
         "zeeman_zeus_remote.py",
         "<zeeman-individual>",
@@ -392,6 +419,12 @@ class PinnedSshPolicy:
             timeout,
         )
 
+    @classmethod
+    def mot_2d_individual(
+        cls, repository_root: Path, executable: Path, *, timeout: float = 90
+    ) -> "PinnedSshPolicy":
+        return cls(ReceiverKind.MOT_2D_INDIVIDUAL, repository_root, executable, timeout)
+
 
 class PinnedSshRunner:
     """Run one closed receiver without accepting commands or SSH options."""
@@ -435,7 +468,10 @@ class PinnedSshRunner:
                 raise RuntimeError("Pinned SSH receiver is unavailable.")
             return Path(__file__).with_name(definition.filename).read_bytes()
 
-        if definition.payload_before_receiver:
+        if definition.payload_stdin:
+            receiver = read_receiver()
+            encoded = ""
+        elif definition.payload_before_receiver:
             encoded = encode_payload()
             receiver = read_receiver()
         else:
@@ -454,15 +490,23 @@ class PinnedSshRunner:
                 + definition.compile_name
                 + "','exec'),{'__name__':'__main__'})"
             )
-        remote = shlex.join((
-            "python3",
+        interpreter = "python3"
+        prefix = ""
+        if self._policy.receiver is ReceiverKind.MOT_2D_INDIVIDUAL:
+            expected_project = f"/home/{profile.username}/ytterbium_lab_simulation_new"
+            if profile.project_directory != expected_project:
+                raise ValueError("Invalid individual 2D-MOT project identity.")
+            interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
+            prefix = f"cd -- {shlex.quote(expected_project)} && exec "
+        remote = prefix + shlex.join((
+            interpreter,
             "-c",
             wrapper,
             script,
             operation.value,
             profile.username,
             profile.project_directory,
-            encoded,
+            "-" if definition.payload_stdin else encoded,
         ))
         argv = [
             str(self._policy.ssh_executable),
@@ -472,12 +516,17 @@ class PinnedSshRunner:
         ]
         kwargs: dict[str, object] = {
             "cwd": self._policy.repository_root,
-            "stdin": subprocess.DEVNULL,
             "stdout": subprocess.PIPE,
             "stderr": subprocess.PIPE,
             "timeout": self._policy.timeout,
             "check": False,
         }
+        if definition.payload_stdin:
+            kwargs["input"] = json.dumps(
+                payload, sort_keys=True, separators=(",", ":")
+            ).encode()
+        else:
+            kwargs["stdin"] = subprocess.DEVNULL
         if definition.pinned_environment:
             environment = {
                 "PATH": str(self._policy.ssh_executable.parent),
@@ -491,11 +540,102 @@ class PinnedSshRunner:
             kwargs["shell"] = False
             kwargs["close_fds"] = True
         try:
-            return subprocess.run(argv, **kwargs)
+            return _bounded_run(argv, **kwargs)
         except OSError as error:
             if definition.wrap_process_oserror:
                 raise PinnedSshProcessError from error
             raise
+
+    @staticmethod
+    def _run_bounded(
+        argv: list[str], kwargs: Mapping[str, object]
+    ) -> subprocess.CompletedProcess[bytes]:
+        """Run SSH while retaining at most the reviewed response bounds."""
+        input_bytes = kwargs.get("input")
+        if input_bytes is not None and type(input_bytes) is not bytes:
+            raise TypeError("Pinned SSH input must be bytes.")
+        process = subprocess.Popen(
+            argv,
+            cwd=kwargs.get("cwd"),
+            env=kwargs.get("env"),
+            shell=bool(kwargs.get("shell", False)),
+            close_fds=bool(kwargs.get("close_fds", True)),
+            stdin=subprocess.PIPE if input_bytes is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        output = bytearray()
+        errors = bytearray()
+        exceeded = threading.Event()
+
+        def terminate() -> None:
+            try:
+                process.kill()
+            except OSError:
+                pass
+
+        def drain(stream: Any, limit: int, destination: bytearray) -> None:
+            while True:
+                chunk = stream.read(64 * 1024)
+                if not chunk:
+                    return
+                remaining = limit + 1 - len(destination)
+                if remaining > 0:
+                    destination.extend(chunk[:remaining])
+                if len(destination) > limit or len(chunk) > remaining:
+                    exceeded.set()
+                    terminate()
+                    return
+
+        def feed() -> None:
+            if input_bytes is None:
+                return
+            try:
+                process.stdin.write(input_bytes)
+                process.stdin.close()
+            except (BrokenPipeError, OSError):
+                return
+
+        readers = (
+            threading.Thread(
+                target=drain,
+                args=(process.stdout, _GENERIC_STDOUT_LIMIT, output),
+                daemon=True,
+            ),
+            threading.Thread(
+                target=drain,
+                args=(process.stderr, _GENERIC_STDERR_LIMIT, errors),
+                daemon=True,
+            ),
+        )
+        for reader in readers:
+            reader.start()
+        feeder = threading.Thread(target=feed, daemon=True)
+        feeder.start()
+        timeout = float(kwargs["timeout"])
+        try:
+            returncode = process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            terminate()
+            process.wait()
+            feeder.join(timeout=1)
+            for reader in readers:
+                reader.join(timeout=1)
+            raise subprocess.TimeoutExpired(
+                argv, timeout, output=bytes(output), stderr=bytes(errors)
+            ) from None
+        feeder.join(timeout=1)
+        for reader in readers:
+            reader.join(timeout=1)
+        if exceeded.is_set() or feeder.is_alive() or any(
+            reader.is_alive() for reader in readers
+        ):
+            terminate()
+            process.wait()
+            raise PinnedSshProcessError("Pinned SSH response exceeded its bound.")
+        return subprocess.CompletedProcess(
+            argv, returncode, bytes(output), bytes(errors)
+        )
 
     def snapshot(self, profile: ZeusProfile) -> tuple[int, bytes, bytes]:
         """Run the one fixed bounded snapshot receiver."""

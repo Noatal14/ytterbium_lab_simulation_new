@@ -116,7 +116,7 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
         observed["kwargs"] = kwargs
         return subprocess.CompletedProcess(argv, 0, _valid_response(), b"")
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
     transport = PinnedSshRefinementTransport(
         tmp_path,
@@ -190,7 +190,7 @@ def test_runner_rejects_raw_or_unsupported_operation_before_process_creation(
 ):
     calls = []
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.refinement_transition(
@@ -215,7 +215,7 @@ def test_runner_revalidates_exact_profile_before_receiver_read_or_process(
     process_calls = []
     receiver_reads = []
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: process_calls.append((args, kwargs)),
     )
     original_read_bytes = Path.read_bytes
@@ -244,7 +244,7 @@ def test_refinement_timeout_translation_is_unchanged(
     def timeout(argv, **kwargs):
         raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", timeout)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshRefinementTransport(tmp_path, Path("/usr/bin/ssh"), _profile())
     with pytest.raises(ZeusRefinementError) as caught:
         getattr(transport, operation)(example=True)
@@ -256,7 +256,7 @@ def test_refinement_process_oserror_remains_raw(tmp_path, monkeypatch, operation
     def fail(*_args, **_kwargs):
         raise OSError("ssh unavailable")
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", fail)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", fail)
     transport = PinnedSshRefinementTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -276,7 +276,7 @@ def test_refinement_process_and_decode_error_translation_is_unchanged(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, returncode, stdout, stderr,
         ),
@@ -300,7 +300,7 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
             argv, 0, _valid_confirmation_response(), b"",
         )
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
     transport = PinnedSshConfirmationTransport(
         tmp_path,
@@ -363,7 +363,7 @@ def test_confirmation_timeout_and_oserror_translation_is_unchanged(
     def fail(*_args, **_kwargs):
         raise exception
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", fail)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", fail)
     transport = PinnedSshConfirmationTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -378,7 +378,7 @@ def test_confirmation_receiver_read_oserror_remains_raw(
 ):
     process_calls = []
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: process_calls.append((args, kwargs)),
     )
     original_read_bytes = Path.read_bytes
@@ -409,7 +409,7 @@ def test_confirmation_process_and_decode_error_translation_is_unchanged(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, returncode, stdout, stderr,
         ),
@@ -427,7 +427,7 @@ def test_confirmation_remote_error_code_translation_is_unchanged(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, 0, b'{"error":"refinement_not_ready"}', b"",
         ),
@@ -463,7 +463,7 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
             argv, 0, _valid_refinement_submission_response(), b"",
         )
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     payload = {"campaign": "data/optimization/mot_2d/c", "chain_key": "a" * 64}
     transport = PinnedSshRefinementSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
@@ -531,7 +531,7 @@ def test_refinement_submission_oserror_boundaries_remain_raw(
         raise OSError("ssh unavailable")
 
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshRefinementSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -551,7 +551,7 @@ def test_refinement_submission_timeout_translation_is_unchanged(
     def timeout(argv, **kwargs):
         raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", timeout)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshRefinementSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -572,7 +572,7 @@ def test_refinement_submission_process_and_decode_mapping_is_unchanged(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, returncode, stdout, stderr,
         ),
@@ -590,7 +590,7 @@ def test_refinement_submission_non_dict_response_mapping_is_unchanged(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, 0, b"[]", b"",
         ),
@@ -608,7 +608,7 @@ def test_refinement_submission_remote_error_code_propagates_unchanged(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, 0, b'{"error":"refinement_submission_busy"}', b"",
         ),
@@ -633,7 +633,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         return subprocess.CompletedProcess(argv, 0, _valid_screening_response(), b"")
 
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
     state = getattr(PinnedSshScreeningTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(), timeout=37,
@@ -697,7 +697,7 @@ def test_screening_runner_omits_absent_ssh_agent_from_pinned_environment(
         observed.update(kwargs)
         return subprocess.CompletedProcess(argv, 0, _valid_screening_response(), b"")
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     PinnedSshScreeningTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     ).inspect(example=True)
@@ -717,7 +717,7 @@ def test_screening_serializes_payload_before_receiver_read(tmp_path, monkeypatch
 
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: process_calls.append((args, kwargs)),
     )
     transport = PinnedSshScreeningTransport(
@@ -747,7 +747,7 @@ def test_screening_oserror_boundaries_remain_raw(
         raise OSError("ssh unavailable")
 
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshScreeningTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -765,7 +765,7 @@ def test_screening_timeout_mapping_is_unchanged(
     tmp_path, monkeypatch, operation, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: (_ for _ in ()).throw(
             subprocess.TimeoutExpired(argv, kwargs["timeout"])
         ),
@@ -790,7 +790,7 @@ def test_screening_process_and_decode_mapping_is_unchanged(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, returncode, stdout, stderr,
         ),
@@ -808,7 +808,7 @@ def test_screening_remote_error_code_propagates_unchanged(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, 0, b'{"error":"screening_transition_busy"}', b"",
         ),
@@ -832,7 +832,7 @@ def test_screening_hardened_connection_errors_override_operation_ambiguity(
     tmp_path, monkeypatch, operation, stderr, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
     )
     transport = PinnedSshScreeningTransport(
@@ -876,7 +876,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         return subprocess.CompletedProcess(argv, 0, response, b"")
 
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     state = getattr(PinnedSshScreenSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     ), operation)(**payload)
@@ -934,7 +934,7 @@ def test_screen_submission_serializes_before_receiver_read(tmp_path, monkeypatch
     process_calls = []
     monkeypatch.setattr(Path, "read_bytes", lambda path: reads.append(path))
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: process_calls.append((args, kwargs)),
     )
     transport = PinnedSshScreenSubmissionTransport(
@@ -964,7 +964,7 @@ def test_screen_submission_oserror_boundaries_remain_raw(
         raise OSError("ssh unavailable")
 
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshScreenSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -984,7 +984,7 @@ def test_screen_submission_timeout_mapping_is_unchanged(
     def timeout(argv, **kwargs):
         raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", timeout)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshScreenSubmissionTransport(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     )
@@ -1007,7 +1007,7 @@ def test_screen_submission_process_and_decode_mapping_is_unchanged(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, returncode, stdout, stderr,
         ),
@@ -1031,7 +1031,7 @@ def test_screen_submission_hardened_connection_errors_are_unchanged(
     tmp_path, monkeypatch, operation, stderr, expected,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
     )
     transport = PinnedSshScreenSubmissionTransport(
@@ -1047,7 +1047,7 @@ def test_screen_submission_remote_error_propagates_unchanged(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, 0, b'{"error":"screening_submission_busy"}', b"",
         ),
@@ -1095,7 +1095,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
         return subprocess.CompletedProcess(argv, 0, json.dumps(response).encode(), b"")
 
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
-    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.run", run)
+    monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshSmokeSubmissionTransport(
         root, Path("/usr/bin/ssh"), _profile(),
     )
@@ -1148,7 +1148,7 @@ def test_smoke_submission_serializes_before_embedded_receiver(tmp_path, monkeypa
     root.mkdir()
     calls = []
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     transport = PinnedSshSmokeSubmissionTransport(
@@ -1166,7 +1166,7 @@ def test_smoke_submission_process_oserror_remains_raw(
     root = tmp_path / "repo"
     root.mkdir()
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ssh unavailable")),
     )
     transport = PinnedSshSmokeSubmissionTransport(
@@ -1196,7 +1196,7 @@ def test_smoke_submission_stdout_cap_allows_exact_boundary(
     encoded = json.dumps(response).encode()
     stdout = encoded + b" " * (MAX_REMOTE_OUTPUT - len(encoded))
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, stdout, b""),
     )
     transport = PinnedSshSmokeSubmissionTransport(
@@ -1215,7 +1215,7 @@ def test_smoke_submission_stdout_cap_rejects_one_byte_over(
     root = tmp_path / "repo"
     root.mkdir()
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
             argv, 0, b" " * (MAX_REMOTE_OUTPUT + 1), b"",
         ),
@@ -1246,7 +1246,7 @@ def test_smoke_submission_stderr_cap_precedes_authentication_mapping(
     size = MAX_REMOTE_OUTPUT + int(overflow)
     stderr = prefix + b" " * (size - len(prefix))
     monkeypatch.setattr(
-        "workflow_api.pinned_ssh.subprocess.run",
+        "workflow_api.pinned_ssh._bounded_run",
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
     )
     transport = PinnedSshSmokeSubmissionTransport(

@@ -321,7 +321,8 @@ class ZeusBindingStore(ExecutorLifecycleStore):
     def bind(self, authority, package: FrozenZeusPackage, nonce: str, lease):
         proposed = self._binding(package, nonce)
         encoded = _canonical(proposed)
-        with self._held_canonical_run("zeeman", package.run_id, lease) as (directory, verify, _):
+        family = getattr(package, "family", "zeeman")
+        with self._held_canonical_run(family, package.run_id, lease) as (directory, verify, _):
             with self._execution_locked_at(directory):
                 try:
                     _publish_no_replace_at(directory, self._NAME, encoded)
@@ -331,8 +332,8 @@ class ZeusBindingStore(ExecutorLifecycleStore):
                 verify(allow_run_metadata_change=True)
         return proposed
 
-    def read_binding(self, authority, run_id: str, lease):
-        with self._held_canonical_run("zeeman", run_id, lease) as (directory, verify, _):
+    def read_binding(self, authority, run_id: str, lease, *, family: str = "zeeman"):
+        with self._held_canonical_run(family, run_id, lease) as (directory, verify, _):
             try:
                 os.stat(self._NAME, dir_fd=directory, follow_symlinks=False)
             except FileNotFoundError:
@@ -351,7 +352,8 @@ class ZeusBindingStore(ExecutorLifecycleStore):
             return value
 
     def bind_job(self, authority, package: FrozenZeusPackage, nonce: str, job_id: str, lease):
-        with self._held_canonical_run("zeeman", package.run_id, lease) as (directory, verify, _):
+        family = getattr(package, "family", "zeeman")
+        with self._held_canonical_run(family, package.run_id, lease) as (directory, verify, _):
             with self._execution_locked_at(directory):
                 current = json.loads(_read_regular_at(directory, self._NAME))
                 expected = self._binding(package, nonce)
@@ -403,7 +405,7 @@ class IndividualZeemanZeusCoordinator:
     def _evidence(self, run_id: str):
         store = self.store_factory(self.root)
         try:
-            return store.evidence_snapshot(self.authority, "zeeman", run_id)
+            return store.evidence_snapshot(self.authority, self.family, run_id)
         finally:
             store.close()
 
@@ -425,11 +427,11 @@ class IndividualZeemanZeusCoordinator:
         binding_store = self.store_factory(self.root)
         try:
             binding = binding_store.read_binding(
-                self.authority, run_id, _lease
+                self.authority, run_id, _lease, family=self.family
             ) if isinstance(binding_store, ZeusBindingStore) else None
         finally:
             binding_store.close()
-        package = build_frozen_package(
+        package = self._build_package(
             evidence, profile, require_configured=binding is None
         )
         if binding is not None:
@@ -501,7 +503,7 @@ class IndividualZeemanZeusCoordinator:
                 self._previews.pop(preview_token)
                 raise ZeemanZeusError("confirmation_expired")
             evidence, lease = self._evidence(pending.package.run_id)
-            if build_frozen_package(
+            if self._build_package(
                 evidence, pending.profile,
                 require_configured=pending.remote_job_id is None,
             ) != pending.package:
@@ -516,7 +518,7 @@ class IndividualZeemanZeusCoordinator:
                         self.authority, pending.package, pending.nonce, lease
                     )
                     evidence, lease = binding_store.evidence_snapshot(
-                        self.authority, "zeeman", pending.package.run_id,
+                        self.authority, self.family, pending.package.run_id,
                         prior_lease=lease, allow_run_metadata_change=True,
                     )
                 finally:
@@ -556,7 +558,7 @@ class IndividualZeemanZeusCoordinator:
                     remote.job_id, lease,
                 )
                 evidence, lease = binding_store.evidence_snapshot(
-                    self.authority, "zeeman", pending.package.run_id,
+                    self.authority, self.family, pending.package.run_id,
                     prior_lease=lease, allow_run_metadata_change=True,
                 )
             finally:
@@ -569,16 +571,16 @@ class IndividualZeemanZeusCoordinator:
                         if current["state"] == state:
                             continue
                         current = store.transition(
-                            self.authority, "zeeman", pending.package.run_id,
+                            self.authority, self.family, pending.package.run_id,
                             expected_revision=current["revision"], target_state=state,
                             updated_utc=self.utc_clock(), lease=lease,
                         )
                         evidence, lease = store.evidence_snapshot(
-                            self.authority, "zeeman", pending.package.run_id,
+                            self.authority, self.family, pending.package.run_id,
                             prior_lease=lease, allow_run_metadata_change=True,
                         )
                     current = store.transition(
-                        self.authority, "zeeman", pending.package.run_id,
+                        self.authority, self.family, pending.package.run_id,
                         expected_revision=current["revision"], target_state="queued",
                         updated_utc=self.utc_clock(), zeus_job_id=remote.job_id, lease=lease,
                     )
@@ -602,7 +604,7 @@ class IndividualZeemanZeusCoordinator:
             current = evidence["status"]
             for state in ("validated", "reviewed", "queued", "outcome_unknown"):
                 current = store.transition(
-                    self.authority, "zeeman", evidence["run"]["run_id"],
+                    self.authority, self.family, evidence["run"]["run_id"],
                     expected_revision=current["revision"], target_state=state,
                     updated_utc=self.utc_clock(), lease=lease,
                     error={"code": code, "message": "Zeus submission outcome is unknown."}
@@ -610,7 +612,7 @@ class IndividualZeemanZeusCoordinator:
                 )
                 if state != "outcome_unknown":
                     evidence, lease = store.evidence_snapshot(
-                        self.authority, "zeeman", evidence["run"]["run_id"],
+                        self.authority, self.family, evidence["run"]["run_id"],
                         prior_lease=lease, allow_run_metadata_change=True,
                     )
         finally:
@@ -622,7 +624,7 @@ class IndividualZeemanZeusCoordinator:
         binding_store = self.store_factory(self.root)
         try:
             binding = binding_store.read_binding(
-                self.authority, run_id, lease
+                self.authority, run_id, lease, family=self.family
             ) if isinstance(binding_store, ZeusBindingStore) else None
         finally:
             binding_store.close()
@@ -639,7 +641,7 @@ class IndividualZeemanZeusCoordinator:
         job_id = status["execution"]["zeus_job_id"]
         if not isinstance(job_id, str) or not _JOB_ID.fullmatch(job_id):
             raise ZeemanZeusError("job_id_unavailable")
-        package = build_frozen_package(evidence, profile, require_configured=False)
+        package = self._build_package(evidence, profile, require_configured=False)
         expected_binding = ZeusBindingStore._binding(
             package, binding["nonce"], binding["job_id"]
         )
@@ -656,19 +658,19 @@ class IndividualZeemanZeusCoordinator:
                 return {"state": "queued", "job_id": job_id}
             if current["state"] == "queued":
                 current = store.transition(
-                    self.authority, "zeeman", run_id,
+                    self.authority, self.family, run_id,
                     expected_revision=current["revision"], target_state="running",
                     updated_utc=self.utc_clock(), lease=lease,
                 )
                 evidence, lease = store.evidence_snapshot(
-                    self.authority, "zeeman", run_id, prior_lease=lease,
+                    self.authority, self.family, run_id, prior_lease=lease,
                     allow_run_metadata_change=True,
                 )
             if remote.state == "running":
                 return {"state": "running", "job_id": job_id}
             if remote.state == "failed" or remote.exit_status not in (None, 0):
                 current = store.transition(
-                    self.authority, "zeeman", run_id,
+                    self.authority, self.family, run_id,
                     expected_revision=current["revision"], target_state="failed",
                     updated_utc=self.utc_clock(), lease=lease,
                     error={"code": "zeus_job_failed", "message": "The Zeus job failed."},
@@ -682,16 +684,16 @@ class IndividualZeemanZeusCoordinator:
                 if not isinstance(product, WorkerProduct):
                     raise TypeError
                 store.publish_worker_artifacts(
-                    self.authority, "zeeman", run_id,
+                    self.authority, self.family, run_id,
                     expected_revision=current["revision"], product=product, lease=lease,
                 )
                 final = store.publish_success(
-                    self.authority, "zeeman", run_id, product=product,
+                    self.authority, self.family, run_id, product=product,
                     updated_utc=self.utc_clock(), lease=lease,
                 )
             except WorkerProductError:
                 final = store.transition(
-                    self.authority, "zeeman", run_id,
+                    self.authority, self.family, run_id,
                     expected_revision=current["revision"], target_state="failed",
                     updated_utc=self.utc_clock(), lease=lease,
                     error={"code": "invalid_worker_output", "message": "Zeus output failed D3 validation."},
@@ -700,7 +702,7 @@ class IndividualZeemanZeusCoordinator:
                 raise
             except Exception:
                 final = store.transition(
-                    self.authority, "zeeman", run_id,
+                    self.authority, self.family, run_id,
                     expected_revision=current["revision"], target_state="outcome_unknown",
                     updated_utc=self.utc_clock(), lease=lease,
                     error={"code": "retrieval_outcome_unknown", "message": "Zeus result retrieval is uncertain."},
@@ -708,3 +710,9 @@ class IndividualZeemanZeusCoordinator:
             return {"state": final["state"], "job_id": job_id}
         finally:
             store.close()
+    family = "zeeman"
+
+    def _build_package(self, evidence, profile, *, require_configured=True):
+        return build_frozen_package(
+            evidence, profile, require_configured=require_configured
+        )

@@ -247,6 +247,87 @@ def _validated_selection(
     return frozen
 
 
+def materialize_frozen_selection(
+    repository_root: Path, request: WorkerRequest
+) -> tuple[np.ndarray, tuple[tuple[int, int], ...]]:
+    """Re-attest a frozen pool and read only its already-selected rows."""
+
+    run = request.run
+    resolved = request.configuration["resolved"]
+    source = resolved["input_source"]
+    records = list(source["records"])
+    identities = _validated_selection(
+        resolved["sampling"], records, run["particle_count"]
+    )
+    expected_artifacts: dict[tuple[int, str], Mapping[str, Any]] = {}
+    total_state_bytes = 0
+    for artifact in request.inputs["artifacts"]:
+        provenance = artifact["provenance"]
+        index = provenance["source_record_index"]
+        role = artifact["role"]
+        kind = (
+            "states" if role == "zeeman_states"
+            else "metadata" if role == "zeeman_metadata" else None
+        )
+        if (
+            kind is None
+            or provenance["source_id"] != source["id"]
+            or provenance["source_fingerprint"] != source["fingerprint"]
+        ):
+            raise WorkerProductError("Frozen 2D-MOT input provenance is inconsistent.")
+        key = (index, kind)
+        if key in expected_artifacts:
+            raise WorkerProductError("Frozen 2D-MOT inputs contain duplicates.")
+        expected_artifacts[key] = artifact
+        if kind == "states":
+            total_state_bytes += artifact["size_bytes"]
+    if total_state_bytes > individual_mot_2d_source_scan_limits().maximum_total_bytes:
+        raise WorkerProductError("Frozen 2D-MOT source exceeds the admitted byte limit.")
+    expected_keys = {
+        (index, kind) for index in range(len(records))
+        for kind in (("states", "metadata") if "metadata_path" in records[index] else ("states",))
+    }
+    if set(expected_artifacts) != expected_keys:
+        raise WorkerProductError("Frozen 2D-MOT input registry is incomplete.")
+    requested_rows: dict[int, list[int]] = {}
+    for record_index, row_index in identities:
+        requested_rows.setdefault(record_index, []).append(row_index)
+    selected_rows: dict[tuple[int, int], np.ndarray] = {}
+    for index, record in enumerate(records):
+        state_artifact = expected_artifacts[(index, "states")]
+        if (
+            state_artifact["path"] != record["path"]
+            or state_artifact["sha256"] != record["sha256"]
+            or state_artifact["size_bytes"] != record["size_bytes"]
+            or tuple(record["shape"]) != (record["survivor_count"], 6)
+            or record["dtype"] != "float64"
+        ):
+            raise WorkerProductError("Frozen state evidence is inconsistent.")
+        rows = _attest_artifact(
+            repository_root, state_artifact,
+            selected_rows=tuple(requested_rows.get(index, ())),
+            expected_shape=tuple(record["shape"]),
+        )
+        selected_rows.update({(index, row): value for row, value in rows.items()})
+        if "metadata_path" in record:
+            metadata = expected_artifacts[(index, "metadata")]
+            if (
+                metadata["path"] != record["metadata_path"]
+                or metadata["sha256"] != record["metadata_sha256"]
+                or metadata["size_bytes"] != record["metadata_size_bytes"]
+            ):
+                raise WorkerProductError("Frozen metadata evidence is inconsistent.")
+            _attest_artifact(repository_root, metadata)
+    try:
+        selected = np.ascontiguousarray(
+            np.stack([selected_rows[identity] for identity in identities]),
+            dtype=np.float64,
+        )
+    except (KeyError, TypeError, ValueError) as error:
+        raise WorkerProductError("Frozen 2D-MOT selection is out of range.") from error
+    return selected, identities
+
+
 class Mot2DLocalWorker:
     """Materialize the frozen selection and call the fixed 2D engine once."""
 
@@ -264,11 +345,23 @@ class Mot2DLocalWorker:
         self._clock = clock
 
     def run(self, request: WorkerRequest) -> WorkerProduct:
+        return self._run(request, selected_states=None)
+
+    def run_materialized(
+        self, request: WorkerRequest, selected_states: np.ndarray
+    ) -> WorkerProduct:
+        """Run an immutable selected-row payload staged by the Zeus boundary."""
+
+        return self._run(request, selected_states=selected_states)
+
+    def _run(
+        self, request: WorkerRequest, *, selected_states: np.ndarray | None
+    ) -> WorkerProduct:
         run = request.run
         configuration = request.configuration
         resolved = configuration["resolved"]
-        if run["family"] != "mot_2d" or run["execution_mode"] != "local":
-            raise WorkerProductError("Local 2D-MOT worker received the wrong run family or mode.")
+        if run["family"] != "mot_2d" or run["execution_mode"] not in {"local", "zeus"}:
+            raise WorkerProductError("2D-MOT worker received the wrong run family or mode.")
         simulation = resolved["simulation"]
         execution = resolved["execution"]
         numerical = resolved["numerical_policy"]
@@ -278,10 +371,11 @@ class Mot2DLocalWorker:
         records = list(source["records"])
         identities = _validated_selection(sampling, records, run["particle_count"])
         fixed = MOT_2D_RUN_SPECIFICATION["fixed_classification"]
-        expected_workers = MOT_2D_RUN_SPECIFICATION["workers_by_execution_mode"]["local"]
+        mode = run["execution_mode"]
+        expected_workers = MOT_2D_RUN_SPECIFICATION["workers_by_execution_mode"][mode]
         if (
-            execution != {"mode": "local", "workers": expected_workers}
-            or run["particle_count"] > MOT_2D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"]["local"]
+            execution != {"mode": mode, "workers": expected_workers}
+            or run["particle_count"] > MOT_2D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"][mode]
             or simulation["particle_count"] != run["particle_count"]
             or sampling["selected_count"] != run["particle_count"]
             or numerical != {"solver": fixed["solver"], "dt_s": fixed["timestep_s"], "t_max_s": fixed["t_max_s"]}
@@ -310,68 +404,21 @@ class Mot2DLocalWorker:
         if field != expected_field or laser != expected_laser:
             raise WorkerProductError("Reviewed upstream boundary differs from the trusted runtime.")
 
-        artifacts = list(request.inputs["artifacts"])
-        expected_artifacts: dict[tuple[int, str], Mapping[str, Any]] = {}
-        total_state_bytes = 0
-        for artifact in artifacts:
-            provenance = artifact["provenance"]
-            index = provenance["source_record_index"]
-            role = artifact["role"]
-            kind = "states" if role == "zeeman_states" else "metadata" if role == "zeeman_metadata" else None
-            if kind is None or provenance["source_id"] != source["id"] or provenance["source_fingerprint"] != source["fingerprint"]:
-                raise WorkerProductError("Frozen 2D-MOT input provenance is inconsistent.")
-            key = (index, kind)
-            if key in expected_artifacts:
-                raise WorkerProductError("Frozen 2D-MOT inputs contain duplicates.")
-            expected_artifacts[key] = artifact
-            if kind == "states":
-                total_state_bytes += artifact["size_bytes"]
-        if total_state_bytes > individual_mot_2d_source_scan_limits().maximum_total_bytes:
-            raise WorkerProductError("Frozen 2D-MOT source exceeds the admitted byte limit.")
-        if set(expected_artifacts) != {
-            (index, kind) for index in range(len(records))
-            for kind in (("states", "metadata") if "metadata_path" in records[index] else ("states",))
-        }:
-            raise WorkerProductError("Frozen 2D-MOT input registry is incomplete.")
-
-        requested_rows: dict[int, list[int]] = {}
-        for record_index, row_index in identities:
-            requested_rows.setdefault(record_index, []).append(row_index)
-        selected_rows: dict[tuple[int, int], np.ndarray] = {}
-        for index, record in enumerate(records):
-            state_artifact = expected_artifacts[(index, "states")]
+        if selected_states is None:
+            if mode != "local":
+                raise WorkerProductError("Zeus execution requires a frozen selected-row payload.")
+            selected, identities = materialize_frozen_selection(self.root, request)
+        else:
+            identities = _validated_selection(sampling, records, run["particle_count"])
+            selected = np.asarray(selected_states)
             if (
-                state_artifact["path"] != record["path"]
-                or state_artifact["sha256"] != record["sha256"]
-                or state_artifact["size_bytes"] != record["size_bytes"]
+                mode != "zeus"
+                or selected.dtype != np.dtype(np.float64)
+                or selected.shape != (run["particle_count"], 6)
+                or not selected.flags.c_contiguous
+                or not np.all(np.isfinite(selected))
             ):
-                raise WorkerProductError("Frozen state evidence is inconsistent.")
-            if tuple(record["shape"]) != (record["survivor_count"], 6) or record["dtype"] != "float64":
-                raise WorkerProductError("Frozen particle-state shape or values are invalid.")
-            materialized = _attest_artifact(
-                self.root,
-                state_artifact,
-                selected_rows=tuple(requested_rows.get(index, ())),
-                expected_shape=tuple(record["shape"]),
-            )
-            selected_rows.update({(index, row): value for row, value in materialized.items()})
-            if "metadata_path" in record:
-                metadata_artifact = expected_artifacts[(index, "metadata")]
-                if (
-                    metadata_artifact["path"] != record["metadata_path"]
-                    or metadata_artifact["sha256"] != record["metadata_sha256"]
-                    or metadata_artifact["size_bytes"] != record["metadata_size_bytes"]
-                ):
-                    raise WorkerProductError("Frozen metadata evidence is inconsistent.")
-                _attest_artifact(self.root, metadata_artifact)
-
-        try:
-            selected = np.ascontiguousarray(
-                np.stack([selected_rows[(index, row)] for index, row in identities]),
-                dtype=np.float64,
-            )
-        except (KeyError, TypeError, ValueError) as error:
-            raise WorkerProductError("Frozen 2D-MOT selection is out of range.") from error
+                raise WorkerProductError("Frozen selected-row payload is invalid.")
 
         started = self._monotonic()
         outcome = self._engine(
