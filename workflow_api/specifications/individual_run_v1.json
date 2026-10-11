@@ -1,0 +1,58 @@
+{
+  "spec_version": "individual-run-specification-v1",
+  "record_versions": {
+    "run": "individual-run-v1",
+    "configuration": "run-configuration-v1",
+    "inputs": "run-inputs-v1",
+    "status": "run-status-v1",
+    "results": "run-results-v1",
+    "retention_receipt": "state-retention-receipt-v1"
+  },
+  "layout": {
+    "root": "data/runs",
+    "families": ["zeeman", "mot_2d", "mot_3d"],
+    "immutable_files": ["run.json", "configuration.json", "inputs.json"],
+    "mutable_files": ["status.json"],
+    "result_registry": "results/summary.json",
+    "particle_states": "results/states.npy",
+    "retention_receipt": "results/state_retention_receipt.json",
+    "logs_directory": "logs"
+  },
+  "execution_modes": ["local", "zeus"],
+  "lifecycle": {
+    "initial": "configured",
+    "terminal": ["succeeded", "failed", "outcome_unknown", "cancelled"],
+    "transitions": {
+      "configured": ["validated", "cancelled"],
+      "validated": ["reviewed", "configured", "cancelled"],
+      "reviewed": ["queued", "running", "configured", "cancelled"],
+      "queued": ["running", "failed", "outcome_unknown", "cancelled"],
+      "running": ["succeeded", "failed", "outcome_unknown", "cancelled"],
+      "succeeded": [],
+      "failed": [],
+      "outcome_unknown": [],
+      "cancelled": []
+    }
+  },
+  "output_kinds": [
+    "summary",
+    "particle_states",
+    "retention_receipt",
+    "run_log",
+    "scheduler_receipt"
+  ],
+  "retention": {
+    "particle_states_field": "particle_states",
+    "retained_requires": "results/states.npy",
+    "retained_forbids": "results/state_retention_receipt.json",
+    "not_retained_requires": "results/state_retention_receipt.json",
+    "not_retained_forbids": "results/states.npy"
+  },
+  "suitability_levels": ["individual_only", "campaign_input"],
+  "limits": {
+    "run_id_max_characters": 96,
+    "json_max_bytes": 8388608,
+    "artifact_count_maximum": 128,
+    "path_max_bytes": 512
+  }
+}
