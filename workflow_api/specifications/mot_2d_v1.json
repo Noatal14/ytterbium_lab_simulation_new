@@ -18,7 +18,15 @@
     "screen": {"label": "Screening", "job_file": "jobs/02_screen.pbs", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 86400, "array_throttle": 3, "artifacts": ["screen/tasks.json", "jobs/02_screen.pbs", "campaign.json"]},
     "refine": {"label": "Refinement", "round_job_files": ["jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs"], "submit_chain": "jobs/03_submit_refinement_chain.sh", "cumulative_trial_targets": [3, 6, 9, 10], "dependency": "afterok", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 72000, "array_throttle": 3, "artifacts": ["screening_candidates.json", "refine/tasks.json", "jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs", "jobs/03_submit_refinement_chain.sh", "campaign.json"]},
     "confirmation": {"label": "Confirmation", "job_file": "jobs/04_confirmation.pbs", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 36000, "array_throttle": 3, "artifacts": ["refined_candidates.json", "confirmation/tasks.json", "jobs/04_confirmation.pbs", "campaign.json"]},
-    "sensitivity": {"label": "Sensitivity"},
-    "production": {"label": "Production"}
+    "sensitivity": {"label": "Sensitivity", "job_file": "jobs/05_sensitivity.pbs", "cores_per_task": 200, "memory_per_task_bytes": 68719476736, "walltime_seconds": 36000, "array_throttle": 3, "artifacts": ["winners.json", "sensitivity/tasks.json", "jobs/05_sensitivity.pbs", "campaign.json"]},
+    "production": {"label": "Production", "job_file": "jobs/06_production.pbs", "cores_per_task": 150, "memory_per_task_bytes": 68719476736, "walltime_seconds": 43200, "array_throttle": 4, "artifacts": ["sensitivity_summary.json", "production/tasks.json", "jobs/06_production.pbs", "campaign.json"]}
+  },
+  "finalization": {
+    "label": "Finalization",
+    "from_stage": "production",
+    "to_stage": "complete",
+    "artifact_templates": ["production/{s0_key}/summary.json"],
+    "artifacts": ["final_report.json", "campaign.json"],
+    "submits_job": false
   }
 }

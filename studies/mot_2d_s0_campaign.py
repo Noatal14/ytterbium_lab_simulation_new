@@ -19,15 +19,23 @@ from studies.mot_2d.optimization import evaluate_configuration
 from studies.mot_2d.production import summarize
 from utils.RK4StHybridCustom import RK4StHybridCustom
 from utils.file_helpers import save_file_json
-from utils.mot_2d_study import load_production_ensembles, student_mean_interval
+from utils.mot_2d_study import load_production_ensembles
+from workflow_api.mot_2d_late_stage import (
+    derive_production_transition,
+    paired_comparison as paired,
+    select_production_point,
+)
 from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS
 from workflow_api.mot_2d_smoke import validate_smoke_outputs
 from workflow_api.mot_2d_screen import validate_screen_outputs
+from workflow_api.mot_2d_validation import (
+    expected_sensitivity_tasks,
+    validated_evaluation_outputs,
+)
 from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
 WORKING_DT_S = 1.25e-6
-TARGET = 0.0005
 D_RES = 0.01
 R_RES = 0.01e-3
 SCREEN_TRIALS = 17
@@ -483,18 +491,6 @@ def confirmation_task(args):
     evaluate_task(Path(args.campaign), "confirmation", args.task_index)
 
 
-def paired(candidate, reference, confidence=0.95):
-    differences = []
-    for left, right in zip(candidate["evaluation"]["replicates"],
-                           reference["evaluation"]["replicates"]):
-        if any(left[k] != right[k] for k in ("zeeman_seed", "mot_seed", "n_input", "subset_seed")):
-            raise ValueError("Replicates are not paired")
-        differences.append(left["conditional_efficiency"] - right["conditional_efficiency"])
-    mean, low, high, half = student_mean_interval(differences, confidence=confidence)
-    return {"mean_difference_fraction": mean, "95_ci_fraction": [low, high],
-            "95_ci_half_width_fraction": half, "differences_fraction": differences}
-
-
 def boundary(parameters):
     flags = []
     for name, value, bounds, tolerance in (
@@ -508,14 +504,15 @@ def boundary(parameters):
 
 def prepare_sensitivity(root, manifest):
     winners, specs = {}, []
+    validated_rows = validated_evaluation_outputs(root, manifest, "confirmation")
+    canonical_specs = expected_sensitivity_tasks(manifest, validated_rows)
     for value in manifest["s0_values"]:
-        files = sorted((root / "confirmation" / key(value)).glob("point_*.json"))
-        if len(files) != CONFIRMATION_CANDIDATES:
+        rows = [row for row in validated_rows if row["s0"] == value]
+        if len(rows) != CONFIRMATION_CANDIDATES:
             raise RuntimeError(
                 f"Confirmation incomplete for s0={value}: "
-                f"{len(files)}/{CONFIRMATION_CANDIDATES}"
+                f"{len(rows)}/{CONFIRMATION_CANDIDATES}"
             )
-        rows = [read(path) for path in files]
         rows.sort(key=lambda row: (-row["evaluation"]["statistics"]["conditional_95_ci"][0],
                                    -row["evaluation"]["statistics"]["mean_conditional_efficiency"],
                                    row["candidate_index"]))
@@ -523,30 +520,7 @@ def prepare_sensitivity(root, manifest):
         winner["boundary_flags"] = boundary(winner["parameters"])
         winner["comparisons_to_other_candidates"] = [paired(row, winner) for row in rows[1:]]
         winners[key(value)] = winner
-        unique = {}
-        neighborhoods = {
-            "provisional_control_resolution": (-D_RES, D_RES, -R_RES, R_RES),
-            "broader_stress_test": (-0.02, 0.02, -0.1e-3, 0.1e-3),
-        }
-        for neighborhood, (d_low, d_high, r_low, r_high) in neighborhoods.items():
-          for d_offset in (d_low, 0.0, d_high):
-            for r_offset in (r_low, 0.0, r_high):
-                reference = winner["parameters"]
-                parameters = {"s0": value,
-                    "detuning_gamma": min(max(reference["detuning_gamma"]+d_offset, BOUNDS_DETUNING[0]), BOUNDS_DETUNING[1]),
-                    "magnet_radius": min(max(reference["magnet_radius"]+r_offset, BOUNDS_MAGNET_RADIUS_M[0]), BOUNDS_MAGNET_RADIUS_M[1])}
-                identity = (parameters["detuning_gamma"], parameters["magnet_radius"])
-                requested = {"neighborhood": neighborhood, "detuning_gamma": d_offset,
-                             "magnet_radius_m": r_offset}
-                if identity in unique:
-                    unique[identity]["requested_offsets"].append(requested)
-                else:
-                    unique[identity] = {"s0": value, "parameters": parameters,
-                                        "offsets": {"detuning_gamma": parameters["detuning_gamma"]-reference["detuning_gamma"],
-                                                    "magnet_radius_m": parameters["magnet_radius"]-reference["magnet_radius"]},
-                                        "requested_offsets": [requested]}
-        for point, spec in enumerate(unique.values()):
-            specs.append({"point_index": point, **spec})
+        specs.extend(spec for spec in canonical_specs if spec["s0"] == value)
     save_file_json(root / "winners.json", winners)
     prepare(root, manifest, "sensitivity", specs, "05", 200, "10:00:00")
 
@@ -555,84 +529,13 @@ def sensitivity_task(args):
     evaluate_task(Path(args.campaign), "sensitivity", args.task_index)
 
 
-def select_production_point(rows, reference):
-    """Choose a clearly superior sensitivity neighbor, otherwise the center."""
-    point_summaries = []
-    clearly_better = []
-    familywise_confidence = 1.0 - 0.05 / max(1, len(rows) - 1)
-    for row in rows:
-        comparison = paired(row, reference, confidence=familywise_confidence)
-        summary = {
-            "parameters": row["parameters"],
-            "offsets": row["offsets"],
-            "mean_efficiency": row["evaluation"]["statistics"][
-                "mean_conditional_efficiency"
-            ],
-            "comparison_to_reference": comparison,
-            "within_loss_margin_at_95_percent": bool(
-                comparison["95_ci_fraction"][0] >= -TARGET
-            ),
-        }
-        point_summaries.append(summary)
-        if comparison["95_ci_fraction"][0] > 0.0:
-            clearly_better.append(summary)
-
-    if clearly_better:
-        selected = max(
-            clearly_better,
-            key=lambda item: (
-                item["comparison_to_reference"]["95_ci_fraction"][0],
-                item["mean_efficiency"],
-            ),
-        )
-        reason = "sensitivity_neighbor_clearly_better_at_95_percent"
-    else:
-        selected = next(
-            item
-            for item in point_summaries
-            if item["offsets"]
-            == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0}
-        )
-        reason = "no_sensitivity_neighbor_clearly_better_at_95_percent"
-
-    return point_summaries, {
-        "parameters": selected["parameters"],
-        "offsets_from_confirmed_winner": selected["offsets"],
-        "mean_efficiency": selected["mean_efficiency"],
-        "comparison_to_confirmed_winner": selected["comparison_to_reference"],
-        "selection_reason": reason,
-        "familywise_method": "Bonferroni simultaneous paired intervals",
-        "familywise_confidence_per_comparison": familywise_confidence,
-    }
-
-
 def prepare_production(root, manifest):
-    winners, sensitivity = read(root / "winners.json"), {}
-    for value in manifest["s0_values"]:
-        rows = [read(p) for p in sorted((root / "sensitivity" / key(value)).glob("point_*.json"))]
-        expected_count = sum(1 for task in read(root / "sensitivity" / "tasks.json")
-                             if task["s0"] == value)
-        if len(rows) != expected_count:
-            raise RuntimeError(f"Sensitivity incomplete for s0={value}: {len(rows)}/{expected_count}")
-        reference = next(row for row in rows if row["offsets"] == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0})
-        points, production_selection = select_production_point(rows, reference)
-        sensitivity[key(value)] = {
-            "reference": winners[key(value)]["parameters"],
-            "points": points,
-            "production_selection": production_selection,
-            "robustness_status": "not_established_pending_adaptive_challenger_validation",
-            "near_optimality_status": "not_established_pending_domain_challenger_elimination",
-        }
+    confirmation_rows = validated_evaluation_outputs(root, manifest, "confirmation")
+    validated_rows = validated_evaluation_outputs(root, manifest, "sensitivity")
+    sensitivity, specs = derive_production_transition(
+        manifest, confirmation_rows, validated_rows
+    )
     save_file_json(root / "sensitivity_summary.json", sensitivity)
-    specs = [{"s0": value, "zeeman_seed": seed,
-              "mot_seed": manifest["mot_seeds"]["sealed_validation"][
-                  manifest["seed_roles"]["sealed_validation"].index(seed)
-              ],
-              "parameters": sensitivity[key(value)]["production_selection"][
-                  "parameters"
-              ]}
-             for value in manifest["s0_values"]
-             for seed in manifest["seed_roles"]["sealed_validation"]]
     prepare(root, manifest, "production", specs, "06", 150, "12:00:00")
 
 
@@ -681,7 +584,9 @@ def finish(root, manifest):
                                              "stochastic_solver": "RK4StHybridCustom",
                                              "ensemble_dir": manifest["ensemble_source"]["directory"],
                                              "zeeman_profile": manifest["ensemble_source"]["zeeman_profile"],
-                                             "git_commit": manifest["provenance"]["git_commit"]})
+                                             "git_commit": manifest["provenance"]["git_commit"]},
+                            reporting_survivors=manifest["fixed_design"]["reporting_zeeman_survivors"],
+                            target_half_width_fraction=manifest["fixed_design"]["target_95_half_width_fraction"])
         recommended = sensitivity[key(value)]["production_selection"]["parameters"]
         warnings = boundary(recommended)
         if not summary["stopping_rule_passes"]:

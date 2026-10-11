@@ -11,11 +11,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import subprocess
 from pathlib import Path
 
 import numpy as np
-from scipy.stats import t as student_t
 
 from config import DEFAULT_NUM_POOLS, MOT_2D_SIM_CONFIG
 from lab_setup.physical_specification import (
@@ -29,10 +29,14 @@ from utils.data_paths import MOT_2D_OPTIMIZATION_DIR
 from utils.data_paths import AFTER_2D_MOT_DIR, save_particle_states
 from utils.file_helpers import save_file_json
 from utils.mot_2d_study import load_production_ensembles, summarize_replicates
+from workflow_api.mot_2d_prediction import (
+    REPORTING_SURVIVORS,
+    cluster_bootstrap_prediction,
+    final_prediction,
+)
 
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
-REPORTING_SURVIVORS = 10_000_000
 TARGET_HALF_WIDTH_FRACTION = 0.0005  # 0.05 percentage points
 DEFAULT_OUTPUT_DIR = MOT_2D_OPTIMIZATION_DIR / "final_production_v22"
 DEFAULT_STATES_DIR = AFTER_2D_MOT_DIR / "final_production_v22"
@@ -132,110 +136,29 @@ def run_seeds(args):
         )
 
 
-def cluster_bootstrap_prediction(
-    replicates,
-    reporting_survivors=REPORTING_SURVIVORS,
-    draws=20_000,
-    random_seed=20261005,
-):
-    """Sample the survivor-weighted pooled efficiency and future count."""
-    n_input = np.asarray([row["n_input"] for row in replicates], dtype=float)
-    captured = np.asarray([row["captured"] for row in replicates], dtype=float)
-    rng = np.random.default_rng(random_seed)
-    bootstrap = np.empty(draws)
-    for index in range(draws):
-        selected = rng.integers(0, len(replicates), len(replicates))
-        selected_n = n_input[selected]
-        probabilities = rng.beta(
-            captured[selected] + 0.5,
-            selected_n - captured[selected] + 0.5,
-        )
-        pooled_probability = float(
-            np.sum(probabilities * selected_n) / np.sum(selected_n)
-        )
-        bootstrap[index] = (
-            rng.binomial(reporting_survivors, pooled_probability)
-            / reporting_survivors
-        )
-    return bootstrap
-
-
-def final_prediction(replicates, reporting_survivors=REPORTING_SURVIVORS):
-    n_input = np.asarray([row["n_input"] for row in replicates], dtype=float)
-    captured = np.asarray([row["captured"] for row in replicates], dtype=float)
-    efficiencies = captured / n_input
-    total_input = int(n_input.sum())
-    total_captured = int(captured.sum())
-    pooled_efficiency = float(total_captured / total_input)
-
-    binomial_mean_variance = float(
-        pooled_efficiency * (1.0 - pooled_efficiency) / total_input
-    )
-    empirical_mean_variance = float(np.var(efficiencies, ddof=1) / len(efficiencies))
-    use_empirical_variance = empirical_mean_variance > binomial_mean_variance
-    selected_mean_variance = max(
-        binomial_mean_variance,
-        empirical_mean_variance,
-    )
-    future_counting_variance = float(
-        pooled_efficiency * (1.0 - pooled_efficiency) / reporting_survivors
-    )
-    critical = float(
-        student_t.ppf(0.975, len(replicates) - 1) if use_empirical_variance else 1.96
-    )
-    half_width = float(
-        critical * np.sqrt(selected_mean_variance + future_counting_variance)
-    )
-    low = max(0.0, pooled_efficiency - half_width)
-    high = min(1.0, pooled_efficiency + half_width)
-    # Cluster-aware uncertainty: resample independent Zeeman/MOT ensemble
-    # pairs, then sample each cluster's finite-count uncertainty and the new
-    # reporting population.  This respects the actual crossed pair structure.
-    bootstrap = cluster_bootstrap_prediction(replicates, reporting_survivors)
-    bootstrap_low, bootstrap_high = map(float, np.quantile(bootstrap, [0.025, 0.975]))
-    bootstrap_half = (bootstrap_high - bootstrap_low) / 2.0
-    return {
-        "reporting_zeeman_survivors": int(reporting_survivors),
-        "simulated_zeeman_survivors": total_input,
-        "simulated_captured_atoms": total_captured,
-        "pooled_conditional_efficiency": pooled_efficiency,
-        "expected_captured_atoms": int(round(pooled_efficiency * reporting_survivors)),
-        "predicted_95_interval_fraction": [bootstrap_low, bootstrap_high],
-        "predicted_95_captured_atoms_interval": [
-            int(round(bootstrap_low * reporting_survivors)),
-            int(round(bootstrap_high * reporting_survivors)),
-        ],
-        "predicted_95_half_width_fraction": bootstrap_half,
-        "predicted_95_half_width_percentage_points": 100 * bootstrap_half,
-        "binomial_mean_variance": binomial_mean_variance,
-        "empirical_between_ensemble_mean_variance": empirical_mean_variance,
-        "selected_mean_variance": selected_mean_variance,
-        "selected_mean_variance_source": (
-            "empirical_between_ensemble"
-            if use_empirical_variance
-            else "pooled_binomial"
-        ),
-        "critical_value": critical,
-        "future_counting_variance": future_counting_variance,
-        "uncertainty_method": (
-            "20,000-draw cluster-aware parametric bootstrap: independent "
-            "Zeeman/MOT ensemble pairs are resampled as clusters, finite "
-            "within-cluster capture uncertainty is sampled with a Jeffreys "
-            "beta model, cluster probabilities are pooled with their resampled "
-            "survivor counts as weights, and future counting noise is sampled "
-            "binomially"
-        ),
-        "bootstrap_replicates": 20_000,
-    }
-
-
 def summarize(
     output_dir,
     expected_seeds=None,
     expected_seed_pairs=None,
     states_dir=None,
     expected_design=None,
+    reporting_survivors=REPORTING_SURVIVORS,
+    target_half_width_fraction=TARGET_HALF_WIDTH_FRACTION,
 ):
+    if (
+        not isinstance(reporting_survivors, int)
+        or isinstance(reporting_survivors, bool)
+        or reporting_survivors <= 0
+    ):
+        raise ValueError("reporting_survivors must be a positive integer.")
+    if (
+        isinstance(target_half_width_fraction, bool)
+        or not isinstance(target_half_width_fraction, (int, float))
+        or not math.isfinite(float(target_half_width_fraction))
+        or target_half_width_fraction <= 0
+    ):
+        raise ValueError("target_half_width_fraction must be finite and positive.")
+    target_half_width_fraction = float(target_half_width_fraction)
     paths = sorted((Path(output_dir) / "replicates").glob("zeeman_seed*.json"))
     if not paths:
         raise FileNotFoundError("No final-production replicate files were found.")
@@ -302,15 +225,18 @@ def summarize(
         if stale:
             raise ValueError(f"Unexpected stale survivor arrays: {sorted(stale)}")
     replicates.sort(key=lambda row: row["zeeman_seed"])
-    prediction = final_prediction(replicates)
+    prediction = final_prediction(
+        replicates, reporting_survivors=reporting_survivors
+    )
     summary = {
         "kind": "mot_2d_final_production_summary",
         "parameters": parameters,
         "design": design,
-        "target_95_half_width_fraction": TARGET_HALF_WIDTH_FRACTION,
-        "target_95_half_width_percentage_points": 100 * TARGET_HALF_WIDTH_FRACTION,
+        "target_95_half_width_fraction": target_half_width_fraction,
+        "target_95_half_width_percentage_points": 100 * target_half_width_fraction,
         "stopping_rule_passes": bool(
-            prediction["predicted_95_half_width_fraction"] <= TARGET_HALF_WIDTH_FRACTION
+            prediction["predicted_95_half_width_fraction"]
+            <= target_half_width_fraction
         ),
         "zeeman_seeds": seeds,
         "replicates": replicates,

@@ -330,15 +330,27 @@ def test_campaign_promotes_a_clearly_better_sensitivity_neighbor():
     better = point(0.02, [0.001, 0.001, 0.001])
     worse = point(-0.02, [-0.001, -0.001, -0.001])
 
-    _, selection = select_production_point(
+    points, selection = select_production_point(
         [worse, reference, better],
         reference,
+        target_loss_fraction=0.0005,
     )
 
     assert selection["parameters"] == better["parameters"]
     assert selection["selection_reason"] == (
         "sensitivity_neighbor_clearly_better_at_95_percent"
     )
+    worse_summary = next(row for row in points if row["offsets"] == worse["offsets"])
+    assert worse_summary["within_loss_margin_at_95_percent"] is False
+    wider_points, _ = select_production_point(
+        [worse, reference, better],
+        reference,
+        target_loss_fraction=0.002,
+    )
+    wider_worse = next(
+        row for row in wider_points if row["offsets"] == worse["offsets"]
+    )
+    assert wider_worse["within_loss_margin_at_95_percent"] is True
 
 
 def test_campaign_advances_five_confirmed_finalists_to_sensitivity(
@@ -363,6 +375,7 @@ def test_campaign_advances_five_confirmed_finalists_to_sensitivity(
             for replicate in range(3)
         ]
         payload = {
+            "s0": 1.3,
             "candidate_index": index,
             "parameters": {
                 "s0": 1.3,
@@ -397,7 +410,27 @@ def test_campaign_advances_five_confirmed_finalists_to_sensitivity(
         )
 
     monkeypatch.setattr(campaign, "prepare", fake_prepare)
-    campaign.prepare_sensitivity(root, {"s0_values": [1.3]})
+    monkeypatch.setattr(
+        campaign,
+        "validated_evaluation_outputs",
+        lambda *args: [
+            json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(confirmation.glob("point_*.json"))
+        ],
+    )
+    campaign.prepare_sensitivity(root, {
+        "s0_values": [1.3],
+        "fixed_design": {
+            "detuning_bounds_gamma": [-1.55, -0.85],
+            "magnet_radius_bounds_m": [0.045, 0.051],
+            "control_resolution": {
+                "detuning_gamma": 0.01, "magnet_radius_m": 1e-5,
+            },
+            "stress_test_offsets": {
+                "detuning_gamma": 0.02, "magnet_radius_m": 0.0001,
+            },
+        },
+    })
 
     assert prepared["stage"] == "sensitivity"
     assert len(prepared["specs"]) == 17

@@ -11,7 +11,7 @@ from workflow_api.mot_2d_plan import render_confirmation_transition
 from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.pinned_ssh import PinnedSshPolicy,PinnedSshProcessError,PinnedSshRunner,ReceiverOperation
 
-TOKEN_LIFETIME_SECONDS=300
+TOKEN_LIFETIME_SECONDS=300;MAX_PENDING_PREVIEWS=32
 class ZeusConfirmationError(RuntimeError):
     def __init__(self,code):super().__init__(code);self.code=code
 @dataclass(frozen=True)
@@ -56,7 +56,9 @@ class ZeusConfirmationCoordinator:
     def preview(self,request,*,session_id):
         plan,state=self._inspect(request);campaign_id,profile,campaign,manifest,commit,_,key,_,_=plan
         if state.lifecycle!="ready_to_prepare_confirmation":raise ZeusConfirmationError({"awaiting_outputs":"refine_outputs_pending","outputs_invalid":"refine_outputs_invalid","confirmation_prepared":"confirmation_already_prepared"}.get(state.lifecycle,"refinement_chain_not_complete"))
-        rows=[dict(x) for x in state.rows];rendered=render_confirmation_transition(self._remote_manifest(manifest,campaign,self.root),campaign,self.root,rows);files={name:hashlib.sha256(data).hexdigest() for name,data in rendered.items()};digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest();expires=self.clock()+TOKEN_LIFETIME_SECONDS;pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),key,digest,files,secrets.token_hex(16),expires);token=self._previews.add(pending,expires_at=expires,capacity=None,prune_expired=False)
+        rows=[dict(x) for x in state.rows];rendered=render_confirmation_transition(self._remote_manifest(manifest,campaign,self.root),campaign,self.root,rows);files={name:hashlib.sha256(data).hexdigest() for name,data in rendered.items()};digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest();expires=self.clock()+TOKEN_LIFETIME_SECONDS;pending=_Pending(session_id,campaign_id,profile,commit,campaign.relative_to(self.root).as_posix(),key,digest,files,secrets.token_hex(16),expires)
+        try:token=self._previews.add(pending,expires_at=expires,capacity=MAX_PENDING_PREVIEWS)
+        except OverflowError as error:raise ZeusConfirmationError("too_many_pending_previews") from error
         candidates=[];selected=json.loads(rendered["refined_candidates.json"])
         for group in selected.values():
             for rank,row in enumerate(group,1):candidates.append({"s0":row["s0"],"rank":rank,"detuning_gamma":row["detuning_gamma"],"magnet_radius_m":row["magnet_radius"],"mean_conditional_efficiency":row["mean_conditional_efficiency"],"source":row["source"]})

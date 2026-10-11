@@ -16,6 +16,7 @@ from workflow_api.mot_2d_spec import FIXED_DESIGN, ROLE_SEEDS
 from workflow_api.mot_2d_specification import (
     MOT_2D_SPECIFICATION,
     _validate,
+    expand_finalization_artifacts,
     render_typescript_specification,
 )
 
@@ -62,6 +63,62 @@ def test_v1_design_matches_scientific_authority_and_is_deeply_immutable():
     )
     with pytest.raises(TypeError):
         spec["design"]["solver"] = "other"
+
+
+def test_late_stage_operations_are_fully_versioned():
+    stages = MOT_2D_SPECIFICATION["stages"]
+    assert dict(stages["sensitivity"]) == {
+        "label": "Sensitivity",
+        "job_file": "jobs/05_sensitivity.pbs",
+        "cores_per_task": 200,
+        "memory_per_task_bytes": 64 * 1024**3,
+        "walltime_seconds": 10 * 3600,
+        "array_throttle": 3,
+        "artifacts": (
+            "winners.json",
+            "sensitivity/tasks.json",
+            "jobs/05_sensitivity.pbs",
+            "campaign.json",
+        ),
+    }
+    assert dict(stages["production"]) == {
+        "label": "Production",
+        "job_file": "jobs/06_production.pbs",
+        "cores_per_task": 150,
+        "memory_per_task_bytes": 64 * 1024**3,
+        "walltime_seconds": 12 * 3600,
+        "array_throttle": 4,
+        "artifacts": (
+            "sensitivity_summary.json",
+            "production/tasks.json",
+            "jobs/06_production.pbs",
+            "campaign.json",
+        ),
+    }
+    assert dict(MOT_2D_SPECIFICATION["finalization"]) == {
+        "label": "Finalization",
+        "from_stage": "production",
+        "to_stage": "complete",
+        "artifact_templates": ("production/{s0_key}/summary.json",),
+        "artifacts": ("final_report.json", "campaign.json"),
+        "submits_job": False,
+    }
+
+
+def test_finalization_artifacts_expand_in_manifest_s0_order():
+    assert expand_finalization_artifacts([1.3, 0.75, 2]) == (
+        "production/s0_1p300000/summary.json",
+        "production/s0_0p750000/summary.json",
+        "production/s0_2p000000/summary.json",
+        "final_report.json",
+        "campaign.json",
+    )
+
+
+@pytest.mark.parametrize("values", [[], [1.3, 1.3], [True], [0], [float("nan")]])
+def test_finalization_artifact_expansion_rejects_ambiguous_s0_values(values):
+    with pytest.raises(ValueError, match="Invalid 2D-MOT finalization s0 values"):
+        expand_finalization_artifacts(values)
 
 
 def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Path):
@@ -218,6 +275,19 @@ def test_ui_production_code_does_not_duplicate_migrated_canonical_facts():
             "cumulative_trial_targets", [3, 3, 9, 10]
         ),
         lambda value: value["stages"]["production"].__setitem__("label", ""),
+        lambda value: value["stages"]["sensitivity"].__setitem__(
+            "array_throttle", True
+        ),
+        lambda value: value["stages"]["production"].__setitem__(
+            "job_file", "../06_production.pbs"
+        ),
+        lambda value: value["finalization"].__setitem__("submits_job", True),
+        lambda value: value["finalization"].__setitem__(
+            "artifact_templates", ["production/*/summary.json"]
+        ),
+        lambda value: value["finalization"].__setitem__(
+            "artifacts", ["campaign.json", "final_report.json"]
+        ),
     ],
 )
 def test_v1_schema_rejects_ambiguous_or_unsafe_mutations(mutation):

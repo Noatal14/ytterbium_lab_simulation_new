@@ -152,3 +152,31 @@ def test_operating_authority_is_inside_every_relevant_provenance_closure():
         CAMPAIGN_FILES,
     ):
         assert required.issubset(closure)
+
+
+def test_late_stage_science_is_inside_campaign_provenance_and_drift_changes_hash(
+    tmp_path,
+):
+    from workflow_api.mot_2d_plan import physical_model_hash
+    from workflow_api.mot_2d_spec import RELEVANT_FILES
+
+    authorities = {
+        "workflow_api/mot_2d_late_stage.py",
+        "workflow_api/mot_2d_prediction.py",
+        "workflow_api/mot_2d_validation.py",
+    }
+    assert authorities.issubset(RELEVANT_FILES)
+
+    for relative in RELEVANT_FILES:
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"frozen\n")
+    original, names = physical_model_hash(tmp_path)
+    assert authorities.issubset(names)
+
+    for relative in sorted(authorities):
+        path = tmp_path / relative
+        path.write_bytes(path.read_bytes() + b"scientific drift\n")
+        changed, _ = physical_model_hash(tmp_path)
+        assert changed != original
+        path.write_bytes(b"frozen\n")

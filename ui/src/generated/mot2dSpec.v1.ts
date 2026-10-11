@@ -12,6 +12,19 @@ export const MOT_2D_SPECIFICATION_V1 = {
     "workers_per_s0": 3,
     "working_dt_s": 1.25e-06
   },
+  "finalization": {
+    "artifact_templates": [
+      "production/{s0_key}/summary.json"
+    ],
+    "artifacts": [
+      "final_report.json",
+      "campaign.json"
+    ],
+    "from_stage": "production",
+    "label": "Finalization",
+    "submits_job": false,
+    "to_stage": "complete"
+  },
   "spec_version": "mot_2d-v1",
   "stage_order": [
     "smoke",
@@ -37,7 +50,18 @@ export const MOT_2D_SPECIFICATION_V1 = {
       "walltime_seconds": 36000
     },
     "production": {
-      "label": "Production"
+      "array_throttle": 4,
+      "artifacts": [
+        "sensitivity_summary.json",
+        "production/tasks.json",
+        "jobs/06_production.pbs",
+        "campaign.json"
+      ],
+      "cores_per_task": 150,
+      "job_file": "jobs/06_production.pbs",
+      "label": "Production",
+      "memory_per_task_bytes": 68719476736,
+      "walltime_seconds": 43200
     },
     "refine": {
       "array_throttle": 3,
@@ -84,7 +108,18 @@ export const MOT_2D_SPECIFICATION_V1 = {
       "walltime_seconds": 86400
     },
     "sensitivity": {
-      "label": "Sensitivity"
+      "array_throttle": 3,
+      "artifacts": [
+        "winners.json",
+        "sensitivity/tasks.json",
+        "jobs/05_sensitivity.pbs",
+        "campaign.json"
+      ],
+      "cores_per_task": 200,
+      "job_file": "jobs/05_sensitivity.pbs",
+      "label": "Sensitivity",
+      "memory_per_task_bytes": 68719476736,
+      "walltime_seconds": 36000
     },
     "smoke": {
       "array_throttle": 1,

@@ -297,6 +297,18 @@ def test_dirty_relevant_code_is_rejected(monkeypatch):
         campaign.assert_relevant_worktree_clean()
 
 
+def test_final_prediction_legacy_import_is_exact_shared_derivation():
+    from studies.mot_2d.production import final_prediction as legacy_prediction
+    from workflow_api.mot_2d_prediction import final_prediction as shared_prediction
+
+    replicates = [
+        {"n_input": 10_000 + index, "captured": 200 + index}
+        for index in range(5)
+    ]
+    assert legacy_prediction is shared_prediction
+    assert legacy_prediction(replicates) == shared_prediction(replicates)
+
+
 def test_force_override_is_not_supported():
     import studies.mot_2d_s0_campaign as campaign
 
@@ -376,7 +388,99 @@ def test_final_summary_rejects_wrong_manifest_mot_seed(tmp_path):
         )
 
 
+def test_final_summary_uses_frozen_reporting_population_and_precision_target(tmp_path):
+    from studies.mot_2d.production import summarize
+
+    replicates = tmp_path / "replicates"
+    replicates.mkdir()
+    for seed, captured in ((3015, 2), (3016, 3)):
+        payload = {
+            "parameters": {"s0": 1.3},
+            "design": {"dt_s": 6.25e-7},
+            "replicate": {
+                "zeeman_seed": seed,
+                "mot_seed": 40000 + seed,
+                "n_input": 100,
+                "captured": captured,
+                "conditional_efficiency": captured / 100,
+                "estimated_total_efficiency": captured / 200,
+            },
+        }
+        (replicates / f"zeeman_seed{seed}.json").write_text(json.dumps(payload))
+
+    canonical_default = summarize(tmp_path)
+    canonical_explicit = summarize(
+        tmp_path,
+        reporting_survivors=10_000_000,
+        target_half_width_fraction=0.0005,
+    )
+    assert canonical_explicit == canonical_default
+
+    frozen = summarize(
+        tmp_path,
+        reporting_survivors=1_000_000,
+        target_half_width_fraction=0.25,
+    )
+    assert frozen["prediction_for_10m_zeeman_survivors"][
+        "reporting_zeeman_survivors"
+    ] == 1_000_000
+    assert frozen["target_95_half_width_fraction"] == 0.25
+    assert frozen["target_95_half_width_percentage_points"] == 25.0
+    assert frozen["stopping_rule_passes"] is True
+
+
+def test_campaign_finish_forwards_frozen_prediction_settings(tmp_path, monkeypatch):
+    import studies.mot_2d_s0_campaign as campaign
+
+    root = tmp_path / "campaign"
+    root.mkdir()
+    parameters = {
+        "s0": 1.3,
+        "detuning_gamma": -0.9,
+        "magnet_radius": 0.046,
+    }
+    sensitivity = {
+        "s0_1p300000": {
+            "production_selection": {"parameters": parameters},
+            "robustness_status": "not_established_pending_adaptive_challenger_validation",
+            "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+        }
+    }
+    (root / "sensitivity_summary.json").write_text(json.dumps(sensitivity))
+    manifest = {
+        "stage": "production",
+        "s0_values": [1.3],
+        "seed_roles": {"sealed_validation": [3015]},
+        "mot_seeds": {"sealed_validation": [43015]},
+        "fixed_design": {
+            "reporting_zeeman_survivors": 1_000_000,
+            "target_95_half_width_fraction": 0.25,
+        },
+        "ensemble_source": {"directory": "source", "zeeman_profile": "profile"},
+        "provenance": {"git_commit": "abc"},
+        "stages": {},
+    }
+    observed = {}
+
+    def fake_summarize(*args, **kwargs):
+        observed.update(kwargs)
+        return {
+            "stopping_rule_passes": True,
+            "prediction_for_10m_zeeman_survivors": {
+                "reporting_zeeman_survivors": kwargs["reporting_survivors"],
+            },
+        }
+
+    monkeypatch.setattr(campaign, "assert_design", lambda _manifest: None)
+    monkeypatch.setattr(campaign, "summarize", fake_summarize)
+    campaign.finish(root, manifest)
+    assert observed["reporting_survivors"] == 1_000_000
+    assert observed["target_half_width_fraction"] == 0.25
+
+
 def _write_portable_sealed_campaign(repository_root):
+    from studies.mot_2d.production import final_prediction
+    from utils.mot_2d_study import summarize_replicates
     from workflow_api.mot_2d_validation import CANONICAL_ROLE_SEEDS
 
     campaign_root = repository_root / "data/optimization/mot_2d/fixed_s0"
@@ -396,6 +500,9 @@ def _write_portable_sealed_campaign(repository_root):
         "npools": 150,
         "ensemble_dir": "data/particle_states/after_zeeman/source",
         "zeeman_profile": "profile",
+        "laboratory_spec_version": "test-v2",
+        "laboratory_spec_sha256": "a" * 64,
+        "zeeman_profile_sha256": "b" * 64,
         "git_commit": "abc",
     }
     tasks, replicates, frozen = [], [], []
@@ -403,11 +510,35 @@ def _write_portable_sealed_campaign(repository_root):
         source = source_root / f"zeeman_seed{seed}.npy"
         np.save(source, np.zeros((2, 6)))
         source_identity = source.relative_to(repository_root).as_posix()
-        frozen.append({"zeeman_seed": seed, "path": source_identity})
+        frozen.append({
+            "zeeman_seed": seed, "path": source_identity,
+            "survivor_count": 2,
+            "generation": {"n_initial_atoms": 4},
+        })
         tasks.append({"s0": 1.3, "zeeman_seed": seed, "mot_seed": mot_seed,
                       "parameters": parameters})
-        replicates.append({"zeeman_seed": seed, "mot_seed": mot_seed,
-                           "n_input": 2, "captured": 1})
+        replicate = {
+            "ensemble_file": source.name,
+            "zeeman_seed": seed, "mot_seed": mot_seed,
+            "n_available": 2, "selection_method": "all_particles",
+            "subset_seed": 100000 + seed,
+            "n_input": 2, "captured": 1,
+            "conditional_efficiency": 0.5,
+            "estimated_total_efficiency": 0.25,
+            "batch_elapsed_seconds": 1.0,
+        }
+        replicates.append(replicate)
+        replicate_path = (
+            campaign_root / "production/s0_1p300000/replicates"
+            / f"zeeman_seed{seed}.json"
+        )
+        replicate_path.parent.mkdir(parents=True, exist_ok=True)
+        replicate_path.write_text(json.dumps({
+            "kind": "mot_2d_final_production_replicate",
+            "parameters": parameters,
+            "design": design,
+            "replicate": replicate,
+        }))
         state = states_root / f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy"
         np.save(state, np.zeros((1, 6)))
         state.with_suffix(".json").write_text(json.dumps({
@@ -420,20 +551,47 @@ def _write_portable_sealed_campaign(repository_root):
             "source_zeeman_ensemble": source_identity,
         }))
 
-    prediction = {"mean": 0.5}
+    prediction = final_prediction(replicates)
+    stopping_rule_passes = prediction["predicted_95_half_width_fraction"] <= 0.0005
+    sensitivity = {
+        "reference": parameters,
+        "points": [],
+        "production_selection": {"parameters": parameters},
+        "robustness_status": "not_established_pending_adaptive_challenger_validation",
+        "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+    }
+    (campaign_root / "sensitivity_summary.json").write_text(json.dumps({
+        "s0_1p300000": sensitivity,
+    }))
     (campaign_root / "production/tasks.json").write_text(json.dumps(tasks))
     (campaign_root / "production/s0_1p300000/summary.json").write_text(json.dumps({
         "kind": "mot_2d_final_production_summary",
         "zeeman_seeds": seeds, "design": design, "parameters": parameters,
         "replicates": replicates,
+        "replicate_statistics": summarize_replicates(replicates),
+        "target_95_half_width_fraction": 0.0005,
+        "target_95_half_width_percentage_points": 0.05,
+        "stopping_rule_passes": stopping_rule_passes,
         "prediction_for_10m_zeeman_survivors": prediction,
     }))
     (campaign_root / "final_report.json").write_text(json.dumps({
         "kind": "mot_2d_s0_campaign_final_report",
+        "always_returns_best_tested_result": True,
         "results": [{
             "s0": 1.3,
             "recommended_parameters": parameters,
             "prediction": prediction,
+            "sensitivity": sensitivity,
+            "target_uncertainty_passes": stopping_rule_passes,
+            "warnings": (
+                ([] if stopping_rule_passes else [
+                    "target_95_prediction_half_width_not_met"
+                ])
+                + [
+                    "robust_operating_region_not_established",
+                    "epsilon_near_optimality_not_established",
+                ]
+            ),
             "survivor_states_directory": states_root.relative_to(repository_root).as_posix(),
         }],
     }))
@@ -442,10 +600,21 @@ def _write_portable_sealed_campaign(repository_root):
         "seed_roles": {"sealed_validation": seeds},
         "mot_seeds": {"sealed_validation": mot_seeds},
         "input_ensembles": {"sealed_validation": frozen},
-        "fixed_design": {"final_dt_s": 0.625e-6},
+        "fixed_design": {
+            "final_dt_s": 0.625e-6,
+            "target_95_half_width_fraction": 0.0005,
+            "reporting_zeeman_survivors": 10_000_000,
+            "detuning_bounds_gamma": [-1.55, -0.85],
+            "magnet_radius_bounds_m": [0.045, 0.051],
+            "detuning_resolution_gamma": 0.01,
+            "magnet_radius_resolution_m": 1e-5,
+        },
         "ensemble_source": {
             "directory": "data/particle_states/after_zeeman/source",
             "zeeman_profile": "profile",
+            "laboratory_spec_version": "test-v2",
+            "laboratory_spec_sha256": "a" * 64,
+            "zeeman_profile_sha256": "b" * 64,
         },
         "provenance": {"git_commit": "abc"},
         "stages": {"final_report": "data/optimization/mot_2d/fixed_s0/final_report.json"},
@@ -453,10 +622,25 @@ def _write_portable_sealed_campaign(repository_root):
     return campaign_root, manifest
 
 
-def test_sealed_final_validation_survives_repository_relocation(tmp_path):
+def _patch_portable_production_transition(monkeypatch):
+    import workflow_api.mot_2d_validation as validation
+
+    def validated_transition(root, _manifest):
+        return (
+            json.loads((root / "sensitivity_summary.json").read_text()),
+            json.loads((root / "production/tasks.json").read_text()),
+        )
+
+    monkeypatch.setattr(
+        validation, "validated_production_transition", validated_transition
+    )
+
+
+def test_sealed_final_validation_survives_repository_relocation(tmp_path, monkeypatch):
     from workflow_api.models import StageProgress
     from workflow_api.mot_2d_validation import sealed_final_is_valid
 
+    _patch_portable_production_transition(monkeypatch)
     outcomes = []
     for directory in ("checkout_a", "a-different-checkout-root"):
         repository_root = tmp_path / directory
@@ -464,10 +648,41 @@ def test_sealed_final_validation_survives_repository_relocation(tmp_path):
         outcomes.append(sealed_final_is_valid(
             campaign_root,
             manifest,
-            (StageProgress("production", 20, 20, "complete"),),
+            (
+                StageProgress("sensitivity", 17, 17, "complete"),
+                StageProgress("production", 20, 20, "complete"),
+            ),
             repository_root,
         ))
     assert outcomes == [True, True]
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("reporting_zeeman_survivors", 1_000_000),
+        ("target_95_half_width_fraction", 0.25),
+    ],
+)
+def test_sealed_final_rejects_prediction_settings_not_matching_frozen_manifest(
+    tmp_path, monkeypatch, field, value
+):
+    from workflow_api.models import StageProgress
+    from workflow_api.mot_2d_validation import sealed_final_is_valid
+
+    _patch_portable_production_transition(monkeypatch)
+    repository_root = tmp_path / "checkout"
+    root, manifest = _write_portable_sealed_campaign(repository_root)
+    manifest["fixed_design"][field] = value
+    assert not sealed_final_is_valid(
+        root,
+        manifest,
+        (
+            StageProgress("sensitivity", 17, 17, "complete"),
+            StageProgress("production", 20, 20, "complete"),
+        ),
+        repository_root,
+    )
 
 
 def test_later_stage_pbs_is_byte_identical_across_repository_roots(tmp_path, monkeypatch):
@@ -638,7 +853,7 @@ def test_boundary_sensitivity_points_are_deduplicated(tmp_path, monkeypatch):
     folder.mkdir(parents=True)
     for index in range(campaign.CONFIRMATION_CANDIDATES):
         efficiency = .02 + index/10000
-        payload = {"candidate_index": index,
+        payload = {"s0": 1.3, "candidate_index": index,
           "parameters": {"s0": 1.3, "detuning_gamma": -1.55,
                          "magnet_radius": .045},
           "evaluation": {"replicates": [{"zeeman_seed": 3010+i,
@@ -649,10 +864,373 @@ def test_boundary_sensitivity_points_are_deduplicated(tmp_path, monkeypatch):
         (folder/f"point_{index:02d}.json").write_text(json.dumps(payload))
     captured = {}
     monkeypatch.setattr(campaign, "prepare", lambda *a: captured.update(specs=a[3]))
-    campaign.prepare_sensitivity(root, {"s0_values": [1.3]})
+    monkeypatch.setattr(
+        campaign,
+        "validated_evaluation_outputs",
+        lambda *args: [json.loads(path.read_text()) for path in sorted(folder.glob("point_*.json"))],
+    )
+    campaign.prepare_sensitivity(root, {
+        "s0_values": [1.3],
+        "fixed_design": {
+            "detuning_bounds_gamma": [-1.55, -0.85],
+            "magnet_radius_bounds_m": [0.045, 0.051],
+            "control_resolution": {
+                "detuning_gamma": 0.01, "magnet_radius_m": 1e-5,
+            },
+            "stress_test_offsets": {
+                "detuning_gamma": 0.02, "magnet_radius_m": 0.0001,
+            },
+        },
+    })
     identities = [(x["parameters"]["detuning_gamma"], x["parameters"]["magnet_radius"])
                   for x in captured["specs"]]
     assert len(identities) == len(set(identities))
+
+
+def test_paired_comparison_rejects_unequal_or_misaligned_replicates():
+    import studies.mot_2d_s0_campaign as campaign
+
+    def record(seeds):
+        return {"evaluation": {"replicates": [
+            {"zeeman_seed": seed, "mot_seed": 43000 + seed,
+             "n_input": 10000, "subset_seed": 100000 + seed,
+             "conditional_efficiency": 0.02}
+            for seed in seeds
+        ]}}
+
+    with pytest.raises(ValueError, match="not paired"):
+        campaign.paired(record([3010, 3011]), record([3010]))
+    with pytest.raises(ValueError, match="not paired"):
+        campaign.paired(record([3010, 3011]), record([3011, 3010]))
+
+
+def _write_strict_evaluation_campaign(tmp_path):
+    from utils.mot_2d_study import summarize_replicates
+
+    root = tmp_path / "campaign"
+    folder = root / "confirmation" / "s0_1p300000"
+    folder.mkdir(parents=True)
+    parameters = {"s0": 1.3, "detuning_gamma": -0.9, "magnet_radius": 0.046}
+    tasks = [
+        {"s0": 1.3, "candidate_index": index, "parameters": parameters}
+        for index in range(5)
+    ]
+    (root / "confirmation" / "tasks.json").write_text(json.dumps(tasks))
+    replicates = []
+    frozen = []
+    for offset, seed in enumerate(range(3010, 3015)):
+        frozen.append({
+            "zeeman_seed": seed,
+            "path": f"data/particle_states/after_zeeman/source/seed{seed}.npy",
+            "survivor_count": 20000,
+            "generation": {"n_initial_atoms": 50000},
+        })
+        replicates.append({
+            "ensemble_file": f"seed{seed}.npy", "zeeman_seed": seed,
+            "mot_seed": 43010 + offset, "n_available": 20000,
+            "selection_method": "deterministic_random_without_replacement",
+            "subset_seed": 100000 + seed, "n_input": 10000,
+            "captured": 100, "conditional_efficiency": 0.01,
+            "estimated_total_efficiency": 0.004,
+            "batch_elapsed_seconds": 1.0,
+        })
+    manifest = {
+        "s0_values": [1.3],
+        "stages": {"confirmation": {"tasks": 5}},
+        "seed_roles": {"held_out_confirmation": list(range(3010, 3015))},
+        "mot_seeds": {"held_out_confirmation": list(range(43010, 43015))},
+        "input_ensembles": {"held_out_confirmation": frozen},
+        "fixed_design": {
+            "final_dt_s": 0.625e-6,
+            "target_95_half_width_fraction": 0.0005,
+            "particle_counts": {"confirmation": 10000, "sensitivity": 10000},
+            "detuning_bounds_gamma": [-1.55, -0.85],
+            "magnet_radius_bounds_m": [0.045, 0.051],
+            "control_resolution": {
+                "detuning_gamma": 0.01, "magnet_radius_m": 1e-5,
+            },
+            "stress_test_offsets": {
+                "detuning_gamma": 0.02, "magnet_radius_m": 0.0001,
+            },
+        },
+        "ensemble_source": {"directory": "source", "zeeman_profile": "profile"},
+        "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
+    }
+    record = {
+        "kind": "mot_2d_campaign_confirmation", "s0": 1.3,
+        "candidate_index": 0, "parameters": parameters,
+        "design": {
+            "physical_model_sha256": "physics", "git_commit": "abc",
+            "solver": "RK4StHybridCustom", "dt_s": 0.625e-6,
+            "n_ensembles": 5, "particles_per_ensemble": 10000,
+            "zeeman_seeds": list(range(3010, 3015)),
+            "mot_seeds": list(range(43010, 43015)),
+            "ensemble_source": manifest["ensemble_source"],
+        },
+        "evaluation": {
+            "batch_elapsed_seconds": 1.0,
+            "replicates": replicates,
+            "statistics": summarize_replicates(replicates),
+        },
+    }
+    for index in range(5):
+        candidate = json.loads(json.dumps(record))
+        candidate["candidate_index"] = index
+        (folder / f"point_{index:02d}.json").write_text(json.dumps(candidate))
+    path = folder / "point_00.json"
+    return root, manifest, path, record
+
+
+def test_advancement_validation_rejects_tampered_evaluation_content(tmp_path, monkeypatch):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, path, record = _write_strict_evaluation_campaign(tmp_path)
+    tasks = json.loads((root / "confirmation/tasks.json").read_text())
+    monkeypatch.setattr(validation, "_expected_confirmation_tasks", lambda *args: tasks)
+    assert len(validation.validated_evaluation_outputs(root, manifest, "confirmation")) == 5
+    record["evaluation"]["statistics"]["mean_conditional_efficiency"] = 0.9
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="aggregate statistics"):
+        validation.validated_evaluation_outputs(root, manifest, "confirmation")
+
+
+def test_confirmation_registry_rejects_coordinated_task_and_result_tamper(
+    tmp_path, monkeypatch
+):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, path, record = _write_strict_evaluation_campaign(tmp_path)
+    expected_tasks = json.loads((root / "confirmation/tasks.json").read_text())
+    monkeypatch.setattr(
+        validation, "_expected_confirmation_tasks", lambda *args: expected_tasks
+    )
+    tampered_tasks = json.loads(json.dumps(expected_tasks))
+    tampered_tasks[0]["parameters"]["detuning_gamma"] = -1.0
+    (root / "confirmation/tasks.json").write_text(json.dumps(tampered_tasks))
+    record["parameters"]["detuning_gamma"] = -1.0
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="task registry is not canonical"):
+        validation.validated_evaluation_outputs(root, manifest, "confirmation")
+
+
+def test_confirmation_progress_allows_partial_results_but_rejects_coordinated_tamper(
+    tmp_path, monkeypatch
+):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, path, record = _write_strict_evaluation_campaign(tmp_path)
+    expected_tasks = json.loads((root / "confirmation/tasks.json").read_text())
+    monkeypatch.setattr(
+        validation, "_expected_confirmation_tasks", lambda *args: expected_tasks
+    )
+    path.unlink()
+    progress = validation.validated_progress(root, manifest)
+    confirmation = next(row for row in progress if row.stage == "confirmation")
+    assert confirmation.status == "in-progress"
+    assert confirmation.completed == 4
+
+    tampered_tasks = json.loads(json.dumps(expected_tasks))
+    tampered_tasks[0]["parameters"]["detuning_gamma"] = -1.0
+    (root / "confirmation/tasks.json").write_text(json.dumps(tampered_tasks))
+    record["parameters"]["detuning_gamma"] = -1.0
+    path.write_text(json.dumps(record))
+    progress = validation.validated_progress(root, manifest)
+    confirmation = next(row for row in progress if row.stage == "confirmation")
+    assert confirmation.status == "inconsistent"
+
+
+def _write_strict_sensitivity_campaign(tmp_path, monkeypatch):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, _, base_record = _write_strict_evaluation_campaign(tmp_path)
+    confirmation_tasks = json.loads((root / "confirmation/tasks.json").read_text())
+    monkeypatch.setattr(
+        validation, "_expected_confirmation_tasks", lambda *args: confirmation_tasks
+    )
+    confirmation_rows = validation.validated_evaluation_outputs(
+        root, manifest, "confirmation"
+    )
+    tasks = validation.expected_sensitivity_tasks(manifest, confirmation_rows)
+    manifest["stages"]["sensitivity"] = {"tasks": len(tasks)}
+    (root / "sensitivity").mkdir()
+    (root / "sensitivity/tasks.json").write_text(json.dumps(tasks))
+    for task in tasks:
+        record = json.loads(json.dumps(base_record))
+        record.pop("candidate_index")
+        record.update(task)
+        record["kind"] = "mot_2d_campaign_sensitivity"
+        folder = root / "sensitivity" / "s0_1p300000"
+        folder.mkdir(exist_ok=True)
+        (folder / f"point_{task['point_index']:02d}.json").write_text(
+            json.dumps(record)
+        )
+    return root, manifest, tasks
+
+
+def test_sensitivity_result_cannot_relabel_noncenter_as_center(tmp_path, monkeypatch):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, tasks = _write_strict_sensitivity_campaign(tmp_path, monkeypatch)
+    assert validation.validated_evaluation_outputs(root, manifest, "sensitivity")
+    noncenter = next(task for task in tasks if any(task["offsets"].values()))
+    path = (
+        root / "sensitivity/s0_1p300000"
+        / f"point_{noncenter['point_index']:02d}.json"
+    )
+    record = json.loads(path.read_text())
+    record["offsets"] = {"detuning_gamma": 0.0, "magnet_radius_m": 0.0}
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="offsets differ"):
+        validation.validated_evaluation_outputs(root, manifest, "sensitivity")
+
+
+def test_sensitivity_registry_rejects_coordinated_task_and_result_tamper(
+    tmp_path, monkeypatch
+):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, tasks = _write_strict_sensitivity_campaign(tmp_path, monkeypatch)
+    tasks[0]["parameters"]["detuning_gamma"] += 0.001
+    (root / "sensitivity/tasks.json").write_text(json.dumps(tasks))
+    path = root / "sensitivity/s0_1p300000/point_00.json"
+    record = json.loads(path.read_text())
+    record["parameters"] = tasks[0]["parameters"]
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="task registry is not canonical"):
+        validation.validated_evaluation_outputs(root, manifest, "sensitivity")
+
+
+def test_sensitivity_progress_allows_partial_results_but_rejects_coordinated_tamper(
+    tmp_path, monkeypatch
+):
+    import workflow_api.mot_2d_validation as validation
+
+    root, manifest, tasks = _write_strict_sensitivity_campaign(tmp_path, monkeypatch)
+    last = tasks[-1]
+    last_path = (
+        root / "sensitivity/s0_1p300000"
+        / f"point_{last['point_index']:02d}.json"
+    )
+    last_record = json.loads(last_path.read_text())
+    last_path.unlink()
+    progress = validation.validated_progress(root, manifest)
+    sensitivity = next(row for row in progress if row.stage == "sensitivity")
+    assert sensitivity.status == "in-progress"
+    assert sensitivity.completed == len(tasks) - 1
+
+    tampered_tasks = json.loads(json.dumps(tasks))
+    tampered_tasks[-1]["parameters"]["detuning_gamma"] += 0.001
+    (root / "sensitivity/tasks.json").write_text(json.dumps(tampered_tasks))
+    last_record["parameters"] = tampered_tasks[-1]["parameters"]
+    last_path.write_text(json.dumps(last_record))
+    progress = validation.validated_progress(root, manifest)
+    sensitivity = next(row for row in progress if row.stage == "sensitivity")
+    assert sensitivity.status == "inconsistent"
+
+
+def test_production_transition_rejects_coordinated_downstream_relabeling(
+    tmp_path, monkeypatch
+):
+    import workflow_api.mot_2d_validation as validation
+    from workflow_api.mot_2d_late_stage import derive_production_transition
+
+    root, manifest, _ = _write_strict_sensitivity_campaign(tmp_path, monkeypatch)
+    manifest["seed_roles"]["sealed_validation"] = [3015]
+    manifest["mot_seeds"]["sealed_validation"] = [43015]
+    confirmation_rows = validation.validated_evaluation_outputs(
+        root, manifest, "confirmation"
+    )
+    sensitivity_rows = validation.validated_evaluation_outputs(
+        root, manifest, "sensitivity"
+    )
+    expected_summary, expected_tasks = derive_production_transition(
+        manifest, confirmation_rows, sensitivity_rows
+    )
+    (root / "sensitivity_summary.json").write_text(json.dumps(expected_summary))
+    production = root / "production"
+    production.mkdir()
+    (production / "tasks.json").write_text(json.dumps(expected_tasks))
+    assert validation.validated_production_transition(root, manifest) == (
+        expected_summary,
+        expected_tasks,
+    )
+
+    forged_summary = json.loads(json.dumps(expected_summary))
+    key = "s0_1p300000"
+    forged_parameters = json.loads(json.dumps(
+        forged_summary[key]["production_selection"]["parameters"]
+    ))
+    forged_parameters["detuning_gamma"] += 0.001
+    forged_summary[key]["production_selection"]["parameters"] = forged_parameters
+    forged_tasks = json.loads(json.dumps(expected_tasks))
+    forged_tasks[0]["parameters"] = forged_parameters
+    (root / "sensitivity_summary.json").write_text(json.dumps(forged_summary))
+    (production / "tasks.json").write_text(json.dumps(forged_tasks))
+
+    # Even if every downstream copy agrees with the forged label, the label
+    # remains unauthorized because it is not derived from the frozen evidence.
+    replicates = production / key / "replicates"
+    replicates.mkdir(parents=True)
+    (replicates / "zeeman_seed3015.json").write_text(json.dumps({
+        "parameters": forged_parameters,
+    }))
+    (root / "final_report.json").write_text(json.dumps({
+        "results": [{"recommended_parameters": forged_parameters}],
+    }))
+    with pytest.raises(ValueError, match="not canonical"):
+        validation.validated_production_transition(root, manifest)
+
+
+@pytest.mark.parametrize("field", ["warnings", "target_uncertainty_passes", "sensitivity"])
+def test_sealed_final_rejects_unvalidated_scientific_claims(tmp_path, monkeypatch, field):
+    from workflow_api.models import StageProgress
+    from workflow_api.mot_2d_validation import sealed_final_is_valid
+
+    _patch_portable_production_transition(monkeypatch)
+    repository_root = tmp_path / "checkout"
+    root, manifest = _write_portable_sealed_campaign(repository_root)
+    report_path = root / "final_report.json"
+    report = json.loads(report_path.read_text())
+    result = report["results"][0]
+    if field == "warnings":
+        result[field] = []
+    elif field == "target_uncertainty_passes":
+        result[field] = not result[field]
+    else:
+        result[field] = {"robustness_status": "established"}
+    report_path.write_text(json.dumps(report))
+    assert not sealed_final_is_valid(
+        root, manifest,
+        (
+            StageProgress("sensitivity", 17, 17, "complete"),
+            StageProgress("production", 20, 20, "complete"),
+        ),
+        repository_root,
+    )
+
+
+def test_sealed_final_recomputes_prediction_from_raw_replicates(tmp_path, monkeypatch):
+    from workflow_api.models import StageProgress
+    from workflow_api.mot_2d_validation import sealed_final_is_valid
+
+    _patch_portable_production_transition(monkeypatch)
+    repository_root = tmp_path / "checkout"
+    root, manifest = _write_portable_sealed_campaign(repository_root)
+    summary_path = root / "production/s0_1p300000/summary.json"
+    report_path = root / "final_report.json"
+    summary = json.loads(summary_path.read_text())
+    report = json.loads(report_path.read_text())
+    forged = json.loads(json.dumps(summary["prediction_for_10m_zeeman_survivors"]))
+    forged["pooled_conditional_efficiency"] = 0.75
+    summary["prediction_for_10m_zeeman_survivors"] = forged
+    report["results"][0]["prediction"] = forged
+    summary_path.write_text(json.dumps(summary))
+    report_path.write_text(json.dumps(report))
+    progress = (
+        StageProgress("sensitivity", 17, 17, "complete"),
+        StageProgress("production", 20, 20, "complete"),
+    )
+    assert not sealed_final_is_valid(root, manifest, progress, repository_root)
 
 
 def test_atomic_json_does_not_leave_temporary_file(tmp_path):

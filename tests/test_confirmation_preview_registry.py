@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from workflow_api.zeus_confirmation import (
+    MAX_PENDING_PREVIEWS,
     RemoteRefineState,
     ZeusConfirmationCoordinator,
     ZeusConfirmationError,
@@ -124,15 +125,23 @@ def test_confirmation_registry_preserves_session_expiry_and_idempotent_replay(tm
     assert caught.value.code == "confirmation_expired"
 
 
-def test_confirmation_registry_preserves_unbounded_nonpruning_preview_semantics(tmp_path, monkeypatch):
+def test_confirmation_registry_bounds_capacity_and_reclaims_expired_records(tmp_path, monkeypatch):
     now = [100.0]
-    tokens = iter(f"token-{index}" for index in range(40))
+    tokens = iter(f"token-{index}" for index in range(MAX_PENDING_PREVIEWS + 2))
     coordinator, transport = _coordinator(tmp_path, monkeypatch, lambda: now[0], lambda: next(tokens))
-    for _ in range(33):
+    for _ in range(MAX_PENDING_PREVIEWS):
         coordinator.preview(_request(), session_id="owner")
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    with pytest.raises(ZeusConfirmationError) as full:
+        coordinator.preview(_request(), session_id="owner")
+    assert full.value.code == "too_many_pending_previews"
+    assert len(coordinator._previews) == MAX_PENDING_PREVIEWS
+    assert transport.calls == 0
+
     now[0] += 301
-    coordinator.preview(_request(), session_id="owner")
-    assert len(coordinator._previews) == 34
+    reclaimed = coordinator.preview(_request(), session_id="owner")
+    assert reclaimed["preview_token"] == f"token-{MAX_PENDING_PREVIEWS}"
+    assert len(coordinator._previews) == 1
     assert transport.calls == 0
 
 

@@ -66,8 +66,9 @@ the best tested result.
 The local sensitivity grid is also part of winner selection. If a neighboring
 point has a paired 95% confidence interval entirely above the confirmed center,
 that neighbor is promoted to final production. Otherwise the confirmed center
-is retained and statistically equivalent neighbors are reported as its stable
-operating region.
+is retained. The tested neighbors and their paired intervals are reported as
+local sensitivity evidence only; this fixed grid does not establish a stable
+or robust operating region.
 
 ## Operator instructions
 

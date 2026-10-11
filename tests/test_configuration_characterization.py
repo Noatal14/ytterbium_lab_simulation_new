@@ -209,7 +209,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "7ab56fadf365f6ec57d41860fa7ef4eaaf29f6e979aa16396bcbe378167ce74c"
+        "246b66ee690e1bb0aa8c0b243bc1fba159559f793b79d4a48dd0610d47f50270"
     )
 
 

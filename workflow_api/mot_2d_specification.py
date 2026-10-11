@@ -28,11 +28,13 @@ def _validate(value: object) -> dict[str, Any]:
         "stage_order",
         "design",
         "stages",
+        "finalization",
     }:
         raise ValueError("Invalid 2D-MOT specification.")
     order = value["stage_order"]
     design = value["design"]
     stages = value["stages"]
+    finalization = value["finalization"]
     if (
         value["spec_version"] != "mot_2d-v1"
         or not isinstance(order, list)
@@ -43,6 +45,7 @@ def _validate(value: object) -> dict[str, Any]:
     if (
         not isinstance(design, dict)
         or not isinstance(stages, dict)
+        or not isinstance(finalization, dict)
         or set(stages) != set(order)
     ):
         raise ValueError("Invalid 2D-MOT specification.")
@@ -126,8 +129,24 @@ def _validate(value: object) -> dict[str, Any]:
             "array_throttle",
             "artifacts",
         },
-        "sensitivity": {"label"},
-        "production": {"label"},
+        "sensitivity": {
+            "label",
+            "job_file",
+            "cores_per_task",
+            "memory_per_task_bytes",
+            "walltime_seconds",
+            "array_throttle",
+            "artifacts",
+        },
+        "production": {
+            "label",
+            "job_file",
+            "cores_per_task",
+            "memory_per_task_bytes",
+            "walltime_seconds",
+            "array_throttle",
+            "artifacts",
+        },
     }
     if order != [
         "smoke",
@@ -185,6 +204,28 @@ def _validate(value: object) -> dict[str, Any]:
         raise ValueError("Invalid 2D-MOT specification.")
     if stages["refine"]["dependency"] != "afterok":
         raise ValueError("Invalid 2D-MOT specification.")
+    if (
+        set(finalization)
+        != {
+            "label",
+            "from_stage",
+            "to_stage",
+            "artifact_templates",
+            "artifacts",
+            "submits_job",
+        }
+        or not isinstance(finalization["label"], str)
+        or not finalization["label"].strip()
+        or len(finalization["label"]) > 64
+        or finalization["from_stage"] != "production"
+        or finalization["to_stage"] != "complete"
+        or finalization["submits_job"] is not False
+        or finalization["artifact_templates"]
+        != ["production/{s0_key}/summary.json"]
+        or not isinstance(finalization["artifacts"], list)
+        or finalization["artifacts"] != ["final_report.json", "campaign.json"]
+    ):
+        raise ValueError("Invalid 2D-MOT specification.")
     return value
 
 
@@ -213,6 +254,30 @@ def load_mot_2d_specification() -> Mapping[str, Any]:
 
 
 MOT_2D_SPECIFICATION = load_mot_2d_specification()
+
+
+def expand_finalization_artifacts(s0_values: object) -> tuple[str, ...]:
+    """Expand the fixed finalization contract in manifest s0 order."""
+    if not isinstance(s0_values, (list, tuple)) or not s0_values:
+        raise ValueError("Invalid 2D-MOT finalization s0 values.")
+    normalized: list[float] = []
+    for raw in s0_values:
+        if (
+            isinstance(raw, bool)
+            or not isinstance(raw, (int, float))
+            or not math.isfinite(float(raw))
+            or float(raw) <= 0
+            or float(raw) in normalized
+        ):
+            raise ValueError("Invalid 2D-MOT finalization s0 values.")
+        normalized.append(float(raw))
+    finalization = MOT_2D_SPECIFICATION["finalization"]
+    template = finalization["artifact_templates"][0]
+    expanded = tuple(
+        template.format(s0_key=f"s0_{value:.6f}".replace(".", "p"))
+        for value in normalized
+    )
+    return expanded + tuple(finalization["artifacts"])
 
 
 def render_typescript_specification() -> str:
