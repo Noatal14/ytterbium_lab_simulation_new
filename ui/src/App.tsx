@@ -11,10 +11,12 @@ import { CampaignCard } from "./components/CampaignCard";
 import { CampaignDetail, CampaignExplorer } from "./components/CampaignExplorer";
 import { CampaignCreation } from "./components/CampaignCreation";
 import { ZeusJobs } from "./components/ZeusJobs";
+import { IndividualZeemanRun } from "./components/IndividualZeemanRun";
+import type { IndividualZeemanApi } from "./api/clients/individualZeeman";
 import { homeFixture } from "./content/home";
 import { useCampaignQuery } from "./hooks/useCampaignQuery";
 
-type AppProps = { client?: WorkflowApiClient; api?: CampaignApi; creation?: CreationApi; zeus?: ZeusApi; transfer?: TransferApi; submission?: SubmissionApi; lifecycle?: SmokeLifecycleApi; screeningSubmission?: ScreeningSubmissionApi; screeningLifecycle?: ScreeningLifecycleApi; refinementSubmission?: RefinementSubmissionApi; refinementLifecycle?: RefinementLifecycleApi };
+type AppProps = { client?: WorkflowApiClient; api?: CampaignApi; creation?: CreationApi; zeus?: ZeusApi; transfer?: TransferApi; submission?: SubmissionApi; lifecycle?: SmokeLifecycleApi; screeningSubmission?: ScreeningSubmissionApi; screeningLifecycle?: ScreeningLifecycleApi; refinementSubmission?: RefinementSubmissionApi; refinementLifecycle?: RefinementLifecycleApi; individualZeeman?: IndividualZeemanApi };
 
 export function App(props: AppProps = {}) {
   const [client] = useState(() => props.client ?? createWorkflowApiClient());
@@ -28,10 +30,12 @@ export function App(props: AppProps = {}) {
   const screeningLifecycle = props.screeningLifecycle ?? client.screeningLifecycle;
   const refinementSubmission = props.refinementSubmission ?? client.refinementSubmission;
   const refinementLifecycle = props.refinementLifecycle ?? client.refinementLifecycle;
+  const individualZeeman = props.individualZeeman ?? client.individualZeeman;
   const { campaigns, invalidCount, loading, error: listError, refresh: refreshCampaigns } = useCampaignQuery(api);
   const [selected, setSelected] = useState<Campaign | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [individualRun, setIndividualRun] = useState(false);
   const [restoreCampaignFocus, setRestoreCampaignFocus] = useState<string | null>(null);
   const [page, setPage] = useState<"home" | "jobs">("home");
   const [zeusSnapshot, setZeusSnapshot] = useState<ZeusSnapshot | null>(null);
@@ -43,15 +47,16 @@ export function App(props: AppProps = {}) {
     try { const campaign = await api.get(id); if (request === detailRequest.current) setSelected(campaign); }
     catch { if (request === detailRequest.current) setDetailError("That campaign could not be opened safely. The campaign list is still available."); }
   }
-  function leaveDetail(nextPage: "home" | "jobs" = "home") { detailRequest.current += 1; client.reset(); setDetailError(null); setCreating(false); setSelected(null); setPage(nextPage); }
+  function leaveDetail(nextPage: "home" | "jobs" = "home") { detailRequest.current += 1; client.reset(); setDetailError(null); setCreating(false); setIndividualRun(false); setSelected(null); setPage(nextPage); }
   function startCreation() { detailRequest.current += 1; client.reset(); setDetailError(null); setSelected(null); setCreating(true); }
 
   return <div className="app-frame">
     <AppHeader page={page} onNavigate={(nextPage) => leaveDetail(nextPage)} />
-    {page === "jobs" ? <ZeusJobs campaigns={campaigns} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { detailRequest.current += 1; client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
+    {page === "jobs" ? <ZeusJobs campaigns={campaigns} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun ? <IndividualZeemanRun api={individualZeeman} onBack={() => { client.reset(); setIndividualRun(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { detailRequest.current += 1; client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
       <section className="hero" aria-labelledby="page-title"><p className="eyebrow">Welcome</p><h1 id="page-title">Run or inspect a campaign</h1><p className="hero-copy">A campaign follows several ordered steps. This application will guide you through each one and explain when your input is needed.</p><dl className="status-row" aria-label="Sample environment status"><div className="status-pill"><dt><GitBranch aria-hidden="true" /> {homeFixture.environment.branchLabel}</dt><dd>{homeFixture.environment.branchValue}</dd></div><div className="status-pill"><dt><Server aria-hidden="true" /> {homeFixture.environment.zeusLabel}</dt><dd>{homeFixture.environment.zeusValue}</dd></div></dl></section>
       {detailError && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign details are unavailable</strong><p>{detailError}</p><button className="secondary-button compact-action" type="button" onClick={() => setDetailError(null)}>Dismiss</button></div></div>}
       <CampaignExplorer campaigns={campaigns} invalidCount={invalidCount} loading={loading} error={listError} onRetry={() => void refreshCampaigns()} onOpen={openCampaign} restoreFocusId={restoreCampaignFocus} />
+      <section className="section-block" aria-labelledby="individual-heading"><div className="section-heading"><h2 id="individual-heading">Run one simulation</h2><p>Explore one reviewed setup without starting an optimization campaign.</p></div><article className="single-run-card"><div><span className="type-label">Available now</span><h3>Zeeman simulation</h3><p>Choose particle count, random seed, whether to keep survivor states, and where to run.</p></div><button className="primary-button" type="button" onClick={() => { client.reset(); setIndividualRun(true); }}><Server aria-hidden="true" /> Configure Zeeman run</button></article></section>
       <section className="section-block" id="campaigns" aria-labelledby="start-heading"><div className="section-heading"><h2 id="start-heading">Start a campaign</h2><p>Configure and review a local campaign before creating any files.</p></div><div className="campaign-grid">{homeFixture.campaigns.map((campaign) => <CampaignCard key={campaign.id} {...campaign} onStart={campaign.id === "mot-2d" ? startCreation : undefined} />)}</div></section>
       <section className="section-block" aria-labelledby="workflow-heading"><div className="section-heading"><h2 id="workflow-heading">How a campaign works</h2><p>The application guides you through each transition and checks that it is safe to continue.</p></div><ol className="steps">{homeFixture.steps.map((step) => <li key={step.number}><span className="step-number">{step.number}</span><strong>{step.title}</strong><p>{step.description}</p></li>)}</ol></section>
       <p className="read-only-note"><CheckCircle2 aria-hidden="true" /> Local 2D campaign setup is available. Zeus is contacted only after an explicit connection or preparation action; jobs are never submitted automatically.</p>

@@ -897,6 +897,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "route_unavailable",
+    "code": "individual_zeeman_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
     "code": "zeus_confirmation_unavailable",
     "semantic": "other"
   },

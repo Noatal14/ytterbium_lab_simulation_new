@@ -485,8 +485,17 @@ _PAYLOADS = {'campaign-detail': {'families': [],
                                  'status': 'available'}}}
 
 
+_PAYLOADS.update({
+    "zeeman-run-preview": {"preview_token":"zeeman-token","expires_in_seconds":300,"plan":{"run_id":"zeeman-contract","family":"zeeman","execution_mode":"local","particle_count":10,"seed":42,"retain_particle_states":False,"suitability":"individual_only","output_disposition":"summary_only","locked_settings":{},"resolved_configuration":{},"lifecycle_state":"configured","laboratory_specification":{},"numerical_policy":{},"plan_sha256":"a"*64,"execution_started":False,"submitted_to_zeus":False}},
+    "zeeman-run-confirm": {"status":"created","run_id":"zeeman-contract","family":"zeeman","path":"data/runs/zeeman/zeeman-contract","lifecycle_state":"configured","execution_started":False,"submitted_to_zeus":False},
+    "zeeman-local-start": {"status":"queued","run_id":"zeeman-contract","execution_mode":"local"},
+    "zeeman-zeus-preview": {"preview_token":"zeus-token","expires_in_seconds":300,"run_id":"zeeman-contract","job":{"kind":"scalar","array":False,"pbs_sha256":"b"*64},"package_sha256":"c"*64,"submission_key":"d"*64,"effects":{"submit_one_job":True,"reconcile_existing_job":False,"cancel_job":False}},
+    "zeeman-zeus-confirm": {"status":"submitted","run_id":"zeeman-contract","job_id":"500.zeus-master","submission_key":"d"*64},
+    "zeeman-zeus-refresh": {"state":"running","job_id":"500.zeus-master"},
+})
+
+
 def fake_service_payloads() -> dict[str, object]:
     """Return fresh full public DTOs without consulting contract snapshots."""
     return deepcopy(_PAYLOADS)
-
 

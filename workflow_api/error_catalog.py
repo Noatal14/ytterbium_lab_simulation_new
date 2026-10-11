@@ -248,6 +248,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Zeus confirmation preparation is unavailable.",
         ),
+        "individual_zeeman_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Individual Zeeman runs are unavailable.",
+        ),
     }
 )
 

@@ -30,7 +30,12 @@ from workflow_api.individual_run_discovery import (
 from workflow_api.models import SCHEMA_VERSION
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mutation import CreationService
-from workflow_api.repository_snapshot import RepositorySnapshotProvider
+from workflow_api.repository_snapshot import RepositorySnapshotProvider, ZeemanRepositorySnapshotProvider
+from workflow_api.run_execution import issue_execution_authority
+from workflow_api.zeeman_run_creation import ZeemanRunCreationService
+from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
+from workflow_api.zeeman_zeus_execution import IndividualZeemanZeusCoordinator, PinnedSshZeemanTransport
+from workflow_api.zeus_snapshot import ZeusProfile
 from workflow_api.zeus_snapshot import ZeusSnapshotError, ZeusSnapshotProvider, ZeusSnapshotService
 from workflow_api.zeus_transfer import ZeusPreparationCoordinator, ZeusPreparationError
 from workflow_api.zeus_submission import ZeusSmokeSubmissionCoordinator, ZeusSubmissionError
@@ -39,6 +44,8 @@ from workflow_api.zeus_screen_submission import ZeusScreenSubmissionCoordinator,
 from workflow_api.zeus_refinement import ZeusRefinementCoordinator, ZeusRefinementError
 from workflow_api.zeus_refinement_submission import ZeusRefinementSubmissionCoordinator, ZeusRefinementSubmissionError
 from workflow_api.zeus_confirmation import ZeusConfirmationCoordinator, ZeusConfirmationError
+from workflow_api.zeeman_individual_api import IndividualZeemanApi
+from workflow_api.zeeman_zeus_execution import ZeemanZeusError
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -86,11 +93,30 @@ def _post_routes() -> tuple[PostRoute, ...]:
         ("/api/v1/zeus/refinement-chain/status","confirmation_service","status","payload","zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.",HTTPStatus.OK,ZeusConfirmationError),
         ("/api/v1/zeus/confirmation/preview","confirmation_service","preview","session_kw","zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.",HTTPStatus.OK,ZeusConfirmationError),
         ("/api/v1/zeus/confirmation/confirm","confirmation_service","confirm","session_kw","zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.",HTTPStatus.CREATED,ZeusConfirmationError),
+        ("/api/v1/individual-runs/zeeman/preview","individual_zeeman_api","preview","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/zeeman/confirm","individual_zeeman_api","confirm","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.CREATED,Exception),
+        ("/api/v1/individual-runs/zeeman/local/start","individual_zeeman_api","start_local","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
+        ("/api/v1/individual-runs/zeeman/zeus/preview","individual_zeeman_api","preview_zeus","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/zeeman/zeus/confirm","individual_zeeman_api","confirm_zeus","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
+        ("/api/v1/individual-runs/zeeman/zeus/refresh","individual_zeeman_api","refresh_zeus","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.OK,Exception),
     ]
     return tuple(PostRoute(*row) for row in rows)
 
 
 POST_ROUTES = {route.path: route for route in _post_routes()}
+
+_INDIVIDUAL_ZEUS_ERRORS = {
+    "confirmation_invalid": (HTTPStatus.BAD_REQUEST, "The Zeus confirmation is invalid or belongs to another session."),
+    "confirmation_expired": (HTTPStatus.CONFLICT, "The Zeus review expired. Review the submission again."),
+    "profile_invalid": (HTTPStatus.BAD_REQUEST, "The Zeus connection profile is invalid."),
+    "run_not_submittable": (HTTPStatus.CONFLICT, "This run is not ready for Zeus submission."),
+    "run_evidence_changed": (HTTPStatus.CONFLICT, "The reviewed run changed. Review it again."),
+    "submission_outcome_unknown": (HTTPStatus.CONFLICT, "The Zeus submission outcome is unknown and requires inspection."),
+    "profile_or_submission_identity_mismatch": (HTTPStatus.CONFLICT, "The Zeus connection does not match the submitted run."),
+    "job_id_unavailable": (HTTPStatus.CONFLICT, "The Zeus job identifier is unavailable."),
+    "remote_status_invalid": (HTTPStatus.BAD_GATEWAY, "Zeus returned an invalid job status."),
+    "too_many_pending_previews": (HTTPStatus.TOO_MANY_REQUESTS, "Too many Zeus reviews are pending."),
+}
 
 
 def _invoke_post_route(route: PostRoute, service: object, payload: dict[str, Any], session: str) -> Any:
@@ -120,6 +146,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     refinement_submission_service: ZeusRefinementSubmissionCoordinator | None = None
     confirmation_service: ZeusConfirmationCoordinator | None = None
     individual_run_service: IndividualRunRegistry | None = None
+    individual_zeeman_api: IndividualZeemanApi | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -138,7 +165,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.individual_zeeman_api is None:
                 self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -288,6 +315,13 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         except ZeusConfirmationError as error:
             resolved = resolve_error("confirmation_transition", error.code)
             self._error(resolved.code, resolved.message, resolved.status); return
+        except ZeemanZeusError as error:
+            status, message = _INDIVIDUAL_ZEUS_ERRORS.get(
+                error.code,
+                (HTTPStatus.INTERNAL_SERVER_ERROR, "The individual Zeus operation stopped safely."),
+            )
+            code = error.code if error.code in _INDIVIDUAL_ZEUS_ERRORS else "individual_zeus_failed"
+            self._error(code, message, status); return
         except BlockingIOError:
             self._catalog_error("creation", "rate_limited"); return
         except FileExistsError:
@@ -399,6 +433,24 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 
 
 def main() -> None:
+    authority = issue_execution_authority()
+    zeeman_creation = ZeemanRunCreationService(
+        WorkflowHandler.repository_root,
+        ZeemanRepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
+    )
+    zeeman_local = BoundedLocalExecutionPool(
+        WorkflowHandler.repository_root, authority, max_concurrent=1, max_pending=4,
+    )
+    def zeeman_transport(profile: ZeusProfile) -> PinnedSshZeemanTransport:
+        return PinnedSshZeemanTransport(
+            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), profile
+        )
+    zeeman_zeus = IndividualZeemanZeusCoordinator(
+        WorkflowHandler.repository_root, authority, zeeman_transport,
+    )
+    WorkflowHandler.individual_zeeman_api = IndividualZeemanApi(
+        zeeman_creation, zeeman_local, zeeman_zeus
+    )
     WorkflowHandler.individual_run_service = CanonicalIndividualRunRegistry(
         WorkflowHandler.repository_root
     )
@@ -438,6 +490,7 @@ def main() -> None:
         pass
     finally:
         server.server_close()
+        zeeman_local.close(wait=False)
 
 
 if __name__ == "__main__":

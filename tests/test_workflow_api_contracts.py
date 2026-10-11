@@ -45,8 +45,19 @@ class _Service:
     def status(self, payload, **kwargs): return self._result("status", payload, kwargs.get("session_id"))
 
 
+class _IndividualService:
+    def __init__(self, ledger, payloads): self.ledger, self.payloads = ledger, payloads
+    def _result(self, case, payload, session_id): self.ledger.append((case,payload,session_id)); return self.payloads[case]
+    def preview(self,payload,*,session_id): return self._result("zeeman-run-preview",payload,session_id)
+    def confirm(self,payload,*,session_id): return self._result("zeeman-run-confirm",payload,session_id)
+    def start_local(self,payload,*,session_id): return self._result("zeeman-local-start",payload,session_id)
+    def preview_zeus(self,payload,*,session_id): return self._result("zeeman-zeus-preview",payload,session_id)
+    def confirm_zeus(self,payload,*,session_id): return self._result("zeeman-zeus-confirm",payload,session_id)
+    def refresh_zeus(self,payload,*,session_id): return self._result("zeeman-zeus-refresh",payload,session_id)
+
+
 @contextmanager
-def _server(request_count, *, services=True, payloads=None):
+def _server(request_count, *, services=True, payloads=None, individual_api=None):
     ledger = []
     handler = type("ContractHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
@@ -61,6 +72,7 @@ def _server(request_count, *, services=True, payloads=None):
     handler.refinement_service = _Service("refinement",ledger,values,"screen-status") if services else None
     handler.refinement_submission_service = _Service("refinement-submit",ledger,values,"refinement-submit-status") if services else None
     handler.confirmation_service = _Service("confirmation",ledger,values,"confirmation-status") if services else None
+    handler.individual_zeeman_api = individual_api if individual_api is not None else (_IndividualService(ledger,values) if services else None)
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     httpd.daemon_threads = True; httpd.block_on_close = False; httpd.timeout = 2
     thread = threading.Thread(target=lambda: [httpd.handle_request() for _ in range(request_count)], daemon=True); thread.start()
@@ -125,7 +137,7 @@ def collect_errors():
 def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     expected=_load("workflow_api_success.json");first,ledger,headers=collect_success(monkeypatch);second,_,_=collect_success(monkeypatch)
     assert first==second==expected
-    assert len(first["cases"])==27 and len({(row["method"],row["path"]) for row in first["cases"]})==27
+    assert len(first["cases"])==33 and len({(row["method"],row["path"]) for row in first["cases"]})==33
     assert all(row["body"].get("api_version")==1 for row in first["cases"])
     assert all(all(value==expected["common_headers"][key] for key,value in header.items() if key in expected["common_headers"]) for header in headers)
     assert [entry[0] for entry in ledger] == [
@@ -137,6 +149,8 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "refinement-submit-status", "refinement-submit-preview",
         "refinement-submit-confirm", "confirmation-status",
         "confirmation-preview", "confirmation-confirm",
+        "zeeman-run-preview", "zeeman-run-confirm", "zeeman-local-start",
+        "zeeman-zeus-preview", "zeeman-zeus-confirm", "zeeman-zeus-refresh",
     ]
     session_ids={entry[2] for entry in ledger if entry[2] is not None};assert len(session_ids)==1
     assert all(entry[1] == ({"preview_token": "token"} if entry[0] == "creation-confirm" else {}) for entry in ledger)
@@ -154,13 +168,13 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
 
     assert ReadOnlyWorkflowHandler is WorkflowHandler
-    assert len(POST_ROUTES) == len(post_cases) == 21
+    assert len(POST_ROUTES) == len(post_cases) == 27
     assert set(POST_ROUTES) == {row["path"] for row in post_cases}
     assert all(route.path == path for path, route in POST_ROUTES.items())
     assert all(route.success_status == row["status"] for row in post_cases for route in [POST_ROUTES[row["path"]]])
     assert all(route.call_style in {"payload", "session_kw", "creation_preview", "creation_confirm"} for route in POST_ROUTES.values())
-    assert all(route.success_status == (201 if route.path.endswith("/confirm") else 200) for route in POST_ROUTES.values())
-    assert all(route.service_attr.endswith("_service") and route.unavailable_code and route.unavailable_message for route in POST_ROUTES.values())
+    assert all(route.success_status in {200,201,202} for route in POST_ROUTES.values())
+    assert all((route.service_attr.endswith("_service") or route.service_attr == "individual_zeeman_api") and route.unavailable_code and route.unavailable_message for route in POST_ROUTES.values())
     actual = [
         (r.path,r.service_attr,r.operation,r.call_style,int(r.success_status),r.unavailable_code,r.unavailable_message,r.exception_family.__name__)
         for r in POST_ROUTES.values()
@@ -187,6 +201,12 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
         ("/api/v1/zeus/refinement-chain/status","confirmation_service","status","payload",200,"zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.","ZeusConfirmationError"),
         ("/api/v1/zeus/confirmation/preview","confirmation_service","preview","session_kw",200,"zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.","ZeusConfirmationError"),
         ("/api/v1/zeus/confirmation/confirm","confirmation_service","confirm","session_kw",201,"zeus_confirmation_unavailable","Zeus confirmation preparation is unavailable.","ZeusConfirmationError"),
+        ("/api/v1/individual-runs/zeeman/preview","individual_zeeman_api","preview","session_kw",200,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
+        ("/api/v1/individual-runs/zeeman/confirm","individual_zeeman_api","confirm","session_kw",201,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
+        ("/api/v1/individual-runs/zeeman/local/start","individual_zeeman_api","start_local","session_kw",202,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
+        ("/api/v1/individual-runs/zeeman/zeus/preview","individual_zeeman_api","preview_zeus","session_kw",200,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
+        ("/api/v1/individual-runs/zeeman/zeus/confirm","individual_zeeman_api","confirm_zeus","session_kw",202,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
+        ("/api/v1/individual-runs/zeeman/zeus/refresh","individual_zeeman_api","refresh_zeus","session_kw",200,"individual_zeeman_unavailable","Individual Zeeman runs are unavailable.","Exception"),
     ]
 
 

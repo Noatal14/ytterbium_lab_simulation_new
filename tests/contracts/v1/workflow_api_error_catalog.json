@@ -1391,6 +1391,13 @@
     },
     {
       "domain": "route_unavailable",
+      "case": "individual_zeeman_unavailable",
+      "code": "individual_zeeman_unavailable",
+      "status": 503,
+      "message": "Individual Zeeman runs are unavailable."
+    },
+    {
+      "domain": "route_unavailable",
       "case": "zeus_confirmation_unavailable",
       "code": "zeus_confirmation_unavailable",
       "status": 503,
