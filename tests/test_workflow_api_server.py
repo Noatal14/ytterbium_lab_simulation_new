@@ -1,5 +1,6 @@
 import json
 import hashlib
+import inspect
 import shlex
 import subprocess
 import sys
@@ -17,6 +18,7 @@ from http.server import ThreadingHTTPServer
 from urllib.parse import urlsplit
 
 from workflow_api.server import ReadOnlyWorkflowHandler, workflow_catalog_payload
+import workflow_api.server as server_module
 from workflow_api.mot_2d_validation import modern_contract, validated_progress
 from workflow_api.discovery import DiscoveryError, _progress_aware_plan, list_campaigns
 from workflow_api.error_catalog import ERROR_DOMAINS
@@ -896,3 +898,9 @@ def test_screen_submission_endpoints_require_explicit_session_confirmation():
         assert status==200 and payload["data"]["job"]["array_throttle"]==3
         status,_,payload=request_json(f"{base_url}/api/v1/zeus/submissions/screening/confirm",method="POST",headers=trusted,body=json.dumps({"preview_token":"t"}))
         assert status==201 and payload["data"]["job_id"]=="2[].zeus-master"
+
+
+def test_server_main_closes_both_bounded_local_execution_pools():
+    source = inspect.getsource(server_module.main)
+    assert "mot_2d_local.close(wait=False)" in source
+    assert "zeeman_local.close(wait=False)" in source

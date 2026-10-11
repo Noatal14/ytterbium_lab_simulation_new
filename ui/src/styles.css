@@ -229,7 +229,7 @@ footer { padding: 18px 24px; color: #d5e4e3; background: var(--ink-dark); text-a
 .single-run-card { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:26px; background:white; border:1px solid var(--line); border-radius:16px; }
 .single-run-card h3 { margin:6px 0; color:#183138; font-size:1.3rem; }.single-run-card p { margin:0; color:var(--muted); }
 .run-stepper { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px; margin:34px 0 0; padding:0; list-style:none; }
-.run-stepper li { display:flex; align-items:center; gap:8px; min-width:0; padding:12px; color:#63777b; background:#e8eeee; border-radius:10px; font-size:.84rem; font-weight:700; }
+.run-stepper li { display:flex; align-items:center; gap:8px; min-width:0; padding:12px; color:#52676b; background:#e8eeee; border-radius:10px; font-size:.84rem; font-weight:700; }
 .run-stepper li > span { width:26px; height:26px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:#c8d5d5; }.run-stepper svg { width:17px; }
 .run-stepper li.complete { color:#285347; background:var(--mint); }.run-stepper li.current { color:white; background:var(--ink); }.run-stepper li.current > span { color:var(--ink); background:white; }
 .run-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }

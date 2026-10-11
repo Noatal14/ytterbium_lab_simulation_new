@@ -29,8 +29,12 @@ from workflow_api.individual_run_discovery import (
 )
 from workflow_api.models import SCHEMA_VERSION
 from workflow_api.mot_2d_sources import list_sources
+from workflow_api.mot_2d_individual_api import IndividualMot2DApi
+from workflow_api.mot_2d_run_creation import Mot2DRunCreationService
+from workflow_api.mot_2d_local_execution import Mot2DBoundedLocalExecutionPool
+from workflow_api.mot_2d_zeus_execution import IndividualMot2DZeusCoordinator, PinnedSshMot2DTransport
 from workflow_api.mutation import CreationService
-from workflow_api.repository_snapshot import RepositorySnapshotProvider, ZeemanRepositorySnapshotProvider
+from workflow_api.repository_snapshot import RepositorySnapshotProvider, ZeemanRepositorySnapshotProvider, Mot2DIndividualRepositorySnapshotProvider
 from workflow_api.run_execution import issue_execution_authority
 from workflow_api.zeeman_run_creation import ZeemanRunCreationService
 from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
@@ -99,6 +103,12 @@ def _post_routes() -> tuple[PostRoute, ...]:
         ("/api/v1/individual-runs/zeeman/zeus/preview","individual_zeeman_api","preview_zeus","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.OK,Exception),
         ("/api/v1/individual-runs/zeeman/zeus/confirm","individual_zeeman_api","confirm_zeus","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
         ("/api/v1/individual-runs/zeeman/zeus/refresh","individual_zeeman_api","refresh_zeus","session_kw","individual_zeeman_unavailable","Individual Zeeman runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/mot-2d/preview","individual_mot_2d_api","preview","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/mot-2d/confirm","individual_mot_2d_api","confirm","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.CREATED,Exception),
+        ("/api/v1/individual-runs/mot-2d/local/start","individual_mot_2d_api","start_local","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
+        ("/api/v1/individual-runs/mot-2d/zeus/preview","individual_mot_2d_api","preview_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/mot-2d/zeus/confirm","individual_mot_2d_api","confirm_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
+        ("/api/v1/individual-runs/mot-2d/zeus/refresh","individual_mot_2d_api","refresh_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
     ]
     return tuple(PostRoute(*row) for row in rows)
 
@@ -147,6 +157,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     confirmation_service: ZeusConfirmationCoordinator | None = None
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
+    individual_mot_2d_api: IndividualMot2DApi | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -165,7 +176,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.individual_zeeman_api is None:
+            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None:
                 self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -194,6 +205,18 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 data = list_sources(self.repository_root)
             except Exception:
                 self._catalog_error("protocol", "source_inspection_failed")
+                return
+            self._json({"api_version": SCHEMA_VERSION, "data": data})
+            return
+        if path == "/api/v1/individual-runs/mot-2d/sources":
+            service = self.individual_mot_2d_api
+            if service is None:
+                self._error("individual_mot_2d_unavailable", "Individual 2D-MOT runs are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
+                return
+            try:
+                data = service.sources()
+            except Exception:
+                self._error("source_inspection_failed", "2D-MOT sources could not be inspected safely.", HTTPStatus.INTERNAL_SERVER_ERROR)
                 return
             self._json({"api_version": SCHEMA_VERSION, "data": data})
             return
@@ -451,6 +474,21 @@ def main() -> None:
     WorkflowHandler.individual_zeeman_api = IndividualZeemanApi(
         zeeman_creation, zeeman_local, zeeman_zeus
     )
+    mot_2d_creation = Mot2DRunCreationService(
+        WorkflowHandler.repository_root,
+        Mot2DIndividualRepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
+    )
+    mot_2d_local = Mot2DBoundedLocalExecutionPool(
+        WorkflowHandler.repository_root, authority, max_concurrent=1, max_pending=4,
+    )
+    def mot_2d_transport(profile: ZeusProfile) -> PinnedSshMot2DTransport:
+        return PinnedSshMot2DTransport(WorkflowHandler.repository_root, Path("/usr/bin/ssh"), profile)
+    mot_2d_zeus = IndividualMot2DZeusCoordinator(
+        WorkflowHandler.repository_root, authority, mot_2d_transport,
+    )
+    WorkflowHandler.individual_mot_2d_api = IndividualMot2DApi(
+        WorkflowHandler.repository_root, mot_2d_creation, mot_2d_local, mot_2d_zeus,
+    )
     WorkflowHandler.individual_run_service = CanonicalIndividualRunRegistry(
         WorkflowHandler.repository_root
     )
@@ -490,7 +528,10 @@ def main() -> None:
         pass
     finally:
         server.server_close()
-        zeeman_local.close(wait=False)
+        try:
+            mot_2d_local.close(wait=False)
+        finally:
+            zeeman_local.close(wait=False)
 
 
 if __name__ == "__main__":

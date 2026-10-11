@@ -492,10 +492,16 @@ _PAYLOADS.update({
     "zeeman-zeus-preview": {"preview_token":"zeus-token","expires_in_seconds":300,"run_id":"zeeman-contract","job":{"kind":"scalar","array":False,"pbs_sha256":"b"*64},"package_sha256":"c"*64,"submission_key":"d"*64,"effects":{"submit_one_job":True,"reconcile_existing_job":False,"cancel_job":False}},
     "zeeman-zeus-confirm": {"status":"submitted","run_id":"zeeman-contract","job_id":"500.zeus-master","submission_key":"d"*64},
     "zeeman-zeus-refresh": {"state":"running","job_id":"500.zeus-master"},
+    "mot2d-sources": {"contract_version":"mot-2d-individual-source-catalog-v1","sources":[],"invalid_count":0,"total":0,"truncated":False},
+    "mot2d-run-preview": {"preview_token":"mot2d-token","expires_in_seconds":300,"plan":{}},
+    "mot2d-run-confirm": {"status":"created","run_id":"mot2d-contract","family":"mot_2d","path":"data/runs/mot_2d/mot2d-contract","lifecycle_state":"configured","execution_started":False,"submitted_to_zeus":False},
+    "mot2d-local-start": {"status":"queued","run_id":"mot2d-contract","execution_mode":"local"},
+    "mot2d-zeus-preview": {"preview_token":"mot2d-zeus-token","expires_in_seconds":300,"run_id":"mot2d-contract","job":{"kind":"scalar","array":False,"pbs_sha256":"b"*64},"package_sha256":"c"*64,"submission_key":"d"*64,"effects":{"submit_one_job":True,"reconcile_existing_job":False,"cancel_job":False}},
+    "mot2d-zeus-confirm": {"status":"submitted","run_id":"mot2d-contract","job_id":"501.zeus-master","submission_key":"d"*64},
+    "mot2d-zeus-refresh": {"state":"running","job_id":"501.zeus-master"},
 })
 
 
 def fake_service_payloads() -> dict[str, object]:
     """Return fresh full public DTOs without consulting contract snapshots."""
     return deepcopy(_PAYLOADS)
-
