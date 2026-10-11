@@ -47,6 +47,7 @@ EXPECTED_CONFIG_CONSUMERS = {
     "studies/zeeman/capture_velocity.py", "studies/zeeman/generate_ensembles.py",
     "studies/zeeman/stochastic_convergence.py", "studies/zeeman/trajectories.py",
     "studies/zeeman/validate_configuration.py", "utils/simulation_helpers.py",
+    "workflow_api/zeeman_run_plan.py", "workflow_api/zeeman_run_specification.py",
 }
 EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
     "studies/mot_2d_s0_campaign.py", "workflow_api/mot_2d_plan.py",
@@ -56,7 +57,7 @@ EXPECTED_VERSIONED_SPEC_CONSUMERS = {
     "tools/verify_mot_2d_specification.py", "workflow_api/mutation.py",
     "workflow_api/zeus_transfer.py",
 }
-EXPECTED_NUMERICAL_POLICY_CONSUMERS = {"config.py"}
+EXPECTED_NUMERICAL_POLICY_CONSUMERS = {"config.py", "workflow_api/zeeman_run_plan.py"}
 
 
 def _normalize(value):

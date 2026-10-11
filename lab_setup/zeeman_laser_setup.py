@@ -3,6 +3,45 @@ from atomsmltr.environment.lasers.beams import LaserBeam
 from atomsmltr.environment.lasers.polarization import CircularRight, CircularLeft
 from config import BLUE_TRANSITION, BLUE_SATURATION_INTENSITY_MW_CM2, Geometry
 
+
+ZEEMAN_LASER_WAIST_POSITION_M = (0.0, 0.0, 0.0)
+ZEEMAN_LASER_DIRECTION_TYPE = "vector"
+ZEEMAN_LASER_TAG = "Zeeman_Laser"
+
+
+def resolved_zeeman_laser_parameters(
+    s0=3.0,
+    detuning_gamma=-13.75,
+    polarization="CircularRight",
+):
+    """Return the exact JSON-native parameters used to construct the beam."""
+    if polarization not in {"CircularRight", "CircularLeft"}:
+        raise ValueError("Unsupported Zeeman-laser polarization.")
+    wavelength_m = float(BLUE_TRANSITION.wavelength_m)
+    gamma_rad_s = float(BLUE_TRANSITION.gamma_rad_s)
+    saturation_intensity_W_m2 = float(BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0)
+    peak_intensity_W_m2 = float(s0 * saturation_intensity_W_m2)
+    waist_m = float(Geometry.ZEEMAN_LASER_WAIST_M)
+    angle_rad = np.radians(Geometry.ZEEMAN_ARM_ANGLE_DEG)
+    direction = (0.0, -np.sin(angle_rad), -np.cos(angle_rad))
+    power_W = float(peak_intensity_W_m2 * (np.pi * waist_m**2) / 2.0)
+    return {
+        "s0": float(s0),
+        "detuning_gamma": float(detuning_gamma),
+        "detuning_rad_s": float(detuning_gamma * gamma_rad_s),
+        "wavelength_m": wavelength_m,
+        "gamma_rad_s": gamma_rad_s,
+        "saturation_intensity_W_m2": saturation_intensity_W_m2,
+        "peak_intensity_W_m2": peak_intensity_W_m2,
+        "power_W": power_W,
+        "waist_m": waist_m,
+        "waist_position_m": list(ZEEMAN_LASER_WAIST_POSITION_M),
+        "direction_type": ZEEMAN_LASER_DIRECTION_TYPE,
+        "direction": [float(value) for value in direction],
+        "polarization": polarization,
+        "tag": ZEEMAN_LASER_TAG,
+    }
+
 class CircularGaussianBeam(LaserBeam):
     """
     Custom implementation of a Circular Gaussian Laser Beam for the Zeeman Slower
@@ -107,42 +146,27 @@ def setup_zeeman_laser(s0=3.0, detuning_gamma=-13.75, atom_species_name="Yb171",
     list of CircularGaussianBeam
     """
 
-    wavelength = BLUE_TRANSITION.wavelength_m
-    
-    # Calculate I_sat in pure SI units (W/m^2)
-    isat_W_m2 = BLUE_SATURATION_INTENSITY_MW_CM2 * 10.0 
-    
-    # Peak intensity based on s0 parameter
-    target_peak_intensity = s0 * isat_W_m2
-    
-    # 2. Geometry
-    # 1/e^2 waist is 7mm based on the provided diameter of 14mm
-    waist = Geometry.ZEEMAN_LASER_WAIST_M
-    
-    # Direction: Angle of 25 degrees with the positive Z axis, in the ZY plane
-    # Coming from (+Z, +Y) and pointing towards (-Z, -Y).
-    angle_deg = Geometry.ZEEMAN_ARM_ANGLE_DEG
-    angle_rad = np.radians(angle_deg)
-    
-    # The direction vector is normalized.
-    # It points entirely in the YZ plane to (-Z, -Y) coordinates.
-    direction_vec = (0.0, -np.sin(angle_rad), -np.cos(angle_rad))
+    resolved = resolved_zeeman_laser_parameters(
+        s0=s0,
+        detuning_gamma=detuning_gamma,
+        polarization=polarization,
+    )
     
     # Configuration for polarization
     pol_obj = CircularRight() if polarization == "CircularRight" else CircularLeft()
 
     # 3. Create the Beam
     beam = CircularGaussianBeam(
-        wavelength=wavelength,
-        waist=waist,
-        waist_position=(0, 0, 0),
-        direction_type="vector",
-        direction=direction_vec,
+        wavelength=resolved["wavelength_m"],
+        waist=resolved["waist_m"],
+        waist_position=resolved["waist_position_m"],
+        direction_type=resolved["direction_type"],
+        direction=resolved["direction"],
         polarization=pol_obj,
-        tag="Zeeman_Laser"
+        tag=resolved["tag"]
     )
-    beam.detuning = detuning_gamma * BLUE_TRANSITION.gamma_rad_s  # Setting detuning directly as an attribute
-    beam.set_power_from_peak_I(target_peak_intensity)
+    beam.detuning = resolved["detuning_rad_s"]
+    beam.set_power_from_peak_I(resolved["peak_intensity_W_m2"])
 
     return [beam]
 

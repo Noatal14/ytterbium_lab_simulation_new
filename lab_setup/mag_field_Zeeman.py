@@ -3,6 +3,39 @@ import magpylib as magpy
 from scipy.spatial.transform import Rotation as R
 from atomsmltr.environment.fields.magnetic import MagneticField
 
+
+ZEEMAN_AXIS_OFFSET_M = 0.0
+ZEEMAN_MAGNET_DIMENSIONS_M = (0.005, 0.005, 0.005)
+ZEEMAN_MAGNET_POLARIZATION_T = -1.24
+ZEEMAN_MAGNETS_PER_RING = 8
+ZEEMAN_TILT_INPUT_SIGN = -1
+ZEEMAN_INTERNAL_AXIS = "+z"
+ZEEMAN_LAB_AXIS_DIRECTION = "toward_lab_origin_in_negative_y_negative_z_arm"
+
+
+def resolved_zeeman_field_construction(
+    *, radii_m, positions_m, tilt_angles_deg, angle_deg, start_distance_m
+):
+    """Return exact JSON-native construction semantics for the slower field."""
+    return {
+        "radii_m": [float(value) for value in radii_m],
+        "positions_m": [float(value) for value in positions_m],
+        "tilt_angles_deg": [float(value) for value in tilt_angles_deg],
+        "zeeman_axis_offset_m": ZEEMAN_AXIS_OFFSET_M,
+        "magnet_dimensions_m": list(ZEEMAN_MAGNET_DIMENSIONS_M),
+        "magnet_polarization_T": ZEEMAN_MAGNET_POLARIZATION_T,
+        "arm_angle_deg": float(angle_deg),
+        "start_distance_m": float(start_distance_m),
+        "magnets_per_ring": ZEEMAN_MAGNETS_PER_RING,
+        "azimuthal_angles_deg": [
+            float(value)
+            for value in np.linspace(0, 360, ZEEMAN_MAGNETS_PER_RING, endpoint=False)
+        ],
+        "tilt_input_sign": ZEEMAN_TILT_INPUT_SIGN,
+        "internal_axis": ZEEMAN_INTERNAL_AXIS,
+        "lab_axis_direction": ZEEMAN_LAB_AXIS_DIRECTION,
+    }
+
 class ZeemanSlowerField(MagneticField):
     """
     A setup for a Zeeman slower consisting of 20 rings, 
@@ -10,9 +43,9 @@ class ZeemanSlowerField(MagneticField):
     """
     def __init__(
         self,
-        zeeman_axis_offset=0.0,
-        magnet_dimensions=(0.005, 0.005, 0.005),
-        polarization_T=-1.24,
+        zeeman_axis_offset=ZEEMAN_AXIS_OFFSET_M,
+        magnet_dimensions=ZEEMAN_MAGNET_DIMENSIONS_M,
+        polarization_T=ZEEMAN_MAGNET_POLARIZATION_T,
         angle_deg=25.0,
         start_distance=0.314,
         radii=None,
@@ -57,7 +90,7 @@ class ZeemanSlowerField(MagneticField):
         magnets = []
         
         # We put 8 magnets per ring
-        azimuthal_angles = np.linspace(0, 360, 8, endpoint=False)
+        azimuthal_angles = np.linspace(0, 360, ZEEMAN_MAGNETS_PER_RING, endpoint=False)
         
         # Define coordinate transformation from internal to lab frame
         # Lab frame -Z axis is [0, 0, -1]. 

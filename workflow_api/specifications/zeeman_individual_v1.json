@@ -1,0 +1,31 @@
+{
+  "spec_version": "zeeman-individual-v1",
+  "request_fields": [
+    "particle_count",
+    "seed",
+    "retain_particle_states",
+    "execution_mode"
+  ],
+  "particle_count": {
+    "minimum": 1,
+    "default": 50000,
+    "maximum_by_execution_mode": {
+      "local": 50000,
+      "zeus": 50000
+    }
+  },
+  "seed": {
+    "minimum": 0,
+    "maximum": 4294967295,
+    "default": 42
+  },
+  "workers_by_execution_mode": {
+    "local": 8,
+    "zeus": 200
+  },
+  "fixed_classification": {
+    "suitability": "individual_only",
+    "magnet_profile_policy": "canonical_only",
+    "solver_policy": "bundled_numerical_policy"
+  }
+}

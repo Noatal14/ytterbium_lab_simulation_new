@@ -136,9 +136,14 @@ this ledger and are covered by campaign physical-model closures.
   `studies/zeeman/trajectories.py`,
   `studies/zeeman/validate_configuration.py`.
 - Shared runtime helper: `utils/simulation_helpers.py`.
+- Individual-run admission: `workflow_api/zeeman_run_plan.py`,
+  `workflow_api/zeeman_run_specification.py`.
 
 The same AST characterization freezes the two additional direct-consumer
 ledgers:
+
+- Versioned `lab_setup.numerical_policy`: `config.py`,
+  `workflow_api/zeeman_run_plan.py`.
 
 - Executable `workflow_api.mot_2d_spec`: `studies/mot_2d_s0_campaign.py`,
   `workflow_api/mot_2d_plan.py`, `workflow_api/repository_snapshot.py`.
