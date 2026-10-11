@@ -106,6 +106,24 @@ def test_invalid_policy_is_rejected(mutation):
         _validate(value)
 
 
+@pytest.mark.parametrize(
+    "candidates",
+    [
+        [10e-6, True, 0.625e-6],
+        [10e-6, float("nan"), 0.625e-6],
+        [10e-6, 0.0, 0.625e-6],
+        [1e-6, 2e-6],
+    ],
+)
+def test_invalid_validation_candidate_lists_preserve_exact_error(candidates):
+    value = _mutable()
+    value["mot_3d"]["dt_validation_candidates_s"] = candidates
+    with pytest.raises(
+        ValueError, match=r"^Invalid mot_3d validation candidates\.$"
+    ):
+        _validate(value)
+
+
 @pytest.mark.parametrize("kind", ["symlink", "oversize", "truncated"])
 def test_loader_rejects_unsafe_or_malformed_files(tmp_path, monkeypatch, kind):
     path = tmp_path / "policy.json"
@@ -140,5 +158,16 @@ def test_loader_detects_descriptor_change_during_read(tmp_path, monkeypatch):
         return os.stat_result(values)
 
     monkeypatch.setattr(policy_module.os, "fstat", changing_fstat)
+    with pytest.raises(RuntimeError, match="numerical policy is invalid"):
+        policy_module._read_validated()
+
+
+def test_loader_rejects_duplicate_json_keys(tmp_path, monkeypatch):
+    path = tmp_path / "policy.json"
+    path.write_text(
+        '{"spec_version":"numerical-policy-v1","spec_version":"other"}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(policy_module, "SPECIFICATION_PATH", path)
     with pytest.raises(RuntimeError, match="numerical policy is invalid"):
         policy_module._read_validated()

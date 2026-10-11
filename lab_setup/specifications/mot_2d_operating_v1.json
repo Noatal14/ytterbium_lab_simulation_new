@@ -1,0 +1,14 @@
+{
+  "spec_version": "mot-2d-operating-v1",
+  "laser": {
+    "s0": 1.4,
+    "detuning_gamma": -1.161,
+    "swap_polarization": false
+  },
+  "magnetic_field": {
+    "magnet_radius_m": 0.0517
+  },
+  "propagation_boundary": {
+    "start_distance_m": 0.1
+  }
+}

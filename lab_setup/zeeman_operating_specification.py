@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lab_setup.physical_specification import (
-    _canonical_digest,
-    _exact,
-    _freeze,
-    _num,
-    _read_path,
+from lab_setup.strict_specification import (
+    canonical_digest,
+    freeze,
+    read_strict_json,
+    require_exact_keys,
+    require_finite_number,
 )
 
 
@@ -19,33 +19,50 @@ SPECIFICATION_PATH = (
 
 
 def _validate(value):
-    _exact(value, {"spec_version", "laser", "propagation_boundary"},
-           "Zeeman operating specification")
+    require_exact_keys(
+        value,
+        {"spec_version", "laser", "propagation_boundary"},
+        "Zeeman operating specification",
+    )
     if value["spec_version"] != "zeeman-operating-v1":
         raise ValueError("Invalid Zeeman operating specification version.")
 
     laser = value["laser"]
-    _exact(laser, {"s0", "detuning_gamma"}, "Zeeman laser operating point")
-    _num(laser["s0"], "Zeeman laser s0", lo=0)
-    _num(laser["detuning_gamma"], "Zeeman laser detuning", hi=0)
+    require_exact_keys(
+        laser, {"s0", "detuning_gamma"}, "Zeeman laser operating point"
+    )
+    require_finite_number(laser["s0"], "Zeeman laser s0", lo=0)
+    require_finite_number(laser["detuning_gamma"], "Zeeman laser detuning", hi=0)
 
     boundary = value["propagation_boundary"]
-    _exact(boundary, {"start_distance_m", "cutoff_distance_m"},
-           "Zeeman propagation boundary")
-    _num(boundary["start_distance_m"], "Zeeman start distance", lo=0)
-    _num(boundary["cutoff_distance_m"], "Zeeman cutoff distance", lo=0)
+    require_exact_keys(
+        boundary,
+        {"start_distance_m", "cutoff_distance_m"},
+        "Zeeman propagation boundary",
+    )
+    require_finite_number(
+        boundary["start_distance_m"], "Zeeman start distance", lo=0
+    )
+    require_finite_number(
+        boundary["cutoff_distance_m"], "Zeeman cutoff distance", lo=0
+    )
     if boundary["start_distance_m"] <= boundary["cutoff_distance_m"]:
         raise ValueError("Zeeman start distance must exceed the cutoff distance.")
     return value
 
 
 def _read_validated():
-    return _read_path(SPECIFICATION_PATH, _validate)
+    return read_strict_json(
+        SPECIFICATION_PATH,
+        _validate,
+        max_bytes=16 * 1024,
+        error_message="The bundled Zeeman operating specification is invalid.",
+    )
 
 
 def _load_validated_bundle(reader=_read_validated):
     value = reader()
-    return _freeze(value), _canonical_digest(value)
+    return freeze(value), canonical_digest(value)
 
 
 ZEEMAN_OPERATING_SPECIFICATION, ZEEMAN_OPERATING_SPEC_SHA256 = (

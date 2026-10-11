@@ -37,7 +37,7 @@ report, and export of survivor states for the 3D MOT.
 For the responsibility boundaries, scientific data flow, and the supported way
 to extend the project, start with [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-- `config.py` — the compatibility facade used by existing simulations; versioned specifications under `lab_setup/specifications/` own migrated laboratory, model, numerical, and Zeeman-operating values.
+- `config.py` — the compatibility facade used by existing simulations; versioned specifications under `lab_setup/specifications/` own migrated laboratory, model, numerical, Zeeman-operating, and generic 2D-MOT-operating values.
 - `simulations/` — stage engines for the thermal beam, Zeeman slower, 2D MOT, 3D MOT, and the compatibility pipeline.
 - `studies/` — research workflows that use the stage engines for optimization and stochastic-seed analysis.
 - `lab_setup/` — apparatus modeling: laser setup, magnetic-field setup, zones, gravity, and config assembly.

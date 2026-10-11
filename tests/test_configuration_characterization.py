@@ -65,6 +65,13 @@ EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
     "workflow_api/mot_2d_zeus_remote.py",
 }
 EXPECTED_ZEEMAN_OPERATING_CONSUMERS = {"config.py"}
+EXPECTED_MOT_2D_OPERATING_CONSUMERS = {"config.py"}
+EXPECTED_STRICT_SPECIFICATION_CONSUMERS = {
+    "lab_setup/mot_2d_operating_specification.py",
+    "lab_setup/numerical_policy.py",
+    "lab_setup/physical_specification.py",
+    "lab_setup/zeeman_operating_specification.py",
+}
 
 
 def _normalize(value):
@@ -202,7 +209,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "84da93f61f3965efc3eb8065a7555f0685d257cadfe7ac5eac9abab3d26a64bc"
+        "7ab56fadf365f6ec57d41860fa7ef4eaaf29f6e979aa16396bcbe378167ce74c"
     )
 
 
@@ -261,6 +268,16 @@ def test_numerical_policy_direct_consumer_ledger_is_complete():
 def test_zeeman_operating_direct_consumer_ledger_is_complete():
     consumers, _ = _direct_imports("lab_setup.zeeman_operating_specification")
     assert consumers == EXPECTED_ZEEMAN_OPERATING_CONSUMERS
+
+
+def test_mot_2d_operating_direct_consumer_ledger_is_complete():
+    consumers, _ = _direct_imports("lab_setup.mot_2d_operating_specification")
+    assert consumers == EXPECTED_MOT_2D_OPERATING_CONSUMERS
+
+
+def test_strict_specification_codec_consumer_ledger_is_complete():
+    consumers, _ = _direct_imports("lab_setup.strict_specification")
+    assert consumers == EXPECTED_STRICT_SPECIFICATION_CONSUMERS
 
 
 def test_zeeman_profiles_and_corrected_generator_metadata_binding():

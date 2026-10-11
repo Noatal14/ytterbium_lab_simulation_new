@@ -31,6 +31,9 @@ RELEVANT_FILES = (
     "lab_setup/specifications/zeeman_model_conventions_v1.json",
     "lab_setup/zeeman_operating_specification.py",
     "lab_setup/specifications/zeeman_operating_v1.json",
+    "lab_setup/mot_2d_operating_specification.py",
+    "lab_setup/specifications/mot_2d_operating_v1.json",
+    "lab_setup/strict_specification.py",
     "lab_setup/numerical_policy.py",
     "lab_setup/specifications/numerical_policy_v1.json",
 )

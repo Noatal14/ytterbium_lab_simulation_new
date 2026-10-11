@@ -110,8 +110,9 @@ criteria.
 ## 4. Code architecture and stage contracts
 
 `config.py` is the compatibility facade consumed by the simulation stages.
-Versioned specifications own migrated laboratory, model, numerical, and
-Zeeman-operating values; see `docs/CONFIGURATION_OWNERSHIP.md`. Avoid
+Versioned specifications own migrated laboratory, model, numerical, Zeeman-
+operating, and generic 2D-MOT-operating values; see
+`docs/CONFIGURATION_OWNERSHIP.md`. Avoid
 unexplained constants or duplicate authorities in simulation scripts.
 
 The production workflow is deliberately split into three stages:

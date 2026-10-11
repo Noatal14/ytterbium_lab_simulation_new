@@ -83,6 +83,12 @@ def test_plan_resolves_canonical_configuration_and_valid_d2_records(mode, worker
     assert resolved["zeeman"]["magnet_profile_name"] == CANONICAL_ZEEMAN_PROFILE_NAME
     assert resolved["numerical_policy"]["solver"] == "RK4StCustom"
     assert resolved["numerical_policy"]["dt_s"] == pytest.approx(40e-6)
+    assert resolved["downstream_boundary"]["mot_2d_laser"] == (
+        run_plan.MOT_2D_LASER_CONFIG
+    )
+    assert resolved["downstream_boundary"]["mot_2d_magnet_radius_m"] == (
+        run_plan.MOT_2D_MAGNET_RADIUS_M
+    )
     assert resolved["execution"]["workers"] == workers
     assert plan.review.locked_settings["workers"] == workers
     assert plan.status["state"] == "configured"

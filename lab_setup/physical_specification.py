@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
-import math
-import os
-import stat
 from functools import lru_cache
 from pathlib import Path
-from types import MappingProxyType
+
+from lab_setup.strict_specification import (
+    canonical_digest as _canonical_digest,
+    freeze as _freeze,
+    read_strict_json,
+    require_exact_keys as _exact,
+    require_finite_number as _num,
+)
 
 _DIR = Path(__file__).with_name("specifications")
 SPECIFICATION_PATH = _DIR / "laboratory_physical_v2.json"
@@ -20,48 +22,6 @@ PINNED_LEGACY_SPEC_VERSION = "laboratory-physical-v1"
 PINNED_LEGACY_SPEC_SHA256 = (
     "8a5fb876dce0825c7cc9154d1a0f0fb4ba01fe9d179e052e747a201246dcd0ab"
 )
-
-
-def _freeze(v):
-    if isinstance(v, dict):
-        return MappingProxyType({k: _freeze(x) for k, x in v.items()})
-    if isinstance(v, list):
-        return tuple(_freeze(x) for x in v)
-    return v
-
-
-def _canonical_digest(v):
-    payload = json.dumps(
-        v,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-        allow_nan=False,
-    ).encode("utf-8")
-    return hashlib.sha256(payload).hexdigest()
-
-
-def _pairs(pairs):
-    out = {}
-    for k, v in pairs:
-        if k in out:
-            raise ValueError(f"Duplicate JSON key: {k}")
-        out[k] = v
-    return out
-
-
-def _exact(v, keys, label):
-    if not isinstance(v, dict) or set(v) != set(keys):
-        raise ValueError(f"Invalid {label} schema.")
-
-
-def _num(v, label, *, lo=None, hi=None, closed=False):
-    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
-        raise ValueError(f"Invalid {label}.")
-    if lo is not None and (v < lo if closed else v <= lo):
-        raise ValueError(f"Invalid {label}.")
-    if hi is not None and (v > hi if closed else v >= hi):
-        raise ValueError(f"Invalid {label}.")
 
 
 def _posint(v, label):
@@ -325,49 +285,12 @@ def _validate_model_conventions(value):
 
 
 def _read_path(path, validator):
-    try:
-        before = path.lstat()
-        if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_SPECIFICATION_BYTES:
-            raise ValueError
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
-        try:
-            opened = os.fstat(fd)
-            identity = (
-                opened.st_dev,
-                opened.st_ino,
-                opened.st_size,
-                opened.st_mtime_ns,
-            )
-            if not stat.S_ISREG(opened.st_mode) or identity != (
-                before.st_dev,
-                before.st_ino,
-                before.st_size,
-                before.st_mtime_ns,
-            ):
-                raise ValueError
-            chunks = []
-            remaining = opened.st_size
-            while remaining:
-                chunk = os.read(fd, min(64 * 1024, remaining))
-                if not chunk:
-                    raise ValueError
-                chunks.append(chunk)
-                remaining -= len(chunk)
-            raw = b"".join(chunks)
-            after = os.fstat(fd)
-            if (
-                len(raw) != opened.st_size
-                or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
-                != identity
-            ):
-                raise ValueError
-        finally:
-            os.close(fd)
-        return validator(json.loads(raw.decode(), object_pairs_hook=_pairs))
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as e:
-        raise RuntimeError(
-            "The bundled laboratory physical specification is invalid."
-        ) from e
+    return read_strict_json(
+        path,
+        validator,
+        max_bytes=MAX_SPECIFICATION_BYTES,
+        error_message="The bundled laboratory physical specification is invalid.",
+    )
 
 
 def _read_validated():

@@ -34,6 +34,9 @@ from lab_setup.physical_specification import (
     ZEEMAN_MODEL_CONVENTIONS,
 )
 from lab_setup.numerical_policy import NUMERICAL_POLICY
+from lab_setup.mot_2d_operating_specification import (
+    MOT_2D_OPERATING_SPECIFICATION,
+)
 from lab_setup.zeeman_operating_specification import ZEEMAN_OPERATING_SPECIFICATION
 
 
@@ -94,6 +97,7 @@ _LAB_SOURCE = LABORATORY_PHYSICAL_SPECIFICATION["source"]
 _LAB_APPARATUS = LABORATORY_PHYSICAL_SPECIFICATION["apparatus"]
 _LAB_ZEEMAN_LASER = LABORATORY_PHYSICAL_SPECIFICATION["zeeman_laser_geometry"]
 _NUMERICS = NUMERICAL_POLICY
+_MOT_2D_OPERATING = MOT_2D_OPERATING_SPECIFICATION
 _ZEEMAN_OPERATING = ZEEMAN_OPERATING_SPECIFICATION
 
 
@@ -314,12 +318,12 @@ ZEEMAN_SIM_CONFIG = {
 # 6. 2D MOT
 # =============================================================================
 
-MOT_2D_MAGNET_RADIUS_M = 0.0517
+MOT_2D_MAGNET_RADIUS_M = _MOT_2D_OPERATING["magnetic_field"]["magnet_radius_m"]
 
 MOT_2D_LASER_CONFIG = {
-    "s0": 1.4,
-    "detuning_gamma": -1.161,
-    "swap_polarization": False,
+    "s0": _MOT_2D_OPERATING["laser"]["s0"],
+    "detuning_gamma": _MOT_2D_OPERATING["laser"]["detuning_gamma"],
+    "swap_polarization": _MOT_2D_OPERATING["laser"]["swap_polarization"],
 }
 
 MOT_2D_SIM_CONFIG = {
@@ -327,7 +331,9 @@ MOT_2D_SIM_CONFIG = {
     # Accepted hybrid-solver production timestep after convergence validation.
     # All 2D-MOT entry points must read this value rather than duplicate it.
     "dt_s": _NUMERICS["mot_2d"]["dt_s"],
-    "start_distance_m": 0.100,
+    "start_distance_m": _MOT_2D_OPERATING["propagation_boundary"][
+        "start_distance_m"
+    ],
 }
 MOT_2D_STOCHASTIC_SOLVER_NAME = _NUMERICS["mot_2d"]["solver"]
 MOT_2D_STOCHASTIC_SOLVER = resolve_stochastic_solver(
