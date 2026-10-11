@@ -22,6 +22,11 @@ from urllib.parse import unquote, urlsplit
 from workflow_api import list_workflows
 from workflow_api.discovery import DiscoveryError, get_campaign, list_campaigns
 from workflow_api.error_catalog import resolve_error, resolve_wire_error
+from workflow_api.individual_run_discovery import (
+    CanonicalIndividualRunRegistry,
+    IndividualRunDiscoveryError,
+    IndividualRunRegistry,
+)
 from workflow_api.models import SCHEMA_VERSION
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mutation import CreationService
@@ -114,6 +119,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     refinement_service: ZeusRefinementCoordinator | None = None
     refinement_submission_service: ZeusRefinementSubmissionCoordinator | None = None
     confirmation_service: ZeusConfirmationCoordinator | None = None
+    individual_run_service: IndividualRunRegistry | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -161,6 +167,65 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 data = list_sources(self.repository_root)
             except Exception:
                 self._catalog_error("protocol", "source_inspection_failed")
+                return
+            self._json({"api_version": SCHEMA_VERSION, "data": data})
+            return
+        if path == "/api/v1/individual-runs":
+            service = self.individual_run_service
+            if service is None:
+                self._error(
+                    "individual_runs_unavailable",
+                    "Individual-run inspection is unavailable.",
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+                return
+            try:
+                data = service.list_runs()
+            except Exception:
+                self._error(
+                    "run_inspection_failed",
+                    "Individual runs could not be inspected safely.",
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
+                return
+            self._json({"api_version": SCHEMA_VERSION, "data": data})
+            return
+        run_prefix = "/api/v1/individual-runs/"
+        if path.startswith(run_prefix):
+            encoded_id = path[len(run_prefix):]
+            if not encoded_id or "/" in encoded_id or unquote(encoded_id) != encoded_id:
+                self._error(
+                    "invalid_run_id",
+                    "Individual-run identifier is invalid.",
+                    HTTPStatus.BAD_REQUEST,
+                )
+                return
+            service = self.individual_run_service
+            if service is None:
+                self._error(
+                    "individual_runs_unavailable",
+                    "Individual-run inspection is unavailable.",
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                )
+                return
+            try:
+                data = service.get_run(encoded_id)
+            except IndividualRunDiscoveryError as error:
+                status = (
+                    HTTPStatus.NOT_FOUND
+                    if error.code == "run_not_found"
+                    else HTTPStatus.BAD_REQUEST
+                    if error.code == "invalid_run_id"
+                    else HTTPStatus.INTERNAL_SERVER_ERROR
+                )
+                self._error(error.code, error.message, status)
+                return
+            except Exception:
+                self._error(
+                    "run_inspection_failed",
+                    "Individual run could not be inspected safely.",
+                    HTTPStatus.INTERNAL_SERVER_ERROR,
+                )
                 return
             self._json({"api_version": SCHEMA_VERSION, "data": data})
             return
@@ -334,6 +399,9 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 
 
 def main() -> None:
+    WorkflowHandler.individual_run_service = CanonicalIndividualRunRegistry(
+        WorkflowHandler.repository_root
+    )
     WorkflowHandler.creation_service = CreationService(
         WorkflowHandler.repository_root,
         RepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
