@@ -2,11 +2,14 @@ import numpy as np
 from atomsmltr.environment.lasers.beams import LaserBeam
 from atomsmltr.environment.lasers.polarization import CircularRight, CircularLeft
 from config import BLUE_TRANSITION, BLUE_SATURATION_INTENSITY_MW_CM2, Geometry
+from lab_setup.physical_specification import (
+    LABORATORY_PHYSICAL_SPECIFICATION, ZEEMAN_MODEL_CONVENTIONS,
+)
 
-
-ZEEMAN_LASER_WAIST_POSITION_M = (0.0, 0.0, 0.0)
-ZEEMAN_LASER_DIRECTION_TYPE = "vector"
-ZEEMAN_LASER_TAG = "Zeeman_Laser"
+_LASER_GEOMETRY = LABORATORY_PHYSICAL_SPECIFICATION["zeeman_laser_geometry"]
+ZEEMAN_LASER_WAIST_POSITION_M = tuple(_LASER_GEOMETRY["waist_position_m"])
+ZEEMAN_LASER_DIRECTION_TYPE = ZEEMAN_MODEL_CONVENTIONS["laser_direction_type"]
+ZEEMAN_LASER_TAG = ZEEMAN_MODEL_CONVENTIONS["laser_tag"]
 
 
 def resolved_zeeman_laser_parameters(

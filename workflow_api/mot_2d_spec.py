@@ -27,6 +27,8 @@ RELEVANT_FILES = (
     "workflow_api/repository_paths.py",
     "lab_setup/physical_specification.py",
     "lab_setup/specifications/laboratory_physical_v1.json",
+    "lab_setup/specifications/laboratory_physical_v2.json",
+    "lab_setup/specifications/zeeman_model_conventions_v1.json",
     "lab_setup/numerical_policy.py",
     "lab_setup/specifications/numerical_policy_v1.json",
 )

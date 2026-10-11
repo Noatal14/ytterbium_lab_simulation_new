@@ -14,7 +14,9 @@ coefficient.  This is distinct from the electronic g_J value.
 import numpy as np
 from scipy import constants as csts
 from atomsmltr.atoms import Atom, J0J1Transition, Ytterbium, Strontium
-from config import YB171, BLUE_TRANSITION, GREEN_TRANSITION
+from config import (YB171, BLUE_TRANSITION, GREEN_TRANSITION,
+                    BLUE_TRANSITION_MODEL_EFFECTIVE_LANDE_G,
+                    GREEN_TRANSITION_MODEL_EFFECTIVE_LANDE_G)
 
 
 def _j0j1_effective_lande_factor(transition):
@@ -39,7 +41,7 @@ def create_yb171():
     # Real transition is F=1/2 -> F=3/2 with max shift 1.5 * g_F.
     # Model has max shift 1.0 * g_model.
     # So we set g_model = 1.5 * g_F to match the force strength.
-    g_effective = _j0j1_effective_lande_factor(BLUE_TRANSITION)
+    g_effective = BLUE_TRANSITION_MODEL_EFFECTIVE_LANDE_G
 
     main_transition = J0J1Transition(
         wavelength=BLUE_TRANSITION.wavelength_m,
@@ -53,7 +55,7 @@ def create_yb171():
     green_transition = J0J1Transition(
         wavelength=GREEN_TRANSITION.wavelength_m,
         Gamma=GREEN_TRANSITION.gamma_rad_s,
-        lande_factor=_j0j1_effective_lande_factor(GREEN_TRANSITION),
+        lande_factor=GREEN_TRANSITION_MODEL_EFFECTIVE_LANDE_G,
         tag="556",
     )
     atom.add_transition(green_transition)

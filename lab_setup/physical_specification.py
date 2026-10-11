@@ -1,4 +1,4 @@
-"""Strict immutable loader for the versioned laboratory physical contract."""
+"""Strict immutable loader for versioned laboratory physical contracts."""
 
 from __future__ import annotations
 
@@ -11,182 +11,400 @@ from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
 
-SPECIFICATION_PATH = Path(__file__).with_name("specifications") / "laboratory_physical_v1.json"
+_DIR = Path(__file__).with_name("specifications")
+SPECIFICATION_PATH = _DIR / "laboratory_physical_v2.json"
+LEGACY_SPECIFICATION_PATH = _DIR / "laboratory_physical_v1.json"
+MODEL_CONVENTIONS_PATH = _DIR / "zeeman_model_conventions_v1.json"
 MAX_SPECIFICATION_BYTES = 128 * 1024
+PINNED_LEGACY_SPEC_VERSION = "laboratory-physical-v1"
+PINNED_LEGACY_SPEC_SHA256 = (
+    "8a5fb876dce0825c7cc9154d1a0f0fb4ba01fe9d179e052e747a201246dcd0ab"
+)
 
 
-def _freeze(value):
-    if isinstance(value, dict):
-        return MappingProxyType({key: _freeze(child) for key, child in value.items()})
-    if isinstance(value, list):
-        return tuple(_freeze(child) for child in value)
-    return value
+def _freeze(v):
+    if isinstance(v, dict):
+        return MappingProxyType({k: _freeze(x) for k, x in v.items()})
+    if isinstance(v, list):
+        return tuple(_freeze(x) for x in v)
+    return v
 
 
-def _canonical_digest(value):
-    encoded = json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
+def _canonical_digest(v):
+    payload = json.dumps(
+        v,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
 
 
-def _exact_mapping(value, keys, label):
-    if not isinstance(value, dict) or set(value) != set(keys):
+def _pairs(pairs):
+    out = {}
+    for k, v in pairs:
+        if k in out:
+            raise ValueError(f"Duplicate JSON key: {k}")
+        out[k] = v
+    return out
+
+
+def _exact(v, keys, label):
+    if not isinstance(v, dict) or set(v) != set(keys):
         raise ValueError(f"Invalid {label} schema.")
 
 
-def _number(value, label, *, lower=None, upper=None):
-    if (isinstance(value, bool) or not isinstance(value, (int, float))
-            or not math.isfinite(value)
-            or (lower is not None and value <= lower)
-            or (upper is not None and value >= upper)):
+def _num(v, label, *, lo=None, hi=None, closed=False):
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+        raise ValueError(f"Invalid {label}.")
+    if lo is not None and (v < lo if closed else v <= lo):
+        raise ValueError(f"Invalid {label}.")
+    if hi is not None and (v > hi if closed else v >= hi):
         raise ValueError(f"Invalid {label}.")
 
 
-def _positive_integer(value, label):
-    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+def _posint(v, label):
+    if isinstance(v, bool) or not isinstance(v, int) or v <= 0:
         raise ValueError(f"Invalid {label}.")
 
 
-def _validate(value):
-    _exact_mapping(value, {
-        "spec_version", "species", "transitions", "source", "apparatus",
-        "canonical_zeeman_profile", "historical_read_compatibility",
-    }, "laboratory physical specification")
-    if value["spec_version"] != "laboratory-physical-v1":
-        raise ValueError("Invalid laboratory physical specification version.")
+def _vector(v, n, label, positive=False):
+    if not isinstance(v, list) or len(v) != n:
+        raise ValueError(f"Invalid {label}.")
+    for x in v:
+        _num(x, label, lo=0 if positive else None)
 
-    species = value["species"]
-    _exact_mapping(species, {"name", "mass_amu"}, "species")
-    if species["name"] != "Yb171":
-        raise ValueError("Unexpected atomic species.")
-    _number(species["mass_amu"], "species mass", lower=0)
 
-    transitions = value["transitions"]
-    _exact_mapping(transitions, {"blue", "green"}, "transitions")
-    _exact_mapping(transitions["blue"], {
-        "wavelength_m", "gamma_rad_s", "zeeman_coefficient_khz_per_G",
-        "reference_saturation_intensity_mw_cm2",
-    }, "blue transition")
-    _exact_mapping(transitions["green"], {
-        "wavelength_m", "gamma_rad_s", "zeeman_coefficient_khz_per_G",
-    }, "green transition")
-    for color, transition in transitions.items():
-        for key in ("wavelength_m", "gamma_rad_s", "zeeman_coefficient_khz_per_G"):
-            _number(transition[key], f"{color} {key}", lower=0)
-    _number(transitions["blue"]["reference_saturation_intensity_mw_cm2"],
-            "blue reference saturation intensity", lower=0)
-    if transitions["blue"]["wavelength_m"] >= transitions["green"]["wavelength_m"]:
-        raise ValueError("Transition wavelength ordering is invalid.")
-
-    source = value["source"]
-    _exact_mapping(source, {
-        "oven_temperature_C", "collimation_angle_deg", "microtube_radius_m",
-        "microtube_length_m", "microtube_count", "yb171_natural_abundance",
-    }, "source")
-    _number(source["oven_temperature_C"], "oven temperature", lower=-273.15)
-    _number(source["collimation_angle_deg"], "collimation angle", lower=0, upper=90)
-    _number(source["microtube_radius_m"], "microtube radius", lower=0)
-    _number(source["microtube_length_m"], "microtube length", lower=0)
-    _positive_integer(source["microtube_count"], "microtube count")
-    _number(source["yb171_natural_abundance"], "natural abundance", lower=0, upper=1)
-    if source["microtube_length_m"] <= source["microtube_radius_m"]:
-        raise ValueError("Microtube length must exceed its radius.")
-
-    apparatus = value["apparatus"]
-    _exact_mapping(apparatus, {
-        "mot_2d_chamber_length_m", "mot_2d_chamber_radius_m",
-        "science_region_center_z_m", "zeeman_arm_angle_deg",
-        "zeeman_start_distance_m",
-    }, "apparatus")
-    for key in ("mot_2d_chamber_length_m", "mot_2d_chamber_radius_m",
-                "science_region_center_z_m", "zeeman_start_distance_m"):
-        _number(apparatus[key], key, lower=0)
-    _number(apparatus["zeeman_arm_angle_deg"], "Zeeman arm angle", lower=0, upper=90)
-    if apparatus["science_region_center_z_m"] <= apparatus["zeeman_start_distance_m"]:
-        raise ValueError("Science-region center must follow the Zeeman start distance.")
-
-    profile = value["canonical_zeeman_profile"]
-    _exact_mapping(profile, {
-        "name", "ring_count", "canonical_json_sha256", "radii_m",
-        "positions_m", "tilt_angles_deg",
-    }, "canonical Zeeman profile")
-    if profile["name"] != "corrected_projectant_19ring_20261005":
+def _profile(v):
+    _exact(
+        v,
+        {
+            "name",
+            "ring_count",
+            "canonical_json_sha256",
+            "radii_m",
+            "positions_m",
+            "tilt_angles_deg",
+        },
+        "canonical Zeeman profile",
+    )
+    _posint(v["ring_count"], "Zeeman ring count")
+    if v["name"] != "corrected_projectant_19ring_20261005" or v["ring_count"] != 19:
         raise ValueError("Unexpected canonical Zeeman profile identity.")
-    _positive_integer(profile["ring_count"], "Zeeman ring count")
-    arrays = [profile[key] for key in ("radii_m", "positions_m", "tilt_angles_deg")]
-    if (profile["ring_count"] != 19 or any(not isinstance(row, list) for row in arrays)
-            or [len(row) for row in arrays] != [19, 19, 19]):
+    rows = [v[k] for k in ("radii_m", "positions_m", "tilt_angles_deg")]
+    if any(not isinstance(r, list) or len(r) != 19 for r in rows):
         raise ValueError("Canonical Zeeman profile must contain 19 complete rings.")
-    for radius in profile["radii_m"]:
-        _number(radius, "Zeeman radius", lower=0)
-    for position in profile["positions_m"]:
-        _number(position, "Zeeman position")
-    for angle in profile["tilt_angles_deg"]:
-        if (isinstance(angle, bool) or not isinstance(angle, (int, float))
-                or not math.isfinite(angle) or not 0 <= angle < 360):
-            raise ValueError("Invalid Zeeman tilt.")
-    if any(left >= right for left, right in zip(profile["positions_m"], profile["positions_m"][1:])):
-        raise ValueError("Canonical Zeeman positions must be strictly increasing.")
-    profile_arrays = [profile[key] for key in ("radii_m", "positions_m", "tilt_angles_deg")]
-    if _canonical_digest(profile_arrays) != profile["canonical_json_sha256"]:
+    for x in rows[0]:
+        _num(x, "Zeeman radius", lo=0)
+    for x in rows[1]:
+        _num(x, "Zeeman position")
+    for x in rows[2]:
+        _num(x, "Zeeman tilt", lo=0, hi=360, closed=True)
+    if any(x >= 360 for x in rows[2]) or any(
+        a >= b for a, b in zip(rows[1], rows[1][1:])
+    ):
+        raise ValueError("Invalid canonical Zeeman geometry.")
+    if _canonical_digest(rows) != v["canonical_json_sha256"]:
         raise ValueError("Canonical Zeeman profile checksum mismatch.")
 
-    history = value["historical_read_compatibility"]
-    _exact_mapping(history, {
-        "removed_profile_names", "active_20ring_ring_count",
+
+def _history(v, v2):
+    keys = {
+        "removed_profile_names",
+        "active_20ring_ring_count",
         "active_20ring_canonical_json_sha256",
-    }, "historical compatibility registry")
-    if history["removed_profile_names"] != ["active"]:
-        raise ValueError("Invalid retired Zeeman profile registry.")
-    if history["active_20ring_ring_count"] != 20:
-        raise ValueError("Invalid historical Zeeman ring count.")
-    checksum = history["active_20ring_canonical_json_sha256"]
-    if (not isinstance(checksum, str) or len(checksum) != 64
-            or any(character not in "0123456789abcdef" for character in checksum)):
+    }
+    if v2:
+        keys.add("readable_laboratory_spec_versions")
+    _exact(v, keys, "historical compatibility registry")
+    _posint(v["active_20ring_ring_count"], "historical ring count")
+    if v["removed_profile_names"] != ["active"] or v["active_20ring_ring_count"] != 20:
+        raise ValueError("Invalid historical Zeeman registry.")
+    h = v["active_20ring_canonical_json_sha256"]
+    if (
+        not isinstance(h, str)
+        or len(h) != 64
+        or any(c not in "0123456789abcdef" for c in h)
+    ):
         raise ValueError("Invalid historical Zeeman checksum.")
+    if v2 and v["readable_laboratory_spec_versions"] != ["laboratory-physical-v1"]:
+        raise ValueError("Invalid readable version registry.")
+
+
+def _common(v, v2):
+    _exact(v["species"], {"name", "mass_amu"}, "species")
+    if v["species"]["name"] != "Yb171":
+        raise ValueError("Unexpected atomic species.")
+    _num(v["species"]["mass_amu"], "mass", lo=0)
+    _exact(v["transitions"], {"blue", "green"}, "transitions")
+    ck = (
+        "measured_zeeman_coefficient_khz_per_G"
+        if v2
+        else "zeeman_coefficient_khz_per_G"
+    )
+    for color in ("blue", "green"):
+        keys = {"wavelength_m", "gamma_rad_s", ck} | (
+            {"reference_saturation_intensity_mw_cm2"} if color == "blue" else set()
+        )
+        _exact(v["transitions"][color], keys, color)
+        for k in ("wavelength_m", "gamma_rad_s", ck):
+            _num(v["transitions"][color][k], k, lo=0)
+    _num(
+        v["transitions"]["blue"]["reference_saturation_intensity_mw_cm2"], "Isat", lo=0
+    )
+    if (
+        v["transitions"]["blue"]["wavelength_m"]
+        >= v["transitions"]["green"]["wavelength_m"]
+    ):
+        raise ValueError("Invalid wavelength order.")
+    s = v["source"]
+    _exact(
+        s,
+        {
+            "oven_temperature_C",
+            "collimation_angle_deg",
+            "microtube_radius_m",
+            "microtube_length_m",
+            "microtube_count",
+            "yb171_natural_abundance",
+        },
+        "source",
+    )
+    _num(s["oven_temperature_C"], "temperature", lo=-273.15)
+    _num(s["collimation_angle_deg"], "collimation", lo=0, hi=90)
+    _num(s["microtube_radius_m"], "radius", lo=0)
+    _num(s["microtube_length_m"], "length", lo=0)
+    _posint(s["microtube_count"], "count")
+    _num(s["yb171_natural_abundance"], "abundance", lo=0, hi=1)
+    if s["microtube_length_m"] <= s["microtube_radius_m"]:
+        raise ValueError("Invalid microtube geometry.")
+    _profile(v["canonical_zeeman_profile"])
+    if not v2:
+        _history(v["historical_read_compatibility"], False)
+
+
+def _validate_v1(v):
+    _exact(
+        v,
+        {
+            "spec_version",
+            "species",
+            "transitions",
+            "source",
+            "apparatus",
+            "canonical_zeeman_profile",
+            "historical_read_compatibility",
+        },
+        "v1 specification",
+    )
+    if v["spec_version"] != "laboratory-physical-v1":
+        raise ValueError("Invalid v1 version.")
+    _common(v, False)
+    a = v["apparatus"]
+    _exact(
+        a,
+        {
+            "mot_2d_chamber_length_m",
+            "mot_2d_chamber_radius_m",
+            "science_region_center_z_m",
+            "zeeman_arm_angle_deg",
+            "zeeman_start_distance_m",
+        },
+        "apparatus",
+    )
+    for k, x in a.items():
+        _num(x, k, lo=0, hi=90 if k.endswith("angle_deg") else None)
+    if a["science_region_center_z_m"] <= a["zeeman_start_distance_m"]:
+        raise ValueError("Invalid v1 apparatus geometry ordering.")
+    return v
+
+
+def _validate(v):
+    _exact(
+        v,
+        {
+            "spec_version",
+            "species",
+            "transitions",
+            "source",
+            "apparatus",
+            "canonical_zeeman_profile",
+            "zeeman_field_hardware",
+            "zeeman_laser_geometry",
+        },
+        "v2 specification",
+    )
+    if v["spec_version"] != "laboratory-physical-v2":
+        raise ValueError("Invalid v2 version.")
+    _common(v, True)
+    a = v["apparatus"]
+    keys = {
+        "mot_2d_chamber_length_m",
+        "mot_2d_chamber_radius_m",
+        "science_region_center_z_m",
+        "zeeman_arm_angle_deg",
+        "zeeman_start_distance_m",
+        "zeeman_arm_1_length_m",
+        "zeeman_arm_1_radius_m",
+        "zeeman_arm_1_short_length_m",
+        "zeeman_arm_1_extended_length_m",
+        "zeeman_arm_2_length_m",
+        "zeeman_arm_2_radius_m",
+        "zeeman_arm_3_length_m",
+        "zeeman_arm_3_radius_m",
+        "science_arm_1_length_m",
+        "science_arm_1_radius_m",
+        "science_arm_total_length_m",
+        "dps_length_m",
+        "dps_radius_m",
+        "science_arm_3_radius_m",
+    }
+    _exact(a, keys, "apparatus")
+    for k, x in a.items():
+        _num(x, k, lo=0, hi=90 if k.endswith("angle_deg") else None)
+    if (
+        a["science_region_center_z_m"] <= a["zeeman_start_distance_m"]
+        or a["science_arm_total_length_m"]
+        <= a["science_arm_1_length_m"] + a["dps_length_m"]
+    ):
+        raise ValueError("Invalid apparatus geometry ordering.")
+    f = v["zeeman_field_hardware"]
+    _exact(
+        f,
+        {
+            "axis_offset_m",
+            "magnet_dimensions_m",
+            "magnet_polarization_T",
+            "magnets_per_ring",
+        },
+        "field construction",
+    )
+    _num(f["axis_offset_m"], "axis offset")
+    _vector(f["magnet_dimensions_m"], 3, "dimensions", True)
+    _num(f["magnet_polarization_T"], "polarization")
+    _posint(f["magnets_per_ring"], "magnets")
+    if f != {
+        "axis_offset_m": 0.0,
+        "magnet_dimensions_m": [0.005, 0.005, 0.005],
+        "magnet_polarization_T": -1.24,
+        "magnets_per_ring": 8,
+    }:
+        raise ValueError("Invalid field construction.")
+    l = v["zeeman_laser_geometry"]
+    _exact(l, {"waist_m", "waist_position_m"}, "laser geometry")
+    _num(l["waist_m"], "waist", lo=0)
+    _vector(l["waist_position_m"], 3, "waist position")
+    if l != {"waist_m": 0.007, "waist_position_m": [0.0, 0.0, 0.0]}:
+        raise ValueError("Invalid Zeeman laser hardware geometry.")
+    return v
+
+
+def _validate_model_conventions(value):
+    expected = {
+        "spec_version": "zeeman-model-conventions-v1",
+        "lab_z_axis": [0.0, 0.0, 1.0],
+        "zeeman_internal_axis": "+z",
+        "zeeman_lab_axis_direction": "toward_lab_origin_in_negative_y_negative_z_arm",
+        "zeeman_tilt_input_sign": -1,
+        "azimuth_start_deg": 0.0,
+        "azimuth_stop_deg": 360.0,
+        "azimuth_endpoint_included": False,
+        "laser_direction_type": "vector",
+        "laser_tag": "Zeeman_Laser",
+    }
+    _exact(value, expected, "Zeeman model conventions")
+    _vector(value["lab_z_axis"], 3, "lab z axis")
+    if (
+        value != expected
+        or type(value["zeeman_tilt_input_sign"]) is not int
+        or type(value["azimuth_endpoint_included"]) is not bool
+    ):
+        raise ValueError("Unexpected Zeeman model conventions.")
     return value
 
 
-def _read_validated():
+def _read_path(path, validator):
     try:
-        before = SPECIFICATION_PATH.lstat()
+        before = path.lstat()
         if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_SPECIFICATION_BYTES:
             raise ValueError
-        descriptor = os.open(SPECIFICATION_PATH, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         try:
-            opened = os.fstat(descriptor)
-            if (not stat.S_ISREG(opened.st_mode) or opened.st_size > MAX_SPECIFICATION_BYTES
-                    or (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)
-                    != (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)):
+            opened = os.fstat(fd)
+            identity = (
+                opened.st_dev,
+                opened.st_ino,
+                opened.st_size,
+                opened.st_mtime_ns,
+            )
+            if not stat.S_ISREG(opened.st_mode) or identity != (
+                before.st_dev,
+                before.st_ino,
+                before.st_size,
+                before.st_mtime_ns,
+            ):
                 raise ValueError
-            chunks, remaining = [], MAX_SPECIFICATION_BYTES + 1
+            chunks = []
+            remaining = opened.st_size
             while remaining:
-                chunk = os.read(descriptor, min(64 * 1024, remaining))
+                chunk = os.read(fd, min(64 * 1024, remaining))
                 if not chunk:
-                    break
+                    raise ValueError
                 chunks.append(chunk)
                 remaining -= len(chunk)
             raw = b"".join(chunks)
-            after = os.fstat(descriptor)
-            if (len(raw) > MAX_SPECIFICATION_BYTES
-                    or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
-                    != (opened.st_dev, opened.st_ino, opened.st_size, opened.st_mtime_ns)):
+            after = os.fstat(fd)
+            if (
+                len(raw) != opened.st_size
+                or (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+                != identity
+            ):
                 raise ValueError
         finally:
-            os.close(descriptor)
-        return _validate(json.loads(raw.decode("utf-8")))
-    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
-        raise RuntimeError("The bundled laboratory physical specification is invalid.") from error
+            os.close(fd)
+        return validator(json.loads(raw.decode(), object_pairs_hook=_pairs))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as e:
+        raise RuntimeError(
+            "The bundled laboratory physical specification is invalid."
+        ) from e
+
+
+def _read_validated():
+    return _read_path(SPECIFICATION_PATH, _validate)
 
 
 def _load_validated_bundle(reader=_read_validated):
-    """Return an immutable contract and digest derived from one exact read."""
-    value = reader()
-    return _freeze(value), _canonical_digest(value)
+    v = reader()
+    return _freeze(v), _canonical_digest(v)
 
 
-LABORATORY_PHYSICAL_SPECIFICATION, LABORATORY_SPEC_SHA256 = (
-    _load_validated_bundle()
-)
+def _load_legacy_bundle(path=LEGACY_SPECIFICATION_PATH):
+    """Load only the one historically published v1 bundle identity."""
+    value = _read_path(path, _validate_v1)
+    digest = _canonical_digest(value)
+    if (
+        value["spec_version"] != PINNED_LEGACY_SPEC_VERSION
+        or digest != PINNED_LEGACY_SPEC_SHA256
+    ):
+        raise RuntimeError("The bundled legacy laboratory identity is not recognized.")
+    return value, digest
+
+
+LABORATORY_PHYSICAL_SPECIFICATION, LABORATORY_SPEC_SHA256 = _load_validated_bundle()
+_legacy, LEGACY_LABORATORY_SPEC_SHA256 = _load_legacy_bundle()
+_model_conventions = _read_path(MODEL_CONVENTIONS_PATH, _validate_model_conventions)
+LEGACY_LABORATORY_PHYSICAL_SPECIFICATION = _freeze(_legacy)
+LEGACY_LABORATORY_SPEC_VERSION = _legacy["spec_version"]
+ZEEMAN_MODEL_CONVENTIONS = _freeze(_model_conventions)
+ZEEMAN_MODEL_CONVENTIONS_SHA256 = _canonical_digest(_model_conventions)
+LABORATORY_SPEC_VERSION = LABORATORY_PHYSICAL_SPECIFICATION["spec_version"]
+CANONICAL_ZEEMAN_PROFILE_NAME = LABORATORY_PHYSICAL_SPECIFICATION[
+    "canonical_zeeman_profile"
+]["name"]
+CANONICAL_ZEEMAN_PROFILE_SHA256 = LABORATORY_PHYSICAL_SPECIFICATION[
+    "canonical_zeeman_profile"
+]["canonical_json_sha256"]
 
 
 @lru_cache(maxsize=1)
@@ -194,50 +412,66 @@ def load_laboratory_physical_specification():
     return LABORATORY_PHYSICAL_SPECIFICATION
 
 
-CANONICAL_ZEEMAN_PROFILE_NAME = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]["name"]
-CANONICAL_ZEEMAN_PROFILE_SHA256 = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]["canonical_json_sha256"]
-LABORATORY_SPEC_VERSION = LABORATORY_PHYSICAL_SPECIFICATION["spec_version"]
+def validate_laboratory_provenance_identity(
+    version, specification_sha256, profile_sha256, *, allow_legacy=False
+):
+    """Return the exact known identity without upgrading or relabeling it."""
+    identity = (version, specification_sha256, profile_sha256)
+    current = (
+        LABORATORY_SPEC_VERSION,
+        LABORATORY_SPEC_SHA256,
+        CANONICAL_ZEEMAN_PROFILE_SHA256,
+    )
+    legacy = (
+        LEGACY_LABORATORY_SPEC_VERSION,
+        LEGACY_LABORATORY_SPEC_SHA256,
+        CANONICAL_ZEEMAN_PROFILE_SHA256,
+    )
+    if identity == current or (allow_legacy and identity == legacy):
+        return {
+            "laboratory_spec_version": version,
+            "laboratory_spec_sha256": specification_sha256,
+            "zeeman_profile_sha256": profile_sha256,
+            "legacy_attested_profile": identity == legacy,
+        }
+    raise ValueError("Laboratory provenance identity is incomplete or mismatched.")
 
 
 def attest_canonical_zeeman_metadata(metadata, *, allow_legacy=False):
-    """Return canonical provenance, deriving it only for attested old metadata.
-
-    Pre-C2 metadata is accepted only when it names the corrected profile and
-    embeds the exact canonical 19-ring arrays.  The returned provenance exists
-    in memory only; callers must not rewrite the historical JSON.
-    """
+    """Validate embedded canonical arrays and their exact versioned identity."""
     if not isinstance(metadata, dict):
         raise ValueError("Invalid Zeeman metadata.")
-    parameters = metadata.get("parameters")
-    if not isinstance(parameters, dict) or parameters.get(
-        "resolved_zeeman_magnet_profile"
-    ) != CANONICAL_ZEEMAN_PROFILE_NAME:
-        raise ValueError("Zeeman metadata does not name the canonical profile.")
-    field = parameters.get("zeeman_field_config")
-    if not isinstance(field, dict) or set(field) != {
-        "radii_m", "positions_m", "tilt_angles_deg",
-    }:
-        raise ValueError("Zeeman metadata lacks embedded canonical arrays.")
-    arrays = [field[key] for key in ("radii_m", "positions_m", "tilt_angles_deg")]
-    if any(not isinstance(row, list) or len(row) != 19 for row in arrays):
-        raise ValueError("Zeeman metadata has invalid ring arrays.")
-    if _canonical_digest(arrays) != CANONICAL_ZEEMAN_PROFILE_SHA256:
+    p = metadata.get("parameters")
+    field = p.get("zeeman_field_config") if isinstance(p, dict) else None
+    if (
+        not isinstance(p, dict)
+        or p.get("resolved_zeeman_magnet_profile") != CANONICAL_ZEEMAN_PROFILE_NAME
+        or not isinstance(field, dict)
+        or set(field) != {"radii_m", "positions_m", "tilt_angles_deg"}
+    ):
+        raise ValueError("Zeeman metadata lacks canonical identity.")
+    rows = [field[k] for k in ("radii_m", "positions_m", "tilt_angles_deg")]
+    if (
+        any(not isinstance(r, list) or len(r) != 19 for r in rows)
+        or _canonical_digest(rows) != CANONICAL_ZEEMAN_PROFILE_SHA256
+    ):
         raise ValueError("Zeeman arrays do not match the canonical profile.")
-    expected = {
-        "laboratory_spec_version": LABORATORY_SPEC_VERSION,
-        "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
-        "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-    }
-    present = {key for key in expected if key in metadata}
-    if present:
-        if present != set(expected) or any(metadata[key] != value for key, value in expected.items()):
-            raise ValueError("Zeeman laboratory provenance is incomplete or mismatched.")
-        return {**expected, "legacy_attested_profile": False}
+    version = metadata.get("laboratory_spec_version")
+    digest = metadata.get("laboratory_spec_sha256")
+    profile_digest = metadata.get("zeeman_profile_sha256")
+    common = {"zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256}
+    provenance_present = any(value is not None for value in (version, digest, profile_digest))
+    if provenance_present and profile_digest != CANONICAL_ZEEMAN_PROFILE_SHA256:
+        raise ValueError("Zeeman profile provenance is incomplete or mismatched.")
+    if provenance_present:
+        return validate_laboratory_provenance_identity(
+            version, digest, profile_digest, allow_legacy=allow_legacy
+        )
     if not allow_legacy:
         raise ValueError("Zeeman laboratory provenance is missing.")
     return {
-        "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+        **common,
         "legacy_attested_profile": True,
-        "original_laboratory_spec_version": metadata.get("laboratory_spec_version"),
-        "original_laboratory_spec_sha256": metadata.get("laboratory_spec_sha256"),
+        "original_laboratory_spec_version": None,
+        "original_laboratory_spec_sha256": None,
     }

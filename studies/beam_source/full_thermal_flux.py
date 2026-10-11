@@ -13,7 +13,7 @@ from config import (
     ZEEMAN_MAGNET_PROFILES,
     ZEEMAN_SIM_CONFIG,
 )
-from lab_setup.physical_specification import LABORATORY_PHYSICAL_SPECIFICATION
+from lab_setup.physical_specification import LEGACY_LABORATORY_PHYSICAL_SPECIFICATION
 from simulations.zeeman import run_and_save_zeeman
 from studies.beam_source.estimate_oven_flux import estimate_oven_flux
 from utils.data_paths import VALIDATION_DIR
@@ -28,10 +28,10 @@ HISTORICAL_PROFILE_IDENTITIES = {
     # Read-only compatibility for manifests produced before the laboratory
     # profile correction.  The removed field is not available for new runs.
     "active": {
-        "ring_count": LABORATORY_PHYSICAL_SPECIFICATION[
+        "ring_count": LEGACY_LABORATORY_PHYSICAL_SPECIFICATION[
             "historical_read_compatibility"
         ]["active_20ring_ring_count"],
-        "sha256": LABORATORY_PHYSICAL_SPECIFICATION[
+        "sha256": LEGACY_LABORATORY_PHYSICAL_SPECIFICATION[
             "historical_read_compatibility"
         ]["active_20ring_canonical_json_sha256"],
     },

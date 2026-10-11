@@ -31,6 +31,7 @@ from scipy import constants as csts
 from lab_setup.physical_specification import (
     CANONICAL_ZEEMAN_PROFILE_NAME,
     LABORATORY_PHYSICAL_SPECIFICATION,
+    ZEEMAN_MODEL_CONVENTIONS,
 )
 from lab_setup.numerical_policy import NUMERICAL_POLICY
 
@@ -90,6 +91,7 @@ _LAB_SPECIES = LABORATORY_PHYSICAL_SPECIFICATION["species"]
 _LAB_TRANSITIONS = LABORATORY_PHYSICAL_SPECIFICATION["transitions"]
 _LAB_SOURCE = LABORATORY_PHYSICAL_SPECIFICATION["source"]
 _LAB_APPARATUS = LABORATORY_PHYSICAL_SPECIFICATION["apparatus"]
+_LAB_ZEEMAN_LASER = LABORATORY_PHYSICAL_SPECIFICATION["zeeman_laser_geometry"]
 _NUMERICS = NUMERICAL_POLICY
 
 
@@ -119,12 +121,14 @@ BLUE_TRANSITION_WAVELENGTH_M = _LAB_TRANSITIONS["blue"]["wavelength_m"]
 BLUE_TRANSITION_GAMMA_RAD_S = _LAB_TRANSITIONS["blue"]["gamma_rad_s"]
 BLUE_TRANSITION_LANDE_G_J = 1.035
 BLUE_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G = _LAB_TRANSITIONS["blue"][
-    "zeeman_coefficient_khz_per_G"
+    "measured_zeeman_coefficient_khz_per_G"
 ]
-BLUE_TRANSITION_LANDE_G = (
+BLUE_TRANSITION_LANDE_G_F = (
     BLUE_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G
     / MU_B_OVER_H_KHZ_PER_G
 )
+BLUE_TRANSITION_LANDE_G = BLUE_TRANSITION_LANDE_G_F
+BLUE_TRANSITION_MODEL_EFFECTIVE_LANDE_G = 1.5 * BLUE_TRANSITION_LANDE_G_F
 
 BLUE_TRANSITION = Transition(
     wavelength_m=BLUE_TRANSITION_WAVELENGTH_M,
@@ -153,12 +157,14 @@ GREEN_TRANSITION_WAVELENGTH_M = _LAB_TRANSITIONS["green"]["wavelength_m"]
 GREEN_TRANSITION_GAMMA_RAD_S = _LAB_TRANSITIONS["green"]["gamma_rad_s"]
 GREEN_TRANSITION_LANDE_G_J = 1.492820
 GREEN_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G = _LAB_TRANSITIONS["green"][
-    "zeeman_coefficient_khz_per_G"
+    "measured_zeeman_coefficient_khz_per_G"
 ]
-GREEN_TRANSITION_LANDE_G = (
+GREEN_TRANSITION_LANDE_G_F = (
     GREEN_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G
     / MU_B_OVER_H_KHZ_PER_G
 )
+GREEN_TRANSITION_LANDE_G = GREEN_TRANSITION_LANDE_G_F
+GREEN_TRANSITION_MODEL_EFFECTIVE_LANDE_G = 1.5 * GREEN_TRANSITION_LANDE_G_F
 
 GREEN_TRANSITION = Transition(
     wavelength_m=GREEN_TRANSITION_WAVELENGTH_M,
@@ -177,7 +183,7 @@ GREEN_SATURATION_INTENSITY_MW_CM2 = GREEN_SATURATION_INTENSITY_W_M2 / 10.0
 class Geometry:
     """Fixed geometric parameters of the experimental apparatus."""
 
-    Z_AXIS = (0.0, 0.0, 1.0)
+    Z_AXIS = tuple(ZEEMAN_MODEL_CONVENTIONS["lab_z_axis"])
 
     # 2D-MOT chamber and beams
     MOT_2D_CHAMBER_LENGTH_M = _LAB_APPARATUS["mot_2d_chamber_length_m"]
@@ -195,27 +201,27 @@ class Geometry:
     ZEEMAN_ARM_ANGLE_DEG = _LAB_APPARATUS["zeeman_arm_angle_deg"]
     ZEEMAN_ARM_ANGLE_RAD = np.radians(ZEEMAN_ARM_ANGLE_DEG)
 
-    ZEEMAN_ARM_1_LENGTH_M = 0.378
-    ZEEMAN_ARM_1_RADIUS_M = 0.008
-    ZEEMAN_ARM_1_SHORT_LENGTH_M = 0.10
-    ZEEMAN_ARM_1_EXTENDED_LENGTH_M = 0.12
+    ZEEMAN_ARM_1_LENGTH_M = _LAB_APPARATUS["zeeman_arm_1_length_m"]
+    ZEEMAN_ARM_1_RADIUS_M = _LAB_APPARATUS["zeeman_arm_1_radius_m"]
+    ZEEMAN_ARM_1_SHORT_LENGTH_M = _LAB_APPARATUS["zeeman_arm_1_short_length_m"]
+    ZEEMAN_ARM_1_EXTENDED_LENGTH_M = _LAB_APPARATUS["zeeman_arm_1_extended_length_m"]
 
-    ZEEMAN_ARM_2_LENGTH_M = 0.0237
-    ZEEMAN_ARM_2_RADIUS_M = 0.0035
+    ZEEMAN_ARM_2_LENGTH_M = _LAB_APPARATUS["zeeman_arm_2_length_m"]
+    ZEEMAN_ARM_2_RADIUS_M = _LAB_APPARATUS["zeeman_arm_2_radius_m"]
 
-    ZEEMAN_ARM_3_LENGTH_M = 0.060
-    ZEEMAN_ARM_3_RADIUS_M = 0.0174
+    ZEEMAN_ARM_3_LENGTH_M = _LAB_APPARATUS["zeeman_arm_3_length_m"]
+    ZEEMAN_ARM_3_RADIUS_M = _LAB_APPARATUS["zeeman_arm_3_radius_m"]
 
-    ZEEMAN_LASER_WAIST_M = 7e-3
+    ZEEMAN_LASER_WAIST_M = _LAB_ZEEMAN_LASER["waist_m"]
     ZEEMAN_START_DISTANCE_M = _LAB_APPARATUS["zeeman_start_distance_m"]
 
     # Science arm and differential-pumping stage
-    SCIENCE_ARM_1_LENGTH_M = 0.1445
-    SCIENCE_ARM_1_RADIUS_M = 0.008
-    SCIENCE_ARM_TOTAL_LENGTH_M = 0.510
+    SCIENCE_ARM_1_LENGTH_M = _LAB_APPARATUS["science_arm_1_length_m"]
+    SCIENCE_ARM_1_RADIUS_M = _LAB_APPARATUS["science_arm_1_radius_m"]
+    SCIENCE_ARM_TOTAL_LENGTH_M = _LAB_APPARATUS["science_arm_total_length_m"]
 
-    DPS_LENGTH_M = 0.070
-    DPS_RADIUS_M = 0.0015
+    DPS_LENGTH_M = _LAB_APPARATUS["dps_length_m"]
+    DPS_RADIUS_M = _LAB_APPARATUS["dps_radius_m"]
     DPS_START_Z_M = SCIENCE_ARM_1_LENGTH_M
 
     CAPTURE_MIN_Z_M = DPS_START_Z_M + DPS_LENGTH_M
@@ -228,7 +234,7 @@ class Geometry:
         - DPS_LENGTH_M
         - SCIENCE_ARM_1_LENGTH_M
     )
-    SCIENCE_ARM_3_RADIUS_M = 0.008
+    SCIENCE_ARM_3_RADIUS_M = _LAB_APPARATUS["science_arm_3_radius_m"]
 
     # Oven microtubes
     OVEN_MICROTUBE_RADIUS_M = _LAB_SOURCE["microtube_radius_m"]

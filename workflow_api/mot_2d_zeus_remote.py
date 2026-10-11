@@ -92,13 +92,18 @@ def validate_identity(value, username, project):
         from workflow_api.run_records import decode_record
         from workflow_api.mot_2d_run_specification import MOT_2D_RUN_SPECIFICATION
         from workflow_api.mot_2d_zeus_execution import _render_pbs
-        from lab_setup.physical_specification import LABORATORY_SPEC_VERSION, LABORATORY_SPEC_SHA256
+        from lab_setup.physical_specification import LABORATORY_SPEC_VERSION, LABORATORY_SPEC_SHA256, CANONICAL_ZEEMAN_PROFILE_SHA256, validate_laboratory_provenance_identity
         from lab_setup.numerical_policy import NUMERICAL_POLICY_VERSION, NUMERICAL_POLICY_SHA256
         import numpy as np
         decoded = {name: decode_record(name, content) for name, content in records.items()}
         run = decoded["run"]; configuration = decoded["configuration"]
         inputs = decoded["inputs"]; status = decoded["status"]
         resolved = configuration["resolved"]; sampling = resolved["sampling"]
+        validate_laboratory_provenance_identity(
+            configuration["laboratory_spec"]["version"],
+            configuration["laboratory_spec"]["sha256"],
+            CANONICAL_ZEEMAN_PROFILE_SHA256,
+        )
         fixed = MOT_2D_RUN_SPECIFICATION["fixed_classification"]
         states = np.load(BytesIO(selected), allow_pickle=False)
         expected_selection = hashlib.sha256(canonical(sampling["selected_identities"])).hexdigest()

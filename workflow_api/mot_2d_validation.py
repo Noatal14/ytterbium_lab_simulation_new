@@ -15,6 +15,7 @@ from lab_setup.physical_specification import (
     LABORATORY_SPEC_SHA256,
     LABORATORY_SPEC_VERSION,
     attest_canonical_zeeman_metadata,
+    validate_laboratory_provenance_identity,
 )
 from workflow_api.repository_paths import resolve_repo_relative
 
@@ -117,15 +118,20 @@ def modern_contract(
     source_laboratory_keys = laboratory_keys.intersection(source)
     if source_laboratory_keys and source_laboratory_keys != laboratory_keys:
         errors.append("ensemble source laboratory provenance is incomplete")
-    if (
-        not isinstance(source.get("directory"), str)
-        or source.get("zeeman_profile") != CANONICAL_ZEEMAN_PROFILE_NAME
-        or (source_laboratory_keys and (
-            source.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
-            or source.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
-            or source.get("zeeman_profile_sha256") != CANONICAL_ZEEMAN_PROFILE_SHA256
-        ))
-    ):
+    source_identity_valid = True
+    if source_laboratory_keys == laboratory_keys:
+        try:
+            validate_laboratory_provenance_identity(
+                source.get("laboratory_spec_version"),
+                source.get("laboratory_spec_sha256"),
+                source.get("zeeman_profile_sha256"),
+                allow_legacy=True,
+            )
+        except ValueError:
+            source_identity_valid = False
+    if (not isinstance(source.get("directory"), str)
+            or source.get("zeeman_profile") != CANONICAL_ZEEMAN_PROFILE_NAME
+            or not source_identity_valid):
         errors.append("ensemble source is incomplete")
     else:
         try:

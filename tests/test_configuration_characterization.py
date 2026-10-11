@@ -62,6 +62,7 @@ EXPECTED_VERSIONED_SPEC_CONSUMERS = {
 EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
     "config.py", "workflow_api/zeeman_run_plan.py",
     "workflow_api/mot_2d_run_plan.py", "workflow_api/mot_2d_run_specification.py",
+    "workflow_api/mot_2d_zeus_remote.py",
 }
 
 
@@ -200,7 +201,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "de6e5625555b6f021dd76193ecf7adba1d3fe53ff7b4ea830400067f5cc2bd9a"
+        "1c7b71b972af5f477a07df9f72f5f1e10845b2d98cb6c706f81158ae382bdfab"
     )
 
 

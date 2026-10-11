@@ -52,6 +52,26 @@ def test_yb171_j0j1_model_uses_stretched_state_zeeman_shift():
         config.GREEN_TRANSITION_LANDE_G_J,
         rtol=1e-3,
     )
+    assert config.BLUE_TRANSITION_LANDE_G_F == config.BLUE_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G / config.MU_B_OVER_H_KHZ_PER_G
+    assert config.GREEN_TRANSITION_LANDE_G_F == config.GREEN_TRANSITION_ZEEMAN_COEFFICIENT_KHZ_PER_G / config.MU_B_OVER_H_KHZ_PER_G
+    assert config.BLUE_TRANSITION_MODEL_EFFECTIVE_LANDE_G == 1.5 * config.BLUE_TRANSITION_LANDE_G_F
+    assert config.GREEN_TRANSITION_MODEL_EFFECTIVE_LANDE_G == 1.5 * config.GREEN_TRANSITION_LANDE_G_F
+
+
+def test_v2_facade_preserves_exact_resolved_hardware_values():
+    assert config.Geometry.Z_AXIS == (0.0, 0.0, 1.0)
+    assert config.Geometry.ZEEMAN_ARM_1_LENGTH_M == 0.378
+    assert config.Geometry.SCIENCE_ARM_TOTAL_LENGTH_M == 0.510
+    assert config.Geometry.DPS_LENGTH_M == 0.070
+    assert config.Geometry.ZEEMAN_LASER_WAIST_M == 0.007
+    from lab_setup.mag_field_Zeeman import resolved_zeeman_field_construction
+    from lab_setup.zeeman_laser_setup import resolved_zeeman_laser_parameters
+    field = resolved_zeeman_field_construction(radii_m=[.01], positions_m=[.02], tilt_angles_deg=[30.], angle_deg=25., start_distance_m=.314)
+    assert field["magnet_dimensions_m"] == [.005, .005, .005]
+    assert field["magnet_polarization_T"] == -1.24
+    assert field["azimuthal_angles_deg"] == [0., 45., 90., 135., 180., 225., 270., 315.]
+    laser = resolved_zeeman_laser_parameters()
+    assert (laser["waist_m"], laser["waist_position_m"], laser["direction_type"], laser["tag"]) == (.007, [0., 0., 0.], "vector", "Zeeman_Laser")
 
 
 def test_authoritative_force_scale_and_defaults_are_exposed():

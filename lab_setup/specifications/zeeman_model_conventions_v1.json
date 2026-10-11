@@ -1,0 +1,12 @@
+{
+  "spec_version": "zeeman-model-conventions-v1",
+  "lab_z_axis": [0.0, 0.0, 1.0],
+  "zeeman_internal_axis": "+z",
+  "zeeman_lab_axis_direction": "toward_lab_origin_in_negative_y_negative_z_arm",
+  "zeeman_tilt_input_sign": -1,
+  "azimuth_start_deg": 0.0,
+  "azimuth_stop_deg": 360.0,
+  "azimuth_endpoint_included": false,
+  "laser_direction_type": "vector",
+  "laser_tag": "Zeeman_Laser"
+}

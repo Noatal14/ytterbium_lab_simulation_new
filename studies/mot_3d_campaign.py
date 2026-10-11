@@ -29,6 +29,7 @@ from lab_setup.physical_specification import (
     LABORATORY_SPEC_SHA256,
     LABORATORY_SPEC_VERSION,
     attest_canonical_zeeman_metadata,
+    validate_laboratory_provenance_identity,
 )
 from utils.file_helpers import save_file_json
 from utils.data_paths import load_particle_states
@@ -39,6 +40,8 @@ CAMPAIGN_FILES = (
     "config.py",
     "lab_setup/physical_specification.py",
     "lab_setup/specifications/laboratory_physical_v1.json",
+    "lab_setup/specifications/laboratory_physical_v2.json",
+    "lab_setup/specifications/zeeman_model_conventions_v1.json",
     "lab_setup/numerical_policy.py",
     "lab_setup/specifications/numerical_policy_v1.json",
     "lab_setup/laser_setup_3d.py",
@@ -152,13 +155,18 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
     }
     present_source_keys = laboratory_keys.intersection(source)
-    if present_source_keys and (
-        present_source_keys != laboratory_keys
-        or source.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
-        or source.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
-        or source.get("zeeman_profile_sha256") != CANONICAL_ZEEMAN_PROFILE_SHA256
-    ):
-        raise ValueError("Upstream 2D campaign has invalid laboratory provenance.")
+    if present_source_keys:
+        if present_source_keys != laboratory_keys:
+            raise ValueError("Upstream 2D campaign has invalid laboratory provenance.")
+        try:
+            validate_laboratory_provenance_identity(
+                source.get("laboratory_spec_version"),
+                source.get("laboratory_spec_sha256"),
+                source.get("zeeman_profile_sha256"),
+                allow_legacy=True,
+            )
+        except ValueError as error:
+            raise ValueError("Upstream 2D campaign has invalid laboratory provenance.") from error
     if (not present_source_keys
             and len(str(manifest.get("provenance", {}).get("physical_model_sha256", ""))) != 64):
         raise ValueError("Legacy upstream 2D physical-model provenance is invalid.")
@@ -175,12 +183,16 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         if record_keys and record_keys != laboratory_keys:
             raise ValueError("Upstream 2D frozen input provenance is incomplete.")
         if record_keys == laboratory_keys:
-            if (
-                record.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
-                or record.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
-                or record.get("zeeman_profile_sha256") != CANONICAL_ZEEMAN_PROFILE_SHA256
-            ):
+            try:
+                identity = validate_laboratory_provenance_identity(
+                    record.get("laboratory_spec_version"),
+                    record.get("laboratory_spec_sha256"),
+                    record.get("zeeman_profile_sha256"),
+                    allow_legacy=True,
+                )
+            except ValueError:
                 raise ValueError("Upstream 2D frozen input laboratory provenance mismatch.")
+            legacy_attested = legacy_attested or identity["legacy_attested_profile"]
             continue
         repository_root = Path(__file__).resolve().parents[1]
         metadata_path = Path(str(record.get("metadata_path", "")))
