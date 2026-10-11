@@ -865,6 +865,125 @@
       "message": "Campaign record has an unsupported workflow kind."
     },
     {
+      "domain": "mot_3d_discovery_submission",
+      "case": "<fallback>",
+      "code": "mot_3d_discovery_submission_failed",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "discovery_already_submitted",
+      "code": "discovery_already_submitted",
+      "status": 409,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "discovery_expired",
+      "code": "discovery_expired",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "discovery_invalid",
+      "code": "discovery_invalid",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "discovery_not_prepared",
+      "code": "discovery_not_prepared",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "discovery_preparation_invalid",
+      "code": "discovery_preparation_invalid",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "discovery_submission_outcome_unknown",
+      "code": "discovery_submission_outcome_unknown",
+      "status": 409,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "3D Discovery submission stopped safely."
+    },
+    {
       "domain": "production_submission",
       "case": "<fallback>",
       "code": "production_submission_failed",
@@ -1944,6 +2063,13 @@
     },
     {
       "domain": "route_unavailable",
+      "case": "mot_3d_bootstrap_unavailable",
+      "code": "mot_3d_bootstrap_unavailable",
+      "status": 503,
+      "message": "3D campaign preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
       "case": "zeus_confirmation_submission_unavailable",
       "code": "zeus_confirmation_submission_unavailable",
       "status": 503,
@@ -1962,6 +2088,13 @@
       "code": "zeus_finalization_unavailable",
       "status": 503,
       "message": "Zeus campaign finalization is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "zeus_mot_3d_discovery_submission_unavailable",
+      "code": "zeus_mot_3d_discovery_submission_unavailable",
+      "status": 503,
+      "message": "Zeus 3D Discovery submission is unavailable."
     },
     {
       "domain": "route_unavailable",

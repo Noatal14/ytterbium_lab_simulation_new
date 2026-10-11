@@ -73,6 +73,8 @@ def _server(request_count, *, services=True, payloads=None, individual_api=None,
     handler.repository_root = Path.cwd()
     values=payloads or {}
     handler.creation_service = _Creation(ledger,values) if services else None
+    handler.mot_3d_bootstrap_service = _Service("mot3d-bootstrap",ledger,values,"mot3d-bootstrap-status") if services else None
+    handler.mot_3d_discovery_submission_service = _Service("mot3d-discovery",ledger,values,"mot3d-discovery-status") if services else None
     handler.zeus_service = _Service("zeus",ledger,values) if services else None
     handler.transfer_service = _Service("transfer",ledger,values) if services else None
     handler.submission_service = _Service("smoke-submit",ledger,values) if services else None
@@ -153,11 +155,14 @@ def collect_errors():
 def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     expected=_load("workflow_api_success.json");first,ledger,headers=collect_success(monkeypatch);second,_,_=collect_success(monkeypatch)
     assert first==second==expected
-    assert len(first["cases"])==58 and len({(row["method"],row["path"]) for row in first["cases"]})==58
+    assert len(first["cases"])==64 and len({(row["method"],row["path"]) for row in first["cases"]})==64
     assert all(row["body"].get("api_version")==1 for row in first["cases"])
     assert all(all(value==expected["common_headers"][key] for key,value in header.items() if key in expected["common_headers"]) for header in headers)
     assert [entry[0] for entry in ledger] == [
-        "creation-preview", "creation-confirm", "zeus-snapshot",
+        "creation-preview", "creation-confirm", "mot3d-bootstrap-status",
+        "mot3d-bootstrap-preview", "mot3d-bootstrap-confirm",
+        "mot3d-discovery-status", "mot3d-discovery-preview", "mot3d-discovery-confirm",
+        "zeus-snapshot",
         "transfer-preview", "transfer-confirm", "smoke-submit-preview",
         "smoke-submit-confirm", "smoke-status", "screening-preview",
         "screening-confirm", "screen-submit-preview", "screen-submit-confirm",
@@ -194,7 +199,7 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
 
     assert ReadOnlyWorkflowHandler is WorkflowHandler
-    assert len(POST_ROUTES) == len(post_cases) == 51
+    assert len(POST_ROUTES) == len(post_cases) == 57
     assert set(POST_ROUTES) == {row["path"] for row in post_cases}
     assert all(route.path == path for path, route in POST_ROUTES.items())
     assert all(route.success_status == row["status"] for row in post_cases for route in [POST_ROUTES[row["path"]]])
@@ -208,6 +213,12 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     assert actual == [
         ("/api/v1/campaigns/2d/preview","creation_service","preview","creation_preview",200,"creation_unavailable","Local campaign creation is unavailable.","Exception"),
         ("/api/v1/campaigns/2d/confirm","creation_service","confirm","creation_confirm",201,"creation_unavailable","Local campaign creation is unavailable.","Exception"),
+        ("/api/v1/campaigns/3d/bootstrap/status","mot_3d_bootstrap_service","status","payload",200,"mot_3d_bootstrap_unavailable","3D campaign preparation is unavailable.","ValueError"),
+        ("/api/v1/campaigns/3d/bootstrap/preview","mot_3d_bootstrap_service","preview","session_kw",200,"mot_3d_bootstrap_unavailable","3D campaign preparation is unavailable.","ValueError"),
+        ("/api/v1/campaigns/3d/bootstrap/confirm","mot_3d_bootstrap_service","confirm","session_kw",201,"mot_3d_bootstrap_unavailable","3D campaign preparation is unavailable.","ValueError"),
+        ("/api/v1/zeus/submissions/mot-3d-discovery/status","mot_3d_discovery_submission_service","status","payload",200,"zeus_mot_3d_discovery_submission_unavailable","Zeus 3D Discovery submission is unavailable.","ZeusMot3DDiscoverySubmissionError"),
+        ("/api/v1/zeus/submissions/mot-3d-discovery/preview","mot_3d_discovery_submission_service","preview","session_kw",200,"zeus_mot_3d_discovery_submission_unavailable","Zeus 3D Discovery submission is unavailable.","ZeusMot3DDiscoverySubmissionError"),
+        ("/api/v1/zeus/submissions/mot-3d-discovery/confirm","mot_3d_discovery_submission_service","confirm","session_kw",201,"zeus_mot_3d_discovery_submission_unavailable","Zeus 3D Discovery submission is unavailable.","ZeusMot3DDiscoverySubmissionError"),
         ("/api/v1/zeus/snapshot","zeus_service","snapshot","payload",200,"zeus_unavailable","Read-only Zeus inspection is unavailable.","ZeusSnapshotError"),
         ("/api/v1/zeus/transfers/preview","transfer_service","preview","session_kw",200,"zeus_preparation_unavailable","Zeus campaign preparation is unavailable.","ZeusPreparationError"),
         ("/api/v1/zeus/transfers/confirm","transfer_service","confirm","session_kw",201,"zeus_preparation_unavailable","Zeus campaign preparation is unavailable.","ZeusPreparationError"),

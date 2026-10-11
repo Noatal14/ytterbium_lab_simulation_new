@@ -318,7 +318,7 @@ def test_zeeman_source_registry_rejects_laboratory_hash_tampering(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None, screening_service=None, screen_submission_service=None):
+def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None, screening_service=None, screen_submission_service=None, mot_3d_bootstrap_service=None, mot_3d_discovery_submission_service=None):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
     handler.creation_service = creation_service
@@ -327,6 +327,8 @@ def running_server(request_count=2, repository_root=None, creation_service=None,
     handler.submission_service = submission_service
     handler.screening_service = screening_service
     handler.screen_submission_service = screen_submission_service
+    handler.mot_3d_bootstrap_service = mot_3d_bootstrap_service
+    handler.mot_3d_discovery_submission_service = mot_3d_discovery_submission_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -657,6 +659,65 @@ def test_cross_site_request_cannot_allocate_creation_session(tmp_path):
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
         status, _, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
         assert status == 200 and payload["data"]["csrf_token"]
+
+
+class _FakeMot3DBootstrapService:
+    def __init__(self): self.calls = []
+    def status(self, payload):
+        self.calls.append(("status", payload, None))
+        if payload != {}: raise ValueError("invalid")
+        return {"lifecycle":"blocked_missing_approved_timestep","sources":[],"reason":"Approval is missing.","evidence_requirement":"Approve the separate study."}
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        raise ValueError("secret /private/path")
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        raise AssertionError("confirm should not be reached")
+
+
+def test_mot_3d_bootstrap_http_boundary_is_session_bound_and_sanitized():
+    service = _FakeMot3DBootstrapService()
+    with running_server(request_count=4, mot_3d_bootstrap_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/status", method="POST", headers={"Content-Type":"application/json"}, body="{}")
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/status", method="POST", headers=trusted, body="{}")
+        assert status == 200 and payload["data"]["lifecycle"] == "blocked_missing_approved_timestep"
+        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/preview", method="POST", headers=trusted, body=json.dumps({"source_id":"a"*64,"campaign_name":"mot3d"}))
+        assert status == 412 and payload == {"error":{"code":"mot_3d_bootstrap_failed","message":"3D campaign preparation stopped safely."}}
+        assert "/private/path" not in json.dumps(payload)
+
+
+class _FakeMot3DDiscoverySubmissionService:
+    def __init__(self): self.calls = []
+    def status(self, payload):
+        self.calls.append(("status", payload, None))
+        return {"source":"zeus","queried_at":"2026-10-11T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot3d","stage":"discovery"},"submission":{"status":"not_submitted","chain":{"angled_donut":[],"single_pass":[]}},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        return {"preview_token":"token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot3d","git_commit":"a"*40},"stage":{"id":"discovery","label":"Discovery"},"chain":{"families":[{"id":"angled_donut","rounds":2},{"id":"single_pass","rounds":3}],"arrays":5,"tasks_per_array":3,"dependency":"afterok within each family"},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"a"*40,"branch":"main","dirty":False},"effects":{"submit_discovery_chain":True,"submit_smoke":False,"submit_later_stages":False,"modify_campaign_files":False,"record_submission_receipt":True}}
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        return {"status":"submitted","campaign_id":"campaign-id","stage":"discovery","chain":{"angled_donut":["1[].zeus-master","2[].zeus-master"],"single_pass":["3[].zeus-master","4[].zeus-master","5[].zeus-master"]},"submitted_at":"2026-10-11T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}
+
+
+def test_mot_3d_discovery_submission_http_boundary_is_explicit_and_session_bound():
+    service = _FakeMot3DDiscoverySubmissionService()
+    with running_server(request_count=5, mot_3d_discovery_submission_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site":"same-origin"})
+        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";",1)[0], payload["data"]["csrf_token"])
+        request = {"campaign_id":"campaign-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/status", method="POST", headers={"Content-Type":"application/json"}, body=json.dumps(request))
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/status", method="POST", headers=trusted, body=json.dumps(request))
+        assert status == 200 and payload["data"]["submission"]["status"] == "not_submitted"
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/preview", method="POST", headers=trusted, body=json.dumps(request))
+        assert status == 200 and payload["data"]["effects"]["submit_smoke"] is False
+        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token":"token"}))
+        assert status == 201 and payload["data"]["chain"]["single_pass"] == ["3[].zeus-master","4[].zeus-master","5[].zeus-master"]
+    assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
 
 
 class _FakeZeusService:

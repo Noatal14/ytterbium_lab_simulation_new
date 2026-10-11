@@ -18,10 +18,10 @@ export const homeFixture = {
     {
       id: "mot-3d",
       title: "3D-MOT campaign",
-      badge: "Unavailable",
+      badge: "Readiness checked in setup",
       description: "Compare and optimize the donut and single-pass geometries using survivor ensembles from a completed canonical 2D campaign.",
-      points: ["A completed canonical 2D-MOT campaign has not been selected", "3D setup unlocks after the upstream handoff validates"],
-      readiness: "blocked",
+      points: ["Requires a completed canonical 2D-MOT campaign", "Requires separately reviewed 3D timestep evidence"],
+      readiness: "later-milestone",
     },
   ],
   steps: [

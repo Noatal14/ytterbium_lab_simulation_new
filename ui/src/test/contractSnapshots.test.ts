@@ -19,6 +19,8 @@ import {
 } from "../api/campaigns";
 import { sensitivityApi, sensitivitySubmissionApi } from "../api/clients/sensitivity";
 import { finalizationApi, productionApi, productionSubmissionApi } from "../api/clients/production";
+import { createMot3DBootstrapApi } from "../api/clients/mot3d";
+import { createMot3DDiscoveryApi } from "../api/clients/mot3dDiscovery";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
 const caseById = (id: string) => successSnapshot.cases.find((entry) => entry.id === id) as SnapshotCase;
@@ -73,6 +75,14 @@ describe("backend-generated workflow API contract snapshots", () => {
     await creationApi.session();
     const creationPreview = await creationApi.preview({ name: "Campaign", slug: "campaign-id", source_id: "source", s0_values: [1.3] }, "<csrf-token>");
     await creationApi.confirm(String(creationPreview.preview_token), "<csrf-token>");
+    const mot3d = createMot3DBootstrapApi(async () => "<csrf-token>");
+    await mot3d.status();
+    const mot3dPreview = await mot3d.preview("a".repeat(64), "mot_3d_contract");
+    await mot3d.confirm(mot3dPreview.preview_token, "mot_3d_contract");
+    const mot3dDiscovery = createMot3DDiscoveryApi(async () => "<csrf-token>");
+    await mot3dDiscovery.status(campaignId, profile);
+    const mot3dDiscoveryPreview = await mot3dDiscovery.preview(campaignId, profile);
+    await mot3dDiscovery.confirm(mot3dDiscoveryPreview.preview_token);
     await zeusApi.snapshot(profile.username, profile.project_directory);
 
     const transferPreview = await transferApi.preview(campaignId, profile);

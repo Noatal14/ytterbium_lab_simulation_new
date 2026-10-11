@@ -34,6 +34,7 @@ class ReceiverKind(Enum):
     PRODUCTION_PREPARATION = "production_preparation"
     PRODUCTION_SUBMISSION = "production_submission"
     FINALIZATION = "finalization"
+    MOT_3D_DISCOVERY_SUBMISSION = "mot_3d_discovery_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -185,6 +186,18 @@ _RECEIVERS = {
         "zeus_finalization_remote.py",
         "<finalization>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        True,
+    ),
+    ReceiverKind.MOT_3D_DISCOVERY_SUBMISSION: _ReceiverDefinition(
+        "zeus_discovery_submission_remote.py",
+        "<mot-3d-discovery-submit>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
         True,
     ),
     ReceiverKind.REFINEMENT_SUBMISSION: _ReceiverDefinition(
@@ -433,6 +446,17 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.FINALIZATION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def mot_3d_discovery_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_DISCOVERY_SUBMISSION,
             repository_root,
             executable,
             timeout,

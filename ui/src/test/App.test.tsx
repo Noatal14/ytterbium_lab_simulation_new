@@ -29,7 +29,7 @@ describe("onboarding home", () => {
     render(<App api={fixtureApi} creation={creationFixture} />);
     expect(screen.getByRole("heading", { name: "Run or inspect a campaign" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Start 2D-MOT campaign/ })).toBeEnabled();
-    expect(screen.getByRole("button", { name: /Start 3D-MOT campaign/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Start 3D-MOT campaign/ })).toBeEnabled();
     expect(screen.getByText(/Zeus is contacted only after an explicit connection or preparation action/i)).toBeInTheDocument();
     await screen.findByRole("button", { name: "Open campaign" });
   });

@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 import shlex
 from argparse import Namespace
 from pathlib import Path
@@ -7,8 +8,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 from lab_setup.physical_specification import (
-    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
-    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
 )
 
 from studies import mot_3d_campaign
@@ -21,9 +24,7 @@ from studies.mot_3d.integrity import (
 
 def _write_ensemble(root, seed, mot_seed=None, count=60):
     mot_seed = 8000 + seed if mot_seed is None else mot_seed
-    path = root / (
-        f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy"
-    )
+    path = root / (f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy")
     states = np.zeros((count, 6), dtype=float)
     np.save(path, states)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
@@ -37,7 +38,11 @@ def _write_ensemble(root, seed, mot_seed=None, count=60):
                 "shape": list(states.shape),
                 "dtype": str(states.dtype),
                 "output_sha256": digest,
-                "parameters": {"s0": 1.3, "detuning_gamma": -0.9, "magnet_radius": 0.046},
+                "parameters": {
+                    "s0": 1.3,
+                    "detuning_gamma": -0.9,
+                    "magnet_radius": 0.046,
+                },
                 "design": {
                     "git_commit": "2d-commit",
                     "dt_s": 0.625e-6,
@@ -57,8 +62,8 @@ def _write_ensemble(root, seed, mot_seed=None, count=60):
 
 @pytest.fixture
 def input_dir(tmp_path):
-    root = tmp_path / "inputs"
-    root.mkdir()
+    root = tmp_path / "data/particle_states/after_2d_mot/inputs"
+    root.mkdir(parents=True)
     for seed in mot_3d_campaign.EXPECTED_SEEDS:
         _write_ensemble(root, seed)
     return root
@@ -66,25 +71,51 @@ def input_dir(tmp_path):
 
 @pytest.fixture
 def upstream_campaign(tmp_path, input_dir):
-    root = tmp_path / "upstream_2d"
-    root.mkdir()
+    root = tmp_path / "data/optimization/mot_2d/upstream_2d"
+    root.mkdir(parents=True)
     seeds = list(mot_3d_campaign.EXPECTED_SEEDS)
     mot_seeds = [8000 + seed for seed in seeds]
-    (root / "campaign.json").write_text(json.dumps({
+    (root / "campaign.json").write_text(
+        json.dumps(
+            {
         "kind": "mot_2d_s0_campaign",
         "stage": "complete",
         "seed_roles": {"sealed_validation": seeds},
         "mot_seeds": {"sealed_validation": mot_seeds},
-        "provenance": {"git_commit": "2d-commit", "physical_model_sha256": "2d-hash"},
+                "provenance": {
+                    "git_commit": "2d-commit",
+                    "physical_model_sha256": "2d-hash",
+                },
         "stages": {"final_report": str(root / "final_report.json")},
         "s0_values": [1.3],
         "fixed_design": {"final_dt_s": 0.625e-6, "solver": "RK4StHybridCustom"},
-        "ensemble_source": {"directory": "corrected-zeeman-inputs", "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256},
-        "input_ensembles": {"sealed_validation": [{"zeeman_seed": seed, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256} for seed in seeds]},
-    }))
-    (root / "final_report.json").write_text(json.dumps({
+                "ensemble_source": {
+                    "directory": "corrected-zeeman-inputs",
+                    "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                },
+                "input_ensembles": {
+                    "sealed_validation": [
+                        {
+                            "zeeman_seed": seed,
+                            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                        }
+                        for seed in seeds
+                    ]
+                },
+            }
+        )
+    )
+    (root / "final_report.json").write_text(
+        json.dumps(
+            {
         "kind": "mot_2d_s0_campaign_final_report",
-        "results": [{
+                "results": [
+                    {
             "s0": 1.3,
             "survivor_states_directory": str(input_dir),
             "recommended_parameters": {
@@ -92,8 +123,11 @@ def upstream_campaign(tmp_path, input_dir):
                 "detuning_gamma": -0.9,
                 "magnet_radius": 0.046,
             },
-        }],
-    }))
+                    }
+                ],
+            }
+        )
+    )
     return root
 
 
@@ -101,9 +135,7 @@ def test_freeze_inputs_uses_declared_12_4_4_split(input_dir):
     roles = mot_3d_campaign.freeze_inputs(input_dir)
 
     assert [len(roles[name]) for name in roles] == [12, 4, 4]
-    assert [row["zeeman_seed"] for row in roles["discovery"]] == list(
-        range(3015, 3027)
-    )
+    assert [row["zeeman_seed"] for row in roles["discovery"]] == list(range(3015, 3027))
     assert [row["zeeman_seed"] for row in roles["refinement"]] == list(
         range(3027, 3031)
     )
@@ -143,9 +175,7 @@ def test_create_is_plan_only_and_freezes_new_design(
     assert manifest["upstream_2d_campaign"]["campaign_sha256"]
     assert len(manifest["upstream_2d_campaign"]["sealed_seed_pairs"]) == 20
     assert manifest["design"]["green_full_angle_deg"] == pytest.approx(62.0)
-    assert manifest["design"]["donut_shared_aperture_radius_m"] == pytest.approx(
-        0.005
-    )
+    assert manifest["design"]["donut_shared_aperture_radius_m"] == pytest.approx(0.005)
     assert manifest["design"]["single_pass_blue_aperture_radius_m"] == pytest.approx(
         0.0075
     )
@@ -157,9 +187,7 @@ def test_create_is_plan_only_and_freezes_new_design(
     assert manifest["design"]["dt_validation_candidates_s"] == pytest.approx(
         [10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6]
     )
-    assert manifest["design"]["dt_validation_reference_s"] == pytest.approx(
-        0.3125e-6
-    )
+    assert manifest["design"]["dt_validation_reference_s"] == pytest.approx(0.3125e-6)
     assert "studies/mot_3d/timestep_validation.py" in mot_3d_campaign.relevant_files()
 
     jobs = list((output / "jobs").rglob("*.pbs"))
@@ -182,7 +210,8 @@ def test_create_is_plan_only_and_freezes_new_design(
         if "studies.mot_3d.discovery.optimize" not in text:
             continue
         command = next(
-            line for line in text.splitlines()
+            line
+            for line in text.splitlines()
             if "studies.mot_3d.discovery.optimize" in line
         )
         tokens = shlex.split(command)
@@ -192,14 +221,371 @@ def test_create_is_plan_only_and_freezes_new_design(
         )
 
 
+def _approved_timestep_record(repository, upstream, roles):
+    from config import MOT_3D_SIM_CONFIG
+    from studies.mot_3d import timestep_validation
+    from workflow_api.mot_3d_plan import (
+        APPROVAL_VERSION,
+        input_registry_digest,
+    )
+
+    evidence = {
+        "kind": "mot_3d_timestep_validation",
+        "status": "approved",
+        "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
+        "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
+        "reference_dt_s": MOT_3D_SIM_CONFIG["dt_validation_reference_s"],
+        "tested_dt_s": list(MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]),
+        "capture_bias_passed": True,
+        "paired_decision_passed": True,
+        "classification_disagreement_is_diagnostic_only": True,
+        "reference_capture_fraction_by_sentinel": {},
+        "sentinels_informative": True,
+        "largest_approved_screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
+        "largest_approved_production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
+        "multiplicity": "test fixture",
+        "per_comparison_alpha": 0.001,
+        "ensemble_count": 20,
+        "format_version": timestep_validation.EVIDENCE_FORMAT_VERSION,
+        "particles_per_ensemble": timestep_validation.PARTICLES_PER_ENSEMBLE,
+        "recoil_seeds": list(timestep_validation.RECOIL_SEEDS),
+        "t_max_s": timestep_validation.T_MAX_S,
+        "bootstrap_replicates": timestep_validation.BOOTSTRAP_REPLICATES,
+        "screening_absolute_bias_tolerance": timestep_validation.SCREENING_TOLERANCE,
+        "production_absolute_bias_tolerance": timestep_validation.PRODUCTION_TOLERANCE,
+        "campaign_manifest_sha256": "1" * 64,
+        "tasks_sha256": "2" * 64,
+        "raw_result_registry_sha256": "3" * 64,
+        "campaign_commit": "a" * 40,
+        "physical_model_sha256": "b" * 64,
+        "comparisons": [],
+        "new_campaign_required_if_selected_dt_changes": True,
+    }
+    evidence_path = repository / "data/validation/mot_3d/timestep/evidence.json"
+    evidence_path.parent.mkdir(parents=True)
+    evidence_path.write_text(json.dumps(evidence))
+    approval = {
+        "spec_version": APPROVAL_VERSION,
+        "status": "approved",
+        "solver": MOT_3D_SIM_CONFIG["solver"],
+        "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
+        "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
+        "evidence": {
+            "path": evidence_path.relative_to(repository).as_posix(),
+            "sha256": mot_3d_campaign._sha256(evidence_path),
+        },
+        "source_handoff": {
+            "campaign_sha256": upstream["campaign_sha256"],
+            "final_report_sha256": upstream["final_report_sha256"],
+            "input_registry_sha256": input_registry_digest(roles),
+        },
+    }
+    approval_path = repository / "approval.json"
+    approval_path.write_text(json.dumps(approval))
+    return approval_path
+
+
+def test_ui_bootstrap_fails_closed_without_canonical_timestep_approval(
+    input_dir, upstream_campaign, tmp_path
+):
+    from workflow_api.mot_3d_plan import (
+        Approved3DTimestepMissing,
+        render_discovery_bootstrap,
+    )
+
+    destination = tmp_path / "data/optimization/mot_3d/new-3d"
+    with pytest.raises(Approved3DTimestepMissing, match="not configured"):
+        render_discovery_bootstrap(
+            repository_root=tmp_path,
+            destination=destination,
+            name="new-3d",
+            upstream_campaign=upstream_campaign,
+            survivor_directory=input_dir,
+            revision="a" * 40,
+            physical_model_sha256="b" * 64,
+        )
+    assert not destination.exists()
+
+
+def test_ui_bootstrap_renders_discovery_only_from_bound_approval(
+    input_dir, upstream_campaign, tmp_path
+):
+    from workflow_api.mot_3d_plan import render_discovery_bootstrap
+
+    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign, input_dir
+    )
+    roles = mot_3d_campaign.freeze_inputs(
+        input_dir,
+        expected_seed_pairs={
+            row["zeeman_seed"]: row["mot_seed"] for row in upstream["sealed_seed_pairs"]
+        },
+        expected_design=upstream["expected_survivor_design"],
+        expected_parameters=upstream["expected_survivor_parameters"],
+    )
+    approval = _approved_timestep_record(tmp_path, upstream, roles)
+    destination = tmp_path / "data/optimization/mot_3d/new-3d"
+    files, manifest = render_discovery_bootstrap(
+        repository_root=tmp_path,
+        destination=destination,
+        name="new-3d",
+        upstream_campaign=upstream_campaign,
+        survivor_directory=input_dir,
+        revision="a" * 40,
+        physical_model_sha256="b" * 64,
+        approval_path=approval.relative_to(tmp_path),
+    )
+    assert manifest["stage"] == "discovery"
+    assert manifest["design"]["timestep_status"] == (
+        "approved_by_paired_convergence_validation"
+    )
+    assert manifest["design"]["solver"] == "RK4StHybridCustom"
+    assert [
+        len(manifest["input_roles"][role])
+        for role in ("discovery", "refinement", "preliminary_check")
+    ] == [12, 4, 4]
+    assert set(files) == {
+        "campaign.json",
+        "jobs/01_smoke_angled_donut.pbs",
+        "jobs/01_smoke_single_pass.pbs",
+        "jobs/angled_donut/round_01.pbs",
+        "jobs/angled_donut/round_02.pbs",
+        "jobs/single_pass/round_01.pbs",
+        "jobs/single_pass/round_02.pbs",
+        "jobs/single_pass/round_03.pbs",
+        "jobs/02_submit_discovery_chain.sh",
+    }
+    assert all(
+        b"qsub" not in data for name, data in files.items() if name.endswith(".pbs")
+    )
+    assert all(
+        str(tmp_path).encode() not in data
+        for name, data in files.items()
+        if name.startswith("jobs/")
+    )
+    assert manifest["jobs"]["discovery_rounds"]["angled_donut"][0] == (
+        "data/optimization/mot_3d/new-3d/jobs/angled_donut/round_01.pbs"
+    )
+    assert not destination.exists()
+
+
+def test_ui_bootstrap_rejects_approval_for_a_different_2d_handoff(
+    input_dir, upstream_campaign, tmp_path
+):
+    from workflow_api.mot_3d_plan import render_discovery_bootstrap
+
+    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign, input_dir
+    )
+    roles = mot_3d_campaign.freeze_inputs(input_dir)
+    approval = _approved_timestep_record(tmp_path, upstream, roles)
+    payload = json.loads(approval.read_text())
+    payload["source_handoff"]["input_registry_sha256"] = "0" * 64
+    approval.write_text(json.dumps(payload))
+    with pytest.raises(ValueError, match="not bound"):
+        render_discovery_bootstrap(
+            repository_root=tmp_path,
+            destination=tmp_path / "data/optimization/mot_3d/new-3d",
+            name="new-3d",
+            upstream_campaign=upstream_campaign,
+            survivor_directory=input_dir,
+            revision="a" * 40,
+            physical_model_sha256="b" * 64,
+            approval_path=approval.relative_to(tmp_path),
+        )
+
+
+@pytest.mark.parametrize("attack", ["evidence_digest", "approval_symlink", "bool_dt"])
+def test_ui_bootstrap_rejects_untrusted_timestep_approval(
+    input_dir, upstream_campaign, tmp_path, attack
+):
+    from workflow_api.mot_3d_plan import render_discovery_bootstrap
+
+    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign, input_dir
+    )
+    roles = mot_3d_campaign.freeze_inputs(input_dir)
+    approval = _approved_timestep_record(tmp_path, upstream, roles)
+    if attack == "evidence_digest":
+        payload = json.loads(approval.read_text())
+        payload["evidence"]["sha256"] = "0" * 64
+        approval.write_text(json.dumps(payload))
+    elif attack == "approval_symlink":
+        target = approval.with_name("approval-target.json")
+        approval.rename(target)
+        approval.symlink_to(target)
+    else:
+        payload = json.loads(approval.read_text())
+        payload["screening_dt_s"] = True
+        approval.write_text(json.dumps(payload))
+    with pytest.raises(ValueError):
+        render_discovery_bootstrap(
+            repository_root=tmp_path,
+            destination=tmp_path / "data/optimization/mot_3d/new-3d",
+            name="new-3d",
+            upstream_campaign=upstream_campaign,
+            survivor_directory=input_dir,
+            revision="a" * 40,
+            physical_model_sha256="b" * 64,
+            approval_path=approval.relative_to(tmp_path),
+        )
+
+
+def test_ui_bootstrap_service_is_blocked_until_approval_then_prepares_only(
+    input_dir, upstream_campaign, tmp_path
+):
+    from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
+
+    service = Mot3DDiscoveryBootstrapService(
+        tmp_path,
+        token_factory=lambda: "preview-token",
+        revision_provider=lambda: "a" * 40,
+        physical_hash_provider=lambda: "b" * 64,
+        dirty_provider=lambda: (),
+    )
+    blocked = service.status({})
+    assert blocked["lifecycle"] == "blocked_missing_approved_timestep"
+    assert len(blocked["sources"]) == 1
+    assert not (tmp_path / "data/optimization/mot_3d").exists()
+    with pytest.raises(ValueError, match="status request is invalid"):
+        service.status({"secret": True})
+
+    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign, input_dir
+    )
+    roles = mot_3d_campaign.freeze_inputs(input_dir)
+    approval = _approved_timestep_record(tmp_path, upstream, roles)
+    canonical = tmp_path / "lab_setup/specifications/mot_3d_timestep_approval_v1.json"
+    canonical.parent.mkdir(parents=True)
+    approval.rename(canonical)
+
+    ready = service.status({})
+    assert ready["lifecycle"] == "ready"
+    source = ready["sources"][0]
+    preview = service.preview(
+        {"source_id": source["source_id"], "campaign_name": "new-3d"},
+        "session",
+    )
+    assert preview["campaign"] == {"name": "new-3d", "stage": "discovery"}
+    assert preview["discovery"]["input_role_counts"] == {
+        "discovery": 12,
+        "refinement": 4,
+        "preliminary_check": 4,
+    }
+    assert preview["effects"] == {
+        "create_campaign": True,
+        "submit_job": False,
+        "start_simulation": False,
+        "prepare_dt_validation": False,
+    }
+    destination = tmp_path / "data/optimization/mot_3d/new-3d"
+    assert not destination.exists()
+
+    result = service.confirm({"preview_token": preview["preview_token"]}, "session")
+    assert result["lifecycle"] == "discovery_prepared"
+    assert result["submitted_to_zeus"] is False
+    assert (
+        json.loads((destination / "campaign.json").read_text())["stage"] == "discovery"
+    )
+    receipt = json.loads(
+        (destination / ".mot_ui/transitions/discovery_bootstrap.json").read_text()
+    )
+    assert receipt["status"] == "discovery_prepared"
+    from workflow_api.mot_3d_plan import input_registry_digest
+
+    assert receipt["input_registry_sha256"] == input_registry_digest(roles)
+
+
+def test_ui_bootstrap_catalog_rejects_symlinked_report(
+    input_dir, upstream_campaign, tmp_path
+):
+    from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
+
+    report = upstream_campaign / "final_report.json"
+    target = tmp_path / "outside-report.json"
+    report.rename(target)
+    report.symlink_to(target)
+    service = Mot3DDiscoveryBootstrapService(
+        tmp_path,
+        revision_provider=lambda: "a" * 40,
+        physical_hash_provider=lambda: "b" * 64,
+        dirty_provider=lambda: (),
+    )
+    assert service.status({})["sources"] == []
+
+
+@pytest.mark.parametrize("attack", ["name", "bool_s0", "nonfinite_s0"])
+def test_ui_bootstrap_catalog_rejects_unsafe_public_fields(
+    input_dir, upstream_campaign, tmp_path, attack
+):
+    from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
+
+    if attack == "name":
+        manifest_path = upstream_campaign / "campaign.json"
+        manifest = json.loads(manifest_path.read_text())
+        manifest["name"] = "unsafe\nname"
+        manifest_path.write_text(json.dumps(manifest))
+    else:
+        report_path = upstream_campaign / "final_report.json"
+        report = json.loads(report_path.read_text())
+        report["results"][0]["s0"] = True if attack == "bool_s0" else float("inf")
+        report_path.write_text(json.dumps(report))
+    service = Mot3DDiscoveryBootstrapService(
+        tmp_path,
+        revision_provider=lambda: "a" * 40,
+        physical_hash_provider=lambda: "b" * 64,
+        dirty_provider=lambda: (),
+    )
+    assert service.status({})["sources"] == []
+
+
+def test_ui_bootstrap_confirm_never_replaces_racing_destination(
+    input_dir, upstream_campaign, tmp_path, monkeypatch
+):
+    import workflow_api.mot_3d_bootstrap as bootstrap
+
+    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign, input_dir
+    )
+    approval = _approved_timestep_record(
+        tmp_path, upstream, mot_3d_campaign.freeze_inputs(input_dir)
+    )
+    canonical = tmp_path / "lab_setup/specifications/mot_3d_timestep_approval_v1.json"
+    canonical.parent.mkdir(parents=True)
+    approval.rename(canonical)
+    service = bootstrap.Mot3DDiscoveryBootstrapService(
+        tmp_path,
+        token_factory=lambda: "preview-token",
+        revision_provider=lambda: "a" * 40,
+        physical_hash_provider=lambda: "b" * 64,
+        dirty_provider=lambda: (),
+    )
+    source = service.status({})["sources"][0]
+    preview = service.preview(
+        {"source_id": source["source_id"], "campaign_name": "new-3d"},
+        "session",
+    )
+    original = bootstrap._rename_no_replace
+
+    def race(parent_descriptor, source_name, destination_name):
+        os.mkdir(destination_name, dir_fd=parent_descriptor)
+        original(parent_descriptor, source_name, destination_name)
+
+    monkeypatch.setattr(bootstrap, "_rename_no_replace", race)
+    with pytest.raises(FileExistsError):
+        service.confirm({"preview_token": preview["preview_token"]}, "session")
+    destination = tmp_path / "data/optimization/mot_3d/new-3d"
+    assert destination.is_dir()
+    assert list(destination.iterdir()) == []
+    assert not list(destination.parent.glob(".new-3d.tmp-*"))
+
+
 def test_discovery_jobs_quote_hostile_input_path(tmp_path):
     root = tmp_path / "campaign with spaces; $(unsafe)"
     input_dir = tmp_path / "input with spaces; $(unsafe) 'quote'"
     input_dir.mkdir()
 
-    smoke, rounds, _ = mot_3d_campaign.write_discovery_jobs(
-        root, "abc123", input_dir
-    )
+    smoke, rounds, _ = mot_3d_campaign.write_discovery_jobs(root, "abc123", input_dir)
 
     jobs = list(smoke.values()) + [
         path for family_paths in rounds.values() for path in family_paths
@@ -207,7 +593,8 @@ def test_discovery_jobs_quote_hostile_input_path(tmp_path):
     assert len(jobs) == 7
     for job in jobs:
         command = next(
-            line for line in job.read_text().splitlines()
+            line
+            for line in job.read_text().splitlines()
             if "studies.mot_3d.discovery.optimize" in line
         )
         tokens = shlex.split(command)
@@ -217,7 +604,9 @@ def test_discovery_jobs_quote_hostile_input_path(tmp_path):
         )
 
 
-def test_discovery_loader_accepts_frozen_role_manifest(input_dir, tmp_path, monkeypatch):
+def test_discovery_loader_accepts_frozen_role_manifest(
+    input_dir, tmp_path, monkeypatch
+):
     manifest = tmp_path / "campaign.json"
     manifest.write_text(
         json.dumps(
@@ -229,10 +618,8 @@ def test_discovery_loader_accepts_frozen_role_manifest(input_dir, tmp_path, monk
                     ]
                 },
                 "input_roles": {
-                    "discovery": mot_3d_campaign.freeze_inputs(input_dir)[
-                        "discovery"
-                    ]
-                }
+                    "discovery": mot_3d_campaign.freeze_inputs(input_dir)["discovery"]
+                },
             }
         ),
         encoding="utf-8",
@@ -250,17 +637,26 @@ def test_discovery_loader_accepts_frozen_role_manifest(input_dir, tmp_path, monk
     assert all("mot_2d_survivors" in path for path in paths)
 
 
-def test_execution_revalidation_rejects_metadata_tampering(input_dir, tmp_path, monkeypatch):
+def test_execution_revalidation_rejects_metadata_tampering(
+    input_dir, tmp_path, monkeypatch
+):
     roles = mot_3d_campaign.freeze_inputs(input_dir)
     manifest = tmp_path / "campaign.json"
-    manifest.write_text(json.dumps({
+    manifest.write_text(
+        json.dumps(
+            {
         "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
-        "upstream_2d_campaign": {"sealed_seed_pairs": [
+                "upstream_2d_campaign": {
+                    "sealed_seed_pairs": [
             {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
-            for rows in roles.values() for row in rows
-        ]},
+                        for rows in roles.values()
+                        for row in rows
+                    ]
+                },
         "input_roles": roles,
-    }))
+            }
+        )
+    )
     monkeypatch.setattr(mot_3d_campaign, "_revision", lambda: "abc")
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "hash")
     Path(roles["discovery"][0]["metadata_path"]).write_text("{}")
@@ -269,18 +665,27 @@ def test_execution_revalidation_rejects_metadata_tampering(input_dir, tmp_path, 
         mot_3d_campaign.validate_frozen_inputs(manifest, "discovery")
 
 
-def test_execution_revalidation_requires_exact_ordered_role(input_dir, tmp_path, monkeypatch):
+def test_execution_revalidation_requires_exact_ordered_role(
+    input_dir, tmp_path, monkeypatch
+):
     roles = mot_3d_campaign.freeze_inputs(input_dir)
     roles["discovery"] = list(reversed(roles["discovery"]))
     manifest = tmp_path / "campaign.json"
-    manifest.write_text(json.dumps({
+    manifest.write_text(
+        json.dumps(
+            {
         "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
-        "upstream_2d_campaign": {"sealed_seed_pairs": [
+                "upstream_2d_campaign": {
+                    "sealed_seed_pairs": [
             {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
-            for rows in roles.values() for row in rows
-        ]},
+                        for rows in roles.values()
+                        for row in rows
+                    ]
+                },
         "input_roles": roles,
-    }))
+            }
+        )
+    )
     monkeypatch.setattr(mot_3d_campaign, "_revision", lambda: "abc")
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "hash")
 
@@ -292,15 +697,19 @@ def test_create_rejects_dirty_relevant_code(
     input_dir, upstream_campaign, tmp_path, monkeypatch
 ):
     monkeypatch.setattr(
-        mot_3d_campaign, "_dirty_relevant_files", lambda: ("utils/RK4StHybridCustom.py",)
+        mot_3d_campaign,
+        "_dirty_relevant_files",
+        lambda: ("utils/RK4StHybridCustom.py",),
     )
     with pytest.raises(RuntimeError, match="dirty relevant files"):
-        mot_3d_campaign.create(Namespace(
+        mot_3d_campaign.create(
+            Namespace(
             name="dirty",
             input_dir=str(input_dir),
             upstream_campaign=str(upstream_campaign),
             output_dir=str(tmp_path / "campaign"),
-        ))
+            )
+        )
 
 
 def test_model_closure_includes_vendored_physics_engine():
@@ -350,7 +759,9 @@ def test_final_input_jobs_use_domain_module_paths(tmp_path, monkeypatch):
     mot_3d_campaign.prepare_final_validation_inputs(root, manifest)
 
     zeeman = (root / "jobs/final_validation_inputs/01_generate_zeeman.pbs").read_text()
-    mot_2d = (root / "jobs/final_validation_inputs/02_generate_2d_survivors.pbs").read_text()
+    mot_2d = (
+        root / "jobs/final_validation_inputs/02_generate_2d_survivors.pbs"
+    ).read_text()
     combined = zeeman + mot_2d
     assert "studies.zeeman.generate_ensembles" in zeeman
     assert "studies.mot_2d.production" in mot_2d
@@ -365,9 +776,7 @@ def test_upstream_report_must_be_registered(input_dir, upstream_campaign):
     manifest_path.write_text(json.dumps(payload))
 
     with pytest.raises(ValueError, match="does not register"):
-        mot_3d_campaign.validate_upstream_2d_campaign(
-            upstream_campaign, input_dir
-        )
+        mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir)
 
 
 def test_upstream_handoff_rejects_laboratory_hash_tampering(
@@ -378,24 +787,27 @@ def test_upstream_handoff_rejects_laboratory_hash_tampering(
     payload["ensemble_source"]["zeeman_profile_sha256"] = "0" * 64
     manifest_path.write_text(json.dumps(payload))
     with pytest.raises(ValueError, match="laboratory provenance"):
-        mot_3d_campaign.validate_upstream_2d_campaign(
-            upstream_campaign, input_dir
-        )
+        mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir)
 
 
 def test_runtime_rejects_pair_changed_from_upstream(input_dir, tmp_path, monkeypatch):
     roles = mot_3d_campaign.freeze_inputs(input_dir)
     registry = [
         {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
-        for rows in roles.values() for row in rows
+        for rows in roles.values()
+        for row in rows
     ]
     registry[0]["mot_seed"] += 1
     manifest = tmp_path / "campaign.json"
-    manifest.write_text(json.dumps({
+    manifest.write_text(
+        json.dumps(
+            {
         "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
         "upstream_2d_campaign": {"sealed_seed_pairs": registry},
         "input_roles": roles,
-    }))
+            }
+        )
+    )
     monkeypatch.setattr(mot_3d_campaign, "_revision", lambda: "abc")
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "hash")
 
@@ -410,19 +822,25 @@ def test_submission_records_raw_array_ids_and_rejects_duplicate(
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "physics-hash")
     monkeypatch.setattr(mot_3d_campaign, "_dirty_relevant_files", lambda: ())
     root = tmp_path / "campaign"
-    mot_3d_campaign.create(Namespace(
-        name="submit", input_dir=str(input_dir),
-        upstream_campaign=str(upstream_campaign), output_dir=str(root),
-    ))
+    mot_3d_campaign.create(
+        Namespace(
+            name="submit",
+            input_dir=str(input_dir),
+            upstream_campaign=str(upstream_campaign),
+            output_dir=str(root),
+        )
+    )
     manifest_path = root / "campaign.json"
     manifest = json.loads(manifest_path.read_text())
     manifest["stage"] = "discovery"
     manifest_path.write_text(json.dumps(manifest))
     commands = []
     ids = iter(["101[].zeus", "102[].zeus", "201[].zeus", "202[].zeus", "203[].zeus"])
+
     def fake_qsub(command):
         commands.append(command)
         return next(ids)
+
     record = mot_3d_campaign.submit_discovery(root, qsub=fake_qsub)
     assert record["status"] == "submitted"
     assert record["families"]["angled_donut"]["final_job_id"] == "102[].zeus"
@@ -438,21 +856,27 @@ def test_submission_preserves_partial_failure_record(
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "physics-hash")
     monkeypatch.setattr(mot_3d_campaign, "_dirty_relevant_files", lambda: ())
     root = tmp_path / "campaign"
-    mot_3d_campaign.create(Namespace(
-        name="partial", input_dir=str(input_dir),
-        upstream_campaign=str(upstream_campaign), output_dir=str(root),
-    ))
+    mot_3d_campaign.create(
+        Namespace(
+            name="partial",
+            input_dir=str(input_dir),
+            upstream_campaign=str(upstream_campaign),
+            output_dir=str(root),
+        )
+    )
     manifest_path = root / "campaign.json"
     manifest = json.loads(manifest_path.read_text())
     manifest["stage"] = "discovery"
     manifest_path.write_text(json.dumps(manifest))
     calls = 0
+
     def fake_qsub(command):
         nonlocal calls
         calls += 1
         if calls == 2:
             raise RuntimeError("scheduler unavailable")
         return "101[].zeus"
+
     with pytest.raises(RuntimeError, match="scheduler unavailable"):
         mot_3d_campaign.submit_discovery(root, qsub=fake_qsub)
     saved = json.loads((root / "discovery_submission.json").read_text())
@@ -467,13 +891,19 @@ def test_early_submission_does_not_poison_later_valid_submission(
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "physics-hash")
     monkeypatch.setattr(mot_3d_campaign, "_dirty_relevant_files", lambda: ())
     root = tmp_path / "campaign"
-    mot_3d_campaign.create(Namespace(
-        name="early", input_dir=str(input_dir),
-        upstream_campaign=str(upstream_campaign), output_dir=str(root),
-    ))
+    mot_3d_campaign.create(
+        Namespace(
+            name="early",
+            input_dir=str(input_dir),
+            upstream_campaign=str(upstream_campaign),
+            output_dir=str(root),
+        )
+    )
     calls = []
     with pytest.raises(RuntimeError, match="blocked at stage"):
-        mot_3d_campaign.submit_discovery(root, qsub=lambda command: calls.append(command))
+        mot_3d_campaign.submit_discovery(
+            root, qsub=lambda command: calls.append(command)
+        )
     assert calls == []
     assert not (root / "discovery_submission.json").exists()
 
@@ -493,14 +923,21 @@ def test_role_loader_uses_only_frozen_role_and_balances_particles(
 ):
     roles = mot_3d_campaign.freeze_inputs(input_dir)
     manifest = tmp_path / "campaign.json"
-    manifest.write_text(json.dumps({
+    manifest.write_text(
+        json.dumps(
+            {
         "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
-        "upstream_2d_campaign": {"sealed_seed_pairs": [
+                "upstream_2d_campaign": {
+                    "sealed_seed_pairs": [
             {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
-            for rows in roles.values() for row in rows
-        ]},
+                        for rows in roles.values()
+                        for row in rows
+                    ]
+                },
         "input_roles": roles,
-    }))
+            }
+        )
+    )
     monkeypatch.setattr(mot_3d_campaign, "_revision", lambda: "abc")
     monkeypatch.setattr(mot_3d_campaign, "_relevant_hash", lambda: "hash")
     states, ensemble_ids, provenance = mot_3d_campaign.load_role_particles(
@@ -514,18 +951,32 @@ def test_role_loader_uses_only_frozen_role_and_balances_particles(
 def test_selection_stage_submission_records_array_and_merge_ids(tmp_path):
     root = tmp_path / "campaign"
     root.mkdir()
-    (root / "campaign.json").write_text(json.dumps({
+    (root / "campaign.json").write_text(
+        json.dumps(
+            {
         "stage": "refinement",
-        "stages": {"refinement": {
-            "worker_jobs": {family: f"{family}.pbs" for family in mot_3d_campaign.FAMILIES},
-            "merge_jobs": {family: f"{family}_merge.pbs" for family in mot_3d_campaign.FAMILIES},
-        }},
-    }))
+                "stages": {
+                    "refinement": {
+                        "worker_jobs": {
+                            family: f"{family}.pbs"
+                            for family in mot_3d_campaign.FAMILIES
+                        },
+                        "merge_jobs": {
+                            family: f"{family}_merge.pbs"
+                            for family in mot_3d_campaign.FAMILIES
+                        },
+                    }
+                },
+            }
+        )
+    )
     commands = []
     identifiers = iter(["11[].zeus", "12.zeus", "21[].zeus", "22.zeus"])
+
     def fake_qsub(command):
         commands.append(command)
         return next(identifiers)
+
     record = mot_3d_campaign.submit_selection_stage(root, qsub=fake_qsub)
     assert record["status"] == "submitted"
     assert commands[1][2] == "depend=afterok:11[].zeus"
@@ -535,20 +986,34 @@ def test_selection_stage_submission_records_array_and_merge_ids(tmp_path):
 def test_selection_stage_partial_failure_preserves_submitted_array_id(tmp_path):
     root = tmp_path / "campaign"
     root.mkdir()
-    (root / "campaign.json").write_text(json.dumps({
+    (root / "campaign.json").write_text(
+        json.dumps(
+            {
         "stage": "refinement",
-        "stages": {"refinement": {
-            "worker_jobs": {family: f"{family}.pbs" for family in mot_3d_campaign.FAMILIES},
-            "merge_jobs": {family: f"{family}_merge.pbs" for family in mot_3d_campaign.FAMILIES},
-        }},
-    }))
+                "stages": {
+                    "refinement": {
+                        "worker_jobs": {
+                            family: f"{family}.pbs"
+                            for family in mot_3d_campaign.FAMILIES
+                        },
+                        "merge_jobs": {
+                            family: f"{family}_merge.pbs"
+                            for family in mot_3d_campaign.FAMILIES
+                        },
+                    }
+                },
+            }
+        )
+    )
     calls = 0
+
     def fake_qsub(command):
         nonlocal calls
         calls += 1
         if calls == 1:
             return "11[].zeus"
         raise RuntimeError("merge submission failed")
+
     with pytest.raises(RuntimeError, match="merge submission failed"):
         mot_3d_campaign.submit_selection_stage(root, qsub=fake_qsub)
     record = json.loads((root / "refinement_submission.json").read_text())
@@ -571,8 +1036,12 @@ def test_artifact_registry_rejects_duplicate_stems(tmp_path):
     json_b.write_text("{}")
     with pytest.raises(RuntimeError, match="duplicated"):
         validate_artifact_registry(
-            [json_a, json_b], [npz_a, npz_b], candidates=candidates,
-            recoil_seeds=(1,), kind="result", family="angled_donut",
+            [json_a, json_b],
+            [npz_a, npz_b],
+            candidates=candidates,
+            recoil_seeds=(1,),
+            kind="result",
+            family="angled_donut",
         )
 
 
@@ -594,61 +1063,97 @@ def test_stage_design_changes_with_particle_sampling_identity(tmp_path):
     manifest = tmp_path / "campaign.json"
     np.save(frozen_input, np.zeros((2, 6)))
     selection.write_text(json.dumps({"candidates": []}))
-    manifest.write_text(json.dumps({
+    manifest.write_text(
+        json.dumps(
+            {
         "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
         "design": {"solver": "RK4StHybridCustom"},
         "input_roles": {"refinement": [{"path": str(frozen_input)}]},
-    }))
+            }
+        )
+    )
     provenance = [{"file": str(frozen_input), "selected_indices": [0]}]
     first = frozen_stage_design(
-        manifest, selection, "refinement", 1.25e-6, 0.1,
-        particle_selection=provenance, particles_per_ensemble=1, selection_seed=10,
+        manifest,
+        selection,
+        "refinement",
+        1.25e-6,
+        0.1,
+        particle_selection=provenance,
+        particles_per_ensemble=1,
+        selection_seed=10,
     )
     changed_seed = frozen_stage_design(
-        manifest, selection, "refinement", 1.25e-6, 0.1,
-        particle_selection=provenance, particles_per_ensemble=1, selection_seed=11,
+        manifest,
+        selection,
+        "refinement",
+        1.25e-6,
+        0.1,
+        particle_selection=provenance,
+        particles_per_ensemble=1,
+        selection_seed=11,
     )
     changed_provenance = frozen_stage_design(
-        manifest, selection, "refinement", 1.25e-6, 0.1,
+        manifest,
+        selection,
+        "refinement",
+        1.25e-6,
+        0.1,
         particle_selection=[{"file": str(frozen_input), "selected_indices": [1]}],
-        particles_per_ensemble=1, selection_seed=10,
+        particles_per_ensemble=1,
+        selection_seed=10,
     )
     assert first != changed_seed
-    assert first["particle_selection_sha256"] != changed_provenance["particle_selection_sha256"]
+    assert (
+        first["particle_selection_sha256"]
+        != changed_provenance["particle_selection_sha256"]
+    )
 
 
 def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path, monkeypatch):
     root = tmp_path / "campaign"
     root.mkdir()
     manifest_path = root / "campaign.json"
-    manifest_path.write_text(json.dumps({
+    manifest_path.write_text(
+        json.dumps(
+            {
         "stage": "dt_validation_required",
         "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
         "design": {
-            "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6,
+                    "screening_dt_s": 1.25e-6,
+                    "production_dt_s": 0.625e-6,
             "dt_validation_reference_s": 0.3125e-6,
             "dt_validation_candidates_s": [2.5e-6, 1.25e-6, 0.625e-6],
             "timestep_status": "provisional_pending_3d_validation",
         },
-    }))
+            }
+        )
+    )
     evidence = root / "dt_validation/evidence.json"
     evidence.parent.mkdir()
     payload = {
-        "kind": "mot_3d_timestep_validation", "status": "approved",
-        "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6,
+        "kind": "mot_3d_timestep_validation",
+        "status": "approved",
+        "screening_dt_s": 1.25e-6,
+        "production_dt_s": 0.625e-6,
         "reference_dt_s": 0.3125e-6,
         "tested_dt_s": [2.5e-6, 1.25e-6, 0.625e-6],
-        "capture_bias_passed": True, "paired_decision_passed": True,
+        "capture_bias_passed": True,
+        "paired_decision_passed": True,
         "campaign_manifest_sha256": mot_3d_campaign._sha256(manifest_path),
-        "campaign_commit": "abc", "physical_model_sha256": "physics",
+        "campaign_commit": "abc",
+        "physical_model_sha256": "physics",
         "ensemble_count": 20,
-        "format_version": 1, "sentinels_informative": True,
+        "format_version": 1,
+        "sentinels_informative": True,
         "particles_per_ensemble": 30,
         "recoil_seeds": [47001, 47002, 47003, 47004, 47005],
-        "t_max_s": 0.1, "bootstrap_replicates": 20000,
+        "t_max_s": 0.1,
+        "bootstrap_replicates": 20000,
         "screening_absolute_bias_tolerance": 0.005,
         "production_absolute_bias_tolerance": 0.0025,
-        "tasks_sha256": "tasks", "raw_result_registry_sha256": "results",
+        "tasks_sha256": "tasks",
+        "raw_result_registry_sha256": "results",
     }
     evidence.write_text(json.dumps(payload))
     monkeypatch.setattr(
@@ -665,22 +1170,34 @@ def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path, monkeypat
 def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
     root = tmp_path / "campaign"
     root.mkdir()
-    (root / "campaign.json").write_text(json.dumps({
+    (root / "campaign.json").write_text(
+        json.dumps(
+            {
         "stage": "dt_validation_required",
         "design": {
-            "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6,
+                    "screening_dt_s": 1.25e-6,
+                    "production_dt_s": 0.625e-6,
             "dt_validation_reference_s": 0.3125e-6,
             "dt_validation_candidates_s": [1.25e-6, 0.625e-6],
         },
-    }))
+            }
+        )
+    )
     evidence = tmp_path / "dt.json"
-    evidence.write_text(json.dumps({
-        "kind": "mot_3d_timestep_validation", "status": "approved",
-        "screening_dt_s": 1.25e-6, "production_dt_s": 1.25e-6,
+    evidence.write_text(
+        json.dumps(
+            {
+                "kind": "mot_3d_timestep_validation",
+                "status": "approved",
+                "screening_dt_s": 1.25e-6,
+                "production_dt_s": 1.25e-6,
         "reference_dt_s": 0.3125e-6,
         "tested_dt_s": [1.25e-6, 0.625e-6],
-        "capture_bias_passed": True, "paired_decision_passed": True,
-    }))
+                "capture_bias_passed": True,
+                "paired_decision_passed": True,
+            }
+        )
+    )
     with pytest.raises(ValueError, match="canonical campaign evidence"):
         mot_3d_campaign.approve_timestep(
             Namespace(campaign=str(root), evidence=str(evidence))

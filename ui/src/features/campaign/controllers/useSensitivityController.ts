@@ -45,6 +45,8 @@ function useOperation<TStatus, TPreview, TResult>(args: {
     setResult(null);
     setError("");
     return () => {
+      // Cleanup must invalidate every request started during this generation.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       gen.current++;
       busy.current = false;
     };

@@ -222,6 +222,9 @@ ROUTE_UNAVAILABLE = _frozen(
         "creation_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE, "Local campaign creation is unavailable."
         ),
+        "mot_3d_bootstrap_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE, "3D campaign preparation is unavailable."
+        ),
         "zeus_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE, "Read-only Zeus inspection is unavailable."
         ),
@@ -268,6 +271,10 @@ ROUTE_UNAVAILABLE = _frozen(
         ),
         "zeus_finalization_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE, "Zeus campaign finalization is unavailable."
+        ),
+        "zeus_mot_3d_discovery_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Zeus 3D Discovery submission is unavailable.",
         ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
@@ -801,6 +808,20 @@ FINALIZATION = _generic_stage(
     {"remote_files_changed","finalization_outcome_unknown"},
     "finalization_failed",
 )
+MOT_3D_DISCOVERY_SUBMISSION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "discovery_not_prepared", "discovery_preparation_invalid",
+        "discovery_already_submitted", "discovery_submission_outcome_unknown",
+        "remote_response_invalid", "too_many_pending_previews",
+        "discovery_invalid", "discovery_expired", "local_files_changed",
+        "zeus_authentication_required", "zeus_host_key_untrusted",
+        "zeus_timeout", "zeus_unreachable",
+    },
+    "3D Discovery submission stopped safely.",
+    {"discovery_already_submitted", "discovery_submission_outcome_unknown"},
+    "mot_3d_discovery_submission_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -907,6 +928,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "production_transition": PRODUCTION_TRANSITION,
         "production_submission": PRODUCTION_SUBMISSION,
         "finalization": FINALIZATION,
+        "mot_3d_discovery_submission": MOT_3D_DISCOVERY_SUBMISSION,
     }
 )
 

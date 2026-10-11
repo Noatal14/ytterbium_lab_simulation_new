@@ -16,6 +16,8 @@ import type {
   SmokeTerminalCode,
 } from "./controllers/useSmokeController";
 import type { ConfirmationSubmissionUiState } from "./controllers/useConfirmationSubmissionController";
+import type { Mot3DDiscoveryUiState } from "./controllers/useMot3DDiscoveryController";
+import type { Mot3DDiscoveryLifecycle } from "../../api/clients/mot3dDiscovery";
 
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
@@ -35,6 +37,8 @@ export function CampaignPriorityPanel({
   refinementLifecycle,
   confirmationSubmitState = "idle",
   confirmationSubmitJobId = null,
+  mot3DDiscoveryState = "idle",
+  mot3DDiscoveryLifecycle = null,
   copyStatus,
   onCopyCommand,
 }: {
@@ -52,6 +56,8 @@ export function CampaignPriorityPanel({
   refinementLifecycle: RefinementLifecycle | null;
   confirmationSubmitState?: ConfirmationSubmissionUiState;
   confirmationSubmitJobId?: string | null;
+  mot3DDiscoveryState?: Mot3DDiscoveryUiState;
+  mot3DDiscoveryLifecycle?: Mot3DDiscoveryLifecycle | null;
   copyStatus: string;
   onCopyCommand: () => void;
 }) {
@@ -126,6 +132,49 @@ export function CampaignPriorityPanel({
                 ? "Smoke check needs attention"
                 : null);
 
+  if (campaign.family === "mot_3d" && campaign.stage === "discovery") {
+    const terminal =
+      mot3DDiscoveryState === "terminal" ||
+      [
+        "held",
+        "completed_failed",
+        "status_unknown",
+        "outcome_unknown",
+      ].includes(mot3DDiscoveryLifecycle ?? "");
+    const active =
+      mot3DDiscoveryState === "submitting" ||
+      ["submitted", "queued", "running"].includes(
+        mot3DDiscoveryLifecycle ?? "",
+      );
+    return (
+      <section
+        className={`priority-panel ${terminal ? "priority-panel--blocked" : ""}`}
+        aria-labelledby="priority-heading"
+      >
+        <p className="eyebrow">Current priority</p>
+        <h2 id="priority-heading">
+          {terminal
+            ? "Manual verification required"
+            : active
+              ? "No action needed"
+              : mot3DDiscoveryLifecycle === "completed_success"
+                ? "Discovery outputs await the next validated stage"
+                : "Review Discovery submission"}
+        </h2>
+        <p>
+          <strong>Current stage:</strong> Discovery.
+        </p>
+        <p>
+          {terminal
+            ? "The scheduler outcome is not safe to infer. Do not submit again; inspect Zeus jobs manually."
+            : active
+              ? "Zeus is running the reviewed five-array Discovery chain. No action is needed while it continues."
+              : "The broad angled-donut and single-pass comparison is prepared. Review it below before any job is submitted."}
+        </p>
+      </section>
+    );
+  }
+
   if (confirmationSubmissionPriority) {
     return (
       <section
@@ -150,8 +199,8 @@ export function CampaignPriorityPanel({
               . Zeus continues independently; no action is needed.
             </p>
             <p>
-              Sensitivity remains locked until all expected Confirmation
-              outputs pass frozen-design and provenance validation.
+              Sensitivity remains locked until all expected Confirmation outputs
+              pass frozen-design and provenance validation.
             </p>
           </>
         )}

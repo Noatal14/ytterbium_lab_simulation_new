@@ -16,7 +16,7 @@ from http.cookies import SimpleCookie
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
 from workflow_api import list_workflows
@@ -60,8 +60,14 @@ from workflow_api.zeus_sensitivity_submission import (
 from workflow_api.zeus_production import ZeusProductionCoordinator, ZeusProductionError
 from workflow_api.zeus_production_submission import ZeusProductionSubmissionCoordinator, ZeusProductionSubmissionError
 from workflow_api.zeus_finalization import ZeusFinalizationCoordinator, ZeusFinalizationError
+from workflow_api.zeus_discovery_submission import (
+    ZeusMot3DDiscoverySubmissionCoordinator,
+    ZeusMot3DDiscoverySubmissionError,
+)
 from workflow_api.zeeman_individual_api import IndividualZeemanApi
 from workflow_api.zeeman_zeus_execution import ZeemanZeusError
+if TYPE_CHECKING:
+    from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
 
 HOST = "127.0.0.1"
 PORT = 8765
@@ -90,6 +96,12 @@ def _post_routes() -> tuple[PostRoute, ...]:
     rows = [
         ("/api/v1/campaigns/2d/preview","creation_service","preview","creation_preview","creation_unavailable","Local campaign creation is unavailable.",HTTPStatus.OK,Exception),
         ("/api/v1/campaigns/2d/confirm","creation_service","confirm","creation_confirm","creation_unavailable","Local campaign creation is unavailable.",HTTPStatus.CREATED,Exception),
+        ("/api/v1/campaigns/3d/bootstrap/status","mot_3d_bootstrap_service","status","payload","mot_3d_bootstrap_unavailable","3D campaign preparation is unavailable.",HTTPStatus.OK,ValueError),
+        ("/api/v1/campaigns/3d/bootstrap/preview","mot_3d_bootstrap_service","preview","session_kw","mot_3d_bootstrap_unavailable","3D campaign preparation is unavailable.",HTTPStatus.OK,ValueError),
+        ("/api/v1/campaigns/3d/bootstrap/confirm","mot_3d_bootstrap_service","confirm","session_kw","mot_3d_bootstrap_unavailable","3D campaign preparation is unavailable.",HTTPStatus.CREATED,ValueError),
+        ("/api/v1/zeus/submissions/mot-3d-discovery/status","mot_3d_discovery_submission_service","status","payload","zeus_mot_3d_discovery_submission_unavailable","Zeus 3D Discovery submission is unavailable.",HTTPStatus.OK,ZeusMot3DDiscoverySubmissionError),
+        ("/api/v1/zeus/submissions/mot-3d-discovery/preview","mot_3d_discovery_submission_service","preview","session_kw","zeus_mot_3d_discovery_submission_unavailable","Zeus 3D Discovery submission is unavailable.",HTTPStatus.OK,ZeusMot3DDiscoverySubmissionError),
+        ("/api/v1/zeus/submissions/mot-3d-discovery/confirm","mot_3d_discovery_submission_service","confirm","session_kw","zeus_mot_3d_discovery_submission_unavailable","Zeus 3D Discovery submission is unavailable.",HTTPStatus.CREATED,ZeusMot3DDiscoverySubmissionError),
         ("/api/v1/zeus/snapshot","zeus_service","snapshot","payload","zeus_unavailable","Read-only Zeus inspection is unavailable.",HTTPStatus.OK,ZeusSnapshotError),
         ("/api/v1/zeus/transfers/preview","transfer_service","preview","session_kw","zeus_preparation_unavailable","Zeus campaign preparation is unavailable.",HTTPStatus.OK,ZeusPreparationError),
         ("/api/v1/zeus/transfers/confirm","transfer_service","confirm","session_kw","zeus_preparation_unavailable","Zeus campaign preparation is unavailable.",HTTPStatus.CREATED,ZeusPreparationError),
@@ -191,6 +203,8 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     production_service: ZeusProductionCoordinator | None = None
     production_submission_service: ZeusProductionSubmissionCoordinator | None = None
     finalization_service: ZeusFinalizationCoordinator | None = None
+    mot_3d_bootstrap_service: "Mot3DDiscoveryBootstrapService | None" = None
+    mot_3d_discovery_submission_service: ZeusMot3DDiscoverySubmissionCoordinator | None = None
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
     individual_mot_2d_api: IndividualMot2DApi | None = None
@@ -212,7 +226,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None:
+            if self.creation_service is None and self.mot_3d_bootstrap_service is None and self.mot_3d_discovery_submission_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None:
                 self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -392,6 +406,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         except ZeusFinalizationError as error:
             resolved = resolve_error("finalization", error.code)
             self._error(resolved.code, resolved.message, resolved.status); return
+        except ZeusMot3DDiscoverySubmissionError as error:
+            resolved = resolve_error("mot_3d_discovery_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeemanZeusError as error:
             status, message = _INDIVIDUAL_ZEUS_ERRORS.get(
                 error.code,
@@ -404,6 +421,8 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         except FileExistsError:
             self._catalog_error("creation", "campaign_exists"); return
         except ValueError as error:
+            if route.service_attr == "mot_3d_bootstrap_service":
+                self._error("mot_3d_bootstrap_failed", "3D campaign preparation stopped safely.", HTTPStatus.PRECONDITION_FAILED); return
             resolved = resolve_wire_error("creation", "invalid_request", str(error))
             self._error(resolved.code, resolved.message, resolved.status); return
         except Exception:
@@ -510,6 +529,8 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 
 
 def main() -> None:
+    from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
+
     authority = issue_execution_authority()
     zeeman_creation = ZeemanRunCreationService(
         WorkflowHandler.repository_root,
@@ -549,6 +570,12 @@ def main() -> None:
     WorkflowHandler.creation_service = CreationService(
         WorkflowHandler.repository_root,
         RepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
+    )
+    WorkflowHandler.mot_3d_bootstrap_service = Mot3DDiscoveryBootstrapService(
+        WorkflowHandler.repository_root
+    )
+    WorkflowHandler.mot_3d_discovery_submission_service = ZeusMot3DDiscoverySubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
     )
     WorkflowHandler.zeus_service = ZeusSnapshotService(
         ZeusSnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/ssh")),

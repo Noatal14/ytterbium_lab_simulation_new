@@ -10,7 +10,7 @@ describe("accessibility contract", () => {
     expect(screen.getByRole("main")).toBeInTheDocument();
     expect(screen.getByRole("contentinfo")).toBeInTheDocument();
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
-    expect(screen.getByText(/completed canonical 2D-MOT campaign has not been selected/i)).toBeInTheDocument();
+    expect(screen.getByText(/Requires a completed canonical 2D-MOT campaign/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Start 2D-MOT campaign/ })).toBeEnabled();
     expect(screen.getByRole("button", { name: /Start 2D-MOT campaign/ })).toHaveAccessibleDescription(/Review every setting/i);
     await screen.findByRole("button", { name: "Open campaign" });

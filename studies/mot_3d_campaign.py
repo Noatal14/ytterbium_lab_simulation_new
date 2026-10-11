@@ -80,6 +80,8 @@ def relevant_files():
     for directory in ("lab_setup", "simulations", "utils", "atomsmltr/src/atomsmltr"):
         paths.update(Path(directory).rglob("*.py"))
     return tuple(path.as_posix() for path in sorted(paths))
+
+
 EXPECTED_SEEDS = tuple(range(3015, 3035))
 ROLE_SEEDS = {
     "discovery": EXPECTED_SEEDS[:12],
@@ -128,10 +130,15 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
     manifest_path = root / "campaign.json"
     report_path = root / "final_report.json"
     if not manifest_path.is_file() or not report_path.is_file():
-        raise FileNotFoundError("Completed 2D campaign manifest/final report is missing.")
+        raise FileNotFoundError(
+            "Completed 2D campaign manifest/final report is missing."
+        )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "complete":
+    if (
+        manifest.get("kind") != "mot_2d_s0_campaign"
+        or manifest.get("stage") != "complete"
+    ):
         raise ValueError("Upstream 2D campaign is not complete and canonical.")
     if report.get("kind") != "mot_2d_s0_campaign_final_report":
         raise ValueError("Unexpected upstream 2D final-report kind.")
@@ -144,12 +151,15 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         raise ValueError("Upstream sealed seed registry does not match the 3D handoff.")
     results = report.get("results", [])
     matching = [
-        row for row in results
+        row
+        for row in results
         if Path(row.get("survivor_states_directory", "")).resolve()
         == Path(survivor_directory).resolve()
     ]
     if len(matching) != 1:
-        raise ValueError("Survivor directory is not the unique selected 2D production output.")
+        raise ValueError(
+            "Survivor directory is not the unique selected 2D production output."
+        )
     if matching[0].get("s0") not in manifest.get("s0_values", []):
         raise ValueError("Selected 2D result has an unregistered s0 value.")
     fixed = manifest.get("fixed_design", {})
@@ -157,7 +167,9 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
     if source.get("zeeman_profile") != CANONICAL_ZEEMAN_PROFILE_NAME:
         raise ValueError("Upstream 2D campaign has invalid laboratory provenance.")
     laboratory_keys = {
-        "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
+        "laboratory_spec_version",
+        "laboratory_spec_sha256",
+        "zeeman_profile_sha256",
     }
     present_source_keys = laboratory_keys.intersection(source)
     if present_source_keys:
@@ -171,9 +183,14 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
                 allow_legacy=True,
             )
         except ValueError as error:
-            raise ValueError("Upstream 2D campaign has invalid laboratory provenance.") from error
-    if (not present_source_keys
-            and len(str(manifest.get("provenance", {}).get("physical_model_sha256", ""))) != 64):
+            raise ValueError(
+                "Upstream 2D campaign has invalid laboratory provenance."
+            ) from error
+    if (
+        not present_source_keys
+        and len(str(manifest.get("provenance", {}).get("physical_model_sha256", "")))
+        != 64
+    ):
         raise ValueError("Legacy upstream 2D physical-model provenance is invalid.")
     frozen_records = [
         record
@@ -181,7 +198,9 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         for record in records
     ]
     if not frozen_records:
-        raise ValueError("Upstream 2D frozen inputs have invalid laboratory provenance.")
+        raise ValueError(
+            "Upstream 2D frozen inputs have invalid laboratory provenance."
+        )
     legacy_attested = False
     for record in frozen_records:
         record_keys = laboratory_keys.intersection(record)
@@ -196,7 +215,9 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
                     allow_legacy=True,
                 )
             except ValueError:
-                raise ValueError("Upstream 2D frozen input laboratory provenance mismatch.")
+                raise ValueError(
+                    "Upstream 2D frozen input laboratory provenance mismatch."
+                )
             legacy_attested = legacy_attested or identity["legacy_attested_profile"]
             continue
         repository_root = Path(__file__).resolve().parents[1]
@@ -208,16 +229,21 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
             state_path = repository_root / state_path
         if not metadata_path.is_file() or not state_path.is_file():
             raise ValueError("Upstream 2D frozen input is unavailable.")
-        if (_sha256(metadata_path) != record.get("metadata_sha256")
-                or _sha256(state_path) != record.get("sha256")):
+        if _sha256(metadata_path) != record.get("metadata_sha256") or _sha256(
+            state_path
+        ) != record.get("sha256"):
             raise ValueError("Upstream 2D frozen input hash mismatch.")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         laboratory = attest_canonical_zeeman_metadata(metadata, allow_legacy=True)
-        if record_keys and any(record.get(key) != laboratory[key] for key in laboratory_keys):
+        if record_keys and any(
+            record.get(key) != laboratory[key] for key in laboratory_keys
+        ):
             raise ValueError("Upstream 2D frozen input laboratory provenance mismatch.")
         if metadata.get("output_sha256") != record.get("sha256"):
             raise ValueError("Upstream 2D frozen input output hash mismatch.")
-        if metadata.get("software", {}).get("git_commit") != record.get("source_git_commit"):
+        if metadata.get("software", {}).get("git_commit") != record.get(
+            "source_git_commit"
+        ):
             raise ValueError("Upstream 2D frozen input code provenance mismatch.")
         legacy_attested = legacy_attested or laboratory["legacy_attested_profile"]
     expected_design = {
@@ -247,15 +273,19 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         "selected_result": matching[0],
         "expected_survivor_design": expected_design,
         "expected_survivor_parameters": matching[0].get("recommended_parameters"),
-        "laboratory_provenance": ({
+        "laboratory_provenance": (
+            {
             "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
             "legacy_attested_profile": True,
-        } if legacy_attested else {
+            }
+            if legacy_attested
+            else {
             "laboratory_spec_version": LABORATORY_SPEC_VERSION,
             "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
             "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
             "legacy_attested_profile": False,
-        }),
+            }
+        ),
     }
 
 
@@ -269,9 +299,7 @@ def freeze_inputs(
     records = {}
     for seed in EXPECTED_SEEDS:
         matches = sorted(
-            directory.glob(
-                f"mot_2d_survivors_zeeman_seed{seed}_mot_seed*.npy"
-            )
+            directory.glob(f"mot_2d_survivors_zeeman_seed{seed}_mot_seed*.npy")
         )
         if len(matches) != 1:
             raise ValueError(
@@ -315,7 +343,9 @@ def freeze_inputs(
         }
         if expected_seed_pairs is not None:
             expected_mot_seed = expected_seed_pairs.get(seed)
-            if expected_mot_seed is None or int(metadata["mot_seed"]) != int(expected_mot_seed):
+            if expected_mot_seed is None or int(metadata["mot_seed"]) != int(
+                expected_mot_seed
+            ):
                 raise ValueError(f"Unexpected Zeeman/MOT seed pair in {metadata_path}.")
     designs = [records[seed]["source_design"] for seed in EXPECTED_SEEDS]
     if not designs[0] or any(design != designs[0] for design in designs[1:]):
@@ -328,8 +358,7 @@ def freeze_inputs(
     if expected_parameters is not None and parameters[0] != expected_parameters:
         raise ValueError("2D survivor parameters do not match the selected result.")
     return {
-        role: [records[seed] for seed in seeds]
-        for role, seeds in ROLE_SEEDS.items()
+        role: [records[seed] for seed in seeds] for role, seeds in ROLE_SEEDS.items()
     }
 
 
@@ -363,9 +392,7 @@ def validate_frozen_inputs(manifest_path, role, *, verify_design=True):
     seen_mot_seeds = set()
     upstream_pairs = {
         int(row["zeeman_seed"]): int(row["mot_seed"])
-        for row in payload.get("upstream_2d_campaign", {}).get(
-            "sealed_seed_pairs", []
-        )
+        for row in payload.get("upstream_2d_campaign", {}).get("sealed_seed_pairs", [])
     }
     for record in records:
         path = Path(record["path"])
@@ -389,9 +416,15 @@ def validate_frozen_inputs(manifest_path, role, *, verify_design=True):
         seen_mot_seeds.add(pair[1])
         if metadata.get("kind") != "mot_2d_final_survivor_ensemble":
             raise ValueError(f"Unexpected metadata kind in {metadata_path}.")
-        if (int(metadata.get("zeeman_seed", -1)), int(metadata.get("mot_seed", -1))) != pair:
+        if (
+            int(metadata.get("zeeman_seed", -1)),
+            int(metadata.get("mot_seed", -1)),
+        ) != pair:
             raise ValueError(f"Frozen seed-pair mismatch in {metadata_path}.")
-        if list(states.shape) != record["shape"] or str(states.dtype) != record["dtype"]:
+        if (
+            list(states.shape) != record["shape"]
+            or str(states.dtype) != record["dtype"]
+        ):
             raise ValueError(f"Frozen shape/dtype mismatch: {path}")
         if len(states) != int(record["n_survivors"]) or not np.all(np.isfinite(states)):
             raise ValueError(f"Frozen survivor data are invalid: {path}")
@@ -412,12 +445,11 @@ def load_role_particles(manifest_path, role, per_ensemble, selection_seed):
         rng = np.random.default_rng(
             np.random.SeedSequence([selection_seed, record["zeeman_seed"]])
         )
-        indices = np.sort(
-            rng.choice(len(available), size=per_ensemble, replace=False)
-        )
+        indices = np.sort(rng.choice(len(available), size=per_ensemble, replace=False))
         states.append(available[indices])
         ensemble_ids.extend([ensemble_id] * per_ensemble)
-        provenance.append({
+        provenance.append(
+            {
             "ensemble_id": ensemble_id,
             "file": record["path"],
             "array_sha256": record["sha256"],
@@ -425,7 +457,8 @@ def load_role_particles(manifest_path, role, per_ensemble, selection_seed):
             "mot_seed": record["mot_seed"],
             "available_count": len(available),
             "selected_indices": indices.tolist(),
-        })
+            }
+        )
     return np.concatenate(states), np.asarray(ensemble_ids), provenance
 
 
@@ -435,20 +468,24 @@ def load_all_frozen_particles(manifest_path):
     for role in ("discovery", "refinement", "preliminary_check"):
         records.extend(validate_frozen_inputs(manifest_path, role))
     if tuple(row["zeeman_seed"] for row in records) != EXPECTED_SEEDS:
-        raise ValueError("Combined selection roles do not form the exact 20-seed registry.")
+        raise ValueError(
+            "Combined selection roles do not form the exact 20-seed registry."
+        )
     states, ensemble_ids, provenance = [], [], []
     for ensemble_id, record in enumerate(records):
         available = np.asarray(load_particle_states(record["path"]), dtype=float)
         states.append(available)
         ensemble_ids.extend([ensemble_id] * len(available))
-        provenance.append({
+        provenance.append(
+            {
             "ensemble_id": ensemble_id,
             "file": record["path"],
             "array_sha256": record["sha256"],
             "zeeman_seed": record["zeeman_seed"],
             "mot_seed": record["mot_seed"],
             "particle_count": len(available),
-        })
+            }
+        )
     return np.concatenate(states), np.asarray(ensemble_ids), provenance
 
 
@@ -495,25 +532,41 @@ def _cumulative_targets(final_targets, round_index, round_count):
     )
 
 
-def write_discovery_jobs(root, revision, input_directory):
-    jobs = root / "jobs"
-    manifest_path = root / "campaign.json"
-    quoted_input = shlex.quote(str(Path(input_directory).resolve()))
+def render_discovery_jobs(
+    root,
+    revision,
+    input_directory,
+    *,
+    command_campaign=None,
+    command_input=None,
+):
+    """Render the canonical Discovery job bundle without filesystem effects."""
+    root = Path(root)
+    command_root = Path(command_campaign) if command_campaign is not None else root
+    manifest_path = command_root / "campaign.json"
+    input_path = (
+        Path(command_input)
+        if command_input is not None
+        else Path(input_directory).resolve()
+    )
+    quoted_input = shlex.quote(str(input_path))
     quoted_manifest = shlex.quote(str(manifest_path))
     dt = MOT_3D_SIM_CONFIG["screening_dt_s"]
+    rendered = {}
     smoke_paths = {}
     for index, family in enumerate(FAMILIES):
         short = "don" if family == "angled_donut" else "sp"
-        smoke_paths[family] = _write(
-            jobs / f"01_smoke_{family}.pbs",
+        relative = Path("jobs") / f"01_smoke_{family}.pbs"
+        smoke_paths[family] = root / relative
+        rendered[relative.as_posix()] = (
             _header(f"m3d2_{short}_smoke", revision, "01:00:00", 12, "8gb")
             + f"python -u -m studies.mot_3d.discovery.optimize --family {family} "
             f"--worker-index 0 --target-completed-trials 1 "
             f"--sampler-seed {281001 + index} "
-            f"--output-dir {shlex.quote(str(root/'smoke'/family))} "
+            f"--output-dir {shlex.quote(str(command_root/'smoke'/family))} "
             f"--input {quoted_input} "
             f"--input-manifest {quoted_manifest} --input-role discovery "
-            f"--particles-per-ensemble 1 --npools 12 --dt {dt} --timeout-s 3000\n",
+            f"--particles-per-ensemble 1 --npools 12 --dt {dt} --timeout-s 3000\n"
         )
 
     round_paths = {}
@@ -527,9 +580,9 @@ def write_discovery_jobs(root, revision, input_directory):
             cumulative = _cumulative_targets(targets, round_index, round_count)
             target_values = " ".join(str(value) for value in cumulative)
             sampler_values = " ".join(str(value) for value in SAMPLER_SEEDS)
-            family_paths.append(
-                _write(
-                    jobs / family / f"round_{round_index:02d}.pbs",
+            relative = Path("jobs") / family / f"round_{round_index:02d}.pbs"
+            family_paths.append(root / relative)
+            rendered[relative.as_posix()] = (
                     _header(f"m3d2_{short}_r{round_index}", revision)
                     + "# Array directive is supplied by the submission chain.\n"
                     + f"targets=({target_values})\n"
@@ -538,27 +591,36 @@ def write_discovery_jobs(root, revision, input_directory):
                     + 'target="${targets[$worker]}"\n'
                     + 'sampler="${samplers[$worker]}"\n'
                     + f"python -u -m studies.mot_3d.discovery.optimize "
-                    f"--family {family} --worker-index \"$worker\" "
-                    f"--target-completed-trials \"$target\" "
-                    f"--sampler-seed \"$sampler\" "
-                    f"--output-dir {shlex.quote(str(root/'discovery'/family))} "
+                f'--family {family} --worker-index "$worker" '
+                f'--target-completed-trials "$target" '
+                f'--sampler-seed "$sampler" '
+                f"--output-dir {shlex.quote(str(command_root/'discovery'/family))} "
                     f"--input {quoted_input} "
                     f"--input-manifest {quoted_manifest} --input-role discovery "
                     f"--particles-per-ensemble 50 --npools 200 --dt {dt} "
-                    f"--timeout-s 68400\n",
-                )
+                f"--timeout-s 68400\n"
             )
         round_paths[family] = family_paths
-    submitter = jobs / "02_submit_discovery_chain.sh"
+    submitter = root / "jobs/02_submit_discovery_chain.sh"
     # Convenience wrapper only; the Python command is the single submission
     # authority and owns duplicate prevention plus durable job-ID recording.
     lines = [
         "#!/bin/bash",
         "set -euo pipefail",
         "python -u -m studies.mot_3d_campaign submit-discovery "
-        f'--campaign "{root}"',
+        f'--campaign "{command_root}"',
     ]
-    _write(submitter, "\n".join(lines) + "\n")
+    rendered["jobs/02_submit_discovery_chain.sh"] = "\n".join(lines) + "\n"
+    return rendered, smoke_paths, round_paths, submitter
+
+
+def write_discovery_jobs(root, revision, input_directory):
+    """Write the pure-rendered canonical Discovery job bundle."""
+    rendered, smoke_paths, round_paths, submitter = render_discovery_jobs(
+        root, revision, input_directory
+    )
+    for relative, text in rendered.items():
+        _write(Path(root) / relative, text)
     return smoke_paths, round_paths, submitter
 
 
@@ -694,7 +756,10 @@ def validate_discovery_complete(root, manifest, family):
         raise RuntimeError(
             f"Discovery {family} has {len(all_paths)}/{total} registered trials."
         )
-    input_files = [row["path"] for row in validate_frozen_inputs(root / "campaign.json", "discovery")]
+    input_files = [
+        row["path"]
+        for row in validate_frozen_inputs(root / "campaign.json", "discovery")
+    ]
     _, expected_selection = load_balanced_discovery_particles(
         input_files[0],
         ensemble_count=len(input_files),
@@ -735,7 +800,9 @@ def validate_discovery_complete(root, manifest, family):
                 f"Discovery {family} worker {worker} has {len(paths)}/{target} trials."
             )
         seen_trials = set()
-        expected_design = dict(expected_common, worker_index=worker, sampler_seed=SAMPLER_SEEDS[worker])
+        expected_design = dict(
+            expected_common, worker_index=worker, sampler_seed=SAMPLER_SEEDS[worker]
+        )
         encoded = json.dumps(expected_design, sort_keys=True, separators=(",", ":"))
         expected_id = hashlib.sha256(encoded.encode()).hexdigest()
         for path in paths:
@@ -746,9 +813,14 @@ def validate_discovery_complete(root, manifest, family):
             if path.name != f"trial_{int(trial_number):04d}.json":
                 raise ValueError(f"Discovery filename/metadata mismatch: {path}")
             if trial_number in seen_trials:
-                raise ValueError(f"Duplicate discovery trial number in worker {worker}.")
+                raise ValueError(
+                    f"Duplicate discovery trial number in worker {worker}."
+                )
             seen_trials.add(trial_number)
-            if row.get("scientific_design") != expected_design or row.get("design_id") != expected_id:
+            if (
+                row.get("scientific_design") != expected_design
+                or row.get("design_id") != expected_id
+            ):
                 raise ValueError(f"Foreign or stale discovery design: {path}")
     return True
 
@@ -776,8 +848,14 @@ def prepare_preliminary_check(root, manifest):
         save_file_json(destination, selection)
         selections[family] = destination
     workers, merges = _selection_stage_jobs(
-        root, manifest, "preliminary_check", selections,
-        "preliminary_check", 150, 51_001, 52_001,
+        root,
+        manifest,
+        "preliminary_check",
+        selections,
+        "preliminary_check",
+        150,
+        51_001,
+        52_001,
     )
     manifest["stage"] = "preliminary_check"
     manifest.setdefault("stages", {})["preliminary_check"] = {
@@ -795,7 +873,9 @@ def prepare_refinement(root, manifest):
 
     selections = {}
     for family in FAMILIES:
-        summary = root / "preliminary_check" / family / "merged" / "early_check_summary.json"
+        summary = (
+            root / "preliminary_check" / family / "merged" / "early_check_summary.json"
+        )
         if not summary.is_file():
             raise RuntimeError(f"Preliminary check incomplete: {summary}")
         payload = select(family, summary)
@@ -803,8 +883,14 @@ def prepare_refinement(root, manifest):
         save_file_json(destination, payload)
         selections[family] = destination
     workers, merges = _selection_stage_jobs(
-        root, manifest, "refinement", selections,
-        "refinement", 750, 61_001, 62_001,
+        root,
+        manifest,
+        "refinement",
+        selections,
+        "refinement",
+        750,
+        61_001,
+        62_001,
     )
     manifest["stage"] = "refinement"
     manifest.setdefault("stages", {})["refinement"] = {
@@ -830,8 +916,14 @@ def prepare_closure(root, manifest):
         save_file_json(destination, payload)
         selections[family] = destination
     workers, merges = _selection_stage_jobs(
-        root, manifest, "closure", selections,
-        "refinement", 750, 71_001, 72_001,
+        root,
+        manifest,
+        "closure",
+        selections,
+        "refinement",
+        750,
+        71_001,
+        72_001,
     )
     manifest["stage"] = "closure"
     manifest.setdefault("stages", {})["closure"] = {
@@ -872,7 +964,13 @@ def prepare_finalist_selection(root, manifest):
         )
         merge_jobs[family] = _write(
             jobs / f"{family}_merge.pbs",
-            _header(f"m3d2_{short}_finm", manifest["provenance"]["git_commit"], "01:00:00", 1, "4gb")
+            _header(
+                f"m3d2_{short}_finm",
+                manifest["provenance"]["git_commit"],
+                "01:00:00",
+                1,
+                "4gb",
+            )
             + f"python -u -m studies.mot_3d.finalists.merge "
             f"--selection {selection} --input-root {family_root} "
             f"--output-dir {family_root}/merged --bootstrap-seed 82001\n",
@@ -899,7 +997,9 @@ def prepare_final_validation_inputs(root, manifest):
         "families": {},
     }
     for family in FAMILIES:
-        summary_path = root / "finalist_selection" / family / "merged" / "finalist_summary.json"
+        summary_path = (
+            root / "finalist_selection" / family / "merged" / "finalist_summary.json"
+        )
         summary = json.loads(summary_path.read_text(encoding="utf-8"))
         winner = summary["ranked_candidates"][0]
         profile, parameters, derived = build_profile_from_parameters(
@@ -921,21 +1021,23 @@ def prepare_final_validation_inputs(root, manifest):
     jobs = root / "jobs" / "final_validation_inputs"
     revision = manifest["provenance"]["git_commit"]
     params = manifest["upstream_2d_campaign"]["expected_survivor_parameters"]
-    profile = manifest["upstream_2d_campaign"]["expected_survivor_design"]["zeeman_profile"]
+    profile = manifest["upstream_2d_campaign"]["expected_survivor_design"][
+        "zeeman_profile"
+    ]
     zeeman_job = _write(
         jobs / "01_generate_zeeman.pbs",
         _header("m3d2_val_z", revision, "08:00:00")
-        + 'seed=$((3035 + PBS_ARRAY_INDEX))\n'
-        + f"python -u -m studies.zeeman.generate_ensembles --seed \"$seed\" "
+        + "seed=$((3035 + PBS_ARRAY_INDEX))\n"
+        + f'python -u -m studies.zeeman.generate_ensembles --seed "$seed" '
         f"--npools 200 --output-dir {zeeman_dir}\n",
     )
     mot_job = _write(
         jobs / "02_generate_2d_survivors.pbs",
         _header("m3d2_val_2d", revision, "12:00:00")
-        + 'zseed=$((3035 + PBS_ARRAY_INDEX))\n'
-        + 'mseed=$((43035 + PBS_ARRAY_INDEX))\n'
-        + f"python -u -m studies.mot_2d.production --zeeman-seeds \"$zseed\" "
-        f"--mot-seeds \"$mseed\" --ensemble-dir {zeeman_dir} "
+        + "zseed=$((3035 + PBS_ARRAY_INDEX))\n"
+        + "mseed=$((43035 + PBS_ARRAY_INDEX))\n"
+        + f'python -u -m studies.mot_2d.production --zeeman-seeds "$zseed" '
+        f'--mot-seeds "$mseed" --ensemble-dir {zeeman_dir} '
         f"--expected-zeeman-profile {profile} --expected-git-commit {revision} "
         f"--s0 {params['s0']} --detuning-gamma {params['detuning_gamma']} "
         f"--magnet-radius-mm {1000 * params['magnet_radius']} --npools 200 "
@@ -967,27 +1069,38 @@ def _collect_final_validation_inputs(root, manifest):
     replicate_dir = root / "final_validation_inputs" / "mot_2d_records" / "replicates"
     expected_zeeman_names = {
         f"production_zeeman_n50000_dt40us_seed{seed}{suffix}"
-        for seed in FINAL_VALIDATION_ZEEMAN_SEEDS for suffix in (".npy", ".json")
+        for seed in FINAL_VALIDATION_ZEEMAN_SEEDS
+        for suffix in (".npy", ".json")
     }
     expected_state_names = {
         f"mot_2d_survivors_zeeman_seed{zseed}_mot_seed{mseed}{suffix}"
-        for zseed, mseed in zip(FINAL_VALIDATION_ZEEMAN_SEEDS, FINAL_VALIDATION_MOT_SEEDS)
+        for zseed, mseed in zip(
+            FINAL_VALIDATION_ZEEMAN_SEEDS, FINAL_VALIDATION_MOT_SEEDS
+        )
         for suffix in (".npy", ".json")
     }
     expected_replicates = {
         f"zeeman_seed{seed}.json" for seed in FINAL_VALIDATION_ZEEMAN_SEEDS
     }
     if (
-        {path.name for path in zeeman_dir.iterdir() if path.is_file()} != expected_zeeman_names
-        or {path.name for path in states_dir.iterdir() if path.is_file()} != expected_state_names
-        or {path.name for path in replicate_dir.iterdir() if path.is_file()} != expected_replicates
+        {path.name for path in zeeman_dir.iterdir() if path.is_file()}
+        != expected_zeeman_names
+        or {path.name for path in states_dir.iterdir() if path.is_file()}
+        != expected_state_names
+        or {path.name for path in replicate_dir.iterdir() if path.is_file()}
+        != expected_replicates
     ):
-        raise RuntimeError("Final-validation generation registry is incomplete or contaminated.")
+        raise RuntimeError(
+            "Final-validation generation registry is incomplete or contaminated."
+        )
     expected_params = manifest["upstream_2d_campaign"]["expected_survivor_parameters"]
     ensembles = []
     for zseed, mseed in zip(FINAL_VALIDATION_ZEEMAN_SEEDS, FINAL_VALIDATION_MOT_SEEDS):
-        zeeman_path = root / "final_validation_inputs" / "after_zeeman" / (
-            f"production_zeeman_n50000_dt40us_seed{zseed}.npy"
+        zeeman_path = (
+            root
+            / "final_validation_inputs"
+            / "after_zeeman"
+            / (f"production_zeeman_n50000_dt40us_seed{zseed}.npy")
         )
         zeeman_metadata_path = zeeman_path.with_suffix(".json")
         if not zeeman_path.is_file() or not zeeman_metadata_path.is_file():
@@ -995,8 +1108,12 @@ def _collect_final_validation_inputs(root, manifest):
         zeeman_metadata = json.loads(zeeman_metadata_path.read_text(encoding="utf-8"))
         if (
             zeeman_metadata.get("parameters", {}).get("seed") != zseed
-            or zeeman_metadata.get("parameters", {}).get("resolved_zeeman_magnet_profile")
-            != manifest["upstream_2d_campaign"]["expected_survivor_design"]["zeeman_profile"]
+            or zeeman_metadata.get("parameters", {}).get(
+                "resolved_zeeman_magnet_profile"
+            )
+            != manifest["upstream_2d_campaign"]["expected_survivor_design"][
+                "zeeman_profile"
+            ]
             or zeeman_metadata.get("output_sha256") != _sha256(zeeman_path)
             or zeeman_metadata.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
             or zeeman_metadata.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
@@ -1015,11 +1132,15 @@ def _collect_final_validation_inputs(root, manifest):
         design = metadata.get("design", {})
         expected_design = {
             "dt_s": MOT_2D_SIM_CONFIG["dt_s"],
-            "stochastic_solver": manifest["upstream_2d_campaign"]["expected_survivor_design"]["stochastic_solver"],
+            "stochastic_solver": manifest["upstream_2d_campaign"][
+                "expected_survivor_design"
+            ]["stochastic_solver"],
             "uses_all_available_particles": True,
             "npools": 200,
             "ensemble_dir": str(zeeman_dir),
-            "zeeman_profile": manifest["upstream_2d_campaign"]["expected_survivor_design"]["zeeman_profile"],
+            "zeeman_profile": manifest["upstream_2d_campaign"][
+                "expected_survivor_design"
+            ]["zeeman_profile"],
             "git_commit": manifest["provenance"]["git_commit"],
             "laboratory_spec_version": LABORATORY_SPEC_VERSION,
             "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
@@ -1031,7 +1152,8 @@ def _collect_final_validation_inputs(root, manifest):
             or metadata.get("mot_seed") != mseed
             or metadata.get("parameters") != expected_params
             or design != expected_design
-            or Path(metadata.get("source_zeeman_ensemble", "")).resolve() != zeeman_path.resolve()
+            or Path(metadata.get("source_zeeman_ensemble", "")).resolve()
+            != zeeman_path.resolve()
             or replicate.get("kind") != "mot_2d_final_production_replicate"
             or replicate.get("parameters") != expected_params
             or replicate.get("design") != expected_design
@@ -1046,7 +1168,8 @@ def _collect_final_validation_inputs(root, manifest):
             or not np.all(np.isfinite(values))
         ):
             raise ValueError(f"Invalid new sealed survivor ensemble: {path}")
-        ensembles.append({
+        ensembles.append(
+            {
             "zeeman_seed": zseed,
             "mot_seed": mseed,
             "path": str(path.resolve()),
@@ -1061,7 +1184,8 @@ def _collect_final_validation_inputs(root, manifest):
             "zeeman_metadata_sha256": _sha256(zeeman_metadata_path),
             "shape": list(values.shape),
             "n_survivors": len(values),
-        })
+            }
+        )
     return ensembles
 
 
@@ -1073,7 +1197,9 @@ def freeze_final_validation_inputs(campaign):
     stage = manifest["stages"]["final_validation_input_generation"]
     destination = Path(stage["input_manifest"])
     if destination.exists():
-        raise FileExistsError(f"Final-validation inputs are already frozen: {destination}")
+        raise FileExistsError(
+            f"Final-validation inputs are already frozen: {destination}"
+        )
     ensembles = _collect_final_validation_inputs(root, manifest)
     submission = root / "final_validation_input_generation_submission.json"
     payload = {
@@ -1104,7 +1230,8 @@ def validate_final_validation_inputs(root, manifest):
         or payload.get("locked_nominals_sha256") != _sha256(stage["locked_nominals"])
         or payload.get("campaign_name") != manifest["name"]
         or payload.get("git_commit") != manifest["provenance"]["git_commit"]
-        or payload.get("physical_model_sha256") != manifest["provenance"]["physical_model_sha256"]
+        or payload.get("physical_model_sha256")
+        != manifest["provenance"]["physical_model_sha256"]
         or payload.get("solver") != manifest["design"]["solver"]
         or payload.get("generation_submission_sha256")
         != _sha256(root / "final_validation_input_generation_submission.json")
@@ -1113,7 +1240,9 @@ def validate_final_validation_inputs(root, manifest):
         raise ValueError("Invalid final-validation input manifest.")
     observed = _collect_final_validation_inputs(Path(root), manifest)
     if observed != payload["ensembles"]:
-        raise ValueError("Frozen final-validation metadata no longer matches its artifacts.")
+        raise ValueError(
+            "Frozen final-validation metadata no longer matches its artifacts."
+        )
     for row, zseed, mseed in zip(
         payload["ensembles"], FINAL_VALIDATION_ZEEMAN_SEEDS, FINAL_VALIDATION_MOT_SEEDS
     ):
@@ -1134,8 +1263,13 @@ def prepare_final_validation(root, manifest):
     stage = manifest["stages"]["final_validation_input_generation"]
     input_manifest = Path(stage["input_manifest"])
     submission = root / "final_validation_input_generation_submission.json"
-    if not submission.is_file() or json.loads(submission.read_text()).get("status") != "submitted":
-        raise RuntimeError("Final-validation input generation has no complete submission record.")
+    if (
+        not submission.is_file()
+        or json.loads(submission.read_text()).get("status") != "submitted"
+    ):
+        raise RuntimeError(
+            "Final-validation input generation has no complete submission record."
+        )
     validate_final_validation_inputs(root, manifest)
     locked = Path(stage["locked_nominals"])
     jobs = root / "jobs" / "final_validation"
@@ -1149,13 +1283,19 @@ def prepare_final_validation(root, manifest):
             _header(f"m3d2_{short}_val", manifest["provenance"]["git_commit"])
             + 'seeds=(44001 44002 44003)\nseed="${seeds[$PBS_ARRAY_INDEX]}"\n'
             + f"python -u -m studies.mot_3d.final_validation run --family {family} "
-            f"--recoil-seed \"$seed\" --locked-nominals {locked} "
+            f'--recoil-seed "$seed" --locked-nominals {locked} '
             f"--input-manifest {input_manifest} --campaign-manifest {root/'campaign.json'} "
             f"--output {family_root}/seed_${{seed}}.json --npools 200 --dt {dt}\n",
         )
         merge_jobs[family] = _write(
             jobs / f"{family}_merge.pbs",
-            _header(f"m3d2_{short}_valm", manifest["provenance"]["git_commit"], "02:00:00", 1, "8gb")
+            _header(
+                f"m3d2_{short}_valm",
+                manifest["provenance"]["git_commit"],
+                "02:00:00",
+                1,
+                "8gb",
+            )
             + f"python -u -m studies.mot_3d.final_validation merge "
             f"--family {family} --input-root {family_root} "
             f"--locked-nominals {locked} --input-manifest {input_manifest} "
@@ -1174,7 +1314,9 @@ def prepare_final_validation(root, manifest):
     save_file_json(root / "campaign.json", manifest)
 
 
-def _validate_precision_decision(interval, stored_half_width, stored_decision, target=0.0075):
+def _validate_precision_decision(
+    interval, stored_half_width, stored_decision, target=0.0075
+):
     if len(interval) != 2 or not all(np.isfinite(value) for value in interval):
         raise ValueError("Final-validation confidence interval is invalid.")
     recomputed = float((interval[1] - interval[0]) / 2)
@@ -1209,7 +1351,10 @@ def _final_report_artifact(precision_met):
 def complete_final_validation(root, manifest):
     stage = manifest["stages"]["final_validation"]
     submission = root / "final_validation_submission.json"
-    if not submission.is_file() or json.loads(submission.read_text()).get("status") != "submitted":
+    if (
+        not submission.is_file()
+        or json.loads(submission.read_text()).get("status") != "submitted"
+    ):
         raise RuntimeError("Final validation has no complete submission record.")
     results = {}
     result_hashes = {}
@@ -1249,7 +1394,8 @@ def complete_final_validation(root, manifest):
             or summary.get("ensemble_count") != len(inputs["ensembles"])
             or summary.get("recoil_seed_count") != 3
             or summary.get("input_particle_count") != inputs["total_survivors"]
-            or summary.get("estimand") != "survivor-weighted conditional capture fraction"
+            or summary.get("estimand")
+            != "survivor-weighted conditional capture fraction"
             or summary.get("target_half_width") != 0.0075
             or summary.get("precision_target_met") != computed_precision
             or len(interval) != 2
@@ -1260,7 +1406,8 @@ def complete_final_validation(root, manifest):
             or summary.get("design") != expected_design
             or summary.get("bootstrap_method")
             != "crossed ensemble/recoil bootstrap with within-ensemble particle resampling"
-            or summary.get("expected_usable_per_10m_2d_survivors") != 10_000_000 * efficiency
+            or summary.get("expected_usable_per_10m_2d_survivors")
+            != 10_000_000 * efficiency
             or summary.get("expected_usable_per_10m_95_ci")
             != [10_000_000 * value for value in interval]
             or summary.get("predictive_method")
@@ -1339,7 +1486,9 @@ def validate_stage_complete(root, manifest, stage):
         if summary.get("selection_sha256") != _sha256(selection_path):
             raise ValueError(f"Stage {stage} summary selection hash mismatch.")
         result_design = summary.get("design", {})
-        if result_design.get("campaign_manifest_sha256") != _sha256(root / "campaign.json"):
+        if result_design.get("campaign_manifest_sha256") != _sha256(
+            root / "campaign.json"
+        ):
             raise ValueError(f"Stage {stage} summary campaign hash mismatch.")
 
 
@@ -1349,7 +1498,10 @@ def advance_campaign(args):
     stage = manifest.get("stage")
     if stage == "discovery":
         submission = root / "discovery_submission.json"
-        if not submission.is_file() or json.loads(submission.read_text()).get("status") != "submitted":
+        if (
+            not submission.is_file()
+            or json.loads(submission.read_text()).get("status") != "submitted"
+        ):
             raise RuntimeError("Discovery has no complete submission record.")
         prepare_preliminary_check(root, manifest)
     elif stage == "preliminary_check":
@@ -1377,7 +1529,10 @@ def submit_selection_stage(campaign, qsub=None):
     manifest = json.loads((root / "campaign.json").read_text(encoding="utf-8"))
     stage = manifest.get("stage")
     if stage not in (
-        "preliminary_check", "refinement", "closure", "finalist_selection",
+        "preliminary_check",
+        "refinement",
+        "closure",
+        "finalist_selection",
         "final_validation",
     ):
         raise RuntimeError(f"No selection-stage submission at {stage!r}.")
@@ -1410,10 +1565,14 @@ def submit_selection_stage(campaign, qsub=None):
                 "merge_job_id": None,
             }
             save_file_json(destination, record)
-            merge_id = runner([
-                "qsub", "-W", f"depend=afterok:{array_id}",
+            merge_id = runner(
+                [
+                    "qsub",
+                    "-W",
+                    f"depend=afterok:{array_id}",
                 design["merge_jobs"][family],
-            ])
+                ]
+            )
             record["families"][family]["merge_job_id"] = merge_id
             save_file_json(destination, record)
         record["status"] = "submitted"
@@ -1446,14 +1605,21 @@ def submit_final_validation_inputs(campaign, qsub=None):
         raise FileExistsError(f"Input generation was already submitted: {destination}")
     else:
         os.close(descriptor)
-    runner = qsub or (lambda command: subprocess.check_output(command, text=True).strip())
-    record = {"kind": "mot_3d_final_validation_input_submission", "status": "submitting"}
+    runner = qsub or (
+        lambda command: subprocess.check_output(command, text=True).strip()
+    )
+    record = {
+        "kind": "mot_3d_final_validation_input_submission",
+        "status": "submitting",
+    }
     save_file_json(destination, record)
     try:
         zeeman = runner(["qsub", "-J", "0-19:1", stage["zeeman_job"]])
         record["zeeman_array_job_id"] = zeeman
         save_file_json(destination, record)
-        mot = runner(["qsub", "-W", f"depend=afterok:{zeeman}", "-J", "0-19:1", stage["mot_job"]])
+        mot = runner(
+            ["qsub", "-W", f"depend=afterok:{zeeman}", "-J", "0-19:1", stage["mot_job"]]
+        )
         record["mot_array_job_id"] = mot
         save_file_json(destination, record)
         freeze = runner(["qsub", "-W", f"depend=afterok:{mot}", stage["freeze_job"]])
@@ -1480,6 +1646,65 @@ def freeze_final_inputs_command(args):
     freeze_final_validation_inputs(args.campaign)
 
 
+def build_campaign_manifest(
+    *,
+    name,
+    input_directory,
+    upstream,
+    roles,
+    revision,
+    physical_model_sha256,
+    stage="dt_validation_required",
+    timestep_status="provisional_pending_3d_validation",
+    timestep_evidence=None,
+):
+    """Build the canonical manifest model shared by CLI and UI preparation."""
+    design = {
+            "families": list(FAMILIES),
+            "solver": MOT_3D_SIM_CONFIG["solver"],
+            "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
+            "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
+        "timestep_status": timestep_status,
+            "dt_validation_candidates_s": list(
+                MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]
+            ),
+        "dt_validation_reference_s": MOT_3D_SIM_CONFIG["dt_validation_reference_s"],
+            "green_full_angle_deg": 62.0,
+            "donut_shared_aperture_radius_m": 0.005,
+            "single_pass_green_aperture_radius_m": 0.005,
+            "single_pass_blue_aperture_radius_m": 0.0075,
+            "power_feasibility_status": "unknown_no_experimental_power_cap_provided",
+            "power_policy": (
+                "record per-candidate power proxies and boundary hits; do not "
+                "reject trials or claim laboratory feasibility"
+            ),
+            "selection_statistics": {
+                "estimand": "survivor-weighted conditional capture fraction",
+                "alpha": 0.05,
+                "bootstrap_replicates": 10_000,
+                "multiplicity": "paired max-T simultaneous confidence bounds",
+                "ranking_rule": "largest lower endpoint of the simultaneous two-sided 95% interval",
+            },
+            "optimization_bounds": MOT_3D_OPTIMIZATION_CONFIG,
+            "final_validation_inputs": "newly generated and sealed after finalist selection",
+    }
+    if timestep_evidence is not None:
+        design["timestep_evidence"] = timestep_evidence
+    return {
+        "kind": "mot_3d_campaign_v2",
+        "name": name,
+        "stage": stage,
+        "provenance": {
+            "git_commit": revision,
+            "physical_model_sha256": physical_model_sha256,
+        },
+        "input_directory": str(Path(input_directory).resolve()),
+        "upstream_2d_campaign": upstream,
+        "input_roles": roles,
+        "design": design,
+    }
+
+
 def create(args):
     dirty = _dirty_relevant_files()
     if dirty:
@@ -1502,51 +1727,16 @@ def create(args):
     )
     revision = _revision()
     root.mkdir(parents=True, exist_ok=True)
-    manifest = {
-        "kind": "mot_3d_campaign_v2",
-        "name": args.name,
-        # Discovery is deliberately blocked until the new 2D survivors have
-        # been used for a paired 3D-MOT timestep-convergence check.
-        "stage": "dt_validation_required",
-        "provenance": {
-            "git_commit": revision,
-            "physical_model_sha256": _relevant_hash(),
-        },
-        "input_directory": str(Path(args.input_dir).resolve()),
-        "upstream_2d_campaign": upstream,
-        "input_roles": roles,
-        "design": {
-            "families": list(FAMILIES),
-            "solver": MOT_3D_SIM_CONFIG["solver"],
-            "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
-            "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
-            "timestep_status": "provisional_pending_3d_validation",
-            "dt_validation_candidates_s": list(
-                MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]
-            ),
-            "dt_validation_reference_s": MOT_3D_SIM_CONFIG[
-                "dt_validation_reference_s"
-            ],
-            "green_full_angle_deg": 62.0,
-            "donut_shared_aperture_radius_m": 0.005,
-            "single_pass_green_aperture_radius_m": 0.005,
-            "single_pass_blue_aperture_radius_m": 0.0075,
-            "power_feasibility_status": "unknown_no_experimental_power_cap_provided",
-            "power_policy": (
-                "record per-candidate power proxies and boundary hits; do not "
-                "reject trials or claim laboratory feasibility"
-            ),
-            "selection_statistics": {
-                "estimand": "survivor-weighted conditional capture fraction",
-                "alpha": 0.05,
-                "bootstrap_replicates": 10_000,
-                "multiplicity": "paired max-T simultaneous confidence bounds",
-                "ranking_rule": "largest lower endpoint of the simultaneous two-sided 95% interval",
-            },
-            "optimization_bounds": MOT_3D_OPTIMIZATION_CONFIG,
-            "final_validation_inputs": "newly generated and sealed after finalist selection",
-        },
-    }
+    # CLI creation remains the one-off calibration entrypoint.  The UI may
+    # enter Discovery directly only through separately pinned approval evidence.
+    manifest = build_campaign_manifest(
+        name=args.name,
+        input_directory=args.input_dir,
+        upstream=upstream,
+        roles=roles,
+        revision=revision,
+        physical_model_sha256=_relevant_hash(),
+    )
     save_file_json(root / "campaign.json", manifest)
     smoke, rounds, submitter = write_discovery_jobs(
         root, revision, manifest["input_directory"]
@@ -1554,8 +1744,7 @@ def create(args):
     manifest["jobs"] = {
         "smoke": {key: str(value) for key, value in smoke.items()},
         "discovery_rounds": {
-            family: [str(path) for path in paths]
-            for family, paths in rounds.items()
+            family: [str(path) for path in paths] for family, paths in rounds.items()
         },
         "discovery_submit_chain": str(submitter),
         "dependency": "afterok",
@@ -1570,7 +1759,9 @@ def status(args):
     print(f"Campaign: {manifest['name']}")
     print(f"Current stage: {manifest['stage']}")
     for role, rows in manifest["input_roles"].items():
-        print(f"{role}: {len(rows)} ensembles, {sum(row['n_survivors'] for row in rows)} atoms")
+        print(
+            f"{role}: {len(rows)} ensembles, {sum(row['n_survivors'] for row in rows)} atoms"
+        )
 
 
 def approve_timestep(args):
@@ -1584,6 +1775,7 @@ def approve_timestep(args):
         T_MAX_S,
         merge as rebuild_timestep_evidence,
     )
+
     root = Path(args.campaign)
     manifest_path = root / "campaign.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -1592,7 +1784,9 @@ def approve_timestep(args):
     evidence_path = Path(args.evidence).resolve()
     canonical_evidence_path = (root / "dt_validation" / "evidence.json").resolve()
     if evidence_path != canonical_evidence_path:
-        raise ValueError("Timestep evidence must be the canonical campaign evidence file.")
+        raise ValueError(
+            "Timestep evidence must be the canonical campaign evidence file."
+        )
     evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
     rebuilt_evidence = rebuild_timestep_evidence(root, write=False)
     if evidence != rebuilt_evidence:
@@ -1609,7 +1803,8 @@ def approve_timestep(args):
         or evidence.get("paired_decision_passed") is not True
         or evidence.get("campaign_manifest_sha256") != _sha256(manifest_path)
         or evidence.get("campaign_commit") != manifest["provenance"]["git_commit"]
-        or evidence.get("physical_model_sha256") != manifest["provenance"]["physical_model_sha256"]
+        or evidence.get("physical_model_sha256")
+        != manifest["provenance"]["physical_model_sha256"]
         or evidence.get("ensemble_count") != 20
         or evidence.get("format_version") != EVIDENCE_FORMAT_VERSION
         or evidence.get("sentinels_informative") is not True
@@ -1622,7 +1817,9 @@ def approve_timestep(args):
         or not evidence.get("tasks_sha256")
         or not evidence.get("raw_result_registry_sha256")
     ):
-        raise ValueError("Timestep evidence does not approve the frozen campaign design.")
+        raise ValueError(
+            "Timestep evidence does not approve the frozen campaign design."
+        )
     manifest["design"]["timestep_status"] = "approved_by_paired_convergence_validation"
     manifest["design"]["timestep_evidence"] = {
         "path": str(evidence_path),

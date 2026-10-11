@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import threading
 import subprocess
+import io
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -420,9 +420,23 @@ def test_transport_rejects_extra_fields_and_loose_types(tmp_path, monkeypatch):
     }
 
     def response(payload):
-        monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(
-            args[0], 0, stdout=(json.dumps(payload) + "\n").encode(), stderr=b"",
-        ))
+        class Process:
+            def __init__(self):
+                self.stdin = io.BytesIO()
+                self.stdout = io.BytesIO((json.dumps(payload) + "\n").encode())
+                self.stderr = io.BytesIO()
+                self.returncode = 0
+
+            def wait(self, timeout=None):
+                return self.returncode
+
+            def kill(self):
+                self.returncode = -9
+
+        monkeypatch.setattr(
+            "workflow_api.pinned_ssh.subprocess.Popen",
+            lambda *args, **kwargs: Process(),
+        )
         return _code(lambda: transport.submit(
             campaign="data/optimization/mot_2d/c", commit="c" * 40,
             prepared_files={}, transition_files={}, transition_digest="b" * 64,

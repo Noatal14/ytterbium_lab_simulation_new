@@ -521,6 +521,86 @@ export const serverErrorCatalog = [
     "semantic": "other"
   },
   {
+    "domain": "mot_3d_discovery_submission",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "discovery_already_submitted",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "discovery_expired",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "discovery_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "discovery_not_prepared",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "discovery_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "discovery_submission_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_discovery_submission",
+    "code": "zeus_unreachable",
+    "semantic": "other"
+  },
+  {
     "domain": "production_submission",
     "code": "campaign_not_canonical",
     "semantic": "other"
@@ -1272,6 +1352,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "route_unavailable",
+    "code": "mot_3d_bootstrap_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
     "code": "zeus_confirmation_submission_unavailable",
     "semantic": "other"
   },
@@ -1283,6 +1368,11 @@ export const serverErrorCatalog = [
   {
     "domain": "route_unavailable",
     "code": "zeus_finalization_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "zeus_mot_3d_discovery_submission_unavailable",
     "semantic": "other"
   },
   {
