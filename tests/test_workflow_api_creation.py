@@ -16,7 +16,12 @@ from lab_setup.physical_specification import (
 
 from workflow_api.mot_2d_plan import RELEVANT_FILES, build_plan, materialize, physical_model_hash, plan_from_frozen_manifest
 from workflow_api.mot_2d_sources import inspect_source
-from workflow_api.repository_snapshot import RepositorySnapshot, RepositorySnapshotProvider
+from workflow_api.repository_snapshot import (
+    RepositorySnapshot,
+    RepositorySnapshotProvider,
+    ZEEMAN_RELEVANT_FILES,
+    ZeemanRepositorySnapshotProvider,
+)
 from workflow_api.discovery import list_campaigns
 from workflow_api.mutation import CreationService
 
@@ -146,6 +151,45 @@ def test_snapshot_provider_allows_only_clean_fixed_paths(tmp_path):
     provider = RepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
     assert len(provider.capture().commit) == 40
     (tmp_path / "config.py").write_text("dirty")
+    with pytest.raises(RuntimeError, match="uncommitted"):
+        provider.capture()
+
+
+def test_zeeman_snapshot_provider_audits_exact_runtime_and_planner_ledger(tmp_path):
+    assert len(ZEEMAN_RELEVANT_FILES) == len(set(ZEEMAN_RELEVANT_FILES))
+    required = {
+        "config.py",
+        "simulations/zeeman.py",
+        "simulations/thermal_beam.py",
+        "utils/RK4StCustom.py",
+        "utils/ScipyIVP_3DCustom.py",
+        "utils/simulation_helpers.py",
+        "utils/data_paths.py",
+        "utils/file_helpers.py",
+        "workflow_api/run_records.py",
+        "workflow_api/run_specification.py",
+        "workflow_api/zeeman_run_plan.py",
+        "workflow_api/zeeman_run_creation.py",
+        "workflow_api/specifications/zeeman_individual_v1.json",
+    }
+    assert required <= set(ZEEMAN_RELEVANT_FILES)
+    assert all(not path.endswith("/") for path in ZEEMAN_RELEVANT_FILES)
+
+    (tmp_path / "simulations").mkdir()
+    planner = tmp_path / "simulations/zeeman.py"
+    planner.write_text("# zeeman runtime\n")
+    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(["/usr/bin/git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["/usr/bin/git", "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    provider = ZeemanRepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    assert provider.paths == ZEEMAN_RELEVANT_FILES
+    assert len(provider.capture().commit) == 40
+    planner.write_text("# dirty zeeman runtime\n")
     with pytest.raises(RuntimeError, match="uncommitted"):
         provider.capture()
 

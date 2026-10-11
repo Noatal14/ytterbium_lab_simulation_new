@@ -14,6 +14,45 @@ from workflow_api.mot_2d_spec import RELEVANT_FILES
 HEAD_RE = re.compile(r"^[0-9a-f]{40}$")
 PATHS = (*RELEVANT_FILES, "lab_setup")
 
+# Exact clean-worktree ledger for individual Zeeman-run admission and future
+# execution.  Keep this explicit: a new runtime or provenance consumer must be
+# reviewed and added here rather than silently inheriting an entire directory.
+ZEEMAN_RELEVANT_FILES = (
+    "config.py",
+    "pyproject.toml",
+    "requirements.txt",
+    "simulations/zeeman.py",
+    "simulations/thermal_beam.py",
+    "lab_setup/_3d_mot_mag_field.py",
+    "lab_setup/atom_species.py",
+    "lab_setup/config_builder.py",
+    "lab_setup/gravity.py",
+    "lab_setup/laser_setup_2d_mot.py",
+    "lab_setup/laser_setup_3d.py",
+    "lab_setup/mag_field_2d_mot.py",
+    "lab_setup/mag_field_Zeeman.py",
+    "lab_setup/numerical_policy.py",
+    "lab_setup/physical_specification.py",
+    "lab_setup/specifications/laboratory_physical_v1.json",
+    "lab_setup/specifications/numerical_policy_v1.json",
+    "lab_setup/zeeman_laser_setup.py",
+    "lab_setup/zones.py",
+    "utils/RK4StCustom.py",
+    "utils/ScipyIVP_3DCustom.py",
+    "utils/data_paths.py",
+    "utils/file_helpers.py",
+    "utils/simulation_helpers.py",
+    "workflow_api/preview_registry.py",
+    "workflow_api/repository_snapshot.py",
+    "workflow_api/run_records.py",
+    "workflow_api/run_specification.py",
+    "workflow_api/specifications/individual_run_v1.json",
+    "workflow_api/specifications/zeeman_individual_v1.json",
+    "workflow_api/zeeman_run_creation.py",
+    "workflow_api/zeeman_run_plan.py",
+    "workflow_api/zeeman_run_specification.py",
+)
+
 
 @dataclass(frozen=True)
 class RepositorySnapshot:
@@ -22,12 +61,33 @@ class RepositorySnapshot:
 
 
 class RepositorySnapshotProvider:
-    def __init__(self, repository_root: Path, git_executable: Path):
+    def __init__(
+        self,
+        repository_root: Path,
+        git_executable: Path,
+        *,
+        audited_paths: tuple[str, ...] = PATHS,
+    ):
         self.root = repository_root.resolve(); self.git = git_executable.resolve()
         if not self.git.is_file() or not os.access(self.git, os.X_OK):
             raise ValueError("The trusted Git executable is unavailable.")
         if self.root in self.git.parents:
             raise ValueError("The Git executable cannot come from the repository.")
+        if (
+            not isinstance(audited_paths, tuple)
+            or not audited_paths
+            or len(audited_paths) != len(set(audited_paths))
+            or any(
+                not isinstance(path, str)
+                or not path
+                or path.startswith("/")
+                or "\\" in path
+                or any(part in {"", ".", ".."} for part in Path(path).parts)
+                for path in audited_paths
+            )
+        ):
+            raise ValueError("Repository audit paths are invalid.")
+        self.paths = audited_paths
         self._reject_unsafe_repository_configuration()
 
     def _reject_unsafe_repository_configuration(self) -> None:
@@ -122,8 +182,19 @@ class RepositorySnapshotProvider:
         if not HEAD_RE.fullmatch(head):
             raise RuntimeError("Repository revision is invalid.")
         status = self._run((
-            "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", *PATHS,
+            "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", *self.paths,
         ))
         if status:
             raise RuntimeError("Scientific campaign files contain uncommitted changes.")
         return RepositorySnapshot(head)
+
+
+class ZeemanRepositorySnapshotProvider(RepositorySnapshotProvider):
+    """Pinned Git provider scoped to the reviewed Zeeman runtime ledger."""
+
+    def __init__(self, repository_root: Path, git_executable: Path):
+        super().__init__(
+            repository_root,
+            git_executable,
+            audited_paths=ZEEMAN_RELEVANT_FILES,
+        )
