@@ -152,6 +152,37 @@ def test_freeze_inputs_rejects_tampering(input_dir):
         mot_3d_campaign.freeze_inputs(input_dir)
 
 
+def test_freeze_inputs_accepts_consistent_additional_design_fields(input_dir):
+    for metadata_path in input_dir.glob("*.json"):
+        payload = json.loads(metadata_path.read_text())
+        payload["design"].update({
+            "uses_all_available_particles": True,
+            "npools": 150,
+        })
+        metadata_path.write_text(json.dumps(payload))
+
+    roles = mot_3d_campaign.freeze_inputs(
+        input_dir,
+        expected_design={
+            "git_commit": "2d-commit",
+            "dt_s": 0.625e-6,
+            "stochastic_solver": "RK4StHybridCustom",
+            "ensemble_dir": "corrected-zeeman-inputs",
+            "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+        },
+    )
+
+    assert roles["discovery"][0]["source_design"]["npools"] == 150
+
+
+def test_freeze_inputs_rejects_required_design_field_mismatch(input_dir):
+    with pytest.raises(ValueError, match="git_commit.*wrong-commit"):
+        mot_3d_campaign.freeze_inputs(
+            input_dir,
+            expected_design={"git_commit": "wrong-commit"},
+        )
+
+
 def test_create_is_plan_only_and_freezes_new_design(
     input_dir, upstream_campaign, tmp_path, monkeypatch
 ):
@@ -947,15 +978,18 @@ def test_formal_timestep_gate_is_retired_without_mutating_old_campaign(tmp_path,
     manifest_path.write_text(
         json.dumps(
             {
-        "stage": "dt_validation_required",
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
-        "design": {
+                "stage": "dt_validation_required",
+                "provenance": {
+                    "git_commit": "abc",
+                    "physical_model_sha256": "physics",
+                },
+                "design": {
                     "screening_dt_s": 1.25e-6,
                     "production_dt_s": 0.625e-6,
-            "dt_validation_reference_s": 0.3125e-6,
-            "dt_validation_candidates_s": [2.5e-6, 1.25e-6, 0.625e-6],
-            "timestep_status": "provisional_pending_3d_validation",
-        },
+                    "dt_validation_reference_s": 0.3125e-6,
+                    "dt_validation_candidates_s": [2.5e-6, 1.25e-6, 0.625e-6],
+                    "timestep_status": "provisional_pending_3d_validation",
+                },
             }
         )
     )
@@ -1003,13 +1037,13 @@ def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
     (root / "campaign.json").write_text(
         json.dumps(
             {
-        "stage": "dt_validation_required",
-        "design": {
+                "stage": "dt_validation_required",
+                "design": {
                     "screening_dt_s": 1.25e-6,
                     "production_dt_s": 0.625e-6,
-            "dt_validation_reference_s": 0.3125e-6,
-            "dt_validation_candidates_s": [1.25e-6, 0.625e-6],
-        },
+                    "dt_validation_reference_s": 0.3125e-6,
+                    "dt_validation_candidates_s": [1.25e-6, 0.625e-6],
+                },
             }
         )
     )
@@ -1021,8 +1055,8 @@ def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
                 "status": "approved",
                 "screening_dt_s": 1.25e-6,
                 "production_dt_s": 1.25e-6,
-        "reference_dt_s": 0.3125e-6,
-        "tested_dt_s": [1.25e-6, 0.625e-6],
+                "reference_dt_s": 0.3125e-6,
+                "tested_dt_s": [1.25e-6, 0.625e-6],
                 "capture_bias_passed": True,
                 "paired_decision_passed": True,
             }
