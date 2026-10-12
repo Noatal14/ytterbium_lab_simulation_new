@@ -21,6 +21,7 @@ import { sensitivityApi, sensitivitySubmissionApi } from "../api/clients/sensiti
 import { finalizationApi, productionApi, productionSubmissionApi } from "../api/clients/production";
 import { createMot3DBootstrapApi } from "../api/clients/mot3d";
 import { createMot3DDiscoveryApi } from "../api/clients/mot3dDiscovery";
+import { createMot3DDiscoveryTransitionApi } from "../api/clients/mot3dDiscoveryTransition";
 import { createIndividualMot3DApi, type Mot3DRequest } from "../api/clients/individualMot3D";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
@@ -84,6 +85,10 @@ describe("backend-generated workflow API contract snapshots", () => {
     await mot3dDiscovery.status(campaignId, profile);
     const mot3dDiscoveryPreview = await mot3dDiscovery.preview(campaignId, profile);
     await mot3dDiscovery.confirm(mot3dDiscoveryPreview.preview_token);
+    const mot3dTransition = createMot3DDiscoveryTransitionApi(async () => "<csrf-token>");
+    await mot3dTransition.status(campaignId, profile);
+    const mot3dTransitionPreview = await mot3dTransition.preview(campaignId, profile);
+    await mot3dTransition.confirm(mot3dTransitionPreview.preview_token);
     await zeusApi.snapshot(profile.username, profile.project_directory);
 
     const transferPreview = await transferApi.preview(campaignId, profile);

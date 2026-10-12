@@ -276,6 +276,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Zeus 3D Discovery submission is unavailable.",
         ),
+        "mot_3d_discovery_transition_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D Discovery result synchronization is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -826,6 +830,25 @@ MOT_3D_DISCOVERY_SUBMISSION = _generic_stage(
     {"discovery_already_submitted", "discovery_submission_outcome_unknown"},
     "mot_3d_discovery_submission_failed",
 )
+MOT_3D_DISCOVERY_TRANSITION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "discovery_not_prepared", "discovery_preparation_invalid",
+        "discovery_not_complete", "remote_response_invalid",
+        "too_many_pending_previews", "confirmation_invalid",
+        "confirmation_expired", "local_or_remote_evidence_changed",
+        "transition_busy", "transition_conflict", "transition_outcome_unknown",
+        "transition_bundle_too_large", "local_sync_conflict",
+        "local_sync_outcome_unknown", "zeus_authentication_required",
+        "zeus_host_key_untrusted", "zeus_timeout", "zeus_unreachable",
+    },
+    "3D Discovery result synchronization stopped safely.",
+    {
+        "transition_busy", "transition_conflict", "transition_outcome_unknown",
+        "local_sync_conflict", "local_sync_outcome_unknown",
+    },
+    "mot_3d_discovery_transition_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -933,6 +956,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "production_submission": PRODUCTION_SUBMISSION,
         "finalization": FINALIZATION,
         "mot_3d_discovery_submission": MOT_3D_DISCOVERY_SUBMISSION,
+        "mot_3d_discovery_transition": MOT_3D_DISCOVERY_TRANSITION,
     }
 )
 

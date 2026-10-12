@@ -35,6 +35,7 @@ class ReceiverKind(Enum):
     PRODUCTION_SUBMISSION = "production_submission"
     FINALIZATION = "finalization"
     MOT_3D_DISCOVERY_SUBMISSION = "mot_3d_discovery_submission"
+    MOT_3D_DISCOVERY_TRANSITION = "mot_3d_discovery_transition"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -89,6 +90,21 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_3D_DISCOVERY_TRANSITION: _ReceiverDefinition(
+        "mot_3d_discovery_transition_remote.py", "<mot-3d-discovery-transition>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE,
+                   ReceiverOperation.STATUS, ReceiverOperation.RETRIEVE}),
+        True,
+        ("-F", "none", "-T", "-o", "BatchMode=yes",
+         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
+         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
+        True, True, True, False, False, True,
+    ),
     ReceiverKind.MOT_3D_INDIVIDUAL: _ReceiverDefinition(
         "mot_3d_zeus_remote.py", "<mot-3d-individual>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
@@ -478,6 +494,13 @@ class PinnedSshPolicy:
             executable,
             timeout,
         )
+
+    @classmethod
+    def mot_3d_discovery_transition(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(ReceiverKind.MOT_3D_DISCOVERY_TRANSITION,
+                   repository_root, executable, timeout)
 
     @classmethod
     def refinement_submission(

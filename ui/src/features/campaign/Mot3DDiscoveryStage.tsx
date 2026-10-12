@@ -155,7 +155,7 @@ export function Mot3DDiscoveryStage({
             </strong>
             <p>
               {lifecycle === "completed_success"
-                ? "The scheduler completed all five arrays. Result validation and the next 3D stage are outside this milestone."
+                ? "The scheduler completed all five arrays. This is not yet scientific validation; verify the Discovery evidence below before the next stage can be prepared."
                 : "Zeus continues independently. No action is needed while the arrays are queued or running."}
             </p>
             <div className="form-actions">

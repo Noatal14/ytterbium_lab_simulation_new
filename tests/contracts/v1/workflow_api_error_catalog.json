@@ -984,6 +984,160 @@
       "message": "3D Discovery submission stopped safely."
     },
     {
+      "domain": "mot_3d_discovery_transition",
+      "case": "<fallback>",
+      "code": "mot_3d_discovery_transition_failed",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "discovery_not_complete",
+      "code": "discovery_not_complete",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "discovery_not_prepared",
+      "code": "discovery_not_prepared",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "discovery_preparation_invalid",
+      "code": "discovery_preparation_invalid",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "local_or_remote_evidence_changed",
+      "code": "local_or_remote_evidence_changed",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "local_sync_conflict",
+      "code": "local_sync_conflict",
+      "status": 409,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "local_sync_outcome_unknown",
+      "code": "local_sync_outcome_unknown",
+      "status": 409,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "transition_bundle_too_large",
+      "code": "transition_bundle_too_large",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "transition_busy",
+      "code": "transition_busy",
+      "status": 409,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "transition_conflict",
+      "code": "transition_conflict",
+      "status": 409,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_discovery_transition",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "3D Discovery result synchronization stopped safely."
+    },
+    {
       "domain": "production_submission",
       "case": "<fallback>",
       "code": "production_submission_failed",
@@ -2074,6 +2228,13 @@
       "code": "mot_3d_bootstrap_unavailable",
       "status": 503,
       "message": "3D campaign preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "mot_3d_discovery_transition_unavailable",
+      "code": "mot_3d_discovery_transition_unavailable",
+      "status": 503,
+      "message": "3D Discovery result synchronization is unavailable."
     },
     {
       "domain": "route_unavailable",

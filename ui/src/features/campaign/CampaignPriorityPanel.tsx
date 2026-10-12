@@ -18,6 +18,8 @@ import type {
 import type { ConfirmationSubmissionUiState } from "./controllers/useConfirmationSubmissionController";
 import type { Mot3DDiscoveryUiState } from "./controllers/useMot3DDiscoveryController";
 import type { Mot3DDiscoveryLifecycle } from "../../api/clients/mot3dDiscovery";
+import type { Mot3DDiscoveryTransitionLifecycle } from "../../api/clients/mot3dDiscoveryTransition";
+import type { Mot3DDiscoveryTransitionUiState } from "./controllers/useMot3DDiscoveryTransitionController";
 
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
@@ -39,6 +41,8 @@ export function CampaignPriorityPanel({
   confirmationSubmitJobId = null,
   mot3DDiscoveryState = "idle",
   mot3DDiscoveryLifecycle = null,
+  mot3DTransitionState = "idle",
+  mot3DTransitionLifecycle = null,
   copyStatus,
   onCopyCommand,
 }: {
@@ -58,6 +62,8 @@ export function CampaignPriorityPanel({
   confirmationSubmitJobId?: string | null;
   mot3DDiscoveryState?: Mot3DDiscoveryUiState;
   mot3DDiscoveryLifecycle?: Mot3DDiscoveryLifecycle | null;
+  mot3DTransitionState?: Mot3DDiscoveryTransitionUiState;
+  mot3DTransitionLifecycle?: Mot3DDiscoveryTransitionLifecycle | null;
   copyStatus: string;
   onCopyCommand: () => void;
 }) {
@@ -133,6 +139,10 @@ export function CampaignPriorityPanel({
                 : null);
 
   if (campaign.family === "mot_3d" && campaign.stage === "discovery") {
+    const transitionAttention = mot3DTransitionState === "terminal" || ["held", "completed_failed", "outputs_invalid", "status_unknown"].includes(mot3DTransitionLifecycle ?? "");
+    const transitionWaiting = ["queued", "running", "completed_success_unvalidated"].includes(mot3DTransitionLifecycle ?? "");
+    const transitionReady = mot3DTransitionState === "ready" || mot3DTransitionState === "review";
+    const transitionPrepared = mot3DTransitionState === "prepared" || mot3DTransitionLifecycle === "preliminary_check_prepared";
     const terminal =
       mot3DDiscoveryState === "terminal" ||
       [
@@ -153,7 +163,15 @@ export function CampaignPriorityPanel({
       >
         <p className="eyebrow">Current priority</p>
         <h2 id="priority-heading">
-          {terminal
+          {transitionAttention
+            ? "Manual verification required"
+            : transitionPrepared
+              ? "Preliminary check is prepared"
+              : transitionReady
+                ? "Action required"
+                : transitionWaiting
+                  ? "No action needed"
+          : terminal
             ? "Manual verification required"
             : active
               ? "No action needed"
@@ -165,7 +183,15 @@ export function CampaignPriorityPanel({
           <strong>Current stage:</strong> Discovery.
         </p>
         <p>
-          {terminal
+          {transitionAttention
+            ? "Discovery evidence is not safely actionable. Do not advance or submit again; inspect the existing Zeus jobs and outputs."
+            : transitionPrepared
+              ? "Verified Discovery evidence is synchronized and the preliminary-check files are ready. No preliminary-check job has been submitted."
+              : transitionReady
+                ? "All 950 Discovery trials passed scientific validation. Review the synchronization and local preparation below."
+                : transitionWaiting
+                  ? "Discovery is still running or awaiting complete scientific validation. No action is needed until the verified evidence is ready."
+          : terminal
             ? "The scheduler outcome is not safe to infer. Do not submit again; inspect Zeus jobs manually."
             : active
               ? "Zeus is running the reviewed five-array Discovery chain. No action is needed while it continues."
