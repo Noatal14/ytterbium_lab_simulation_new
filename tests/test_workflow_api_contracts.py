@@ -86,6 +86,12 @@ def _server(request_count, *, services=True, payloads=None, individual_api=None,
     handler.mot_3d_discovery_submission_service = _Service("mot3d-discovery",ledger,values,"mot3d-discovery-status") if services else None
     handler.mot_3d_discovery_transition_service = _Service("mot3d-transition",ledger,values,"mot3d-transition-status") if services else None
     handler.mot_3d_preliminary_submission_service = _Service("mot3d-preliminary",ledger,values,"mot3d-preliminary-status") if services else None
+    handler.mot_3d_preliminary_transition_service = _Service(
+        "mot3d-preliminary-transition",
+        ledger,
+        values,
+        "mot3d-preliminary-transition-status",
+    ) if services else None
     handler.zeus_service = _Service("zeus",ledger,values) if services else None
     handler.transfer_service = _Service("transfer",ledger,values) if services else None
     handler.submission_service = _Service("smoke-submit",ledger,values) if services else None
@@ -167,7 +173,7 @@ def collect_errors():
 def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     expected=_load("workflow_api_success.json");first,ledger,headers=collect_success(monkeypatch);second,_,_=collect_success(monkeypatch)
     assert first==second==expected
-    assert len(first["cases"])==77 and len({(row["method"],row["path"]) for row in first["cases"]})==77
+    assert len(first["cases"])==80 and len({(row["method"],row["path"]) for row in first["cases"]})==80
     assert all(row["body"].get("api_version")==1 for row in first["cases"])
     assert all(all(value==expected["common_headers"][key] for key,value in header.items() if key in expected["common_headers"]) for header in headers)
     assert [entry[0] for entry in ledger] == [
@@ -176,6 +182,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-discovery-status", "mot3d-discovery-preview", "mot3d-discovery-confirm",
         "mot3d-transition-status", "mot3d-transition-preview", "mot3d-transition-confirm",
         "mot3d-preliminary-status", "mot3d-preliminary-preview", "mot3d-preliminary-confirm",
+        "mot3d-preliminary-transition-status",
+        "mot3d-preliminary-transition-preview",
+        "mot3d-preliminary-transition-confirm",
         "zeus-snapshot",
         "transfer-preview", "transfer-confirm", "smoke-submit-preview",
         "smoke-submit-confirm", "smoke-status", "screening-preview",
@@ -215,7 +224,7 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
 
     assert ReadOnlyWorkflowHandler is WorkflowHandler
-    assert len(POST_ROUTES) == len(post_cases) == 69
+    assert len(POST_ROUTES) == len(post_cases) == 72
     assert set(POST_ROUTES) == {row["path"] for row in post_cases}
     assert all(route.path == path for path, route in POST_ROUTES.items())
     assert all(route.success_status == row["status"] for row in post_cases for route in [POST_ROUTES[row["path"]]])
@@ -241,6 +250,9 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
         ("/api/v1/zeus/submissions/mot-3d-preliminary-check/status","mot_3d_preliminary_submission_service","status","payload",200,"mot_3d_preliminary_submission_unavailable","3D Preliminary-check submission is unavailable.","Mot3DPreliminarySubmissionError"),
         ("/api/v1/zeus/submissions/mot-3d-preliminary-check/preview","mot_3d_preliminary_submission_service","preview","session_kw",200,"mot_3d_preliminary_submission_unavailable","3D Preliminary-check submission is unavailable.","Mot3DPreliminarySubmissionError"),
         ("/api/v1/zeus/submissions/mot-3d-preliminary-check/confirm","mot_3d_preliminary_submission_service","confirm","session_kw",201,"mot_3d_preliminary_submission_unavailable","3D Preliminary-check submission is unavailable.","Mot3DPreliminarySubmissionError"),
+        ("/api/v1/zeus/mot-3d/preliminary-transition/status","mot_3d_preliminary_transition_service","status","payload",200,"mot_3d_preliminary_transition_unavailable","3D Preliminary-check result synchronization is unavailable.","Mot3DPreliminaryTransitionError"),
+        ("/api/v1/zeus/mot-3d/preliminary-transition/preview","mot_3d_preliminary_transition_service","preview","session_kw",200,"mot_3d_preliminary_transition_unavailable","3D Preliminary-check result synchronization is unavailable.","Mot3DPreliminaryTransitionError"),
+        ("/api/v1/zeus/mot-3d/preliminary-transition/confirm","mot_3d_preliminary_transition_service","confirm","session_kw",201,"mot_3d_preliminary_transition_unavailable","3D Preliminary-check result synchronization is unavailable.","Mot3DPreliminaryTransitionError"),
         ("/api/v1/zeus/snapshot","zeus_service","snapshot","payload",200,"zeus_unavailable","Read-only Zeus inspection is unavailable.","ZeusSnapshotError"),
         ("/api/v1/zeus/transfers/preview","transfer_service","preview","session_kw",200,"zeus_preparation_unavailable","Zeus campaign preparation is unavailable.","ZeusPreparationError"),
         ("/api/v1/zeus/transfers/confirm","transfer_service","confirm","session_kw",201,"zeus_preparation_unavailable","Zeus campaign preparation is unavailable.","ZeusPreparationError"),

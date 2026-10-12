@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping
 
+from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+
 
 FAMILIES = ("angled_donut", "single_pass")
 
@@ -33,9 +35,33 @@ class SelectionStageTopology:
         }
 
 
+@dataclass(frozen=True)
+class PreliminaryScientificDesign:
+    input_ensembles: int = 4
+    particles_per_ensemble: int = 150
+    recoil_seeds: tuple[int, ...] = (41001, 41002, 41003)
+    t_max_s: float = 0.1
+    selection_seed: int = 51001
+    bootstrap_replicates: int = 10_000
+    bootstrap_seed: int = 52_001
+    solver: str = MOT_3D_TIMESTEP_POLICY["solver"]
+    dt_s: float = MOT_3D_TIMESTEP_POLICY["search_dt_s"]
+
+
+@dataclass(frozen=True)
+class RefinementScientificDesign:
+    particles_per_ensemble: int = 750
+    selection_seed: int = 61_001
+    bootstrap_seed: int = 62_001
+
 PRELIMINARY_CHECK_TOPOLOGY = SelectionStageTopology(
     stage="preliminary_check", candidates_per_family=12
 )
+PRELIMINARY_SCIENTIFIC_DESIGN = PreliminaryScientificDesign()
+REFINEMENT_TOPOLOGY = SelectionStageTopology(
+    stage="refinement", candidates_per_family=16
+)
+REFINEMENT_SCIENTIFIC_DESIGN = RefinementScientificDesign()
 
 
 def public_chain(

@@ -3,14 +3,16 @@ import { useEffect, useRef } from "react";
 import type { useMot3DDiscoveryController } from "./controllers/useMot3DDiscoveryController";
 import type { useMot3DDiscoveryTransitionController } from "./controllers/useMot3DDiscoveryTransitionController";
 import type { useMot3DPreliminaryCheckController } from "./controllers/useMot3DPreliminaryCheckController";
+import type { useMot3DPreliminaryTransitionController } from "./controllers/useMot3DPreliminaryTransitionController";
 import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 
-export function Mot3DCampaignFlow({ stage, connected, discovery, transition, preliminary, onConnectZeus, onViewJobs }: {
+export function Mot3DCampaignFlow({ stage, connected, discovery, transition, preliminary, preliminaryTransition, onConnectZeus, onViewJobs }: {
   stage: string;
   connected: boolean;
   discovery: ReturnType<typeof useMot3DDiscoveryController>;
   transition: ReturnType<typeof useMot3DDiscoveryTransitionController>;
   preliminary: ReturnType<typeof useMot3DPreliminaryCheckController>;
+  preliminaryTransition?: ReturnType<typeof useMot3DPreliminaryTransitionController>;
   onConnectZeus: () => void;
   onViewJobs: () => void;
 }) {
@@ -19,7 +21,37 @@ export function Mot3DCampaignFlow({ stage, connected, discovery, transition, pre
     <Mot3DDiscoveryStage visible={stage === "discovery"} connected={connected} flow={discovery} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs}/>
     <Mot3DDiscoveryTransitionStage visible={transitionVisible} connected={connected} flow={transition} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs}/>
     <Mot3DPreliminaryCheckStage visible={stage === "preliminary_check" || Boolean(preliminary.status || preliminary.preview || preliminary.result || preliminary.error)} connected={connected} flow={preliminary} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs}/>
+    {preliminaryTransition && (
+      <Mot3DPreliminaryTransitionStage
+        visible={stage === "refinement" || preliminary.status?.submission.status === "completed_success_unvalidated" || Boolean(preliminaryTransition.status || preliminaryTransition.preview || preliminaryTransition.result || preliminaryTransition.error)}
+        connected={connected}
+        flow={preliminaryTransition}
+        onConnectZeus={onConnectZeus}
+        onViewJobs={onViewJobs}
+      />
+    )}
   </>;
+}
+
+function Mot3DPreliminaryTransitionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: { visible:boolean; connected:boolean; flow:ReturnType<typeof useMot3DPreliminaryTransitionController>; onConnectZeus:()=>void; onViewJobs:()=>void }) {
+  const focus=useRef<HTMLDivElement>(null); const reviewHeading=useRef<HTMLHeadingElement>(null);
+  useEffect(()=>{if(flow.state==="review")reviewHeading.current?.focus();else if(["ready","prepared","terminal"].includes(flow.state)||flow.error)focus.current?.focus()},[flow.state,flow.error]);
+  if(!visible)return null;
+  const lifecycle=flow.status?.preliminary.status; const invalid=flow.status?.validation.status==="scientifically_invalid"; const validUnknown=lifecycle==="outcome_unknown"&&flow.status?.validation.status==="valid"; const attention=flow.state==="terminal"||invalid||["not_submitted","held","completed_failed","status_unknown","partial","outcome_unknown"].includes(lifecycle??""); const waiting=["submitted","queued","running"].includes(lifecycle??""); const schedulerOnly=lifecycle==="completed_success_unvalidated"&&flow.status?.validation.status==="not_started"; const recovery=lifecycle==="refinement_prepared"&&flow.status?.local_sync.status==="not_synchronized";
+  return <section className="section-block" aria-labelledby="mot3d-preliminary-transition-heading"><div className="section-heading"><p className="eyebrow">Preliminary-check result verification</p><h2 id="mot3d-preliminary-transition-heading">Validate results and prepare Refinement</h2><p>Scheduler completion alone is not scientific validation. The application verifies the complete held-out result set before preparing the focused Refinement stage.</p></div><div ref={focus} tabIndex={-1}>
+    {!connected&&<div className="prepare-card"><div><strong>Connect to Zeus to verify preliminary-check results</strong><p>Connecting and checking status do not submit or start jobs.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+    {connected&&!flow.status&&flow.state==="idle"&&<div className="prepare-card"><div><strong>Verify the completed preliminary-check outputs</strong><p>The scheduler has finished. Scientific validation and local synchronization have not happened yet.</p></div><button className="primary-button" onClick={()=>void flow.refresh()}>Verify preliminary-check results</button></div>}
+    {(flow.state === "checking" || flow.state === "synchronizing") && (
+      <Busy title={flow.state === "checking" ? "Checking preliminary-check evidence" : "Synchronizing verified results and preparing Refinement"}/>
+    )}
+    {waiting&&!attention&&<div className="state-panel" role="status"><strong>Preliminary check is still running on Zeus</strong><p>No action is needed. Refinement remains locked until all four jobs finish and the complete output set passes validation.</p><div className="form-actions"><button className="secondary-button" onClick={()=>void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {schedulerOnly&&flow.state==="ready"&&<div className="prepare-card"><div><strong>Jobs finished; scientific validation is still required</strong><p>Review the bounded result transfer. This action validates 152 expected result files before preparing Refinement.</p></div><button className="primary-button" onClick={()=>void flow.review()}>Review results and prepare Refinement</button></div>}
+    {flow.state==="ready"&&flow.status?.validation.status==="valid"&&<div className="prepare-card"><div><strong>{recovery?"Refinement is prepared on Zeus; local synchronization is incomplete":"All 152 preliminary-check results are scientifically valid"}</strong><p>{recovery?"Review the verified evidence to finish synchronization. No job or simulation will start.":"Review the verified files and exact local changes before Refinement is prepared."}</p></div><button className="primary-button" onClick={()=>void flow.review()}>Review synchronization</button></div>}
+    {flow.preview&&flow.state==="review"&&<div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={reviewHeading} tabIndex={-1}>{recovery?"Finish Refinement synchronization":"Synchronize results and prepare Refinement"}</h3><p>The application transfers only the allowlisted, hash-verified evidence, validates both geometry families, and prepares the next stage. It does not submit a job or start a simulation.</p><dl className="transfer-facts"><div><dt>Validated result files</dt><dd>152 of 152</dd></div><div><dt>Submission receipts</dt><dd>1 verified receipt</dd></div><div><dt>Files transferred</dt><dd>160 bounded files</dd></div><div><dt>Refinement selections</dt><dd>2 files</dd></div><div><dt>Refinement job files</dt><dd>4 files</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div></dl><p className="review-note">Existing files are never silently overwritten. An interrupted synchronization remains blocked until its receipt and complete file set are verified.</p><div className="form-actions"><button className="secondary-button" onClick={flow.reset}>Back</button><button className="primary-button" onClick={()=>void flow.confirm()}>Synchronize and prepare Refinement</button></div></div>}
+    {flow.state==="prepared"&&!flow.error&&<div className="state-panel state-panel--success" role="status"><strong>Refinement is prepared</strong><p>The preliminary-check evidence is scientifically validated, synchronized, and receipt-verified. No Refinement job has been submitted or started.</p></div>}
+    {attention&&!flow.error&&<div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>{invalid?"Preliminary-check evidence is scientifically invalid":"Manual verification required"}</strong><p>{invalid?"The expected result set failed scientific validation. Refinement remains blocked and there is no override in the application.":validUnknown?"All 152 scientific result artifacts passed validation, but the transition outcome is unknown. Do not retry; inspect Zeus and the campaign state manually.":"The scheduler or transition outcome is not safely actionable. Do not retry or advance; inspect the existing Zeus jobs and outputs."}</p><div className="form-actions"><button className="secondary-button" onClick={()=>void flow.refresh()}>Check status again</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div></div>}
+    {flow.error&&<div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Refinement preparation stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase==="confirm"?"The synchronization outcome may be uncertain. Do not retry; inspect Zeus and the local campaign state first.":"No synchronization was confirmed by this check. Refresh the verified status before reviewing again."}</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+  </div></section>;
 }
 
 function Mot3DPreliminaryCheckStage({ visible, connected, flow, onConnectZeus, onViewJobs }: { visible: boolean; connected: boolean; flow: ReturnType<typeof useMot3DPreliminaryCheckController>; onConnectZeus: () => void; onViewJobs: () => void }) {

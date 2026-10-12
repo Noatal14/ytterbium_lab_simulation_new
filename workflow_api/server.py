@@ -74,6 +74,10 @@ from workflow_api.mot_3d_preliminary_submission import (
     Mot3DPreliminarySubmissionCoordinator,
     Mot3DPreliminarySubmissionError,
 )
+from workflow_api.mot_3d_preliminary_transition import (
+    Mot3DPreliminaryTransitionCoordinator,
+    Mot3DPreliminaryTransitionError,
+)
 from workflow_api.zeeman_individual_api import IndividualZeemanApi
 from workflow_api.zeeman_zeus_execution import ZeemanZeusError
 if TYPE_CHECKING:
@@ -118,6 +122,9 @@ def _post_routes() -> tuple[PostRoute, ...]:
         ("/api/v1/zeus/submissions/mot-3d-preliminary-check/status","mot_3d_preliminary_submission_service","status","payload","mot_3d_preliminary_submission_unavailable","3D Preliminary-check submission is unavailable.",HTTPStatus.OK,Mot3DPreliminarySubmissionError),
         ("/api/v1/zeus/submissions/mot-3d-preliminary-check/preview","mot_3d_preliminary_submission_service","preview","session_kw","mot_3d_preliminary_submission_unavailable","3D Preliminary-check submission is unavailable.",HTTPStatus.OK,Mot3DPreliminarySubmissionError),
         ("/api/v1/zeus/submissions/mot-3d-preliminary-check/confirm","mot_3d_preliminary_submission_service","confirm","session_kw","mot_3d_preliminary_submission_unavailable","3D Preliminary-check submission is unavailable.",HTTPStatus.CREATED,Mot3DPreliminarySubmissionError),
+        ("/api/v1/zeus/mot-3d/preliminary-transition/status","mot_3d_preliminary_transition_service","status","payload","mot_3d_preliminary_transition_unavailable","3D Preliminary-check result synchronization is unavailable.",HTTPStatus.OK,Mot3DPreliminaryTransitionError),
+        ("/api/v1/zeus/mot-3d/preliminary-transition/preview","mot_3d_preliminary_transition_service","preview","session_kw","mot_3d_preliminary_transition_unavailable","3D Preliminary-check result synchronization is unavailable.",HTTPStatus.OK,Mot3DPreliminaryTransitionError),
+        ("/api/v1/zeus/mot-3d/preliminary-transition/confirm","mot_3d_preliminary_transition_service","confirm","session_kw","mot_3d_preliminary_transition_unavailable","3D Preliminary-check result synchronization is unavailable.",HTTPStatus.CREATED,Mot3DPreliminaryTransitionError),
         ("/api/v1/zeus/snapshot","zeus_service","snapshot","payload","zeus_unavailable","Read-only Zeus inspection is unavailable.",HTTPStatus.OK,ZeusSnapshotError),
         ("/api/v1/zeus/transfers/preview","transfer_service","preview","session_kw","zeus_preparation_unavailable","Zeus campaign preparation is unavailable.",HTTPStatus.OK,ZeusPreparationError),
         ("/api/v1/zeus/transfers/confirm","transfer_service","confirm","session_kw","zeus_preparation_unavailable","Zeus campaign preparation is unavailable.",HTTPStatus.CREATED,ZeusPreparationError),
@@ -229,6 +236,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     mot_3d_discovery_submission_service: ZeusMot3DDiscoverySubmissionCoordinator | None = None
     mot_3d_discovery_transition_service: Mot3DDiscoveryTransitionCoordinator | None = None
     mot_3d_preliminary_submission_service: Mot3DPreliminarySubmissionCoordinator | None = None
+    mot_3d_preliminary_transition_service: Mot3DPreliminaryTransitionCoordinator | None = None
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
     individual_mot_2d_api: IndividualMot2DApi | None = None
@@ -251,7 +259,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.mot_3d_bootstrap_service is None and self.mot_3d_discovery_submission_service is None and self.mot_3d_discovery_transition_service is None and self.mot_3d_preliminary_submission_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None and self.individual_mot_3d_api is None:
+            if self.creation_service is None and self.mot_3d_bootstrap_service is None and self.mot_3d_discovery_submission_service is None and self.mot_3d_discovery_transition_service is None and self.mot_3d_preliminary_submission_service is None and self.mot_3d_preliminary_transition_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None and self.individual_mot_3d_api is None:
                 self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -452,6 +460,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         except Mot3DPreliminarySubmissionError as error:
             resolved = resolve_error("mot_3d_preliminary_submission", error.code)
             self._error(resolved.code, resolved.message, resolved.status); return
+        except Mot3DPreliminaryTransitionError as error:
+            resolved = resolve_error("mot_3d_preliminary_transition", error.code)
+            self._error(resolved.code, resolved.message, resolved.status); return
         except ZeemanZeusError as error:
             status, message = _INDIVIDUAL_ZEUS_ERRORS.get(
                 error.code,
@@ -648,6 +659,9 @@ def main() -> None:
         WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     WorkflowHandler.mot_3d_preliminary_submission_service = Mot3DPreliminarySubmissionCoordinator(
+        WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
+    )
+    WorkflowHandler.mot_3d_preliminary_transition_service = Mot3DPreliminaryTransitionCoordinator(
         WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git"),
     )
     WorkflowHandler.zeus_service = ZeusSnapshotService(

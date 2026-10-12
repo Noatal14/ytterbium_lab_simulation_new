@@ -7,6 +7,7 @@ ensembles and writes guarded PBS files, but never calls ``qsub``.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -39,6 +40,7 @@ from lab_setup.mot_3d_timestep_policy import (
 from utils.file_helpers import save_file_json
 from utils.data_paths import load_particle_states
 from workflow_api.mot_3d_provenance import input_registry_digest
+from workflow_api.mot_3d_stage_topology import REFINEMENT_SCIENTIFIC_DESIGN
 
 
 FAMILIES = ("angled_donut", "single_pass")
@@ -725,8 +727,50 @@ def _selection_stage_jobs(
     particles_per_ensemble,
     selection_seed,
     recoil_seed,
+    *,
+    logical_root=None,
 ):
+    rendered_selections = selection_paths
+    if logical_root is not None:
+        rendered_selections = {
+            family: Path(logical_root) / "selection" / stage / f"{family}.json"
+            for family in FAMILIES
+        }
+    rendered = render_selection_stage_jobs(
+        logical_root if logical_root is not None else root,
+        manifest,
+        stage,
+        rendered_selections,
+        role,
+        particles_per_ensemble,
+        selection_seed,
+        recoil_seed,
+    )
     jobs = root / "jobs" / stage
+    worker_jobs, merge_jobs = {}, {}
+    for family in FAMILIES:
+        worker_jobs[family] = _write(
+            jobs / f"{family}_array.pbs", rendered[family]["array"]
+        )
+        merge_jobs[family] = _write(
+            jobs / f"{family}_merge.pbs", rendered[family]["merge"]
+        )
+    return worker_jobs, merge_jobs
+
+
+def render_selection_stage_jobs(
+    root,
+    manifest,
+    stage,
+    selection_paths,
+    role,
+    particles_per_ensemble,
+    selection_seed,
+    recoil_seed,
+):
+    """Render canonical selection-stage PBS bytes without writing them."""
+
+    root = Path(root)
     manifest_path = root / "campaign.json"
     dt = manifest["design"]["screening_dt_s"]
     runner_module = (
@@ -739,28 +783,26 @@ def _selection_stage_jobs(
         if stage == "preliminary_check"
         else "studies.mot_3d.refinement.merge"
     )
-    worker_jobs, merge_jobs = {}, {}
+    rendered = {}
     for family in FAMILIES:
         short = "don" if family == "angled_donut" else "sp"
         stage_root = root / stage / family
         selection = selection_paths[family]
-        worker_jobs[family] = _write(
-            jobs / f"{family}_array.pbs",
+        worker = (
             _header(f"m3d2_{short}_{stage[:3]}", manifest["provenance"]["git_commit"])
             + f"python -u -m {runner_module} --family {family} "
             '--worker-index "$PBS_ARRAY_INDEX" --num-workers 3 '
             f"--selection {selection} --input-manifest {manifest_path} "
             f"--particles-per-ensemble {particles_per_ensemble} "
             f"--selection-seed {selection_seed} --npools 200 --dt {dt} "
-            f"--output-dir {stage_root}/worker_${{PBS_ARRAY_INDEX}}\n",
+            f"--output-dir {stage_root}/worker_${{PBS_ARRAY_INDEX}}\n"
         )
         summary_name = (
             "early_check_summary.json"
             if stage == "preliminary_check"
             else "refinement_summary.json"
         )
-        merge_jobs[family] = _write(
-            jobs / f"{family}_merge.pbs",
+        merge = (
             _header(
                 f"m3d2_{short}_{stage[:3]}m",
                 manifest["provenance"]["git_commit"],
@@ -771,9 +813,10 @@ def _selection_stage_jobs(
             + f"python -u -m {merger_module} --selection {selection} "
             f"--input-root {stage_root} --output-dir {stage_root}/merged "
             f"--bootstrap-seed {recoil_seed}\n"
-            + f'test -s "{stage_root}/merged/{summary_name}"\n',
+            + f'test -s "{stage_root}/merged/{summary_name}"\n'
         )
-    return worker_jobs, merge_jobs
+        rendered[family] = {"array": worker, "merge": merge}
+    return rendered
 
 
 def validate_discovery_complete(root, manifest, family):
@@ -915,25 +958,111 @@ def prepare_refinement(root, manifest):
         destination = root / "selection" / "refinement" / f"{family}.json"
         save_file_json(destination, payload)
         selections[family] = destination
+    logical_root = _canonical_campaign_logical_root(root)
     workers, merges = _selection_stage_jobs(
         root,
         manifest,
         "refinement",
         selections,
         "refinement",
-        750,
-        61_001,
-        62_001,
+        REFINEMENT_SCIENTIFIC_DESIGN.particles_per_ensemble,
+        REFINEMENT_SCIENTIFIC_DESIGN.selection_seed,
+        REFINEMENT_SCIENTIFIC_DESIGN.bootstrap_seed,
+        logical_root=logical_root,
     )
     manifest["stage"] = "refinement"
     manifest.setdefault("stages", {})["refinement"] = {
         "classification": "candidate_selection_not_final_validation",
-        "selection_files": {key: str(value) for key, value in selections.items()},
-        "worker_jobs": {key: str(value) for key, value in workers.items()},
-        "merge_jobs": {key: str(value) for key, value in merges.items()},
+        "selection_files": {
+            family: str(logical_root / "selection" / "refinement" / f"{family}.json")
+            for family in FAMILIES
+        },
+        "worker_jobs": {
+            family: str(logical_root / "jobs" / "refinement" / f"{family}_array.pbs")
+            for family in FAMILIES
+        },
+        "merge_jobs": {
+            family: str(logical_root / "jobs" / "refinement" / f"{family}_merge.pbs")
+            for family in FAMILIES
+        },
         "input_role": "refinement",
     }
     save_file_json(root / "campaign.json", manifest)
+
+
+def _canonical_campaign_logical_root(root):
+    path = Path(root)
+    parts = path.parts
+    marker = ("data", "optimization", "mot_3d")
+    matches = [index for index in range(len(parts) - 2) if parts[index:index + 3] == marker]
+    if len(matches) != 1 or len(parts) != matches[0] + 4:
+        raise ValueError("Campaign root must end in data/optimization/mot_3d/<name>.")
+    logical = Path(*parts[matches[0]:])
+    if any(part in {"", ".", ".."} for part in logical.parts):
+        raise ValueError("Campaign root is not canonical.")
+    return logical
+
+
+def render_refinement_transition(logical_campaign_root, manifest, preliminary_summaries):
+    """Render the exact post-preliminary refinement artifacts without I/O.
+
+    ``preliminary_summaries`` must already have crossed the strict scientific
+    validator.  Keeping this renderer pure lets the guarded remote transition
+    hash and transfer exactly the bytes that the canonical CLI would create.
+    """
+
+    from studies.mot_3d.refinement.select import select_from_summary
+
+    root = _canonical_campaign_logical_root(logical_campaign_root)
+    if set(preliminary_summaries) != set(FAMILIES):
+        raise ValueError("Both canonical preliminary family summaries are required.")
+    artifacts = {}
+    selections = {}
+    for family in FAMILIES:
+        payload = select_from_summary(family, preliminary_summaries[family])
+        relative = Path("selection") / "refinement" / f"{family}.json"
+        artifacts[relative.as_posix()] = json.dumps(
+            payload, indent=2, allow_nan=False
+        ).encode("utf-8")
+        selections[family] = root / relative
+
+    rendered_jobs = render_selection_stage_jobs(
+        root,
+        manifest,
+        "refinement",
+        selections,
+        "refinement",
+        REFINEMENT_SCIENTIFIC_DESIGN.particles_per_ensemble,
+        REFINEMENT_SCIENTIFIC_DESIGN.selection_seed,
+        REFINEMENT_SCIENTIFIC_DESIGN.bootstrap_seed,
+    )
+    for family in FAMILIES:
+        artifacts[f"jobs/refinement/{family}_array.pbs"] = rendered_jobs[family][
+            "array"
+        ].encode("utf-8")
+        artifacts[f"jobs/refinement/{family}_merge.pbs"] = rendered_jobs[family][
+            "merge"
+        ].encode("utf-8")
+
+    updated = copy.deepcopy(manifest)
+    updated["stage"] = "refinement"
+    updated.setdefault("stages", {})["refinement"] = {
+        "classification": "candidate_selection_not_final_validation",
+        "selection_files": {key: str(value) for key, value in selections.items()},
+        "worker_jobs": {
+            family: str(root / "jobs" / "refinement" / f"{family}_array.pbs")
+            for family in FAMILIES
+        },
+        "merge_jobs": {
+            family: str(root / "jobs" / "refinement" / f"{family}_merge.pbs")
+            for family in FAMILIES
+        },
+        "input_role": "refinement",
+    }
+    artifacts["campaign.json"] = json.dumps(
+        updated, indent=2, allow_nan=False
+    ).encode("utf-8")
+    return artifacts, updated
 
 
 def prepare_closure(root, manifest):

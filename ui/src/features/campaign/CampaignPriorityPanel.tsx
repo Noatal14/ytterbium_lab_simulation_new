@@ -22,6 +22,8 @@ import type { Mot3DDiscoveryTransitionLifecycle } from "../../api/clients/mot3dD
 import type { Mot3DDiscoveryTransitionUiState } from "./controllers/useMot3DDiscoveryTransitionController";
 import type { PreliminaryCheckLifecycle } from "../../api/clients/mot3dPreliminaryCheck";
 import type { PreliminaryCheckUiState } from "./controllers/useMot3DPreliminaryCheckController";
+import type { Mot3DPreliminaryTransitionLifecycle } from "../../api/clients/mot3dPreliminaryTransition";
+import type { Mot3DPreliminaryTransitionUiState } from "./controllers/useMot3DPreliminaryTransitionController";
 
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
@@ -47,6 +49,8 @@ export function CampaignPriorityPanel({
   mot3DTransitionLifecycle = null,
   preliminaryCheckState = "idle",
   preliminaryCheckLifecycle = null,
+  preliminaryTransitionState = "idle",
+  preliminaryTransitionLifecycle = null,
   copyStatus,
   onCopyCommand,
 }: {
@@ -70,6 +74,8 @@ export function CampaignPriorityPanel({
   mot3DTransitionLifecycle?: Mot3DDiscoveryTransitionLifecycle | null;
   preliminaryCheckState?: PreliminaryCheckUiState;
   preliminaryCheckLifecycle?: PreliminaryCheckLifecycle | null;
+  preliminaryTransitionState?: Mot3DPreliminaryTransitionUiState;
+  preliminaryTransitionLifecycle?: Mot3DPreliminaryTransitionLifecycle | null;
   copyStatus: string;
   onCopyCommand: () => void;
 }) {
@@ -145,6 +151,12 @@ export function CampaignPriorityPanel({
                 : null);
 
   if (campaign.family === "mot_3d" && campaign.stage === "preliminary_check") {
+    if (preliminaryTransitionState !== "idle" || preliminaryTransitionLifecycle) {
+      const blocked = preliminaryTransitionState === "terminal" || ["not_submitted", "held", "completed_failed", "status_unknown", "partial", "outcome_unknown"].includes(preliminaryTransitionLifecycle ?? "");
+      const prepared = preliminaryTransitionState === "prepared" || preliminaryTransitionLifecycle === "refinement_prepared";
+      const ready = preliminaryTransitionState === "ready" || preliminaryTransitionState === "review";
+      return <section className={`priority-panel ${blocked ? "priority-panel--blocked" : ""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{blocked ? "Manual verification required" : prepared ? "Refinement is prepared" : ready ? "Scientific validation and synchronization required" : preliminaryTransitionState === "checking" || preliminaryTransitionState === "synchronizing" ? "Verifying preliminary-check evidence" : "No action needed"}</h2><p><strong>Current stage:</strong> Preliminary check.</p><p>{blocked ? "The preliminary-check evidence or transition outcome is not safely actionable. Inspect Zeus before continuing." : prepared ? "The verified results are synchronized and Refinement files are ready. No Refinement job has been submitted or started." : ready ? "Review the verified result set before the application synchronizes it and prepares Refinement." : "The application is checking or synchronizing evidence. No additional action is needed while it completes."}</p></section>;
+    }
     const attention = preliminaryCheckState === "terminal" || ["partial", "held", "completed_failed", "status_unknown", "outcome_unknown"].includes(preliminaryCheckLifecycle ?? "");
     const checking = preliminaryCheckState === "checking";
     const active = preliminaryCheckState === "submitting" || ["submitted", "queued", "running"].includes(preliminaryCheckLifecycle ?? "");

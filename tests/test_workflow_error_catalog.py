@@ -62,6 +62,7 @@ def test_every_literal_coordinator_error_is_explicitly_catalogued():
         "zeus_refinement_submission.py": "refinement_submission",
         "zeus_confirmation.py": "confirmation_transition",
         "zeus_confirmation_submission.py": "confirmation_submission",
+        "mot_3d_preliminary_transition.py": "mot_3d_preliminary_transition",
     }
     for filename, domain in file_domains.items():
         tree = ast.parse((ROOT / "workflow_api" / filename).read_text())

@@ -93,8 +93,11 @@ def _design(family, ranked):
     return rows, bounds
 
 
-def select(family, early_summary):
-    summary = json.loads(Path(early_summary).read_text())
+def select_from_summary(family, summary):
+    """Build the canonical refinement selection from an immutable summary."""
+
+    if not isinstance(summary, dict):
+        raise TypeError("Early-check summary must be a mapping.")
     if summary["family"] != family:
         raise ValueError("Early-check summary and requested family disagree.")
     rows, bounds = _design(family, summary["ranked_candidates"])
@@ -125,6 +128,13 @@ def select(family, early_summary):
         "design": "leader-centered one-at-a-time sensitivity plus distinct-region anchors",
         "candidates": candidates,
     }
+
+
+def select(family, early_summary):
+    """Path adapter retained for CLI compatibility."""
+
+    summary = json.loads(Path(early_summary).read_text())
+    return select_from_summary(family, summary)
 
 
 def main(argv=None):

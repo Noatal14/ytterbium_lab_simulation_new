@@ -318,8 +318,22 @@ def test_zeeman_source_registry_rejects_laboratory_hash_tampering(tmp_path):
 
 
 @contextmanager
-def running_server(request_count=2, repository_root=None, creation_service=None, zeus_service=None, transfer_service=None, submission_service=None, screening_service=None, screen_submission_service=None, mot_3d_bootstrap_service=None, mot_3d_discovery_submission_service=None, mot_3d_discovery_transition_service=None):
+def running_server(
+    request_count=2,
+    repository_root=None,
+    creation_service=None,
+    zeus_service=None,
+    transfer_service=None,
+    submission_service=None,
+    screening_service=None,
+    screen_submission_service=None,
+    mot_3d_bootstrap_service=None,
+    mot_3d_discovery_submission_service=None,
+    mot_3d_discovery_transition_service=None,
+    mot_3d_preliminary_transition_service=None,
+):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
+    handler.sessions = {}
     handler.sessions = {}
     handler.creation_service = creation_service
     handler.zeus_service = zeus_service
@@ -330,6 +344,9 @@ def running_server(request_count=2, repository_root=None, creation_service=None,
     handler.mot_3d_bootstrap_service = mot_3d_bootstrap_service
     handler.mot_3d_discovery_submission_service = mot_3d_discovery_submission_service
     handler.mot_3d_discovery_transition_service = mot_3d_discovery_transition_service
+    handler.mot_3d_preliminary_transition_service = (
+        mot_3d_preliminary_transition_service
+    )
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -745,6 +762,87 @@ def test_mot_3d_discovery_transition_http_boundary_is_explicit_and_session_bound
         assert status == 200 and payload["data"]["effects"]["submit_preliminary_check"] is False
         status, _, payload = request_json(f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token":"token"}))
         assert status == 201 and payload["data"]["submitted_to_zeus"] is False
+    assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
+
+
+class _FakeMot3DPreliminaryTransitionService:
+    def __init__(self):
+        self.calls = []
+
+    def status(self, payload):
+        self.calls.append(("status", payload, None))
+        return {"source": "zeus", "next_action": "review_transition"}
+
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        return {
+            "preview_token": "token",
+            "effects": {
+                "synchronize_preliminary_check": True,
+                "prepare_refinement": True,
+                "submit_refinement": False,
+            },
+        }
+
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        return {
+            "status": "refinement_prepared",
+            "submitted_to_zeus": False,
+            "simulation_started": False,
+        }
+
+
+def test_mot_3d_preliminary_transition_http_boundary_is_explicit_and_session_bound():
+    service = _FakeMot3DPreliminaryTransitionService()
+    with running_server(
+        request_count=5,
+        mot_3d_preliminary_transition_service=service,
+    ) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session",
+            headers={"Sec-Fetch-Site": "same-origin"},
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "campaign-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/preliminary-transition/status",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(request),
+        )
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/preliminary-transition/status",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["next_action"] == "review_transition"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/preliminary-transition/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200
+        assert payload["data"]["effects"]["submit_refinement"] is False
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/preliminary-transition/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "token"}),
+        )
+        assert status == 201
+        assert payload["data"]["simulation_started"] is False
     assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
 
 
