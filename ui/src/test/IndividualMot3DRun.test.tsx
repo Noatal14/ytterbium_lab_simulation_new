@@ -8,8 +8,9 @@ import type {
   Mot3DPreview,
   Mot3DRequest,
   SinglePassParameters,
+  Mot3DRun,
 } from "../api/clients/individualMot3D";
-import { IndividualMot3DRun } from "../components/IndividualMot3DRun";
+import { IndividualMot3DRun, mot3dMonitorCopy } from "../components/IndividualMot3DRun";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/mot3dIndividualSpec.v1";
 
 const sourceId = `mot3d-source-${"a".repeat(32)}`;
@@ -104,7 +105,11 @@ function service(): IndividualMot3DApi {
       execution_started: false,
       submitted_to_zeus: false,
     }),
-    runs: vi.fn(),
+    startLocal: vi.fn().mockResolvedValue({ status: "queued", run_id: "mot3d-browser", execution_mode: "local" }),
+    previewZeus: vi.fn().mockResolvedValue({ preview_token: "zeus-review", run_id: "mot3d-browser", submission_key: "d".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } }),
+    confirmZeus: vi.fn().mockResolvedValue({ status: "submitted", run_id: "mot3d-browser", job_id: "500.zeus-master", submission_key: "d".repeat(64) }),
+    refreshZeus: vi.fn().mockResolvedValue({ state: "running", job_id: "500.zeus-master" }),
+    runs: vi.fn().mockResolvedValue([]),
     run: vi.fn(),
   } as unknown as IndividualMot3DApi;
 }
@@ -114,6 +119,16 @@ async function waitForSource() {
 }
 
 describe("IndividualMot3DRun", () => {
+  it.each([
+    [undefined, "Status has not been checked", true],
+    ["configured", "Nothing is running yet", true],
+    ["queued", "Run is queued", false],
+    ["running", "Run is in progress", false],
+    ["failed", "Run failed safely", true],
+    ["outcome_unknown", "Zeus outcome needs attention", true],
+  ])("uses truth-aware monitor copy for %s", (state, title, attention) => {
+    expect(mot3dMonitorCopy(state)).toMatchObject({ title, attention });
+  });
   it("uses a friendly source selector and execution-aware particle limits", async () => {
     const user = userEvent.setup();
     render(<IndividualMot3DRun api={service()} onBack={vi.fn()} />);
@@ -135,9 +150,62 @@ describe("IndividualMot3DRun", () => {
     expect(request.geometry_family).toBe("angled_donut");
     expect(request.parameters).toEqual(spec.defaults.angled_donut);
     await user.click(screen.getByRole("button", { name: "Create run record" }));
-    expect(await screen.findByText("Run record created")).toBeVisible();
-    expect(screen.getByText(/No simulation has started/)).toBeVisible();
+    expect(await screen.findByText("Reviewed run is ready")).toBeVisible();
+    expect(screen.getByText(/Nothing is running yet/)).toBeVisible();
     expect(api.confirm).toHaveBeenCalledTimes(1);
+    expect(api.startLocal).not.toHaveBeenCalled();
+  });
+
+  it("starts locally only after the explicit action and shows truthful monitor copy", async () => {
+    const user = userEvent.setup(), api = service();
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    await waitForSource();
+    await user.click(screen.getByRole("button", { name: "Validate setup" }));
+    await user.click(await screen.findByRole("button", { name: "Create run record" }));
+    await user.click(await screen.findByRole("button", { name: "Start on this computer" }));
+    expect(api.startLocal).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Status has not been checked")).toBeVisible();
+    expect(screen.getByText(/Select Check status/)).toBeVisible();
+  });
+
+  it("requires Zeus review and a separate explicit confirmation", async () => {
+    const user = userEvent.setup(), api = service();
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    await waitForSource();
+    await user.click(screen.getByLabelText("Zeus"));
+    await user.click(screen.getByRole("button", { name: "Validate setup" }));
+    await user.click(await screen.findByRole("button", { name: "Create run record" }));
+    await user.type(screen.getByLabelText(/Technion username/), "tal.noa");
+    await user.click(screen.getByRole("button", { name: "Review Zeus submission" }));
+    expect(await screen.findByText(/ready for confirmation/)).toBeVisible();
+    expect(api.confirmZeus).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Confirm and submit one Zeus job" }));
+    expect(api.confirmZeus).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Status has not been checked")).toBeVisible();
+  });
+
+  it("renders the two capture meanings separately with retention and provenance", async () => {
+    const user = userEvent.setup(), api = service();
+    const completed = {
+      id: `individual-run-${"1".repeat(24)}`, display_name: "mot3d-browser", record_state: "succeeded", lifecycle: "results_ready",
+      execution: { mode: "local", zeus_job_id: null }, retention: { particle_states_requested: true, status: "retained" },
+      results: { availability: "verified", completed_at: "2026-10-12T12:00:00+00:00" },
+      metrics: { n_input: 100, usable_at_end_count: 40, usable_at_end_fraction: 0.4, residence_qualified_captured_count: 25, residence_qualified_captured_fraction: 0.25, elapsed_s: 3.5, selection_sha256: "a".repeat(64), provenance: { geometry_family: "angled_donut" } },
+    } as unknown as Mot3DRun;
+    vi.mocked(api.runs).mockResolvedValue([completed]);
+    vi.mocked(api.run).mockResolvedValue(completed);
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    await waitForSource();
+    await user.click(screen.getByRole("button", { name: "Validate setup" }));
+    await user.click(await screen.findByRole("button", { name: "Create run record" }));
+    await user.click(await screen.findByRole("button", { name: "Start on this computer" }));
+    await user.click(screen.getByRole("button", { name: "Check status" }));
+    expect(await screen.findByRole("heading", { name: "Verified results are ready" })).toBeVisible();
+    expect(screen.getByText("40 (40.000%)")).toBeVisible();
+    expect(screen.getByText("25 (25.000%)")).toBeVisible();
+    expect(screen.getByText("retained")).toBeVisible();
+    await user.click(screen.getByText("Technical provenance"));
+    expect(screen.getByText(/geometry_family/)).toBeVisible();
   });
 
   it("shows exact backend-derived single-pass values in review", async () => {

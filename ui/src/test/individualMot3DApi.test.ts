@@ -151,6 +151,41 @@ describe("individual 3D-MOT frontend contract", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("binds Zeus review, confirmation, and refresh to one profile and job", async () => {
+    const reviewed = {
+      preview_token: "zeus-token", expires_in_seconds: 300, run_id: "mot3d-test",
+      job: { kind: "scalar", array: false, pbs_sha256: "8".repeat(64) },
+      package_sha256: "9".repeat(64), submission_key: "a".repeat(64),
+      effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false },
+    };
+    const submitted = { status: "submitted", run_id: "mot3d-test", job_id: "500.zeus-master", submission_key: "a".repeat(64) };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(await envelope(reviewed))
+      .mockResolvedValueOnce(await envelope(submitted))
+      .mockResolvedValueOnce(await envelope({ state: "running", job_id: "500.zeus-master" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot3DApi(async () => "csrf");
+    const zeusReview = await api.previewZeus("mot3d-test", "tal.noa");
+    await api.confirmZeus(zeusReview.preview_token);
+    await expect(api.refreshZeus("mot3d-test", "other.user")).rejects.toThrow(/profile/);
+    await expect(api.refreshZeus("mot3d-test", "tal.noa")).resolves.toEqual({ state: "running", job_id: "500.zeus-master" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ run_id: "mot3d-test", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });
+  });
+
+  it("does not retry an ambiguous Zeus confirmation and requires refresh identity", async () => {
+    const reviewed = {
+      preview_token: "zeus-token", expires_in_seconds: 300, run_id: "mot3d-test",
+      job: { kind: "scalar", array: false, pbs_sha256: "8".repeat(64) },
+      package_sha256: "9".repeat(64), submission_key: "a".repeat(64),
+      effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false },
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(await envelope(reviewed)).mockRejectedValueOnce(new Error("unknown")));
+    const api = createIndividualMot3DApi(async () => "csrf"), zeusReview = await api.previewZeus("mot3d-test", "tal.noa");
+    await expect(api.confirmZeus(zeusReview.preview_token)).rejects.toThrow(/unknown/);
+    await expect(api.confirmZeus(zeusReview.preview_token)).rejects.toThrow(/no longer active/);
+    await expect(api.refreshZeus("mot3d-test", "tal.noa")).rejects.toThrow(/identity is unavailable/);
+  });
+
   it.each([
     ["extra plan field", (row: ReturnType<typeof preview>) => Object.assign(row.plan, { path: "secret" })],
     ["wrong family parameters", (row: ReturnType<typeof preview>) => { (row.plan.geometry.parameters as unknown as Record<string, number>).blue_detuning_gamma = -7; }],

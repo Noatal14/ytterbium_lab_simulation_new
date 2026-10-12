@@ -144,6 +144,8 @@ export type Mot3DResultMetrics = {
 };
 
 type CreationContext = { runId: string; request: Mot3DRequest; csrf: string; generation: number };
+type Profile = { username: string; project_directory: string };
+type ZeusContext = { runId: string; profile: Profile; submissionKey: string; csrf: string; generation: number };
 // eslint-disable-next-line no-control-regex
 const printable = (value: unknown, maximum = 512): value is string => typeof value === "string" && value.length > 0 && value.length <= maximum && !/[\u0000-\u001f\u007f]/.test(value);
 const integer = (value: unknown): value is number => Number.isInteger(value);
@@ -154,6 +156,8 @@ const privateRunId = (value: unknown): value is string => typeof value === "stri
 const publicRunId = (value: unknown): value is string => typeof value === "string" && /^individual-run-[0-9a-f]{24}$/.test(value);
 const jobId = (value: unknown): value is string => typeof value === "string" && /^\d+\.zeus-master$/.test(value);
 const invalid = (part: string): never => { throw new Error(`Invalid individual 3D-MOT ${part} response.`); };
+const makeProfile = (username: string): Profile => ({ username, project_directory: `/home/${username}/ytterbium_lab_simulation_new` });
+const sameProfile = (left: Profile, right: Profile) => left.username === right.username && left.project_directory === right.project_directory;
 
 function parseSources(value: unknown): Mot3DSource[] {
   if (!isRecord(value) || !exactKeys(value, ["contract_version", "sources", "invalid_count", "total", "truncated"]) || value.contract_version !== "mot-3d-individual-source-catalog-v1" || !Array.isArray(value.sources) || !integer(value.invalid_count) || Number(value.invalid_count) < 0 || value.total !== value.sources.length || typeof value.truncated !== "boolean") invalid("source catalog");
@@ -241,6 +245,21 @@ function parseLocalStart(value: unknown): StartedLocalMot3DRun {
   return value as unknown as StartedLocalMot3DRun;
 }
 
+function parseZeusPreview(value: unknown) {
+  if (!isRecord(value) || !exactKeys(value, ["preview_token", "expires_in_seconds", "run_id", "job", "package_sha256", "submission_key", "effects"]) || !printable(value.preview_token) || !integer(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !privateRunId(value.run_id) || !hex64(value.package_sha256) || !hex64(value.submission_key) || !isRecord(value.job) || !exactKeys(value.job, ["kind", "array", "pbs_sha256"]) || value.job.kind !== "scalar" || value.job.array !== false || !hex64(value.job.pbs_sha256) || !isRecord(value.effects) || !exactKeys(value.effects, ["submit_one_job", "reconcile_existing_job", "cancel_job"]) || typeof value.effects.submit_one_job !== "boolean" || typeof value.effects.reconcile_existing_job !== "boolean" || value.effects.submit_one_job === value.effects.reconcile_existing_job || value.effects.cancel_job !== false) invalid("Zeus review");
+  return value as unknown as { preview_token: string; run_id: string; submission_key: string; effects: { submit_one_job: boolean; reconcile_existing_job: boolean; cancel_job: false } };
+}
+
+function parseZeusResult(value: unknown) {
+  if (!isRecord(value) || !exactKeys(value, ["status", "run_id", "job_id", "submission_key"]) || !["submitted", "reconciled"].includes(String(value.status)) || !privateRunId(value.run_id) || !jobId(value.job_id) || !hex64(value.submission_key)) invalid("Zeus submission");
+  return value as unknown as { status: "submitted" | "reconciled"; run_id: string; job_id: string; submission_key: string };
+}
+
+function parseZeusRefresh(value: unknown) {
+  if (!isRecord(value) || !exactKeys(value, ["state", "job_id"]) || !["queued", "running", "succeeded", "failed", "outcome_unknown", "cancelled"].includes(String(value.state)) || !jobId(value.job_id)) invalid("Zeus status");
+  return value as { state: string; job_id: string };
+}
+
 const summaryKeys = ["id", "record_kind", "run_kind", "display_name", "stage_semantics", "source", "queried_at", "trust", "scientific_role", "record_state", "integrity", "lifecycle", "next_action", "created_at", "updated_at", "execution", "retention", "results", "warnings"];
 function validMot3DResultProvenance(value: unknown): value is Mot3DResultProvenance {
   if (!isRecord(value) || !exactKeys(value, ["git_revision", "configuration_sha256", "inputs_sha256", "laboratory_spec_sha256", "numerical_policy_sha256", "admission_specification_sha256", "source_id", "source_fingerprint", "selection_algorithm", "selection_version", "selection_seed", "simulation_seed", "geometry_family", "solver", "timestep_s", "t_max_s", "convergence_claim"])) return false;
@@ -292,13 +311,18 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
 }
 
 export function createIndividualMot3DApi(session: () => Promise<string>) {
-  let generation = 0, previewSequence = 0, readSequence = 0;
+  let generation = 0, previewSequence = 0, zeusSequence = 0, readSequence = 0;
   const reviews = new Map<string, CreationContext>();
   const confirmations = new Map<string, Promise<CreatedMot3DRun>>();
   const confirmed = new Map<string, CreatedMot3DRun>();
   const localStarts = new Map<string, Promise<StartedLocalMot3DRun>>();
+  const zeusReviews = new Map<string, ZeusContext>();
+  const zeusResults = new Map<string, ReturnType<typeof parseZeusResult>>();
+  const zeusConfirmations = new Map<string, Promise<ReturnType<typeof parseZeusResult>>>();
+  const jobs = new Map<string, { profile: Profile; jobId: string; submissionKey: string }>();
+  const refreshes = new Map<string, number>();
   return {
-    reset() { generation++; previewSequence++; readSequence++; reviews.clear(); confirmations.clear(); confirmed.clear(); localStarts.clear(); },
+    reset() { generation++; previewSequence++; zeusSequence++; readSequence++; reviews.clear(); confirmations.clear(); confirmed.clear(); localStarts.clear(); zeusReviews.clear(); zeusResults.clear(); zeusConfirmations.clear(); jobs.clear(); refreshes.clear(); },
     async sources() { return parseSources(await getData("/api/v1/individual-runs/mot-3d/sources")); },
     async preview(request: Mot3DRequest) {
       const currentGeneration = generation, sequence = ++previewSequence, csrf = await session();
@@ -333,6 +357,43 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       })();
       localStarts.set(id, task);
       try { return await task; } finally { localStarts.delete(id); }
+    },
+    async previewZeus(id: string, username: string) {
+      if (!privateRunId(id)) throw new Error("The run identifier is invalid.");
+      const currentGeneration = generation, sequence = ++zeusSequence, profile = makeProfile(username), csrf = await session();
+      const row = parseZeusPreview(await postData("/api/v1/individual-runs/mot-3d/zeus/preview", { run_id: id, profile }, csrf));
+      if (currentGeneration !== generation || sequence !== zeusSequence) throw new Error("The Zeus review is stale.");
+      if (row.run_id !== id) throw new Error("The Zeus review did not match the selected run.");
+      zeusReviews.set(row.preview_token, { runId: id, profile, submissionKey: row.submission_key, csrf, generation: currentGeneration });
+      return row;
+    },
+    async confirmZeus(token: string) {
+      const completed = zeusResults.get(token); if (completed) return completed;
+      const pending = zeusConfirmations.get(token); if (pending) return pending;
+      const context = zeusReviews.get(token); if (!context) throw new Error("The Zeus review is no longer active.");
+      zeusReviews.delete(token);
+      const task = (async () => {
+        const row = parseZeusResult(await postData("/api/v1/individual-runs/mot-3d/zeus/confirm", { preview_token: token }, context.csrf));
+        if (context.generation !== generation) throw new Error("The Zeus submission response is stale.");
+        if (row.run_id !== context.runId || row.submission_key !== context.submissionKey) throw new Error("The Zeus submission did not match the reviewed job.");
+        const existing = jobs.get(row.run_id);
+        if (existing && (existing.jobId !== row.job_id || existing.submissionKey !== row.submission_key || !sameProfile(existing.profile, context.profile))) throw new Error("The Zeus job identity changed unexpectedly.");
+        jobs.set(row.run_id, { profile: context.profile, jobId: row.job_id, submissionKey: row.submission_key });
+        zeusResults.set(token, row); return row;
+      })();
+      zeusConfirmations.set(token, task);
+      try { return await task; } finally { zeusConfirmations.delete(token); }
+    },
+    async refreshZeus(id: string, username: string) {
+      const context = jobs.get(id);
+      if (!context) throw new Error("The Zeus job identity is unavailable. Review the original submission before checking status.");
+      const profile = makeProfile(username);
+      if (!sameProfile(profile, context.profile)) throw new Error("The Zeus connection profile does not match the submitted job.");
+      const currentGeneration = generation, sequence = (refreshes.get(id) ?? 0) + 1; refreshes.set(id, sequence);
+      const row = parseZeusRefresh(await postData("/api/v1/individual-runs/mot-3d/zeus/refresh", { run_id: id, profile }, await session()));
+      if (currentGeneration !== generation || refreshes.get(id) !== sequence) throw new Error("The Zeus status response is stale.");
+      if (row.job_id !== context.jobId) throw new Error("The Zeus status did not match the submitted job.");
+      return row;
     },
     async runs() {
       const currentGeneration = generation, sequence = ++readSequence;

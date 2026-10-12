@@ -151,6 +151,9 @@ describe("backend-generated workflow API contract snapshots", () => {
     const individualMot3DPreview = await individualMot3D.preview(individualMot3DRequest);
     const createdMot3D = await individualMot3D.confirm(individualMot3DPreview.preview_token);
     await individualMot3D.startLocal(createdMot3D.run_id);
+    const mot3DZeusPreview = await individualMot3D.previewZeus(createdMot3D.run_id, "tal.noa");
+    await individualMot3D.confirmZeus(mot3DZeusPreview.preview_token);
+    await individualMot3D.refreshZeus(createdMot3D.run_id, "tal.noa");
 
     const exercisedPaths = new Set(fetchMock.mock.calls.map(([input, init]) => `${String(init?.method ?? "GET").toUpperCase()} ${typeof input === "string" ? input : String(input)}`));
     for (const entry of successSnapshot.cases) {

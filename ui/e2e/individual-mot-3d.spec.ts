@@ -6,6 +6,8 @@ const sourceId = `mot3d-source-${"a".repeat(32)}`;
 
 async function routes(page: Page) {
   let confirmed = 0;
+  let runId = "mot3d-browser-angled-donut";
+  let executionMode: "local" | "zeus" = "local";
   await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [], invalid_count: 0, total: 0 } } }));
   await page.route("**/api/v1/session", (route) => route.fulfill({ json: { api_version: 1, data: { csrf_token: "csrf" } } }));
   await page.route("**/api/v1/individual-runs/mot-3d/sources", (route) => route.fulfill({ json: { api_version: 1, data: {
@@ -34,6 +36,7 @@ async function routes(page: Page) {
   } } }));
   await page.route("**/api/v1/individual-runs/mot-3d/preview", async (route) => {
     const request = route.request().postDataJSON();
+    executionMode = request.execution_mode;
     const singlePass = request.geometry_family === "single_pass";
     await route.fulfill({ json: { api_version: 1, data: {
       preview_token: `token-${request.geometry_family}`,
@@ -75,6 +78,7 @@ async function routes(page: Page) {
     confirmed += 1;
     const token = route.request().postDataJSON().preview_token as string;
     const family = token.replace("token-", "").replaceAll("_", "-");
+    runId = `mot3d-browser-${family}`;
     await route.fulfill({ status: 201, json: { api_version: 1, data: {
       status: "created",
       run_id: `mot3d-browser-${family}`,
@@ -85,8 +89,47 @@ async function routes(page: Page) {
       submitted_to_zeus: false,
     } } });
   });
+  await page.route("**/api/v1/individual-runs/mot-3d/local/start", async (route) => {
+    const request = route.request().postDataJSON();
+    await route.fulfill({ status: 202, json: { api_version: 1, data: { status: "queued", run_id: request.run_id, execution_mode: "local" } } });
+  });
+  await page.route("**/api/v1/individual-runs/mot-3d/zeus/preview", async (route) => {
+    const request = route.request().postDataJSON();
+    await route.fulfill({ json: { api_version: 1, data: { preview_token: "zeus-review", expires_in_seconds: 300, run_id: request.run_id, job: { kind: "scalar", array: false, pbs_sha256: "4".repeat(64) }, package_sha256: "5".repeat(64), submission_key: "6".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } } } });
+  });
+  await page.route("**/api/v1/individual-runs/mot-3d/zeus/confirm", async (route) => {
+    await route.fulfill({ status: 202, json: { api_version: 1, data: { status: "submitted", run_id: runId, job_id: "500.zeus-master", submission_key: "6".repeat(64) } } });
+  });
+  await page.route("**/api/v1/individual-runs/mot-3d/zeus/refresh", async (route) => {
+    await route.fulfill({ json: { api_version: 1, data: { state: "running", job_id: "500.zeus-master" } } });
+  });
+  await page.route("**/api/v1/individual-runs", (route) => route.fulfill({ json: { api_version: 1, data: {
+    runs: [{
+      id: `individual-run-${"1".repeat(24)}`, record_kind: "individual_simulation_run", run_kind: "mot_3d", display_name: runId,
+      stage_semantics: "single-run-lifecycle", source: "local", queried_at: "2026-10-12T12:00:00+00:00", trust: "verified-package",
+      scientific_role: "individual-only", record_state: "running", integrity: "active", lifecycle: "running", next_action: "wait",
+      created_at: "2026-10-12T12:00:00+00:00", updated_at: "2026-10-12T12:00:00+00:00", execution: { mode: executionMode, zeus_job_id: executionMode === "zeus" ? "500.zeus-master" : null },
+      retention: { particle_states_requested: true, status: "pending" }, results: { availability: "not_ready", completed_at: null }, warnings: [],
+    }], invalid_count: 0, total: 1, truncated: false,
+  } } }));
   return () => confirmed;
 }
+
+test("requires Zeus review before explicitly submitting one 3D-MOT job", async ({ page }) => {
+  await routes(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Configure 3D-MOT run" }).click();
+  await page.getByLabel("Zeus").click();
+  await page.getByRole("button", { name: "Validate setup" }).click();
+  await page.getByRole("button", { name: "Create run record" }).click();
+  await page.getByLabel(/Technion username/).fill("tal.noa");
+  await page.getByRole("button", { name: "Review Zeus submission" }).click();
+  await expect(page.getByText(/ready for confirmation/)).toBeVisible();
+  await page.getByRole("button", { name: "Confirm and submit one Zeus job" }).click();
+  await expect(page.getByText("Status has not been checked")).toBeVisible();
+  await page.getByRole("button", { name: "Check status" }).click();
+  await expect(page.getByText("Run is in progress")).toBeVisible();
+});
 
 for (const family of ["angled_donut", "single_pass"] as const) {
   test(`creates a reviewed ${family} 3D-MOT record without execution`, async ({ page }) => {
@@ -111,8 +154,13 @@ for (const family of ["angled_donut", "single_pass"] as const) {
       .map((element) => `${element.tagName.toLowerCase()}.${element.className}`));
     expect(overflow).toEqual([]);
     await page.getByRole("button", { name: "Create run record" }).click();
-    await expect(page.getByText("Run record created")).toBeVisible();
-    await expect(page.getByText(/No simulation has started/)).toBeVisible();
+    await expect(page.getByText("Reviewed run is ready")).toBeVisible();
+    await expect(page.getByText(/Nothing is running yet/)).toBeVisible();
+    await page.getByRole("button", { name: "Start on this computer" }).click();
+    await expect(page.getByText("Status has not been checked")).toBeVisible();
+    await page.getByRole("button", { name: "Check status" }).click();
+    await expect(page.getByText("Run is in progress")).toBeVisible();
+    await expect(page.getByText(/No action is required/)).toBeVisible();
     expect(confirmed()).toBe(1);
   });
 }

@@ -1,4 +1,6 @@
 import hashlib
+import json
+from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,13 +20,19 @@ from workflow_api.run_execution import (
     issue_execution_authority,
 )
 from workflow_api.run_records import RunRecordStore
+from workflow_api.mot_3d_zeus_execution import (
+    IndividualMot3DZeusCoordinator, _package_payload, build_frozen_mot_3d_package,
+)
+from workflow_api.mot_3d_zeus_worker import execute_package
+from workflow_api.zeus_snapshot import ZeusProfile
+from workflow_api.zeeman_zeus_execution import RemoteJobStatus, RemoteSubmission
 
 
 NOW = "2026-10-12T10:00:00+00:00"
 SOURCE_ID = "mot3d-source-" + "a" * 32
 
 
-def _plan(root: Path, monkeypatch, *, retained=True, count=5):
+def _plan(root: Path, monkeypatch, *, retained=True, count=5, mode="local"):
     directory = root / "data/particle_states/after_2d_mot/source"
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "states.npy"
@@ -43,7 +51,7 @@ def _plan(root: Path, monkeypatch, *, retained=True, count=5):
         "source_id": SOURCE_ID, "geometry_family": "angled_donut",
         "particle_count": count, "selection_seed": 7, "simulation_seed": 11,
         "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]),
-        "retain_particle_states": retained, "execution_mode": "local",
+        "retain_particle_states": retained, "execution_mode": mode,
     }
     return build_mot_3d_run_plan(
         request, repository_root=root, run_id="mot3d-local-1",
@@ -206,3 +214,78 @@ def test_api_local_start_requires_verified_configured_local_run(tmp_path, monkey
     assert api.start_local({"run_id": "mot3d-local-1"}, session_id="session") == {"status": "queued", "run_id": "mot3d-local-1", "execution_mode": "local"}
     assert local.calls == [("mot_3d", "mot3d-local-1")]
     with pytest.raises(ValueError): api.start_local({"run_id": "missing"}, session_id="session")
+
+
+def test_frozen_zeus_package_is_scalar_and_worker_reuses_same_science_adapter(
+    tmp_path, monkeypatch,
+):
+    root = tmp_path / "repo"; root.mkdir()
+    plan = _plan(root, monkeypatch, mode="zeus")
+    records = plan.storage_records()
+    package = build_frozen_mot_3d_package(
+        root, records,
+        ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"),
+    )
+    assert b"#PBS -J" not in package.pbs
+    assert b"mot_3d_zeus_worker" in package.pbs
+    assert len(package.selected_states) < 3 * 1024 * 1024
+    package_dir = root / ".workflow/individual-mot-3d" / package.package_sha256
+    package_dir.mkdir(parents=True)
+    path = package_dir / "package.json"
+    path.write_text(json.dumps(_package_payload(package), sort_keys=True, separators=(",", ":")))
+    monkeypatch.chdir(root); monkeypatch.setenv("PBS_JOBID", "502.zeus-master")
+    product = execute_package(
+        path.relative_to(root), package.package_sha256,
+        worker_factory=lambda: Mot3DLocalWorker(
+            root, engine=Engine(), analyzer=_analysis, clock=lambda: NOW,
+        ),
+    )
+    assert product["job_id"] == "502.zeus-master"
+    assert product["results"]["metrics"]["residence_qualified_captured_count"] == 1
+    assert execute_package(
+        path.relative_to(root), package.package_sha256,
+        worker_factory=lambda: (_ for _ in ()).throw(AssertionError("must not rerun")),
+    ) == product
+
+
+def test_zeus_preview_confirm_refresh_is_idempotent_and_publishes_results(
+    tmp_path, monkeypatch,
+):
+    root = tmp_path / "repo"; root.mkdir(); plan = _plan(root, monkeypatch, mode="zeus")
+    records = plan.storage_records(); store = RunRecordStore(root)
+    try: store.create(records["run"], records["configuration"], records["inputs"], records["status"])
+    finally: store.close()
+
+    class Transport:
+        operations = frozenset({"inspect", "stage", "submit", "status", "retrieve"})
+        def __init__(self): self.calls = []; self.package = None
+        def inspect(self, **kwargs): self.calls.append(("inspect", kwargs)); return RemoteSubmission("absent")
+        def stage(self, **kwargs): self.calls.append(("stage", kwargs)); return RemoteSubmission("absent", kwargs["nonce"], None)
+        def submit(self, **kwargs): self.calls.append(("submit", kwargs)); self.package = kwargs["package"]; return RemoteSubmission("submitted", kwargs["nonce"], "502.zeus-master")
+        def status(self, **kwargs): self.calls.append(("status", kwargs)); return RemoteJobStatus("502.zeus-master", "succeeded", 0)
+        def retrieve(self, **kwargs):
+            self.calls.append(("retrieve", kwargs))
+            selected = np.load(BytesIO(self.package.selected_states), allow_pickle=False)
+            return Mot3DLocalWorker(root, engine=Engine(), analyzer=_analysis, clock=lambda: NOW).run_materialized(
+                WorkerRequest(records["run"], records["configuration"], records["inputs"]), selected
+            )
+
+    transport = Transport()
+    coordinator = IndividualMot3DZeusCoordinator(
+        root, issue_execution_authority(), lambda _profile: transport,
+        clock=lambda: 100.0, utc_clock=lambda: NOW,
+        token_factory=lambda: "preview", nonce_factory=lambda: "1" * 32,
+    )
+    profile = ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")
+    preview = coordinator.preview(run_id="mot3d-local-1", profile=profile, session="owner")
+    assert preview["job"]["array"] is False
+    with pytest.raises(RuntimeError, match="confirmation_invalid"):
+        coordinator.confirm(preview_token="preview", session="other")
+    submitted = coordinator.confirm(preview_token="preview", session="owner")
+    assert coordinator.confirm(preview_token="preview", session="owner") == submitted
+    assert [name for name, _ in transport.calls].count("submit") == 1
+    assert coordinator.refresh(run_id="mot3d-local-1", profile=profile)["state"] == "succeeded"
+    inspected = __import__("workflow_api.run_discovery", fromlist=["inspect_run"]).inspect_run(
+        root, "mot_3d", "mot3d-local-1"
+    )
+    assert inspected.integrity == "complete_verified"

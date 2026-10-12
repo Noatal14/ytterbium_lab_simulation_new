@@ -17,7 +17,9 @@ from studies.mot_3d.analysis.retention import analyze_results, final_states_on_g
 from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 from workflow_api.mot_2d_local_execution import _attest_artifact
 from workflow_api.mot_3d_individual_sources import individual_mot_3d_source_scan_limits
-from workflow_api.mot_3d_run_specification import MOT_3D_RUN_SPECIFICATION
+from workflow_api.mot_3d_run_specification import (
+    MOT_3D_RUN_SPECIFICATION, MOT_3D_RUN_SPEC_SHA256,
+)
 from workflow_api.run_execution import (
     ExecutionAuthority,
     IndividualRunExecutionCoordinator,
@@ -174,19 +176,47 @@ class Mot3DLocalWorker:
         self._monotonic = monotonic; self._clock = clock
 
     def run(self, request: WorkerRequest) -> WorkerProduct:
+        selected, _ = materialize_frozen_selection(self.root, request)
+        return self._run(request, selected)
+
+    def run_materialized(
+        self, request: WorkerRequest, selected_states: np.ndarray
+    ) -> WorkerProduct:
+        """Run selected bytes already frozen and verified by the Zeus package."""
+
+        return self._run(request, np.ascontiguousarray(selected_states))
+
+    def _run(
+        self, request: WorkerRequest, selected: np.ndarray
+    ) -> WorkerProduct:
         run = request.run; configuration = request.configuration
         resolved = configuration["resolved"]
-        if run["family"] != "mot_3d" or run["execution_mode"] != "local":
+        mode = run["execution_mode"]
+        if run["family"] != "mot_3d" or mode not in {"local", "zeus"}:
             raise WorkerProductError("3D-MOT worker received the wrong run family or mode.")
         fixed = MOT_3D_RUN_SPECIFICATION["fixed_classification"]
         numerical = resolved["numerical_policy"]
         execution = resolved["execution"]
         simulation = resolved["simulation"]
         mot = resolved["mot_3d"]
+        _validated_selection(
+            resolved["sampling"], list(resolved["input_source"]["records"]),
+            run["particle_count"],
+        )
         expected_profile, expected_parameters, expected_derived = build_profile_from_parameters(mot["geometry_family"], mot["parameters"])
         if (
-            run["particle_count"] > MOT_3D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"]["local"]
-            or execution != {"mode": "local", "workers": MOT_3D_RUN_SPECIFICATION["workers_by_execution_mode"]["local"]}
+            resolved["admission_specification"] != {
+                "version": MOT_3D_RUN_SPECIFICATION["spec_version"],
+                "sha256": MOT_3D_RUN_SPEC_SHA256,
+            }
+            or configuration["laboratory_spec"] != dict(
+                MOT_3D_RUN_SPECIFICATION["authority_references"]["laboratory_specification"]
+            )
+            or configuration["numerical_policy"] != dict(
+                MOT_3D_RUN_SPECIFICATION["authority_references"]["numerical_policy"]
+            )
+            or run["particle_count"] > MOT_3D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"][mode]
+            or execution != {"mode": mode, "workers": MOT_3D_RUN_SPECIFICATION["workers_by_execution_mode"][mode]}
             or simulation["particle_count"] != run["particle_count"]
             or simulation["stochastic"] is not True
             or simulation["gravity_enabled"] is not fixed["gravity_enabled"]
@@ -197,7 +227,12 @@ class Mot3DLocalWorker:
             or _plain(mot["capture"]) != _plain(fixed["capture"])
         ):
             raise WorkerProductError("Reviewed 3D-MOT settings differ from the trusted runtime.")
-        selected, _ = materialize_frozen_selection(self.root, request)
+        if (
+            selected.dtype != np.float64
+            or selected.shape != (run["particle_count"], 6)
+            or not np.all(np.isfinite(selected))
+        ):
+            raise WorkerProductError("Frozen 3D-MOT selected states are invalid.")
         started = self._monotonic()
         outcome = self._engine(
             selected,

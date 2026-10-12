@@ -43,6 +43,7 @@ class ReceiverKind(Enum):
     TRANSFER = "transfer"
     ZEEMAN_INDIVIDUAL = "zeeman_individual"
     MOT_2D_INDIVIDUAL = "mot_2d_individual"
+    MOT_3D_INDIVIDUAL = "mot_3d_individual"
 
 
 class ReceiverOperation(Enum):
@@ -88,6 +89,22 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_3D_INDIVIDUAL: _ReceiverDefinition(
+        "mot_3d_zeus_remote.py", "<mot-3d-individual>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
+                   ReceiverOperation.SUBMIT, ReceiverOperation.STATUS,
+                   ReceiverOperation.RETRIEVE}),
+        True,
+        ("-F", "none", "-T", "-o", "BatchMode=yes",
+         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
+         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
+        True, True, True, False, False, True,
+    ),
     ReceiverKind.MOT_2D_INDIVIDUAL: _ReceiverDefinition(
         "mot_2d_zeus_remote.py", "<mot-2d-individual>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
@@ -568,6 +585,12 @@ class PinnedSshPolicy:
         cls, repository_root: Path, executable: Path, *, timeout: float = 90
     ) -> "PinnedSshPolicy":
         return cls(ReceiverKind.MOT_2D_INDIVIDUAL, repository_root, executable, timeout)
+
+    @classmethod
+    def mot_3d_individual(
+        cls, repository_root: Path, executable: Path, *, timeout: float = 90
+    ) -> "PinnedSshPolicy":
+        return cls(ReceiverKind.MOT_3D_INDIVIDUAL, repository_root, executable, timeout)
 
 
 class PinnedSshRunner:

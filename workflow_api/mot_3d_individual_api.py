@@ -8,6 +8,7 @@ from typing import Any, Mapping, Protocol
 from workflow_api.mot_3d_individual_sources import list_individual_mot_3d_sources
 from workflow_api.run_discovery import inspect_run
 from workflow_api.run_records import RunRecordError
+from workflow_api.zeus_snapshot import ZeusProfile
 
 
 class CreationBoundary(Protocol):
@@ -19,6 +20,12 @@ class LocalBoundary(Protocol):
     def submit(self, family: str, run_id: str): ...
 
 
+class ZeusBoundary(Protocol):
+    def preview(self, *, run_id: str, profile: ZeusProfile, session: str) -> dict[str, Any]: ...
+    def confirm(self, *, preview_token: str, session: str) -> dict[str, Any]: ...
+    def refresh(self, *, run_id: str, profile: ZeusProfile) -> dict[str, Any]: ...
+
+
 _FIELDS = {"source_id", "geometry_family", "particle_count", "selection_seed", "simulation_seed", "parameters", "retain_particle_states", "execution_mode"}
 
 
@@ -28,8 +35,8 @@ def _exact(payload: Mapping[str, Any], keys: set[str]) -> None:
 
 
 class IndividualMot3DApi:
-    def __init__(self, root: Path, creation: CreationBoundary, local: LocalBoundary | None = None):
-        self.root = root; self.creation = creation; self.local = local
+    def __init__(self, root: Path, creation: CreationBoundary, local: LocalBoundary | None = None, zeus: ZeusBoundary | None = None):
+        self.root = root; self.creation = creation; self.local = local; self.zeus = zeus
 
     def sources(self) -> dict[str, Any]:
         return list_individual_mot_3d_sources(self.root)
@@ -66,3 +73,29 @@ class IndividualMot3DApi:
             raise RuntimeError("Local 3D-MOT execution is unavailable.")
         handle = self.local.submit("mot_3d", run_id)
         return {"status": "queued", "run_id": handle.run_id, "execution_mode": "local"}
+
+    @staticmethod
+    def _profile(payload: Mapping[str, Any]) -> ZeusProfile:
+        value = payload.get("profile")
+        if not isinstance(value, dict):
+            raise ValueError("Zeus connection profile is invalid.")
+        return ZeusProfile.parse(value)
+
+    def preview_zeus(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
+        _exact(payload, {"run_id", "profile"}); run_id = payload["run_id"]
+        if not isinstance(run_id, str): raise ValueError("Run identifier is invalid.")
+        if self.zeus is None: raise RuntimeError("Zeus 3D-MOT execution is unavailable.")
+        return self.zeus.preview(run_id=run_id, profile=self._profile(payload), session=session_id)
+
+    def confirm_zeus(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
+        _exact(payload, {"preview_token"}); token = payload["preview_token"]
+        if not isinstance(token, str): raise ValueError("Preview token is invalid.")
+        if self.zeus is None: raise RuntimeError("Zeus 3D-MOT execution is unavailable.")
+        return self.zeus.confirm(preview_token=token, session=session_id)
+
+    def refresh_zeus(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
+        del session_id
+        _exact(payload, {"run_id", "profile"}); run_id = payload["run_id"]
+        if not isinstance(run_id, str): raise ValueError("Run identifier is invalid.")
+        if self.zeus is None: raise RuntimeError("Zeus 3D-MOT execution is unavailable.")
+        return self.zeus.refresh(run_id=run_id, profile=self._profile(payload))

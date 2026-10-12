@@ -66,6 +66,7 @@ EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
     "workflow_api/mot_2d_run_plan.py", "workflow_api/mot_2d_run_specification.py",
     "workflow_api/mot_2d_zeus_remote.py", "workflow_api/mot_3d_run_plan.py",
     "workflow_api/mot_3d_run_specification.py",
+    "workflow_api/mot_3d_zeus_remote.py",
 }
 EXPECTED_ZEEMAN_OPERATING_CONSUMERS = {"config.py"}
 EXPECTED_MOT_2D_OPERATING_CONSUMERS = {"config.py"}

@@ -1,4 +1,4 @@
-import { ArrowLeft, CheckCircle2, CircleHelp, FlaskConical, LoaderCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, CircleHelp, LoaderCircle, Play, Server } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   AngledDonutParameters,
@@ -7,17 +7,20 @@ import type {
   Mot3DMode,
   Mot3DPreview,
   Mot3DRequest,
+  Mot3DRun,
   Mot3DSource,
   SinglePassParameters,
 } from "../api/clients/individualMot3D";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/mot3dIndividualSpec.v1";
 
-type Step = "configure" | "validate" | "review" | "run";
+type Step = "configure" | "validate" | "review" | "run" | "monitor" | "results";
 const steps: [Step, string][] = [
   ["configure", "Configure"],
   ["validate", "Validate"],
   ["review", "Review"],
   ["run", "Run"],
+  ["monitor", "Monitor"],
+  ["results", "Results"],
 ];
 const Help = ({ text }: { text: string }) => (
   <span className="help">
@@ -56,6 +59,36 @@ const familyFields: Record<Mot3DFamily, NumericField[]> = {
 
 const format = (value: number, digits = 6) => Number(value.toPrecision(digits)).toLocaleString("en-US", { maximumFractionDigits: 8 });
 
+export function mot3dMonitorCopy(state: string | undefined) {
+  if (!state) return { title: "Status has not been checked", body: "Select Check status to read the verified run record.", attention: true };
+  if (state === "configured") return { title: "Nothing is running yet", body: "Action is required: start the reviewed run.", attention: true };
+  if (state === "queued" || state === "submitted") return { title: "Run is queued", body: "The run is waiting for an execution slot. No action is required.", attention: false };
+  if (state === "running") return { title: "Run is in progress", body: "The 3D-MOT simulation is running. No action is required.", attention: false };
+  if (state === "succeeded") return { title: "Run completed", body: "The verified results are ready.", attention: false };
+  if (state === "failed") return { title: "Run failed safely", body: "Action is required: inspect the failure before deciding whether to create a new run.", attention: true };
+  if (state === "outcome_unknown") return { title: "Zeus outcome needs attention", body: "Do not resubmit. Inspect the original Zeus job first.", attention: true };
+  if (state === "cancelled") return { title: "Run was cancelled", body: "No result was produced. Create a new reviewed run if needed.", attention: true };
+  return { title: "Status is not recognized", body: "Stop and inspect the verified run record.", attention: true };
+}
+
+export async function refreshMot3DTransaction(
+  api: IndividualMot3DApi,
+  mode: Mot3DMode,
+  runId: string,
+  username: string,
+  isCurrent: () => boolean,
+): Promise<Mot3DRun | null> {
+  if (mode === "zeus") {
+    await api.refreshZeus(runId, username);
+    if (!isCurrent()) return null;
+  }
+  const summary = (await api.runs()).find((row) => row.display_name === runId);
+  if (!isCurrent()) return null;
+  if (!summary) throw new Error("The run is not visible in the verified run list yet.");
+  const next = summary.lifecycle === "results_ready" ? await api.run(summary.id) : summary;
+  return isCurrent() ? next : null;
+}
+
 export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; onBack: () => void }) {
   const title = useRef<HTMLHeadingElement>(null), requestSequence = useRef(0), mounted = useRef(true);
   const [step, setStep] = useState<Step>("configure"), [sources, setSources] = useState<Mot3DSource[]>([]), [sourceId, setSourceId] = useState("");
@@ -64,6 +97,7 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
   const [donut, setDonut] = useState<AngledDonutParameters>({ ...spec.defaults.angled_donut });
   const [singlePass, setSinglePass] = useState<SinglePassParameters>({ ...spec.defaults.single_pass });
   const [retain, setRetain] = useState(true), [preview, setPreview] = useState<Mot3DPreview | null>(null), [runId, setRunId] = useState<string | null>(null);
+  const [username, setUsername] = useState(""), [zeusToken, setZeusToken] = useState<string | null>(null), [zeusReconciliation, setZeusReconciliation] = useState(false), [run, setRun] = useState<Mot3DRun | null>(null);
   const [busy, setBusy] = useState(false), [sourcesLoaded, setSourcesLoaded] = useState(false), [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -124,12 +158,35 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
     } catch (caught) { if (mounted.current && sequence === requestSequence.current) setError(errorMessage(caught)); }
     finally { if (mounted.current && sequence === requestSequence.current) setBusy(false); }
   }
+  async function start() {
+    if (!runId) return;
+    const sequence = ++requestSequence.current; setBusy(true); setError(null);
+    try {
+      if (mode === "local") await api.startLocal(runId);
+      else if (!zeusToken) {
+        const reviewed = await api.previewZeus(runId, username);
+        if (mounted.current && sequence === requestSequence.current) { setZeusToken(reviewed.preview_token); setZeusReconciliation(reviewed.effects.reconcile_existing_job); }
+        return;
+      } else await api.confirmZeus(zeusToken);
+      if (mounted.current && sequence === requestSequence.current) setStep("monitor");
+    } catch (caught) { if (mounted.current && sequence === requestSequence.current) setError(errorMessage(caught)); }
+    finally { if (mounted.current && sequence === requestSequence.current) setBusy(false); }
+  }
+  async function refresh() {
+    if (!runId) return;
+    const sequence = ++requestSequence.current; setBusy(true); setError(null);
+    try {
+      const next = await refreshMot3DTransaction(api, mode, runId, username, () => mounted.current && sequence === requestSequence.current);
+      if (next && mounted.current && sequence === requestSequence.current) { setRun(next); if (next.lifecycle === "results_ready") setStep("results"); }
+    } catch (caught) { if (mounted.current && sequence === requestSequence.current) setError(errorMessage(caught)); }
+    finally { if (mounted.current && sequence === requestSequence.current) setBusy(false); }
+  }
   const currentStep = steps.findIndex(([id]) => id === step);
 
   return <main id="main" className="individual-run-page">
     <button className="text-button back-button" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" /> Back to home</button>
     <header className="detail-hero"><p className="eyebrow">Individual simulation · 3D MOT</p><h1 ref={title} tabIndex={-1}>Configure one 3D-MOT simulation</h1><p>Select saved 2D-MOT survivors and review one geometry. Creating the record does not start a simulation.</p></header>
-    <ol className="run-stepper run-stepper--four" aria-label="Run progress">{steps.map(([id, label], index) => <li key={id} className={index < currentStep ? "complete" : index === currentStep ? "current" : "pending"} aria-current={index === currentStep ? "step" : undefined}><span>{index < currentStep ? <CheckCircle2 aria-hidden="true" /> : index + 1}</span>{label}</li>)}</ol>
+    <ol className="run-stepper" aria-label="Run progress">{steps.map(([id, label], index) => <li key={id} className={index < currentStep ? "complete" : index === currentStep ? "current" : "pending"} aria-current={index === currentStep ? "step" : undefined}><span>{index < currentStep ? <CheckCircle2 aria-hidden="true" /> : index + 1}</span>{label}</li>)}</ol>
     {error && <div className="state-panel state-panel--error" role="alert"><strong>Action needed</strong><p>{error}</p></div>}
     {sourcesLoaded && !error && sources.length === 0 && <div className="state-panel" role="status"><strong>No eligible 2D-MOT survivors were found</strong><p>Complete a canonical 2D-MOT campaign or retain the states from an individual 2D-MOT result, then return here.</p></div>}
     <div className="sr-only" aria-live="polite">{busy ? "Validating the reviewed setup" : `Current step: ${step}`}</div>
@@ -154,6 +211,12 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
       <div className="form-actions"><button className="secondary-button" type="button" onClick={() => { requestSequence.current += 1; setPreview(null); setStep("configure"); }}>Change choices</button><button className="primary-button" type="button" disabled={busy} onClick={() => void create()}>{busy ? "Creating…" : "Create run record"}</button></div>
     </section>}
 
-    {step === "run" && runId && <section className="run-stage"><div className="action-banner"><FlaskConical aria-hidden="true" /><div><strong>Run record created</strong><p>No simulation has started and nothing was submitted to Zeus.</p></div></div><code className="run-record-id">{runId}</code><div className="scientific-role-note"><strong>Execution is not available in this slice yet</strong><p>Start controls will appear only after the local and Zeus execution contracts have been implemented and reviewed.</p></div><div className="form-actions"><button className="secondary-button" type="button" onClick={onBack}>Back to home</button></div></section>}
+    {step === "run" && runId && <section className="run-stage"><div className="action-banner"><Play aria-hidden="true" /><div><strong>Reviewed run is ready</strong><p>Nothing is running yet. Starting requires this explicit action.</p></div></div><code className="run-record-id">{runId}</code>
+      {mode === "zeus" && <><div className="form-field zeus-run-profile"><label htmlFor="mot3d-zeus-username">Technion username<span>Used with the SSH key already configured on this computer. The remote project directory is derived automatically.</span></label><input id="mot3d-zeus-username" value={username} placeholder="for example, tal.noa" pattern="[A-Za-z][A-Za-z0-9._-]{0,31}" disabled={zeusToken !== null} onChange={(event) => setUsername(event.currentTarget.value)} /></div>{zeusToken && <div className="submission-attention" role="status"><strong>{zeusReconciliation ? "An existing Zeus job is ready to be linked" : "One scalar Zeus job is ready for confirmation"}</strong><p>{zeusReconciliation ? "The reviewed package matches an existing job. Confirm below to link it; no new job will be submitted." : "The frozen package was checked. Confirm below to submit exactly one job; no later job is submitted automatically."}</p></div>}</>}
+      <div className="form-actions">{mode === "zeus" && zeusToken && <button className="secondary-button" type="button" disabled={busy} onClick={() => { setZeusToken(null); setZeusReconciliation(false); }}>Change connection</button>}<button className="primary-button" type="button" disabled={busy || (mode === "zeus" && !/^[A-Za-z][A-Za-z0-9._-]{0,31}$/.test(username))} onClick={() => void start()}>{mode === "local" ? <Play aria-hidden="true" /> : <Server aria-hidden="true" />}{busy ? "Working…" : mode === "local" ? "Start on this computer" : zeusToken ? zeusReconciliation ? "Confirm and link existing Zeus job" : "Confirm and submit one Zeus job" : "Review Zeus submission"}</button></div></section>}
+
+    {step === "monitor" && <section className="run-stage">{(() => { const copy = mot3dMonitorCopy(run?.record_state); return <div className={`action-banner ${copy.attention ? "action-banner--attention" : "action-banner--running"}`}><LoaderCircle className={busy ? "spin" : ""} aria-hidden="true" /><div><strong>{copy.title}</strong><p>{copy.body}</p></div></div>; })()}<div className="form-actions"><button className="secondary-button" type="button" disabled={busy} onClick={() => void refresh()}>{busy ? "Checking…" : "Check status"}</button></div></section>}
+
+    {step === "results" && run && <section className="run-stage"><div className="success-panel"><CheckCircle2 aria-hidden="true" /><h2>Verified results are ready</h2></div><div className="scientific-role-note"><strong>Scientific role: individual only</strong><p>This result does not become campaign evidence automatically.</p></div><article className="review-card"><h3>Summary</h3><dl><div><dt>Selected 2D-MOT survivors</dt><dd>{run.metrics?.n_input.toLocaleString() ?? "—"}</dd></div><div><dt>Usable at simulation end</dt><dd>{run.metrics ? `${run.metrics.usable_at_end_count.toLocaleString()} (${(100 * run.metrics.usable_at_end_fraction).toFixed(3)}%)` : "—"}</dd></div><div><dt>Residence-qualified captured</dt><dd>{run.metrics ? `${run.metrics.residence_qualified_captured_count.toLocaleString()} (${(100 * run.metrics.residence_qualified_captured_fraction).toFixed(3)}%)` : "—"}</dd></div><div><dt>Elapsed time</dt><dd>{run.metrics ? `${run.metrics.elapsed_s.toFixed(3)} s` : "—"}</dd></div><div><dt>Particle states</dt><dd>{run.retention.status.replaceAll("_", " ")}</dd></div></dl><details><summary>Technical provenance</summary><pre className="settings-json">{JSON.stringify({ run_id: run.display_name, execution: run.execution, completed_at: run.results.completed_at, provenance: run.metrics?.provenance }, null, 2)}</pre></details></article></section>}
   </main>;
 }
