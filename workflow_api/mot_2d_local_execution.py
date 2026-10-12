@@ -372,9 +372,21 @@ class Mot2DLocalWorker:
         identities = _validated_selection(sampling, records, run["particle_count"])
         fixed = MOT_2D_RUN_SPECIFICATION["fixed_classification"]
         mode = run["execution_mode"]
-        expected_workers = MOT_2D_RUN_SPECIFICATION["workers_by_execution_mode"][mode]
+        expected_workers = execution.get("workers")
+        worker_policy = MOT_2D_RUN_SPECIFICATION["local_worker_count"]
         if (
-            execution != {"mode": mode, "workers": expected_workers}
+            execution.get("mode") != mode
+            or set(execution) != {"mode", "workers"}
+            or isinstance(expected_workers, bool)
+            or not isinstance(expected_workers, int)
+            or (
+                mode == "local"
+                and not worker_policy["minimum"] <= expected_workers <= worker_policy["maximum"]
+            )
+            or (
+                mode == "zeus"
+                and expected_workers != MOT_2D_RUN_SPECIFICATION["workers_by_execution_mode"]["zeus"]
+            )
             or run["particle_count"] > MOT_2D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"][mode]
             or simulation["particle_count"] != run["particle_count"]
             or sampling["selected_count"] != run["particle_count"]

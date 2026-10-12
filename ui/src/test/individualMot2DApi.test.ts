@@ -19,6 +19,7 @@ const request: Mot2DRequest = {
   s0: 1.3,
   detuning_gamma: -0.92,
   magnet_radius_m: 0.046,
+  npools: 8,
   retain_particle_states: false,
   execution_mode: "local",
 };
@@ -47,7 +48,7 @@ const preview = () => ({
     retention: { particle_states: false },
     suitability: "individual_only",
     output_disposition: "discard_survivor_states_after_summary",
-    locked_settings: {},
+    locked_settings: { workers: 8 },
     lifecycle_state: "configured",
     laboratory_specification: {},
     numerical_policy: {},

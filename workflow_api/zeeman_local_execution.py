@@ -40,7 +40,10 @@ from workflow_api.run_execution import (
 )
 from workflow_api.run_records import RunRecordError, RunRecordStore, encode_record
 from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
-from workflow_api.zeeman_run_specification import ZEEMAN_RUN_SPECIFICATION
+from workflow_api.zeeman_run_specification import (
+    ZEEMAN_RUN_SPECIFICATION,
+    local_worker_maximum,
+)
 
 
 class ZeemanEngine(Protocol):
@@ -91,9 +94,15 @@ class ZeemanLocalWorker:
         mode = run["execution_mode"]
         if run["family"] != "zeeman" or mode not in {"local", "zeus"}:
             raise WorkerProductError("Local Zeeman worker received the wrong run family or mode.")
-        if execution["mode"] != mode or execution["workers"] != (
-            ZEEMAN_RUN_SPECIFICATION["workers_by_execution_mode"][mode]
-        ):
+        worker_policy = ZEEMAN_RUN_SPECIFICATION["worker_policy"]
+        workers_valid = (
+            worker_policy["local"]["minimum"]
+            <= execution["workers"]
+            <= local_worker_maximum(simulation["particle_count"])
+            if mode == "local"
+            else execution["workers"] == worker_policy["zeus"]["fixed"]
+        )
+        if execution["mode"] != mode or not workers_valid:
             raise WorkerProductError("Local worker count is not the server-owned policy value.")
         if simulation["particle_count"] != run["particle_count"]:
             raise WorkerProductError("Reviewed particle count is inconsistent.")
@@ -115,8 +124,7 @@ class ZeemanLocalWorker:
         if (
             laser != expected_laser
             or field != expected_field
-            or downstream["mot_2d_laser"] != _plain(MOT_2D_LASER_CONFIG)
-            or downstream["mot_2d_magnet_radius_m"] != MOT_2D_MAGNET_RADIUS_M
+            or downstream["mot_2d_laser"].get("swap_polarization") is not False
             or numerical["solver"] != "RK4StCustom"
             or numerical["dt_s"] != ZEEMAN_SIM_CONFIG["dt_s"]
             or numerical["t_max_s"] != ZEEMAN_SIM_CONFIG["t_max_s"]

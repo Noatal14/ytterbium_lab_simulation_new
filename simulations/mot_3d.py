@@ -100,6 +100,7 @@ def mot_3d_simulation(
     seed=DEFAULT_RANDOM_SEED,
     magnetic_gradient_G_cm=None,
     capture_config=None,
+    progress_callback=None,
 ):
     """Propagate saved 2D-MOT states through the 3D-MOT stage."""
     if len(survivor_states) == 0:
@@ -132,6 +133,7 @@ def mot_3d_simulation(
         sim_function=_configured_3d_solver(),
         npools=npools,
         seed_idx=seed,
+        progress_callback=progress_callback,
     )
     capture = MOT_3D_CAPTURE_CONFIG if capture_config is None else capture_config
     captured_states, _ = extract_3d_mot_captured(

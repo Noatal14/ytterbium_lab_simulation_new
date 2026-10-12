@@ -40,7 +40,7 @@ export function mot2dMonitorCopy(state: string | undefined) {
     return {
       title: "Status has not been checked",
       body: "Select Check status to read the verified run record.",
-      attention: true,
+      attention: false,
     };
   if (state === "configured")
     return {
@@ -126,6 +126,7 @@ export function IndividualMot2DRun({
     [sources, setSources] = useState<Mot2DSource[]>([]),
     [source, setSource] = useState("");
   const [mode, setMode] = useState<Mot2DMode>("local"),
+    [npools, setNpools] = useState(8),
     [particles, setParticles] = useState(200),
     [selectionSeed, setSelectionSeed] = useState(42),
     [motSeed, setMotSeed] = useState(42);
@@ -148,6 +149,8 @@ export function IndividualMot2DRun({
         if (active) {
           setSources(rows);
           setSource(rows[0]?.id ?? "");
+          const available = rows[0]?.available_particle_count.pooled ?? 0;
+          if (available > 0) setParticles((current) => Math.min(current, available));
         }
       })
       .catch((e) => active && setError(message(e)));
@@ -184,7 +187,9 @@ export function IndividualMot2DRun({
     detuning >= -1.55 &&
     detuning <= -0.85 &&
     radiusMm >= 45 &&
-    radiusMm <= 51;
+    radiusMm <= 51 &&
+    Number.isInteger(npools) &&
+    (mode === "local" ? npools >= 1 && npools <= 256 : npools === 200);
   const request = useMemo(
     () => ({
       source_id: source,
@@ -194,6 +199,7 @@ export function IndividualMot2DRun({
       s0,
       detuning_gamma: detuning,
       magnet_radius_m: radiusMm / 1000,
+      npools,
       retain_particle_states: retain,
       execution_mode: mode,
     }),
@@ -205,10 +211,15 @@ export function IndividualMot2DRun({
       s0,
       detuning,
       radiusMm,
+      npools,
       retain,
       mode,
     ],
   );
+  function changeMode(next: Mot2DMode) {
+    setMode(next);
+    setNpools(next === "local" ? 8 : 200);
+  }
   async function act(work: () => Promise<void>) {
     setBusy(true);
     setError(null);
@@ -368,7 +379,15 @@ export function IndividualMot2DRun({
                 max={max}
                 value={particles}
                 onChange={(e) => setParticles(e.currentTarget.valueAsNumber)}
+                aria-describedby="mot2d-particle-guidance"
               />
+              <small id="mot2d-particle-guidance" className={particles > max ? "field-error" : undefined}>
+                {selected
+                  ? particles > max
+                    ? `This source contains only ${max.toLocaleString()} available particles. Choose ${max.toLocaleString()} or fewer.`
+                    : `Up to ${max.toLocaleString()} particles are available for this execution mode.`
+                  : "Select a Zeeman survivor source first."}
+              </small>
             </div>
             <div className="form-field">
               <label htmlFor="mot2d-selection-seed">
@@ -401,7 +420,7 @@ export function IndividualMot2DRun({
               />
             </div>
             <div className="form-field">
-              <label htmlFor="mot2d-s0">Laser intensity (s₀)</label>
+              <label htmlFor="mot2d-s0">Saturation parameter (s₀)</label>
               <input
                 id="mot2d-s0"
                 type="number"
@@ -444,7 +463,7 @@ export function IndividualMot2DRun({
                 <input
                   type="radio"
                   checked={mode === "local"}
-                  onChange={() => setMode("local")}
+                  onChange={() => changeMode("local")}
                 />{" "}
                 This computer
               </label>
@@ -452,11 +471,12 @@ export function IndividualMot2DRun({
                 <input
                   type="radio"
                   checked={mode === "zeus"}
-                  onChange={() => setMode("zeus")}
+                  onChange={() => changeMode("zeus")}
                 />{" "}
                 Zeus
               </label>
             </div>
+            {mode === "local" && <div className="form-field local-worker-field"><label htmlFor="mot2d-npools">CPU workers <Help text="Choose how many parallel worker processes this computer should use. A larger value is useful only when the machine has enough available CPU cores." /></label><input id="mot2d-npools" type="number" min="1" max="256" value={npools} onChange={(event) => setNpools(event.currentTarget.valueAsNumber)} /></div>}
           </fieldset>
           <label className="check-control">
             <input
@@ -671,7 +691,7 @@ export function IndividualMot2DRun({
                 </dd>
               </div>
               <div>
-                <dt>Elapsed time</dt>
+                <dt>Runtime</dt>
                 <dd>
                   {run.metrics?.elapsed_s === undefined
                     ? "—"

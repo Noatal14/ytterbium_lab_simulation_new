@@ -59,6 +59,7 @@ def zeeman_simulation(
     t_max_s=ZEEMAN_SIM_CONFIG["t_max_s"],
     start_distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
     cutoff_distance_m=ZEEMAN_SIM_CONFIG["cutoff_distance_m"],
+    progress_callback=None,
 ):
     """Generate a thermal beam and return the states that survive Zeeman."""
     _resolved_run_parameters({"zeeman_field_config": zeeman_field_config})
@@ -97,6 +98,7 @@ def zeeman_simulation(
         sim_function=simulation_function,
         npools=npools,
         seed_idx=seed,
+        progress_callback=progress_callback,
     )
     survivor_states, survivor_indices = zeeman_extract_survivors(
         results, cutoff_distance_m

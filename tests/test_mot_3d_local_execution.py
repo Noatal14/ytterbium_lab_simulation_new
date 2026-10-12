@@ -51,6 +51,7 @@ def _plan(root: Path, monkeypatch, *, retained=True, count=5, mode="local"):
         "source_id": SOURCE_ID, "geometry_family": "angled_donut",
         "particle_count": count, "selection_seed": 7, "simulation_seed": 11,
         "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]),
+        "npools": 8 if mode == "local" else 200,
         "retain_particle_states": retained, "execution_mode": mode,
     }
     return build_mot_3d_run_plan(

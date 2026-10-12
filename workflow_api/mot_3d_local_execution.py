@@ -216,7 +216,21 @@ class Mot3DLocalWorker:
                 MOT_3D_RUN_SPECIFICATION["authority_references"]["numerical_policy"]
             )
             or run["particle_count"] > MOT_3D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"][mode]
-            or execution != {"mode": mode, "workers": MOT_3D_RUN_SPECIFICATION["workers_by_execution_mode"][mode]}
+            or execution.get("mode") != mode
+            or set(execution) != {"mode", "workers"}
+            or isinstance(execution.get("workers"), bool)
+            or not isinstance(execution.get("workers"), int)
+            or (
+                mode == "local"
+                and not MOT_3D_RUN_SPECIFICATION["local_worker_count"]["minimum"]
+                <= execution["workers"]
+                <= MOT_3D_RUN_SPECIFICATION["local_worker_count"]["maximum"]
+            )
+            or (
+                mode == "zeus"
+                and execution["workers"]
+                != MOT_3D_RUN_SPECIFICATION["workers_by_execution_mode"]["zeus"]
+            )
             or simulation["particle_count"] != run["particle_count"]
             or simulation["stochastic"] is not True
             or simulation["gravity_enabled"] is not fixed["gravity_enabled"]

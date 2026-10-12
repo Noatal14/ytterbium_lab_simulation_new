@@ -185,6 +185,10 @@ class RepositorySnapshot:
     provider: str = "pinned-git-read-only-v1"
 
 
+class RepositoryFilesChangedError(RuntimeError):
+    """Raised when reviewed runtime inputs are not represented by HEAD."""
+
+
 class RepositorySnapshotProvider:
     def __init__(
         self,
@@ -310,7 +314,9 @@ class RepositorySnapshotProvider:
             "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", *self.paths,
         ))
         if status:
-            raise RuntimeError("Scientific campaign files contain uncommitted changes.")
+            raise RepositoryFilesChangedError(
+                "Reviewed simulation files contain uncommitted changes."
+            )
         return RepositorySnapshot(head)
 
 

@@ -24,6 +24,7 @@ from workflow_api.error_catalog import (
     render_catalog,
     resolve_error,
 )
+from workflow_api.repository_snapshot import RepositoryFilesChangedError
 from workflow_api.server import POST_ROUTES, ReadOnlyWorkflowHandler
 from workflow_api.zeus_confirmation import ZeusConfirmationError
 from workflow_api.zeus_confirmation_submission import ZeusConfirmationSubmissionError
@@ -390,6 +391,8 @@ def test_every_catalogued_creation_error_matches_the_real_handler():
             error = FileExistsError()
         elif case == "creation_failed":
             error = RuntimeError("secret internal failure")
+        elif case == "local_files_changed":
+            error = RepositoryFilesChangedError("secret local path")
         else:
             error = ValueError(spec.message)
         with _real_handler(error) as base:

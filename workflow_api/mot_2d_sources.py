@@ -94,6 +94,7 @@ def inspect_source(
     *,
     include_records: bool = False,
     scan_limits: SourceScanLimits | None = None,
+    expected_seeds: tuple[int, ...] = EXPECTED_SEEDS,
 ) -> dict[str, Any]:
     repository_root = repository_root.resolve()
     source_root = (repository_root / SOURCE_ROOT).resolve()
@@ -103,7 +104,13 @@ def inspect_source(
     identities: list[str] = []; records: list[dict[str, Any]] = []
     total_bytes = 0
     total_rows = 0
-    for seed in EXPECTED_SEEDS:
+    if (
+        not expected_seeds
+        or len(expected_seeds) != len(set(expected_seeds))
+        or any(isinstance(seed, bool) or not isinstance(seed, int) or seed < 0 for seed in expected_seeds)
+    ):
+        raise ValueError("invalid expected seeds")
+    for seed in expected_seeds:
         matches = list(directory.glob(f"production_zeeman_n*_dt*_seed{seed}.npy"))
         if len(matches) != 1:
             raise ValueError("missing or duplicate canonical seed")
@@ -192,7 +199,7 @@ def inspect_source(
         "id": _source_id(relative),
         "path": relative.as_posix(),
         "profile": next(iter(profiles)),
-        "ensemble_count": len(EXPECTED_SEEDS),
+        "ensemble_count": len(expected_seeds),
         "minimum_survivors": min(survivor_counts),
         "maximum_survivors": max(survivor_counts),
         "fingerprint": fingerprint,

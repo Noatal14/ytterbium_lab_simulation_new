@@ -23,6 +23,7 @@ export type Mot2DRequest = {
   s0: number;
   detuning_gamma: number;
   magnet_radius_m: number;
+  npools: number;
   retain_particle_states: boolean;
   execution_mode: Mot2DMode;
 };
@@ -182,9 +183,9 @@ function parseSources(v: unknown): Mot2DSource[] {
       invalid("source catalog");
     if (row.source_kind === "canonical_folder") {
       if (
-        row.source_qualification !== "canonical_campaign_source" ||
+        !["canonical_campaign_source", "verified_individual_folder"].includes(String(row.source_qualification)) ||
         !exactKeys(provenance, ["validation", "profile", "fingerprint"]) ||
-        provenance.validation !== "canonical_zeeman_folder" ||
+        !["canonical_zeeman_folder", "verified_individual_zeeman_folder"].includes(String(provenance.validation)) ||
         !printable(provenance.profile) ||
         !hex64(provenance.fingerprint)
       )
@@ -286,7 +287,7 @@ function parsePreview(v: unknown): Mot2DPreview {
     retention = p.retention as Record<string, unknown>;
   const sourcePair =
     (source.kind === "canonical_folder" &&
-      source.qualification === "canonical_campaign_source") ||
+      ["canonical_campaign_source", "verified_individual_folder"].includes(String(source.qualification))) ||
     (source.kind === "retained_individual_zeeman" &&
       source.qualification === "verified_individual_result");
   const mode = String(execution.mode);
@@ -680,6 +681,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
         row.plan.controls.s0 !== request.s0 ||
         row.plan.controls.detuning_gamma !== request.detuning_gamma ||
         row.plan.controls.magnet_radius_m !== request.magnet_radius_m ||
+        row.plan.locked_settings.workers !== request.npools ||
         row.plan.retention.particle_states !== request.retain_particle_states
       )
         throw new Error("The review did not match the request.");

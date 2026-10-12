@@ -79,7 +79,7 @@ function previewFor(request: Mot3DRequest): Mot3DPreview {
         ...spec.fixed_classification,
         sampling_algorithm: spec.sampling.algorithm,
         sampling_version: spec.sampling.version,
-        workers: spec.workers_by_execution_mode[request.execution_mode],
+        workers: request.npools,
       },
       lifecycle_state: "configured",
       laboratory_specification: spec.authority_references.laboratory_specification,

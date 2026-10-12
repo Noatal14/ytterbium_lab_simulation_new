@@ -30,6 +30,10 @@ def plan(*, retained=True, count=4):
         {
             "particle_count": count,
             "seed": 71,
+            "mot_2d_s0": 1.3,
+            "mot_2d_detuning_gamma": -0.9196610026631429,
+            "mot_2d_magnet_radius_m": 0.04676406447474441,
+            "npools": min(8, count),
             "retain_particle_states": retained,
             "execution_mode": "local",
         },
@@ -76,7 +80,7 @@ def test_local_worker_calls_trusted_engine_once_and_builds_exact_metrics(retaine
     call = engine.calls[0]
     assert call["N_particles"] == 4
     assert call["seed"] == 71
-    assert call["npools"] == 8
+    assert call["npools"] == 4
     assert call["dt"] == 4e-5
     assert call["stochastic"] is True
     resolved = request(retained=retained).configuration["resolved"]
@@ -137,7 +141,6 @@ def test_local_worker_rejects_invalid_state_or_index_evidence(survivors, indices
     [
         (("zeeman", "laser", "waist_m"), 0.008),
         (("zeeman", "field", "magnet_polarization_T"), -1.0),
-        (("downstream_boundary", "mot_2d_magnet_radius_m"), 0.05),
         (("numerical_policy", "solver"), "other"),
         (("numerical_policy", "dt_s"), 5e-5),
         (("numerical_policy", "t_max_s"), 0.03),
@@ -159,6 +162,34 @@ def test_reviewed_construction_drift_fails_before_engine_call(path, value):
         engine=engine, monotonic=iter([1.0, 2.0]).__next__, clock=lambda: NOW
     )
     with pytest.raises(WorkerProductError, match="trusted runtime"):
+        worker.run(altered)
+    assert engine.calls == []
+
+
+def test_worker_rechecks_current_host_cpu_limit_before_engine_call(monkeypatch):
+    import workflow_api.zeeman_run_specification as specification
+
+    reviewed = request(count=12)
+    monkeypatch.setattr(specification.os, "cpu_count", lambda: 4)
+    engine = Engine()
+    worker = ZeemanLocalWorker(
+        engine=engine, monotonic=iter([1.0, 2.0]).__next__, clock=lambda: NOW
+    )
+    with pytest.raises(WorkerProductError, match="worker count"):
+        worker.run(reviewed)
+    assert engine.calls == []
+
+
+def test_worker_rejects_more_processes_than_particles_before_engine_call():
+    base = request(count=4)
+    configuration = copy.deepcopy(dict(base.configuration))
+    configuration["resolved"]["execution"]["workers"] = 5
+    altered = WorkerRequest(base.run, configuration, base.inputs)
+    engine = Engine()
+    worker = ZeemanLocalWorker(
+        engine=engine, monotonic=iter([1.0, 2.0]).__next__, clock=lambda: NOW
+    )
+    with pytest.raises(WorkerProductError, match="worker count"):
         worker.run(altered)
     assert engine.calls == []
 
@@ -229,6 +260,10 @@ def test_background_pool_is_bounded_and_cancels_only_proven_queued_work(tmp_path
             {
                 "particle_count": 4,
                 "seed": 72,
+                "mot_2d_s0": 1.3,
+                "mot_2d_detuning_gamma": -0.9196610026631429,
+                "mot_2d_magnet_radius_m": 0.04676406447474441,
+                "npools": 4,
                 "retain_particle_states": False,
                 "execution_mode": "local",
             },
@@ -299,6 +334,10 @@ def test_cancelled_key_cannot_be_resubmitted_before_durable_cancel_cas(
                 {
                     "particle_count": 4,
                     "seed": seed,
+                    "mot_2d_s0": 1.3,
+                    "mot_2d_detuning_gamma": -0.9196610026631429,
+                    "mot_2d_magnet_radius_m": 0.04676406447474441,
+                    "npools": 4,
                     "retain_particle_states": False,
                     "execution_mode": "local",
                 },

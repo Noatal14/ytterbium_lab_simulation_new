@@ -29,6 +29,7 @@ class Mot3DRunRequest:
     selection_seed: int
     simulation_seed: int
     parameters: Mapping[str, float]
+    npools: int
     retain_particle_states: bool
     execution_mode: str
 
@@ -84,6 +85,16 @@ def _freeze(value: Any) -> Any:
 
 def validate_mot_3d_run_request(value: Mapping[str, Any]) -> Mot3DRunRequest:
     spec = MOT_3D_RUN_SPECIFICATION
+    if type(value) is dict and set(value) == set(spec["request_fields"]) - {"npools"}:
+        mode = value.get("execution_mode")
+        value = {
+            **value,
+            "npools": (
+                spec["local_worker_count"]["default"]
+                if mode == "local"
+                else spec["workers_by_execution_mode"]["zeus"]
+            ),
+        }
     if type(value) is not dict or set(value) != set(spec["request_fields"]):
         raise ValueError("Individual 3D-MOT request fields are invalid.")
     mode = value["execution_mode"]
@@ -114,7 +125,19 @@ def validate_mot_3d_run_request(value: Mapping[str, Any]) -> Mot3DRunRequest:
         if isinstance(item, bool) or not isinstance(item, (int, float)) or not math.isfinite(item) or not bounds["minimum"] <= item <= bounds["maximum"]:
             raise ValueError(f"{name} is outside the reviewed range.")
         normalized[name] = float(item)
-    return Mot3DRunRequest(source_id, family, count, seeds[0], seeds[1], _freeze(normalized), value["retain_particle_states"], mode)
+    npools = value["npools"]
+    worker_policy = spec["local_worker_count"]
+    if (
+        isinstance(npools, bool)
+        or not isinstance(npools, int)
+        or (
+            mode == "local"
+            and not worker_policy["minimum"] <= npools <= worker_policy["maximum"]
+        )
+        or (mode == "zeus" and npools != spec["workers_by_execution_mode"]["zeus"])
+    ):
+        raise ValueError("Worker count is outside the supported range.")
+    return Mot3DRunRequest(source_id, family, count, seeds[0], seeds[1], _freeze(normalized), npools, value["retain_particle_states"], mode)
 
 
 def _sample(source: ResolvedMot3DSource, count: int, seed: int) -> dict[str, Any]:
@@ -180,7 +203,7 @@ def build_mot_3d_run_plan(request_value: Mapping[str, Any], *, repository_root: 
         "sampling": sampling,
         "mot_3d": {"geometry_family": request.geometry_family, "parameters": _plain(parameters), "derived_parameters": _plain(derived), "resolved_profile": _plain(profile), "capture": _plain(fixed["capture"])},
         "simulation": {"particle_count": request.particle_count, "simulation_seed": request.simulation_seed, "stochastic": True, "gravity_enabled": fixed["gravity_enabled"]},
-        "execution": {"mode": request.execution_mode, "workers": MOT_3D_RUN_SPECIFICATION["workers_by_execution_mode"][request.execution_mode]},
+        "execution": {"mode": request.execution_mode, "workers": request.npools},
     }
     configuration = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["configuration"], "run_id": run_id, "family": "mot_3d", "laboratory_spec": {"version": LABORATORY_SPEC_VERSION, "sha256": LABORATORY_SPEC_SHA256}, "numerical_policy": {"version": NUMERICAL_POLICY_VERSION, "sha256": NUMERICAL_POLICY_SHA256}, "resolved": resolved}
     inputs = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["inputs"], "run_id": run_id, "family": "mot_3d", "artifacts": _artifacts(source)}

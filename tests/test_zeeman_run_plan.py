@@ -18,6 +18,10 @@ from workflow_api.zeeman_run_plan import (
 REQUEST = {
     "particle_count": 1_000,
     "seed": 123,
+    "mot_2d_s0": 1.3,
+    "mot_2d_detuning_gamma": -0.9196610026631429,
+    "mot_2d_magnet_radius_m": 0.04676406447474441,
+    "npools": 8,
     "retain_particle_states": True,
     "execution_mode": "local",
 }
@@ -65,7 +69,7 @@ def test_request_rejects_missing_or_extra_fields():
 
 def test_zeus_allows_its_larger_reviewed_particle_limit():
     value = validate_zeeman_run_request(
-        {**REQUEST, "particle_count": 50_000, "execution_mode": "zeus"}
+        {**REQUEST, "particle_count": 50_000, "execution_mode": "zeus", "npools": 200}
     )
     assert value.particle_count == 50_000
 
@@ -74,7 +78,7 @@ def test_zeus_allows_its_larger_reviewed_particle_limit():
 @pytest.mark.parametrize("retain", [False, True])
 def test_plan_resolves_canonical_configuration_and_valid_d2_records(mode, workers, retain):
     plan = build_zeeman_run_plan(
-        {**REQUEST, "execution_mode": mode, "retain_particle_states": retain},
+        {**REQUEST, "execution_mode": mode, "npools": workers, "retain_particle_states": retain},
         **CONTEXT,
     )
     records = plan.storage_records()
@@ -91,12 +95,14 @@ def test_plan_resolves_canonical_configuration_and_valid_d2_records(mode, worker
     assert resolved["zeeman"]["magnet_profile_name"] == CANONICAL_ZEEMAN_PROFILE_NAME
     assert resolved["numerical_policy"]["solver"] == "RK4StCustom"
     assert resolved["numerical_policy"]["dt_s"] == pytest.approx(40e-6)
-    assert resolved["downstream_boundary"]["mot_2d_laser"] == (
-        run_plan.MOT_2D_LASER_CONFIG
-    )
-    assert resolved["downstream_boundary"]["mot_2d_magnet_radius_m"] == (
-        run_plan.MOT_2D_MAGNET_RADIUS_M
-    )
+    assert resolved["downstream_boundary"]["mot_2d_laser"] == {
+        "s0": REQUEST["mot_2d_s0"],
+        "detuning_gamma": REQUEST["mot_2d_detuning_gamma"],
+        "swap_polarization": False,
+    }
+    assert resolved["downstream_boundary"]["mot_2d_magnet_radius_m"] == REQUEST[
+        "mot_2d_magnet_radius_m"
+    ]
     assert resolved["execution"]["workers"] == workers
     assert plan.review.locked_settings["workers"] == workers
     assert plan.status["state"] == "configured"
@@ -175,7 +181,7 @@ def test_resolved_laser_and_field_freeze_complete_model_semantics():
 def test_local_and_zeus_plans_have_identical_science():
     local = build_zeeman_run_plan(REQUEST, **CONTEXT)
     zeus = build_zeeman_run_plan(
-        {**REQUEST, "execution_mode": "zeus"}, **CONTEXT
+        {**REQUEST, "execution_mode": "zeus", "npools": 200}, **CONTEXT
     )
     local_resolved = local.storage_records()["configuration"]["resolved"]
     zeus_resolved = zeus.storage_records()["configuration"]["resolved"]

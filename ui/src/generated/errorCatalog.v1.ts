@@ -402,6 +402,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "creation",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "creation",
     "code": "rate_limited",
     "semantic": "other"
   },

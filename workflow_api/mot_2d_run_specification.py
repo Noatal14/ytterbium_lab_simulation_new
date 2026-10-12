@@ -17,7 +17,7 @@ from lab_setup.numerical_policy import NUMERICAL_POLICY
 
 SPECIFICATION_PATH = Path(__file__).with_name("specifications") / "mot_2d_individual_v1.json"
 MAX_SPECIFICATION_BYTES = 32 * 1024
-_FIELDS = ["source_id", "particle_count", "selection_seed", "mot_seed", "s0", "detuning_gamma", "magnet_radius_m", "retain_particle_states", "execution_mode"]
+_FIELDS = ["source_id", "particle_count", "selection_seed", "mot_seed", "s0", "detuning_gamma", "magnet_radius_m", "npools", "retain_particle_states", "execution_mode"]
 
 
 def _freeze(value: Any) -> Any:
@@ -38,7 +38,7 @@ def _unique(pairs):
 
 
 def _validate(value: Any) -> dict[str, Any]:
-    keys = {"spec_version", "request_fields", "particle_count", "selection_seed", "mot_seed", "controls", "workers_by_execution_mode", "sampling", "fixed_classification"}
+    keys = {"spec_version", "request_fields", "particle_count", "selection_seed", "mot_seed", "controls", "workers_by_execution_mode", "local_worker_count", "sampling", "fixed_classification"}
     if not isinstance(value, dict) or set(value) != keys or value["spec_version"] != "mot-2d-individual-v1" or value["request_fields"] != _FIELDS:
         raise ValueError("Invalid individual 2D-MOT specification.")
     modes = {"local", "zeus"}
@@ -63,6 +63,8 @@ def _validate(value: Any) -> dict[str, Any]:
             raise ValueError("Invalid controls.")
     if value["workers_by_execution_mode"] != {"local": DEFAULT_NUM_POOLS, "zeus": 200}:
         raise ValueError("Invalid worker policy.")
+    if value["local_worker_count"] != {"minimum": 1, "maximum": 256, "default": DEFAULT_NUM_POOLS}:
+        raise ValueError("Invalid local worker policy.")
     if value["sampling"] != {"algorithm": "pcg64-raw-partial-fisher-yates-unbiased", "version": "v1", "canonical_order": "constituent-record-order-then-row-index"}:
         raise ValueError("Invalid sampling policy.")
     fixed = value["fixed_classification"]

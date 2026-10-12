@@ -34,21 +34,18 @@ describe("onboarding home", () => {
     await screen.findByRole("button", { name: "Open campaign" });
   });
 
-  it("renders honest sample labels and values as adjacent definition pairs", async () => {
+  it("keeps repository and connection diagnostics out of the home hero", async () => {
     render(<App api={fixtureApi} creation={creationFixture} />);
-    const branchLabel = screen.getByText("Branch");
-    expect(branchLabel.tagName).toBe("DT");
-    expect(branchLabel.nextElementSibling).toHaveTextContent("Unavailable in sample data");
-    const zeusLabel = screen.getByText("Zeus connection");
-    expect(zeusLabel.tagName).toBe("DT");
-    expect(zeusLabel.nextElementSibling).toHaveTextContent("Not configured in sample data");
+    expect(screen.queryByText("Branch")).not.toBeInTheDocument();
+    expect(screen.queryByText("Not configured in sample data")).not.toBeInTheDocument();
     await screen.findByRole("button", { name: "Open campaign" });
   });
 
   it("uses the same icon-and-label pattern for every navigation item", async () => {
     render(<App api={fixtureApi} creation={creationFixture} />);
     const navigation = screen.getByRole("navigation", { name: "Primary navigation" });
-    expect(navigation.querySelectorAll("svg")).toHaveLength(3);
+    expect(navigation.querySelectorAll("svg")).toHaveLength(2);
+    expect(screen.queryByRole("link", { name: "Campaigns" })).not.toBeInTheDocument();
     await screen.findByRole("button", { name: "Open campaign" });
   });
 
@@ -148,7 +145,7 @@ describe("onboarding home", () => {
     };
     render(<App api={blockedApi} creation={creationFixture} />);
     await screen.findByRole("button", { name: "Open campaign" });
-    await user.click(screen.getByRole("link", { name: /Zeus jobs/i }));
+    await user.click(screen.getByRole("link", { name: /Zeus connection/i }));
     expect(screen.getByRole("heading", { name: "Campaign job readiness" })).toBeInTheDocument();
     expect(screen.getByText("This campaign cannot safely prepare or expose a Zeus action.")).toBeInTheDocument();
     expect(screen.getByText("Blocked")).toBeInTheDocument();
@@ -164,7 +161,7 @@ describe("onboarding home", () => {
     };
     render(<App api={smokeApi} creation={creationFixture} />);
     await screen.findByRole("button", { name: "Open campaign" });
-    await user.click(screen.getByRole("link", { name: /Zeus jobs/i }));
+    await user.click(screen.getByRole("link", { name: /Zeus connection/i }));
     expect(screen.getByText("Ready for guarded review")).toBeInTheDocument();
     expect(screen.getByText(/Open the campaign to prepare it on Zeus and review the smoke submission/)).toBeInTheDocument();
     expect(screen.queryByText("Ready to copy")).not.toBeInTheDocument();
@@ -195,7 +192,7 @@ describe("onboarding home", () => {
     const user = userEvent.setup();
     const snapshot = vi.fn(async () => zeusSnapshot);
     render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     expect(screen.getByRole("heading", { name: "Monitor jobs safely" })).toHaveFocus();
     expect(snapshot).not.toHaveBeenCalled();
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
@@ -225,7 +222,7 @@ describe("onboarding home", () => {
     }));
     const confirm = vi.fn(async () => ({ status: "prepared" as const, campaign_id: smokeCampaign.id, destination: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/sample", transferred_count: 12, reused_identical_count: 60, bytes_transferred: 9_000_000, submitted_to_zeus: false as const, simulation_started: false as const }));
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} transfer={{ preview, confirm }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     await screen.findByText("Connected — read-only snapshot received");
@@ -263,7 +260,7 @@ describe("onboarding home", () => {
       effects: { copy_missing_only: true as const, overwrite_existing: false as const, submit_jobs: false as const, run_simulation: false as const },
     });
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} transfer={{ preview, confirm: async () => { throw new Error("Preparation token expired. Review again."); } }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     await screen.findByText("Connected — read-only snapshot received");
@@ -293,7 +290,7 @@ describe("onboarding home", () => {
     const preview = vi.fn(async () => ({ preview_token: "submit-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40), s0_values: [1.3] }, stage: { id: "smoke" as const, label: "Smoke check" as const, purpose: "Validate the campaign setup with two-particle test runs" }, job: { file: "jobs/01_smoke.pbs" as const, kind: "job" as const, task_count: 1, queue: "zeus_combined_q" as const, cores_per_task: 1 as const, memory_per_task_bytes: 68719476736 as const, walltime_seconds: 1200 as const }, remote: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false as const }, inputs: { verified_count: 72 as const, status: "ready" as const }, effects: { submit_smoke: true as const, submit_later_stages: false as const, modify_files: false as const }, later_stages_locked: true as const }));
     const confirm = vi.fn(async () => ({ status: "submitted" as const, campaign_id: smokeCampaign.id, stage: "smoke" as const, job_id: "4759999.zeus-master", submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true as const }));
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => ({ ...zeusSnapshot, remote: { ...zeusSnapshot.remote, git_commit: "b".repeat(40) } }) }} transfer={transfer} submission={{ preview, confirm }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     await screen.findByText("Connected — read-only snapshot received");
@@ -328,7 +325,7 @@ describe("onboarding home", () => {
     };
     const submissionPreview = async () => ({ preview_token: "submit-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, path: smokeCampaign.path, git_commit: "b".repeat(40), s0_values: [1.3] }, stage: { id: "smoke" as const, label: "Smoke check" as const, purpose: "Validate setup" }, job: { file: "jobs/01_smoke.pbs" as const, kind: "job" as const, task_count: 1, queue: "zeus_combined_q" as const, cores_per_task: 1 as const, memory_per_task_bytes: 68719476736 as const, walltime_seconds: 1200 as const }, remote: { host: "zeus.technion.ac.il" as const, project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "b".repeat(40), branch: "main", dirty: false as const }, inputs: { verified_count: 72 as const, status: "ready" as const }, effects: { submit_smoke: true as const, submit_later_stages: false as const, modify_files: false as const }, later_stages_locked: true as const });
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} transfer={preparedTransfer} submission={{ preview: submissionPreview, confirm: async () => { throw new SubmissionApiError(code, code === "submission_record_invalid" ? "The durable submission record is invalid or conflicting." : "timeout"); } }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await screen.findByText("Connected — read-only snapshot received"); await user.click(screen.getByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Review Zeus preparation" })); await user.click(await screen.findByRole("button", { name: "Prepare campaign on Zeus" })); await user.click(await screen.findByRole("button", { name: "Review smoke submission" })); await user.click(await screen.findByRole("button", { name: "Submit smoke check to Zeus" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await screen.findByText("Connected — read-only snapshot received"); await user.click(screen.getByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Review Zeus preparation" })); await user.click(await screen.findByRole("button", { name: "Prepare campaign on Zeus" })); await user.click(await screen.findByRole("button", { name: "Review smoke submission" })); await user.click(await screen.findByRole("button", { name: "Submit smoke check to Zeus" }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(expectedCopy);
     expect(alert).toHaveFocus();
@@ -354,7 +351,7 @@ describe("onboarding home", () => {
       confirm: async () => ({ status: "prepared" as const, campaign_id: smokeCampaign.id, destination: `/home/tal.noa/ytterbium_lab_simulation_new/${smokeCampaign.path}`, transferred_count: 0, reused_identical_count: 72, bytes_transferred: 0, submitted_to_zeus: false as const, simulation_started: false as const }),
     };
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} transfer={transfer} submission={{ preview: async () => { throw new SubmissionApiError(code, code === "submission_record_invalid" ? "The durable submission record is invalid or conflicting." : "terminal"); }, confirm: async () => { throw new Error("must not confirm"); } }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     await screen.findByText("Connected — read-only snapshot received");
@@ -375,19 +372,19 @@ describe("onboarding home", () => {
     const pending = { list: () => new Promise<never>(() => {}), get: fixtureApi.get };
     const zeus = { snapshot: async () => zeusSnapshot };
     const { unmount } = render(<App api={pending} creation={creationFixture} zeus={zeus} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     expect(screen.getByText("Checking local campaign records")).toBeInTheDocument();
     unmount();
 
     render(<App api={{ list: async () => { throw new Error("unavailable"); }, get: fixtureApi.get }} creation={creationFixture} zeus={zeus} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Campaign readiness is unavailable");
   });
 
   it("explains SSH authentication failures without asking for a password", async () => {
     const user = userEvent.setup();
     render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot: async () => { throw new ZeusApiError("zeus_authentication_required", "Configure an existing SSH key or agent."); } }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("SSH authentication is required");
@@ -398,7 +395,7 @@ describe("onboarding home", () => {
   it("guides a first-time operator through safe local SSH setup", async () => {
     const user = userEvent.setup();
     render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     const guide = screen.getByText("First time connecting? View setup guide");
     await user.click(guide);
     expect(screen.getByText(/Connect this computer to the Technion VPN/)).toBeVisible();
@@ -412,7 +409,7 @@ describe("onboarding home", () => {
     const user = userEvent.setup();
     const snapshot = vi.fn(async () => zeusSnapshot);
     render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     const username = screen.getByLabelText("Technion username");
     const connect = screen.getByRole("button", { name: "Connect and check status" });
     await user.type(username, "1tal.noa");
@@ -432,7 +429,7 @@ describe("onboarding home", () => {
     const user = userEvent.setup();
     const stale = { ...zeusSnapshot, scheduler: { ...zeusSnapshot.scheduler, queried_at: "2026-01-01T00:00:00Z", jobs: [] } };
     render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot: async () => stale }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     expect(await screen.findByText("Connected — snapshot is stale")).toBeInTheDocument();
@@ -448,7 +445,7 @@ describe("onboarding home", () => {
     const preview = vi.fn(async () => ({ preview_token: "screen-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, git_commit: "a".repeat(40) }, from_stage: "smoke" as const, to_stage: "screen" as const, smoke: { job_id: "4759999.zeus-master", points: [{ s0: 1.3, captured: 0, input: 2 as const, efficiency: 0 }], artifact_count: 3 }, artifacts: { create: ["screen/tasks.json", "jobs/02_screen.pbs"] as ["screen/tasks.json", "jobs/02_screen.pbs"], update: ["campaign.json"] as ["campaign.json"] }, effects: { prepare_screening: true as const, submit_screening: false as const, start_simulation: false as const, overwrite_existing: false as const }, local_sync: { status: "not_synchronized" as const } }));
     const confirm = vi.fn(async () => ({ status: "screening_prepared" as const, campaign_id: smokeCampaign.id, stage: "screen" as const, artifacts: { created: 2 as const, updated: 1 as const }, submitted_to_zeus: false as const, simulation_started: false as const, local_sync: { status: "not_synchronized" as const } }));
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={{ status, preview, confirm }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     await user.click(await screen.findByRole("button", { name: "Inspect campaign" }));
@@ -477,7 +474,7 @@ describe("onboarding home", () => {
     const preview = vi.fn(async () => ({ preview_token: "submit-screen-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "screen" as const, label: "Screening" as const, purpose: "Search broadly for promising 2D-MOT settings." }, job: { file: "jobs/02_screen.pbs" as const, kind: "array" as const, task_count: 3, array_throttle: 3 as const, queue: "zeus_combined_q" as const, cores_per_task: 200 as const, memory_per_task_bytes: 68719476736 as const, walltime_seconds: 86400 as const }, remote: { host: "zeus.technion.ac.il" as const, project_directory: zeusSnapshot.profile.project_directory, commit: "a".repeat(40), branch: "main", dirty: false as const }, inputs: { verified_count: 72 as const, status: "ready" as const }, smoke: { status: "validated" as const, job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true as const, submit_later_stages: false as const, modify_files: false as const }, later_stages_locked: true as const }));
     const confirm = vi.fn(async () => ({ status: "submitted" as const, campaign_id: smokeCampaign.id, stage: "screen" as const, job_id: "4760000[].zeus-master", submitted_at: "2026-10-08T13:02:00Z", later_stages_locked: true as const }));
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={{ status, preview: vi.fn(), confirm: vi.fn() }} screeningSubmission={{ preview, confirm }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
     expect(await screen.findByRole("heading", { name: "Action required" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Review Screening submission" }));
     expect(await screen.findByRole("heading", { name: "Submit Screening to Zeus" })).toHaveFocus();
@@ -497,7 +494,7 @@ describe("onboarding home", () => {
     const lifecycle = { status: async () => ({ source: "zeus" as const, queried_at: "2026-10-08T13:00:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "screen" as const }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "completed_success" as const, raw_state: "F", exit_status: 0 }, validation: { status: "valid" as const, points: [{ s0: 1.3, captured: 0, input: 2 as const, efficiency: 0 }], artifact_count: 3 }, lifecycle: "screen_prepared" as const, next_action: "none" as const }), preview: vi.fn(), confirm: vi.fn() };
     const screeningSubmission = { preview: async () => ({ preview_token: "stale-token", expires_in_seconds: 300, campaign: { id: smokeCampaign.id, name: smokeCampaign.name, git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "screen" as const, label: "Screening" as const, purpose: "Search broadly." }, job: { file: "jobs/02_screen.pbs" as const, kind: "array" as const, task_count: 3, array_throttle: 3 as const, queue: "zeus_combined_q" as const, cores_per_task: 200 as const, memory_per_task_bytes: 68719476736 as const, walltime_seconds: 86400 as const }, remote: { host: "zeus.technion.ac.il" as const, project_directory: zeusSnapshot.profile.project_directory, commit: "a".repeat(40), branch: "main", dirty: false as const }, inputs: { verified_count: 72 as const, status: "ready" as const }, smoke: { status: "validated" as const, job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true as const, submit_later_stages: false as const, modify_files: false as const }, later_stages_locked: true as const }), confirm: async () => { throw new ScreeningSubmissionApiError("local_files_changed", "Remote files changed."); } };
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={lifecycle} screeningSubmission={screeningSubmission} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" })); await user.click(await screen.findByRole("button", { name: "Review Screening submission" })); await user.click(await screen.findByRole("button", { name: "Submit Screening to Zeus" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" })); await user.click(await screen.findByRole("button", { name: "Review Screening submission" })); await user.click(await screen.findByRole("button", { name: "Submit Screening to Zeus" }));
     expect(await screen.findByText(/campaign files changed after review/i)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Submit Screening to Zeus" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Review again" }));
@@ -509,7 +506,7 @@ describe("onboarding home", () => {
     const lifecycle = { status: async () => ({ source: "zeus" as const, queried_at: "2026-10-09T08:00:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "screen" as const }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "completed_success" as const, raw_state: "F", exit_status: 0 }, validation: { status: "valid" as const, points: [{ s0: 1.3, captured: 0, input: 2 as const, efficiency: 0 }], artifact_count: 3 }, lifecycle: "screen_prepared" as const, next_action: "none" as const }), preview: vi.fn(), confirm: vi.fn() };
     const screeningStatus = vi.fn(async () => ({ source: "zeus" as const, queried_at: "2026-10-09T08:05:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "screen" as const }, submission: { job_id: "4760000[].zeus-master" }, scheduler: { state: "completed_success" as const, raw_state: "F", exit_status: 0, task_count: 3, counts: { queued: 0, running: 0, held: 0, succeeded: 3, failed: 0 } }, validation: { status: "valid" as const, completed_trials: 51, expected_trials: 51, candidate_count: 3 }, lifecycle: "ready_to_prepare_refinement" as const, next_action: "review_refinement_preparation" as const }));
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={lifecycle} screeningLifecycle={{ status: screeningStatus, preview: vi.fn(), confirm: vi.fn() }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
     expect(await screen.findByRole("button", { name: "Check Screening status" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Check Screening status" }));
     expect(await screen.findByRole("heading", { name: "Action required" })).toBeInTheDocument();
@@ -526,7 +523,7 @@ describe("onboarding home", () => {
       .mockResolvedValueOnce({ source: "zeus" as const, queried_at: "2026-10-08T12:11:00Z", campaign: { id: smokeCampaign.id, name: smokeCampaign.name, stage: "smoke" as const }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "completed_success" as const, raw_state: "F", exit_status: 0 }, validation: { status: "not_ready" as const, points: [], artifact_count: 0 }, lifecycle: "awaiting_outputs" as const, next_action: "wait" as const });
     const lifecycle = { status, preview: vi.fn(), confirm: vi.fn() };
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={lifecycle} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Check smoke status" }));
     expect(await screen.findByRole("heading", { name: "No action needed" })).toBeInTheDocument();
     expect(screen.getByText(/safely close this application/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Review screening preparation" })).not.toBeInTheDocument();
@@ -543,7 +540,7 @@ describe("onboarding home", () => {
     await user.click(await screen.findByRole("button", { name: "Open campaign" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Campaign details are unavailable");
     expect(screen.getByRole("button", { name: "Open campaign" })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.click(screen.getByRole("link", { name: "Home" }));
     expect(screen.queryByText("Campaign details are unavailable")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open campaign" })).toBeInTheDocument();
@@ -576,12 +573,12 @@ describe("onboarding home", () => {
     const pending = new Promise<typeof campaignFixture>((resolve) => { resolveDetail = resolve; });
     const api = { async list() { return { campaigns: [campaignFixture], invalid_count: 0, total: 1 }; }, async get() { return pending; } };
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} />);
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     await user.type(screen.getByLabelText("Technion username"), "tal.noa");
     await user.click(screen.getByRole("button", { name: "Connect and check status" }));
     expect(await screen.findByText("Connected — read-only snapshot received")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Inspect campaign" }));
-    await user.click(screen.getByRole("link", { name: "Zeus jobs" }));
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
     resolveDetail(campaignFixture);
     await waitFor(() => expect(screen.getByText("Connected — read-only snapshot received")).toBeInTheDocument());
     expect(screen.queryByRole("heading", { name: campaignFixture.name, level: 1 })).not.toBeInTheDocument();

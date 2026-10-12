@@ -1,6 +1,6 @@
 {
   "spec_version": "mot-3d-individual-v1",
-  "request_fields": ["source_id", "geometry_family", "particle_count", "selection_seed", "simulation_seed", "parameters", "retain_particle_states", "execution_mode"],
+  "request_fields": ["source_id", "geometry_family", "particle_count", "selection_seed", "simulation_seed", "parameters", "npools", "retain_particle_states", "execution_mode"],
   "geometry_families": ["angled_donut", "single_pass"],
   "particle_count": {"minimum": 1, "default": 200, "maximum_by_execution_mode": {"local": 1000, "zeus": 50000}},
   "selection_seed": {"minimum": 0, "maximum": 4294967295, "default": 42},
@@ -48,6 +48,7 @@
     }
   },
   "workers_by_execution_mode": {"local": 8, "zeus": 200},
+  "local_worker_count": {"minimum": 1, "maximum": 256, "default": 8},
   "sampling": {"algorithm": "pcg64-raw-partial-fisher-yates-unbiased", "version": "v1", "canonical_order": "constituent-record-order-then-row-index"},
   "authority_references": {
     "laboratory_specification": {"version": "laboratory-physical-v2", "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3"},

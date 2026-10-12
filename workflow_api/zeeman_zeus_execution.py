@@ -217,7 +217,7 @@ def _utc_now() -> str:
 
 
 def _render_pbs(run: Mapping[str, Any], package_sha256: str) -> bytes:
-    workers = ZEEMAN_RUN_SPECIFICATION["workers_by_execution_mode"]["zeus"]
+    workers = ZEEMAN_RUN_SPECIFICATION["worker_policy"]["zeus"]["fixed"]
     # Scalar by construction: no #PBS -J and no user-controlled command text.
     text = f"""#!/bin/bash
 #PBS -N iz_{run['run_id'][:24]}

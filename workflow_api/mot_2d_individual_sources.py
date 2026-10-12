@@ -16,6 +16,7 @@ import re
 from types import MappingProxyType
 from typing import Any, Mapping
 
+from workflow_api import mot_2d_sources as campaign_sources
 from workflow_api.mot_2d_sources import (
     MAX_SOURCES,
     SourceScanLimits,
@@ -31,6 +32,7 @@ MAX_INDIVIDUAL_RUNS = 500
 MAX_CATALOG_SOURCES = MAX_SOURCES + MAX_INDIVIDUAL_RUNS
 _LABEL_LIMIT = 80
 _UNSAFE_LABEL = re.compile(r"[^A-Za-z0-9._ -]+")
+_ENSEMBLE_NAME = re.compile(r"production_zeeman_n\d+_dt[^/]+_seed(\d+)\.npy")
 INDIVIDUAL_MOT_2D_SOURCE_SCAN_LIMITS = SourceScanLimits(
     maximum_file_bytes=512 * 1024 * 1024,
     maximum_total_bytes=8 * 1024 * 1024 * 1024,
@@ -165,20 +167,69 @@ def _opaque_id(kind: str, evidence: dict[str, Any]) -> str:
 
 def _folder_label(path: str) -> str:
     raw = Path(path).name
+    # "corrected" described a one-time historical mistake, not a scientific
+    # source category.  Keep the on-disk path stable while avoiding that stale
+    # distinction in the operator-facing catalog.
+    raw = raw.removeprefix("corrected_")
     cleaned = " ".join(_UNSAFE_LABEL.sub(" ", raw).split()).strip(" ._-")
     if not cleaned:
         return "Validated Zeeman ensembles"
     return cleaned[:_LABEL_LIMIT].rstrip()
 
 
+def _individual_folder_rows(repository_root: Path) -> tuple[list[dict[str, Any]], int, bool]:
+    """Admit verified folders for individual runs, including partial seed sets.
+
+    Campaign setup deliberately continues to require the complete canonical
+    3000--3034 set.  This catalog may also expose a smaller, fully attested
+    folder, but marks it individual-only and revalidates it on resolution.
+    """
+
+    source_root = (repository_root / "data/particle_states/after_zeeman").resolve()
+    if not source_root.is_dir():
+        return [], 0, False
+    rows: list[dict[str, Any]] = []
+    invalid = 0
+    truncated = False
+    candidates = 0
+    for directory in sorted(source_root.iterdir(), key=lambda item: item.name):
+        if directory.is_symlink() or not directory.is_dir() or directory.name.startswith("."):
+            continue
+        if candidates >= campaign_sources.MAX_SOURCES:
+            truncated = True
+            break
+        candidates += 1
+        try:
+            state_files = sorted(directory.glob("production_zeeman_n*_dt*_seed*.npy"))
+            matches = [_ENSEMBLE_NAME.fullmatch(path.name) for path in state_files]
+            if not state_files or any(match is None for match in matches):
+                raise ValueError("invalid ensemble filenames")
+            seeds = tuple(sorted(int(match.group(1)) for match in matches if match is not None))
+            if len(seeds) != len(set(seeds)):
+                raise ValueError("duplicate ensemble seeds")
+            if seeds not in (tuple(range(3000, 3020)), tuple(range(3000, 3035))):
+                raise ValueError("unsupported individual ensemble seed set")
+            row = inspect_source(
+                directory,
+                repository_root,
+                include_records=True,
+                scan_limits=individual_mot_2d_source_scan_limits(),
+                expected_seeds=seeds,
+            )
+            row["pooled_survivor_count"] = sum(
+                record["survivor_count"] for record in row.pop("records")
+            )
+            row["seed_set"] = list(seeds)
+            rows.append(row)
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+            invalid += 1
+    return rows, invalid, truncated
+
+
 def _canonical_options(repository_root: Path) -> tuple[list[dict[str, Any]], int, bool]:
-    listing = list_sources(
-        repository_root,
-        include_pool_counts=True,
-        scan_limits=individual_mot_2d_source_scan_limits(),
-    )
+    rows, invalid_count, truncated = _individual_folder_rows(repository_root)
     options: list[dict[str, Any]] = []
-    for row in listing["sources"]:
+    for row in rows:
         evidence = {
             "fingerprint": row["fingerprint"],
             "profile": row["profile"],
@@ -189,10 +240,12 @@ def _canonical_options(repository_root: Path) -> tuple[list[dict[str, Any]], int
             # The relative location is private binding evidence.  It is never
             # returned in the public catalog.
             "location": row["path"],
+            "seed_set": row["seed_set"],
         }
         if row["pooled_survivor_count"] <= 0:
-            listing["invalid_count"] += 1
+            invalid_count += 1
             continue
+        complete_campaign_source = tuple(row["seed_set"]) == tuple(range(3000, 3035))
         options.append(
             {
                 "id": _opaque_id("canonical_folder", evidence),
@@ -204,10 +257,18 @@ def _canonical_options(repository_root: Path) -> tuple[list[dict[str, Any]], int
                     "minimum_per_ensemble": row["minimum_survivors"],
                     "maximum_per_ensemble": row["maximum_survivors"],
                 },
-                "source_qualification": "canonical_campaign_source",
+                "source_qualification": (
+                    "canonical_campaign_source"
+                    if complete_campaign_source
+                    else "verified_individual_folder"
+                ),
                 "result_suitability": "individual_only",
                 "provenance": {
-                    "validation": "canonical_zeeman_folder",
+                    "validation": (
+                        "canonical_zeeman_folder"
+                        if complete_campaign_source
+                        else "verified_individual_zeeman_folder"
+                    ),
                     "profile": row["profile"],
                     "fingerprint": row["fingerprint"],
                 },
@@ -215,7 +276,7 @@ def _canonical_options(repository_root: Path) -> tuple[list[dict[str, Any]], int
         )
     # list_sources explicitly marks a bounded overflow as invalid.  Preserve
     # that signal and make truncation explicit in this newer contract.
-    return options, listing["invalid_count"], listing["truncated"]
+    return options, invalid_count, truncated
 
 
 def _retained_options(repository_root: Path) -> tuple[list[dict[str, Any]], int, bool]:
@@ -300,10 +361,8 @@ def resolve_individual_mot_2d_source(
     ):
         raise ValueError("Individual 2D-MOT source identifier is invalid.")
     root = Path(repository_root).resolve(strict=True)
-    listing = list_sources(
-        root, include_pool_counts=True, scan_limits=individual_mot_2d_source_scan_limits()
-    )
-    for row in listing["sources"]:
+    rows, _, _ = _individual_folder_rows(root)
+    for row in rows:
         evidence = {
             "fingerprint": row["fingerprint"],
             "profile": row["profile"],
@@ -312,12 +371,14 @@ def resolve_individual_mot_2d_source(
             "maximum_survivors": row["maximum_survivors"],
             "pooled_survivor_count": row["pooled_survivor_count"],
             "location": row["path"],
+            "seed_set": row["seed_set"],
         }
         if _opaque_id("canonical_folder", evidence) != source_id:
             continue
         inspected = inspect_source(
             root / row["path"], root, include_records=True,
             scan_limits=individual_mot_2d_source_scan_limits(),
+            expected_seeds=tuple(row["seed_set"]),
         )
         records = sorted(inspected["records"], key=lambda item: item["zeeman_seed"])
         pooled = sum(item["survivor_count"] for item in records)
@@ -329,6 +390,7 @@ def resolve_individual_mot_2d_source(
             "maximum_survivors": inspected["maximum_survivors"],
             "pooled_survivor_count": pooled,
             "location": inspected["path"],
+            "seed_set": row["seed_set"],
         }
         if (
             pooled <= 0
@@ -336,7 +398,13 @@ def resolve_individual_mot_2d_source(
         ):
             raise ValueError("Individual 2D-MOT source is unavailable or changed.")
         return ResolvedMot2DSource(
-            source_id, "canonical_folder", "canonical_campaign_source",
+            source_id,
+            "canonical_folder",
+            (
+                "canonical_campaign_source"
+                if tuple(row["seed_set"]) == tuple(range(3000, 3035))
+                else "verified_individual_folder"
+            ),
             pooled, inspected["fingerprint"],
             tuple(_freeze(item) for item in records),
         )

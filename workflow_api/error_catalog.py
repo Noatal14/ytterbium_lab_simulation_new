@@ -157,6 +157,10 @@ CREATION = _frozen(
         "creation_failed": _spec(
             HTTPStatus.PRECONDITION_FAILED, "Local campaign creation failed safely."
         ),
+        "local_files_changed": _spec(
+            HTTPStatus.PRECONDITION_FAILED,
+            "Reviewed simulation files have uncommitted changes. Commit or stash them, then validate again.",
+        ),
         "invalid_request#confirmation": ErrorSpec(
             HTTPStatus.BAD_REQUEST,
             "Confirmation payload is invalid.",

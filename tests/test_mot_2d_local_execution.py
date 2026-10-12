@@ -53,7 +53,7 @@ def _source(root: Path, rows: int = 4) -> str:
 
 
 def _request(source_id: str, *, retained: bool = True) -> dict:
-    return {"source_id": source_id, "particle_count": 20, "selection_seed": 123, "mot_seed": 456, "s0": 1.3, "detuning_gamma": -0.9196610026631429, "magnet_radius_m": 0.04676406447474441, "retain_particle_states": retained, "execution_mode": "local"}
+    return {"source_id": source_id, "particle_count": 20, "selection_seed": 123, "mot_seed": 456, "s0": 1.3, "detuning_gamma": -0.9196610026631429, "magnet_radius_m": 0.04676406447474441, "npools": 8, "retain_particle_states": retained, "execution_mode": "local"}
 
 
 def _plan(root: Path, *, retained: bool = True):

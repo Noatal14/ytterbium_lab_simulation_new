@@ -38,6 +38,7 @@ class Mot2DRunRequest:
     s0: float
     detuning_gamma: float
     magnet_radius_m: float
+    npools: int
     retain_particle_states: bool
     execution_mode: str
 
@@ -92,6 +93,16 @@ def _freeze(value: Any) -> Any:
 
 def validate_mot_2d_run_request(value: Mapping[str, Any]) -> Mot2DRunRequest:
     spec = MOT_2D_RUN_SPECIFICATION
+    if isinstance(value, Mapping) and set(value) == set(spec["request_fields"]) - {"npools"}:
+        mode = value.get("execution_mode")
+        value = {
+            **value,
+            "npools": (
+                spec["local_worker_count"]["default"]
+                if mode == "local"
+                else spec["workers_by_execution_mode"]["zeus"]
+            ),
+        }
     if not isinstance(value, Mapping) or set(value) != set(spec["request_fields"]):
         raise ValueError("Individual 2D-MOT request fields are invalid.")
     mode = value["execution_mode"]
@@ -115,7 +126,19 @@ def validate_mot_2d_run_request(value: Mapping[str, Any]) -> Mot2DRunRequest:
         controls.append(float(item))
     if not isinstance(value["source_id"], str) or re.fullmatch(r"mot2d-source-[0-9a-f]{32}", value["source_id"]) is None or not isinstance(value["retain_particle_states"], bool):
         raise ValueError("Source or retention choice is invalid.")
-    return Mot2DRunRequest(value["source_id"], count, seeds[0], seeds[1], *controls, value["retain_particle_states"], mode)
+    npools = value["npools"]
+    worker_policy = spec["local_worker_count"]
+    if (
+        isinstance(npools, bool)
+        or not isinstance(npools, int)
+        or (
+            mode == "local"
+            and not worker_policy["minimum"] <= npools <= worker_policy["maximum"]
+        )
+        or (mode == "zeus" and npools != spec["workers_by_execution_mode"]["zeus"])
+    ):
+        raise ValueError("Worker count is outside the supported range.")
+    return Mot2DRunRequest(value["source_id"], count, seeds[0], seeds[1], *controls, npools, value["retain_particle_states"], mode)
 
 
 def _sample(source: ResolvedMot2DSource, count: int, seed: int) -> dict[str, Any]:
@@ -204,7 +227,7 @@ def build_mot_2d_run_plan(request_value: Mapping[str, Any], *, repository_root: 
         "mot_2d": {"laser": {"s0": request.s0, "detuning_gamma": request.detuning_gamma, "swap_polarization": False}, "magnet_radius_m": request.magnet_radius_m, "capture_criterion_version": "mot_2d_extract_survivors_v1"},
         "upstream_zeeman_boundary": {"field": field, "laser": resolved_zeeman_laser_parameters(**ZEEMAN_LASER_CONFIG)},
         "simulation": {"particle_count": request.particle_count, "mot_seed": request.mot_seed, "stochastic": True, "gravity_enabled": True, "start_distance_m": fixed["start_distance_m"], "force_scale_N": fixed["force_scale_N"]},
-        "execution": {"mode": request.execution_mode, "workers": MOT_2D_RUN_SPECIFICATION["workers_by_execution_mode"][request.execution_mode]},
+        "execution": {"mode": request.execution_mode, "workers": request.npools},
     }
     configuration = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["configuration"], "run_id": run_id, "family": "mot_2d", "laboratory_spec": {"version": LABORATORY_SPEC_VERSION, "sha256": LABORATORY_SPEC_SHA256}, "numerical_policy": {"version": NUMERICAL_POLICY_VERSION, "sha256": NUMERICAL_POLICY_SHA256}, "resolved": resolved}
     inputs = {"schema_version": INDIVIDUAL_RUN_SPECIFICATION["record_versions"]["inputs"], "run_id": run_id, "family": "mot_2d", "artifacts": _artifacts(source)}

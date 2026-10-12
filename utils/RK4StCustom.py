@@ -195,6 +195,7 @@ class RK4StCustom(RK4St):
         u0_list: list = None,
         npools: int = 0,
         verbose: bool = False,
+        progress_callback=None,
     ) -> list:
         """
         Run a batch of stochastic trajectories.
@@ -224,6 +225,8 @@ class RK4StCustom(RK4St):
             raise TypeError("'npools' should be an int")
 
         N = len(self.u0_list)
+        if progress_callback is not None:
+            progress_callback(0, N)
 
         # ----------------------------------------------------
         # Generate one independent RNG stream per trajectory
@@ -297,6 +300,8 @@ class RK4StCustom(RK4St):
                         res_list.append(res)
 
                         pbar.update()
+                        if progress_callback is not None:
+                            progress_callback(len(res_list), N)
 
             else:
 
@@ -330,5 +335,7 @@ class RK4StCustom(RK4St):
                 )
 
                 res_list.append(res)
+                if progress_callback is not None:
+                    progress_callback(len(res_list), N)
 
         return res_list

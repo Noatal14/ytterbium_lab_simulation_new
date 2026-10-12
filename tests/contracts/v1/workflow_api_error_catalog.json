@@ -670,6 +670,13 @@
     },
     {
       "domain": "creation",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "Reviewed simulation files have uncommitted changes. Commit or stash them, then validate again."
+    },
+    {
+      "domain": "creation",
       "case": "rate_limited",
       "code": "rate_limited",
       "status": 429,

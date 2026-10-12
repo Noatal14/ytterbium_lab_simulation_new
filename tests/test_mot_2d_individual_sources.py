@@ -19,7 +19,9 @@ from workflow_api.mot_2d_sources import SourceScanLimits, list_sources
 from workflow_api.run_discovery import DiscoverySnapshot, DiscoveredRun
 
 
-def _canonical_folder(root: Path, name: str = "source") -> Path:
+def _canonical_folder(
+    root: Path, name: str = "source", seeds: range = range(3000, 3035)
+) -> Path:
     directory = root / "data/particle_states/after_zeeman" / name
     directory.mkdir(parents=True)
     profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
@@ -27,7 +29,7 @@ def _canonical_folder(root: Path, name: str = "source") -> Path:
         key: list(profile[key])
         for key in ("radii_m", "positions_m", "tilt_angles_deg")
     }
-    for seed in range(3000, 3035):
+    for seed in seeds:
         state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
         np.save(state, np.full((seed % 3 + 1, 6), seed, dtype=np.float64))
         digest = hashlib.sha256(state.read_bytes()).hexdigest()
@@ -165,6 +167,22 @@ def test_default_campaign_source_schema_is_unchanged(tmp_path):
         "maximum_survivors",
         "fingerprint",
     }
+
+
+def test_twenty_seed_folder_is_available_only_for_individual_runs(tmp_path):
+    root = tmp_path / "repo"
+    root.mkdir()
+    _canonical_folder(root, "verified partial source", range(3000, 3020))
+
+    individual = catalog.list_individual_mot_2d_sources(root)
+    assert individual["total"] == 1
+    assert individual["sources"][0]["ensemble_count"] == 20
+    assert individual["sources"][0]["source_qualification"] == "verified_individual_folder"
+    assert individual["sources"][0]["result_suitability"] == "individual_only"
+
+    campaign = list_sources(root)
+    assert campaign["sources"] == []
+    assert campaign["invalid_count"] == 1
 
 
 def test_zero_particle_sources_are_rejected_for_both_source_kinds(tmp_path, monkeypatch):

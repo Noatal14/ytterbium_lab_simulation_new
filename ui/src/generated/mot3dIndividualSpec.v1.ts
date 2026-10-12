@@ -106,6 +106,11 @@ export const MOT_3D_INDIVIDUAL_SPECIFICATION_V1 = {
     "angled_donut",
     "single_pass"
   ],
+  "local_worker_count": {
+    "default": 8,
+    "maximum": 256,
+    "minimum": 1
+  },
   "particle_count": {
     "default": 200,
     "maximum_by_execution_mode": {
@@ -121,6 +126,7 @@ export const MOT_3D_INDIVIDUAL_SPECIFICATION_V1 = {
     "selection_seed",
     "simulation_seed",
     "parameters",
+    "npools",
     "retain_particle_states",
     "execution_mode"
   ],

@@ -43,6 +43,7 @@ def mot_simulation(
     t_max_s=MOT_2D_SIM_CONFIG["t_max_s"],
     seed=DEFAULT_RANDOM_SEED,
     stochastic_sim_function=MOT_2D_STOCHASTIC_SOLVER,
+    progress_callback=None,
 ):
     """Propagate saved states through the 2D MOT and return its survivors."""
     if len(survivor_states) == 0:
@@ -68,6 +69,7 @@ def mot_simulation(
         sim_function=simulation_function,
         npools=npools,
         seed_idx=seed,
+        progress_callback=progress_callback,
     )
     mot_survivor_states, count, _ = mot_extract_survivors(results)
     return results, count, mot_survivor_states

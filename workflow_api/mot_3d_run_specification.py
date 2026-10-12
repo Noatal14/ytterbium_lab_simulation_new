@@ -29,7 +29,7 @@ SPECIFICATION_PATH = (
 MAX_SPECIFICATION_BYTES = 64 * 1024
 _FIELDS = [
     "source_id", "geometry_family", "particle_count", "selection_seed",
-    "simulation_seed", "parameters", "retain_particle_states", "execution_mode",
+    "simulation_seed", "parameters", "npools", "retain_particle_states", "execution_mode",
 ]
 _FAMILIES = ["angled_donut", "single_pass"]
 _COMMON = (
@@ -149,7 +149,7 @@ def _validate(value: Any) -> dict[str, Any]:
     keys = {
         "spec_version", "request_fields", "geometry_families", "particle_count",
         "selection_seed", "simulation_seed", "common_controls", "family_controls",
-        "defaults", "workers_by_execution_mode", "sampling", "authority_references",
+        "defaults", "workers_by_execution_mode", "local_worker_count", "sampling", "authority_references",
         "fixed_classification",
     }
     if (
@@ -197,6 +197,8 @@ def _validate(value: Any) -> dict[str, Any]:
             raise ValueError("Individual default is outside its reviewed range.")
     if value["workers_by_execution_mode"] != {"local": DEFAULT_NUM_POOLS, "zeus": 200}:
         raise ValueError("Invalid worker policy.")
+    if value["local_worker_count"] != {"minimum": 1, "maximum": 256, "default": DEFAULT_NUM_POOLS}:
+        raise ValueError("Invalid local worker policy.")
     if value["sampling"] != {
         "algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
         "version": "v1",

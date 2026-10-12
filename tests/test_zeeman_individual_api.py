@@ -38,7 +38,7 @@ def api():
 
 
 def test_only_four_scientific_request_controls_are_accepted(api):
-    request = {"particle_count": 12, "seed": 4, "retain_particle_states": True, "execution_mode": "local"}
+    request = {"particle_count": 12, "seed": 4, "mot_2d_s0": 1.3, "mot_2d_detuning_gamma": -0.9196610026631429, "mot_2d_magnet_radius_m": 0.04676406447474441, "npools": 8, "retain_particle_states": True, "execution_mode": "local"}
     assert api.preview(request, session_id="session") == {"request": request, "session": "session"}
     with pytest.raises(ValueError, match="fields"):
         api.preview({**request, "magnet_profile": "caller-controlled"}, session_id="session")
@@ -84,5 +84,5 @@ def test_server_exposes_only_the_six_reviewed_session_bound_operations(api):
         assert route.call_style == "session_kw"
     assert not any("cancel" in path or "command" in path for path in expected)
 
-    request = {"particle_count": 2, "seed": 1, "retain_particle_states": False, "execution_mode": "local"}
+    request = {"particle_count": 2, "seed": 1, "mot_2d_s0": 1.3, "mot_2d_detuning_gamma": -0.9196610026631429, "mot_2d_magnet_radius_m": 0.04676406447474441, "npools": 8, "retain_particle_states": False, "execution_mode": "local"}
     assert _invoke_post_route(POST_ROUTES["/api/v1/individual-runs/zeeman/preview"], api, request, "bound-session")["session"] == "bound-session"

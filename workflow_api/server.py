@@ -40,6 +40,7 @@ from workflow_api.mot_3d_individual_api import IndividualMot3DApi
 from workflow_api.mot_3d_run_creation import Mot3DRunCreationService
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import (
+    RepositoryFilesChangedError,
     RepositorySnapshotProvider,
     ZeemanRepositorySnapshotProvider,
     Mot2DIndividualRepositorySnapshotProvider,
@@ -1380,6 +1381,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         except FileExistsError:
             self._catalog_error("creation", "campaign_exists")
+            return
+        except RepositoryFilesChangedError:
+            self._catalog_error("creation", "local_files_changed")
             return
         except ValueError as error:
             if route.service_attr == "mot_3d_bootstrap_service":

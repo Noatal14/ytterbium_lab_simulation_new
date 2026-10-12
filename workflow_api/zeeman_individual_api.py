@@ -41,7 +41,11 @@ class IndividualZeemanApi:
         self.zeus = zeus
 
     def preview(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
-        _exact(payload, {"particle_count", "seed", "retain_particle_states", "execution_mode"})
+        _exact(payload, {
+            "particle_count", "seed", "mot_2d_s0", "mot_2d_detuning_gamma",
+            "mot_2d_magnet_radius_m", "npools", "retain_particle_states",
+            "execution_mode",
+        })
         return self.creation.preview(payload, session_id)
 
     def confirm(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:

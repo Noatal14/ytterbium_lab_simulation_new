@@ -29,6 +29,10 @@ def test_specification_is_stable_and_deeply_immutable():
     assert ZEEMAN_RUN_SPECIFICATION["request_fields"] == (
         "particle_count",
         "seed",
+        "mot_2d_s0",
+        "mot_2d_detuning_gamma",
+        "mot_2d_magnet_radius_m",
+        "npools",
         "retain_particle_states",
         "execution_mode",
     )
@@ -59,8 +63,9 @@ def test_specification_is_stable_and_deeply_immutable():
         ),
         lambda row: row["seed"].update(default=43),
         lambda row: row["seed"].update(maximum=-1),
-        lambda row: row["workers_by_execution_mode"].update(local=7),
-        lambda row: row["workers_by_execution_mode"].update(shell=1),
+        lambda row: row["worker_policy"]["local"].update(default=7),
+        lambda row: row["worker_policy"].update(shell={"fixed": 1}),
+        lambda row: row["mot_2d_controls"]["s0"].update(default=4.0),
         lambda row: row["fixed_classification"].update(
             suitability="campaign_input"
         ),

@@ -19,6 +19,10 @@ CREATED = "2026-10-11T12:00:00+00:00"
 REQUEST = {
     "particle_count": 1_000,
     "seed": 73,
+    "mot_2d_s0": 1.3,
+    "mot_2d_detuning_gamma": -0.9196610026631429,
+    "mot_2d_magnet_radius_m": 0.04676406447474441,
+    "npools": 8,
     "retain_particle_states": True,
     "execution_mode": "local",
 }

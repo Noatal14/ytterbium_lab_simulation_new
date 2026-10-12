@@ -34,7 +34,7 @@ def _source(fingerprint="f" * 64):
 
 
 def _request():
-    return {"source_id": SOURCE_ID, "geometry_family": "angled_donut", "particle_count": 5, "selection_seed": 7, "simulation_seed": 11, "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]), "retain_particle_states": True, "execution_mode": "local"}
+    return {"source_id": SOURCE_ID, "geometry_family": "angled_donut", "particle_count": 5, "selection_seed": 7, "simulation_seed": 11, "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]), "npools": 8, "retain_particle_states": True, "execution_mode": "local"}
 
 
 def _service(root, **kwargs):

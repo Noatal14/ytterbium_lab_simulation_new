@@ -11,6 +11,7 @@ class ScipyIVP_3DCustom(ScipyIVP_3D):
         u0_list: list = None,
         npools: int = 0,
         verbose: bool = False,
+        progress_callback=None,
     ) -> list:
         """Runs a batch of simulations from a list of initial conditions
 
@@ -61,6 +62,9 @@ class ScipyIVP_3DCustom(ScipyIVP_3D):
             self.u0_list = u0_list
         if not isinstance(npools, int):
             return TypeError("'npools' should be an int")
+        total = len(self.u0_list)
+        if progress_callback is not None:
+            progress_callback(0, total)
         if npools:
             map_fun = partial(self.integrate, t=t)
             if verbose:
@@ -71,6 +75,8 @@ class ScipyIVP_3DCustom(ScipyIVP_3D):
                         pbar.update()
                         pbar.refresh()
                         res_list.append(res)
+                        if progress_callback is not None:
+                            progress_callback(len(res_list), total)
             else:
                 with Pool(npools) as p:
                     res_list = list(p.imap(map_fun, self.u0_list))
@@ -80,4 +86,6 @@ class ScipyIVP_3DCustom(ScipyIVP_3D):
             for u0 in u0_list:
                 res = self.integrate(u0, t)
                 res_list.append(res)
+                if progress_callback is not None:
+                    progress_callback(len(res_list), total)
         return res_list

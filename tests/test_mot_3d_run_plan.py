@@ -29,9 +29,12 @@ def _request(family="angled_donut", **updates):
         "source_id": SOURCE_ID, "geometry_family": family, "particle_count": 5,
         "selection_seed": 7, "simulation_seed": 11,
         "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"][family]),
-        "retain_particle_states": True, "execution_mode": "local",
+        "npools": 8, "retain_particle_states": True, "execution_mode": "local",
     }
-    value.update(updates); return value
+    value.update(updates)
+    if value["execution_mode"] == "zeus" and "npools" not in updates:
+        value["npools"] = 200
+    return value
 
 
 def _plan(root: Path, request, monkeypatch, source=None):

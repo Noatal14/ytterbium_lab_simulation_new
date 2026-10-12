@@ -31,6 +31,7 @@ type Mot3DRequestBase = {
   particle_count: number;
   selection_seed: number;
   simulation_seed: number;
+  npools: number;
   retain_particle_states: boolean;
   execution_mode: Mot3DMode;
 };
@@ -219,7 +220,10 @@ function validLockedSettings(value: unknown, mode: Mot3DMode): value is LockedSe
     && value.capture.minimum_residence_time_s === fixed.capture.minimum_residence_time_s
     && value.sampling_algorithm === spec.sampling.algorithm
     && value.sampling_version === spec.sampling.version
-    && value.workers === spec.workers_by_execution_mode[mode];
+    && integer(value.workers)
+    && (mode === "local"
+      ? Number(value.workers) >= spec.local_worker_count.minimum && Number(value.workers) <= spec.local_worker_count.maximum
+      : value.workers === spec.workers_by_execution_mode.zeus);
 }
 
 function parsePreview(value: unknown): Mot3DPreview {
@@ -329,7 +333,7 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       const row = parsePreview(await postData("/api/v1/individual-runs/mot-3d/preview", request, csrf));
       if (currentGeneration !== generation || sequence !== previewSequence) throw new Error("The 3D-MOT review is stale.");
       const plan = row.plan;
-      if (plan.source.id !== request.source_id || plan.geometry.family !== request.geometry_family || plan.execution.mode !== request.execution_mode || plan.execution.particle_count !== request.particle_count || plan.execution.simulation_seed !== request.simulation_seed || plan.selection.seed !== request.selection_seed || !sameParameters(request.geometry_family, plan.geometry.parameters, request.parameters) || plan.retention.particle_states !== request.retain_particle_states) throw new Error("The review did not match the request.");
+      if (plan.source.id !== request.source_id || plan.geometry.family !== request.geometry_family || plan.execution.mode !== request.execution_mode || plan.execution.particle_count !== request.particle_count || plan.execution.simulation_seed !== request.simulation_seed || plan.selection.seed !== request.selection_seed || plan.locked_settings.workers !== request.npools || !sameParameters(request.geometry_family, plan.geometry.parameters, request.parameters) || plan.retention.particle_states !== request.retain_particle_states) throw new Error("The review did not match the request.");
       reviews.set(row.preview_token, { runId: plan.run_id, request: structuredClone(request), csrf, generation: currentGeneration });
       return row;
     },

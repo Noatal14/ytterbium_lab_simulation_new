@@ -17,8 +17,6 @@ from config import (
     ACTIVE_ZEEMAN_MAGNET_PROFILE,
     COLLIMATION_ANGLE_DEG,
     FORCE_SCALE_N,
-    MOT_2D_LASER_CONFIG,
-    MOT_2D_MAGNET_RADIUS_M,
     ZEEMAN_FIELD_CONFIG,
     ZEEMAN_LASER_CONFIG,
     ZEEMAN_SIM_CONFIG,
@@ -43,6 +41,7 @@ from workflow_api.zeeman_run_specification import (
     ZEEMAN_RUN_SPECIFICATION,
     ZEEMAN_RUN_SPEC_SHA256,
     ZEEMAN_RUN_SPEC_VERSION,
+    local_worker_maximum,
 )
 
 
@@ -50,6 +49,10 @@ from workflow_api.zeeman_run_specification import (
 class ZeemanRunRequest:
     particle_count: int
     seed: int
+    mot_2d_s0: float
+    mot_2d_detuning_gamma: float
+    mot_2d_magnet_radius_m: float
+    npools: int
     retain_particle_states: bool
     execution_mode: str
 
@@ -60,6 +63,10 @@ class ZeemanRunReview:
     execution_mode: str
     particle_count: int
     seed: int
+    mot_2d_s0: float
+    mot_2d_detuning_gamma: float
+    mot_2d_magnet_radius_m: float
+    npools: int
     retain_particle_states: bool
     suitability: str
     locked_settings: Mapping[str, Any]
@@ -105,12 +112,33 @@ def _freeze(value: Any) -> Any:
 
 
 def validate_zeeman_run_request(value: Mapping[str, Any]) -> ZeemanRunRequest:
+    legacy_fields = {
+        "particle_count", "seed", "retain_particle_states", "execution_mode",
+    }
+    if isinstance(value, Mapping) and set(value) == legacy_fields:
+        mode = value.get("execution_mode")
+        controls = ZEEMAN_RUN_SPECIFICATION["mot_2d_controls"]
+        value = {
+            **value,
+            "mot_2d_s0": controls["s0"]["default"],
+            "mot_2d_detuning_gamma": controls["detuning_gamma"]["default"],
+            "mot_2d_magnet_radius_m": controls["magnet_radius_m"]["default"],
+            "npools": (
+                ZEEMAN_RUN_SPECIFICATION["worker_policy"]["local"]["default"]
+                if mode == "local"
+                else ZEEMAN_RUN_SPECIFICATION["worker_policy"]["zeus"]["fixed"]
+            ),
+        }
     if not isinstance(value, Mapping) or set(value) != set(
         ZEEMAN_RUN_SPECIFICATION["request_fields"]
     ):
         raise ValueError("Individual Zeeman-run request fields are invalid.")
     particle_count = value["particle_count"]
     seed = value["seed"]
+    mot_2d_s0 = value["mot_2d_s0"]
+    mot_2d_detuning = value["mot_2d_detuning_gamma"]
+    mot_2d_radius = value["mot_2d_magnet_radius_m"]
+    npools = value["npools"]
     retain = value["retain_particle_states"]
     mode = value["execution_mode"]
     if not isinstance(mode, str) or mode not in INDIVIDUAL_RUN_SPECIFICATION[
@@ -135,7 +163,44 @@ def validate_zeeman_run_request(value: Mapping[str, Any]) -> ZeemanRunRequest:
         raise ValueError("Seed is outside the supported range.")
     if not isinstance(retain, bool):
         raise ValueError("Particle-state retention choice is invalid.")
-    return ZeemanRunRequest(particle_count, seed, retain, mode)
+    controls = ZEEMAN_RUN_SPECIFICATION["mot_2d_controls"]
+    for name, candidate in (
+        ("s0", mot_2d_s0),
+        ("detuning_gamma", mot_2d_detuning),
+        ("magnet_radius_m", mot_2d_radius),
+    ):
+        policy = controls[name]
+        if (
+            isinstance(candidate, bool)
+            or not isinstance(candidate, (int, float))
+            or not policy["minimum"] <= float(candidate) <= policy["maximum"]
+        ):
+            raise ValueError(f"2D-MOT boundary {name} is outside the supported range.")
+    worker_policy = ZEEMAN_RUN_SPECIFICATION["worker_policy"]
+    local_maximum = local_worker_maximum(particle_count)
+    valid_workers = (
+        isinstance(npools, int)
+        and not isinstance(npools, bool)
+        and (
+            worker_policy["local"]["minimum"]
+            <= npools
+            <= local_maximum
+            if mode == "local"
+            else npools == worker_policy["zeus"]["fixed"]
+        )
+    )
+    if not valid_workers:
+        raise ValueError("Worker-pool size is outside the supported range.")
+    return ZeemanRunRequest(
+        particle_count,
+        seed,
+        float(mot_2d_s0),
+        float(mot_2d_detuning),
+        float(mot_2d_radius),
+        npools,
+        retain,
+        mode,
+    )
 
 
 def _resolved_configuration(request: ZeemanRunRequest) -> dict[str, Any]:
@@ -201,15 +266,18 @@ def _resolved_configuration(request: ZeemanRunRequest) -> dict[str, Any]:
         },
         "execution": {
             "mode": request.execution_mode,
-            "workers": ZEEMAN_RUN_SPECIFICATION["workers_by_execution_mode"]
-            [request.execution_mode],
+            "workers": request.npools,
         },
         # The current engine includes this boundary configuration even though
         # the run stops at the Zeeman exit. Freeze it rather than hiding an
         # implementation dependency from provenance.
         "downstream_boundary": {
-            "mot_2d_laser": _plain(MOT_2D_LASER_CONFIG),
-            "mot_2d_magnet_radius_m": float(MOT_2D_MAGNET_RADIUS_M),
+            "mot_2d_laser": {
+                "s0": request.mot_2d_s0,
+                "detuning_gamma": request.mot_2d_detuning_gamma,
+                "swap_polarization": False,
+            },
+            "mot_2d_magnet_radius_m": request.mot_2d_magnet_radius_m,
         },
     }
 
@@ -306,14 +374,17 @@ def build_zeeman_run_plan(
         "solver": str(NUMERICAL_POLICY["zeeman"]["solver"]),
         "timestep_s": float(NUMERICAL_POLICY["zeeman"]["dt_s"]),
         "t_max_s": float(NUMERICAL_POLICY["zeeman"]["t_max_s"]),
-        "workers": ZEEMAN_RUN_SPECIFICATION["workers_by_execution_mode"]
-        [request.execution_mode],
+        "workers": request.npools,
     }
     review = ZeemanRunReview(
         family="zeeman",
         execution_mode=request.execution_mode,
         particle_count=request.particle_count,
         seed=request.seed,
+        mot_2d_s0=request.mot_2d_s0,
+        mot_2d_detuning_gamma=request.mot_2d_detuning_gamma,
+        mot_2d_magnet_radius_m=request.mot_2d_magnet_radius_m,
+        npools=request.npools,
         retain_particle_states=request.retain_particle_states,
         suitability="individual_only",
         locked_settings=_freeze(locked),

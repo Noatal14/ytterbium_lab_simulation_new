@@ -15,6 +15,7 @@ const request: Mot3DRequest = {
     blue_s0: 1.5, blue_waist_m: 0.0075, magnetic_gradient_G_cm: 2.5,
     blue_detuning_gamma: -3, core_shell_split_radius_m: 0.0025,
   },
+  npools: 8,
   retain_particle_states: false,
   execution_mode: "local",
 };

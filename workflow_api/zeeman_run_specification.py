@@ -11,6 +11,7 @@ from types import MappingProxyType
 from typing import Any
 
 from config import DEFAULT_NUM_PARTICLES, DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED
+from workflow_api.mot_2d_run_specification import MOT_2D_RUN_SPECIFICATION
 
 
 SPECIFICATION_PATH = (
@@ -20,6 +21,10 @@ MAX_SPECIFICATION_BYTES = 32 * 1024
 _REQUEST_FIELDS = [
     "particle_count",
     "seed",
+    "mot_2d_s0",
+    "mot_2d_detuning_gamma",
+    "mot_2d_magnet_radius_m",
+    "npools",
     "retain_particle_states",
     "execution_mode",
 ]
@@ -65,7 +70,8 @@ def _validate(value: Any) -> dict[str, Any]:
             "request_fields",
             "particle_count",
             "seed",
-            "workers_by_execution_mode",
+            "mot_2d_controls",
+            "worker_policy",
             "fixed_classification",
         },
         "individual Zeeman-run specification",
@@ -108,12 +114,27 @@ def _validate(value: Any) -> dict[str, Any]:
     if seed_default != DEFAULT_RANDOM_SEED:
         raise ValueError("Seed default diverges from the active configuration.")
 
-    workers = _exact(
-        row["workers_by_execution_mode"], _EXECUTION_MODES, "worker policy"
+    controls = _exact(
+        row["mot_2d_controls"],
+        {"s0", "detuning_gamma", "magnet_radius_m"},
+        "2D-MOT boundary controls",
     )
-    for mode in _EXECUTION_MODES:
-        _positive_integer(workers[mode], f"{mode} worker count")
-    if workers["local"] != DEFAULT_NUM_POOLS:
+    expected_controls = {
+        name: dict(policy)
+        for name, policy in MOT_2D_RUN_SPECIFICATION["controls"].items()
+    }
+    if controls != expected_controls:
+        raise ValueError("Invalid 2D-MOT boundary control policy.")
+
+    workers = _exact(row["worker_policy"], _EXECUTION_MODES, "worker policy")
+    local = _exact(workers["local"], {"minimum", "maximum", "default"}, "local worker policy")
+    zeus = _exact(workers["zeus"], {"fixed"}, "Zeus worker policy")
+    for key in ("minimum", "maximum", "default"):
+        _positive_integer(local[key], f"local worker {key}")
+    _positive_integer(zeus["fixed"], "Zeus worker count")
+    if not local["minimum"] <= local["default"] <= local["maximum"]:
+        raise ValueError("Invalid local worker policy relationship.")
+    if local["default"] != DEFAULT_NUM_POOLS:
         raise ValueError("Local worker count diverges from the active configuration.")
 
     classification = _exact(
@@ -198,6 +219,20 @@ _VALUE = _read_validated()
 ZEEMAN_RUN_SPECIFICATION = _freeze(_VALUE)
 ZEEMAN_RUN_SPEC_VERSION = _VALUE["spec_version"]
 ZEEMAN_RUN_SPEC_SHA256 = _digest(_VALUE)
+
+
+def local_worker_maximum(particle_count: int, *, available_cpus: int | None = None) -> int:
+    """Return the reviewed host-safe process limit for one local Zeeman run."""
+    if isinstance(particle_count, bool) or not isinstance(particle_count, int) or particle_count < 1:
+        raise ValueError("Particle count is invalid for the local worker policy.")
+    detected = os.cpu_count() if available_cpus is None else available_cpus
+    if isinstance(detected, bool) or not isinstance(detected, int) or detected < 1:
+        detected = 1
+    return min(
+        ZEEMAN_RUN_SPECIFICATION["worker_policy"]["local"]["maximum"],
+        detected,
+        particle_count,
+    )
 
 
 def render_typescript_specification() -> str:
