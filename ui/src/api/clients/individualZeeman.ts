@@ -1,4 +1,5 @@
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
+import { ZEEMAN_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../../generated/zeemanIndividualSpec.v1";
 
 export type ZeemanMode = "local" | "zeus";
 export type ZeemanRequest = { particle_count: number; seed: number; retain_particle_states: boolean; execution_mode: ZeemanMode };
@@ -26,7 +27,8 @@ function parsePreview(value: Record<string, unknown>): ZeemanPreview {
   if (!exactKeys(value, ["preview_token", "expires_in_seconds", "plan"]) || !printable(value.preview_token) || !integer(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !isRecord(value.plan)) invalid("review");
   const plan = value.plan;
   const keys = ["run_id", "family", "execution_mode", "particle_count", "seed", "retain_particle_states", "suitability", "output_disposition", "locked_settings", "resolved_configuration", "lifecycle_state", "laboratory_specification", "numerical_policy", "plan_sha256", "execution_started", "submitted_to_zeus"];
-  if (!exactKeys(plan, keys) || !runId(plan.run_id) || plan.family !== "zeeman" || !["local", "zeus"].includes(String(plan.execution_mode)) || !integer(plan.particle_count) || Number(plan.particle_count) < 1 || Number(plan.particle_count) > 50000 || !integer(plan.seed) || Number(plan.seed) < 0 || Number(plan.seed) > 4294967295 || typeof plan.retain_particle_states !== "boolean" || plan.suitability !== "individual_only" || !["retain_survivor_states", "discard_survivor_states_after_summary"].includes(String(plan.output_disposition)) || !isRecord(plan.locked_settings) || !isRecord(plan.resolved_configuration) || !isRecord(plan.laboratory_specification) || !isRecord(plan.numerical_policy) || plan.lifecycle_state !== "configured" || !hex64(plan.plan_sha256) || plan.execution_started !== false || plan.submitted_to_zeus !== false) invalid("review");
+  const mode = plan.execution_mode;
+  if (!exactKeys(plan, keys) || !runId(plan.run_id) || plan.family !== "zeeman" || (mode !== "local" && mode !== "zeus") || !integer(plan.particle_count) || Number(plan.particle_count) < spec.particle_count.minimum || Number(plan.particle_count) > (mode === "local" ? spec.particle_count.maximum_by_execution_mode.local : spec.particle_count.maximum_by_execution_mode.zeus) || !integer(plan.seed) || Number(plan.seed) < spec.seed.minimum || Number(plan.seed) > spec.seed.maximum || typeof plan.retain_particle_states !== "boolean" || plan.suitability !== "individual_only" || !["retain_survivor_states", "discard_survivor_states_after_summary"].includes(String(plan.output_disposition)) || !isRecord(plan.locked_settings) || !isRecord(plan.resolved_configuration) || !isRecord(plan.laboratory_specification) || !isRecord(plan.numerical_policy) || plan.lifecycle_state !== "configured" || !hex64(plan.plan_sha256) || plan.execution_started !== false || plan.submitted_to_zeus !== false) invalid("review");
   if ((plan.retain_particle_states === true) !== (plan.output_disposition === "retain_survivor_states")) invalid("review");
   return value as unknown as ZeemanPreview;
 }

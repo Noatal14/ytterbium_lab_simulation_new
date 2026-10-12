@@ -8,9 +8,12 @@
   ],
   "particle_count": {
     "minimum": 1,
-    "default": 50000,
+    "default_by_execution_mode": {
+      "local": 200,
+      "zeus": 50000
+    },
     "maximum_by_execution_mode": {
-      "local": 50000,
+      "local": 1000,
       "zeus": 50000
     }
   },

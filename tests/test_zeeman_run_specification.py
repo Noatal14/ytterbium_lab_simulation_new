@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -34,6 +35,11 @@ def test_specification_is_stable_and_deeply_immutable():
     assert ZEEMAN_RUN_SPECIFICATION["fixed_classification"]["suitability"] == (
         "individual_only"
     )
+    assert ZEEMAN_RUN_SPECIFICATION["particle_count"] == {
+        "minimum": 1,
+        "default_by_execution_mode": {"local": 200, "zeus": 50_000},
+        "maximum_by_execution_mode": {"local": 1_000, "zeus": 50_000},
+    }
     with pytest.raises(TypeError):
         ZEEMAN_RUN_SPECIFICATION["seed"]["default"] = 7
 
@@ -45,7 +51,9 @@ def test_specification_is_stable_and_deeply_immutable():
         lambda row: row.update(spec_version="other"),
         lambda row: row["request_fields"].append("shell_command"),
         lambda row: row["particle_count"].update(minimum=True),
-        lambda row: row["particle_count"].update(default=49_999),
+        lambda row: row["particle_count"]["default_by_execution_mode"].update(
+            local=1_001
+        ),
         lambda row: row["particle_count"]["maximum_by_execution_mode"].update(
             local=10
         ),
@@ -97,3 +105,7 @@ def test_loader_rejects_final_symlink(tmp_path, monkeypatch):
     with pytest.raises(RuntimeError, match="Zeeman-run specification"):
         specification._read_validated()
 
+
+def test_checked_in_typescript_contract_matches_authority_exactly():
+    generated = Path("ui/src/generated/zeemanIndividualSpec.v1.ts")
+    assert generated.read_text() == specification.render_typescript_specification()

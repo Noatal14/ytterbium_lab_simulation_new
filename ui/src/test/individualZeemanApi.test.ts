@@ -1,10 +1,10 @@
 import { createIndividualZeemanApi, type ZeemanRequest } from "../api/clients/individualZeeman";
 
-const request: ZeemanRequest = { particle_count: 50000, seed: 42, retain_particle_states: true, execution_mode: "local" };
+const request: ZeemanRequest = { particle_count: 200, seed: 42, retain_particle_states: true, execution_mode: "local" };
 const review = (overrides: Record<string, unknown> = {}) => ({
   preview_token: "review-token", expires_in_seconds: 300,
   plan: {
-    run_id: "zeeman-one", family: "zeeman", execution_mode: "local", particle_count: 50000, seed: 42,
+    run_id: "zeeman-one", family: "zeeman", execution_mode: "local", particle_count: 200, seed: 42,
     retain_particle_states: true, suitability: "individual_only", output_disposition: "retain_survivor_states",
     locked_settings: { policy: "canonical" }, resolved_configuration: { solver: "RK4StCustom" }, lifecycle_state: "configured",
     laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64),
@@ -24,10 +24,16 @@ describe("individual Zeeman API trust boundary", () => {
     ["missing field", { preview_token: "review-token", plan: review().plan }],
     ["malformed digest", review({ plan_sha256: "not-a-digest" })],
     ["wrong mode", review({ execution_mode: "zeus" })],
-    ["wrong run request", review({ particle_count: 49_999 })],
+    ["wrong run request", review({ particle_count: 201 })],
   ])("rejects a %s in a creation review", async (_label, data) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope(data)));
     await expect(createIndividualZeemanApi(async () => "csrf").preview(request)).rejects.toThrow();
+  });
+
+  it("accepts the larger reviewed limit only for Zeus", async () => {
+    const zeusRequest = { ...request, execution_mode: "zeus" as const, particle_count: 50_000 };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope(review({ execution_mode: "zeus", particle_count: 50_000 }))));
+    await expect(createIndividualZeemanApi(async () => "csrf").preview(zeusRequest)).resolves.toMatchObject({ plan: { particle_count: 50_000 } });
   });
 
   it("binds creation confirmation to the reviewed run and coalesces duplicate clicks", async () => {

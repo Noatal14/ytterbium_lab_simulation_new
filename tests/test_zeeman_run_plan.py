@@ -40,6 +40,7 @@ def test_request_accepts_only_the_four_approved_editable_fields():
     "change",
     [
         {"particle_count": 0},
+        {"particle_count": 1_001},
         {"particle_count": 50_001},
         {"particle_count": True},
         {"seed": -1},
@@ -60,6 +61,13 @@ def test_request_rejects_missing_or_extra_fields():
         validate_zeeman_run_request({key: value for key, value in REQUEST.items() if key != "seed"})
     with pytest.raises(ValueError):
         validate_zeeman_run_request({**REQUEST, "command": "qsub attacker.pbs"})
+
+
+def test_zeus_allows_its_larger_reviewed_particle_limit():
+    value = validate_zeeman_run_request(
+        {**REQUEST, "particle_count": 50_000, "execution_mode": "zeus"}
+    )
+    assert value.particle_count == 50_000
 
 
 @pytest.mark.parametrize("mode,workers", [("local", 8), ("zeus", 200)])

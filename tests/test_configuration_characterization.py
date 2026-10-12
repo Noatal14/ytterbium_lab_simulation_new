@@ -51,6 +51,7 @@ EXPECTED_CONFIG_CONSUMERS = {
     "workflow_api/zeeman_run_specification.py", "workflow_api/mot_2d_run_plan.py",
     "workflow_api/mot_2d_run_specification.py",
     "workflow_api/mot_3d.py", "workflow_api/mot_3d_plan.py",
+    "workflow_api/mot_3d_run_specification.py",
 }
 EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
     "studies/mot_2d_s0_campaign.py", "workflow_api/mot_2d_plan.py",

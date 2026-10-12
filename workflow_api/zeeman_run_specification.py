@@ -77,8 +77,13 @@ def _validate(value: Any) -> dict[str, Any]:
 
     particles = _exact(
         row["particle_count"],
-        {"minimum", "default", "maximum_by_execution_mode"},
+        {"minimum", "default_by_execution_mode", "maximum_by_execution_mode"},
         "particle-count policy",
+    )
+    defaults = _exact(
+        particles["default_by_execution_mode"],
+        _EXECUTION_MODES,
+        "particle-count execution defaults",
     )
     maximums = _exact(
         particles["maximum_by_execution_mode"],
@@ -86,13 +91,13 @@ def _validate(value: Any) -> dict[str, Any]:
         "particle-count execution limits",
     )
     minimum = _positive_integer(particles["minimum"], "minimum particle count")
-    default = _positive_integer(particles["default"], "default particle count")
     for mode in _EXECUTION_MODES:
+        default = _positive_integer(defaults[mode], f"{mode} default particle count")
         maximum = _positive_integer(maximums[mode], f"{mode} particle-count limit")
         if not minimum <= default <= maximum:
             raise ValueError("Invalid particle-count policy relationship.")
-    if default != DEFAULT_NUM_PARTICLES:
-        raise ValueError("Particle-count default diverges from the active configuration.")
+    if defaults["zeus"] != DEFAULT_NUM_PARTICLES:
+        raise ValueError("Zeus particle-count default diverges from the active configuration.")
 
     seed = _exact(row["seed"], {"minimum", "maximum", "default"}, "seed policy")
     seed_minimum = _nonnegative_integer(seed["minimum"], "minimum seed")
@@ -194,3 +199,12 @@ ZEEMAN_RUN_SPECIFICATION = _freeze(_VALUE)
 ZEEMAN_RUN_SPEC_VERSION = _VALUE["spec_version"]
 ZEEMAN_RUN_SPEC_SHA256 = _digest(_VALUE)
 
+
+def render_typescript_specification() -> str:
+    """Render the checked-in browser contract from the validated authority."""
+    body = json.dumps(_VALUE, indent=2, sort_keys=True)
+    return (
+        "// Generated from workflow_api/specifications/zeeman_individual_v1.json; "
+        "do not edit.\n"
+        f"export const ZEEMAN_INDIVIDUAL_SPECIFICATION_V1 = {body} as const;\n"
+    )

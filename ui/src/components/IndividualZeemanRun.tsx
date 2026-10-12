@@ -1,6 +1,7 @@
 import { ArrowLeft, CheckCircle2, CircleHelp, LoaderCircle, Play, Server, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndividualRun, IndividualZeemanApi, ZeemanMode, ZeemanPreview } from "../api/clients/individualZeeman";
+import { ZEEMAN_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/zeemanIndividualSpec.v1";
 
 type Props = { api: IndividualZeemanApi; onBack: () => void };
 type Step = "configure" | "validate" | "review" | "run" | "monitor" | "results";
@@ -9,7 +10,7 @@ const steps: { id: Step; label: string }[] = [
   { id: "run", label: "Run" }, { id: "monitor", label: "Monitor" }, { id: "results", label: "Results" },
 ];
 const help: Record<string, string> = {
-  particle_count: "The number of atoms generated at the start of this one simulation. The reviewed policy limits both local and Zeus runs to 50,000.",
+  particle_count: "The number of atoms generated at the start of this simulation. This computer supports up to 1,000; Zeus supports up to 50,000.",
   seed: "A whole number that makes the random sampling reproducible. Reusing the same reviewed settings and seed reproduces the same random inputs.",
   retain: "When selected, the surviving particle states are kept with the result. Otherwise only the summary metrics are retained.",
   mode: "Local uses this computer with a bounded worker pool. Zeus submits one scalar job only after a second explicit review.",
@@ -18,6 +19,11 @@ const help: Record<string, string> = {
 
 function Help({ name }: { name: keyof typeof help }) { return <span className="help"><button type="button" aria-label={`Help for ${name}`}><CircleHelp aria-hidden="true" /></button><span role="tooltip">{help[name]}</span></span>; }
 function userMessage(error: unknown) { return error instanceof Error && error.message ? error.message : "The request could not be completed safely."; }
+export function particleCountAfterModeChange(current: number, from: ZeemanMode, to: ZeemanMode) {
+  const defaults = spec.particle_count.default_by_execution_mode;
+  const maximums = spec.particle_count.maximum_by_execution_mode;
+  return current === defaults[from] || current > maximums[to] ? defaults[to] : current;
+}
 export function monitorCopy(state: string | undefined) {
   if (!state) return { title: "Status has not been checked", message: "Select Check status to read the verified run record.", attention: true };
   if (state === "configured") return { title: "Nothing is running yet", message: "Action is required: validate and review this configured run before starting it.", attention: true };
@@ -35,7 +41,7 @@ export function monitorCopy(state: string | undefined) {
 
 export function IndividualZeemanRun({ api, onBack }: Props) {
   const [step, setStep] = useState<Step>("configure");
-  const [particles, setParticles] = useState(50000); const [seed, setSeed] = useState(42);
+  const [particles, setParticles] = useState<number>(spec.particle_count.default_by_execution_mode.local); const [seed, setSeed] = useState<number>(spec.seed.default);
   const [retain, setRetain] = useState(true); const [mode, setMode] = useState<ZeemanMode>("local");
   const [preview, setPreview] = useState<ZeemanPreview | null>(null); const [runId, setRunId] = useState<string | null>(null);
   const [username, setUsername] = useState(""); const [run, setRun] = useState<IndividualRun | null>(null);
@@ -52,7 +58,9 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
   async function reviewZeus() { if (!runId) return; const id = ++request.current; setBusy(true); setError(null); try { const reviewed = await api.previewZeus(runId, username); if (typeof reviewed.preview_token !== "string") throw new Error("The Zeus submission review was invalid."); if (id === request.current) setZeusPreviewToken(reviewed.preview_token); } catch (caught) { if (id === request.current) setError(userMessage(caught)); } finally { if (id === request.current) setBusy(false); } }
   async function submitZeus() { if (!zeusPreviewToken) return; const id = ++request.current; setBusy(true); setError(null); try { await api.confirmZeus(zeusPreviewToken); if (id === request.current) setStep("monitor"); } catch (caught) { if (id === request.current) setError(userMessage(caught)); } finally { if (id === request.current) setBusy(false); } }
   async function refresh() { if (!runId) return; const id = ++request.current; setBusy(true); setError(null); try { if (mode === "zeus") await api.refreshZeus(runId, username); const summary = (await api.runs()).find((item) => item.display_name === runId) ?? null; if (!summary) throw new Error("The run has not appeared in the verified run list yet."); const found = summary.lifecycle === "results_ready" ? await api.run(summary.id) : summary; if (id === request.current) { setRun(found); if (found.lifecycle === "results_ready") setStep("results"); } } catch (caught) { if (id === request.current) setError(userMessage(caught)); } finally { if (id === request.current) setBusy(false); } }
-  const valid = Number.isInteger(particles) && particles >= 1 && particles <= 50000 && Number.isInteger(seed) && seed >= 0 && seed <= 4294967295;
+  const particleMaximum = spec.particle_count.maximum_by_execution_mode[mode];
+  const valid = Number.isInteger(particles) && particles >= spec.particle_count.minimum && particles <= particleMaximum && Number.isInteger(seed) && seed >= spec.seed.minimum && seed <= spec.seed.maximum;
+  function changeMode(next: ZeemanMode) { setParticles((current) => particleCountAfterModeChange(current, mode, next)); setMode(next); }
 
   return <main id="main" className="individual-run-page">
     <button className="text-button back-button" onClick={onBack}><ArrowLeft aria-hidden="true" /> Back to home</button>
@@ -62,9 +70,9 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
     <div aria-live="polite" className="sr-only">{busy ? "Working" : `Current step: ${step}`}</div>
 
     {step === "configure" && <form className="creation-form" onSubmit={(event) => { event.preventDefault(); if (valid && !busy) void validate(); }}>
-      <div className="run-form-grid"><div className="form-field"><label htmlFor="particle-count">Particle count <Help name="particle_count" /></label><input id="particle-count" type="number" min="1" max="50000" step="1" value={particles} onChange={(event) => setParticles(event.currentTarget.valueAsNumber)} /></div>
-      <div className="form-field"><label htmlFor="random-seed">Random seed <Help name="seed" /></label><input id="random-seed" type="number" min="0" max="4294967295" step="1" value={seed} onChange={(event) => setSeed(event.currentTarget.valueAsNumber)} /></div></div>
-      <fieldset><legend>Where should it run? <Help name="mode" /></legend><div className="choice-row"><label><input type="radio" name="mode" checked={mode === "local"} onChange={() => setMode("local")} /> This computer</label><label><input type="radio" name="mode" checked={mode === "zeus"} onChange={() => setMode("zeus")} /> Zeus</label></div></fieldset>
+      <div className="run-form-grid"><div className="form-field"><label htmlFor="particle-count">Particle count <Help name="particle_count" /></label><input id="particle-count" type="number" min={spec.particle_count.minimum} max={particleMaximum} step="1" value={particles} onChange={(event) => setParticles(event.currentTarget.valueAsNumber)} /></div>
+      <div className="form-field"><label htmlFor="random-seed">Random seed <Help name="seed" /></label><input id="random-seed" type="number" min={spec.seed.minimum} max={spec.seed.maximum} step="1" value={seed} onChange={(event) => setSeed(event.currentTarget.valueAsNumber)} /></div></div>
+      <fieldset><legend>Where should it run? <Help name="mode" /></legend><div className="choice-row"><label><input type="radio" name="mode" checked={mode === "local"} onChange={() => changeMode("local")} /> This computer</label><label><input type="radio" name="mode" checked={mode === "zeus"} onChange={() => changeMode("zeus")} /> Zeus</label></div></fieldset>
       <label className="check-control"><input type="checkbox" checked={retain} onChange={(event) => setRetain(event.currentTarget.checked)} /><span><strong>Keep survivor particle states</strong><small>Required only if you want to inspect or reuse the particle states later.</small></span><Help name="retain" /></label>
       <div className="form-actions"><button className="primary-button" disabled={!valid || busy}>{busy ? "Validating…" : "Validate and review"}</button></div>
     </form>}

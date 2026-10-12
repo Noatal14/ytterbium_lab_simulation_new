@@ -22,7 +22,7 @@ to this baseline deliberate and reviewable.
 | Remaining shared operating values | `config.py`: `FORCE_SCALE_N`; search bounds in `studies/mot_2d/optimization.py` | Simulation engines, studies, and executable campaign design | Scientific review; keep outside the generic 2D operating contract until separately migrated |
 | Executable 2D campaign science | `workflow_api/mot_2d_spec.py`: `ROLE_SEEDS`, `RELEVANT_FILES`, `FIXED_DESIGN`; orchestration constants in `studies/mot_2d_s0_campaign.py` | Campaign planner, runner, repository snapshot | Campaign design/provenance review |
 | Versioned 2D UI/job contract | `workflow_api/specifications/mot_2d_v1.json`, validated by `workflow_api/mot_2d_specification.py` | UI mutation and Zeus transfer presentation | Contract/schema review and generated-artifact verification |
-| 3D MOT | Geometry/bounds/capture remain in `config.py`; `lab_setup/specifications/mot_3d_timestep_policy_v1.json` owns the pragmatic search/final-validation timestep decision and its inconclusive provenance | `lab_setup/laser_setup_3d.py`, `simulations/mot_3d.py`, `studies/mot_3d_campaign.py`, `studies/mot_3d/**` | Scientific review, versioned policy change and new campaign identity |
+| 3D MOT | Geometry/bounds/capture remain in `config.py`; `lab_setup/specifications/mot_3d_timestep_policy_v1.json` owns the pragmatic search/final-validation timestep decision and its inconclusive provenance; `workflow_api/specifications/mot_3d_individual_v1.json` owns the individual-run controls, limits, locked `10 us` timestep, explicit canonical-campaign `0.1 s` horizon, and runnable family defaults | `lab_setup/laser_setup_3d.py`, `simulations/mot_3d.py`, `studies/mot_3d_campaign.py`, `studies/mot_3d/**`, individual-run planning/UI | Scientific review and a new versioned policy/contract; campaign identity remains separately frozen in each manifest |
 | Full-pipeline numerics | `config.py`: `FULL_SIM_CONFIG`, `DEFAULT_NUM_*`, `DEFAULT_RANDOM_SEED` | `simulations/pipeline.py`, simulation entry points and studies | Numerical validation |
 | Campaign serialization and provenance | `workflow_api/mot_2d_spec.py`, `studies/mot_2d_s0_campaign.py`, `studies/mot_3d_campaign.py`, `utils/file_helpers.py` | Generated manifests, PBS files, merge/final-report stages | Schema/design changes require regression tests; manifests freeze exact runs |
 
@@ -149,8 +149,11 @@ this ledger and are covered by campaign physical-model closures.
   `studies/zeeman/trajectories.py`,
   `studies/zeeman/validate_configuration.py`.
 - Shared runtime helper: `utils/simulation_helpers.py`.
-- Individual-run admission: `workflow_api/zeeman_run_plan.py`,
-  `workflow_api/zeeman_run_specification.py`.
+- Individual-run admission: `workflow_api/zeeman_run_plan.py` and
+  `workflow_api/zeeman_run_specification.py`. The 3D counterpart,
+  `workflow_api/mot_3d_run_specification.py`, strictly validates its versioned
+  controls against the active profiles, bounds, capture settings, and approved
+  non-converged timestep policy.
 
 The same AST characterization freezes these additional direct-consumer
 ledgers:

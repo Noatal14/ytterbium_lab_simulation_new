@@ -1,0 +1,65 @@
+{
+  "spec_version": "mot-3d-individual-v1",
+  "request_fields": ["source_id", "geometry_family", "particle_count", "selection_seed", "simulation_seed", "parameters", "retain_particle_states", "execution_mode"],
+  "geometry_families": ["angled_donut", "single_pass"],
+  "particle_count": {"minimum": 1, "default": 200, "maximum_by_execution_mode": {"local": 1000, "zeus": 50000}},
+  "selection_seed": {"minimum": 0, "maximum": 4294967295, "default": 42},
+  "simulation_seed": {"minimum": 0, "maximum": 4294967295, "default": 42},
+  "common_controls": {
+    "green_s0": {"minimum": 0.5, "maximum": 150.0},
+    "green_detuning_gamma": {"minimum": -35.0, "maximum": -5.0},
+    "green_waist_m": {"minimum": 0.002, "maximum": 0.020},
+    "blue_s0": {"minimum": 0.05, "maximum": 1.5},
+    "blue_waist_m": {"minimum": 0.002, "maximum": 0.020},
+    "magnetic_gradient_G_cm": {"minimum": 0.5, "maximum": 100.0}
+  },
+  "family_controls": {
+    "angled_donut": {
+      "blue_detuning_gamma": {"minimum": -6.0, "maximum": -0.5},
+      "core_shell_split_radius_m": {"minimum": 0.0005, "maximum": 0.0049}
+    },
+    "single_pass": {
+      "blue_detuning_anchor_gamma": {"minimum": -3.75, "maximum": -1.75},
+      "blue_crossing_angle_deg": {"minimum": 45.0, "maximum": 70.0},
+      "blue_crossing_z_offset_m": {"minimum": -0.050, "maximum": -0.040}
+    }
+  },
+  "defaults": {
+    "angled_donut": {
+      "green_s0": 30.0,
+      "green_detuning_gamma": -25.0,
+      "green_waist_m": 0.0075,
+      "blue_s0": 1.5,
+      "blue_waist_m": 0.0075,
+      "magnetic_gradient_G_cm": 2.5,
+      "blue_detuning_gamma": -3.0,
+      "core_shell_split_radius_m": 0.0025
+    },
+    "single_pass": {
+      "green_s0": 30.0,
+      "green_detuning_gamma": -25.0,
+      "green_waist_m": 0.010,
+      "blue_s0": 0.75,
+      "blue_waist_m": 0.010,
+      "magnetic_gradient_G_cm": 2.5,
+      "blue_detuning_anchor_gamma": -2.034161875,
+      "blue_crossing_angle_deg": 45.0,
+      "blue_crossing_z_offset_m": -0.050
+    }
+  },
+  "workers_by_execution_mode": {"local": 8, "zeus": 200},
+  "sampling": {"algorithm": "pcg64-raw-partial-fisher-yates-unbiased", "version": "v1", "canonical_order": "constituent-record-order-then-row-index"},
+  "fixed_classification": {
+    "suitability": "individual_only",
+    "solver": "RK4StHybridCustom",
+    "timestep_s": 0.00001,
+    "t_max_s": 0.1,
+    "convergence_claim": "not_established",
+    "gravity_enabled": true,
+    "capture": {"capture_radius_m": 0.005, "minimum_residence_time_s": 0.005, "maximum_final_speed_m_s": 1.0},
+    "green_full_angle_deg": 62.0,
+    "donut_shared_aperture_radius_m": 0.005,
+    "single_pass_green_aperture_radius_m": 0.005,
+    "single_pass_blue_aperture_radius_m": 0.0075
+  }
+}

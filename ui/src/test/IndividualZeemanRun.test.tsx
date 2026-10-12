@@ -1,14 +1,34 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { IndividualZeemanRun, monitorCopy } from "../components/IndividualZeemanRun";
+import { IndividualZeemanRun, monitorCopy, particleCountAfterModeChange } from "../components/IndividualZeemanRun";
 import type { IndividualZeemanApi } from "../api/clients/individualZeeman";
 
-const preview = { preview_token: "token", expires_in_seconds: 300, plan: { run_id: "zeeman-test", family: "zeeman" as const, execution_mode: "local" as const, particle_count: 50000, seed: 42, retain_particle_states: true, suitability: "individual_only" as const, output_disposition: "retain_survivor_states" as const, locked_settings: { policy: "canonical" }, resolved_configuration: { solver: { name: "RK4StCustom" }, laser: { detuning: -1 } }, lifecycle_state: "configured" as const, laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64), execution_started: false as const, submitted_to_zeus: false as const } };
+const preview = { preview_token: "token", expires_in_seconds: 300, plan: { run_id: "zeeman-test", family: "zeeman" as const, execution_mode: "local" as const, particle_count: 200, seed: 42, retain_particle_states: true, suitability: "individual_only" as const, output_disposition: "retain_survivor_states" as const, locked_settings: { policy: "canonical" }, resolved_configuration: { solver: { name: "RK4StCustom" }, laser: { detuning: -1 } }, lifecycle_state: "configured" as const, laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64), execution_started: false as const, submitted_to_zeus: false as const } };
 function fake(): IndividualZeemanApi { return { reset: vi.fn(), preview: vi.fn().mockResolvedValue(preview), confirm: vi.fn().mockResolvedValue({ status: "created", run_id: "zeeman-test", family: "zeeman", path: "data/runs/zeeman/zeeman-test", lifecycle_state: "configured", execution_started: false, submitted_to_zeus: false }), startLocal: vi.fn().mockResolvedValue({ status: "queued" }), previewZeus: vi.fn().mockResolvedValue({ preview_token: "ztoken" }), confirmZeus: vi.fn().mockResolvedValue({ status: "submitted" }), refreshZeus: vi.fn().mockResolvedValue({ state: "running" }), runs: vi.fn().mockResolvedValue([]), run: vi.fn() }; }
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 
 describe("individual Zeeman wizard", () => {
+  it("uses mode-specific particle defaults and limits", async () => {
+    const user = userEvent.setup();
+    render(<IndividualZeemanRun api={fake()} onBack={vi.fn()} />);
+    const particles = screen.getByRole("spinbutton", { name: /particle count/i });
+    expect(particles).toHaveValue(200);
+    expect(particles).toHaveAttribute("max", "1000");
+    await user.click(screen.getByRole("radio", { name: "Zeus" }));
+    expect(particles).toHaveValue(50_000);
+    expect(particles).toHaveAttribute("max", "50000");
+    await user.click(screen.getByRole("radio", { name: "This computer" }));
+    expect(particles).toHaveValue(200);
+    expect(particles).toHaveAttribute("max", "1000");
+  });
+
+  it("preserves a custom particle count when it is valid for the next mode", () => {
+    expect(particleCountAfterModeChange(500, "local", "zeus")).toBe(500);
+    expect(particleCountAfterModeChange(800, "zeus", "local")).toBe(800);
+    expect(particleCountAfterModeChange(5_000, "zeus", "local")).toBe(200);
+  });
+
   it.each([
     [undefined, "Status has not been checked", true],
     ["configured", "Nothing is running yet", true],
