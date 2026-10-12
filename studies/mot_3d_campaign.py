@@ -238,9 +238,18 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
             state_path = repository_root / state_path
         if not metadata_path.is_file() or not state_path.is_file():
             raise ValueError("Upstream 2D frozen input is unavailable.")
-        if _sha256(metadata_path) != record.get("metadata_sha256") or _sha256(
-            state_path
-        ) != record.get("sha256"):
+        # Campaigns created before metadata hashing was introduced do not carry
+        # ``metadata_sha256``.  Their state array was still frozen, and the
+        # metadata is subsequently checked against that frozen array digest,
+        # its source commit, and the canonical Zeeman identity.  Require the
+        # metadata digest whenever it was recorded, without making valid legacy
+        # campaigns impossible to hand off to the 3D workflow.
+        expected_metadata_sha256 = record.get("metadata_sha256")
+        metadata_hash_mismatch = (
+            expected_metadata_sha256 is not None
+            and _sha256(metadata_path) != expected_metadata_sha256
+        )
+        if metadata_hash_mismatch or _sha256(state_path) != record.get("sha256"):
             raise ValueError("Upstream 2D frozen input hash mismatch.")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         laboratory = attest_canonical_zeeman_metadata(metadata, allow_legacy=True)
@@ -250,8 +259,14 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
             raise ValueError("Upstream 2D frozen input laboratory provenance mismatch.")
         if metadata.get("output_sha256") != record.get("sha256"):
             raise ValueError("Upstream 2D frozen input output hash mismatch.")
-        if metadata.get("software", {}).get("git_commit") != record.get(
-            "source_git_commit"
+        metadata_source_commit = metadata.get("software", {}).get("git_commit")
+        frozen_source_commit = record.get("source_git_commit")
+        if (
+            not isinstance(metadata_source_commit, str)
+            or not metadata_source_commit.strip()
+            or not isinstance(frozen_source_commit, str)
+            or not frozen_source_commit.strip()
+            or metadata_source_commit != frozen_source_commit
         ):
             raise ValueError("Upstream 2D frozen input code provenance mismatch.")
         legacy_attested = legacy_attested or laboratory["legacy_attested_profile"]

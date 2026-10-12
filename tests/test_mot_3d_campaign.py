@@ -663,6 +663,116 @@ def test_upstream_handoff_rejects_laboratory_hash_tampering(
         mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir)
 
 
+def test_upstream_handoff_accepts_legacy_records_without_metadata_hash(
+    input_dir, upstream_campaign, tmp_path, monkeypatch
+):
+    state_path = tmp_path / "legacy_zeeman.npy"
+    np.save(state_path, np.zeros((4, 6), dtype=float))
+    state_sha256 = hashlib.sha256(state_path.read_bytes()).hexdigest()
+    metadata_path = state_path.with_suffix(".json")
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "output_sha256": state_sha256,
+                "software": {"git_commit": "legacy-source"},
+            }
+        )
+    )
+    manifest_path = upstream_campaign / "campaign.json"
+    payload = json.loads(manifest_path.read_text())
+    payload["input_ensembles"] = {
+        "sealed_validation": [
+            {
+                "path": str(state_path),
+                "metadata_path": str(metadata_path),
+                "sha256": state_sha256,
+                "source_git_commit": "legacy-source",
+            }
+        ]
+    }
+    manifest_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(
+        mot_3d_campaign,
+        "attest_canonical_zeeman_metadata",
+        lambda metadata, allow_legacy: {"legacy_attested_profile": True},
+    )
+
+    result = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign, input_dir
+    )
+
+    assert result["laboratory_provenance"]["legacy_attested_profile"] is True
+
+
+def test_upstream_handoff_rejects_present_but_wrong_metadata_hash(
+    input_dir, upstream_campaign, tmp_path, monkeypatch
+):
+    state_path = tmp_path / "legacy_zeeman.npy"
+    np.save(state_path, np.zeros((4, 6), dtype=float))
+    state_sha256 = hashlib.sha256(state_path.read_bytes()).hexdigest()
+    metadata_path = state_path.with_suffix(".json")
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "output_sha256": state_sha256,
+                "software": {"git_commit": "legacy-source"},
+            }
+        )
+    )
+    manifest_path = upstream_campaign / "campaign.json"
+    payload = json.loads(manifest_path.read_text())
+    payload["input_ensembles"] = {
+        "sealed_validation": [
+            {
+                "path": str(state_path),
+                "metadata_path": str(metadata_path),
+                "sha256": state_sha256,
+                "metadata_sha256": "0" * 64,
+                "source_git_commit": "legacy-source",
+            }
+        ]
+    }
+    manifest_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(
+        mot_3d_campaign,
+        "attest_canonical_zeeman_metadata",
+        lambda metadata, allow_legacy: {"legacy_attested_profile": True},
+    )
+
+    with pytest.raises(ValueError, match="frozen input hash mismatch"):
+        mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir)
+
+
+def test_upstream_handoff_rejects_missing_legacy_source_commit(
+    input_dir, upstream_campaign, tmp_path, monkeypatch
+):
+    state_path = tmp_path / "legacy_zeeman.npy"
+    np.save(state_path, np.zeros((4, 6), dtype=float))
+    state_sha256 = hashlib.sha256(state_path.read_bytes()).hexdigest()
+    metadata_path = state_path.with_suffix(".json")
+    metadata_path.write_text(json.dumps({"output_sha256": state_sha256}))
+    manifest_path = upstream_campaign / "campaign.json"
+    payload = json.loads(manifest_path.read_text())
+    payload["input_ensembles"] = {
+        "sealed_validation": [
+            {
+                "path": str(state_path),
+                "metadata_path": str(metadata_path),
+                "sha256": state_sha256,
+            }
+        ]
+    }
+    manifest_path.write_text(json.dumps(payload))
+    monkeypatch.setattr(
+        mot_3d_campaign,
+        "attest_canonical_zeeman_metadata",
+        lambda metadata, allow_legacy: {"legacy_attested_profile": True},
+    )
+
+    with pytest.raises(ValueError, match="code provenance mismatch"):
+        mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir)
+
+
 def test_runtime_rejects_pair_changed_from_upstream(input_dir, tmp_path, monkeypatch):
     roles = mot_3d_campaign.freeze_inputs(input_dir)
     registry = [
