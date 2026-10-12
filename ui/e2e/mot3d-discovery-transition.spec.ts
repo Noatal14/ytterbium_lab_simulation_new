@@ -46,3 +46,26 @@ test("verified Discovery synchronization is explicit, accessible, and responsive
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
+
+test("preliminary-check submission is explicit and scheduler completion stays unvalidated", async ({ page }) => {
+  const preliminaryCampaign = { ...campaign, stage: "preliminary_check", progress: [{ stage: "discovery", completed: 950, expected: 950, status: "complete" }, { stage: "preliminary_check", completed: 0, expected: 72, status: "not-started" }] };
+  const empty = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: null, merge_job_id: null }, { id: "single_pass", array_job_id: null, merge_job_id: null }] };
+  const submitted = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: "300[].zeus-master", merge_job_id: "301.zeus-master" }, { id: "single_pass", array_job_id: "400[].zeus-master", merge_job_id: "401.zeus-master" }] };
+  await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [preliminaryCampaign], invalid_count: 0, total: 1 } } }));
+  await page.route(`**/api/v1/campaigns/${id}`, (route) => route.fulfill({ json: { api_version: 1, data: preliminaryCampaign } }));
+  await page.route("**/api/v1/session", (route) => route.fulfill({ json: { api_version: 1, data: { csrf_token: "csrf" } } }));
+  await page.route("**/api/v1/zeus/snapshot", (route) => route.fulfill({
+    json: { api_version: 1, data: {
+      connection_status: "connected", profile,
+      remote: { project_directory: profile.project_directory, git_commit: "a".repeat(40), branch: "main", dirty: false },
+      scheduler: { status: "available", queried_at: "2026-10-12T10:00:00Z", jobs: [] },
+    } },
+  }));
+  await page.route("**/api/v1/zeus/submissions/mot-3d-preliminary-check/status", (route) => route.fulfill({ json: { api_version: 1, data: { source: "zeus", queried_at: "2026-10-12T10:00:00Z", campaign: { id, name: campaign.name, stage: "preliminary_check" }, submission: { status: "not_submitted", chain: empty }, scheduler: { expected_array_tasks: 6, expected_merge_jobs: 2, completed_array_tasks: 0, completed_merge_jobs: 0 }, validation: { status: "not_started", expected_candidates_per_family: 12, expected_recoil_seeds_per_candidate: 3 }, next_action: "review_submission", local_sync: { status: "not_synchronized" } } } }));
+  await page.route("**/api/v1/zeus/submissions/mot-3d-preliminary-check/preview", (route) => route.fulfill({ json: { api_version: 1, data: { preview_token: "preliminary-token", expires_in_seconds: 300, campaign: { id, name: campaign.name, git_commit: "a".repeat(40) }, stage: { id: "preliminary_check", label: "Preliminary check" }, chain: { families: [{ id: "angled_donut", array_tasks: 3, merge_jobs: 1 }, { id: "single_pass", array_tasks: 3, merge_jobs: 1 }], qsub_calls: 4, dependency: "afterok within each family" }, resources: { array: { ncpus_per_task: 200, memory_gb_per_task: 64, walltime: "24:00:00" }, merge: { ncpus: 1, memory_gb: 4, walltime: "01:00:00" } }, science: { classification: "candidate_selection_not_final_validation", candidates_per_family: 12, input_ensembles: 4, particles_per_ensemble: 150, total_particles: 600, recoil_seeds: [41001, 41002, 41003], dt_s: 1e-5, t_max_s: 0.1, solver: "RK4StHybridCustom", selection_seed: 51001, bootstrap_replicates: 10000, bootstrap_seed: 52001 }, remote: { host: profile.host, project_directory: profile.project_directory, commit: "a".repeat(40), branch: "main", dirty: false }, effects: { submit_preliminary_check: true, start_simulation: true, submit_later_stages: false, modify_campaign_files: false, record_submission_receipt: true } } } }));
+  await page.route("**/api/v1/zeus/submissions/mot-3d-preliminary-check/confirm", (route) => route.fulfill({ status: 201, json: { api_version: 1, data: { status: "submitted", campaign_id: id, stage: "preliminary_check", chain: submitted, submitted_at: "2026-10-12T10:01:00Z", local_sync: { status: "not_synchronized" } } } }));
+  await page.goto("/"); await page.getByRole("link", { name: "Zeus jobs" }).click(); await page.getByLabel("Technion username").fill("tal.noa"); await page.getByRole("button", { name: "Connect and check status" }).click(); await page.getByRole("button", { name: "Inspect campaign" }).click();
+  await page.getByRole("button", { name: "Check Zeus status" }).click(); await page.getByRole("button", { name: "Review preliminary-check jobs" }).click();
+  await expect(page.getByRole("heading", { name: "Submit the preliminary check" })).toBeFocused(); await expect(page.getByText("4 jobs total")).toBeVisible(); await page.getByRole("button", { name: "Submit preliminary check to Zeus" }).click(); await expect(page.getByText("Preliminary check is running on Zeus")).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false); expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});

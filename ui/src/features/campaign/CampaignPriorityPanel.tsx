@@ -20,6 +20,8 @@ import type { Mot3DDiscoveryUiState } from "./controllers/useMot3DDiscoveryContr
 import type { Mot3DDiscoveryLifecycle } from "../../api/clients/mot3dDiscovery";
 import type { Mot3DDiscoveryTransitionLifecycle } from "../../api/clients/mot3dDiscoveryTransition";
 import type { Mot3DDiscoveryTransitionUiState } from "./controllers/useMot3DDiscoveryTransitionController";
+import type { PreliminaryCheckLifecycle } from "../../api/clients/mot3dPreliminaryCheck";
+import type { PreliminaryCheckUiState } from "./controllers/useMot3DPreliminaryCheckController";
 
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
@@ -43,6 +45,8 @@ export function CampaignPriorityPanel({
   mot3DDiscoveryLifecycle = null,
   mot3DTransitionState = "idle",
   mot3DTransitionLifecycle = null,
+  preliminaryCheckState = "idle",
+  preliminaryCheckLifecycle = null,
   copyStatus,
   onCopyCommand,
 }: {
@@ -64,6 +68,8 @@ export function CampaignPriorityPanel({
   mot3DDiscoveryLifecycle?: Mot3DDiscoveryLifecycle | null;
   mot3DTransitionState?: Mot3DDiscoveryTransitionUiState;
   mot3DTransitionLifecycle?: Mot3DDiscoveryTransitionLifecycle | null;
+  preliminaryCheckState?: PreliminaryCheckUiState;
+  preliminaryCheckLifecycle?: PreliminaryCheckLifecycle | null;
   copyStatus: string;
   onCopyCommand: () => void;
 }) {
@@ -137,6 +143,14 @@ export function CampaignPriorityPanel({
               : remoteLifecycle
                 ? "Smoke check needs attention"
                 : null);
+
+  if (campaign.family === "mot_3d" && campaign.stage === "preliminary_check") {
+    const attention = preliminaryCheckState === "terminal" || ["partial", "held", "completed_failed", "status_unknown", "outcome_unknown"].includes(preliminaryCheckLifecycle ?? "");
+    const checking = preliminaryCheckState === "checking";
+    const active = preliminaryCheckState === "submitting" || ["submitted", "queued", "running"].includes(preliminaryCheckLifecycle ?? "");
+    const finished = preliminaryCheckLifecycle === "completed_success_unvalidated";
+    return <section className={`priority-panel ${attention ? "priority-panel--blocked" : ""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{attention ? "Manual verification required" : checking ? "Checking Zeus status" : active ? "No action needed" : finished ? "Scientific validation is still required" : "Review preliminary-check submission"}</h2><p><strong>Current stage:</strong> Preliminary check.</p><p>{attention ? "The submission is partial or its outcome is not safely known. Do not submit again; inspect Zeus jobs manually." : checking ? "The application is reading the current scheduler state. No submission has been reviewed or started by this check." : active ? "The reviewed preliminary-check jobs are being submitted, queued, or run on Zeus. No additional action is needed." : finished ? "The scheduler finished, but the scientific outputs have not yet been validated or synchronized. No later stage has started." : "Check Zeus status, then review the exact four-job plan before starting the held-out candidate comparison."}</p></section>;
+  }
 
   if (campaign.family === "mot_3d" && campaign.stage === "discovery") {
     const transitionAttention = mot3DTransitionState === "terminal" || ["held", "completed_failed", "outputs_invalid", "status_unknown"].includes(mot3DTransitionLifecycle ?? "");

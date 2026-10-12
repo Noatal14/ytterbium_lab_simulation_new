@@ -1138,6 +1138,132 @@
       "message": "3D Discovery result synchronization stopped safely."
     },
     {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "<fallback>",
+      "code": "mot_3d_preliminary_submission_failed",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "preliminary_already_started",
+      "code": "preliminary_already_started",
+      "status": 409,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "preliminary_partial_submission",
+      "code": "preliminary_partial_submission",
+      "status": 409,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "preliminary_preparation_invalid",
+      "code": "preliminary_preparation_invalid",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "preliminary_submission_outcome_unknown",
+      "code": "preliminary_submission_outcome_unknown",
+      "status": 409,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_preliminary_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "3D Preliminary-check submission stopped safely."
+    },
+    {
       "domain": "production_submission",
       "case": "<fallback>",
       "code": "production_submission_failed",
@@ -2235,6 +2361,13 @@
       "code": "mot_3d_discovery_transition_unavailable",
       "status": 503,
       "message": "3D Discovery result synchronization is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "mot_3d_preliminary_submission_unavailable",
+      "code": "mot_3d_preliminary_submission_unavailable",
+      "status": 503,
+      "message": "3D Preliminary-check submission is unavailable."
     },
     {
       "domain": "route_unavailable",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -161,3 +162,14 @@ if canonical_digest(_ARCHIVE) != _VALUE["inconclusive_evidence"]["evidence_sha25
 MOT_3D_TIMESTEP_POLICY = freeze(_VALUE)
 MOT_3D_TIMESTEP_POLICY_VERSION = _VALUE["spec_version"]
 MOT_3D_TIMESTEP_POLICY_SHA256 = canonical_digest(_VALUE)
+
+
+def render_typescript_specification() -> str:
+    """Render the checked-in browser contract from the validated authority."""
+
+    body = json.dumps(_VALUE, indent=2, sort_keys=True)
+    return (
+        "// Generated from lab_setup/specifications/"
+        "mot_3d_timestep_policy_v1.json; do not edit.\n"
+        f"export const MOT_3D_TIMESTEP_POLICY_V1 = {body} as const;\n"
+    )

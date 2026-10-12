@@ -1034,6 +1034,7 @@ class Mot3DDiscoveryTransitionCoordinator:
             raise Mot3DDiscoveryTransitionError("remote_response_invalid")
         return result
 
+
 class PinnedSshMot3DDiscoveryTransitionTransport:
     def __init__(self, root: Path, ssh: Path, profile: ZeusProfile, *, timeout=240):
         self.profile = profile

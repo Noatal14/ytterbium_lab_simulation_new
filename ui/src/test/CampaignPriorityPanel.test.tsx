@@ -65,6 +65,12 @@ describe("CampaignPriorityPanel", () => {
     expect(screen.getByText(/screening files are ready on Zeus/)).toBeVisible(); expect(screen.queryByText("local error")).not.toBeInTheDocument();
   });
 
+  it("describes a preliminary-check status read without implying submission", () => {
+    render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage: "preliminary_check" }} preliminaryCheckState="checking" />);
+    expect(screen.getByRole("heading", { name: "Checking Zeus status" })).toBeVisible();
+    expect(screen.getByText(/No submission has been reviewed or started by this check/)).toBeVisible();
+  });
+
   it.each([["submitted", "No action needed"], ["terminal", "Check Zeus jobs before continuing"], ["unknown", "Check Zeus jobs before continuing"]] as const)("keeps Smoke content while Screening submission %s controls the heading", (state, heading) => {
     render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenSubmitState={state} />);
     expect(screen.getByRole("heading", { name: heading })).toBeVisible();

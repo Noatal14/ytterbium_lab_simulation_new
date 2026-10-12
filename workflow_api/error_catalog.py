@@ -280,6 +280,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Discovery result synchronization is unavailable.",
         ),
+        "mot_3d_preliminary_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D Preliminary-check submission is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -849,6 +853,21 @@ MOT_3D_DISCOVERY_TRANSITION = _generic_stage(
     },
     "mot_3d_discovery_transition_failed",
 )
+MOT_3D_PRELIMINARY_SUBMISSION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "preliminary_preparation_invalid", "preliminary_already_started",
+        "preliminary_partial_submission", "preliminary_submission_outcome_unknown",
+        "remote_checkout_mismatch", "remote_response_invalid", "local_files_changed",
+        "too_many_pending_previews", "confirmation_invalid", "confirmation_expired",
+        "zeus_authentication_required", "zeus_host_key_untrusted", "zeus_timeout",
+        "zeus_unreachable",
+    },
+    "3D Preliminary-check submission stopped safely.",
+    {"preliminary_already_started", "preliminary_partial_submission",
+     "preliminary_submission_outcome_unknown"},
+    "mot_3d_preliminary_submission_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -957,6 +976,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "finalization": FINALIZATION,
         "mot_3d_discovery_submission": MOT_3D_DISCOVERY_SUBMISSION,
         "mot_3d_discovery_transition": MOT_3D_DISCOVERY_TRANSITION,
+        "mot_3d_preliminary_submission": MOT_3D_PRELIMINARY_SUBMISSION,
     }
 )
 

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from types import MappingProxyType
 
 import pytest
@@ -9,6 +10,7 @@ from lab_setup.mot_3d_timestep_policy import (
     MOT_3D_TIMESTEP_POLICY_SHA256,
     MOT_3D_TIMESTEP_POLICY_VERSION,
     _validate,
+    render_typescript_specification,
 )
 
 
@@ -56,3 +58,8 @@ def test_policy_rejects_scientific_or_schema_drift(mutation):
     mutation(payload)
     with pytest.raises(ValueError):
         _validate(payload)
+
+
+def test_checked_in_typescript_contract_matches_authority_exactly():
+    generated = Path("ui/src/generated/mot3dTimestepPolicy.v1.ts")
+    assert generated.read_text() == render_typescript_specification()

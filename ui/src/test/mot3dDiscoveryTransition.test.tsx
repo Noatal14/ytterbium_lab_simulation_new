@@ -13,6 +13,7 @@ const status = { source: "zeus", queried_at: "2026-10-12T10:00:00Z", campaign: {
 const preview = { preview_token: "token", expires_in_seconds: 300, campaign: { id: campaignId, name: "campaign", git_commit: "a".repeat(40) }, from_stage: "discovery", to_stage: "preliminary_check", discovery: { completed_trials: 950, expected_trials: 950, families: ["angled_donut", "single_pass"], evidence_sha256: "b".repeat(64) }, artifacts: { synchronize: { trial_registries: 950, merged_files: 4 }, create: { selection_files: 2, job_files: 4 }, update: ["campaign.json"] }, effects: { synchronize_discovery: true, prepare_preliminary_check: true, submit_preliminary_check: false, start_simulation: false, overwrite_existing: false } } as const;
 const result = { status: "preliminary_check_prepared", campaign_id: campaignId, stage: "preliminary_check", artifacts: { synchronized: 954, created: 6, updated: 1, bundle_sha256: "c".repeat(64) }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "synchronized", receipt_sha256: "d".repeat(64) } } as const;
 const snapshot: ZeusSnapshot = { connection_status: "connected", profile, remote: { project_directory: profile.project_directory, git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available", queried_at: "2026-10-12T10:00:00Z", jobs: [] } };
+const preliminary = { state: "idle", status: null, preview: null, result: null, error: "", refresh: vi.fn(), review: vi.fn(), confirm: vi.fn(), reset: vi.fn() } as any;
 
 describe("3D Discovery transition contract", () => {
   it("accepts only the complete verified review and result", () => {
@@ -74,7 +75,7 @@ describe("3D campaign transition view", () => {
   it("requires explicit review and says no job starts", async () => {
     const api = { status: vi.fn(async () => status), preview: vi.fn(async () => preview), confirm: vi.fn(async () => result), reset: vi.fn() } as unknown as ReturnType<typeof createMot3DDiscoveryTransitionApi>;
     const discovery = { state: "submitted", status: { submission: { status: "completed_success" } } } as any;
-    function Harness() { const transition = useMot3DDiscoveryTransitionController({ campaignId, snapshot, enabled: true, api }); return <Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={transition} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>; }
+    function Harness() { const transition = useMot3DDiscoveryTransitionController({ campaignId, snapshot, enabled: true, api }); return <Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={transition} preliminary={preliminary} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>; }
     render(<Harness/>);
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Verify Discovery results" }));
@@ -90,11 +91,11 @@ describe("3D campaign transition view", () => {
     const discovery = { state: "submitted", status: { submission: { status: "completed_success" } } } as any;
     const base = { state: "idle", preview: null, result: null, error: "", refresh: vi.fn(), review: vi.fn(), confirm: vi.fn(), reset: vi.fn() };
     const queued = { ...base, status: { ...status, discovery: { status: "running", chain }, validation: { status: "not_ready", completed_trials: 0, expected_trials: 950 }, next_action: "wait" } } as any;
-    const { rerender } = render(<Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={queued} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
+    const { rerender } = render(<Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={queued} preliminary={preliminary} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
     expect(screen.getByText("Discovery is still running on Zeus")).toBeInTheDocument();
     expect(screen.getAllByText(/No action is needed/).length).toBeGreaterThan(0);
     const invalid = { ...base, state: "terminal", status: { ...status, discovery: { status: "outputs_invalid", chain }, validation: { status: "invalid", completed_trials: 0, expected_trials: 950 }, next_action: "inspect_zeus" } } as any;
-    rerender(<Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={invalid} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
+    rerender(<Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={invalid} preliminary={preliminary} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
     expect(screen.getByRole("alert")).toHaveTextContent("Manual verification required");
     expect(screen.queryByRole("button", { name: "Review synchronization" })).not.toBeInTheDocument();
   });
@@ -102,7 +103,7 @@ describe("3D campaign transition view", () => {
   it("explains crash recovery without implying another remote job", () => {
     const discovery = { state: "submitted", status: { submission: { status: "completed_success" } } } as any;
     const recovery = { state: "ready", preview: null, result: null, error: "", refresh: vi.fn(), review: vi.fn(), confirm: vi.fn(), reset: vi.fn(), status: { ...status, discovery: { status: "preliminary_check_prepared", chain } } } as any;
-    render(<Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={recovery} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
+    render(<Mot3DCampaignFlow stage="discovery" connected discovery={discovery} transition={recovery} preliminary={preliminary} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
     expect(screen.getByText("Preliminary check is prepared on Zeus; local synchronization is incomplete")).toBeInTheDocument();
     expect(screen.getByText(/No new job or simulation will start/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Review synchronization" })).toBeInTheDocument();

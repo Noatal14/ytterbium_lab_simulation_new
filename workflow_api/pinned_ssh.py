@@ -36,6 +36,7 @@ class ReceiverKind(Enum):
     FINALIZATION = "finalization"
     MOT_3D_DISCOVERY_SUBMISSION = "mot_3d_discovery_submission"
     MOT_3D_DISCOVERY_TRANSITION = "mot_3d_discovery_transition"
+    MOT_3D_PRELIMINARY_SUBMISSION = "mot_3d_preliminary_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -90,6 +91,20 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_3D_PRELIMINARY_SUBMISSION: _ReceiverDefinition(
+        "mot_3d_preliminary_submission_remote.py", "<mot-3d-preliminary-submission>",
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT,
+                   ReceiverOperation.STATUS}), True,
+        ("-F", "none", "-T", "-o", "BatchMode=yes",
+         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
+         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
+         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
+         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
+         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
+         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
+         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
+        True, True, True, False, False, True,
+    ),
     ReceiverKind.MOT_3D_DISCOVERY_TRANSITION: _ReceiverDefinition(
         "mot_3d_discovery_transition_remote.py", "<mot-3d-discovery-transition>",
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE,
@@ -501,6 +516,17 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(ReceiverKind.MOT_3D_DISCOVERY_TRANSITION,
                    repository_root, executable, timeout)
+
+    @classmethod
+    def mot_3d_preliminary_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_PRELIMINARY_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
+        )
 
     @classmethod
     def refinement_submission(
