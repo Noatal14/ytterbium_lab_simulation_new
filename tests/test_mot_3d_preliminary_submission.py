@@ -226,6 +226,8 @@ def _receiver_repository(tmp_path: Path):
         "studies/mot_3d/analysis/retention.py",
         "studies/mot_3d/preliminary/run.py",
         "studies/mot_3d/preliminary/merge.py",
+        "workflow_api/mot_3d_selection_submission_remote.py",
+        "workflow_api/mot_3d_preliminary_submission_remote.py",
         "lab_setup/specifications/laboratory_physical_v1.json",
         "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
     }:

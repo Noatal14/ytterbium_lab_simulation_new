@@ -54,6 +54,7 @@ class RefinementScientificDesign:
     selection_seed: int = 61_001
     bootstrap_seed: int = 62_001
 
+
 PRELIMINARY_CHECK_TOPOLOGY = SelectionStageTopology(
     stage="preliminary_check", candidates_per_family=12
 )
@@ -66,10 +67,12 @@ REFINEMENT_SCIENTIFIC_DESIGN = RefinementScientificDesign()
 
 def public_chain(
     jobs: Mapping[str, Mapping[str, str | None]] | None = None,
+    *,
+    topology: SelectionStageTopology = PRELIMINARY_CHECK_TOPOLOGY,
 ) -> dict[str, object]:
     jobs = jobs or {}
     return {
-        "dependency": PRELIMINARY_CHECK_TOPOLOGY.dependency,
+        "dependency": topology.dependency,
         "families": [
             {
                 "id": family,

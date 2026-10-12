@@ -24,6 +24,7 @@ from workflow_api.discovery import DiscoveryError, _progress_aware_plan, list_ca
 from workflow_api.error_catalog import ERROR_DOMAINS
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mot_2d_plan import RELEVANT_FILES
+from workflow_api.mot_3d_refinement_submission import Mot3DRefinementSubmissionError
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.zeus_snapshot import ZeusProfile
@@ -330,6 +331,8 @@ def running_server(
     mot_3d_bootstrap_service=None,
     mot_3d_discovery_submission_service=None,
     mot_3d_discovery_transition_service=None,
+    mot_3d_preliminary_submission_service=None,
+    mot_3d_refinement_submission_service=None,
     mot_3d_preliminary_transition_service=None,
 ):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
@@ -344,6 +347,10 @@ def running_server(
     handler.mot_3d_bootstrap_service = mot_3d_bootstrap_service
     handler.mot_3d_discovery_submission_service = mot_3d_discovery_submission_service
     handler.mot_3d_discovery_transition_service = mot_3d_discovery_transition_service
+    handler.mot_3d_preliminary_submission_service = (
+        mot_3d_preliminary_submission_service
+    )
+    handler.mot_3d_refinement_submission_service = mot_3d_refinement_submission_service
     handler.mot_3d_preliminary_transition_service = (
         mot_3d_preliminary_transition_service
     )
@@ -378,6 +385,42 @@ def request_json(url, *, method="GET", headers=None, request_target=None, body=N
         return response.status, response.headers, json.loads(raw) if raw else None
     finally:
         connection.close()
+
+
+class _RefinementSubmissionFailure:
+    def preview(self, payload, *, session_id):
+        raise Mot3DRefinementSubmissionError("refinement_partial_submission")
+
+
+def test_refinement_submission_subtype_uses_its_own_error_domain():
+    service = _RefinementSubmissionFailure()
+    with running_server(
+        request_count=2, mot_3d_refinement_submission_service=service
+    ) as base_url:
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session",
+            headers={"Sec-Fetch-Site": "same-origin"},
+        )
+        assert status == 200
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/mot-3d-refinement/preview",
+            method="POST",
+            headers=trusted,
+            body="{}",
+        )
+        expected = ERROR_DOMAINS["mot_3d_refinement_submission"].entries[
+            "refinement_partial_submission"
+        ]
+        assert status == int(expected.status)
+        assert payload["error"] == {
+            "code": "refinement_partial_submission",
+            "message": expected.message,
+        }
 
 
 def test_local_server_catalog_uses_versioned_workflow_api():

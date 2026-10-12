@@ -4,15 +4,17 @@ import type { useMot3DDiscoveryController } from "./controllers/useMot3DDiscover
 import type { useMot3DDiscoveryTransitionController } from "./controllers/useMot3DDiscoveryTransitionController";
 import type { useMot3DPreliminaryCheckController } from "./controllers/useMot3DPreliminaryCheckController";
 import type { useMot3DPreliminaryTransitionController } from "./controllers/useMot3DPreliminaryTransitionController";
+import type { useMot3DRefinementSubmissionController } from "./controllers/useMot3DRefinementSubmissionController";
 import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 
-export function Mot3DCampaignFlow({ stage, connected, discovery, transition, preliminary, preliminaryTransition, onConnectZeus, onViewJobs }: {
+export function Mot3DCampaignFlow({ stage, connected, discovery, transition, preliminary, preliminaryTransition, refinement, onConnectZeus, onViewJobs }: {
   stage: string;
   connected: boolean;
   discovery: ReturnType<typeof useMot3DDiscoveryController>;
   transition: ReturnType<typeof useMot3DDiscoveryTransitionController>;
   preliminary: ReturnType<typeof useMot3DPreliminaryCheckController>;
   preliminaryTransition?: ReturnType<typeof useMot3DPreliminaryTransitionController>;
+  refinement?: ReturnType<typeof useMot3DRefinementSubmissionController>;
   onConnectZeus: () => void;
   onViewJobs: () => void;
 }) {
@@ -30,7 +32,24 @@ export function Mot3DCampaignFlow({ stage, connected, discovery, transition, pre
         onViewJobs={onViewJobs}
       />
     )}
+    {refinement && <Mot3DRefinementSubmissionStage visible={stage==="refinement"||Boolean(refinement.status||refinement.preview||refinement.result||refinement.error)} connected={connected} flow={refinement} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs}/>}
   </>;
+}
+
+function Mot3DRefinementSubmissionStage({visible,connected,flow,onConnectZeus,onViewJobs}:{visible:boolean;connected:boolean;flow:ReturnType<typeof useMot3DRefinementSubmissionController>;onConnectZeus:()=>void;onViewJobs:()=>void}){
+  const focus=useRef<HTMLDivElement>(null);const reviewHeading=useRef<HTMLHeadingElement>(null);useEffect(()=>{if(flow.state==="review")reviewHeading.current?.focus();else if(["tracked","terminal"].includes(flow.state)||flow.error)focus.current?.focus()},[flow.state,flow.error]);if(!visible)return null;
+  const lifecycle=flow.status?.submission.status;const attention=flow.state==="terminal"||["partial","held","completed_failed","status_unknown","outcome_unknown"].includes(lifecycle??"");const waiting=["submitted","queued","running"].includes(lifecycle??"")||(flow.state==="tracked"&&Boolean(flow.result)&&!flow.status);const finished=lifecycle==="completed_success_unvalidated";
+  return <section className="section-block" aria-labelledby="mot3d-refinement-submit-heading"><div className="section-heading"><p className="eyebrow">Current stage: Refinement</p><h2 id="mot3d-refinement-submit-heading">Run the focused candidate comparison</h2><p>Refinement evaluates the narrowed candidate sets. It supports later selection and is not final scientific validation.</p></div><div ref={focus} tabIndex={-1}>
+    {!connected&&<div className="prepare-card"><div><strong>Connect to Zeus before reviewing Refinement</strong><p>Connection and status checks do not submit or start jobs.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+    {connected&&flow.state==="idle"&&!flow.status&&<div className="prepare-card"><div><strong>Check Zeus before reviewing Refinement</strong><p>This read-only check verifies that no Refinement submission already exists.</p></div><button className="primary-button" onClick={()=>void flow.refresh()}>Check Zeus status</button></div>}
+    {connected&&flow.state==="idle"&&flow.status?.next_action==="review_submission"&&<div className="prepare-card"><div><strong>Refinement is prepared, but not submitted</strong><p>Review the exact four-job plan before any simulation starts.</p></div><button className="primary-button" onClick={()=>void flow.review()}>Review Refinement jobs</button></div>}
+    {(flow.state==="checking"||flow.state==="submitting")&&<Busy title={flow.state==="checking"?"Checking the Refinement submission":"Submitting the reviewed Refinement jobs"}/>}
+    {flow.preview&&flow.state==="review"&&<div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={reviewHeading} tabIndex={-1}>Submit Refinement</h3><p>Each family has one three-task simulation array followed by one merge job. The two families remain independent.</p><dl className="transfer-facts"><div><dt>Angled donut</dt><dd>3-task array + merge</dd></div><div><dt>Single pass</dt><dd>3-task array + merge</dd></div><div><dt>Zeus submissions</dt><dd>4 jobs total</dd></div><div><dt>Input ensembles</dt><dd>4 · 3,000 particles total</dd></div><div><dt>Candidate evaluations</dt><dd>16 per family · 3 recoil seeds</dd></div><div><dt>Later stages</dt><dd>Not submitted</dd></div></dl><p className="review-note">Submitting starts only the reviewed Refinement simulations and records a durable receipt. It does not submit a later stage.</p><div className="form-actions"><button className="secondary-button" onClick={flow.reset}>Back</button><button className="primary-button" onClick={()=>void flow.confirm()}>Submit Refinement to Zeus</button></div></div>}
+    {waiting&&!attention&&!flow.error&&<div className="state-panel state-panel--success" role="status"><strong>Refinement is running on Zeus</strong><p>No action is needed while the reviewed arrays and merge jobs are queued or running. Zeus continues independently.</p><div className="form-actions"><button className="secondary-button" onClick={()=>void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {finished&&!flow.error&&<div className="state-panel" role="status"><strong>Refinement jobs finished on Zeus</strong><p>The scheduler completed all four jobs, but their scientific outputs have not been validated or synchronized locally. No later stage has started.</p><div className="form-actions"><button className="secondary-button" onClick={()=>void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {attention&&!flow.error&&<div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Manual verification required</strong><p>The submission is partial or Zeus did not report a safely actionable outcome. Do not submit again. Inspect the existing jobs before continuing.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {flow.error&&<div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Refinement submission stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase==="submit_unknown"?"The submission outcome may be uncertain. Do not retry; inspect Zeus first.":"No submission was confirmed by this action. Check Zeus status before reviewing again."}</p><div className="form-actions"><button className="secondary-button" onClick={()=>void flow.refresh()}>Check Zeus status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div></div>}
+  </div></section>;
 }
 
 function Mot3DPreliminaryTransitionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: { visible:boolean; connected:boolean; flow:ReturnType<typeof useMot3DPreliminaryTransitionController>; onConnectZeus:()=>void; onViewJobs:()=>void }) {

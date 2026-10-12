@@ -3,10 +3,11 @@ import { boundedPrintable, exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
 import { creationApi } from "./campaign";
 import { MOT_3D_TIMESTEP_POLICY_V1 } from "../../generated/mot3dTimestepPolicy.v1";
+import { isMot3DFamilyCanonicalPrefix, mot3DFamilyJobCount, parseMot3DFamilyChain, type Mot3DFamilyChain, type Mot3DFamilyJob } from "./mot3dFamilyChain";
 
 type Profile = ZeusSnapshot["profile"];
-export type PreliminaryCheckFamilyJob = { id: "angled_donut" | "single_pass"; array_job_id: string | null; merge_job_id: string | null };
-export type PreliminaryCheckChain = { dependency: "afterok within each family"; families: [PreliminaryCheckFamilyJob, PreliminaryCheckFamilyJob] };
+export type PreliminaryCheckFamilyJob = Mot3DFamilyJob;
+export type PreliminaryCheckChain = Mot3DFamilyChain;
 type Chain = PreliminaryCheckChain;
 export type PreliminaryCheckLifecycle = "not_submitted" | "submitted" | "queued" | "running" | "held" | "completed_failed" | "completed_success_unvalidated" | "status_unknown" | "outcome_unknown" | "partial";
 export type PreliminaryCheckStatus = { source: "zeus"; queried_at: string; campaign: { id: string; name: string; stage: "preliminary_check" }; submission: { status: PreliminaryCheckLifecycle; chain: Chain }; scheduler: { expected_array_tasks: 6; expected_merge_jobs: 2; completed_array_tasks: number; completed_merge_jobs: number }; validation: { status: "not_started"; expected_candidates_per_family: 12; expected_recoil_seeds_per_candidate: 3 }; next_action: "review_submission" | "wait" | "validate_outputs" | "inspect_zeus"; local_sync: { status: "not_synchronized" } };
@@ -14,26 +15,13 @@ export type PreliminaryCheckPreview = { preview_token: string; expires_in_second
 export type PreliminaryCheckResult = { status: "submitted"; campaign_id: string; stage: "preliminary_check"; chain: Chain; submitted_at: string; local_sync: { status: "not_synchronized" } };
 
 const SHA40 = /^[0-9a-f]{40}$/;
-const ARRAY_JOB = /^\d+\[\]\.zeus-master$/;
-const SCALAR_JOB = /^\d+\.zeus-master$/;
 const object = (value: unknown, keys: string[], message: string) => { if (!value || typeof value !== "object" || Array.isArray(value) || !exactKeys(value as Record<string, unknown>, keys)) throw new Error(message); return value as Record<string, unknown>; };
 const text = (value: unknown, limit = 256): value is string => boundedPrintable(value, limit) && value.length > 0;
 const integer = (value: unknown, max: number) => Number.isInteger(value) && Number(value) >= 0 && Number(value) <= max;
 const sync = (value: unknown) => { const row = object(value, ["status"], "Invalid preliminary-check synchronization state."); if (row.status !== "not_synchronized") throw new Error("Invalid preliminary-check synchronization state."); return { status: "not_synchronized" as const }; };
-export const parsePreliminaryCheckChain = (value: unknown): Chain => {
-  const row = object(value, ["dependency", "families"], "Invalid preliminary-check job chain.");
-  if (row.dependency !== "afterok within each family" || !Array.isArray(row.families) || row.families.length !== 2) throw new Error("Invalid preliminary-check job chain.");
-  const families = row.families.map((entry, index) => { const family = object(entry, ["id", "array_job_id", "merge_job_id"], "Invalid preliminary-check job chain."); if (family.id !== ["angled_donut", "single_pass"][index] || (family.array_job_id !== null && (typeof family.array_job_id !== "string" || !ARRAY_JOB.test(family.array_job_id))) || (family.merge_job_id !== null && (typeof family.merge_job_id !== "string" || !SCALAR_JOB.test(family.merge_job_id))) || (family.merge_job_id !== null && family.array_job_id === null)) throw new Error("Invalid preliminary-check job chain."); return family as PreliminaryCheckFamilyJob; });
-  const numericIds = families.flatMap((family) => [family.array_job_id, family.merge_job_id]).filter((job): job is string => job !== null).map((job) => job.match(/^\d+/)![0]);
-  if (new Set(numericIds).size !== numericIds.length) throw new Error("Invalid preliminary-check job chain.");
-  return { dependency: "afterok within each family", families: families as [PreliminaryCheckFamilyJob, PreliminaryCheckFamilyJob] };
-};
-export const preliminaryCheckJobCount = (chain: Chain) => chain.families.reduce((count, family) => count + Number(family.array_job_id !== null) + Number(family.merge_job_id !== null), 0);
-export const isPreliminaryCheckCanonicalPrefix = (chain: Chain) => {
-  const present = chain.families.flatMap((family) => [family.array_job_id !== null, family.merge_job_id !== null]);
-  const count = present.filter(Boolean).length;
-  return present.every((value, index) => value === (index < count));
-};
+export const parsePreliminaryCheckChain = parseMot3DFamilyChain;
+export const preliminaryCheckJobCount = mot3DFamilyJobCount;
+export const isPreliminaryCheckCanonicalPrefix = isMot3DFamilyCanonicalPrefix;
 
 export function parsePreliminaryCheckStatus(value: unknown): PreliminaryCheckStatus {
   const row = object(value, ["source", "queried_at", "campaign", "submission", "scheduler", "validation", "next_action", "local_sync"], "Invalid preliminary-check status.");

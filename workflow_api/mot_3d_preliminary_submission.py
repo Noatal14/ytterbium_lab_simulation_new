@@ -27,6 +27,10 @@ from workflow_api.mot_3d_stage_topology import (
     PRELIMINARY_CHECK_TOPOLOGY,
     public_chain,
 )
+from workflow_api.mot_3d_selection_submission import (
+    exact_jobs as shared_exact_jobs,
+    validate_selection_submission_state,
+)
 from workflow_api.pinned_ssh import (
     PinnedSshPolicy,
     PinnedSshProcessError,
@@ -62,6 +66,8 @@ CODE_FILES = frozenset(
         "studies/mot_3d/analysis/retention.py",
         "studies/mot_3d/preliminary/run.py",
         "studies/mot_3d/preliminary/merge.py",
+        "workflow_api/mot_3d_selection_submission_remote.py",
+        "workflow_api/mot_3d_preliminary_submission_remote.py",
         "lab_setup/specifications/laboratory_physical_v1.json",
         "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
     }
@@ -137,37 +143,25 @@ def _read_at(root_fd: int, relative: str, limit: int = 8 * 1024 * 1024) -> bytes
 
 
 def _exact_jobs(value: object, *, populated: bool) -> dict[str, dict[str, str | None]]:
-    if not isinstance(value, Mapping) or set(value) != set(FAMILIES):
-        raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-    result: dict[str, dict[str, str | None]] = {}
-    for family in FAMILIES:
-        row = value[family]
-        if not isinstance(row, Mapping) or set(row) != {"array", "merge"}:
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        array, merge = row["array"], row["merge"]
-        if populated:
-            if (
-                not isinstance(array, str)
-                or not ARRAY_JOB.fullmatch(array)
-                or not isinstance(merge, str)
-                or not SCALAR_JOB.fullmatch(merge)
-            ):
-                raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        elif array is not None or merge is not None:
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        result[family] = {"array": array, "merge": merge}
-    numeric = [
-        job.split("[", 1)[0].split(".", 1)[0]
-        for row in result.values()
-        for job in row.values()
-        if isinstance(job, str)
-    ]
-    if len(numeric) != len(set(numeric)):
-        raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-    return result
+    return shared_exact_jobs(
+        value,
+        populated=populated,
+        error=Mot3DPreliminarySubmissionError,
+        code="remote_response_invalid",
+    )
 
 
 class Mot3DPreliminarySubmissionCoordinator:
+    error_type = Mot3DPreliminarySubmissionError
+    topology = PRELIMINARY_CHECK_TOPOLOGY
+    stage_id = "preliminary_check"
+    stage_label = "Preliminary check"
+    submit_effect = "submit_preliminary_check"
+    already_started_code = "preliminary_already_started"
+    partial_code = "preliminary_partial_submission"
+    outcome_unknown_code = "preliminary_submission_outcome_unknown"
+    completed_action = "validate_outputs"
+
     def __init__(
         self,
         repository_root: Path,
@@ -183,14 +177,26 @@ class Mot3DPreliminarySubmissionCoordinator:
         self.git = git_executable.resolve(strict=True)
         self.clock = clock
         self.transport_factory = transport_factory or (
-            lambda profile: PinnedSshMot3DPreliminarySubmissionTransport(
-                self.root, self.ssh, profile
-            )
+            lambda profile: self._default_transport(profile)
         )
         self._previews = PreviewRegistry[_Pending](
             clock=clock, token_factory=token_factory
         )
         self._confirm = threading.Lock()
+
+    def _default_transport(self, profile):
+        return PinnedSshMot3DPreliminarySubmissionTransport(
+            self.root, self.ssh, profile
+        )
+
+    def _status_local_sync(self, _plan):
+        return {"status": "not_synchronized"}
+
+    def _preview_local_sync(self, _pending):
+        return None
+
+    def _confirm_local_sync(self, _pending):
+        return {"status": "not_synchronized"}
 
     def _plan(self, request: Mapping[str, object]):
         if (
@@ -391,114 +397,11 @@ class Mot3DPreliminarySubmissionCoordinator:
 
     @staticmethod
     def _validate(state: RemotePreliminarySubmissionState, operation: str):
-        allowed = {
-            "inspect": {"eligible", "submitted", "partial", "outcome_unknown"},
-            "submit": {"submitted", "partial", "outcome_unknown"},
-            "status": {
-                "eligible",
-                "submitted",
-                "queued",
-                "running",
-                "held",
-                "completed_failed",
-                "completed_success",
-                "status_unknown",
-                "partial",
-                "outcome_unknown",
-            },
-        }[operation]
-        if (
-            state.lifecycle not in allowed
-            or not isinstance(state.branch, str)
-            or not state.branch
-            or len(state.branch) > 256
-            or not state.branch.isprintable()
-        ):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        populated = state.lifecycle != "eligible"
-        prefix_lifecycle = state.lifecycle in {"partial", "outcome_unknown"}
-        jobs = (
-            _exact_jobs(state.jobs, populated=populated and not prefix_lifecycle)
-            if not prefix_lifecycle
-            else state.jobs
+        validate_selection_submission_state(
+            state,
+            operation,
+            error=Mot3DPreliminarySubmissionError,
         )
-        if prefix_lifecycle:
-            if not isinstance(jobs, Mapping) or set(jobs) != set(FAMILIES):
-                raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-            count = 0
-            present: list[bool] = []
-            numeric: list[str] = []
-            for family in FAMILIES:
-                row = jobs[family]
-                if not isinstance(row, Mapping) or set(row) != {"array", "merge"}:
-                    raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-                array, merge = row["array"], row["merge"]
-                if array is not None and (
-                    not isinstance(array, str) or not ARRAY_JOB.fullmatch(array)
-                ):
-                    raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-                if merge is not None and (
-                    array is None
-                    or not isinstance(merge, str)
-                    or not SCALAR_JOB.fullmatch(merge)
-                ):
-                    raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-                count += int(array is not None) + int(merge is not None)
-                present.extend((array is not None, merge is not None))
-                numeric.extend(
-                    job.split("[", 1)[0].split(".", 1)[0]
-                    for job in (array, merge)
-                    if isinstance(job, str)
-                )
-            minimum = 1 if state.lifecycle == "partial" else 0
-            if (
-                not minimum <= count <= 3
-                or present != [index < count for index in range(4)]
-                or len(numeric) != len(set(numeric))
-            ):
-                raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        if (
-            not isinstance(state.completed_array_tasks, int)
-            or isinstance(state.completed_array_tasks, bool)
-            or not 0 <= state.completed_array_tasks <= 6
-            or not isinstance(state.completed_merge_jobs, int)
-            or isinstance(state.completed_merge_jobs, bool)
-            or not 0 <= state.completed_merge_jobs <= 2
-        ):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        has_identity = state.lifecycle != "eligible"
-        if has_identity and (
-            not isinstance(state.nonce, str) or not HEX32.fullmatch(state.nonce)
-        ):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        if prefix_lifecycle:
-            if state.submitted_unix_s is not None:
-                raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        elif has_identity and (
-            not isinstance(state.submitted_unix_s, int)
-            or isinstance(state.submitted_unix_s, bool)
-            or not 0 <= state.submitted_unix_s <= 253402300799
-        ):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        if not has_identity and (
-            state.nonce is not None
-            or state.submitted_unix_s is not None
-            or state.completed_array_tasks
-            or state.completed_merge_jobs
-        ):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        if state.lifecycle == "completed_success" and (
-            state.completed_array_tasks,
-            state.completed_merge_jobs,
-        ) != (6, 2):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
-        if state.lifecycle in {
-            "eligible",
-            "submitted",
-            "partial",
-            "outcome_unknown",
-        } and (state.completed_array_tasks or state.completed_merge_jobs):
-            raise Mot3DPreliminarySubmissionError("remote_response_invalid")
 
     def _remote(self, plan, operation, nonce=None):
         transport = self.transport_factory(plan[1])
@@ -510,10 +413,9 @@ class Mot3DPreliminarySubmissionCoordinator:
     def status(self, request):
         plan = self._plan(request)
         state = self._remote(plan, "status")
-        public = {
-            "eligible": "not_submitted",
-            "completed_success": "completed_success_unvalidated",
-        }.get(state.lifecycle, state.lifecycle)
+        from workflow_api.mot_3d_selection_submission import public_lifecycle
+
+        public = public_lifecycle(state.lifecycle)
         action = (
             "review_submission"
             if public == "not_submitted"
@@ -521,7 +423,7 @@ class Mot3DPreliminarySubmissionCoordinator:
                 "wait"
                 if public in {"submitted", "queued", "running"}
                 else (
-                    "validate_outputs"
+                    self.completed_action
                     if public == "completed_success_unvalidated"
                     else "inspect_zeus"
                 )
@@ -533,9 +435,12 @@ class Mot3DPreliminarySubmissionCoordinator:
             "campaign": {
                 "id": plan[0],
                 "name": plan[3]["name"],
-                "stage": "preliminary_check",
+                "stage": self.stage_id,
             },
-            "submission": {"status": public, "chain": public_chain(state.jobs)},
+            "submission": {
+                "status": public,
+                "chain": public_chain(state.jobs, topology=self.topology),
+            },
             "scheduler": {
                 "expected_array_tasks": 6,
                 "expected_merge_jobs": 2,
@@ -548,7 +453,7 @@ class Mot3DPreliminarySubmissionCoordinator:
                 "expected_recoil_seeds_per_candidate": 3,
             },
             "next_action": action,
-            "local_sync": {"status": "not_synchronized"},
+            "local_sync": self._status_local_sync(plan),
         }
 
     def preview(self, request, *, session_id: str):
@@ -556,12 +461,12 @@ class Mot3DPreliminarySubmissionCoordinator:
         state = self._remote(plan, "inspect")
         if state.lifecycle != "eligible":
             code = (
-                "preliminary_already_started"
+                self.already_started_code
                 if state.lifecycle == "submitted"
                 else (
-                    "preliminary_partial_submission"
+                    self.partial_code
                     if state.lifecycle == "partial"
-                    else "preliminary_submission_outcome_unknown"
+                    else self.outcome_unknown_code
                 )
             )
             raise Mot3DPreliminarySubmissionError(code)
@@ -581,12 +486,12 @@ class Mot3DPreliminarySubmissionCoordinator:
             token = self._previews.add(pending, expires_at=expires, capacity=CAPACITY)
         except OverflowError as exc:
             raise Mot3DPreliminarySubmissionError("too_many_pending_previews") from exc
-        t = PRELIMINARY_CHECK_TOPOLOGY
-        return {
+        t = self.topology
+        result = {
             "preview_token": token,
             "expires_in_seconds": TTL,
             "campaign": {"id": plan[0], "name": plan[3]["name"], "git_commit": plan[4]},
-            "stage": {"id": "preliminary_check", "label": "Preliminary check"},
+            "stage": {"id": self.stage_id, "label": self.stage_label},
             "chain": {
                 "families": [
                     {"id": family, "array_tasks": 3, "merge_jobs": 1}
@@ -616,13 +521,17 @@ class Mot3DPreliminarySubmissionCoordinator:
                 "dirty": False,
             },
             "effects": {
-                "submit_preliminary_check": True,
+                self.submit_effect: True,
                 "start_simulation": True,
                 "submit_later_stages": False,
                 "modify_campaign_files": False,
                 "record_submission_receipt": True,
             },
         }
+        local_sync = self._preview_local_sync(pending)
+        if local_sync is not None:
+            result["local_sync"] = local_sync
+        return result
 
     def confirm(self, request, *, session_id: str):
         if (
@@ -668,8 +577,8 @@ class Mot3DPreliminarySubmissionCoordinator:
                 state = self._remote(plan, "submit", pending.nonce)
             except Mot3DPreliminarySubmissionError as exc:
                 if exc.code in {
-                    "preliminary_submission_outcome_unknown",
-                    "preliminary_already_started",
+                    self.outcome_unknown_code,
+                    self.already_started_code,
                     "remote_response_invalid",
                 }:
                     self._previews.replace(
@@ -683,22 +592,18 @@ class Mot3DPreliminarySubmissionCoordinator:
             ):
                 self._previews.replace(
                     token,
-                    replace(
-                        pending, terminal_error="preliminary_submission_outcome_unknown"
-                    ),
+                    replace(pending, terminal_error=self.outcome_unknown_code),
                 )
-                raise Mot3DPreliminarySubmissionError(
-                    "preliminary_submission_outcome_unknown"
-                )
+                raise Mot3DPreliminarySubmissionError(self.outcome_unknown_code)
             result = {
                 "status": "submitted",
                 "campaign_id": pending.campaign_id,
-                "stage": "preliminary_check",
-                "chain": public_chain(state.jobs),
+                "stage": self.stage_id,
+                "chain": public_chain(state.jobs, topology=self.topology),
                 "submitted_at": datetime.fromtimestamp(
                     state.submitted_unix_s, tz=timezone.utc
                 ).isoformat(),
-                "local_sync": {"status": "not_synchronized"},
+                "local_sync": self._confirm_local_sync(pending),
             }
             self._previews.replace(token, replace(pending, result=result))
             return result
