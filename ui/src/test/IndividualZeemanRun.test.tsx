@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import { IndividualZeemanRun, monitorCopy, particleCountAfterModeChange } from "../components/IndividualZeemanRun";
+import { IndividualZeemanRun, monitorCopy, particleCountAfterModeChange, userVisibleLockedSettings } from "../components/IndividualZeemanRun";
 import type { IndividualZeemanApi } from "../api/clients/individualZeeman";
 
 const preview = { preview_token: "token", expires_in_seconds: 300, plan: { run_id: "zeeman-test", family: "zeeman" as const, execution_mode: "local" as const, particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8, retain_particle_states: true, suitability: "individual_only" as const, output_disposition: "retain_survivor_states" as const, locked_settings: { policy: "canonical" }, resolved_configuration: { solver: { name: "RK4StCustom" }, laser: { detuning: -1 } }, lifecycle_state: "configured" as const, laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64), execution_started: false as const, submitted_to_zeus: false as const } };
@@ -9,6 +9,11 @@ function fake(): IndividualZeemanApi { return { reset: vi.fn(), preview: vi.fn()
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 
 describe("individual Zeeman wizard", () => {
+  it("hides fixed internal polarization controls from the user-facing JSON", () => {
+    const original = { boundary: { laser: { s0: 1.3, swap_polarization: false } } };
+    expect(userVisibleLockedSettings(original)).toEqual({ boundary: { laser: { s0: 1.3 } } });
+    expect(original.boundary.laser.swap_polarization).toBe(false);
+  });
   it("uses mode-specific particle defaults and limits", async () => {
     const user = userEvent.setup();
     render(<IndividualZeemanRun api={fake()} onBack={vi.fn()} />);

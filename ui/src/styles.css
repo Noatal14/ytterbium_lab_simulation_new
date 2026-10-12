@@ -235,6 +235,7 @@ footer { padding: 18px 24px; color: #d5e4e3; background: var(--ink-dark); text-a
 .run-stepper li > span { width:26px; height:26px; display:grid; place-items:center; flex:0 0 auto; border-radius:50%; background:#c8d5d5; }.run-stepper svg { width:17px; }
 .run-stepper li.complete { color:#285347; background:var(--mint); }.run-stepper li.current { color:white; background:var(--ink); }.run-stepper li.current > span { color:var(--ink); background:white; }
 .run-form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+.advanced-settings { margin-bottom:22px; }.advanced-settings > summary { margin-bottom:16px; cursor:pointer; }
 .geometry-choice-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
 .geometry-choice { display:grid; grid-template-columns:auto minmax(0,1fr); align-items:start; gap:12px; min-width:0; padding:18px; border:1px solid var(--line); border-radius:12px; cursor:pointer; }
 .geometry-choice.selected { border-color:#2e7668; box-shadow:0 0 0 2px rgba(46,118,104,.16); background:#f4fbf8; }

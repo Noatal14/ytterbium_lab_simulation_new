@@ -21,6 +21,19 @@ const help: Record<string, string> = {
 };
 
 function Help({ name }: { name: keyof typeof help }) { return <span className="help"><button type="button" aria-label={`Help for ${name}`}><CircleHelp aria-hidden="true" /></button><span role="tooltip">{help[name]}</span></span>; }
+export function userVisibleLockedSettings(value: Record<string, unknown>) {
+  const copy = structuredClone(value);
+  const hideInternalControls = (item: unknown): void => {
+    if (Array.isArray(item)) item.forEach(hideInternalControls);
+    else if (item && typeof item === "object") {
+      const row = item as Record<string, unknown>;
+      delete row.swap_polarization;
+      Object.values(row).forEach(hideInternalControls);
+    }
+  };
+  hideInternalControls(copy);
+  return copy;
+}
 function userMessage(error: unknown) { return error instanceof Error && error.message ? error.message : "The request could not be completed safely."; }
 export function particleCountAfterModeChange(current: number, from: ZeemanMode, to: ZeemanMode) {
   const defaults = spec.particle_count.default_by_execution_mode;
@@ -59,7 +72,7 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
   const requestBody = useMemo(() => ({ particle_count: particles, seed, mot_2d_s0: mot2dS0, mot_2d_detuning_gamma: mot2dDetuning, mot_2d_magnet_radius_m: mot2dRadiusMm / 1000, npools, retain_particle_states: retain, execution_mode: mode }), [particles, seed, mot2dS0, mot2dDetuning, mot2dRadiusMm, npools, retain, mode]);
   useEffect(() => { title.current?.focus(); }, [step]);
 
-  async function validate() { const id = ++request.current; setBusy(true); setError(null); setStep("validate"); try { const value = await api.preview(requestBody); if (id === request.current) { setPreview(value); setStep("review"); } } catch (caught) { if (id === request.current) { setError(userMessage(caught)); setStep("configure"); } } finally { if (id === request.current) setBusy(false); } }
+  async function validate() { const id = ++request.current; setBusy(true); setError(null); setStep("validate"); try { const value = await api.preview(requestBody); if (id === request.current) { setPreview({ ...value, plan: { ...value.plan, resolved_configuration: userVisibleLockedSettings(value.plan.resolved_configuration) } }); setStep("review"); } } catch (caught) { if (id === request.current) { setError(userMessage(caught)); setStep("configure"); } } finally { if (id === request.current) setBusy(false); } }
   async function create() { if (!preview) return; const id = ++request.current; setBusy(true); setError(null); try { const value = await api.confirm(preview.preview_token); if (id === request.current) { setRunId(value.run_id); setStep("run"); } } catch (caught) { if (id === request.current) setError(userMessage(caught)); } finally { if (id === request.current) setBusy(false); } }
   async function startLocal() { if (!runId) return; const id = ++request.current; setBusy(true); setError(null); try { await api.startLocal(runId); if (id === request.current) setStep("monitor"); } catch (caught) { if (id === request.current) setError(userMessage(caught)); } finally { if (id === request.current) setBusy(false); } }
   async function reviewZeus() { if (!runId) return; const id = ++request.current; setBusy(true); setError(null); try { const reviewed = await api.previewZeus(runId, username); if (typeof reviewed.preview_token !== "string") throw new Error("The Zeus submission review was invalid."); if (id === request.current) setZeusPreviewToken(reviewed.preview_token); } catch (caught) { if (id === request.current) setError(userMessage(caught)); } finally { if (id === request.current) setBusy(false); } }
