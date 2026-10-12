@@ -3,6 +3,110 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+_MOT3D_SOURCE_ID = "mot3d-source-" + "a" * 32
+_MOT3D_PARAMETERS = {
+    "green_s0": 30,
+    "green_detuning_gamma": -25,
+    "green_waist_m": 0.0075,
+    "blue_s0": 1.5,
+    "blue_waist_m": 0.0075,
+    "magnetic_gradient_G_cm": 2.5,
+    "blue_detuning_gamma": -3,
+    "core_shell_split_radius_m": 0.0025,
+}
+_MOT3D_CONTRACT_PAYLOADS = {
+    "mot3d-sources": {
+        "contract_version": "mot-3d-individual-source-catalog-v1",
+        "sources": [{
+            "id": _MOT3D_SOURCE_ID,
+            "source_kind": "canonical_2d_campaign",
+            "label": "campaign · s0 1.3",
+            "ensemble_count": 20,
+            "available_particle_count": {
+                "pooled": 100,
+                "minimum_per_ensemble": 5,
+                "maximum_per_ensemble": 5,
+            },
+            "source_qualification": "canonical_campaign_source",
+            "result_suitability": "individual_only",
+            "provenance": {
+                "validation": "completed_canonical_2d_campaign",
+                "campaign_name": "campaign",
+                "s0": 1.3,
+                "ensemble_count": 20,
+                "campaign_sha256": "a" * 64,
+                "final_report_sha256": "b" * 64,
+                "fingerprint": "c" * 64,
+            },
+        }],
+        "invalid_count": 0,
+        "total": 1,
+        "truncated": False,
+    },
+    "mot3d-run-preview": {
+        "preview_token": "mot3d-token",
+        "expires_in_seconds": 300,
+        "plan": {
+            "run_id": "mot3d-contract",
+            "family": "mot_3d",
+            "source": {
+                "id": _MOT3D_SOURCE_ID,
+                "kind": "canonical_2d_campaign",
+                "qualification": "canonical_campaign_source",
+                "fingerprint": "c" * 64,
+                "pooled_particle_count": 100,
+            },
+            "selection": {
+                "algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+                "version": "v1",
+                "seed": 1,
+                "selected_count": 20,
+                "selected_identities_sha256": "c" * 64,
+            },
+            "geometry": {"family": "angled_donut", "parameters": _MOT3D_PARAMETERS},
+            "execution": {"mode": "local", "particle_count": 20, "simulation_seed": 2},
+            "retention": {"particle_states": False},
+            "suitability": "individual_only",
+            "output_disposition": "discard_survivor_states_after_summary",
+            "locked_settings": {
+                "solver": "RK4StHybridCustom",
+                "timestep_s": 0.00001,
+                "t_max_s": 0.1,
+                "convergence_claim": "not_established",
+                "capture": {
+                    "capture_radius_m": 0.005,
+                    "maximum_final_speed_m_s": 1,
+                    "minimum_residence_time_s": 0.005,
+                },
+                "sampling_algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+                "sampling_version": "v1",
+                "workers": 8,
+            },
+            "lifecycle_state": "configured",
+            "laboratory_specification": {
+                "version": "laboratory-physical-v2",
+                "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+            },
+            "numerical_policy": {
+                "version": "numerical-policy-v1",
+                "sha256": "08a6ad18017ff9a649e46dc94595be24922b3838ffd7c183cdf1a9c9c097cef1",
+            },
+            "plan_sha256": "d" * 64,
+            "execution_started": False,
+            "submitted_to_zeus": False,
+        },
+    },
+    "mot3d-run-confirm": {
+        "status": "created",
+        "run_id": "mot3d-contract",
+        "family": "mot_3d",
+        "path": "data/runs/mot_3d/mot3d-contract",
+        "lifecycle_state": "configured",
+        "execution_started": False,
+        "submitted_to_zeus": False,
+    },
+}
+
 _PAYLOADS = {'campaign-detail': {'families': [],
                      'family': 'mot_2d',
                      'git_commit': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
@@ -541,6 +645,9 @@ _PAYLOADS.update({
     "mot2d-zeus-preview": {"preview_token":"mot2d-zeus-token","expires_in_seconds":300,"run_id":"mot2d-contract","job":{"kind":"scalar","array":False,"pbs_sha256":"b"*64},"package_sha256":"c"*64,"submission_key":"d"*64,"effects":{"submit_one_job":True,"reconcile_existing_job":False,"cancel_job":False}},
     "mot2d-zeus-confirm": {"status":"submitted","run_id":"mot2d-contract","job_id":"501.zeus-master","submission_key":"d"*64},
     "mot2d-zeus-refresh": {"state":"running","job_id":"501.zeus-master"},
+    "mot3d-sources": _MOT3D_CONTRACT_PAYLOADS["mot3d-sources"],
+    "mot3d-run-preview": _MOT3D_CONTRACT_PAYLOADS["mot3d-run-preview"],
+    "mot3d-run-confirm": _MOT3D_CONTRACT_PAYLOADS["mot3d-run-confirm"],
     "production-status":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"sensitivity"},"sensitivity":{"status":"ready_to_prepare_production","job_id":"402[].zeus-master","scheduler":{"state":"completed_success","task_count":17,"counts":{"queued":0,"running":0,"held":0,"succeeded":17,"failed":0},"job_id":"402[].zeus-master","submission_nonce":"b"*32}},"validation":{"status":"valid","completed_points":17,"expected_points":17},"next_action":"review_production_preparation","local_sync":{"status":"not_synchronized"}},
     "production-preview":{"preview_token":"production-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"a"*40,"s0_values":[1.3]},"from_stage":"sensitivity","to_stage":"production","sensitivity":{"job_id":"402[].zeus-master","completed_points":17,"expected_points":17},"artifacts":{"create":["sensitivity_summary.json","production/tasks.json","jobs/06_production.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/06_production.pbs","kind":"array","task_count":20,"array_throttle":4,"queue":"zeus_combined_q","cores_per_task":150,"memory_per_task_bytes":68719476736,"walltime_seconds":43200},"effects":{"prepare_production":True,"submit_production":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}},
     "production-confirm":{"status":"production_prepared","campaign_id":"campaign-id","stage":"production","artifacts":{"created":3,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}},

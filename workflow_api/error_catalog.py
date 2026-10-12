@@ -284,6 +284,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual 2D-MOT runs are unavailable.",
         ),
+        "individual_mot_3d_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "Individual 3D-MOT runs are unavailable.",
+        ),
     }
 )
 

@@ -6,6 +6,8 @@ import pytest
 
 from config import MOT_3D_CONFIGURATIONS
 from studies.mot_3d.discovery.optimize import build_profile_from_parameters
+from lab_setup.numerical_policy import NUMERICAL_POLICY_SHA256, NUMERICAL_POLICY_VERSION
+from lab_setup.physical_specification import LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION
 from workflow_api.mot_3d_run_specification import (
     MOT_3D_RUN_SPECIFICATION,
     MOT_3D_RUN_SPEC_SHA256,
@@ -22,6 +24,16 @@ def test_individual_3d_spec_is_versioned_immutable_and_policy_bound():
     assert spec["particle_count"]["maximum_by_execution_mode"] == {
         "local": 1000,
         "zeus": 50000,
+    }
+    assert spec["authority_references"] == {
+        "laboratory_specification": {
+            "version": LABORATORY_SPEC_VERSION,
+            "sha256": LABORATORY_SPEC_SHA256,
+        },
+        "numerical_policy": {
+            "version": NUMERICAL_POLICY_VERSION,
+            "sha256": NUMERICAL_POLICY_SHA256,
+        },
     }
     assert spec["fixed_classification"] == {
         "suitability": "individual_only",
@@ -79,6 +91,16 @@ def test_loader_rejects_drifted_bundled_spec():
     payload["particle_count"]["maximum_by_execution_mode"]["local"] = 1001
     with pytest.raises(ValueError, match="particle policy"):
         specification._validate(payload)
+
+    payload = json.loads(source.read_text())
+    payload["authority_references"]["numerical_policy"]["sha256"] = "0" * 64
+    with pytest.raises(ValueError, match="authority references"):
+        specification._validate(payload)
+
+
+def test_checked_in_typescript_contract_matches_authority_exactly():
+    generated = Path("ui/src/generated/mot3dIndividualSpec.v1.ts")
+    assert generated.read_text() == specification.render_typescript_specification()
 
 
 def test_individual_horizon_is_explicit_and_not_bound_to_generic_default(monkeypatch):

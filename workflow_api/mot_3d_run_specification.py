@@ -19,6 +19,8 @@ from config import (
     MOT_3D_SIM_CONFIG,
 )
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+from lab_setup.numerical_policy import NUMERICAL_POLICY_SHA256, NUMERICAL_POLICY_VERSION
+from lab_setup.physical_specification import LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION
 
 
 SPECIFICATION_PATH = (
@@ -147,7 +149,8 @@ def _validate(value: Any) -> dict[str, Any]:
     keys = {
         "spec_version", "request_fields", "geometry_families", "particle_count",
         "selection_seed", "simulation_seed", "common_controls", "family_controls",
-        "defaults", "workers_by_execution_mode", "sampling", "fixed_classification",
+        "defaults", "workers_by_execution_mode", "sampling", "authority_references",
+        "fixed_classification",
     }
     if (
         not isinstance(value, dict)
@@ -200,6 +203,17 @@ def _validate(value: Any) -> dict[str, Any]:
         "canonical_order": "constituent-record-order-then-row-index",
     }:
         raise ValueError("Invalid sampling policy.")
+    if value["authority_references"] != {
+        "laboratory_specification": {
+            "version": LABORATORY_SPEC_VERSION,
+            "sha256": LABORATORY_SPEC_SHA256,
+        },
+        "numerical_policy": {
+            "version": NUMERICAL_POLICY_VERSION,
+            "sha256": NUMERICAL_POLICY_SHA256,
+        },
+    }:
+        raise ValueError("Invalid scientific authority references.")
     expected_fixed = {
         "suitability": "individual_only",
         "solver": MOT_3D_SIM_CONFIG["solver"],
@@ -268,3 +282,14 @@ MOT_3D_RUN_SPEC_VERSION = _VALUE["spec_version"]
 MOT_3D_RUN_SPEC_SHA256 = hashlib.sha256(
     json.dumps(_VALUE, sort_keys=True, separators=(",", ":")).encode()
 ).hexdigest()
+
+
+def render_typescript_specification() -> str:
+    """Render the checked-in browser contract from the validated authority."""
+
+    body = json.dumps(_VALUE, indent=2, sort_keys=True)
+    return (
+        "// Generated from workflow_api/specifications/mot_3d_individual_v1.json; "
+        "do not edit.\n"
+        f"export const MOT_3D_INDIVIDUAL_SPECIFICATION_V1 = {body} as const;\n"
+    )

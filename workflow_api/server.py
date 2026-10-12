@@ -33,8 +33,10 @@ from workflow_api.mot_2d_individual_api import IndividualMot2DApi
 from workflow_api.mot_2d_run_creation import Mot2DRunCreationService
 from workflow_api.mot_2d_local_execution import Mot2DBoundedLocalExecutionPool
 from workflow_api.mot_2d_zeus_execution import IndividualMot2DZeusCoordinator, PinnedSshMot2DTransport
+from workflow_api.mot_3d_individual_api import IndividualMot3DApi
+from workflow_api.mot_3d_run_creation import Mot3DRunCreationService
 from workflow_api.mutation import CreationService
-from workflow_api.repository_snapshot import RepositorySnapshotProvider, ZeemanRepositorySnapshotProvider, Mot2DIndividualRepositorySnapshotProvider
+from workflow_api.repository_snapshot import RepositorySnapshotProvider, ZeemanRepositorySnapshotProvider, Mot2DIndividualRepositorySnapshotProvider, Mot3DIndividualRepositorySnapshotProvider
 from workflow_api.run_execution import issue_execution_authority
 from workflow_api.zeeman_run_creation import ZeemanRunCreationService
 from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
@@ -151,6 +153,8 @@ def _post_routes() -> tuple[PostRoute, ...]:
         ("/api/v1/individual-runs/mot-2d/zeus/preview","individual_mot_2d_api","preview_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
         ("/api/v1/individual-runs/mot-2d/zeus/confirm","individual_mot_2d_api","confirm_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
         ("/api/v1/individual-runs/mot-2d/zeus/refresh","individual_mot_2d_api","refresh_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/mot-3d/preview","individual_mot_3d_api","preview","session_kw","individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
+        ("/api/v1/individual-runs/mot-3d/confirm","individual_mot_3d_api","confirm","session_kw","individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.",HTTPStatus.CREATED,Exception),
     ]
     return tuple(PostRoute(*row) for row in rows)
 
@@ -208,6 +212,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
     individual_mot_2d_api: IndividualMot2DApi | None = None
+    individual_mot_3d_api: IndividualMot3DApi | None = None
     sessions: dict[str, tuple[str, float]] = {}
     sessions_lock = threading.Lock()
 
@@ -226,7 +231,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._json(workflow_catalog_payload())
             return
         if path == "/api/v1/session":
-            if self.creation_service is None and self.mot_3d_bootstrap_service is None and self.mot_3d_discovery_submission_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None:
+            if self.creation_service is None and self.mot_3d_bootstrap_service is None and self.mot_3d_discovery_submission_service is None and self.zeus_service is None and self.transfer_service is None and self.submission_service is None and self.screening_service is None and self.screen_submission_service is None and self.refinement_service is None and self.refinement_submission_service is None and self.confirmation_service is None and self.confirmation_submission_service is None and self.sensitivity_service is None and self.sensitivity_submission_service is None and self.production_service is None and self.production_submission_service is None and self.finalization_service is None and self.individual_zeeman_api is None and self.individual_mot_2d_api is None and self.individual_mot_3d_api is None:
                 self._catalog_error("protocol", "session_unavailable")
                 return
             if self.headers.get("Sec-Fetch-Site") != "same-origin":
@@ -267,6 +272,18 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 data = service.sources()
             except Exception:
                 self._error("source_inspection_failed", "2D-MOT sources could not be inspected safely.", HTTPStatus.INTERNAL_SERVER_ERROR)
+                return
+            self._json({"api_version": SCHEMA_VERSION, "data": data})
+            return
+        if path == "/api/v1/individual-runs/mot-3d/sources":
+            service = self.individual_mot_3d_api
+            if service is None:
+                self._error("individual_mot_3d_unavailable", "Individual 3D-MOT runs are unavailable.", HTTPStatus.SERVICE_UNAVAILABLE)
+                return
+            try:
+                data = service.sources()
+            except Exception:
+                self._error("source_inspection_failed", "3D-MOT sources could not be inspected safely.", HTTPStatus.INTERNAL_SERVER_ERROR)
                 return
             self._json({"api_version": SCHEMA_VERSION, "data": data})
             return
@@ -563,6 +580,13 @@ def main() -> None:
     )
     WorkflowHandler.individual_mot_2d_api = IndividualMot2DApi(
         WorkflowHandler.repository_root, mot_2d_creation, mot_2d_local, mot_2d_zeus,
+    )
+    mot_3d_creation = Mot3DRunCreationService(
+        WorkflowHandler.repository_root,
+        Mot3DIndividualRepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
+    )
+    WorkflowHandler.individual_mot_3d_api = IndividualMot3DApi(
+        WorkflowHandler.repository_root, mot_3d_creation,
     )
     WorkflowHandler.individual_run_service = CanonicalIndividualRunRegistry(
         WorkflowHandler.repository_root

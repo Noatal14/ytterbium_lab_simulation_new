@@ -19,7 +19,6 @@ import stat
 from types import MappingProxyType
 from typing import Any, Mapping
 
-from studies.mot_3d_campaign import freeze_inputs, validate_upstream_2d_campaign
 from workflow_api.mot_2d_individual_sources import (
     SourceScanLimits,
     individual_mot_2d_source_scan_limits,
@@ -219,6 +218,10 @@ def _portable_campaign_records(
 def _campaign_evidence(
     repository_root: Path, campaign: Path, survivor: Path
 ) -> _SourceEvidence:
+    # Source inspection is invoked on demand; keep importing the HTTP server
+    # itself independent of the study/simulation module graph.
+    from studies.mot_3d_campaign import freeze_inputs, validate_upstream_2d_campaign
+
     upstream = validate_upstream_2d_campaign(campaign, survivor)
     pairs = {
         row["zeeman_seed"]: row["mot_seed"] for row in upstream["sealed_seed_pairs"]

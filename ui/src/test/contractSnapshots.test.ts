@@ -21,6 +21,7 @@ import { sensitivityApi, sensitivitySubmissionApi } from "../api/clients/sensiti
 import { finalizationApi, productionApi, productionSubmissionApi } from "../api/clients/production";
 import { createMot3DBootstrapApi } from "../api/clients/mot3d";
 import { createMot3DDiscoveryApi } from "../api/clients/mot3dDiscovery";
+import { createIndividualMot3DApi, type Mot3DRequest } from "../api/clients/individualMot3D";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
 const caseById = (id: string) => successSnapshot.cases.find((entry) => entry.id === id) as SnapshotCase;
@@ -126,6 +127,29 @@ describe("backend-generated workflow API contract snapshots", () => {
     await finalizationApi.status(campaignId, profile);
     const finalizationPreview = await finalizationApi.preview(campaignId, profile);
     await finalizationApi.confirm(finalizationPreview.preview_token);
+    const individualMot3D = createIndividualMot3DApi(async () => "<csrf-token>");
+    await individualMot3D.sources();
+    const individualMot3DRequest: Mot3DRequest = {
+      source_id: `mot3d-source-${"a".repeat(32)}`,
+      geometry_family: "angled_donut",
+      particle_count: 20,
+      selection_seed: 1,
+      simulation_seed: 2,
+      parameters: {
+        green_s0: 30,
+        green_detuning_gamma: -25,
+        green_waist_m: 0.0075,
+        blue_s0: 1.5,
+        blue_waist_m: 0.0075,
+        magnetic_gradient_G_cm: 2.5,
+        blue_detuning_gamma: -3,
+        core_shell_split_radius_m: 0.0025,
+      },
+      retain_particle_states: false,
+      execution_mode: "local",
+    };
+    const individualMot3DPreview = await individualMot3D.preview(individualMot3DRequest);
+    await individualMot3D.confirm(individualMot3DPreview.preview_token);
 
     const exercisedPaths = new Set(fetchMock.mock.calls.map(([input, init]) => `${String(init?.method ?? "GET").toUpperCase()} ${typeof input === "string" ? input : String(input)}`));
     for (const entry of successSnapshot.cases) {

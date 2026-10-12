@@ -49,6 +49,10 @@
   },
   "workers_by_execution_mode": {"local": 8, "zeus": 200},
   "sampling": {"algorithm": "pcg64-raw-partial-fisher-yates-unbiased", "version": "v1", "canonical_order": "constituent-record-order-then-row-index"},
+  "authority_references": {
+    "laboratory_specification": {"version": "laboratory-physical-v2", "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3"},
+    "numerical_policy": {"version": "numerical-policy-v1", "sha256": "08a6ad18017ff9a649e46dc94595be24922b3838ffd7c183cdf1a9c9c097cef1"}
+  },
   "fixed_classification": {
     "suitability": "individual_only",
     "solver": "RK4StHybridCustom",

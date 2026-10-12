@@ -1347,6 +1347,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "route_unavailable",
+    "code": "individual_mot_3d_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
     "code": "individual_zeeman_unavailable",
     "semantic": "other"
   },

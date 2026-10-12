@@ -2056,6 +2056,13 @@
     },
     {
       "domain": "route_unavailable",
+      "case": "individual_mot_3d_unavailable",
+      "code": "individual_mot_3d_unavailable",
+      "status": 503,
+      "message": "Individual 3D-MOT runs are unavailable."
+    },
+    {
+      "domain": "route_unavailable",
       "case": "individual_zeeman_unavailable",
       "code": "individual_zeeman_unavailable",
       "status": 503,

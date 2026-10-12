@@ -64,7 +64,8 @@ EXPECTED_VERSIONED_SPEC_CONSUMERS = {
 EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
     "config.py", "workflow_api/zeeman_run_plan.py",
     "workflow_api/mot_2d_run_plan.py", "workflow_api/mot_2d_run_specification.py",
-    "workflow_api/mot_2d_zeus_remote.py",
+    "workflow_api/mot_2d_zeus_remote.py", "workflow_api/mot_3d_run_plan.py",
+    "workflow_api/mot_3d_run_specification.py",
 }
 EXPECTED_ZEEMAN_OPERATING_CONSUMERS = {"config.py"}
 EXPECTED_MOT_2D_OPERATING_CONSUMERS = {"config.py"}
