@@ -193,6 +193,16 @@ def _server(
         if services
         else None
     )
+    handler.mot_3d_refinement_transition_service = (
+        _Service(
+            "mot3d-refinement-transition",
+            ledger,
+            values,
+            "mot3d-refinement-transition-status",
+        )
+        if services
+        else None
+    )
     handler.zeus_service = _Service("zeus", ledger, values) if services else None
     handler.transfer_service = (
         _Service("transfer", ledger, values) if services else None
@@ -415,8 +425,8 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     second, _, _ = collect_success(monkeypatch)
     assert first == second == expected
     assert (
-        len(first["cases"]) == 83
-        and len({(row["method"], row["path"]) for row in first["cases"]}) == 83
+        len(first["cases"]) == 86
+        and len({(row["method"], row["path"]) for row in first["cases"]}) == 86
     )
     assert all(row["body"].get("api_version") == 1 for row in first["cases"])
     assert all(
@@ -448,6 +458,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-preliminary-transition-status",
         "mot3d-preliminary-transition-preview",
         "mot3d-preliminary-transition-confirm",
+        "mot3d-refinement-transition-status",
+        "mot3d-refinement-transition-preview",
+        "mot3d-refinement-transition-confirm",
         "zeus-snapshot",
         "transfer-preview",
         "transfer-confirm",
@@ -536,7 +549,8 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
 
     assert ReadOnlyWorkflowHandler is WorkflowHandler
-    assert len(POST_ROUTES) == len(post_cases) == 75
+    assert post_cases
+    assert len(POST_ROUTES) == len(post_cases)
     assert set(POST_ROUTES) == {row["path"] for row in post_cases}
     assert all(route.path == path for path, route in POST_ROUTES.items())
     assert all(
@@ -779,6 +793,36 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_preliminary_transition_unavailable",
             "3D Preliminary-check result synchronization is unavailable.",
             "Mot3DPreliminaryTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/refinement-transition/status",
+            "mot_3d_refinement_transition_service",
+            "status",
+            "payload",
+            200,
+            "mot_3d_refinement_transition_unavailable",
+            "3D Refinement result synchronization is unavailable.",
+            "Mot3DRefinementTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/refinement-transition/preview",
+            "mot_3d_refinement_transition_service",
+            "preview",
+            "session_kw",
+            200,
+            "mot_3d_refinement_transition_unavailable",
+            "3D Refinement result synchronization is unavailable.",
+            "Mot3DRefinementTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/refinement-transition/confirm",
+            "mot_3d_refinement_transition_service",
+            "confirm",
+            "session_kw",
+            201,
+            "mot_3d_refinement_transition_unavailable",
+            "3D Refinement result synchronization is unavailable.",
+            "Mot3DRefinementTransitionError",
         ),
         (
             "/api/v1/zeus/snapshot",

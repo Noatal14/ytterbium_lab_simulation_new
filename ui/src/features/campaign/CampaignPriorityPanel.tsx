@@ -26,6 +26,8 @@ import type { Mot3DPreliminaryTransitionLifecycle } from "../../api/clients/mot3
 import type { Mot3DPreliminaryTransitionUiState } from "./controllers/useMot3DPreliminaryTransitionController";
 import type { Mot3DRefinementSubmissionLifecycle } from "../../api/clients/mot3dRefinementSubmission";
 import type { Mot3DRefinementSubmissionUiState } from "./controllers/useMot3DRefinementSubmissionController";
+import type { Mot3DRefinementTransitionLifecycle } from "../../api/clients/mot3dRefinementTransition";
+import type { Mot3DRefinementTransitionUiState } from "./controllers/useMot3DRefinementTransitionController";
 
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
@@ -55,6 +57,8 @@ export function CampaignPriorityPanel({
   preliminaryTransitionLifecycle = null,
   mot3DRefinementState = "idle",
   mot3DRefinementLifecycle = null,
+  mot3DRefinementTransitionState = "idle",
+  mot3DRefinementTransitionLifecycle = null,
   copyStatus,
   onCopyCommand,
 }: {
@@ -82,6 +86,8 @@ export function CampaignPriorityPanel({
   preliminaryTransitionLifecycle?: Mot3DPreliminaryTransitionLifecycle | null;
   mot3DRefinementState?: Mot3DRefinementSubmissionUiState;
   mot3DRefinementLifecycle?: Mot3DRefinementSubmissionLifecycle | null;
+  mot3DRefinementTransitionState?: Mot3DRefinementTransitionUiState;
+  mot3DRefinementTransitionLifecycle?: Mot3DRefinementTransitionLifecycle | null;
   copyStatus: string;
   onCopyCommand: () => void;
 }) {
@@ -157,6 +163,7 @@ export function CampaignPriorityPanel({
                 : null);
 
   if (campaign.family === "mot_3d" && campaign.stage === "refinement") {
+    if (mot3DRefinementTransitionState!=="idle"||mot3DRefinementTransitionLifecycle){const blocked=mot3DRefinementTransitionState==="terminal"||["not_submitted","held","completed_failed","status_unknown","partial","outcome_unknown"].includes(mot3DRefinementTransitionLifecycle??"");const prepared=mot3DRefinementTransitionState==="prepared"||mot3DRefinementTransitionLifecycle==="closure_prepared";const ready=["ready","review"].includes(mot3DRefinementTransitionState);return <section className={`priority-panel ${blocked?"priority-panel--blocked":""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{blocked?"Manual verification required":prepared?"Closure is prepared":ready?"Scientific validation and synchronization required":"No action needed"}</h2><p><strong>Current stage:</strong> Refinement.</p><p>{blocked?"The Refinement evidence or transition outcome is not safely actionable. Inspect Zeus before continuing.":prepared?"Verified results are synchronized and Closure files are ready. No Closure job has started.":ready?"Review the verified result set before synchronization prepares Closure.":"The application is checking or synchronizing evidence. No additional action is needed."}</p></section>}
     const blocked = mot3DRefinementState === "terminal" || ["partial", "held", "completed_failed", "status_unknown", "outcome_unknown"].includes(mot3DRefinementLifecycle ?? "");
     const checking = mot3DRefinementState === "checking";
     const active = mot3DRefinementState === "submitting" || ["submitted", "queued", "running"].includes(mot3DRefinementLifecycle ?? "");

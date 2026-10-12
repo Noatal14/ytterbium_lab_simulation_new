@@ -8,6 +8,9 @@ records success only after re-verifying the exact 160-file transfer registry.
 from __future__ import annotations
 
 import base64
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 import fcntl
 import hashlib
 import json
@@ -54,6 +57,104 @@ SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 MAX_FILE = 2 * 1024 * 1024
 
 
+@dataclass(frozen=True)
+class TransitionDescriptor:
+    """Immutable stage policy for the hardened selection-stage transition engine."""
+
+    from_stage: str
+    to_stage: str
+    sync_name: str
+    source_result_count: int
+    transfer_file_count: int
+    source_submission_receipt: str
+    prior_local_sync_receipt: str
+    generated_paths: frozenset[str]
+    source_identity_paths: frozenset[str]
+    code_paths: frozenset[str]
+    prepared_status: str
+    pending_status: str
+    error_prefix: str
+    selection_stage: str
+    prior_transition_name: str
+    prior_transition_status: str
+    prior_transition_file_count: int
+
+    def __post_init__(self):
+        safe = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
+        if any(
+            type(value) is not str or safe.fullmatch(value) is None
+            for value in (
+                self.from_stage,
+                self.to_stage,
+                self.sync_name,
+                self.prepared_status,
+                self.pending_status,
+                self.error_prefix,
+                self.selection_stage,
+                self.prior_transition_name,
+                self.prior_transition_status,
+            )
+        ):
+            raise ValueError("invalid transition descriptor")
+        if (
+            type(self.source_result_count) is not int
+            or self.source_result_count <= 0
+            or type(self.transfer_file_count) is not int
+            or self.transfer_file_count != self.source_result_count + 8
+            or not _safe_relative(self.source_submission_receipt)
+            or type(self.prior_local_sync_receipt) is not str
+            or not self.prior_local_sync_receipt.startswith(".mot_ui/sync/")
+            or not self.prior_local_sync_receipt.endswith(".json")
+            or type(self.generated_paths) is not frozenset
+            or type(self.source_identity_paths) is not frozenset
+            or type(self.code_paths) is not frozenset
+            or len(self.generated_paths) != 7
+            or type(self.prior_transition_file_count) is not int
+            or self.prior_transition_file_count <= 0
+        ):
+            raise ValueError("invalid transition descriptor")
+
+    @property
+    def pending_name(self) -> str:
+        return f"{self.sync_name}.pending.json"
+
+    @property
+    def final_name(self) -> str:
+        return f"{self.sync_name}.json"
+
+    @property
+    def bundle_name(self) -> str:
+        return f"{self.sync_name}.bundle.gz"
+
+    @property
+    def lock_name(self) -> str:
+        return f"{self.sync_name}.lock"
+
+    def error(self, suffix: str) -> str:
+        return f"{self.error_prefix}_{suffix}"
+
+
+_DESCRIPTOR: ContextVar[TransitionDescriptor] = ContextVar(
+    "mot3d_transition_descriptor"
+)
+
+
+def _descriptor() -> TransitionDescriptor:
+    try:
+        return _DESCRIPTOR.get()
+    except LookupError:
+        return preliminary_transition_descriptor()
+
+
+@contextmanager
+def descriptor_scope(descriptor: TransitionDescriptor):
+    token = _DESCRIPTOR.set(descriptor)
+    try:
+        yield descriptor
+    finally:
+        _DESCRIPTOR.reset(token)
+
+
 def render_refinement_transition(*args, **kwargs):
     """Load the study renderer only inside the pinned receiver process."""
 
@@ -62,7 +163,60 @@ def render_refinement_transition(*args, **kwargs):
     return render(*args, **kwargs)
 
 
-GENERATED_PATHS = frozenset(
+def _selection_path(family: str) -> str:
+    return f"selection/{_descriptor().selection_stage}/{family}.json"
+
+
+def _result_paths(selections):
+    if _descriptor().from_stage == "preliminary_check":
+        return expected_paths(selections)
+    from workflow_api.mot_3d_refinement_results import (
+        expected_paths as refinement_paths,
+    )
+
+    return refinement_paths(selections)
+
+
+def _validate_results(
+    manifest_raw, selections, results, project_directory, campaign_path
+):
+    manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
+    if _descriptor().from_stage == "preliminary_check":
+        particle = expected_preliminary_particle_selection(
+            manifest, project_directory=str(project_directory)
+        )
+        validated = validate_preliminary_result_bytes(
+            manifest_bytes=manifest_raw,
+            selection_bytes=selections,
+            result_files=results,
+            expected_particle_selection=particle,
+            campaign_absolute_path=str(campaign_path),
+            project_directory=str(project_directory),
+        )
+    else:
+        from workflow_api.mot_3d_refinement_results import (
+            validate_refinement_result_bytes,
+        )
+
+        validated = validate_refinement_result_bytes(
+            manifest_bytes=manifest_raw,
+            selection_bytes=selections,
+            result_files=results,
+            campaign_absolute_path=str(campaign_path),
+            project_directory=str(project_directory),
+        )
+    return manifest, validated
+
+
+def _render_transition(relative, manifest, summaries):
+    if _descriptor().to_stage == "refinement":
+        return render_refinement_transition(relative, manifest, summaries)
+    from studies.mot_3d_campaign import render_closure_transition
+
+    return render_closure_transition(relative, manifest, summaries)
+
+
+PRELIMINARY_GENERATED_PATHS = frozenset(
     {
         "campaign.json",
         *(f"selection/refinement/{family}.json" for family in FAMILIES),
@@ -73,7 +227,7 @@ GENERATED_PATHS = frozenset(
         ),
     }
 )
-SOURCE_IDENTITY_PATHS = frozenset(
+PRELIMINARY_SOURCE_IDENTITY_PATHS = frozenset(
     {
         "campaign.json",
         *(f"selection/discovery/{family}.json" for family in FAMILIES),
@@ -84,7 +238,7 @@ SOURCE_IDENTITY_PATHS = frozenset(
         ),
     }
 )
-CODE_PATHS = frozenset(
+PRELIMINARY_CODE_PATHS = frozenset(
     {
         "config.py",
         "studies/mot_3d_campaign.py",
@@ -98,6 +252,11 @@ CODE_PATHS = frozenset(
         "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
     }
 )
+# Backward-compatible public constants used by the Stage-3 characterization
+# harness. Runtime policy is always read from the bound immutable descriptor.
+GENERATED_PATHS = PRELIMINARY_GENERATED_PATHS
+SOURCE_IDENTITY_PATHS = PRELIMINARY_SOURCE_IDENTITY_PATHS
+CODE_PATHS = PRELIMINARY_CODE_PATHS
 FINAL_KEYS = {
     "version",
     "status",
@@ -114,6 +273,28 @@ FINAL_KEYS = {
     "completed_unix_s",
 }
 PENDING_KEYS = (FINAL_KEYS - {"completed_unix_s"}) | {"created_unix_s"}
+
+
+def preliminary_transition_descriptor() -> TransitionDescriptor:
+    return TransitionDescriptor(
+        from_stage="preliminary_check",
+        to_stage="refinement",
+        sync_name="refinement",
+        source_result_count=152,
+        transfer_file_count=160,
+        source_submission_receipt="preliminary_check_submission.json",
+        prior_local_sync_receipt=".mot_ui/sync/discovery_to_preliminary.json",
+        generated_paths=PRELIMINARY_GENERATED_PATHS,
+        source_identity_paths=PRELIMINARY_SOURCE_IDENTITY_PATHS,
+        code_paths=PRELIMINARY_CODE_PATHS,
+        prepared_status="refinement_prepared",
+        pending_status="refinement_pending",
+        error_prefix="preliminary_transition",
+        selection_stage="discovery",
+        prior_transition_name="preliminary_check",
+        prior_transition_status="preliminary_check_prepared",
+        prior_transition_file_count=961,
+    )
 
 
 def fail(code: str, status: int = 20) -> None:
@@ -173,14 +354,14 @@ def _safe_relative(value: object) -> bool:
 
 def _publish_bytes(parent: int, name: str, raw: bytes, *, identical_ok: bool) -> None:
     if not SAFE_NAME.fullmatch(name) or not isinstance(raw, bytes) or not raw:
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     if regular_exists_at(parent, name):
         if (
             identical_ok
             and bounded_at(parent, name, max(MAX_TOTAL_BYTES, len(raw))) == raw
         ):
             return
-        fail("preliminary_transition_conflict")
+        fail(_descriptor().error("conflict"))
     temporary = f".{name}.{os.getpid()}.{os.urandom(4).hex()}.tmp"
     fd = -1
     try:
@@ -200,9 +381,9 @@ def _publish_bytes(parent: int, name: str, raw: bytes, *, identical_ok: bool) ->
         )
         os.fsync(parent)
     except FileExistsError:
-        fail("preliminary_transition_conflict")
+        fail(_descriptor().error("conflict"))
     except OSError:
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     finally:
         if fd >= 0:
             os.close(fd)
@@ -231,7 +412,7 @@ def _replace_campaign(campaign_fd: int, old: bytes, new: bytes) -> None:
     if current == new:
         return
     if current != old:
-        fail("preliminary_transition_conflict")
+        fail(_descriptor().error("conflict"))
     before = os.stat("campaign.json", dir_fd=campaign_fd, follow_symlinks=False)
     temporary = f".campaign.json.{os.getpid()}.{os.urandom(4).hex()}.tmp"
     fd = -1
@@ -248,20 +429,20 @@ def _replace_campaign(campaign_fd: int, old: bytes, new: bytes) -> None:
             stream.flush()
             os.fsync(stream.fileno())
         if bounded_at(campaign_fd, "campaign.json", MAX_FILE) != old:
-            fail("preliminary_transition_conflict")
+            fail(_descriptor().error("conflict"))
         now = os.stat("campaign.json", dir_fd=campaign_fd, follow_symlinks=False)
         if (now.st_dev, now.st_ino, now.st_ctime_ns) != (
             before.st_dev,
             before.st_ino,
             before.st_ctime_ns,
         ):
-            fail("preliminary_transition_conflict")
+            fail(_descriptor().error("conflict"))
         os.replace(
             temporary, "campaign.json", src_dir_fd=campaign_fd, dst_dir_fd=campaign_fd
         )
         os.fsync(campaign_fd)
     except OSError:
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     finally:
         if fd >= 0:
             os.close(fd)
@@ -285,7 +466,7 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
     try:
         final = strict_json_at(
             submissions_fd,
-            "preliminary_check.json",
+            f"{_descriptor().from_stage}.json",
             keys={
                 "version",
                 "status",
@@ -311,7 +492,7 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
             or not isinstance(final["jobs"], dict)
             or set(final["jobs"]) != set(FAMILIES)
         ):
-            fail("preliminary_transition_conflict")
+            fail(_descriptor().error("conflict"))
         jobs = final["jobs"]
         seen = set()
         previous_completed = final["created_unix_s"]
@@ -325,15 +506,15 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
                 or ARRAY.fullmatch(row["array"]) is None
                 or SCALAR.fullmatch(row["merge"]) is None
             ):
-                fail("preliminary_transition_conflict")
+                fail(_descriptor().error("conflict"))
             numeric = {row["array"].split("[", 1)[0], row["merge"].split(".", 1)[0]}
             if seen & numeric:
-                fail("preliminary_transition_conflict")
+                fail(_descriptor().error("conflict"))
             seen |= numeric
             for kind in ("array", "merge"):
                 step = strict_json_at(
                     submissions_fd,
-                    f"preliminary_check_{family}_{kind}.json",
+                    f"{_descriptor().from_stage}_{family}_{kind}.json",
                     keys={
                         "status",
                         "submission_key",
@@ -350,7 +531,9 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
                 )
                 dependency = row["array"] if kind == "merge" else None
                 pbs = read_relative_at(
-                    campaign_fd, f"jobs/preliminary_check/{family}_{kind}.pbs", MAX_FILE
+                    campaign_fd,
+                    f"jobs/{_descriptor().from_stage}/{family}_{kind}.pbs",
+                    MAX_FILE,
                 )
                 if (
                     step["status"] != "submitted"
@@ -370,11 +553,11 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
                     <= final["submitted_unix_s"]
                     or step["created_unix_s"] < previous_completed
                 ):
-                    fail("preliminary_transition_conflict")
+                    fail(_descriptor().error("conflict"))
                 previous_completed = step["completed_unix_s"]
         compatibility = json_bytes(
             read_relative_at(
-                campaign_fd, "preliminary_check_submission.json", MAX_FILE
+                campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
             ),
             keys={
                 "kind",
@@ -388,11 +571,11 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
                 "submitted_unix_s",
                 "families",
             },
-            error="preliminary_transition_conflict",
+            error=_descriptor().error("conflict"),
         )
         if compatibility != {
             "kind": "mot_3d_selection_stage_submission",
-            "stage": "preliminary_check",
+            "stage": _descriptor().from_stage,
             "status": "submitted",
             "dependency": "afterok",
             "submission_key": submission_key,
@@ -408,7 +591,7 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
                 for family in FAMILIES
             },
         }:
-            fail("preliminary_transition_conflict")
+            fail(_descriptor().error("conflict"))
         return final, jobs
     finally:
         os.close(submissions_fd)
@@ -480,29 +663,79 @@ def _identity(
     advanced_campaign_sha256: str | None = None,
 ):
     identity = payload.get("identity")
+    stage1_keys = {"stage1_receipt_sha256", "stage1_bundle_sha256"}
+    stage3_keys = {
+        "stage3_local_sync_receipt_sha256",
+        "stage3_remote_receipt_sha256",
+        "stage3_bundle_sha256",
+        "stage4_submission_identity",
+    }
+    extra_keys = (
+        stage1_keys if _descriptor().from_stage == "preliminary_check" else stage3_keys
+    )
+    stage4 = (
+        identity.get("stage4_submission_identity")
+        if isinstance(identity, dict)
+        else None
+    )
+    stage4_keys = {
+        "campaign_sha256",
+        "local_transition_receipt_sha256",
+        "transition_key",
+        "remote_transition_receipt_sha256",
+        "bundle_sha256",
+        "files",
+        "science",
+        "physical_model_sha256",
+        "upstream_campaign_sha256",
+        "upstream_final_report_sha256",
+        "timestep_policy_sha256",
+        "code_files",
+    }
+    stage4_valid = _descriptor().from_stage == "preliminary_check" or (
+        isinstance(stage4, dict)
+        and set(stage4) == stage4_keys
+        and all(
+            type(stage4[key]) is str and HEX64.fullmatch(stage4[key]) is not None
+            for key in stage4_keys - {"files", "science", "code_files"}
+        )
+        and isinstance(stage4["files"], dict)
+        and set(stage4["files"]) == _descriptor().source_identity_paths
+        and all(
+            type(value) is str and HEX64.fullmatch(value) is not None
+            for value in stage4["files"].values()
+        )
+        and isinstance(stage4["code_files"], dict)
+        and all(
+            type(name) is str
+            and _safe_relative(name)
+            and type(value) is str
+            and HEX64.fullmatch(value) is not None
+            for name, value in stage4["code_files"].items()
+        )
+        and isinstance(stage4["science"], dict)
+        and _stage4_key_matches(payload, stage4)
+    )
     if (
         not isinstance(identity, dict)
-        or set(identity)
-        != {
-            "source_files",
-            "code_files",
-            "stage1_receipt_sha256",
-            "stage1_bundle_sha256",
-        }
+        or set(identity) != {"source_files", "code_files"} | extra_keys
         or not isinstance(identity["source_files"], dict)
-        or set(identity["source_files"]) != SOURCE_IDENTITY_PATHS
+        or set(identity["source_files"]) != _descriptor().source_identity_paths
         or not isinstance(identity["code_files"], dict)
-        or set(identity["code_files"]) != CODE_PATHS
+        or set(identity["code_files"]) != _descriptor().code_paths
         or any(
-            HEX64.fullmatch(str(value)) is None
+            type(value) is not str or HEX64.fullmatch(value) is None
             for value in identity["source_files"].values()
         )
         or any(
-            HEX64.fullmatch(str(value)) is None
+            type(value) is not str or HEX64.fullmatch(value) is None
             for value in identity["code_files"].values()
         )
-        or HEX64.fullmatch(str(identity["stage1_receipt_sha256"])) is None
-        or HEX64.fullmatch(str(identity["stage1_bundle_sha256"])) is None
+        or any(
+            type(identity[key]) is not str or HEX64.fullmatch(identity[key]) is None
+            for key in extra_keys - {"stage4_submission_identity"}
+        )
+        or not stage4_valid
     ):
         fail("invalid_request")
     frozen = {}
@@ -512,13 +745,15 @@ def _identity(
         if name == "campaign.json" and advanced_campaign_sha256 is not None:
             accepted.add(advanced_campaign_sha256)
         if _sha(raw) not in accepted:
-            fail("preliminary_transition_conflict")
+            fail(_descriptor().error("conflict"))
         frozen[name] = raw
     for name, expected in identity["code_files"].items():
         if _sha(read_relative_at(root_fd, name, MAX_FILE)) != expected:
-            fail("preliminary_transition_conflict")
+            fail(_descriptor().error("conflict"))
     transition = read_relative_at(
-        campaign_fd, ".mot_ui/transitions/preliminary_check.json", MAX_FILE
+        campaign_fd,
+        f".mot_ui/transitions/{_descriptor().prior_transition_name}.json",
+        MAX_FILE,
     )
     transition_row = json_bytes(
         transition,
@@ -533,11 +768,11 @@ def _identity(
             "bundle",
             "completed_unix_s",
         },
-        error="preliminary_transition_conflict",
+        error=_descriptor().error("conflict"),
     )
     stage1_bundle = read_relative_at(
         campaign_fd,
-        ".mot_ui/transitions/preliminary_check.bundle.gz",
+        f".mot_ui/transitions/{_descriptor().prior_transition_name}.bundle.gz",
         MAX_TOTAL_BYTES,
     )
     bundle = transition_row["bundle"]
@@ -550,13 +785,28 @@ def _identity(
         for index, chunk in enumerate(chunks)
     ]
     if (
-        _sha(transition) != identity["stage1_receipt_sha256"]
-        or transition_row["status"] != "preliminary_check_prepared"
+        _sha(transition)
+        != identity[
+            (
+                "stage1_receipt_sha256"
+                if _descriptor().from_stage == "preliminary_check"
+                else "stage3_remote_receipt_sha256"
+            )
+        ]
+        or transition_row["status"] != _descriptor().prior_transition_status
         or transition_row["commit"] != payload["commit"]
-        or transition_row["submission_key"] != payload["submission_key"]
-        or HEX32.fullmatch(str(transition_row["nonce"])) is None
-        or HEX64.fullmatch(str(transition_row["transition_key"])) is None
-        or HEX64.fullmatch(str(transition_row["bootstrap_digest"])) is None
+        or (
+            _descriptor().from_stage == "preliminary_check"
+            and transition_row["submission_key"] != payload["submission_key"]
+        )
+        or type(transition_row["submission_key"]) is not str
+        or HEX64.fullmatch(transition_row["submission_key"]) is None
+        or type(transition_row["nonce"]) is not str
+        or HEX32.fullmatch(transition_row["nonce"]) is None
+        or type(transition_row["transition_key"]) is not str
+        or HEX64.fullmatch(transition_row["transition_key"]) is None
+        or type(transition_row["bootstrap_digest"]) is not str
+        or HEX64.fullmatch(transition_row["bootstrap_digest"]) is None
         or not stamp(transition_row["completed_unix_s"])
         or not isinstance(transition_row["chain"], dict)
         or set(transition_row["chain"]) != set(FAMILIES)
@@ -565,17 +815,33 @@ def _identity(
             or len(transition_row["chain"][family])
             != (2 if family == "angled_donut" else 3)
             or any(
-                ARRAY.fullmatch(str(job)) is None
+                type(job) is not str or ARRAY.fullmatch(job) is None
                 for job in transition_row["chain"][family]
             )
             for family in FAMILIES
         )
-        or not _exact_bundle(bundle, file_count=961)
-        or bundle["bundle_sha256"] != identity["stage1_bundle_sha256"]
-        or _sha(stage1_bundle) != identity["stage1_bundle_sha256"]
+        or not _exact_bundle(
+            bundle, file_count=_descriptor().prior_transition_file_count
+        )
+        or bundle["bundle_sha256"]
+        != identity[
+            (
+                "stage1_bundle_sha256"
+                if _descriptor().from_stage == "preliminary_check"
+                else "stage3_bundle_sha256"
+            )
+        ]
+        or _sha(stage1_bundle)
+        != identity[
+            (
+                "stage1_bundle_sha256"
+                if _descriptor().from_stage == "preliminary_check"
+                else "stage3_bundle_sha256"
+            )
+        ]
         or bundle["chunks"] != expected_chunks
     ):
-        fail("preliminary_transition_conflict")
+        fail(_descriptor().error("conflict"))
     expected_key = digest(
         {
             "campaign": payload["campaign"],
@@ -585,8 +851,20 @@ def _identity(
         }
     )
     if expected_key != payload["transition_key"]:
-        fail("preliminary_transition_conflict")
+        fail(_descriptor().error("conflict"))
     return identity, frozen
+
+
+def _stage4_key_matches(payload: object, stage4_identity: object) -> bool:
+    if not isinstance(payload, dict) or not isinstance(stage4_identity, dict):
+        return False
+    return digest(
+        {
+            "campaign": payload.get("campaign"),
+            "commit": payload.get("commit"),
+            **stage4_identity,
+        }
+    ) == payload.get("submission_key")
 
 
 def _capture(
@@ -595,31 +873,21 @@ def _capture(
     campaign_absolute_path: Path,
     manifest_raw: bytes,
 ):
-    manifest = json_bytes(manifest_raw, error="preliminary_transition_conflict")
+    manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
     selections = {
-        family: read_relative_at(
-            campaign_fd, f"selection/discovery/{family}.json", MAX_FILE
-        )
+        family: read_relative_at(campaign_fd, _selection_path(family), MAX_FILE)
         for family in FAMILIES
     }
     parsed = {
-        family: json_bytes(raw, error="preliminary_transition_conflict")
+        family: json_bytes(raw, error=_descriptor().error("conflict"))
         for family, raw in selections.items()
     }
     results = {
         name: read_relative_at(campaign_fd, name, MAX_FILE)
-        for name in expected_paths(parsed)
+        for name in _result_paths(parsed)
     }
-    particle = expected_preliminary_particle_selection(
-        manifest, project_directory=str(project_directory)
-    )
-    validated = validate_preliminary_result_bytes(
-        manifest_bytes=manifest_raw,
-        selection_bytes=selections,
-        result_files=results,
-        expected_particle_selection=particle,
-        campaign_absolute_path=str(campaign_absolute_path),
-        project_directory=str(project_directory),
+    manifest, validated = _validate_results(
+        manifest_raw, selections, results, project_directory, campaign_absolute_path
     )
     return manifest, results, validated
 
@@ -629,13 +897,13 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
         set(receipt) != FINAL_KEYS
         or type(receipt["version"]) is not int
         or receipt["version"] != 1
-        or receipt["status"] != "refinement_prepared"
+        or receipt["status"] != _descriptor().prepared_status
         or receipt["transition_key"] != payload["transition_key"]
         or receipt["commit"] != payload["commit"]
         or receipt["submission_key"] != payload["submission_key"]
         or receipt["identity_sha256"] != digest(payload["identity"])
         or any(
-            HEX64.fullmatch(str(receipt[key])) is None
+            type(receipt[key]) is not str or HEX64.fullmatch(receipt[key]) is None
             for key in (
                 "identity_sha256",
                 "old_campaign_sha256",
@@ -643,37 +911,40 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
                 "evidence_sha256",
             )
         )
-        or HEX32.fullmatch(str(receipt["nonce"])) is None
+        or type(receipt["nonce"]) is not str
+        or HEX32.fullmatch(receipt["nonce"]) is None
         or not stamp(receipt["completed_unix_s"])
         or not isinstance(receipt["files"], dict)
-        or len(receipt["files"]) != 160
+        or len(receipt["files"]) != _descriptor().transfer_file_count
         or any(
-            not _safe_relative(name) or HEX64.fullmatch(str(value)) is None
+            not _safe_relative(name)
+            or type(value) is not str
+            or HEX64.fullmatch(value) is None
             for name, value in receipt["files"].items()
         )
-        or not _exact_bundle(receipt["bundle"], file_count=160)
+        or not _exact_bundle(
+            receipt["bundle"], file_count=_descriptor().transfer_file_count
+        )
     ):
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     selections = {
         family: json_bytes(
-            read_relative_at(
-                campaign_fd, f"selection/discovery/{family}.json", MAX_FILE
-            ),
-            error="preliminary_transition_outcome_unknown",
+            read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
+            error=_descriptor().error("outcome_unknown"),
         )
         for family in FAMILIES
     }
     exact_paths = (
-        frozenset(expected_paths(selections))
-        | {"preliminary_check_submission.json"}
-        | GENERATED_PATHS
+        frozenset(_result_paths(selections))
+        | {_descriptor().source_submission_receipt}
+        | _descriptor().generated_paths
     )
     if set(receipt["files"]) != exact_paths:
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     for name, expected in receipt["files"].items():
         if _sha(read_relative_at(campaign_fd, name, MAX_FILE)) != expected:
-            fail("preliminary_transition_outcome_unknown")
-    packed = bounded_at(transitions_fd, "refinement.bundle.gz", MAX_TOTAL_BYTES)
+            fail(_descriptor().error("outcome_unknown"))
+    packed = bounded_at(transitions_fd, _descriptor().bundle_name, MAX_TOTAL_BYTES)
     chunks = [
         packed[index : index + MAX_CHUNK_BYTES]
         for index in range(0, len(packed), MAX_CHUNK_BYTES)
@@ -685,11 +956,11 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
     bundle = receipt["bundle"]
     if (
         _sha(packed) != bundle.get("bundle_sha256")
-        or not _exact_bundle(bundle, file_count=160)
+        or not _exact_bundle(bundle, file_count=_descriptor().transfer_file_count)
         or bundle.get("chunks") != expected_chunks
         or receipt["new_campaign_sha256"] != receipt["files"].get("campaign.json")
     ):
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     return packed, chunks
 
 
@@ -697,20 +968,21 @@ def _transition_names(transitions_fd: int) -> set[str]:
     try:
         names = set(os.listdir(transitions_fd))
     except OSError:
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     relevant = {
         name
         for name in names
-        if name.startswith("refinement") or name.startswith(".refinement")
+        if name.startswith(_descriptor().sync_name)
+        or name.startswith(f".{_descriptor().sync_name}")
     }
     allowed = {
-        "refinement.lock",
-        "refinement.pending.json",
-        "refinement.json",
-        "refinement.bundle.gz",
+        _descriptor().lock_name,
+        _descriptor().pending_name,
+        _descriptor().final_name,
+        _descriptor().bundle_name,
     }
     if not relevant <= allowed:
-        fail("preliminary_transition_outcome_unknown")
+        fail(_descriptor().error("outcome_unknown"))
     return relevant
 
 
@@ -755,9 +1027,12 @@ def main(*, trusted_root_override=None):
         or len(relative.parts) != 4
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or any(part in {"", ".", ".."} for part in relative.parts)
-        or HEX40.fullmatch(str(payload.get("commit"))) is None
-        or HEX64.fullmatch(str(payload.get("submission_key"))) is None
-        or HEX64.fullmatch(str(payload.get("transition_key"))) is None
+        or type(payload.get("commit")) is not str
+        or HEX40.fullmatch(payload["commit"]) is None
+        or type(payload.get("submission_key")) is not str
+        or HEX64.fullmatch(payload["submission_key"]) is None
+        or type(payload.get("transition_key")) is not str
+        or HEX64.fullmatch(payload["transition_key"]) is None
     ):
         fail("invalid_request")
     root_fd = os.open(root, DIR_FLAGS)
@@ -813,57 +1088,65 @@ def main(*, trusted_root_override=None):
             except FileNotFoundError:
                 transitions_fd = -1
             except OSError:
-                fail("preliminary_transition_outcome_unknown")
+                fail(_descriptor().error("outcome_unknown"))
         receipt = None
         pending_receipt = None
         transition_names = (
             _transition_names(transitions_fd) if transitions_fd >= 0 else set()
         )
         if (
-            "refinement.json" in transition_names
-            and "refinement.bundle.gz" not in transition_names
+            _descriptor().final_name in transition_names
+            and _descriptor().bundle_name not in transition_names
         ) or (
-            "refinement.bundle.gz" in transition_names
+            _descriptor().bundle_name in transition_names
             and not {
-                "refinement.pending.json",
-                "refinement.json",
+                _descriptor().pending_name,
+                _descriptor().final_name,
             }
             & transition_names
         ):
-            fail("preliminary_transition_outcome_unknown")
-        if transitions_fd >= 0 and regular_exists_at(transitions_fd, "refinement.json"):
+            fail(_descriptor().error("outcome_unknown"))
+        if transitions_fd >= 0 and regular_exists_at(
+            transitions_fd, _descriptor().final_name
+        ):
             receipt = strict_json_at(
-                transitions_fd, "refinement.json", keys=FINAL_KEYS, limit=MAX_FILE
+                transitions_fd,
+                _descriptor().final_name,
+                keys=FINAL_KEYS,
+                limit=MAX_FILE,
             )
             if (
                 receipt["transition_key"] != payload["transition_key"]
                 or receipt["commit"] != payload["commit"]
                 or receipt["submission_key"] != payload["submission_key"]
                 or receipt["identity_sha256"] != digest(payload["identity"])
-                or HEX64.fullmatch(str(receipt["new_campaign_sha256"])) is None
+                or type(receipt["new_campaign_sha256"]) is not str
+                or HEX64.fullmatch(receipt["new_campaign_sha256"]) is None
             ):
-                fail("preliminary_transition_outcome_unknown")
+                fail(_descriptor().error("outcome_unknown"))
         if transitions_fd >= 0 and regular_exists_at(
-            transitions_fd, "refinement.pending.json"
+            transitions_fd, _descriptor().pending_name
         ):
             pending_receipt = strict_json_at(
                 transitions_fd,
-                "refinement.pending.json",
+                _descriptor().pending_name,
                 keys=PENDING_KEYS,
                 limit=MAX_FILE,
             )
             if (
                 type(pending_receipt["version"]) is not int
                 or pending_receipt["version"] != 1
-                or pending_receipt["status"] != "refinement_pending"
+                or pending_receipt["status"] != _descriptor().pending_status
                 or pending_receipt["transition_key"] != payload["transition_key"]
                 or pending_receipt["commit"] != payload["commit"]
                 or pending_receipt["submission_key"] != payload["submission_key"]
                 or pending_receipt["identity_sha256"] != digest(payload["identity"])
-                or HEX32.fullmatch(str(pending_receipt["nonce"])) is None
+                or type(pending_receipt["nonce"]) is not str
+                or HEX32.fullmatch(pending_receipt["nonce"]) is None
                 or not stamp(pending_receipt["created_unix_s"])
                 or any(
-                    HEX64.fullmatch(str(pending_receipt[key])) is None
+                    type(pending_receipt[key]) is not str
+                    or HEX64.fullmatch(pending_receipt[key]) is None
                     for key in (
                         "identity_sha256",
                         "old_campaign_sha256",
@@ -872,14 +1155,16 @@ def main(*, trusted_root_override=None):
                     )
                 )
                 or not isinstance(pending_receipt["files"], dict)
-                or len(pending_receipt["files"]) != 160
+                or len(pending_receipt["files"]) != _descriptor().transfer_file_count
                 or any(
-                    not _safe_relative(name) or HEX64.fullmatch(str(value)) is None
+                    not _safe_relative(name)
+                    or type(value) is not str
+                    or HEX64.fullmatch(value) is None
                     for name, value in pending_receipt["files"].items()
                 )
                 or not isinstance(pending_receipt["bundle"], dict)
             ):
-                fail("preliminary_transition_outcome_unknown")
+                fail(_descriptor().error("outcome_unknown"))
         if receipt is not None and pending_receipt is not None:
             comparable = {
                 key: value
@@ -892,7 +1177,7 @@ def main(*, trusted_root_override=None):
                 if key not in {"status", "completed_unix_s"}
             }
             if comparable != final_comparable:
-                fail("preliminary_transition_outcome_unknown")
+                fail(_descriptor().error("outcome_unknown"))
         identity, frozen = _identity(
             payload,
             campaign_fd,
@@ -915,18 +1200,18 @@ def main(*, trusted_root_override=None):
             _, chunks = _verify_success(campaign_fd, transitions_fd, payload, receipt)
             if pending_receipt is not None and operation == "prepare":
                 if payload.get("nonce") != receipt["nonce"]:
-                    fail("preliminary_transition_outcome_unknown")
+                    fail(_descriptor().error("outcome_unknown"))
                 cleanup_lock = os.open(
-                    "refinement.lock",
+                    _descriptor().lock_name,
                     os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
                     0o600,
                     dir_fd=transitions_fd,
                 )
                 try:
                     fcntl.flock(cleanup_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    unlink_at(transitions_fd, "refinement.pending.json")
+                    unlink_at(transitions_fd, _descriptor().pending_name)
                 except BlockingIOError:
-                    fail("preliminary_transition_busy")
+                    fail(_descriptor().error("busy"))
                 finally:
                     os.close(cleanup_lock)
             if operation == "retrieve":
@@ -943,7 +1228,7 @@ def main(*, trusted_root_override=None):
                     "content": base64.b64encode(chunks[index]).decode("ascii"),
                 }
                 _response(
-                    "refinement_prepared",
+                    _descriptor().prepared_status,
                     branch,
                     jobs,
                     6,
@@ -956,7 +1241,7 @@ def main(*, trusted_root_override=None):
                 )
                 return
             _response(
-                "refinement_prepared",
+                _descriptor().prepared_status,
                 branch,
                 jobs,
                 6,
@@ -968,7 +1253,7 @@ def main(*, trusted_root_override=None):
             )
             return
         if operation == "retrieve":
-            fail("preliminary_transition_not_prepared")
+            fail(_descriptor().error("not_prepared"))
         current_campaign_sha = _sha(
             read_relative_at(campaign_fd, "campaign.json", MAX_FILE)
         )
@@ -988,9 +1273,9 @@ def main(*, trusted_root_override=None):
                 )
                 return
             if payload.get("nonce") != pending_receipt["nonce"]:
-                fail("preliminary_transition_outcome_unknown")
+                fail(_descriptor().error("outcome_unknown"))
             lock_fd = os.open(
-                "refinement.lock",
+                _descriptor().lock_name,
                 os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
                 0o600,
                 dir_fd=transitions_fd,
@@ -1004,28 +1289,31 @@ def main(*, trusted_root_override=None):
                 }
                 receipt.update(
                     {
-                        "status": "refinement_prepared",
+                        "status": _descriptor().prepared_status,
                         "completed_unix_s": int(time.time()),
                     }
                 )
                 _verify_success(campaign_fd, transitions_fd, payload, receipt)
                 _publish_bytes(
                     transitions_fd,
-                    "refinement.json",
+                    _descriptor().final_name,
                     canonical(receipt) + b"\n",
                     identical_ok=True,
                 )
                 receipt = strict_json_at(
-                    transitions_fd, "refinement.json", keys=FINAL_KEYS, limit=MAX_FILE
+                    transitions_fd,
+                    _descriptor().final_name,
+                    keys=FINAL_KEYS,
+                    limit=MAX_FILE,
                 )
                 _verify_success(campaign_fd, transitions_fd, payload, receipt)
-                unlink_at(transitions_fd, "refinement.pending.json")
+                unlink_at(transitions_fd, _descriptor().pending_name)
             except BlockingIOError:
-                fail("preliminary_transition_busy")
+                fail(_descriptor().error("busy"))
             finally:
                 os.close(lock_fd)
             _response(
-                "refinement_prepared",
+                _descriptor().prepared_status,
                 branch,
                 jobs,
                 6,
@@ -1071,10 +1359,13 @@ def main(*, trusted_root_override=None):
                 evidence=validated.evidence_sha256,
             )
             return
-        if HEX32.fullmatch(str(payload.get("nonce"))) is None:
+        if (
+            type(payload.get("nonce")) is not str
+            or HEX32.fullmatch(payload["nonce"]) is None
+        ):
             fail("invalid_request")
         lock_fd = os.open(
-            "refinement.lock",
+            _descriptor().lock_name,
             os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
             0o600,
             dir_fd=transitions_fd,
@@ -1082,53 +1373,52 @@ def main(*, trusted_root_override=None):
         try:
             row = os.fstat(lock_fd)
             if not stat.S_ISREG(row.st_mode) or row.st_nlink != 1:
-                fail("preliminary_transition_outcome_unknown")
+                fail(_descriptor().error("outcome_unknown"))
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
             for name, raw in frozen.items():
                 if read_relative_at(campaign_fd, name, MAX_FILE) != raw:
-                    fail("preliminary_transition_conflict")
+                    fail(_descriptor().error("conflict"))
             _identity(payload, campaign_fd, root_fd)
             _exact_stage2(campaign_fd, payload["submission_key"], payload["commit"])
             if _scheduler(jobs) != ("completed_success_unvalidated", 6, 2):
-                fail("preliminary_transition_conflict")
-            generated, _ = render_refinement_transition(
-                relative, manifest, validated.summaries
-            )
-            if set(generated) != GENERATED_PATHS:
-                fail("preliminary_transition_conflict")
+                fail(_descriptor().error("conflict"))
+            generated, _ = _render_transition(relative, manifest, validated.summaries)
+            if set(generated) != _descriptor().generated_paths:
+                fail(_descriptor().error("conflict"))
             files = dict(results)
-            files["preliminary_check_submission.json"] = read_relative_at(
-                campaign_fd, "preliminary_check_submission.json", MAX_FILE
+            files[_descriptor().source_submission_receipt] = read_relative_at(
+                campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
             )
             files.update(generated)
             parsed = {
                 family: json_bytes(
-                    read_relative_at(
-                        campaign_fd, f"selection/discovery/{family}.json", MAX_FILE
-                    ),
-                    error="preliminary_transition_conflict",
+                    read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
+                    error=_descriptor().error("conflict"),
                 )
                 for family in FAMILIES
             }
             expected_transfer = (
-                frozenset(expected_paths(parsed))
-                | {"preliminary_check_submission.json"}
-                | GENERATED_PATHS
+                frozenset(_result_paths(parsed))
+                | {_descriptor().source_submission_receipt}
+                | _descriptor().generated_paths
             )
-            if set(files) != expected_transfer or len(files) != 160:
-                fail("preliminary_transition_conflict")
+            if (
+                set(files) != expected_transfer
+                or len(files) != _descriptor().transfer_file_count
+            ):
+                fail(_descriptor().error("conflict"))
             built = build_artifact_bundle(
                 files,
                 campaign=relative.name,
                 commit=payload["commit"],
-                from_stage="preliminary_check",
-                to_stage="refinement",
+                from_stage=_descriptor().from_stage,
+                to_stage=_descriptor().to_stage,
                 expected_paths=expected_transfer,
             )
             hashes = {name: _sha(raw) for name, raw in files.items()}
             pending = {
                 "version": 1,
-                "status": "refinement_pending",
+                "status": _descriptor().pending_status,
                 "nonce": payload["nonce"],
                 "transition_key": payload["transition_key"],
                 "commit": payload["commit"],
@@ -1141,29 +1431,32 @@ def main(*, trusted_root_override=None):
                 "bundle": built.manifest,
                 "created_unix_s": int(time.time()),
             }
-            if regular_exists_at(transitions_fd, "refinement.pending.json"):
+            if regular_exists_at(transitions_fd, _descriptor().pending_name):
                 current = strict_json_at(
                     transitions_fd,
-                    "refinement.pending.json",
+                    _descriptor().pending_name,
                     keys=set(pending),
                     limit=MAX_FILE,
                 )
                 if {k: v for k, v in current.items() if k != "created_unix_s"} != {
                     k: v for k, v in pending.items() if k != "created_unix_s"
                 }:
-                    fail("preliminary_transition_outcome_unknown")
+                    fail(_descriptor().error("outcome_unknown"))
                 pending = current
             else:
                 _publish_bytes(
                     transitions_fd,
-                    "refinement.pending.json",
+                    _descriptor().pending_name,
                     canonical(pending) + b"\n",
                     identical_ok=False,
                 )
-            for name in sorted(GENERATED_PATHS - {"campaign.json"}):
+            for name in sorted(_descriptor().generated_paths - {"campaign.json"}):
                 _publish_relative(campaign_fd, name, generated[name])
             _publish_bytes(
-                transitions_fd, "refinement.bundle.gz", built.packed, identical_ok=True
+                transitions_fd,
+                _descriptor().bundle_name,
+                built.packed,
+                identical_ok=True,
             )
             _replace_campaign(campaign_fd, manifest_raw, generated["campaign.json"])
             receipt = {
@@ -1173,7 +1466,7 @@ def main(*, trusted_root_override=None):
             }
             receipt.update(
                 {
-                    "status": "refinement_prepared",
+                    "status": _descriptor().prepared_status,
                     "bundle": built.manifest,
                     "completed_unix_s": int(time.time()),
                 }
@@ -1181,24 +1474,27 @@ def main(*, trusted_root_override=None):
             _verify_success(campaign_fd, transitions_fd, payload, receipt)
             _publish_bytes(
                 transitions_fd,
-                "refinement.json",
+                _descriptor().final_name,
                 canonical(receipt) + b"\n",
                 identical_ok=True,
             )
             receipt = strict_json_at(
-                transitions_fd, "refinement.json", keys=FINAL_KEYS, limit=MAX_FILE
+                transitions_fd,
+                _descriptor().final_name,
+                keys=FINAL_KEYS,
+                limit=MAX_FILE,
             )
             _verify_success(campaign_fd, transitions_fd, payload, receipt)
-            unlink_at(transitions_fd, "refinement.pending.json")
+            unlink_at(transitions_fd, _descriptor().pending_name)
         except BlockingIOError:
-            fail("preliminary_transition_busy")
+            fail(_descriptor().error("busy"))
         finally:
             try:
                 fcntl.flock(lock_fd, fcntl.LOCK_UN)
             finally:
                 os.close(lock_fd)
         _response(
-            "refinement_prepared",
+            _descriptor().prepared_status,
             branch,
             jobs,
             6,

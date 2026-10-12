@@ -1876,6 +1876,92 @@ _PAYLOADS.update(
             "simulation_started": False,
             "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
         },
+        "mot3d-refinement-transition-status": {
+            "source": "zeus",
+            "queried_at": "2026-10-12T00:00:00+00:00",
+            "campaign": {
+                "id": "campaign-id",
+                "name": "mot_3d_contract",
+                "stage": "refinement",
+            },
+            "refinement": {
+                "status": "ready_to_advance",
+                "chain": {
+                    "dependency": "afterok within each family",
+                    "families": [
+                        {
+                            "id": "angled_donut",
+                            "array_job_id": "610[].zeus-master",
+                            "merge_job_id": "611.zeus-master",
+                        },
+                        {
+                            "id": "single_pass",
+                            "array_job_id": "612[].zeus-master",
+                            "merge_job_id": "613.zeus-master",
+                        },
+                    ],
+                },
+            },
+            "scheduler": {
+                "expected_array_tasks": 6,
+                "expected_merge_jobs": 2,
+                "completed_array_tasks": 6,
+                "completed_merge_jobs": 2,
+            },
+            "validation": {
+                "status": "valid",
+                "result_artifacts": 200,
+                "expected_result_artifacts": 200,
+                "reason_code": None,
+            },
+            "transition": {"status": "not_prepared"},
+            "next_action": "review_transition",
+            "local_sync": {"status": "not_synchronized", "receipt_sha256": None},
+        },
+        "mot3d-refinement-transition-preview": {
+            "preview_token": "mot3d-refinement-transition-token",
+            "expires_in_seconds": 300,
+            "campaign": {
+                "id": "campaign-id",
+                "name": "mot_3d_contract",
+                "git_commit": "a" * 40,
+            },
+            "from_stage": "refinement",
+            "to_stage": "closure",
+            "refinement": {
+                "result_artifacts": 200,
+                "expected_result_artifacts": 200,
+                "families": ["angled_donut", "single_pass"],
+                "evidence_sha256": "b" * 64,
+            },
+            "artifacts": {
+                "synchronize": {"result_files": 200, "submission_receipts": 1},
+                "create": {"selection_files": 2, "job_files": 4},
+                "update": ["campaign.json"],
+                "transfer_files": 208,
+            },
+            "effects": {
+                "synchronize_refinement": True,
+                "prepare_closure": True,
+                "submit_closure": False,
+                "start_simulation": False,
+                "overwrite_existing": False,
+            },
+        },
+        "mot3d-refinement-transition-confirm": {
+            "status": "closure_prepared",
+            "campaign_id": "campaign-id",
+            "stage": "closure",
+            "artifacts": {
+                "synchronized": 201,
+                "created": 6,
+                "updated": 1,
+                "bundle_sha256": "c" * 64,
+            },
+            "submitted_to_zeus": False,
+            "simulation_started": False,
+            "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
+        },
     }
 )
 

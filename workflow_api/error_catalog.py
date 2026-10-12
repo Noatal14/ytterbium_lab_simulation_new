@@ -293,6 +293,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Preliminary-check result synchronization is unavailable.",
         ),
+        "mot_3d_refinement_transition_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D Refinement result synchronization is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -1084,6 +1088,48 @@ MOT_3D_PRELIMINARY_TRANSITION = _generic_stage(
     },
     "mot_3d_preliminary_transition_failed",
 )
+MOT_3D_REFINEMENT_TRANSITION = _generic_stage(
+    {
+        "request_invalid",
+        "profile_invalid",
+        "campaign_not_found",
+        "refinement_not_ready",
+        "refinement_already_started",
+        "refinement_partial_submission",
+        "refinement_submission_outcome_unknown",
+        "refinement_preparation_invalid",
+        "remote_response_invalid",
+        "local_files_changed",
+        "too_many_pending_previews",
+        "confirmation_invalid",
+        "confirmation_expired",
+        "local_or_remote_evidence_changed",
+        "local_sync_conflict",
+        "local_sync_outcome_unknown",
+        "transition_outcome_unknown",
+        "invalid_request",
+        "remote_checkout_mismatch",
+        "refinement_transition_conflict",
+        "refinement_transition_busy",
+        "refinement_transition_outcome_unknown",
+        "refinement_transition_not_prepared",
+        "zeus_unavailable",
+        "zeus_timeout",
+    },
+    "3D Refinement result synchronization stopped safely.",
+    {
+        "refinement_transition_conflict",
+        "refinement_transition_busy",
+        "refinement_transition_outcome_unknown",
+        "transition_outcome_unknown",
+        "refinement_already_started",
+        "refinement_partial_submission",
+        "refinement_submission_outcome_unknown",
+        "local_sync_conflict",
+        "local_sync_outcome_unknown",
+    },
+    "mot_3d_refinement_transition_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -1195,6 +1241,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "mot_3d_preliminary_submission": MOT_3D_PRELIMINARY_SUBMISSION,
         "mot_3d_refinement_submission": MOT_3D_REFINEMENT_SUBMISSION,
         "mot_3d_preliminary_transition": MOT_3D_PRELIMINARY_TRANSITION,
+        "mot_3d_refinement_transition": MOT_3D_REFINEMENT_TRANSITION,
     }
 )
 

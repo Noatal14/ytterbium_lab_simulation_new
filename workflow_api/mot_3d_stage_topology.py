@@ -55,6 +55,19 @@ class RefinementScientificDesign:
     bootstrap_seed: int = 62_001
 
 
+@dataclass(frozen=True)
+class ClosureScientificDesign:
+    input_ensembles: int = 4
+    particles_per_ensemble: int = 750
+    recoil_seeds: tuple[int, ...] = (42001, 42002, 42003)
+    t_max_s: float = 0.1
+    selection_seed: int = 71_001
+    bootstrap_replicates: int = 10_000
+    bootstrap_seed: int = 72_001
+    solver: str = MOT_3D_TIMESTEP_POLICY["solver"]
+    dt_s: float = MOT_3D_TIMESTEP_POLICY["search_dt_s"]
+
+
 PRELIMINARY_CHECK_TOPOLOGY = SelectionStageTopology(
     stage="preliminary_check", candidates_per_family=12
 )
@@ -63,6 +76,8 @@ REFINEMENT_TOPOLOGY = SelectionStageTopology(
     stage="refinement", candidates_per_family=16
 )
 REFINEMENT_SCIENTIFIC_DESIGN = RefinementScientificDesign()
+CLOSURE_TOPOLOGY = SelectionStageTopology(stage="closure", candidates_per_family=16)
+CLOSURE_SCIENTIFIC_DESIGN = ClosureScientificDesign()
 
 
 def public_chain(

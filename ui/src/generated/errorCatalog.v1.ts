@@ -1001,6 +1001,131 @@ export const serverErrorCatalog = [
     "semantic": "other"
   },
   {
+    "domain": "mot_3d_refinement_transition",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "invalid_request",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "local_or_remote_evidence_changed",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "local_sync_conflict",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "local_sync_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_already_started",
+    "semantic": "manual_verification"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_not_ready",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_partial_submission",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_submission_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_transition_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_transition_conflict",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_transition_not_prepared",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "refinement_transition_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "remote_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "transition_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_refinement_transition",
+    "code": "zeus_unavailable",
+    "semantic": "other"
+  },
+  {
     "domain": "production_submission",
     "code": "campaign_not_canonical",
     "semantic": "other"
@@ -1778,6 +1903,11 @@ export const serverErrorCatalog = [
   {
     "domain": "route_unavailable",
     "code": "mot_3d_refinement_submission_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "mot_3d_refinement_transition_unavailable",
     "semantic": "other"
   },
   {

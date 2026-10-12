@@ -488,10 +488,15 @@ def _validate_npz_container(raw: bytes) -> None:
         raise PreliminaryResultError("result_archive_invalid") from exc
 
 
-def expected_preliminary_particle_selection(
+def expected_selection_particle_provenance(
     manifest: Mapping[str, Any],
     *,
     project_directory: str,
+    input_role: str,
+    input_ensembles: int,
+    particles_per_ensemble: int,
+    selection_seed: int,
+    expected_zeeman_seeds: tuple[int, ...],
 ) -> list[dict[str, Any]]:
     """Derive canonical selection provenance without reopening input arrays.
 
@@ -500,11 +505,8 @@ def expected_preliminary_particle_selection(
     this pure derivation therefore avoids a second mutable pathname read.
     """
 
-    records = manifest.get("input_roles", {}).get("preliminary_check")
-    if (
-        not isinstance(records, list)
-        or len(records) != PRELIMINARY_SCIENTIFIC_DESIGN.input_ensembles
-    ):
+    records = manifest.get("input_roles", {}).get(input_role)
+    if not isinstance(records, list) or len(records) != input_ensembles:
         raise PreliminaryResultError("particle_selection_mismatch")
     project = Path(project_directory)
     if (
@@ -522,7 +524,19 @@ def expected_preliminary_particle_selection(
         for row in manifest.get("upstream_2d_campaign", {}).get("sealed_seed_pairs", [])
         if isinstance(row, Mapping)
     }
-    expected_zeeman_seeds = tuple(range(3031, 3035))
+    if (
+        type(input_role) is not str
+        or type(input_ensembles) is not int
+        or input_ensembles <= 0
+        or type(particles_per_ensemble) is not int
+        or particles_per_ensemble <= 0
+        or type(selection_seed) is not int
+        or selection_seed < 0
+        or type(expected_zeeman_seeds) is not tuple
+        or len(expected_zeeman_seeds) != input_ensembles
+        or any(type(value) is not int or value < 0 for value in expected_zeeman_seeds)
+    ):
+        raise PreliminaryResultError("particle_selection_mismatch")
     for ensemble_id, record in enumerate(records):
         if not isinstance(record, Mapping) or set(record) != FROZEN_ROLE_KEYS:
             raise PreliminaryResultError("particle_selection_mismatch")
@@ -535,7 +549,7 @@ def expected_preliminary_particle_selection(
         if (
             not isinstance(count, int)
             or isinstance(count, bool)
-            or count < PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble
+            or count < particles_per_ensemble
             or count > 50_000
             or not isinstance(zeeman_seed, int)
             or isinstance(zeeman_seed, bool)
@@ -553,11 +567,14 @@ def expected_preliminary_particle_selection(
             or project not in Path(path).parents
             or str(Path(path)) != path
             or str(Path(metadata_path)) != metadata_path
-            or HEX64.fullmatch(str(digest)) is None
-            or HEX64.fullmatch(str(record["metadata_sha256"])) is None
+            or not isinstance(digest, str)
+            or HEX64.fullmatch(digest) is None
+            or not isinstance(record["metadata_sha256"], str)
+            or HEX64.fullmatch(record["metadata_sha256"]) is None
             or record["shape"] != [count, 6]
             or record["dtype"] != "float64"
-            or HEX40.fullmatch(str(record["source_git_commit"])) is None
+            or not isinstance(record["source_git_commit"], str)
+            or HEX40.fullmatch(record["source_git_commit"]) is None
             or not isinstance(record["source_design"], Mapping)
             or not isinstance(record["source_parameters"], Mapping)
             or (upstream_pairs and upstream_pairs.get(zeeman_seed) != mot_seed)
@@ -566,13 +583,13 @@ def expected_preliminary_particle_selection(
         seen_mot_seeds.add(mot_seed)
         rng = np.random.default_rng(
             np.random.SeedSequence(
-                [PRELIMINARY_SCIENTIFIC_DESIGN.selection_seed, zeeman_seed]
+                [selection_seed, zeeman_seed]
             )
         )
         indices = np.sort(
             rng.choice(
                 count,
-                size=PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble,
+                size=particles_per_ensemble,
                 replace=False,
             )
         )
@@ -588,6 +605,20 @@ def expected_preliminary_particle_selection(
             }
         )
     return provenance
+
+
+def expected_preliminary_particle_selection(
+    manifest: Mapping[str, Any], *, project_directory: str
+) -> list[dict[str, Any]]:
+    return expected_selection_particle_provenance(
+        manifest,
+        project_directory=project_directory,
+        input_role="preliminary_check",
+        input_ensembles=PRELIMINARY_SCIENTIFIC_DESIGN.input_ensembles,
+        particles_per_ensemble=PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble,
+        selection_seed=PRELIMINARY_SCIENTIFIC_DESIGN.selection_seed,
+        expected_zeeman_seeds=tuple(range(3031, 3035)),
+    )
 
 
 def validate_preliminary_result_bytes(

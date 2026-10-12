@@ -40,7 +40,10 @@ from lab_setup.mot_3d_timestep_policy import (
 from utils.file_helpers import save_file_json
 from utils.data_paths import load_particle_states
 from workflow_api.mot_3d_provenance import input_registry_digest
-from workflow_api.mot_3d_stage_topology import REFINEMENT_SCIENTIFIC_DESIGN
+from workflow_api.mot_3d_stage_topology import (
+    CLOSURE_SCIENTIFIC_DESIGN,
+    REFINEMENT_SCIENTIFIC_DESIGN,
+)
 
 
 FAMILIES = ("angled_donut", "single_pass")
@@ -1077,25 +1080,93 @@ def prepare_closure(root, manifest):
         destination = root / "selection" / "closure" / f"{family}.json"
         save_file_json(destination, payload)
         selections[family] = destination
+    logical_root = _canonical_campaign_logical_root(root)
     workers, merges = _selection_stage_jobs(
         root,
         manifest,
         "closure",
         selections,
         "refinement",
-        750,
-        71_001,
-        72_001,
+        CLOSURE_SCIENTIFIC_DESIGN.particles_per_ensemble,
+        CLOSURE_SCIENTIFIC_DESIGN.selection_seed,
+        CLOSURE_SCIENTIFIC_DESIGN.bootstrap_seed,
+        logical_root=logical_root,
     )
     manifest["stage"] = "closure"
     manifest.setdefault("stages", {})["closure"] = {
         "classification": "candidate_selection_not_final_validation",
-        "selection_files": {key: str(value) for key, value in selections.items()},
-        "worker_jobs": {key: str(value) for key, value in workers.items()},
-        "merge_jobs": {key: str(value) for key, value in merges.items()},
+        "selection_files": {
+            family: str(logical_root / "selection" / "closure" / f"{family}.json")
+            for family in FAMILIES
+        },
+        "worker_jobs": {
+            family: str(logical_root / "jobs" / "closure" / f"{family}_array.pbs")
+            for family in FAMILIES
+        },
+        "merge_jobs": {
+            family: str(logical_root / "jobs" / "closure" / f"{family}_merge.pbs")
+            for family in FAMILIES
+        },
         "input_role": "refinement",
     }
     save_file_json(root / "campaign.json", manifest)
+
+
+def render_closure_transition(logical_campaign_root, manifest, refinement_summaries):
+    """Render exact post-refinement Closure artifacts without filesystem I/O."""
+
+    from studies.mot_3d.refinement.select_closure import select_from_summary
+
+    root = _canonical_campaign_logical_root(logical_campaign_root)
+    if set(refinement_summaries) != set(FAMILIES):
+        raise ValueError("Both canonical refinement family summaries are required.")
+    artifacts = {}
+    selections = {}
+    for family in FAMILIES:
+        payload = select_from_summary(family, refinement_summaries[family])
+        relative = Path("selection") / "closure" / f"{family}.json"
+        artifacts[relative.as_posix()] = json.dumps(
+            payload, indent=2, allow_nan=False
+        ).encode("utf-8")
+        selections[family] = root / relative
+
+    rendered_jobs = render_selection_stage_jobs(
+        root,
+        manifest,
+        "closure",
+        selections,
+        "refinement",
+        CLOSURE_SCIENTIFIC_DESIGN.particles_per_ensemble,
+        CLOSURE_SCIENTIFIC_DESIGN.selection_seed,
+        CLOSURE_SCIENTIFIC_DESIGN.bootstrap_seed,
+    )
+    for family in FAMILIES:
+        artifacts[f"jobs/closure/{family}_array.pbs"] = rendered_jobs[family][
+            "array"
+        ].encode("utf-8")
+        artifacts[f"jobs/closure/{family}_merge.pbs"] = rendered_jobs[family][
+            "merge"
+        ].encode("utf-8")
+
+    updated = copy.deepcopy(manifest)
+    updated["stage"] = "closure"
+    updated.setdefault("stages", {})["closure"] = {
+        "classification": "candidate_selection_not_final_validation",
+        "selection_files": {key: str(value) for key, value in selections.items()},
+        "worker_jobs": {
+            family: str(root / "jobs" / "closure" / f"{family}_array.pbs")
+            for family in FAMILIES
+        },
+        "merge_jobs": {
+            family: str(root / "jobs" / "closure" / f"{family}_merge.pbs")
+            for family in FAMILIES
+        },
+        "input_role": "refinement",
+    }
+    artifacts["campaign.json"] = json.dumps(
+        updated, indent=2, allow_nan=False
+    ).encode("utf-8")
+    return artifacts, updated
 
 
 def prepare_finalist_selection(root, manifest):

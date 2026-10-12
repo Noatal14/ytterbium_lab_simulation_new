@@ -1572,6 +1572,188 @@
       "message": "3D Refinement submission stopped safely."
     },
     {
+      "domain": "mot_3d_refinement_transition",
+      "case": "<fallback>",
+      "code": "mot_3d_refinement_transition_failed",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "local_or_remote_evidence_changed",
+      "code": "local_or_remote_evidence_changed",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "local_sync_conflict",
+      "code": "local_sync_conflict",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "local_sync_outcome_unknown",
+      "code": "local_sync_outcome_unknown",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_already_started",
+      "code": "refinement_already_started",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_not_ready",
+      "code": "refinement_not_ready",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_partial_submission",
+      "code": "refinement_partial_submission",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_preparation_invalid",
+      "code": "refinement_preparation_invalid",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_submission_outcome_unknown",
+      "code": "refinement_submission_outcome_unknown",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_transition_busy",
+      "code": "refinement_transition_busy",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_transition_conflict",
+      "code": "refinement_transition_conflict",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_transition_not_prepared",
+      "code": "refinement_transition_not_prepared",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "refinement_transition_outcome_unknown",
+      "code": "refinement_transition_outcome_unknown",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
+      "domain": "mot_3d_refinement_transition",
+      "case": "zeus_unavailable",
+      "code": "zeus_unavailable",
+      "status": 412,
+      "message": "3D Refinement result synchronization stopped safely."
+    },
+    {
       "domain": "production_submission",
       "case": "<fallback>",
       "code": "production_submission_failed",
@@ -2690,6 +2872,13 @@
       "code": "mot_3d_refinement_submission_unavailable",
       "status": 503,
       "message": "3D Refinement submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "mot_3d_refinement_transition_unavailable",
+      "code": "mot_3d_refinement_transition_unavailable",
+      "status": 503,
+      "message": "3D Refinement result synchronization is unavailable."
     },
     {
       "domain": "route_unavailable",

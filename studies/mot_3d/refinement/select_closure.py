@@ -172,8 +172,11 @@ def _current_local_design(family, ranked, count=16):
     raise RuntimeError(f"Could only construct {len(rows)}/{count} unique closure points.")
 
 
-def select(family, refinement_summary):
-    summary = json.loads(Path(refinement_summary).read_text())
+def select_from_summary(family, summary):
+    """Build the canonical closure selection from an already verified summary."""
+
+    if not isinstance(summary, dict):
+        raise TypeError("Refinement summary must be an object.")
     if summary["family"] != family:
         raise ValueError("Refinement summary and requested family disagree.")
     rows = _current_local_design(family, summary["ranked_candidates"])
@@ -190,6 +193,11 @@ def select(family, refinement_summary):
         "design": "bounds-aware local one-at-a-time closure around the refinement leader",
         "candidates": candidates,
     }
+
+
+def select(family, refinement_summary):
+    summary = json.loads(Path(refinement_summary).read_text())
+    return select_from_summary(family, summary)
 
 
 def main(argv=None):

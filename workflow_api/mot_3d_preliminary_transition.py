@@ -39,7 +39,7 @@ from workflow_api.mot_3d_preliminary_results import (
     expected_paths,
 )
 from workflow_api.mot_3d_discovery_transition import Mot3DDiscoveryTransitionError
-from workflow_api.mot_3d_stage_topology import public_chain
+from workflow_api.mot_3d_stage_topology import PRELIMINARY_CHECK_TOPOLOGY, public_chain
 from workflow_api.mot_3d_preliminary_submission import (
     CODE_FILES as SUBMISSION_CODE_FILES,
 )
@@ -48,8 +48,8 @@ from workflow_api.mot_3d_preliminary_submission import (
     Mot3DPreliminarySubmissionCoordinator,
 )
 from workflow_api.mot_3d_preliminary_transition_remote import (
-    CODE_PATHS,
-    GENERATED_PATHS,
+    PRELIMINARY_CODE_PATHS as CODE_PATHS,
+    PRELIMINARY_GENERATED_PATHS as GENERATED_PATHS,
 )
 from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.pinned_ssh import (
@@ -141,6 +141,25 @@ def _read_relative(root_fd: int, relative: str) -> bytes:
 
 
 class Mot3DPreliminaryTransitionCoordinator:
+    topology = PRELIMINARY_CHECK_TOPOLOGY
+    sync_name = "preliminary_to_refinement"
+    from_stage = "preliminary_check"
+    to_stage = "refinement"
+    prepared_lifecycle = "refinement_prepared"
+    result_reason_codes = PRELIMINARY_RESULT_REASON_CODES
+    public_stage_key = "preliminary"
+    expected_result_files = EXPECTED_RESULT_FILES
+    expected_transfer_files = EXPECTED_TRANSFER_FILES
+    open_action = "open_refinement"
+    not_ready_error = "preliminary_not_ready"
+    effects = {
+        "synchronize_preliminary_check": True,
+        "prepare_refinement": True,
+        "submit_refinement": False,
+        "start_simulation": False,
+        "overwrite_existing": False,
+    }
+
     def __init__(
         self,
         repository_root: Path,
@@ -250,7 +269,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             )
         finally:
             os.close(campaign_fd)
-        if len(transfer_paths) != EXPECTED_TRANSFER_FILES:
+        if len(transfer_paths) != self.expected_transfer_files:
             raise Mot3DPreliminaryTransitionError("preliminary_preparation_invalid")
         transition_key = canonical_digest(
             {
@@ -298,11 +317,11 @@ class Mot3DPreliminaryTransitionCoordinator:
             sync_fd = _open_directory_at(mot_fd, "sync", create=False)
             try:
                 recovery_raw = _bounded_read_at(
-                    sync_fd, "preliminary_to_refinement.pending.json", 256 * 1024
+                    sync_fd, f"{self.sync_name}.pending.json", 256 * 1024
                 )
             except FileNotFoundError:
                 recovery_raw = _bounded_read_at(
-                    sync_fd, "preliminary_to_refinement.identity.json", 256 * 1024
+                    sync_fd, f"{self.sync_name}.identity.json", 256 * 1024
                 )
             pending = _strict_json(recovery_raw)
             required = {
@@ -349,18 +368,8 @@ class Mot3DPreliminaryTransitionCoordinator:
             manifest = _strict_json(
                 _bounded_read_at(campaign_fd, "campaign.json", MAX_FILE_BYTES)
             )
-            parsed = {
-                family: _strict_json(
-                    _read_relative(campaign_fd, f"selection/discovery/{family}.json")
-                )
-                for family in FAMILIES
-            }
-            transfer = (
-                frozenset(expected_paths(parsed))
-                | {"preliminary_check_submission.json"}
-                | GENERATED_PATHS
-            )
-            if len(transfer) != 160:
+            transfer = self._expected_paths(campaign_fd)
+            if len(transfer) != self.expected_transfer_files:
                 raise ValueError
             check = subprocess.run(
                 [self.git, "-C", self.root, "rev-parse", "HEAD"],
@@ -435,7 +444,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             "completed_success_unvalidated",
             "ready_to_advance",
             "outcome_unknown",
-            "refinement_prepared",
+            cls.prepared_lifecycle,
         }
         if (
             state.lifecycle not in allowed
@@ -465,7 +474,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
         if state.validation not in {"not_started", "valid", "scientifically_invalid"}:
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
-        prepared = state.lifecycle == "refinement_prepared"
+        prepared = state.lifecycle == cls.prepared_lifecycle
         if prepared != (state.receipt is not None and state.bundle is not None):
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
         if not prepared and (
@@ -484,7 +493,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             "completed_success_unvalidated",
             "ready_to_advance",
             "outcome_unknown",
-            "refinement_prepared",
+            cls.prepared_lifecycle,
         }
         if state.lifecycle in terminal and (
             state.completed_array_tasks,
@@ -494,7 +503,7 @@ class Mot3DPreliminaryTransitionCoordinator:
         if state.validation == "valid":
             if (
                 state.lifecycle
-                not in {"ready_to_advance", "outcome_unknown", "refinement_prepared"}
+                not in {"ready_to_advance", "outcome_unknown", cls.prepared_lifecycle}
                 or state.reason_code is not None
                 or not _matches(HEX64, state.evidence_sha256)
             ):
@@ -502,7 +511,7 @@ class Mot3DPreliminaryTransitionCoordinator:
         elif state.validation == "scientifically_invalid":
             if (
                 state.lifecycle != "completed_success_unvalidated"
-                or state.reason_code not in PRELIMINARY_RESULT_REASON_CODES
+                or state.reason_code not in cls.result_reason_codes
                 or state.evidence_sha256 is not None
             ):
                 raise Mot3DPreliminaryTransitionError("remote_response_invalid")
@@ -510,12 +519,12 @@ class Mot3DPreliminaryTransitionCoordinator:
             state.reason_code is not None
             or state.evidence_sha256 is not None
             or state.lifecycle
-            in {"ready_to_advance", "outcome_unknown", "refinement_prepared"}
+            in {"ready_to_advance", "outcome_unknown", cls.prepared_lifecycle}
         ):
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
 
-    @staticmethod
-    def _validate_prepared(state, plan):
+    @classmethod
+    def _validate_prepared(cls, state, plan):
         bundle, receipt = state.bundle, state.receipt
         if (
             not isinstance(bundle, Mapping)
@@ -528,9 +537,9 @@ class Mot3DPreliminaryTransitionCoordinator:
                 "chunks",
             }
             or bundle.get("version") != 1
-            or bundle.get("file_count") != EXPECTED_TRANSFER_FILES
+            or bundle.get("file_count") != cls.expected_transfer_files
             or type(bundle.get("uncompressed_bytes")) is not int
-            or not EXPECTED_TRANSFER_FILES
+            or not cls.expected_transfer_files
             <= bundle["uncompressed_bytes"]
             <= MAX_TOTAL_BYTES
             or not _matches(HEX64, bundle.get("bundle_sha256"))
@@ -569,7 +578,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             or set(receipt) != keys
             or receipt.get("version") != 1
             or type(receipt.get("version")) is not int
-            or receipt.get("status") != "refinement_prepared"
+            or receipt.get("status") != cls.prepared_lifecycle
             or not _matches(HEX32, receipt.get("nonce"))
             or receipt.get("transition_key") != plan[7]
             or receipt.get("commit") != plan[4]
@@ -594,7 +603,7 @@ class Mot3DPreliminaryTransitionCoordinator:
         transport = self.transport_factory(plan[1])
         state = getattr(transport, operation)(**self._payload(plan))
         self._validate_state(state)
-        if state.lifecycle == "refinement_prepared":
+        if state.lifecycle == self.prepared_lifecycle:
             self._validate_prepared(state, plan)
         return plan, transport, state
 
@@ -602,17 +611,17 @@ class Mot3DPreliminaryTransitionCoordinator:
         plan, _, state = self._inspect(request, "status")
         receipt_sha = (
             self._verify_local_snapshot(plan[2], state)
-            if state.lifecycle == "refinement_prepared"
+            if state.lifecycle == self.prepared_lifecycle
             else None
         )
         synchronized = receipt_sha is not None
-        public = "refinement_prepared" if synchronized else state.lifecycle
+        public = self.prepared_lifecycle if synchronized else state.lifecycle
         next_action = (
-            "open_refinement"
+            self.open_action
             if synchronized
             else (
                 "synchronize_results"
-                if state.lifecycle == "refinement_prepared"
+                if state.lifecycle == self.prepared_lifecycle
                 else (
                     "review_transition"
                     if state.lifecycle
@@ -639,9 +648,12 @@ class Mot3DPreliminaryTransitionCoordinator:
             "campaign": {
                 "id": plan[0],
                 "name": plan[3]["name"],
-                "stage": "refinement" if synchronized else "preliminary_check",
+                "stage": self.to_stage if synchronized else self.from_stage,
             },
-            "preliminary": {"status": public, "chain": public_chain(state.jobs)},
+            self.public_stage_key: {
+                "status": public,
+                "chain": public_chain(state.jobs, topology=self.topology),
+            },
             "scheduler": {
                 "completed_array_tasks": state.completed_array_tasks,
                 "expected_array_tasks": 6,
@@ -650,14 +662,16 @@ class Mot3DPreliminaryTransitionCoordinator:
             },
             "validation": {
                 "status": state.validation,
-                "result_artifacts": 152 if state.validation == "valid" else 0,
-                "expected_result_artifacts": 152,
+                "result_artifacts": (
+                    self.expected_result_files if state.validation == "valid" else 0
+                ),
+                "expected_result_artifacts": self.expected_result_files,
                 "reason_code": state.reason_code,
             },
             "transition": {
                 "status": (
-                    "refinement_prepared"
-                    if state.lifecycle == "refinement_prepared"
+                    self.prepared_lifecycle
+                    if state.lifecycle == self.prepared_lifecycle
                     else "not_prepared"
                 )
             },
@@ -671,11 +685,11 @@ class Mot3DPreliminaryTransitionCoordinator:
     def preview(self, request, *, session_id: str):
         plan, _, state = self._inspect(request)
         if (
-            state.lifecycle not in {"ready_to_advance", "refinement_prepared"}
+            state.lifecycle not in {"ready_to_advance", self.prepared_lifecycle}
             or state.validation != "valid"
             or not state.evidence_sha256
         ):
-            raise Mot3DPreliminaryTransitionError("preliminary_not_ready")
+            raise Mot3DPreliminaryTransitionError(self.not_ready_error)
         expires = self.clock() + TTL
         pending = _Pending(
             session_id,
@@ -698,27 +712,24 @@ class Mot3DPreliminaryTransitionCoordinator:
             "preview_token": token,
             "expires_in_seconds": TTL,
             "campaign": {"id": plan[0], "name": plan[3]["name"], "git_commit": plan[4]},
-            "from_stage": "preliminary_check",
-            "to_stage": "refinement",
-            "preliminary": {
-                "result_artifacts": EXPECTED_RESULT_FILES,
-                "expected_result_artifacts": EXPECTED_RESULT_FILES,
+            "from_stage": self.from_stage,
+            "to_stage": self.to_stage,
+            self.public_stage_key: {
+                "result_artifacts": self.expected_result_files,
+                "expected_result_artifacts": self.expected_result_files,
                 "families": list(FAMILIES),
                 "evidence_sha256": state.evidence_sha256,
             },
             "artifacts": {
-                "synchronize": {"result_files": 152, "submission_receipts": 1},
+                "synchronize": {
+                    "result_files": self.expected_result_files,
+                    "submission_receipts": 1,
+                },
                 "create": {"selection_files": 2, "job_files": 4},
                 "update": ["campaign.json"],
-                "transfer_files": EXPECTED_TRANSFER_FILES,
+                "transfer_files": self.expected_transfer_files,
             },
-            "effects": {
-                "synchronize_preliminary_check": True,
-                "prepare_refinement": True,
-                "submit_refinement": False,
-                "start_simulation": False,
-                "overwrite_existing": False,
-            },
+            "effects": dict(self.effects),
         }
 
     def confirm(self, request, *, session_id: str):
@@ -749,7 +760,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             }
             plan, transport, state = self._inspect(again)
             if (
-                state.lifecycle not in {"ready_to_advance", "refinement_prepared"}
+                state.lifecycle not in {"ready_to_advance", self.prepared_lifecycle}
                 or state.validation != "valid"
                 or (plan[4], plan[6], plan[5], plan[7], state.evidence_sha256)
                 != (
@@ -764,7 +775,7 @@ class Mot3DPreliminaryTransitionCoordinator:
                     "local_or_remote_evidence_changed"
                 )
             prepared = state
-            if state.lifecycle != "refinement_prepared":
+            if state.lifecycle != self.prepared_lifecycle:
                 try:
                     prepared = transport.prepare(
                         **(self._payload(plan) | {"nonce": pending.nonce})
@@ -789,11 +800,11 @@ class Mot3DPreliminaryTransitionCoordinator:
                     "local_sync_outcome_unknown"
                 ) from exc
             result = {
-                "status": "refinement_prepared",
+                "status": self.prepared_lifecycle,
                 "campaign_id": pending.campaign_id,
-                "stage": "refinement",
+                "stage": self.to_stage,
                 "artifacts": {
-                    "synchronized": 153,
+                    "synchronized": self.expected_result_files + 1,
                     "created": 6,
                     "updated": 1,
                     "bundle_sha256": prepared.bundle["bundle_sha256"],
@@ -836,12 +847,12 @@ class Mot3DPreliminaryTransitionCoordinator:
         try:
             campaign_fd = os.open(plan[2], _DIRECTORY_FLAGS)
             expected = plan[9]
-            if len(expected) != EXPECTED_TRANSFER_FILES:
+            if len(expected) != self.expected_transfer_files:
                 raise Mot3DPreliminaryTransitionError("local_sync_conflict")
             mot_fd = _open_directory_at(campaign_fd, ".mot_ui", create=True)
             sync_fd = _open_directory_at(mot_fd, "sync", create=True)
             lock_fd = os.open(
-                "preliminary_to_refinement.lock",
+                f"{self.sync_name}.lock",
                 os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0),
                 0o600,
                 dir_fd=sync_fd,
@@ -849,7 +860,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             fcntl.flock(lock_fd, fcntl.LOCK_EX)
             try:
                 final_raw = _bounded_read_at(
-                    sync_fd, "preliminary_to_refinement.json", 256 * 1024
+                    sync_fd, f"{self.sync_name}.json", 256 * 1024
                 )
             except FileNotFoundError:
                 final_raw = None
@@ -859,7 +870,7 @@ class Mot3DPreliminaryTransitionCoordinator:
                 try:
                     pending_raw = _bounded_read_at(
                         sync_fd,
-                        "preliminary_to_refinement.pending.json",
+                        f"{self.sync_name}.pending.json",
                         256 * 1024,
                     )
                 except FileNotFoundError:
@@ -874,7 +885,7 @@ class Mot3DPreliminaryTransitionCoordinator:
                     ):
                         raise Mot3DPreliminaryTransitionError("local_sync_conflict")
                     os.unlink(
-                        "preliminary_to_refinement.pending.json",
+                        f"{self.sync_name}.pending.json",
                         dir_fd=sync_fd,
                     )
                     os.fsync(sync_fd)
@@ -882,12 +893,12 @@ class Mot3DPreliminaryTransitionCoordinator:
             intent = {**identity, "created_unix_s": int(self.clock())}
             try:
                 pending_raw = _bounded_read_at(
-                    sync_fd, "preliminary_to_refinement.pending.json", 256 * 1024
+                    sync_fd, f"{self.sync_name}.pending.json", 256 * 1024
                 )
             except FileNotFoundError:
                 _atomic_json_at(
                     sync_fd,
-                    "preliminary_to_refinement.pending.json",
+                    f"{self.sync_name}.pending.json",
                     intent,
                     replace=False,
                 )
@@ -903,7 +914,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             # restart even after the transient intent is removed.
             _atomic_json_at(
                 sync_fd,
-                "preliminary_to_refinement.identity.json",
+                f"{self.sync_name}.identity.json",
                 intent,
                 replace=False,
             )
@@ -943,8 +954,8 @@ class Mot3DPreliminaryTransitionCoordinator:
                     state.bundle,
                     campaign=plan[2].name,
                     commit=plan[4],
-                    from_stage="preliminary_check",
-                    to_stage="refinement",
+                    from_stage=self.from_stage,
+                    to_stage=self.to_stage,
                     expected_paths=expected,
                 )
             except Exception as exc:
@@ -1004,14 +1015,10 @@ class Mot3DPreliminaryTransitionCoordinator:
             )
             if not self._verify_local_at(campaign_fd, state, raw, expected):
                 raise Mot3DPreliminaryTransitionError("local_sync_conflict")
-            _atomic_json_at(
-                sync_fd, "preliminary_to_refinement.json", complete, replace=False
-            )
-            os.unlink("preliminary_to_refinement.pending.json", dir_fd=sync_fd)
+            _atomic_json_at(sync_fd, f"{self.sync_name}.json", complete, replace=False)
+            os.unlink(f"{self.sync_name}.pending.json", dir_fd=sync_fd)
             os.fsync(sync_fd)
-            final = _bounded_read_at(
-                sync_fd, "preliminary_to_refinement.json", 256 * 1024
-            )
+            final = _bounded_read_at(sync_fd, f"{self.sync_name}.json", 256 * 1024)
             if not self._verify_local_at(campaign_fd, state, final, expected):
                 raise Mot3DPreliminaryTransitionError("local_sync_conflict")
             return _sha(final)
@@ -1040,9 +1047,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             mot = _open_directory_at(fd, ".mot_ui", create=False)
             sync = _open_directory_at(mot, "sync", create=False)
             try:
-                raw = _bounded_read_at(
-                    sync, "preliminary_to_refinement.json", 256 * 1024
-                )
+                raw = _bounded_read_at(sync, f"{self.sync_name}.json", 256 * 1024)
             finally:
                 os.close(sync)
                 os.close(mot)
@@ -1097,10 +1102,12 @@ class Mot3DPreliminaryTransitionCoordinator:
 class PinnedSshMot3DPreliminaryTransitionTransport:
     """Strict adapter around the repository-pinned Stage-3 receiver."""
 
+    policy_factory = staticmethod(PinnedSshPolicy.mot_3d_preliminary_transition)
+    error_type = Mot3DPreliminaryTransitionError
+    error_prefix = "preliminary_transition"
+
     def __init__(self, root: Path, ssh: Path, profile: ZeusProfile, *, timeout=90):
-        self.runner = PinnedSshRunner(
-            PinnedSshPolicy.mot_3d_preliminary_transition(root, ssh, timeout=timeout)
-        )
+        self.runner = PinnedSshRunner(self.policy_factory(root, ssh, timeout=timeout))
         self.profile = profile
 
     def _call(self, operation: str, payload: Mapping[str, object]):
@@ -1111,19 +1118,19 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
             "retrieve": ReceiverOperation.RETRIEVE,
         }.get(operation)
         if selected is None:
-            raise Mot3DPreliminaryTransitionError("remote_response_invalid")
+            raise self.error_type("remote_response_invalid")
         try:
             result = self.runner.run(selected, self.profile, payload)
         except subprocess.TimeoutExpired:
-            raise Mot3DPreliminaryTransitionError(
+            raise self.error_type(
                 "transition_outcome_unknown"
                 if operation == "prepare"
                 else "zeus_timeout"
             ) from None
         except PinnedSshProcessError as exc:
-            raise Mot3DPreliminaryTransitionError("zeus_unavailable") from exc
+            raise self.error_type("zeus_unavailable") from exc
         if result.returncode or result.stderr:
-            raise Mot3DPreliminaryTransitionError(
+            raise self.error_type(
                 "transition_outcome_unknown"
                 if operation == "prepare"
                 else "remote_response_invalid"
@@ -1131,18 +1138,18 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
         try:
             value = json.loads(result.stdout)
         except Exception as exc:
-            raise Mot3DPreliminaryTransitionError("remote_response_invalid") from exc
+            raise self.error_type("remote_response_invalid") from exc
         if isinstance(value, dict) and set(value) == {"error"}:
             code = value["error"]
             allowed = {
                 "invalid_request",
                 "remote_checkout_mismatch",
-                "preliminary_transition_conflict",
-                "preliminary_transition_busy",
-                "preliminary_transition_outcome_unknown",
-                "preliminary_transition_not_prepared",
+                f"{self.error_prefix}_conflict",
+                f"{self.error_prefix}_busy",
+                f"{self.error_prefix}_outcome_unknown",
+                f"{self.error_prefix}_not_prepared",
             }
-            raise Mot3DPreliminaryTransitionError(
+            raise self.error_type(
                 code
                 if isinstance(code, str) and code in allowed
                 else "remote_response_invalid"
@@ -1161,7 +1168,7 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
             "chunk",
         }
         if not isinstance(value, dict) or set(value) != keys:
-            raise Mot3DPreliminaryTransitionError("remote_response_invalid")
+            raise self.error_type("remote_response_invalid")
         return RemotePreliminaryTransitionState(
             value["lifecycle"],
             value["branch"],

@@ -92,6 +92,54 @@ def _read_relative(root_fd: int, relative: str, limit=8 * 1024 * 1024) -> bytes:
             os.close(value)
 
 
+def validate_prior_transition_sync(
+    campaign_fd: int, expected_paths: frozenset[str]
+) -> tuple[dict[str, object], bytes]:
+    """Return the exact descriptor-bound Stage3 synchronization attestation."""
+    mot_fd = _open_directory_at(campaign_fd, ".mot_ui", create=False)
+    try:
+        sync_fd = _open_directory_at(mot_fd, "sync", create=False)
+        try:
+            raw = _bounded_read_at(
+                sync_fd, "preliminary_to_refinement.json", 256 * 1024
+            )
+        finally:
+            os.close(sync_fd)
+    finally:
+        os.close(mot_fd)
+    sync = _strict_json(raw)
+    if (
+        not isinstance(sync, dict)
+        or set(sync)
+        != {
+            "status",
+            "transition_key",
+            "remote_receipt_sha256",
+            "bundle_sha256",
+            "files",
+            "completed_unix_s",
+        }
+        or sync.get("status") != "synchronized"
+        or type(sync.get("completed_unix_s")) is not int
+        or not 0 <= sync["completed_unix_s"] <= 253402300799
+        or any(
+            not isinstance(sync.get(key), str) or not HEX64.fullmatch(sync[key])
+            for key in ("transition_key", "remote_receipt_sha256", "bundle_sha256")
+        )
+        or not isinstance(sync.get("files"), dict)
+        or set(sync["files"]) != expected_paths
+        or any(
+            not isinstance(name, str)
+            or not isinstance(digest, str)
+            or not HEX64.fullmatch(digest)
+            or _sha(_read_relative(campaign_fd, name)) != digest
+            for name, digest in sync["files"].items()
+        )
+    ):
+        raise ValueError("invalid prior synchronization receipt")
+    return sync, raw
+
+
 class Mot3DRefinementSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
     topology = REFINEMENT_TOPOLOGY
     stage_id = "refinement"
@@ -135,43 +183,9 @@ class Mot3DRefinementSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator
                 raise ValueError
             campaign_fd = os.open(campaign, _DIRECTORY_FLAGS)
             try:
-                mot_fd = _open_directory_at(campaign_fd, ".mot_ui", create=False)
-                try:
-                    sync_fd = _open_directory_at(mot_fd, "sync", create=False)
-                    try:
-                        sync_raw = _bounded_read_at(
-                            sync_fd, "preliminary_to_refinement.json", 256 * 1024
-                        )
-                    finally:
-                        os.close(sync_fd)
-                finally:
-                    os.close(mot_fd)
-                sync = _strict_json(sync_raw)
-                if (
-                    not isinstance(sync, dict)
-                    or set(sync)
-                    != {
-                        "status",
-                        "transition_key",
-                        "remote_receipt_sha256",
-                        "bundle_sha256",
-                        "files",
-                        "completed_unix_s",
-                    }
-                    or sync.get("status") != "synchronized"
-                    or type(sync.get("completed_unix_s")) is not int
-                    or not 0 <= sync["completed_unix_s"] <= 253402300799
-                    or not isinstance(sync.get("files"), dict)
-                    or set(sync["files"]) != expected_sync_paths
-                    or any(
-                        not isinstance(name, str)
-                        or not isinstance(digest, str)
-                        or not HEX64.fullmatch(digest)
-                        or _sha(_read_relative(campaign_fd, name)) != digest
-                        for name, digest in sync["files"].items()
-                    )
-                ):
-                    raise ValueError
+                sync, sync_raw = validate_prior_transition_sync(
+                    campaign_fd, expected_sync_paths
+                )
                 files = {
                     name: _sha(_read_relative(campaign_fd, name)) for name in FILES
                 }

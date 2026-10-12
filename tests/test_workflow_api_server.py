@@ -7,8 +7,10 @@ import sys
 import threading
 import numpy as np
 from lab_setup.physical_specification import (
-    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
-    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+    CANONICAL_ZEEMAN_PROFILE_NAME,
+    CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256,
+    LABORATORY_SPEC_VERSION,
     LABORATORY_PHYSICAL_SPECIFICATION,
 )
 from pathlib import Path
@@ -36,10 +38,14 @@ from workflow_api.zeus_screen_submission import ZeusScreenSubmissionError
 
 def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
     profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
-    field_config = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
+    field_config = {
+        key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")
+    }
     roles = {
-        "discovery": list(range(3000, 3005)), "refinement": list(range(3005, 3010)),
-        "held_out_confirmation": list(range(3010, 3015)), "sealed_validation": list(range(3015, 3035)),
+        "discovery": list(range(3000, 3005)),
+        "refinement": list(range(3005, 3010)),
+        "held_out_confirmation": list(range(3010, 3015)),
+        "sealed_validation": list(range(3015, 3035)),
     }
     inputs = repository_root / "data" / "particle_states" / "after_zeeman" / "profile"
     inputs.mkdir(parents=True, exist_ok=True)
@@ -47,43 +53,93 @@ def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
     for role, seeds in roles.items():
         frozen[role] = []
         for seed in seeds:
-            state = inputs / f"input-{seed}.npy"; metadata = state.with_suffix(".json")
+            state = inputs / f"input-{seed}.npy"
+            metadata = state.with_suffix(".json")
             state.write_bytes(f"states-{seed}".encode())
             digest = hashlib.sha256(state.read_bytes()).hexdigest()
-            metadata.write_text(json.dumps({
-                "laboratory_spec_version": LABORATORY_SPEC_VERSION,
-                "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
-                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-                "shape": [10, 6], "dtype": "float64", "n_survivors": 10,
-                "output_sha256": digest,
-                "parameters": {
-                    "seed": seed, "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
-                    "n_initial_atoms": 50000, "dt_s": 4e-5,
-                    "stochastic": True, "collimation_angle_deg": 0.02,
-                    "zeeman_field_config": field_config,
-                },
-                "software": {"git_commit": "source"},
-            }))
+            metadata.write_text(
+                json.dumps(
+                    {
+                        "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                        "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                        "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                        "shape": [10, 6],
+                        "dtype": "float64",
+                        "n_survivors": 10,
+                        "output_sha256": digest,
+                        "parameters": {
+                            "seed": seed,
+                            "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                            "n_initial_atoms": 50000,
+                            "dt_s": 4e-5,
+                            "stochastic": True,
+                            "collimation_angle_deg": 0.02,
+                            "zeeman_field_config": field_config,
+                        },
+                        "software": {"git_commit": "source"},
+                    }
+                )
+            )
             metadata_digest = hashlib.sha256(metadata.read_bytes()).hexdigest()
-            frozen[role].append({
-                "zeeman_seed": seed, "path": str(state.relative_to(repository_root)), "metadata_path": str(metadata.relative_to(repository_root)),
-                "sha256": digest, "metadata_sha256": metadata_digest, "shape": [10, 6], "dtype": "float64", "survivor_count": 10,
-                "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "source_git_commit": "source",
-                "laboratory_spec_version": LABORATORY_SPEC_VERSION,
-                "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
-                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-                "generation": {"n_initial_atoms": 50000, "dt_s": 4e-5, "stochastic": True, "collimation_angle_deg": 0.02},
-            })
+            frozen[role].append(
+                {
+                    "zeeman_seed": seed,
+                    "path": str(state.relative_to(repository_root)),
+                    "metadata_path": str(metadata.relative_to(repository_root)),
+                    "sha256": digest,
+                    "metadata_sha256": metadata_digest,
+                    "shape": [10, 6],
+                    "dtype": "float64",
+                    "survivor_count": 10,
+                    "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                    "source_git_commit": "source",
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                    "generation": {
+                        "n_initial_atoms": 50000,
+                        "dt_s": 4e-5,
+                        "stochastic": True,
+                        "collimation_angle_deg": 0.02,
+                    },
+                }
+            )
     return {
-        "kind": "mot_2d_s0_campaign", "name": name, "stage": stage, "s0_values": [1.3], "stages": {},
-        "ensemble_source": {"directory": "data/particle_states/after_zeeman/profile", "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "laboratory_spec_version": LABORATORY_SPEC_VERSION, "laboratory_spec_sha256": LABORATORY_SPEC_SHA256, "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256},
-        "seed_roles": roles, "input_ensembles": frozen,
-        "mot_seeds": {role: [40000 + seed for seed in seeds] for role, seeds in roles.items()},
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "b" * 64, "hashed_files": ["config.py"], "capture_criterion_version": "v1", "path_contract": "repository-relative-v1"},
-        "fixed_design": {"working_dt_s": 1.25e-6, "final_dt_s": 0.625e-6, "solver": "RK4StHybridCustom",
-            "detuning_bounds_gamma": [-2, -0.5], "magnet_radius_bounds_m": [0.04, 0.05],
-            "particle_counts": {}, "trial_budgets": {"screen_per_worker": 17, "refine_per_worker": 10},
-            "control_resolution": {}, "stress_test_offsets": {}},
+        "kind": "mot_2d_s0_campaign",
+        "name": name,
+        "stage": stage,
+        "s0_values": [1.3],
+        "stages": {},
+        "ensemble_source": {
+            "directory": "data/particle_states/after_zeeman/profile",
+            "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+        },
+        "seed_roles": roles,
+        "input_ensembles": frozen,
+        "mot_seeds": {
+            role: [40000 + seed for seed in seeds] for role, seeds in roles.items()
+        },
+        "provenance": {
+            "git_commit": "abc",
+            "physical_model_sha256": "b" * 64,
+            "hashed_files": ["config.py"],
+            "capture_criterion_version": "v1",
+            "path_contract": "repository-relative-v1",
+        },
+        "fixed_design": {
+            "working_dt_s": 1.25e-6,
+            "final_dt_s": 0.625e-6,
+            "solver": "RK4StHybridCustom",
+            "detuning_bounds_gamma": [-2, -0.5],
+            "magnet_radius_bounds_m": [0.04, 0.05],
+            "particle_counts": {},
+            "trial_budgets": {"screen_per_worker": 17, "refine_per_worker": 10},
+            "control_resolution": {},
+            "stress_test_offsets": {},
+        },
     }
 
 
@@ -92,28 +148,60 @@ def write_valid_smoke(campaign, manifest):
     (directory / "trials").mkdir(parents=True, exist_ok=True)
     s0 = 1.3
     design_input = {
-        "fixed_s0": s0, "dt_s": 1.25e-6, "solver": "RK4StHybridCustom",
+        "fixed_s0": s0,
+        "dt_s": 1.25e-6,
+        "solver": "RK4StHybridCustom",
         "ensemble_dir": "data/particle_states/after_zeeman/profile",
-        "zeeman_seeds": [3000], "mot_seeds": [43000],
-        "particles_per_ensemble": 2, "sampler_seed": 42,
-        "bounds": {"s0": [s0, s0], "detuning_gamma": [-2, -0.5], "magnet_radius_m": [0.04, 0.05]},
-        "git_commit": "abc", "campaign_design_id": "b" * 64,
-    }
-    design_id = hashlib.sha256(json.dumps(design_input, sort_keys=True).encode()).hexdigest()
-    (directory / "trials" / "trial_0000.json").write_text(json.dumps({
-        "kind": "mot_2d_joint_optimization_trial", "trial_number": 0,
-        "parameters": {"s0": s0, "detuning_gamma": -1.0, "magnet_radius": 0.046},
-        "design": {
-            "dt_s": 1.25e-6, "n_ensembles": 1, "particles_per_ensemble": 2,
-            "mot_seed_start": 4000, "stochastic_solver": "RK4StHybridCustom",
-            "design_id": design_id, "git_commit": "abc",
-            "ensemble_dir": design_input["ensemble_dir"], "zeeman_seeds": [3000], "mot_seeds": [43000],
+        "zeeman_seeds": [3000],
+        "mot_seeds": [43000],
+        "particles_per_ensemble": 2,
+        "sampler_seed": 42,
+        "bounds": {
+            "s0": [s0, s0],
+            "detuning_gamma": [-2, -0.5],
+            "magnet_radius_m": [0.04, 0.05],
         },
-    }))
-    (directory / "summary.json").write_text(json.dumps({
-        "kind": "mot_2d_joint_optimization_summary", "fixed_s0": s0, "n_finished_trials": 1,
-        "design": {"stochastic_solver": "RK4StHybridCustom", "dt_s": 1.25e-6},
-    }))
+        "git_commit": "abc",
+        "campaign_design_id": "b" * 64,
+    }
+    design_id = hashlib.sha256(
+        json.dumps(design_input, sort_keys=True).encode()
+    ).hexdigest()
+    (directory / "trials" / "trial_0000.json").write_text(
+        json.dumps(
+            {
+                "kind": "mot_2d_joint_optimization_trial",
+                "trial_number": 0,
+                "parameters": {
+                    "s0": s0,
+                    "detuning_gamma": -1.0,
+                    "magnet_radius": 0.046,
+                },
+                "design": {
+                    "dt_s": 1.25e-6,
+                    "n_ensembles": 1,
+                    "particles_per_ensemble": 2,
+                    "mot_seed_start": 4000,
+                    "stochastic_solver": "RK4StHybridCustom",
+                    "design_id": design_id,
+                    "git_commit": "abc",
+                    "ensemble_dir": design_input["ensemble_dir"],
+                    "zeeman_seeds": [3000],
+                    "mot_seeds": [43000],
+                },
+            }
+        )
+    )
+    (directory / "summary.json").write_text(
+        json.dumps(
+            {
+                "kind": "mot_2d_joint_optimization_summary",
+                "fixed_s0": s0,
+                "n_finished_trials": 1,
+                "design": {"stochastic_solver": "RK4StHybridCustom", "dt_s": 1.25e-6},
+            }
+        )
+    )
 
 
 def test_modern_contract_rejects_noncanonical_seeds_and_metadata_mismatch(tmp_path):
@@ -140,12 +228,16 @@ def test_pre_c2_corrected_campaign_is_validated_in_memory_without_rewrite(tmp_pa
     root = tmp_path / "repo"
     manifest = modern_2d_manifest(root)
     laboratory_keys = (
-        "laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"
+        "laboratory_spec_version",
+        "laboratory_spec_sha256",
+        "zeeman_profile_sha256",
     )
     for key in laboratory_keys:
         manifest["ensemble_source"].pop(key)
     profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
-    arrays = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
+    arrays = {
+        key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")
+    }
     for records in manifest["input_ensembles"].values():
         for record in records:
             for key in laboratory_keys:
@@ -156,7 +248,9 @@ def test_pre_c2_corrected_campaign_is_validated_in_memory_without_rewrite(tmp_pa
                 metadata.pop(key)
             metadata["parameters"]["zeeman_field_config"] = arrays
             metadata_path.write_text(json.dumps(metadata))
-            record["metadata_sha256"] = hashlib.sha256(metadata_path.read_bytes()).hexdigest()
+            record["metadata_sha256"] = hashlib.sha256(
+                metadata_path.read_bytes()
+            ).hexdigest()
     before = json.dumps(manifest, sort_keys=True).encode()
     assert modern_contract(manifest, root) == (True, ())
     assert json.dumps(manifest, sort_keys=True).encode() == before
@@ -189,11 +283,21 @@ def test_duplicate_confirmation_and_production_tasks_are_inconsistent(tmp_path):
     }
     confirmation = campaign / "confirmation"
     production = campaign / "production"
-    confirmation.mkdir(); production.mkdir()
+    confirmation.mkdir()
+    production.mkdir()
     duplicate_confirmation = {"s0": 1.3, "candidate_index": 0, "parameters": {}}
-    (confirmation / "tasks.json").write_text(json.dumps([duplicate_confirmation, duplicate_confirmation]))
-    duplicate_production = {"s0": 1.3, "zeeman_seed": 3015, "mot_seed": 43015, "parameters": {}}
-    (production / "tasks.json").write_text(json.dumps([duplicate_production, duplicate_production]))
+    (confirmation / "tasks.json").write_text(
+        json.dumps([duplicate_confirmation, duplicate_confirmation])
+    )
+    duplicate_production = {
+        "s0": 1.3,
+        "zeeman_seed": 3015,
+        "mot_seed": 43015,
+        "parameters": {},
+    }
+    (production / "tasks.json").write_text(
+        json.dumps([duplicate_production, duplicate_production])
+    )
 
     progress = {row.stage: row for row in validated_progress(campaign, manifest)}
     assert progress["confirmation"].status == "inconsistent"
@@ -207,11 +311,17 @@ def test_malformed_3d_sibling_is_isolated_from_valid_listing(tmp_path):
     (valid / "campaign.json").write_text(json.dumps(modern_2d_manifest(root)))
     malformed = root / "data/optimization/mot_3d/malformed"
     malformed.mkdir(parents=True)
-    (malformed / "campaign.json").write_text(json.dumps({
-        "kind": "mot_3d_campaign_v2", "name": "bad", "stage": "dt_validation_required",
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "a" * 64},
-        "design": {"families": 3, "solver": "RK4StHybridCustom"},
-    }))
+    (malformed / "campaign.json").write_text(
+        json.dumps(
+            {
+                "kind": "mot_3d_campaign_v2",
+                "name": "bad",
+                "stage": "dt_validation_required",
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "a" * 64},
+                "design": {"families": 3, "solver": "RK4StHybridCustom"},
+            }
+        )
+    )
 
     result = list_campaigns(root)
     assert [row["name"] for row in result["campaigns"]] == ["modern"]
@@ -270,9 +380,21 @@ def test_progress_aware_plan_never_resubmits_partial_stage(tmp_path):
         "stage": "screen",
         "next_plan": {"label": "Submit", "command": ["qsub", "job.pbs"]},
     }
-    assert _progress_aware_plan(summary, [{"stage": "screen", "status": "in-progress"}], campaign, root) is None
-    assert _progress_aware_plan(summary, [{"stage": "screen", "status": "not-started"}], campaign, root)["operation_scope"] == "remote-submission"
-    complete = _progress_aware_plan(summary, [{"stage": "screen", "status": "complete"}], campaign, root)
+    assert (
+        _progress_aware_plan(
+            summary, [{"stage": "screen", "status": "in-progress"}], campaign, root
+        )
+        is None
+    )
+    assert (
+        _progress_aware_plan(
+            summary, [{"stage": "screen", "status": "not-started"}], campaign, root
+        )["operation_scope"]
+        == "remote-submission"
+    )
+    complete = _progress_aware_plan(
+        summary, [{"stage": "screen", "status": "complete"}], campaign, root
+    )
     assert complete["operation_scope"] == "local-mutation"
     assert "advance" in complete["command"]
 
@@ -281,25 +403,40 @@ def write_zeeman_source(root, name="source"):
     directory = root / "data/particle_states/after_zeeman" / name
     directory.mkdir(parents=True)
     profile = LABORATORY_PHYSICAL_SPECIFICATION["canonical_zeeman_profile"]
-    field_config = {key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")}
+    field_config = {
+        key: list(profile[key]) for key in ("radii_m", "positions_m", "tilt_angles_deg")
+    }
     for seed in range(3000, 3035):
         state = directory / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
         np.save(state, np.zeros((2, 6), dtype=float))
         digest = hashlib.sha256(state.read_bytes()).hexdigest()
-        state.with_suffix(".json").write_text(json.dumps({
-            "shape": [2, 6], "dtype": "float64", "n_survivors": 2,
-            "output_sha256": digest,
-            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
-            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
-            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-            "parameters": {"seed": seed, "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME, "n_initial_atoms": 50000, "dt_s": 4e-5, "zeeman_field_config": field_config},
-            "software": {"git_commit": "abc"},
-        }))
+        state.with_suffix(".json").write_text(
+            json.dumps(
+                {
+                    "shape": [2, 6],
+                    "dtype": "float64",
+                    "n_survivors": 2,
+                    "output_sha256": digest,
+                    "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                    "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                    "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                    "parameters": {
+                        "seed": seed,
+                        "resolved_zeeman_magnet_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
+                        "n_initial_atoms": 50000,
+                        "dt_s": 4e-5,
+                        "zeeman_field_config": field_config,
+                    },
+                    "software": {"git_commit": "abc"},
+                }
+            )
+        )
     return directory
 
 
 def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
-    root = tmp_path / "repo"; directory = write_zeeman_source(root)
+    root = tmp_path / "repo"
+    directory = write_zeeman_source(root)
     result = list_sources(root)
     assert result["total"] == 1
     assert result["sources"][0]["ensemble_count"] == 35
@@ -310,7 +447,8 @@ def test_zeeman_source_registry_requires_all_valid_frozen_inputs(tmp_path):
 
 
 def test_zeeman_source_registry_rejects_laboratory_hash_tampering(tmp_path):
-    root = tmp_path / "repo"; directory = write_zeeman_source(root)
+    root = tmp_path / "repo"
+    directory = write_zeeman_source(root)
     metadata = directory / "production_zeeman_n50000_dt40us_seed3000.json"
     payload = json.loads(metadata.read_text())
     payload["laboratory_spec_sha256"] = "0" * 64
@@ -334,6 +472,7 @@ def running_server(
     mot_3d_preliminary_submission_service=None,
     mot_3d_refinement_submission_service=None,
     mot_3d_preliminary_transition_service=None,
+    mot_3d_refinement_transition_service=None,
 ):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
@@ -354,6 +493,7 @@ def running_server(
     handler.mot_3d_preliminary_transition_service = (
         mot_3d_preliminary_transition_service
     )
+    handler.mot_3d_refinement_transition_service = mot_3d_refinement_transition_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -379,7 +519,9 @@ def request_json(url, *, method="GET", headers=None, request_target=None, body=N
     connection = HTTPConnection(parsed.hostname, parsed.port, timeout=2)
     try:
         target = parsed.path + (f"?{parsed.query}" if parsed.query else "")
-        connection.request(method, request_target or target, body=body, headers=headers or {})
+        connection.request(
+            method, request_target or target, body=body, headers=headers or {}
+        )
         response = connection.getresponse()
         raw = response.read()
         return response.status, response.headers, json.loads(raw) if raw else None
@@ -465,14 +607,21 @@ def test_loopback_unknown_and_mutating_requests_are_rejected_and_uncached():
         assert status == 405
         assert headers["Cache-Control"] == "no-store"
         assert headers["Allow"] == "GET, POST"
-        assert payload == {"error": {"code": "method_not_allowed", "message": "This method is not available."}}
+        assert payload == {
+            "error": {
+                "code": "method_not_allowed",
+                "message": "This method is not available.",
+            }
+        }
 
 
 def test_every_non_get_method_is_json_read_only_rejection():
     methods = ("PUT", "PATCH", "DELETE", "HEAD", "OPTIONS")
     with running_server(request_count=len(methods)) as base_url:
         for method in methods:
-            status, headers, payload = request_json(f"{base_url}/api/workflows", method=method)
+            status, headers, payload = request_json(
+                f"{base_url}/api/workflows", method=method
+            )
             assert status == 405
             assert headers["Cache-Control"] == "no-store"
             assert headers["X-Content-Type-Options"] == "nosniff"
@@ -482,11 +631,15 @@ def test_every_non_get_method_is_json_read_only_rejection():
 
 def test_host_query_and_absolute_targets_fail_closed():
     with running_server(request_count=3) as base_url:
-        status, _, payload = request_json(f"{base_url}/api/health", headers={"Host": "evil.example"})
+        status, _, payload = request_json(
+            f"{base_url}/api/health", headers={"Host": "evil.example"}
+        )
         assert status == 400 and payload["error"]["code"] == "untrusted_host"
         status, _, payload = request_json(f"{base_url}/api/health?path=x")
         assert status == 400 and payload["error"]["code"] == "unsupported_query"
-        status, _, payload = request_json(f"{base_url}/api/health", request_target="http://evil.example/api/health")
+        status, _, payload = request_json(
+            f"{base_url}/api/health", request_target="http://evil.example/api/health"
+        )
         assert status == 400 and payload["error"]["code"] == "invalid_request_target"
 
 
@@ -494,11 +647,18 @@ def test_campaign_endpoints_discover_only_allowlisted_direct_manifests(tmp_path)
     root = tmp_path / "repo"
     campaign = root / "data" / "optimization" / "mot_2d" / "same-name-a"
     campaign.mkdir(parents=True)
-    (campaign / "campaign.json").write_text(json.dumps({
-        "kind": "mot_2d_s0_campaign", "name": "same name", "stage": "complete",
-        "s0_values": [1.3], "provenance": {"git_commit": "abc"},
-        "ensemble_source": {"zeeman_profile": "profile"},
-    }))
+    (campaign / "campaign.json").write_text(
+        json.dumps(
+            {
+                "kind": "mot_2d_s0_campaign",
+                "name": "same name",
+                "stage": "complete",
+                "s0_values": [1.3],
+                "provenance": {"git_commit": "abc"},
+                "ensemble_source": {"zeeman_profile": "profile"},
+            }
+        )
+    )
     second = campaign.parent / "same-name-b"
     second.mkdir()
     (second / "campaign.json").write_text((campaign / "campaign.json").read_text())
@@ -531,7 +691,9 @@ def test_campaign_endpoint_rejects_encoded_or_unknown_ids(tmp_path):
         assert payload["error"]["code"] == "campaign_not_found"
 
 
-def test_every_catalogued_local_read_error_matches_the_real_handler(monkeypatch, tmp_path):
+def test_every_catalogued_local_read_error_matches_the_real_handler(
+    monkeypatch, tmp_path
+):
     for case, spec in ERROR_DOMAINS["local_read"].entries.items():
         wire_code = spec.wire_code or case
 
@@ -540,7 +702,9 @@ def test_every_catalogued_local_read_error_matches_the_real_handler(monkeypatch,
 
         monkeypatch.setattr("workflow_api.server.get_campaign", fail)
         with running_server(request_count=1, repository_root=tmp_path) as base_url:
-            status, headers, payload = request_json(f"{base_url}/api/v1/campaigns/catalog-case")
+            status, headers, payload = request_json(
+                f"{base_url}/api/v1/campaigns/catalog-case"
+            )
         assert status == int(spec.status), case
         assert headers["Cache-Control"] == "no-store"
         assert payload == {"error": {"code": wire_code, "message": spec.message}}, case
@@ -579,7 +743,12 @@ def test_unexpected_discovery_error_returns_safe_json(monkeypatch):
         status, headers, payload = request_json(f"{base_url}/api/v1/campaigns")
     assert status == 500
     assert headers["Cache-Control"] == "no-store"
-    assert payload == {"error": {"code": "inspection_failed", "message": "Campaign inspection failed safely."}}
+    assert payload == {
+        "error": {
+            "code": "inspection_failed",
+            "message": "Campaign inspection failed safely.",
+        }
+    }
     assert "/absolute/path" not in json.dumps(payload)
 
 
@@ -588,7 +757,8 @@ def test_validated_complete_stage_offers_copy_only_local_advance(tmp_path):
     campaign = root / "data" / "optimization" / "mot_2d" / "modern"
     smoke = campaign / "smoke" / "s0_1p300000"
     jobs = campaign / "jobs"
-    smoke.mkdir(parents=True); jobs.mkdir()
+    smoke.mkdir(parents=True)
+    jobs.mkdir()
     manifest = modern_2d_manifest(root)
     (campaign / "campaign.json").write_text(json.dumps(manifest))
     (jobs / "01_smoke.pbs").write_text("#!/bin/bash\n")
@@ -606,14 +776,24 @@ def test_validated_complete_stage_offers_copy_only_local_advance(tmp_path):
     assert row["next_plan"]["operation_scope"] == "local-mutation"
     assert row["next_plan"]["mode"] == "copy-only"
     assert "advance" in row["next_plan"]["command"]
-    assert shlex.split(row["next_plan"]["display_command"]) == row["next_plan"]["command"]
+    assert (
+        shlex.split(row["next_plan"]["display_command"]) == row["next_plan"]["command"]
+    )
 
 
 def test_copy_command_shell_quotes_hostile_campaign_directory(tmp_path):
     root = tmp_path / "repo"
-    campaign = root / "data" / "optimization" / "mot_2d" / "name with spaces; $(unsafe) 'quote'"
-    smoke = campaign / "smoke" / "s0_1p300000"; jobs = campaign / "jobs"
-    smoke.mkdir(parents=True); jobs.mkdir()
+    campaign = (
+        root
+        / "data"
+        / "optimization"
+        / "mot_2d"
+        / "name with spaces; $(unsafe) 'quote'"
+    )
+    smoke = campaign / "smoke" / "s0_1p300000"
+    jobs = campaign / "jobs"
+    smoke.mkdir(parents=True)
+    jobs.mkdir()
     (campaign / "campaign.json").write_text(json.dumps(modern_2d_manifest(root)))
     (jobs / "01_smoke.pbs").write_text("#!/bin/bash\n")
     write_valid_smoke(campaign, modern_2d_manifest(root))
@@ -625,17 +805,56 @@ def test_copy_command_shell_quotes_hostile_campaign_directory(tmp_path):
     assert "'" in plan["display_command"]
 
 
-def test_3d_structural_manifest_without_verified_frozen_artifacts_is_inspection_only(tmp_path):
+def test_3d_structural_manifest_without_verified_frozen_artifacts_is_inspection_only(
+    tmp_path,
+):
     root = tmp_path / "repo"
     campaign = root / "data" / "optimization" / "mot_3d" / "structural-only"
     campaign.mkdir(parents=True)
-    (campaign / "campaign.json").write_text(json.dumps({
-        "kind": "mot_3d_campaign_v2", "name": "structural only", "stage": "dt_validation_required",
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "a" * 64},
-        "upstream_2d_campaign": {"campaign_path": "fake", "campaign_sha256": "b" * 64, "final_report_path": "fake", "final_report_sha256": "c" * 64, "sealed_seed_pairs": [{"zeeman_seed": 3015, "mot_seed": 43015}], "expected_survivor_design": {"solver": "RK4StHybridCustom"}, "expected_survivor_parameters": {"s0": 1.3}},
-        "input_roles": {"discovery": [{"path": "x", "metadata_path": "y", "sha256": "d" * 64, "metadata_sha256": "e" * 64, "shape": [1, 6], "dtype": "float64", "zeeman_seed": 3015, "mot_seed": 43015, "source_design": {}, "source_parameters": {}}]},
-        "design": {"families": ["angled_donut", "single_pass"], "solver": "RK4StHybridCustom", "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6, "timestep_status": "provisional_pending_3d_validation", "optimization_bounds": {}, "selection_statistics": {}},
-    }))
+    (campaign / "campaign.json").write_text(
+        json.dumps(
+            {
+                "kind": "mot_3d_campaign_v2",
+                "name": "structural only",
+                "stage": "dt_validation_required",
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "a" * 64},
+                "upstream_2d_campaign": {
+                    "campaign_path": "fake",
+                    "campaign_sha256": "b" * 64,
+                    "final_report_path": "fake",
+                    "final_report_sha256": "c" * 64,
+                    "sealed_seed_pairs": [{"zeeman_seed": 3015, "mot_seed": 43015}],
+                    "expected_survivor_design": {"solver": "RK4StHybridCustom"},
+                    "expected_survivor_parameters": {"s0": 1.3},
+                },
+                "input_roles": {
+                    "discovery": [
+                        {
+                            "path": "x",
+                            "metadata_path": "y",
+                            "sha256": "d" * 64,
+                            "metadata_sha256": "e" * 64,
+                            "shape": [1, 6],
+                            "dtype": "float64",
+                            "zeeman_seed": 3015,
+                            "mot_seed": 43015,
+                            "source_design": {},
+                            "source_parameters": {},
+                        }
+                    ]
+                },
+                "design": {
+                    "families": ["angled_donut", "single_pass"],
+                    "solver": "RK4StHybridCustom",
+                    "screening_dt_s": 1.25e-6,
+                    "production_dt_s": 0.625e-6,
+                    "timestep_status": "provisional_pending_3d_validation",
+                    "optimization_bounds": {},
+                    "selection_statistics": {},
+                },
+            }
+        )
+    )
 
     with running_server(request_count=1, repository_root=root) as base_url:
         _, _, listing = request_json(f"{base_url}/api/v1/campaigns")
@@ -665,72 +884,157 @@ def test_documented_development_command_starts_api_and_ui():
 
 
 class _FixedSnapshots:
-    def capture(self): return RepositorySnapshot("a" * 40)
+    def capture(self):
+        return RepositorySnapshot("a" * 40)
 
 
 def _creation_service(root):
     write_zeeman_source(root)
     for relative in RELEVANT_FILES:
-        path = root / relative; path.parent.mkdir(parents=True, exist_ok=True); path.write_text(relative)
-    lab = root / "lab_setup/model.py"; lab.parent.mkdir(exist_ok=True); lab.write_text("MODEL = 1")
+        path = root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(relative)
+    lab = root / "lab_setup/model.py"
+    lab.parent.mkdir(exist_ok=True)
+    lab.write_text("MODEL = 1")
     return CreationService(root, _FixedSnapshots())
 
 
 def _session_headers(base_url, cookie, csrf):
     host = urlsplit(base_url).netloc
-    return {"Content-Type": "application/json", "Origin": f"http://{host}", "Sec-Fetch-Site": "same-origin", "X-CSRF-Token": csrf, "Cookie": cookie}
+    return {
+        "Content-Type": "application/json",
+        "Origin": f"http://{host}",
+        "Sec-Fetch-Site": "same-origin",
+        "X-CSRF-Token": csrf,
+        "Cookie": cookie,
+    }
 
 
 def test_creation_requires_same_origin_csrf_and_confirm_is_local_only(tmp_path):
-    root = tmp_path / "repo"; service = _creation_service(root)
-    with running_server(request_count=5, repository_root=root, creation_service=service) as base_url:
-        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+    root = tmp_path / "repo"
+    service = _creation_service(root)
+    with running_server(
+        request_count=5, repository_root=root, creation_service=service
+    ) as base_url:
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
         assert status == 200
-        cookie = headers["Set-Cookie"].split(";", 1)[0]; csrf = payload["data"]["csrf_token"]
-        body = json.dumps({"name": "Fixed s0 1.3", "slug": "s0_1p3", "source_id": list_sources(root)["sources"][0]["id"], "s0_values": [1.3]})
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers={"Content-Type": "application/json"}, body=body)
+        cookie = headers["Set-Cookie"].split(";", 1)[0]
+        csrf = payload["data"]["csrf_token"]
+        body = json.dumps(
+            {
+                "name": "Fixed s0 1.3",
+                "slug": "s0_1p3",
+                "source_id": list_sources(root)["sources"][0]["id"],
+                "s0_values": [1.3],
+            }
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/2d/preview",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=body,
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
         trusted = _session_headers(base_url, cookie, csrf)
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=trusted, body=body)
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/2d/preview",
+            method="POST",
+            headers=trusted,
+            body=body,
+        )
         assert status == 200 and payload["data"]["preview_token"]
         confirm = json.dumps({"preview_token": payload["data"]["preview_token"]})
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/confirm", method="POST", headers=trusted, body=confirm)
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/2d/confirm",
+            method="POST",
+            headers=trusted,
+            body=confirm,
+        )
         assert status == 201
         assert payload["data"]["submitted_to_zeus"] is False
-        status, _, replay = request_json(f"{base_url}/api/v1/campaigns/2d/confirm", method="POST", headers=trusted, body=confirm)
+        status, _, replay = request_json(
+            f"{base_url}/api/v1/campaigns/2d/confirm",
+            method="POST",
+            headers=trusted,
+            body=confirm,
+        )
         assert status == 201 and replay == payload
 
 
 def test_creation_rejects_unknown_fields_and_oversized_body(tmp_path):
-    root = tmp_path / "repo"; service = _creation_service(root)
-    with running_server(request_count=3, repository_root=root, creation_service=service) as base_url:
-        _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=trusted, body=json.dumps({"password": "never"}))
+    root = tmp_path / "repo"
+    service = _creation_service(root)
+    with running_server(
+        request_count=3, repository_root=root, creation_service=service
+    ) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/2d/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"password": "never"}),
+        )
         assert status == 400
         oversized_headers = {**trusted, "Content-Length": str(33 * 1024)}
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=oversized_headers, body="{}")
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/2d/preview",
+            method="POST",
+            headers=oversized_headers,
+            body="{}",
+        )
         assert status == 413
 
 
 def test_cross_site_request_cannot_allocate_creation_session(tmp_path):
-    root = tmp_path / "repo"; service = _creation_service(root)
-    with running_server(request_count=2, repository_root=root, creation_service=service) as base_url:
-        status, _, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "cross-site"})
+    root = tmp_path / "repo"
+    service = _creation_service(root)
+    with running_server(
+        request_count=2, repository_root=root, creation_service=service
+    ) as base_url:
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "cross-site"}
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
         assert status == 200 and payload["data"]["csrf_token"]
 
 
 class _FakeMot3DBootstrapService:
-    def __init__(self): self.calls = []
+    def __init__(self):
+        self.calls = []
+
     def status(self, payload):
         self.calls.append(("status", payload, None))
-        if payload != {}: raise ValueError("invalid")
-        return {"lifecycle":"ready","sources":[],"reason":None,"evidence_requirement":None,"timestep_policy":{"status":"pragmatic_user_approved_after_inconclusive_study","convergence_claim":"not_established","sha256":"d"*64}}
+        if payload != {}:
+            raise ValueError("invalid")
+        return {
+            "lifecycle": "ready",
+            "sources": [],
+            "reason": None,
+            "evidence_requirement": None,
+            "timestep_policy": {
+                "status": "pragmatic_user_approved_after_inconclusive_study",
+                "convergence_claim": "not_established",
+                "sha256": "d" * 64,
+            },
+        }
+
     def preview(self, payload, *, session_id):
         self.calls.append(("preview", payload, session_id))
         raise ValueError("secret /private/path")
+
     def confirm(self, payload, *, session_id):
         self.calls.append(("confirm", payload, session_id))
         raise AssertionError("confirm should not be reached")
@@ -739,71 +1043,236 @@ class _FakeMot3DBootstrapService:
 def test_mot_3d_bootstrap_http_boundary_is_session_bound_and_sanitized():
     service = _FakeMot3DBootstrapService()
     with running_server(request_count=4, mot_3d_bootstrap_service=service) as base_url:
-        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
         assert status == 200
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/status", method="POST", headers={"Content-Type":"application/json"}, body="{}")
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/3d/bootstrap/status",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body="{}",
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/status", method="POST", headers=trusted, body="{}")
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/3d/bootstrap/status",
+            method="POST",
+            headers=trusted,
+            body="{}",
+        )
         assert status == 200 and payload["data"]["lifecycle"] == "ready"
-        status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/preview", method="POST", headers=trusted, body=json.dumps({"source_id":"a"*64,"campaign_name":"mot3d"}))
-        assert status == 412 and payload == {"error":{"code":"mot_3d_bootstrap_failed","message":"3D campaign preparation stopped safely."}}
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/3d/bootstrap/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"source_id": "a" * 64, "campaign_name": "mot3d"}),
+        )
+        assert status == 412 and payload == {
+            "error": {
+                "code": "mot_3d_bootstrap_failed",
+                "message": "3D campaign preparation stopped safely.",
+            }
+        }
         assert "/private/path" not in json.dumps(payload)
 
 
 class _FakeMot3DDiscoverySubmissionService:
-    def __init__(self): self.calls = []
+    def __init__(self):
+        self.calls = []
+
     def status(self, payload):
         self.calls.append(("status", payload, None))
-        return {"source":"zeus","queried_at":"2026-10-11T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot3d","stage":"discovery"},"submission":{"status":"not_submitted","chain":{"angled_donut":[],"single_pass":[]}},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}
+        return {
+            "source": "zeus",
+            "queried_at": "2026-10-11T00:00:00+00:00",
+            "campaign": {"id": "campaign-id", "name": "mot3d", "stage": "discovery"},
+            "submission": {
+                "status": "not_submitted",
+                "chain": {"angled_donut": [], "single_pass": []},
+            },
+            "next_action": "review_submission",
+            "local_sync": {"status": "not_synchronized"},
+        }
+
     def preview(self, payload, *, session_id):
         self.calls.append(("preview", payload, session_id))
-        return {"preview_token":"token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot3d","git_commit":"a"*40},"stage":{"id":"discovery","label":"Discovery"},"chain":{"families":[{"id":"angled_donut","rounds":2},{"id":"single_pass","rounds":3}],"arrays":5,"tasks_per_array":3,"dependency":"afterok within each family"},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"a"*40,"branch":"main","dirty":False},"effects":{"submit_discovery_chain":True,"submit_smoke":False,"submit_later_stages":False,"modify_campaign_files":False,"record_submission_receipt":True}}
+        return {
+            "preview_token": "token",
+            "expires_in_seconds": 300,
+            "campaign": {"id": "campaign-id", "name": "mot3d", "git_commit": "a" * 40},
+            "stage": {"id": "discovery", "label": "Discovery"},
+            "chain": {
+                "families": [
+                    {"id": "angled_donut", "rounds": 2},
+                    {"id": "single_pass", "rounds": 3},
+                ],
+                "arrays": 5,
+                "tasks_per_array": 3,
+                "dependency": "afterok within each family",
+            },
+            "remote": {
+                "host": "zeus.technion.ac.il",
+                "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+                "commit": "a" * 40,
+                "branch": "main",
+                "dirty": False,
+            },
+            "effects": {
+                "submit_discovery_chain": True,
+                "submit_smoke": False,
+                "submit_later_stages": False,
+                "modify_campaign_files": False,
+                "record_submission_receipt": True,
+            },
+        }
+
     def confirm(self, payload, *, session_id):
         self.calls.append(("confirm", payload, session_id))
-        return {"status":"submitted","campaign_id":"campaign-id","stage":"discovery","chain":{"angled_donut":["1[].zeus-master","2[].zeus-master"],"single_pass":["3[].zeus-master","4[].zeus-master","5[].zeus-master"]},"submitted_at":"2026-10-11T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}
+        return {
+            "status": "submitted",
+            "campaign_id": "campaign-id",
+            "stage": "discovery",
+            "chain": {
+                "angled_donut": ["1[].zeus-master", "2[].zeus-master"],
+                "single_pass": [
+                    "3[].zeus-master",
+                    "4[].zeus-master",
+                    "5[].zeus-master",
+                ],
+            },
+            "submitted_at": "2026-10-11T00:00:00+00:00",
+            "local_sync": {"status": "not_synchronized"},
+        }
 
 
 def test_mot_3d_discovery_submission_http_boundary_is_explicit_and_session_bound():
     service = _FakeMot3DDiscoverySubmissionService()
-    with running_server(request_count=5, mot_3d_discovery_submission_service=service) as base_url:
-        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site":"same-origin"})
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";",1)[0], payload["data"]["csrf_token"])
-        request = {"campaign_id":"campaign-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/status", method="POST", headers={"Content-Type":"application/json"}, body=json.dumps(request))
+    with running_server(
+        request_count=5, mot_3d_discovery_submission_service=service
+    ) as base_url:
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "campaign-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/status",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(request),
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/status", method="POST", headers=trusted, body=json.dumps(request))
-        assert status == 200 and payload["data"]["submission"]["status"] == "not_submitted"
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/preview", method="POST", headers=trusted, body=json.dumps(request))
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/status",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert (
+            status == 200 and payload["data"]["submission"]["status"] == "not_submitted"
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
         assert status == 200 and payload["data"]["effects"]["submit_smoke"] is False
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token":"token"}))
-        assert status == 201 and payload["data"]["chain"]["single_pass"] == ["3[].zeus-master","4[].zeus-master","5[].zeus-master"]
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/mot-3d-discovery/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "token"}),
+        )
+        assert status == 201 and payload["data"]["chain"]["single_pass"] == [
+            "3[].zeus-master",
+            "4[].zeus-master",
+            "5[].zeus-master",
+        ]
     assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
 
 
 class _FakeMot3DDiscoveryTransitionService:
-    def __init__(self): self.calls = []
+    def __init__(self):
+        self.calls = []
+
     def status(self, payload):
-        self.calls.append(("status", payload, None)); return {"source":"zeus"}
+        self.calls.append(("status", payload, None))
+        return {"source": "zeus"}
+
     def preview(self, payload, *, session_id):
-        self.calls.append(("preview", payload, session_id)); return {"preview_token":"token","effects":{"submit_preliminary_check":False}}
+        self.calls.append(("preview", payload, session_id))
+        return {
+            "preview_token": "token",
+            "effects": {"submit_preliminary_check": False},
+        }
+
     def confirm(self, payload, *, session_id):
-        self.calls.append(("confirm", payload, session_id)); return {"status":"preliminary_check_prepared","submitted_to_zeus":False}
+        self.calls.append(("confirm", payload, session_id))
+        return {"status": "preliminary_check_prepared", "submitted_to_zeus": False}
 
 
 def test_mot_3d_discovery_transition_http_boundary_is_explicit_and_session_bound():
     service = _FakeMot3DDiscoveryTransitionService()
-    with running_server(request_count=5, mot_3d_discovery_transition_service=service) as base_url:
-        _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site":"same-origin"})
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";",1)[0], payload["data"]["csrf_token"])
-        request = {"campaign_id":"campaign-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/status", method="POST", headers={"Content-Type":"application/json"}, body=json.dumps(request))
+    with running_server(
+        request_count=5, mot_3d_discovery_transition_service=service
+    ) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "campaign-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/status",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(request),
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, _ = request_json(f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/status", method="POST", headers=trusted, body=json.dumps(request))
+        status, _, _ = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/status",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
         assert status == 200
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/preview", method="POST", headers=trusted, body=json.dumps(request))
-        assert status == 200 and payload["data"]["effects"]["submit_preliminary_check"] is False
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token":"token"}))
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert (
+            status == 200
+            and payload["data"]["effects"]["submit_preliminary_check"] is False
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/discovery-transition/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "token"}),
+        )
         assert status == 201 and payload["data"]["submitted_to_zeus"] is False
     assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
 
@@ -889,16 +1358,111 @@ def test_mot_3d_preliminary_transition_http_boundary_is_explicit_and_session_bou
     assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
 
 
+class _FakeMot3DRefinementTransitionService:
+    def __init__(self):
+        self.calls = []
+
+    def status(self, payload):
+        self.calls.append(("status", payload, None))
+        return {"source": "zeus", "next_action": "review_transition"}
+
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        return {
+            "preview_token": "token",
+            "effects": {
+                "synchronize_refinement": True,
+                "prepare_closure": True,
+                "submit_closure": False,
+            },
+        }
+
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        return {
+            "status": "closure_prepared",
+            "submitted_to_zeus": False,
+            "simulation_started": False,
+        }
+
+
+def test_mot_3d_refinement_transition_http_boundary_is_explicit_and_session_bound():
+    service = _FakeMot3DRefinementTransitionService()
+    with running_server(
+        request_count=5,
+        mot_3d_refinement_transition_service=service,
+    ) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session",
+            headers={"Sec-Fetch-Site": "same-origin"},
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "campaign-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/refinement-transition/status",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(request),
+        )
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/refinement-transition/status",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["next_action"] == "review_transition"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/refinement-transition/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["effects"]["submit_closure"] is False
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/refinement-transition/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "token"}),
+        )
+        assert status == 201 and payload["data"]["simulation_started"] is False
+    assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
+
+
 class _FakeZeusService:
-    def __init__(self): self.payload = None
+    def __init__(self):
+        self.payload = None
+
     def snapshot(self, payload):
         ZeusProfile.parse(payload)
         self.payload = payload
         return {
             "connection_status": "connected",
-            "profile": {"host": "zeus.technion.ac.il", "username": payload["username"], "project_directory": payload["project_directory"], "authentication": "ssh-key-or-agent"},
-            "remote": {"project_directory": payload["project_directory"], "git_commit": "a" * 40, "branch": "main", "dirty": False},
-            "scheduler": {"status": "available", "queried_at": "2026-10-08T00:00:00+00:00", "jobs": []},
+            "profile": {
+                "host": "zeus.technion.ac.il",
+                "username": payload["username"],
+                "project_directory": payload["project_directory"],
+                "authentication": "ssh-key-or-agent",
+            },
+            "remote": {
+                "project_directory": payload["project_directory"],
+                "git_commit": "a" * 40,
+                "branch": "main",
+                "dirty": False,
+            },
+            "scheduler": {
+                "status": "available",
+                "queried_at": "2026-10-08T00:00:00+00:00",
+                "jobs": [],
+            },
         }
 
 
@@ -914,11 +1478,33 @@ class _FakeTransferService:
         if self.error:
             raise self.error
         return {
-            "preview_token": "review-token", "expires_in_seconds": 300,
-            "campaign": {"id": payload["campaign_id"], "name": "Campaign", "path": "data/optimization/mot_2d/c", "git_commit": "a" * 40},
-            "destination": {"host": "zeus.technion.ac.il", "project_directory": payload["project_directory"], "campaign_directory": f'{payload["project_directory"]}/data/optimization/mot_2d/c'},
-            "artifacts": {"ensemble_count": 35, "total_count": 72, "missing_count": 72, "identical_count": 0, "total_bytes": 100, "missing_bytes": 100},
-            "effects": {"copy_missing_only": True, "overwrite_existing": False, "submit_jobs": False, "run_simulation": False},
+            "preview_token": "review-token",
+            "expires_in_seconds": 300,
+            "campaign": {
+                "id": payload["campaign_id"],
+                "name": "Campaign",
+                "path": "data/optimization/mot_2d/c",
+                "git_commit": "a" * 40,
+            },
+            "destination": {
+                "host": "zeus.technion.ac.il",
+                "project_directory": payload["project_directory"],
+                "campaign_directory": f'{payload["project_directory"]}/data/optimization/mot_2d/c',
+            },
+            "artifacts": {
+                "ensemble_count": 35,
+                "total_count": 72,
+                "missing_count": 72,
+                "identical_count": 0,
+                "total_bytes": 100,
+                "missing_bytes": 100,
+            },
+            "effects": {
+                "copy_missing_only": True,
+                "overwrite_existing": False,
+                "submit_jobs": False,
+                "run_simulation": False,
+            },
         }
 
     def confirm(self, payload, *, session_id):
@@ -928,68 +1514,160 @@ class _FakeTransferService:
         if self.error:
             raise self.error
         return {
-            "status": "prepared", "campaign_id": "mot_2d-id",
+            "status": "prepared",
+            "campaign_id": "mot_2d-id",
             "destination": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/c",
-            "transferred_count": 72, "reused_identical_count": 0, "bytes_transferred": 100,
-            "submitted_to_zeus": False, "simulation_started": False,
+            "transferred_count": 72,
+            "reused_identical_count": 0,
+            "bytes_transferred": 100,
+            "submitted_to_zeus": False,
+            "simulation_started": False,
         }
 
 
 def test_zeus_snapshot_requires_explicit_same_origin_csrf_and_never_accepts_password():
     service = _FakeZeusService()
     with running_server(request_count=4, zeus_service=service) as base_url:
-        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
         assert status == 200
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-        body = json.dumps({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"})
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers={"Content-Type": "application/json"}, body=body)
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        body = json.dumps(
+            {
+                "username": "tal.noa",
+                "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            }
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/snapshot",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=body,
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers=trusted, body=body)
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/snapshot",
+            method="POST",
+            headers=trusted,
+            body=body,
+        )
         assert status == 200 and payload["data"]["connection_status"] == "connected"
-        assert service.payload == {"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/snapshot", method="POST", headers=trusted, body=json.dumps({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new", "password": "never"}))
+        assert service.payload == {
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/snapshot",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(
+                {
+                    "username": "tal.noa",
+                    "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+                    "password": "never",
+                }
+            ),
+        )
         assert status == 400 and payload["error"]["code"] == "invalid_request"
 
 
 def test_zeus_transfer_preview_and_confirm_require_session_csrf_and_never_submit():
     service = _FakeTransferService()
     with running_server(request_count=5, transfer_service=service) as base_url:
-        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
         assert status == 200
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-        request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "mot_2d-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
         body = json.dumps(request)
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers={"Content-Type": "application/json"}, body=body)
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/transfers/preview",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=body,
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers=trusted, body=body)
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/transfers/preview",
+            method="POST",
+            headers=trusted,
+            body=body,
+        )
         assert status == 200 and payload["data"]["effects"]["submit_jobs"] is False
         token = payload["data"]["preview_token"]
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token": token}))
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/transfers/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": token}),
+        )
         assert status == 201
         assert payload["data"]["submitted_to_zeus"] is False
         assert payload["data"]["simulation_started"] is False
         assert service.calls[0][1] == request
         assert service.calls[0][2] == service.calls[1][2]
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/confirm", method="POST", headers=trusted, body=json.dumps({"preview_token": token, "extra": True}))
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/transfers/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": token, "extra": True}),
+        )
         assert status == 400 and payload["error"]["code"] == "request_invalid"
 
 
 def test_zeus_transfer_unavailable_and_errors_are_sanitized():
     with running_server(request_count=1) as base_url:
         status, _, payload = request_json(
-            f"{base_url}/api/v1/zeus/transfers/preview", method="POST",
-            headers={"Content-Type": "application/json"}, body="{}",
+            f"{base_url}/api/v1/zeus/transfers/preview",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body="{}",
         )
-        assert status == 503 and payload["error"] == {"code": "zeus_preparation_unavailable", "message": "Zeus campaign preparation is unavailable."}
+        assert status == 503 and payload["error"] == {
+            "code": "zeus_preparation_unavailable",
+            "message": "Zeus campaign preparation is unavailable.",
+        }
 
     service = _FakeTransferService(ZeusPreparationError("remote_input_conflict"))
     with running_server(request_count=2, transfer_service=service) as base_url:
-        _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-        request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
-        status, _, payload = request_json(f"{base_url}/api/v1/zeus/transfers/preview", method="POST", headers=trusted, body=json.dumps(request))
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "mot_2d-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/transfers/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
         assert status == 409
-        assert payload["error"] == {"code": "remote_input_conflict", "message": "A required Zeus input differs from the frozen campaign input."}
+        assert payload["error"] == {
+            "code": "remote_input_conflict",
+            "message": "A required Zeus input differs from the frozen campaign input.",
+        }
 
 
 class _FakeSubmissionService:
@@ -1004,13 +1682,42 @@ class _FakeSubmissionService:
         if self.error:
             raise self.error
         return {
-            "preview_token": "submit-token", "expires_in_seconds": 300,
-            "campaign": {"id": payload["campaign_id"], "name": "Campaign", "path": "data/optimization/mot_2d/c", "git_commit": "a" * 40, "s0_values": [1.3]},
-            "stage": {"id": "smoke", "label": "Smoke check", "purpose": "Validate first."},
-            "job": {"file": "jobs/01_smoke.pbs", "kind": "job", "task_count": 1, "queue": "zeus_combined_q", "cores_per_task": 1, "memory_per_task_bytes": 68719476736, "walltime_seconds": 1200},
-            "remote": {"host": "zeus.technion.ac.il", "project_directory": payload["project_directory"], "commit": "a" * 40, "branch": "main", "dirty": False},
+            "preview_token": "submit-token",
+            "expires_in_seconds": 300,
+            "campaign": {
+                "id": payload["campaign_id"],
+                "name": "Campaign",
+                "path": "data/optimization/mot_2d/c",
+                "git_commit": "a" * 40,
+                "s0_values": [1.3],
+            },
+            "stage": {
+                "id": "smoke",
+                "label": "Smoke check",
+                "purpose": "Validate first.",
+            },
+            "job": {
+                "file": "jobs/01_smoke.pbs",
+                "kind": "job",
+                "task_count": 1,
+                "queue": "zeus_combined_q",
+                "cores_per_task": 1,
+                "memory_per_task_bytes": 68719476736,
+                "walltime_seconds": 1200,
+            },
+            "remote": {
+                "host": "zeus.technion.ac.il",
+                "project_directory": payload["project_directory"],
+                "commit": "a" * 40,
+                "branch": "main",
+                "dirty": False,
+            },
             "inputs": {"verified_count": 72, "status": "ready"},
-            "effects": {"submit_smoke": True, "submit_later_stages": False, "modify_files": False},
+            "effects": {
+                "submit_smoke": True,
+                "submit_later_stages": False,
+                "modify_files": False,
+            },
             "later_stages_locked": True,
         }
 
@@ -1020,38 +1727,77 @@ class _FakeSubmissionService:
             raise ZeusSubmissionError("request_invalid")
         if self.error:
             raise self.error
-        return {"status": "submitted", "campaign_id": "mot_2d-id", "stage": "smoke", "job_id": "12345.zeus-master", "submitted_at": "2026-10-08T18:00:00+00:00", "later_stages_locked": True}
+        return {
+            "status": "submitted",
+            "campaign_id": "mot_2d-id",
+            "stage": "smoke",
+            "job_id": "12345.zeus-master",
+            "submitted_at": "2026-10-08T18:00:00+00:00",
+            "later_stages_locked": True,
+        }
 
 
 def test_smoke_submission_endpoints_require_same_session_csrf_and_exact_payload():
     service = _FakeSubmissionService()
     with running_server(request_count=5, submission_service=service) as base_url:
-        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
         assert status == 200
-        trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-        request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "mot_2d-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
         preview_url = f"{base_url}/api/v1/zeus/submissions/smoke/preview"
         confirm_url = f"{base_url}/api/v1/zeus/submissions/smoke/confirm"
-        status, _, payload = request_json(preview_url, method="POST", headers={"Content-Type": "application/json"}, body=json.dumps(request))
+        status, _, payload = request_json(
+            preview_url,
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(request),
+        )
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
-        status, _, payload = request_json(preview_url, method="POST", headers=trusted, body=json.dumps(request))
+        status, _, payload = request_json(
+            preview_url, method="POST", headers=trusted, body=json.dumps(request)
+        )
         assert status == 200 and payload["data"]["stage"]["id"] == "smoke"
         token = payload["data"]["preview_token"]
-        status, _, payload = request_json(confirm_url, method="POST", headers=trusted, body=json.dumps({"preview_token": token}))
+        status, _, payload = request_json(
+            confirm_url,
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": token}),
+        )
         assert status == 201 and payload["data"]["job_id"] == "12345.zeus-master"
         assert service.calls[0][2] == service.calls[1][2]
-        status, _, payload = request_json(confirm_url, method="POST", headers=trusted, body=json.dumps({"preview_token": token, "command": "qdel 1"}))
+        status, _, payload = request_json(
+            confirm_url,
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": token, "command": "qdel 1"}),
+        )
         assert status == 400 and payload["error"]["code"] == "request_invalid"
 
 
 def test_smoke_submission_unavailable_and_uncertain_errors_are_sanitized():
     with running_server(request_count=1) as base_url:
         status, _, payload = request_json(
-            f"{base_url}/api/v1/zeus/submissions/smoke/preview", method="POST",
-            headers={"Content-Type": "application/json"}, body="{}",
+            f"{base_url}/api/v1/zeus/submissions/smoke/preview",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body="{}",
         )
         assert status == 503
-        assert payload["error"] == {"code": "zeus_submission_unavailable", "message": "Zeus smoke submission is unavailable."}
+        assert payload["error"] == {
+            "code": "zeus_submission_unavailable",
+            "message": "Zeus smoke submission is unavailable.",
+        }
 
     for code, expected_message in (
         ("submission_outcome_unknown", "Automatic retry is blocked"),
@@ -1059,10 +1805,25 @@ def test_smoke_submission_unavailable_and_uncertain_errors_are_sanitized():
     ):
         service = _FakeSubmissionService(ZeusSubmissionError(code))
         with running_server(request_count=2, submission_service=service) as base_url:
-            _, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
-            trusted = _session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], payload["data"]["csrf_token"])
-            request = {"campaign_id": "mot_2d-id", "username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
-            status, _, payload = request_json(f"{base_url}/api/v1/zeus/submissions/smoke/preview", method="POST", headers=trusted, body=json.dumps(request))
+            _, headers, payload = request_json(
+                f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+            )
+            trusted = _session_headers(
+                base_url,
+                headers["Set-Cookie"].split(";", 1)[0],
+                payload["data"]["csrf_token"],
+            )
+            request = {
+                "campaign_id": "mot_2d-id",
+                "username": "tal.noa",
+                "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            }
+            status, _, payload = request_json(
+                f"{base_url}/api/v1/zeus/submissions/smoke/preview",
+                method="POST",
+                headers=trusted,
+                body=json.dumps(request),
+            )
             assert status == 409
             assert payload["error"]["code"] == code
             assert expected_message in payload["error"]["message"]
@@ -1070,64 +1831,228 @@ def test_smoke_submission_unavailable_and_uncertain_errors_are_sanitized():
 
 
 class _FakeScreeningService:
-    def __init__(self, error=None): self.calls=[];self.error=error
-    def status(self,payload,*,session_id):
-        self.calls.append(("status",payload,session_id))
-        if self.error: raise self.error
-        return {"source":"zeus","queried_at":"2026-10-08T20:00:00+00:00","campaign":{"id":"mot_2d-id","name":"Campaign","stage":"smoke"},"submission":{"job_id":"12345.zeus-master"},"scheduler":{"state":"completed_success","raw_state":"F","exit_status":0},"validation":{"status":"valid","points":[{"s0":1.3,"captured":0,"input":2,"efficiency":0.0}],"artifact_count":3},"lifecycle":"ready_to_prepare_screen","next_action":"review_screening_preparation"}
-    def preview(self,payload,*,session_id):
-        self.calls.append(("preview",payload,session_id))
-        if self.error: raise self.error
-        return {"preview_token":"screen-token","expires_in_seconds":300,"campaign":{"id":"mot_2d-id","name":"Campaign","git_commit":"a"*40},"from_stage":"smoke","to_stage":"screen","smoke":{"job_id":"12345.zeus-master","points":[{"s0":1.3,"captured":0,"input":2,"efficiency":0.0}],"artifact_count":3},"artifacts":{"create":["screen/tasks.json","jobs/02_screen.pbs"],"update":["campaign.json"]},"effects":{"prepare_screening":True,"submit_screening":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
-    def confirm(self,payload,*,session_id):
-        self.calls.append(("confirm",payload,session_id))
-        if self.error: raise self.error
-        return {"status":"screening_prepared","campaign_id":"mot_2d-id","stage":"screen","artifacts":{"created":2,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}}
+    def __init__(self, error=None):
+        self.calls = []
+        self.error = error
+
+    def status(self, payload, *, session_id):
+        self.calls.append(("status", payload, session_id))
+        if self.error:
+            raise self.error
+        return {
+            "source": "zeus",
+            "queried_at": "2026-10-08T20:00:00+00:00",
+            "campaign": {"id": "mot_2d-id", "name": "Campaign", "stage": "smoke"},
+            "submission": {"job_id": "12345.zeus-master"},
+            "scheduler": {
+                "state": "completed_success",
+                "raw_state": "F",
+                "exit_status": 0,
+            },
+            "validation": {
+                "status": "valid",
+                "points": [{"s0": 1.3, "captured": 0, "input": 2, "efficiency": 0.0}],
+                "artifact_count": 3,
+            },
+            "lifecycle": "ready_to_prepare_screen",
+            "next_action": "review_screening_preparation",
+        }
+
+    def preview(self, payload, *, session_id):
+        self.calls.append(("preview", payload, session_id))
+        if self.error:
+            raise self.error
+        return {
+            "preview_token": "screen-token",
+            "expires_in_seconds": 300,
+            "campaign": {"id": "mot_2d-id", "name": "Campaign", "git_commit": "a" * 40},
+            "from_stage": "smoke",
+            "to_stage": "screen",
+            "smoke": {
+                "job_id": "12345.zeus-master",
+                "points": [{"s0": 1.3, "captured": 0, "input": 2, "efficiency": 0.0}],
+                "artifact_count": 3,
+            },
+            "artifacts": {
+                "create": ["screen/tasks.json", "jobs/02_screen.pbs"],
+                "update": ["campaign.json"],
+            },
+            "effects": {
+                "prepare_screening": True,
+                "submit_screening": False,
+                "start_simulation": False,
+                "overwrite_existing": False,
+            },
+            "local_sync": {"status": "not_synchronized"},
+        }
+
+    def confirm(self, payload, *, session_id):
+        self.calls.append(("confirm", payload, session_id))
+        if self.error:
+            raise self.error
+        return {
+            "status": "screening_prepared",
+            "campaign_id": "mot_2d-id",
+            "stage": "screen",
+            "artifacts": {"created": 2, "updated": 1},
+            "submitted_to_zeus": False,
+            "simulation_started": False,
+            "local_sync": {"status": "not_synchronized"},
+        }
 
 
 def test_screening_endpoints_are_session_bound_and_do_not_submit():
-    service=_FakeScreeningService()
-    with running_server(request_count=4,screening_service=service) as base_url:
-        _,headers,payload=request_json(f"{base_url}/api/v1/session",headers={"Sec-Fetch-Site":"same-origin"})
-        trusted=_session_headers(base_url,headers["Set-Cookie"].split(";",1)[0],payload["data"]["csrf_token"])
-        request={"campaign_id":"mot_2d-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
-        status,_,payload=request_json(f"{base_url}/api/v1/zeus/smoke/status",method="POST",headers=trusted,body=json.dumps(request))
-        assert status==200 and payload["data"]["source"]=="zeus"
-        status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
-        assert status==200 and payload["data"]["effects"]["submit_screening"] is False
-        status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/confirm",method="POST",headers=trusted,body=json.dumps({"preview_token":"screen-token"}))
-        assert status==201 and payload["data"]["submitted_to_zeus"] is False
-        assert len({call[2] for call in service.calls})==1
+    service = _FakeScreeningService()
+    with running_server(request_count=4, screening_service=service) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "mot_2d-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/smoke/status",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["source"] == "zeus"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/screening/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["effects"]["submit_screening"] is False
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/screening/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "screen-token"}),
+        )
+        assert status == 201 and payload["data"]["submitted_to_zeus"] is False
+        assert len({call[2] for call in service.calls}) == 1
 
 
 def test_screening_errors_are_sanitized():
-    service=_FakeScreeningService(ZeusScreeningError("transition_outcome_unknown"))
-    with running_server(request_count=2,screening_service=service) as base_url:
-        _,headers,payload=request_json(f"{base_url}/api/v1/session",headers={"Sec-Fetch-Site":"same-origin"})
-        trusted=_session_headers(base_url,headers["Set-Cookie"].split(";",1)[0],payload["data"]["csrf_token"])
-        request={"campaign_id":"mot_2d-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
-        status,_,payload=request_json(f"{base_url}/api/v1/zeus/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
-        assert status==409 and payload["error"]["code"]=="transition_outcome_unknown"
+    service = _FakeScreeningService(ZeusScreeningError("transition_outcome_unknown"))
+    with running_server(request_count=2, screening_service=service) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "mot_2d-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/screening/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert (
+            status == 409 and payload["error"]["code"] == "transition_outcome_unknown"
+        )
         assert "/home/" not in payload["error"]["message"]
 
 
 class _FakeScreenSubmissionService:
-    def preview(self,payload,*,session_id):
-        return {"preview_token":"t","expires_in_seconds":300,"campaign":{"id":"mot_2d-id","name":"C","git_commit":"a"*40,"s0_values":[1.3]},"stage":{"id":"screen","label":"Screening","purpose":"Broad search."},"job":{"file":"jobs/02_screen.pbs","kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":86400},"remote":{"host":"zeus.technion.ac.il","project_directory":payload["project_directory"],"commit":"a"*40,"branch":"main","dirty":False},"inputs":{"verified_count":72,"status":"ready"},"smoke":{"status":"validated","job_id":"1.zeus-master","point_count":1},"effects":{"submit_screening":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
-    def confirm(self,payload,*,session_id):
-        return {"status":"submitted","campaign_id":"mot_2d-id","stage":"screen","job_id":"2[].zeus-master","submitted_at":"2026-10-08T21:00:00+00:00","later_stages_locked":True}
+    def preview(self, payload, *, session_id):
+        return {
+            "preview_token": "t",
+            "expires_in_seconds": 300,
+            "campaign": {
+                "id": "mot_2d-id",
+                "name": "C",
+                "git_commit": "a" * 40,
+                "s0_values": [1.3],
+            },
+            "stage": {"id": "screen", "label": "Screening", "purpose": "Broad search."},
+            "job": {
+                "file": "jobs/02_screen.pbs",
+                "kind": "array",
+                "task_count": 3,
+                "array_throttle": 3,
+                "queue": "zeus_combined_q",
+                "cores_per_task": 200,
+                "memory_per_task_bytes": 68719476736,
+                "walltime_seconds": 86400,
+            },
+            "remote": {
+                "host": "zeus.technion.ac.il",
+                "project_directory": payload["project_directory"],
+                "commit": "a" * 40,
+                "branch": "main",
+                "dirty": False,
+            },
+            "inputs": {"verified_count": 72, "status": "ready"},
+            "smoke": {
+                "status": "validated",
+                "job_id": "1.zeus-master",
+                "point_count": 1,
+            },
+            "effects": {
+                "submit_screening": True,
+                "submit_later_stages": False,
+                "modify_files": False,
+            },
+            "later_stages_locked": True,
+        }
+
+    def confirm(self, payload, *, session_id):
+        return {
+            "status": "submitted",
+            "campaign_id": "mot_2d-id",
+            "stage": "screen",
+            "job_id": "2[].zeus-master",
+            "submitted_at": "2026-10-08T21:00:00+00:00",
+            "later_stages_locked": True,
+        }
 
 
 def test_screen_submission_endpoints_require_explicit_session_confirmation():
-    service=_FakeScreenSubmissionService()
-    with running_server(request_count=3,screen_submission_service=service) as base_url:
-        _,headers,payload=request_json(f"{base_url}/api/v1/session",headers={"Sec-Fetch-Site":"same-origin"})
-        trusted=_session_headers(base_url,headers["Set-Cookie"].split(";",1)[0],payload["data"]["csrf_token"])
-        request={"campaign_id":"mot_2d-id","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new"}
-        status,_,payload=request_json(f"{base_url}/api/v1/zeus/submissions/screening/preview",method="POST",headers=trusted,body=json.dumps(request))
-        assert status==200 and payload["data"]["job"]["array_throttle"]==3
-        status,_,payload=request_json(f"{base_url}/api/v1/zeus/submissions/screening/confirm",method="POST",headers=trusted,body=json.dumps({"preview_token":"t"}))
-        assert status==201 and payload["data"]["job_id"]=="2[].zeus-master"
+    service = _FakeScreenSubmissionService()
+    with running_server(request_count=3, screen_submission_service=service) as base_url:
+        _, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "mot_2d-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/screening/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["job"]["array_throttle"] == 3
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/screening/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "t"}),
+        )
+        assert status == 201 and payload["data"]["job_id"] == "2[].zeus-master"
 
 
 def test_server_main_closes_both_bounded_local_execution_pools():
