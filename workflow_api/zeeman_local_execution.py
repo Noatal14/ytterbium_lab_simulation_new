@@ -40,6 +40,7 @@ from workflow_api.run_execution import (
 )
 from workflow_api.run_records import RunRecordError, RunRecordStore, encode_record
 from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
+from workflow_api.run_progress import IndividualRunProgressRegistry
 from workflow_api.zeeman_run_specification import (
     ZEEMAN_RUN_SPECIFICATION,
     local_worker_maximum,
@@ -83,6 +84,10 @@ class ZeemanLocalWorker:
         self._engine = engine
         self._monotonic = monotonic
         self._clock = clock
+        self._progress_callback: Callable[[int, int], None] | None = None
+
+    def set_progress_callback(self, callback: Callable[[int, int], None] | None) -> None:
+        self._progress_callback = callback
 
     def run(self, request: WorkerRequest) -> WorkerProduct:
         run = request.run
@@ -157,6 +162,7 @@ class ZeemanLocalWorker:
             t_max_s=numerical["t_max_s"],
             start_distance_m=simulation["start_distance_m"],
             cutoff_distance_m=simulation["cutoff_distance_m"],
+            **({"progress_callback": self._progress_callback} if self._progress_callback is not None else {}),
         )
         elapsed = self._monotonic() - started
         if (
@@ -271,6 +277,7 @@ class BoundedLocalExecutionPool:
         ),
         allowed_family: str = "zeeman",
         thread_name_prefix: str = "zeeman-local",
+        progress_registry: IndividualRunProgressRegistry | None = None,
     ) -> None:
         if (
             isinstance(max_concurrent, bool)
@@ -294,6 +301,7 @@ class BoundedLocalExecutionPool:
         self._handles: dict[tuple[str, str], LocalExecutionHandle] = {}
         self._cancelling: set[tuple[str, str]] = set()
         self._closed = False
+        self._progress_registry = progress_registry
 
     def submit(self, family: str, run_id: str) -> LocalExecutionHandle:
         if family != self._allowed_family:
@@ -320,8 +328,20 @@ class BoundedLocalExecutionPool:
             return handle
 
     def _execute(self, family: str, run_id: str) -> dict[str, Any]:
+        callback = None
+        if self._progress_registry is not None:
+            store = RunRecordStore(self._root)
+            try:
+                total = int(store.read(family, run_id, "run")["particle_count"])
+            finally:
+                store.close()
+            self._progress_registry.start(family, run_id, total)
+            callback = lambda completed, observed_total: self._progress_registry.update(
+                family, run_id, completed, observed_total
+            )
         coordinator = self._coordinator_factory(
-            self._root, self._worker_factory(), self._authority
+            self._root, self._worker_factory(), self._authority,
+            **({"progress_callback": callback} if callback is not None else {}),
         )
         return coordinator.execute(family, run_id)
 

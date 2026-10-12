@@ -1541,6 +1541,8 @@ def main() -> None:
     from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
 
     authority = issue_execution_authority()
+    from workflow_api.run_progress import IndividualRunProgressRegistry
+    progress_registry = IndividualRunProgressRegistry()
     zeeman_creation = ZeemanRunCreationService(
         WorkflowHandler.repository_root,
         ZeemanRepositorySnapshotProvider(
@@ -1552,6 +1554,7 @@ def main() -> None:
         authority,
         max_concurrent=1,
         max_pending=4,
+        progress_registry=progress_registry,
     )
 
     def zeeman_transport(profile: ZeusProfile) -> PinnedSshZeemanTransport:
@@ -1578,6 +1581,7 @@ def main() -> None:
         authority,
         max_concurrent=1,
         max_pending=4,
+        progress_registry=progress_registry,
     )
 
     def mot_2d_transport(profile: ZeusProfile) -> PinnedSshMot2DTransport:
@@ -1607,6 +1611,7 @@ def main() -> None:
         authority,
         max_concurrent=1,
         max_pending=4,
+        progress_registry=progress_registry,
     )
 
     def mot_3d_transport(profile: ZeusProfile) -> PinnedSshMot3DTransport:
@@ -1626,7 +1631,8 @@ def main() -> None:
         mot_3d_zeus,
     )
     WorkflowHandler.individual_run_service = CanonicalIndividualRunRegistry(
-        WorkflowHandler.repository_root
+        WorkflowHandler.repository_root,
+        progress_registry=progress_registry,
     )
     WorkflowHandler.creation_service = CreationService(
         WorkflowHandler.repository_root,

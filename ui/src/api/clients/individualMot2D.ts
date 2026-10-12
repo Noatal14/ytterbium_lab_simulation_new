@@ -1,4 +1,5 @@
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
+import { isRunProgress, type RunProgress } from "./individualZeeman";
 
 export type Mot2DMode = "local" | "zeus";
 export type Mot2DSource = {
@@ -66,7 +67,7 @@ export type Mot2DRun = {
   display_name: string;
   record_state: string;
   lifecycle: string;
-  execution: { mode: Mot2DMode; zeus_job_id: string | null };
+  execution: { mode: Mot2DMode; zeus_job_id: string | null; progress?: RunProgress | null };
   retention: { particle_states_requested: boolean; status: string };
   results: { availability: string; completed_at: string | null };
   metrics?: {
@@ -503,6 +504,7 @@ function parseRun(raw: unknown, detail = false): Mot2DRun {
   const execution = v.execution,
     retention = v.retention,
     results = v.results;
+  if (isRecord(execution) && execution.progress === undefined) execution.progress = null;
   if (
     !publicRunId(v.id) ||
     v.record_kind !== "individual_simulation_run" ||
@@ -520,7 +522,8 @@ function parseRun(raw: unknown, detail = false): Mot2DRun {
     !printable(v.created_at) ||
     !printable(v.updated_at) ||
     !isRecord(execution) ||
-    !exactKeys(execution, ["mode", "zeus_job_id"]) ||
+    !exactKeys(execution, ["mode", "zeus_job_id", "progress"]) ||
+    (execution.progress !== null && !isRunProgress(execution.progress)) ||
     !["local", "zeus"].includes(String(execution.mode)) ||
     (execution.zeus_job_id !== null && !jobId(execution.zeus_job_id)) ||
     !isRecord(retention) ||

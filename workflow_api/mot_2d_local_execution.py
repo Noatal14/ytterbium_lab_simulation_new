@@ -343,6 +343,10 @@ class Mot2DLocalWorker:
         self._engine = engine
         self._monotonic = monotonic
         self._clock = clock
+        self._progress_callback: Callable[[int, int], None] | None = None
+
+    def set_progress_callback(self, callback: Callable[[int, int], None] | None) -> None:
+        self._progress_callback = callback
 
     def run(self, request: WorkerRequest) -> WorkerProduct:
         return self._run(request, selected_states=None)
@@ -453,6 +457,7 @@ class Mot2DLocalWorker:
             t_max_s=numerical["t_max_s"],
             seed=simulation["mot_seed"],
             stochastic_sim_function=RK4StHybridCustom,
+            **({"progress_callback": self._progress_callback} if self._progress_callback is not None else {}),
         )
         elapsed = self._monotonic() - started
         if not isinstance(outcome, tuple) or len(outcome) != 3 or not math.isfinite(elapsed) or elapsed < 0:

@@ -876,6 +876,7 @@ class IndividualRunExecutionCoordinator:
         *,
         clock: Callable[[], str] = _utc_now,
         store_factory: Callable[[Path], ExecutorLifecycleStore] = ExecutorLifecycleStore,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> None:
         _require_authority(authority)
         self.root = repository_root.resolve(strict=True)
@@ -883,6 +884,7 @@ class IndividualRunExecutionCoordinator:
         self.authority = authority
         self.clock = clock
         self.store_factory = store_factory
+        self.progress_callback = progress_callback
 
     def execute(self, family: str, run_id: str) -> dict[str, Any]:
         store = self.store_factory(self.root)
@@ -975,6 +977,9 @@ class IndividualRunExecutionCoordinator:
                 inputs=_freeze(_plain(evidence["inputs"])),
             )
             try:
+                setter = getattr(self.worker, "set_progress_callback", None)
+                if setter is not None:
+                    setter(self.progress_callback)
                 product = self.worker.run(request)
             except WorkerFailed:
                 status = store.transition(

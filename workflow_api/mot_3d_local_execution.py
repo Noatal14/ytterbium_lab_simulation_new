@@ -174,6 +174,10 @@ class Mot3DLocalWorker:
         self.root = repository_root.resolve(strict=True)
         self._engine = engine; self._analyzer = analyzer
         self._monotonic = monotonic; self._clock = clock
+        self._progress_callback: Callable[[int, int], None] | None = None
+
+    def set_progress_callback(self, callback: Callable[[int, int], None] | None) -> None:
+        self._progress_callback = callback
 
     def run(self, request: WorkerRequest) -> WorkerProduct:
         selected, _ = materialize_frozen_selection(self.root, request)
@@ -257,6 +261,7 @@ class Mot3DLocalWorker:
             t_max=numerical["t_max_s"],
             seed=simulation["simulation_seed"],
             capture_config=_plain(mot["capture"]),
+            **({"progress_callback": self._progress_callback} if self._progress_callback is not None else {}),
         )
         elapsed = self._monotonic() - started
         if not isinstance(outcome, tuple) or len(outcome) != 2 or not math.isfinite(elapsed) or elapsed < 0:

@@ -19,6 +19,7 @@ from workflow_api.run_discovery import (
     inspect_run,
 )
 from workflow_api.run_records import RunRecordError
+from workflow_api.run_progress import IndividualRunProgressRegistry
 
 
 MAX_DISCOVERED_RUNS = 500
@@ -84,9 +85,11 @@ class CanonicalIndividualRunRegistry:
         repository_root: Path,
         *,
         clock: Callable[[], str] = _utc_now,
+        progress_registry: IndividualRunProgressRegistry | None = None,
     ):
         self.repository_root = repository_root.resolve(strict=True)
         self.clock = clock
+        self.progress_registry = progress_registry
 
     def _snapshot(self) -> tuple[dict[str, DiscoveredRun], int, bool]:
         snapshot = discover_run_snapshot(
@@ -153,6 +156,17 @@ class CanonicalIndividualRunRegistry:
             availability = "not_ready"
             retention_status = "pending"
 
+        execution = {
+            "mode": status["execution"]["mode"],
+            "zeus_job_id": status["execution"]["zeus_job_id"],
+        }
+        if self.progress_registry is not None:
+            execution["progress"] = (
+                self.progress_registry.snapshot(inspected.family, inspected.run_id)
+                if status["execution"]["mode"] == "local"
+                and inspected.state == "running"
+                else None
+            )
         item = {
             "id": public_id,
             "record_kind": "individual_simulation_run",
@@ -171,10 +185,7 @@ class CanonicalIndividualRunRegistry:
             "next_action": next_action,
             "created_at": run["created_utc"],
             "updated_at": status["updated_utc"],
-            "execution": {
-                "mode": status["execution"]["mode"],
-                "zeus_job_id": status["execution"]["zeus_job_id"],
-            },
+            "execution": execution,
             "retention": {
                 "particle_states_requested": run["retention"]["particle_states"],
                 "status": retention_status,

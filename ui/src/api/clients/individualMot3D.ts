@@ -1,5 +1,6 @@
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../../generated/mot3dIndividualSpec.v1";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
+import { isRunProgress, type RunProgress } from "./individualZeeman";
 
 export type Mot3DMode = "local" | "zeus";
 export type Mot3DFamily = "angled_donut" | "single_pass";
@@ -108,7 +109,7 @@ export type Mot3DRun = {
   record_state: string;
   lifecycle: string;
   next_action: string;
-  execution: { mode: Mot3DMode; zeus_job_id: string | null };
+  execution: { mode: Mot3DMode; zeus_job_id: string | null; progress?: RunProgress | null };
   retention: { particle_states_requested: boolean; status: string };
   results: { availability: string; completed_at: string | null };
   metrics?: Mot3DResultMetrics | null;
@@ -297,6 +298,9 @@ function validMot3DResultMetrics(value: unknown): value is Mot3DResultMetrics {
 function parseRun(value: unknown, detail = false): Mot3DRun {
   if (!isRecord(value) || !exactKeys(value, detail ? [...summaryKeys, "provenance", "configuration", "inputs", "artifacts", "metrics", "error"] : summaryKeys)) invalid("run");
   const row = value as Record<string, unknown>, execution = row.execution as Record<string, unknown>, retention = row.retention as Record<string, unknown>, results = row.results as Record<string, unknown>;
+  const progress = execution.progress === undefined ? null : execution.progress;
+  if (progress !== null && !isRunProgress(progress)) invalid("run progress");
+  delete execution.progress;
   if (!publicRunId(row.id) || row.record_kind !== "individual_simulation_run" || row.run_kind !== "mot_3d" || !privateRunId(row.display_name) || row.stage_semantics !== "single-run-lifecycle" || row.source !== "local" || !printable(row.queried_at) || row.trust !== "verified-package" || row.scientific_role !== "individual-only" || !printable(row.record_state) || !printable(row.integrity) || !printable(row.lifecycle) || !printable(row.next_action) || !printable(row.created_at) || !printable(row.updated_at) || !isRecord(execution) || !exactKeys(execution, ["mode", "zeus_job_id"]) || !["local", "zeus"].includes(String(execution.mode)) || (execution.zeus_job_id !== null && !jobId(execution.zeus_job_id)) || !isRecord(retention) || !exactKeys(retention, ["particle_states_requested", "status"]) || typeof retention.particle_states_requested !== "boolean" || !printable(retention.status) || !isRecord(results) || !exactKeys(results, ["availability", "completed_at"]) || !printable(results.availability) || (results.completed_at !== null && !printable(results.completed_at)) || !Array.isArray(row.warnings) || !row.warnings.every((item: unknown) => printable(item))) invalid("run");
   const state = String(row.record_state), lifecycle = String(row.lifecycle), integrity = String(row.integrity);
   const active = ["configured", "validated", "reviewed", "queued", "running"], terminal = ["failed", "outcome_unknown", "cancelled"];
@@ -311,6 +315,7 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     const provenance = row.provenance, configuration = row.configuration, inputs = row.inputs;
     if (!isRecord(provenance) || !exactKeys(provenance, ["git_revision", "configuration_sha256", "inputs_sha256", "laboratory_spec", "numerical_policy"]) || !printable(provenance.git_revision) || !hex64(provenance.configuration_sha256) || !hex64(provenance.inputs_sha256) || !isRecord(provenance.laboratory_spec) || !isRecord(provenance.numerical_policy) || !isRecord(configuration) || !exactKeys(configuration, ["status", "resolved"]) || configuration.status !== "complete" || !isRecord(configuration.resolved) || !isRecord(inputs) || !exactKeys(inputs, ["status", "artifacts"]) || inputs.status !== "complete" || !Array.isArray(inputs.artifacts) || !Array.isArray(row.artifacts) || (lifecycle === "results_ready" ? !validMot3DResultMetrics(row.metrics) : row.metrics !== null) || (row.error !== null && (!isRecord(row.error) || !exactKeys(row.error, ["code", "message"]) || !printable(row.error.code) || !printable(row.error.message)))) invalid("run detail");
   }
+  execution.progress = progress;
   return value as unknown as Mot3DRun;
 }
 
