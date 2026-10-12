@@ -44,7 +44,7 @@ RECEIPT_KEYS = {
     "source_2d_campaign_sha256",
     "source_2d_final_report_sha256",
     "input_registry_sha256",
-    "timestep_approval_sha256",
+    "timestep_policy_sha256",
     "files",
     "completed_unix_s",
 }
@@ -253,7 +253,7 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
             "source_2d_campaign_sha256",
             "source_2d_final_report_sha256",
             "input_registry_sha256",
-            "timestep_approval_sha256",
+            "timestep_policy_sha256",
         )
         if (
             not isinstance(commit, str)

@@ -20,9 +20,8 @@ from typing import Any, Callable, Mapping
 
 from studies import mot_3d_campaign
 from workflow_api.mot_3d_plan import (
-    Approved3DTimestepMissing,
     canonical_digest,
-    load_approved_timestep,
+    load_timestep_policy,
     render_discovery_bootstrap,
 )
 from workflow_api.preview_registry import PreviewRegistry
@@ -283,33 +282,17 @@ class Mot3DDiscoveryBootstrapService:
             }
             for row in sources
         ]
-        try:
-            load_approved_timestep(self.root)
-            approval_ready = True
-        except Approved3DTimestepMissing:
-            approval_ready = False
-        except ValueError:
-            approval_ready = False
+        policy, policy_sha256 = load_timestep_policy()
         return {
-            "lifecycle": (
-                "ready" if approval_ready else "blocked_missing_approved_timestep"
-            ),
+            "lifecycle": "ready",
             "sources": public,
-            "reason": (
-                None
-                if approval_ready
-                else (
-                    "A reviewed one-off 3D timestep convergence result must be "
-                    "configured before Discovery can be prepared."
-                )
-            ),
-            "evidence_requirement": (
-                None
-                if approval_ready
-                else (
-                    "Complete and approve the separate 3D timestep convergence study."
-                )
-            ),
+            "reason": None,
+            "evidence_requirement": None,
+            "timestep_policy": {
+                "status": policy["status"],
+                "convergence_claim": policy["convergence_claim"],
+                "sha256": policy_sha256,
+            },
         }
 
     def _render(
@@ -366,7 +349,7 @@ class Mot3DDiscoveryBootstrapService:
                 "input_registry_sha256": timestep_evidence["source_handoff"][
                     "input_registry_sha256"
                 ],
-                "timestep_approval_sha256": timestep_evidence["approval_sha256"],
+                "timestep_policy_sha256": timestep_evidence["policy_sha256"],
                 "files": hashes,
                 "nonce": nonce,
             }
@@ -415,6 +398,8 @@ class Mot3DDiscoveryBootstrapService:
                 "solver": manifest["design"]["solver"],
                 "screening_dt_s": manifest["design"]["screening_dt_s"],
                 "production_dt_s": manifest["design"]["production_dt_s"],
+                "timestep_policy_status": timestep_evidence["policy_status"],
+                "convergence_claim": timestep_evidence["convergence_claim"],
                 "input_role_counts": {
                     key: len(value) for key, value in manifest["input_roles"].items()
                 },
@@ -480,8 +465,8 @@ class Mot3DDiscoveryBootstrapService:
                     in manifest["design"].get("timestep_evidence", {})
                     else None
                 ),
-                "timestep_approval_sha256": manifest["design"]["timestep_evidence"][
-                    "approval_sha256"
+                "timestep_policy_sha256": manifest["design"]["timestep_evidence"][
+                    "policy_sha256"
                 ],
                 "files": hashes,
                 "completed_unix_s": time.time(),

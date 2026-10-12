@@ -1,4 +1,4 @@
-import { ArrowLeft, Clock3, LockKeyhole, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Clock3, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   Mot3DBootstrapApi,
@@ -8,7 +8,7 @@ import type {
 } from "../api/clients/mot3d";
 
 type Step =
-  "loading" | "blocked" | "configure" | "review" | "success" | "error";
+  "loading" | "configure" | "review" | "success" | "error";
 
 export function Mot3DCampaignCreation({
   api,
@@ -40,7 +40,7 @@ export function Mot3DCampaignCreation({
       const next = await api.status();
       if (request !== generation.current) return;
       setStatus(next);
-      setStep(next.lifecycle === "ready" ? "configure" : "blocked");
+      setStep("configure");
     } catch (error) {
       if (request !== generation.current) return;
       setMessage(
@@ -134,8 +134,8 @@ export function Mot3DCampaignCreation({
           <div>
             <strong>Checking 3D campaign readiness…</strong>
             <p>
-              The application is validating the approved timestep evidence and
-              completed 2D inputs.
+              The application is validating the frozen pragmatic timestep
+              policy and completed 2D inputs.
             </p>
           </div>
         </section>
@@ -158,35 +158,6 @@ export function Mot3DCampaignCreation({
             >
               Try again
             </button>
-          </div>
-        </section>
-      </main>
-    );
-  if (step === "blocked")
-    return (
-      <main id="main" className="creation-page">
-        {back}
-        <header className="detail-hero">
-          <p className="eyebrow">3D-MOT campaign</p>
-          <h1 ref={heading} tabIndex={-1}>
-            Campaign creation is waiting for an approved timestep
-          </h1>
-          <p>
-            The 3D timestep convergence study is separate from normal campaign
-            setup. Its result must be reviewed and recorded before Discovery can
-            use it.
-          </p>
-        </header>
-        <section className="priority-panel priority-panel--blocked">
-          <LockKeyhole aria-hidden="true" />
-          <div>
-            <h2>Campaign creation is safely paused</h2>
-            <p>{status?.reason}</p>
-            <p>{status?.evidence_requirement}</p>
-            <p>
-              The application will not substitute a provisional timestep, create
-              campaign files, or submit a Zeus job.
-            </p>
           </div>
         </section>
       </main>
@@ -274,18 +245,32 @@ export function Mot3DCampaignCreation({
                 <dd>{preview.discovery.solver}</dd>
               </div>
               <div>
-                <dt>Screening timestep</dt>
+                <dt>Search-stage timestep</dt>
                 <dd>{preview.discovery.screening_dt_s * 1_000_000} µs</dd>
               </div>
               <div>
-                <dt>Production timestep</dt>
+                <dt>Sealed final-validation timestep</dt>
                 <dd>{preview.discovery.production_dt_s * 1_000_000} µs</dd>
+              </div>
+              <div>
+                <dt>Convergence claim</dt>
+                <dd>Not established</dd>
               </div>
               <div>
                 <dt>Input roles</dt>
                 <dd>12 Discovery · 4 Refinement · 4 preliminary check</dd>
               </div>
             </dl>
+          </div>
+          <div className="review-card">
+            <TriangleAlert aria-hidden="true" />
+            <h2>Pragmatic timestep policy</h2>
+            <p>
+              The one-off study was inconclusive. The reviewed policy uses 10
+              µs to make the search stages practical and 0.625 µs only for the
+              sealed final validation. It is not evidence that 10 µs has
+              converged.
+            </p>
           </div>
           <div className="review-card">
             <h2>What this creates</h2>
@@ -334,10 +319,25 @@ export function Mot3DCampaignCreation({
         </h1>
         <p>
           Select a completed canonical 2D campaign. The application uses only
-          its sealed survivor ensembles and the separately approved 3D timestep
-          evidence.
+          its sealed survivor ensembles and the reviewed pragmatic 3D timestep
+          policy. This always creates a new campaign; an older inconclusive 3D
+          campaign cannot be resumed or reused.
         </p>
       </header>
+      <section className="state-panel" aria-labelledby="timestep-policy-heading">
+        <TriangleAlert aria-hidden="true" />
+        <div>
+          <h2 id="timestep-policy-heading">Pragmatic timestep policy</h2>
+          <p>
+            Search stages use 10 µs. Sealed final validation uses 0.625 µs.
+            These values are locked and cannot be changed here.
+          </p>
+          <p>
+            The one-off study was inconclusive, so timestep convergence is not
+            established.
+          </p>
+        </div>
+      </section>
       <form
         className="creation-form"
         onSubmit={(event) => {
@@ -367,8 +367,9 @@ export function Mot3DCampaignCreation({
         <label>
           3D campaign name
           <span>
-            Used for the new campaign folder. Letters, numbers, dots,
-            underscores and hyphens are allowed.
+            Must name a new campaign folder. Existing or older inconclusive 3D
+            campaigns are rejected. Letters, numbers, dots, underscores and
+            hyphens are allowed.
           </span>
           <input
             value={campaignName}
@@ -402,8 +403,8 @@ export function Mot3DCampaignCreation({
         </div>
       </form>
       <p className="read-only-note">
-        <ShieldCheck aria-hidden="true" /> Review does not create files or
-        submit work.
+        <ShieldCheck aria-hidden="true" /> The timestep policy is read-only.
+        Review does not create files or submit work.
       </p>
     </main>
   );

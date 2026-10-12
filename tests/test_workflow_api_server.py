@@ -666,7 +666,7 @@ class _FakeMot3DBootstrapService:
     def status(self, payload):
         self.calls.append(("status", payload, None))
         if payload != {}: raise ValueError("invalid")
-        return {"lifecycle":"blocked_missing_approved_timestep","sources":[],"reason":"Approval is missing.","evidence_requirement":"Approve the separate study."}
+        return {"lifecycle":"ready","sources":[],"reason":None,"evidence_requirement":None,"timestep_policy":{"status":"pragmatic_user_approved_after_inconclusive_study","convergence_claim":"not_established","sha256":"d"*64}}
     def preview(self, payload, *, session_id):
         self.calls.append(("preview", payload, session_id))
         raise ValueError("secret /private/path")
@@ -684,7 +684,7 @@ def test_mot_3d_bootstrap_http_boundary_is_session_bound_and_sanitized():
         status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/status", method="POST", headers={"Content-Type":"application/json"}, body="{}")
         assert status == 403 and payload["error"]["code"] == "untrusted_origin"
         status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/status", method="POST", headers=trusted, body="{}")
-        assert status == 200 and payload["data"]["lifecycle"] == "blocked_missing_approved_timestep"
+        assert status == 200 and payload["data"]["lifecycle"] == "ready"
         status, _, payload = request_json(f"{base_url}/api/v1/campaigns/3d/bootstrap/preview", method="POST", headers=trusted, body=json.dumps({"source_id":"a"*64,"campaign_name":"mot3d"}))
         assert status == 412 and payload == {"error":{"code":"mot_3d_bootstrap_failed","message":"3D campaign preparation stopped safely."}}
         assert "/private/path" not in json.dumps(payload)

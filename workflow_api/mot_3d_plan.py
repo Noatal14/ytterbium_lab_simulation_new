@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
 import re
 import stat
@@ -12,6 +11,11 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from config import MOT_3D_SIM_CONFIG
+from lab_setup.mot_3d_timestep_policy import (
+    MOT_3D_TIMESTEP_POLICY,
+    MOT_3D_TIMESTEP_POLICY_SHA256,
+    MOT_3D_TIMESTEP_POLICY_VERSION,
+)
 from studies.mot_3d_campaign import (
     FAMILIES,
     build_campaign_manifest,
@@ -19,14 +23,7 @@ from studies.mot_3d_campaign import (
     render_discovery_jobs,
     validate_upstream_2d_campaign,
 )
-
-
-APPROVAL_PATH = Path("lab_setup/specifications/mot_3d_timestep_approval_v1.json")
-APPROVAL_VERSION = "mot-3d-timestep-approval-v1"
-
-
-class Approved3DTimestepMissing(ValueError):
-    """The one-off 3D timestep study has not yet been canonically approved."""
+from workflow_api.mot_3d_provenance import input_registry_digest
 
 
 def canonical_digest(value: Any) -> str:
@@ -127,168 +124,17 @@ def _strict_json(
     return value, hashlib.sha256(raw).hexdigest()
 
 
-def _finite_positive(value: Any) -> float:
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("Approved timestep values must be numeric.")
-    result = float(value)
-    if not math.isfinite(result) or result <= 0:
-        raise ValueError("Approved timestep values must be finite and positive.")
-    return result
-
-
-def input_registry_digest(roles: Mapping[str, list[dict[str, Any]]]) -> str:
-    """Hash portable identities for all frozen 2D survivor ensembles."""
-    rows = []
-    for role in ("discovery", "refinement", "preliminary_check"):
-        for record in roles[role]:
-            rows.append(
-                {
-                    "role": role,
-                    "zeeman_seed": record["zeeman_seed"],
-                    "mot_seed": record["mot_seed"],
-                    "sha256": record["sha256"],
-                    "metadata_sha256": record["metadata_sha256"],
-                    "shape": record["shape"],
-                    "dtype": record["dtype"],
-                    "n_survivors": record["n_survivors"],
-                    "source_design": record["source_design"],
-                    "source_parameters": record["source_parameters"],
-                }
-            )
-    return canonical_digest(rows)
-
-
-def load_approved_timestep(
-    repository_root: Path,
-    *,
-    path: Path | None = None,
-) -> tuple[dict[str, Any], str]:
-    """Load the separately reviewed approval or fail closed when absent."""
-    repository_root = Path(repository_root).resolve()
-    approval_path = _safe_repo_path(repository_root, path or APPROVAL_PATH)
-    if not approval_path.is_file():
-        raise Approved3DTimestepMissing(
-            "Canonical 3D timestep approval is not configured. Complete and review "
-            "the one-off convergence study before preparing Discovery."
-        )
-    value, approval_sha256 = _strict_json(repository_root, approval_path)
-    expected = {
-        "spec_version",
-        "status",
-        "solver",
-        "screening_dt_s",
-        "production_dt_s",
-        "evidence",
-        "source_handoff",
-    }
-    evidence = value.get("evidence")
-    handoff = value.get("source_handoff")
+def load_timestep_policy() -> tuple[Mapping[str, Any], str]:
+    """Return the immutable pragmatic policy after exact runtime parity checks."""
     if (
-        set(value) != expected
-        or value.get("spec_version") != APPROVAL_VERSION
-        or value.get("status") != "approved"
-        or value.get("solver") != MOT_3D_SIM_CONFIG["solver"]
-        or _finite_positive(value.get("screening_dt_s"))
+        MOT_3D_TIMESTEP_POLICY["solver"] != MOT_3D_SIM_CONFIG["solver"]
+        or MOT_3D_TIMESTEP_POLICY["search_dt_s"]
         != MOT_3D_SIM_CONFIG["screening_dt_s"]
-        or _finite_positive(value.get("production_dt_s"))
+        or MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"]
         != MOT_3D_SIM_CONFIG["production_dt_s"]
-        or not isinstance(evidence, dict)
-        or set(evidence) != {"path", "sha256"}
-        or not isinstance(handoff, dict)
-        or set(handoff)
-        != {"campaign_sha256", "final_report_sha256", "input_registry_sha256"}
-        or any(
-            not isinstance(handoff.get(key), str)
-            or re.fullmatch(r"[0-9a-f]{64}", handoff[key]) is None
-            for key in handoff
-        )
-        or not isinstance(evidence.get("sha256"), str)
-        or re.fullmatch(r"[0-9a-f]{64}", evidence["sha256"]) is None
     ):
-        raise ValueError("Canonical 3D timestep approval record is invalid.")
-    evidence_path = _safe_repo_path(repository_root, str(evidence.get("path", "")))
-    if not evidence_path.is_file():
-        raise ValueError("Approved 3D timestep evidence is missing or changed.")
-    evidence_payload, evidence_sha256 = _strict_json(
-        repository_root, evidence_path, limit=64 * 1024 * 1024
-    )
-    if evidence_sha256 != evidence["sha256"]:
-        raise ValueError("Approved 3D timestep evidence is missing or changed.")
-    from studies.mot_3d.timestep_validation import (
-        BOOTSTRAP_REPLICATES,
-        EVIDENCE_FORMAT_VERSION,
-        PARTICLES_PER_ENSEMBLE,
-        PRODUCTION_TOLERANCE,
-        RECOIL_SEEDS,
-        SCREENING_TOLERANCE,
-        T_MAX_S,
-    )
-
-    evidence_keys = {
-        "kind",
-        "format_version",
-        "status",
-        "screening_dt_s",
-        "production_dt_s",
-        "reference_dt_s",
-        "tested_dt_s",
-        "capture_bias_passed",
-        "paired_decision_passed",
-        "screening_absolute_bias_tolerance",
-        "production_absolute_bias_tolerance",
-        "classification_disagreement_is_diagnostic_only",
-        "reference_capture_fraction_by_sentinel",
-        "sentinels_informative",
-        "largest_approved_screening_dt_s",
-        "largest_approved_production_dt_s",
-        "multiplicity",
-        "per_comparison_alpha",
-        "bootstrap_replicates",
-        "campaign_manifest_sha256",
-        "tasks_sha256",
-        "raw_result_registry_sha256",
-        "campaign_commit",
-        "physical_model_sha256",
-        "particles_per_ensemble",
-        "ensemble_count",
-        "recoil_seeds",
-        "t_max_s",
-        "comparisons",
-        "new_campaign_required_if_selected_dt_changes",
-    }
-    if (
-        set(evidence_payload) != evidence_keys
-        or evidence_payload.get("kind") != "mot_3d_timestep_validation"
-        or evidence_payload.get("status") != "approved"
-        or evidence_payload.get("screening_dt_s") != value["screening_dt_s"]
-        or evidence_payload.get("production_dt_s") != value["production_dt_s"]
-        or evidence_payload.get("reference_dt_s")
-        != MOT_3D_SIM_CONFIG["dt_validation_reference_s"]
-        or evidence_payload.get("tested_dt_s")
-        != list(MOT_3D_SIM_CONFIG["dt_validation_candidates_s"])
-        or evidence_payload.get("capture_bias_passed") is not True
-        or evidence_payload.get("paired_decision_passed") is not True
-        or evidence_payload.get("sentinels_informative") is not True
-        or evidence_payload.get("ensemble_count") != 20
-        or evidence_payload.get("format_version") != EVIDENCE_FORMAT_VERSION
-        or evidence_payload.get("particles_per_ensemble") != PARTICLES_PER_ENSEMBLE
-        or evidence_payload.get("recoil_seeds") != list(RECOIL_SEEDS)
-        or evidence_payload.get("t_max_s") != T_MAX_S
-        or evidence_payload.get("bootstrap_replicates") != BOOTSTRAP_REPLICATES
-        or evidence_payload.get("screening_absolute_bias_tolerance")
-        != SCREENING_TOLERANCE
-        or evidence_payload.get("production_absolute_bias_tolerance")
-        != PRODUCTION_TOLERANCE
-        or re.fullmatch(r"[0-9a-f]{64}", str(evidence_payload.get("tasks_sha256", "")))
-        is None
-        or re.fullmatch(
-            r"[0-9a-f]{64}",
-            str(evidence_payload.get("raw_result_registry_sha256", "")),
-        )
-        is None
-    ):
-        raise ValueError("Canonical 3D timestep evidence is not an approved design.")
-    return value, approval_sha256
+        raise ValueError("3D timestep policy and runtime configuration disagree.")
+    return MOT_3D_TIMESTEP_POLICY, MOT_3D_TIMESTEP_POLICY_SHA256
 
 
 def render_discovery_bootstrap(
@@ -348,24 +194,20 @@ def render_discovery_bootstrap(
         expected_design=upstream["expected_survivor_design"],
         expected_parameters=upstream["expected_survivor_parameters"],
     )
-    approval, approval_sha256 = load_approved_timestep(
-        repository_root, path=approval_path
-    )
-    handoff = approval["source_handoff"]
-    if handoff != {
+    if approval_path is not None:
+        raise ValueError("External 3D timestep approval files are no longer accepted.")
+    policy, policy_sha256 = load_timestep_policy()
+    handoff = {
         "campaign_sha256": upstream["campaign_sha256"],
         "final_report_sha256": upstream["final_report_sha256"],
         "input_registry_sha256": input_registry_digest(roles),
-    }:
-        raise ValueError(
-            "Approved 3D timestep evidence is not bound to this completed 2D handoff."
-        )
-    evidence_path = (repository_root / approval["evidence"]["path"]).resolve()
+    }
     evidence_identity = {
-        "path": evidence_path.relative_to(repository_root).as_posix(),
-        "sha256": approval["evidence"]["sha256"],
-        "approval_spec_version": APPROVAL_VERSION,
-        "approval_sha256": approval_sha256,
+        "policy_spec_version": MOT_3D_TIMESTEP_POLICY_VERSION,
+        "policy_sha256": policy_sha256,
+        "policy_status": policy["status"],
+        "convergence_claim": policy["convergence_claim"],
+        "inconclusive_evidence": dict(policy["inconclusive_evidence"]),
         "source_handoff": dict(handoff),
     }
     portable_survivors = survivor_directory.relative_to(repository_root)
@@ -401,7 +243,7 @@ def render_discovery_bootstrap(
         revision=revision,
         physical_model_sha256=physical_model_sha256,
         stage="discovery",
-        timestep_status="approved_by_paired_convergence_validation",
+        timestep_status="pragmatic_user_approved_not_converged",
         timestep_evidence=evidence_identity,
     )
     manifest["input_directory"] = portable_survivors.as_posix()

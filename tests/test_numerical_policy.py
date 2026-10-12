@@ -39,8 +39,8 @@ def test_policy_is_immutable_and_config_facade_is_exact():
         "t_max_s": 0.025, "dt_s": 0.625e-6, "start_distance_m": 0.100,
     }
     assert config.MOT_3D_SIM_CONFIG == {
-        "t_max_s": 0.025, "dt_s": 1.25e-6,
-        "screening_dt_s": 1.25e-6, "production_dt_s": 0.625e-6,
+        "t_max_s": 0.025, "dt_s": 10e-6,
+        "screening_dt_s": 10e-6, "production_dt_s": 0.625e-6,
         "dt_validation_candidates_s": (10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6),
         "dt_validation_reference_s": 0.3125e-6,
         "solver": "RK4StHybridCustom",

@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
+
+from config import MOT_3D_SIM_CONFIG
+from lab_setup.mot_3d_timestep_policy import (
+    MOT_3D_TIMESTEP_POLICY,
+    MOT_3D_TIMESTEP_POLICY_SHA256,
+    MOT_3D_TIMESTEP_POLICY_VERSION,
+)
 
 from workflow_api.models import (
     ArtifactRef,
@@ -15,6 +23,7 @@ from workflow_api.models import (
 )
 from workflow_api.manifest_codec import classify_manifest, read_manifest
 from workflow_api.safe_json import read_json
+from workflow_api.mot_3d_provenance import input_registry_digest
 
 SUPPORTED_KIND = "mot_3d_campaign_v2"
 SELECTION_STAGES = (
@@ -130,8 +139,64 @@ def _timestep_validation(
 ) -> tuple[bool, tuple[str, ...]]:
     design = _mapping(manifest.get("design"))
     evidence = _mapping(design.get("timestep_evidence"))
+    if design.get("timestep_status") == "pragmatic_user_approved_not_converged":
+        handoff = _mapping(evidence.get("source_handoff"))
+        inconclusive = _mapping(evidence.get("inconclusive_evidence"))
+        expected_inconclusive = dict(MOT_3D_TIMESTEP_POLICY["inconclusive_evidence"])
+        valid_hashes = all(
+            isinstance(handoff.get(key), str)
+            and re.fullmatch(r"[0-9a-f]{64}", handoff[key]) is not None
+            for key in (
+                "campaign_sha256",
+                "final_report_sha256",
+                "input_registry_sha256",
+            )
+        )
+        upstream = _mapping(manifest.get("upstream_2d_campaign"))
+        roles = _mapping(manifest.get("input_roles"))
+        try:
+            expected_registry_sha256 = input_registry_digest(roles)
+        except (KeyError, TypeError, ValueError):
+            expected_registry_sha256 = None
+        if (
+            set(evidence)
+            != {
+                "policy_spec_version",
+                "policy_sha256",
+                "policy_status",
+                "convergence_claim",
+                "inconclusive_evidence",
+                "source_handoff",
+            }
+            or set(handoff)
+            != {
+                "campaign_sha256",
+                "final_report_sha256",
+                "input_registry_sha256",
+            }
+            or evidence.get("policy_spec_version")
+            != MOT_3D_TIMESTEP_POLICY_VERSION
+            or evidence.get("policy_sha256") != MOT_3D_TIMESTEP_POLICY_SHA256
+            or evidence.get("policy_status") != MOT_3D_TIMESTEP_POLICY["status"]
+            or evidence.get("convergence_claim") != "not_established"
+            or inconclusive != expected_inconclusive
+            or not valid_hashes
+            or handoff.get("campaign_sha256") != upstream.get("campaign_sha256")
+            or handoff.get("final_report_sha256")
+            != upstream.get("final_report_sha256")
+            or handoff.get("input_registry_sha256") != expected_registry_sha256
+            or design.get("solver") != MOT_3D_SIM_CONFIG["solver"]
+            or design.get("screening_dt_s")
+            != MOT_3D_SIM_CONFIG["screening_dt_s"]
+            or design.get("production_dt_s")
+            != MOT_3D_SIM_CONFIG["production_dt_s"]
+        ):
+            return False, (
+                "The frozen pragmatic timestep policy identity is invalid or changed.",
+            )
+        return True, ()
     if design.get("timestep_status") != "approved_by_paired_convergence_validation":
-        return False, ()
+        return False, ("The campaign has no trusted active timestep policy.",)
     recorded_path = evidence.get("path")
     recorded_sha = evidence.get("sha256")
     path = _resolve_artifact(root, recorded_path) if recorded_path else None
@@ -141,7 +206,10 @@ def _timestep_validation(
         return False, ("Approved timestep evidence file is missing locally.",)
     if not recorded_sha or _sha256(path) != recorded_sha:
         return False, ("Approved timestep evidence hash does not match its frozen record.",)
-    return True, ()
+    return False, (
+        "Historical paired timestep approval is readable for inspection only; "
+        "create a new policy-bound campaign for execution.",
+    )
 
 
 def _stage_progress(
@@ -460,6 +528,11 @@ def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -
     progress = _stage_progress(root, normalized, timestep_approved)
     plan, plan_warnings = _next_plan(root, normalized, progress)
     warnings.extend(plan_warnings)
+    if not timestep_approved and stage != "dt_validation_required":
+        plan = None
+        warnings.append(
+            "Execution is blocked because this campaign has no trusted current timestep policy."
+        )
     return Mot3dCampaignSummary(
         kind=manifest["kind"],
         name=name,

@@ -170,7 +170,7 @@ def test_create_is_plan_only_and_freezes_new_design(
     )
 
     manifest = json.loads((output / "campaign.json").read_text())
-    assert manifest["stage"] == "dt_validation_required"
+    assert manifest["stage"] == "discovery"
     assert manifest["provenance"]["git_commit"] == "abc123"
     assert manifest["upstream_2d_campaign"]["campaign_sha256"]
     assert len(manifest["upstream_2d_campaign"]["sealed_seed_pairs"]) == 20
@@ -179,16 +179,16 @@ def test_create_is_plan_only_and_freezes_new_design(
     assert manifest["design"]["single_pass_blue_aperture_radius_m"] == pytest.approx(
         0.0075
     )
-    assert manifest["design"]["screening_dt_s"] == pytest.approx(1.25e-6)
+    assert manifest["design"]["screening_dt_s"] == pytest.approx(10e-6)
     assert manifest["design"]["production_dt_s"] == pytest.approx(0.625e-6)
-    assert manifest["design"]["timestep_status"] == (
-        "provisional_pending_3d_validation"
-    )
+    assert manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
+    assert manifest["design"]["timestep_evidence"]["convergence_claim"] == "not_established"
     assert manifest["design"]["dt_validation_candidates_s"] == pytest.approx(
         [10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6]
     )
     assert manifest["design"]["dt_validation_reference_s"] == pytest.approx(0.3125e-6)
     assert "studies/mot_3d/timestep_validation.py" in mot_3d_campaign.relevant_files()
+    assert "lab_setup/specifications/mot_3d_timestep_policy_v1.json" in mot_3d_campaign.relevant_files()
 
     jobs = list((output / "jobs").rglob("*.pbs"))
     assert len(jobs) == 7
@@ -221,109 +221,11 @@ def test_create_is_plan_only_and_freezes_new_design(
         )
 
 
-def _approved_timestep_record(repository, upstream, roles):
-    from config import MOT_3D_SIM_CONFIG
-    from studies.mot_3d import timestep_validation
-    from workflow_api.mot_3d_plan import (
-        APPROVAL_VERSION,
-        input_registry_digest,
-    )
-
-    evidence = {
-        "kind": "mot_3d_timestep_validation",
-        "status": "approved",
-        "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
-        "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
-        "reference_dt_s": MOT_3D_SIM_CONFIG["dt_validation_reference_s"],
-        "tested_dt_s": list(MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]),
-        "capture_bias_passed": True,
-        "paired_decision_passed": True,
-        "classification_disagreement_is_diagnostic_only": True,
-        "reference_capture_fraction_by_sentinel": {},
-        "sentinels_informative": True,
-        "largest_approved_screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
-        "largest_approved_production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
-        "multiplicity": "test fixture",
-        "per_comparison_alpha": 0.001,
-        "ensemble_count": 20,
-        "format_version": timestep_validation.EVIDENCE_FORMAT_VERSION,
-        "particles_per_ensemble": timestep_validation.PARTICLES_PER_ENSEMBLE,
-        "recoil_seeds": list(timestep_validation.RECOIL_SEEDS),
-        "t_max_s": timestep_validation.T_MAX_S,
-        "bootstrap_replicates": timestep_validation.BOOTSTRAP_REPLICATES,
-        "screening_absolute_bias_tolerance": timestep_validation.SCREENING_TOLERANCE,
-        "production_absolute_bias_tolerance": timestep_validation.PRODUCTION_TOLERANCE,
-        "campaign_manifest_sha256": "1" * 64,
-        "tasks_sha256": "2" * 64,
-        "raw_result_registry_sha256": "3" * 64,
-        "campaign_commit": "a" * 40,
-        "physical_model_sha256": "b" * 64,
-        "comparisons": [],
-        "new_campaign_required_if_selected_dt_changes": True,
-    }
-    evidence_path = repository / "data/validation/mot_3d/timestep/evidence.json"
-    evidence_path.parent.mkdir(parents=True)
-    evidence_path.write_text(json.dumps(evidence))
-    approval = {
-        "spec_version": APPROVAL_VERSION,
-        "status": "approved",
-        "solver": MOT_3D_SIM_CONFIG["solver"],
-        "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
-        "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
-        "evidence": {
-            "path": evidence_path.relative_to(repository).as_posix(),
-            "sha256": mot_3d_campaign._sha256(evidence_path),
-        },
-        "source_handoff": {
-            "campaign_sha256": upstream["campaign_sha256"],
-            "final_report_sha256": upstream["final_report_sha256"],
-            "input_registry_sha256": input_registry_digest(roles),
-        },
-    }
-    approval_path = repository / "approval.json"
-    approval_path.write_text(json.dumps(approval))
-    return approval_path
-
-
-def test_ui_bootstrap_fails_closed_without_canonical_timestep_approval(
-    input_dir, upstream_campaign, tmp_path
-):
-    from workflow_api.mot_3d_plan import (
-        Approved3DTimestepMissing,
-        render_discovery_bootstrap,
-    )
-
-    destination = tmp_path / "data/optimization/mot_3d/new-3d"
-    with pytest.raises(Approved3DTimestepMissing, match="not configured"):
-        render_discovery_bootstrap(
-            repository_root=tmp_path,
-            destination=destination,
-            name="new-3d",
-            upstream_campaign=upstream_campaign,
-            survivor_directory=input_dir,
-            revision="a" * 40,
-            physical_model_sha256="b" * 64,
-        )
-    assert not destination.exists()
-
-
-def test_ui_bootstrap_renders_discovery_only_from_bound_approval(
+def test_ui_bootstrap_renders_discovery_only_from_pragmatic_policy(
     input_dir, upstream_campaign, tmp_path
 ):
     from workflow_api.mot_3d_plan import render_discovery_bootstrap
 
-    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
-        upstream_campaign, input_dir
-    )
-    roles = mot_3d_campaign.freeze_inputs(
-        input_dir,
-        expected_seed_pairs={
-            row["zeeman_seed"]: row["mot_seed"] for row in upstream["sealed_seed_pairs"]
-        },
-        expected_design=upstream["expected_survivor_design"],
-        expected_parameters=upstream["expected_survivor_parameters"],
-    )
-    approval = _approved_timestep_record(tmp_path, upstream, roles)
     destination = tmp_path / "data/optimization/mot_3d/new-3d"
     files, manifest = render_discovery_bootstrap(
         repository_root=tmp_path,
@@ -333,12 +235,12 @@ def test_ui_bootstrap_renders_discovery_only_from_bound_approval(
         survivor_directory=input_dir,
         revision="a" * 40,
         physical_model_sha256="b" * 64,
-        approval_path=approval.relative_to(tmp_path),
     )
     assert manifest["stage"] == "discovery"
-    assert manifest["design"]["timestep_status"] == (
-        "approved_by_paired_convergence_validation"
-    )
+    assert manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
+    assert manifest["design"]["screening_dt_s"] == 10e-6
+    assert manifest["design"]["production_dt_s"] == 0.625e-6
+    assert manifest["design"]["timestep_evidence"]["convergence_claim"] == "not_established"
     assert manifest["design"]["solver"] == "RK4StHybridCustom"
     assert [
         len(manifest["input_roles"][role])
@@ -369,20 +271,14 @@ def test_ui_bootstrap_renders_discovery_only_from_bound_approval(
     assert not destination.exists()
 
 
-def test_ui_bootstrap_rejects_approval_for_a_different_2d_handoff(
+def test_ui_bootstrap_rejects_external_approval_override(
     input_dir, upstream_campaign, tmp_path
 ):
     from workflow_api.mot_3d_plan import render_discovery_bootstrap
 
-    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
-        upstream_campaign, input_dir
-    )
-    roles = mot_3d_campaign.freeze_inputs(input_dir)
-    approval = _approved_timestep_record(tmp_path, upstream, roles)
-    payload = json.loads(approval.read_text())
-    payload["source_handoff"]["input_registry_sha256"] = "0" * 64
-    approval.write_text(json.dumps(payload))
-    with pytest.raises(ValueError, match="not bound"):
+    override = tmp_path / "approval.json"
+    override.write_text("{}")
+    with pytest.raises(ValueError, match="no longer accepted"):
         render_discovery_bootstrap(
             repository_root=tmp_path,
             destination=tmp_path / "data/optimization/mot_3d/new-3d",
@@ -391,47 +287,11 @@ def test_ui_bootstrap_rejects_approval_for_a_different_2d_handoff(
             survivor_directory=input_dir,
             revision="a" * 40,
             physical_model_sha256="b" * 64,
-            approval_path=approval.relative_to(tmp_path),
+            approval_path=override,
         )
 
 
-@pytest.mark.parametrize("attack", ["evidence_digest", "approval_symlink", "bool_dt"])
-def test_ui_bootstrap_rejects_untrusted_timestep_approval(
-    input_dir, upstream_campaign, tmp_path, attack
-):
-    from workflow_api.mot_3d_plan import render_discovery_bootstrap
-
-    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
-        upstream_campaign, input_dir
-    )
-    roles = mot_3d_campaign.freeze_inputs(input_dir)
-    approval = _approved_timestep_record(tmp_path, upstream, roles)
-    if attack == "evidence_digest":
-        payload = json.loads(approval.read_text())
-        payload["evidence"]["sha256"] = "0" * 64
-        approval.write_text(json.dumps(payload))
-    elif attack == "approval_symlink":
-        target = approval.with_name("approval-target.json")
-        approval.rename(target)
-        approval.symlink_to(target)
-    else:
-        payload = json.loads(approval.read_text())
-        payload["screening_dt_s"] = True
-        approval.write_text(json.dumps(payload))
-    with pytest.raises(ValueError):
-        render_discovery_bootstrap(
-            repository_root=tmp_path,
-            destination=tmp_path / "data/optimization/mot_3d/new-3d",
-            name="new-3d",
-            upstream_campaign=upstream_campaign,
-            survivor_directory=input_dir,
-            revision="a" * 40,
-            physical_model_sha256="b" * 64,
-            approval_path=approval.relative_to(tmp_path),
-        )
-
-
-def test_ui_bootstrap_service_is_blocked_until_approval_then_prepares_only(
+def test_ui_bootstrap_service_uses_pragmatic_policy_and_prepares_only(
     input_dir, upstream_campaign, tmp_path
 ):
     from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
@@ -443,24 +303,15 @@ def test_ui_bootstrap_service_is_blocked_until_approval_then_prepares_only(
         physical_hash_provider=lambda: "b" * 64,
         dirty_provider=lambda: (),
     )
-    blocked = service.status({})
-    assert blocked["lifecycle"] == "blocked_missing_approved_timestep"
-    assert len(blocked["sources"]) == 1
+    ready = service.status({})
+    assert ready["lifecycle"] == "ready"
+    assert ready["timestep_policy"]["convergence_claim"] == "not_established"
+    assert len(ready["sources"]) == 1
     assert not (tmp_path / "data/optimization/mot_3d").exists()
     with pytest.raises(ValueError, match="status request is invalid"):
         service.status({"secret": True})
 
-    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
-        upstream_campaign, input_dir
-    )
     roles = mot_3d_campaign.freeze_inputs(input_dir)
-    approval = _approved_timestep_record(tmp_path, upstream, roles)
-    canonical = tmp_path / "lab_setup/specifications/mot_3d_timestep_approval_v1.json"
-    canonical.parent.mkdir(parents=True)
-    approval.rename(canonical)
-
-    ready = service.status({})
-    assert ready["lifecycle"] == "ready"
     source = ready["sources"][0]
     preview = service.preview(
         {"source_id": source["source_id"], "campaign_name": "new-3d"},
@@ -544,15 +395,6 @@ def test_ui_bootstrap_confirm_never_replaces_racing_destination(
 ):
     import workflow_api.mot_3d_bootstrap as bootstrap
 
-    upstream = mot_3d_campaign.validate_upstream_2d_campaign(
-        upstream_campaign, input_dir
-    )
-    approval = _approved_timestep_record(
-        tmp_path, upstream, mot_3d_campaign.freeze_inputs(input_dir)
-    )
-    canonical = tmp_path / "lab_setup/specifications/mot_3d_timestep_approval_v1.json"
-    canonical.parent.mkdir(parents=True)
-    approval.rename(canonical)
     service = bootstrap.Mot3DDiscoveryBootstrapService(
         tmp_path,
         token_factory=lambda: "preview-token",
@@ -884,7 +726,7 @@ def test_submission_preserves_partial_failure_record(
     assert saved["families"]["angled_donut"]["rounds"][0]["job_id"] == "101[].zeus"
 
 
-def test_early_submission_does_not_poison_later_valid_submission(
+def test_new_policy_campaign_is_immediately_discovery_eligible(
     input_dir, upstream_campaign, tmp_path, monkeypatch
 ):
     monkeypatch.setattr(mot_3d_campaign, "_revision", lambda: "abc123")
@@ -899,18 +741,6 @@ def test_early_submission_does_not_poison_later_valid_submission(
             output_dir=str(root),
         )
     )
-    calls = []
-    with pytest.raises(RuntimeError, match="blocked at stage"):
-        mot_3d_campaign.submit_discovery(
-            root, qsub=lambda command: calls.append(command)
-        )
-    assert calls == []
-    assert not (root / "discovery_submission.json").exists()
-
-    manifest_path = root / "campaign.json"
-    manifest = json.loads(manifest_path.read_text())
-    manifest["stage"] = "discovery"
-    manifest_path.write_text(json.dumps(manifest))
     identifiers = iter([f"{index}[].zeus" for index in range(5)])
     result = mot_3d_campaign.submit_discovery(
         root, qsub=lambda command: next(identifiers)
@@ -1110,7 +940,7 @@ def test_stage_design_changes_with_particle_sampling_identity(tmp_path):
     )
 
 
-def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path, monkeypatch):
+def test_formal_timestep_gate_is_retired_without_mutating_old_campaign(tmp_path, monkeypatch):
     root = tmp_path / "campaign"
     root.mkdir()
     manifest_path = root / "campaign.json"
@@ -1159,12 +989,12 @@ def test_timestep_gate_requires_exact_approved_frozen_design(tmp_path, monkeypat
     monkeypatch.setattr(
         "studies.mot_3d.timestep_validation.merge", lambda root, write=False: payload
     )
-    mot_3d_campaign.approve_timestep(
-        Namespace(campaign=str(root), evidence=str(evidence))
-    )
-    updated = json.loads((root / "campaign.json").read_text())
-    assert updated["stage"] == "discovery"
-    assert updated["design"]["timestep_evidence"]["sha256"]
+    before = manifest_path.read_bytes()
+    with pytest.raises(RuntimeError, match="Formal timestep approval is retired"):
+        mot_3d_campaign.approve_timestep(
+            Namespace(campaign=str(root), evidence=str(evidence))
+        )
+    assert manifest_path.read_bytes() == before
 
 
 def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
@@ -1198,7 +1028,7 @@ def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
             }
         )
     )
-    with pytest.raises(ValueError, match="canonical campaign evidence"):
+    with pytest.raises(RuntimeError, match="Formal timestep approval is retired"):
         mot_3d_campaign.approve_timestep(
             Namespace(campaign=str(root), evidence=str(evidence))
         )

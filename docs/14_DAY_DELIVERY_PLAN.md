@@ -19,11 +19,10 @@ polish. No scientific default may change without explicit approval.
 
 ## Workstream A — 3D-MOT scientific results
 
-1. Complete paired timestep convergence validation on the new sealed 2D-MOT
-   survivors. Compare 10, 5, 2.5, 1.25, and 0.625 microseconds against the
-   0.3125-microsecond reference for both families.
-2. Approve screening and final timesteps only from the registered convergence
-   evidence.
+1. Preserve the inconclusive 2026-10-10 timestep study and its limitations.
+2. Apply the approved pragmatic policy only to a new campaign: `10 us` for
+   search/optimization and `0.625 us` for sealed final validation, without a
+   convergence claim.
 3. Run smoke checks, discovery, focused refinement, independent confirmation,
    sensitivity analysis, and sealed final validation.
 4. Preserve separate input roles and paired uncertainty calculations.
@@ -148,8 +147,8 @@ blocked rather than merely warned about.
 ### Days 1–2
 
 - Close the external UI review findings and test the repaired CI gates.
-- Monitor and merge 3D timestep validation; submit discovery immediately after
-  evidence approval.
+- Preserve the inconclusive 3D timestep study, create a new policy-bound
+  campaign and submit Discovery only after its frozen plan is reviewed.
 
 ### Days 3–4
 

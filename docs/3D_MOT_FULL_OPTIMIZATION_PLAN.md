@@ -51,7 +51,9 @@ secondary diagnostics are usable-at-least-once count, peak usable count,
 population versus time, loss after the peak, and an exponential lifetime only
 when the decay tail passes the existing fit checks.
 
-All stages use `RK4StHybridCustom`, the timestep in `MOT_3D_SIM_CONFIG`, gravity,
+All stages use `RK4StHybridCustom` and gravity. Search/optimization stages use
+the policy-frozen `10 us` timestep; sealed final validation uses `0.625 us`.
+This is a pragmatic runtime policy, not a convergence claim. All stages retain
 the same physical capture definition, and the same input ordering. Candidate
 comparisons within a stage use common initial particles and matched recoil
 seeds: the same recoil-seed index is applied to every candidate being compared,

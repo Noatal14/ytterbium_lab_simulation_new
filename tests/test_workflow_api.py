@@ -334,19 +334,61 @@ def test_importing_workflow_api_does_not_import_submit_modules():
 
 def _write_3d_manifest(root, *, stage="discovery", stages=None):
     root.mkdir(parents=True, exist_ok=True)
-    evidence = root / "dt_evidence.json"
-    evidence.write_text('{"status": "approved"}', encoding="utf-8")
-    evidence_sha = hashlib.sha256(evidence.read_bytes()).hexdigest()
+    from lab_setup.mot_3d_timestep_policy import (
+        MOT_3D_TIMESTEP_POLICY,
+        MOT_3D_TIMESTEP_POLICY_SHA256,
+        MOT_3D_TIMESTEP_POLICY_VERSION,
+    )
+    from workflow_api.mot_3d_provenance import input_registry_digest
+    input_roles = {
+        role: [
+            {
+                "zeeman_seed": 3015 + index,
+                "mot_seed": 43015 + index,
+                "sha256": f"{index + 1:064x}",
+                "metadata_sha256": f"{index + 11:064x}",
+                "shape": [1, 6],
+                "dtype": "float64",
+                "n_survivors": 1,
+                "source_design": {"kind": "test"},
+                "source_parameters": {"s0": 1.3},
+            }
+        ]
+        for index, role in enumerate(
+            ("discovery", "refinement", "preliminary_check")
+        )
+    }
     manifest = {
         "kind": "mot_3d_campaign_v2",
         "name": "3d-example",
         "stage": stage,
         "provenance": {"git_commit": "abc123"},
-        "upstream_2d_campaign": {"campaign_path": "/archive/2d/campaign.json"},
+        "upstream_2d_campaign": {
+            "campaign_path": "/archive/2d/campaign.json",
+            "campaign_sha256": "a" * 64,
+            "final_report_sha256": "b" * 64,
+        },
+        "input_roles": input_roles,
         "design": {
             "families": ["angled_donut", "single_pass"],
-            "timestep_status": "approved_by_paired_convergence_validation",
-            "timestep_evidence": {"path": str(evidence), "sha256": evidence_sha},
+            "solver": "RK4StHybridCustom",
+            "screening_dt_s": 10e-6,
+            "production_dt_s": 0.625e-6,
+            "timestep_status": "pragmatic_user_approved_not_converged",
+            "timestep_evidence": {
+                "policy_spec_version": MOT_3D_TIMESTEP_POLICY_VERSION,
+                "policy_sha256": MOT_3D_TIMESTEP_POLICY_SHA256,
+                "policy_status": MOT_3D_TIMESTEP_POLICY["status"],
+                "convergence_claim": "not_established",
+                "inconclusive_evidence": dict(
+                    MOT_3D_TIMESTEP_POLICY["inconclusive_evidence"]
+                ),
+                "source_handoff": {
+                    "campaign_sha256": "a" * 64,
+                    "final_report_sha256": "b" * 64,
+                    "input_registry_sha256": input_registry_digest(input_roles),
+                },
+            },
             "optimization_bounds": {
                 "angled_donut": {"total_discovery_trials": 3},
                 "single_pass": {"total_discovery_trials": 3},
@@ -401,6 +443,41 @@ def test_read_3d_campaign_reports_discovery_progress_and_safe_plan(tmp_path):
     )
     assert not summary.next_plan.submission_enabled
     assert summary.next_plan.artifacts[0].path == chain.resolve()
+
+
+@pytest.mark.parametrize(
+    "tamper",
+    [
+        "policy_sha256",
+        "convergence_claim",
+        "search_dt",
+        "handoff",
+        "evidence_extra",
+        "handoff_extra",
+    ],
+)
+def test_read_3d_rejects_tampered_pragmatic_policy(tmp_path, tamper):
+    root = tmp_path / "campaign"
+    manifest = _write_3d_manifest(root)
+    evidence = manifest["design"]["timestep_evidence"]
+    if tamper == "policy_sha256":
+        evidence["policy_sha256"] = "0" * 64
+    elif tamper == "convergence_claim":
+        evidence["convergence_claim"] = "established"
+    elif tamper == "search_dt":
+        manifest["design"]["screening_dt_s"] = 5e-6
+    elif tamper == "handoff":
+        evidence["source_handoff"]["input_registry_sha256"] = "f" * 64
+    elif tamper == "evidence_extra":
+        evidence["unknown"] = "0" * 64
+    else:
+        evidence["source_handoff"]["unknown"] = "0" * 64
+    (root / "campaign.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    summary = read_3d_campaign(root)
+
+    assert summary.next_plan is None
+    assert any("timestep policy" in warning for warning in summary.warnings)
 
 
 def test_generic_dispatch_and_cli_inspect_3d(tmp_path, capsys):
@@ -620,8 +697,11 @@ def test_read_3d_does_not_forge_timestep_completion(tmp_path, status, evidence):
     root = tmp_path / "campaign"
     manifest = _write_3d_manifest(root)
     manifest["design"]["timestep_status"] = status
-    if not evidence:
-        manifest["design"]["timestep_evidence"]["path"] = str(root / "missing.json")
+    if status == "approved_by_paired_convergence_validation":
+        manifest["design"]["timestep_evidence"] = {
+            "path": str(root / ("legacy.json" if evidence else "missing.json")),
+            "sha256": "d" * 64,
+        }
     (root / "campaign.json").write_text(json.dumps(manifest), encoding="utf-8")
 
     summary = read_3d_campaign(root)

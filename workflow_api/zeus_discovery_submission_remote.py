@@ -340,7 +340,7 @@ def main() -> None:
         "source_2d_campaign_sha256",
         "source_2d_final_report_sha256",
         "input_registry_sha256",
-        "timestep_approval_sha256",
+        "timestep_policy_sha256",
         "files",
         "completed_unix_s",
     }
@@ -360,7 +360,7 @@ def main() -> None:
                 "source_2d_campaign_sha256",
                 "source_2d_final_report_sha256",
                 "input_registry_sha256",
-                "timestep_approval_sha256",
+                "timestep_policy_sha256",
             )
         )
     ):
@@ -373,7 +373,7 @@ def main() -> None:
             "source_2d_campaign_sha256": receipt["source_2d_campaign_sha256"],
             "source_2d_final_report_sha256": receipt["source_2d_final_report_sha256"],
             "input_registry_sha256": receipt["input_registry_sha256"],
-            "timestep_approval_sha256": receipt["timestep_approval_sha256"],
+            "timestep_policy_sha256": receipt["timestep_policy_sha256"],
             "files": files,
             "nonce": receipt["nonce"],
         }

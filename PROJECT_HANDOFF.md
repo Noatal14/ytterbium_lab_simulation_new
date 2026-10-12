@@ -437,7 +437,9 @@ Before changing code or interpreting results:
    exists. A campaign manifest or individual-run record freezes the exact
    resolved values used by that run; do not silently upgrade or reinterpret
    those historical values.
-3. Do not treat provisional 3D-MOT values as finalized design choices.
+3. Treat 3D geometry/optima as provisional. The timestep policy is operational:
+   `10 us` for search/optimization and `0.625 us` for sealed final validation,
+   but it explicitly does not claim convergence and applies only to new campaigns.
 4. Treat current curated `data/` results as valid unless new concrete evidence
    demonstrates a problem.
 5. Preserve reproducibility and do not overwrite accepted datasets silently.

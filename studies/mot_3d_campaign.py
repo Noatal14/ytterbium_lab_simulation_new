@@ -31,8 +31,14 @@ from lab_setup.physical_specification import (
     attest_canonical_zeeman_metadata,
     validate_laboratory_provenance_identity,
 )
+from lab_setup.mot_3d_timestep_policy import (
+    MOT_3D_TIMESTEP_POLICY,
+    MOT_3D_TIMESTEP_POLICY_SHA256,
+    MOT_3D_TIMESTEP_POLICY_VERSION,
+)
 from utils.file_helpers import save_file_json
 from utils.data_paths import load_particle_states
+from workflow_api.mot_3d_provenance import input_registry_digest
 
 
 FAMILIES = ("angled_donut", "single_pass")
@@ -49,6 +55,9 @@ CAMPAIGN_FILES = (
     "lab_setup/strict_specification.py",
     "lab_setup/numerical_policy.py",
     "lab_setup/specifications/numerical_policy_v1.json",
+    "lab_setup/mot_3d_timestep_policy.py",
+    "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+    "docs/evidence/mot_3d_timestep_20261010_inconclusive.json",
     "lab_setup/laser_setup_3d.py",
     "simulations/mot_3d.py",
     "studies/mot_3d_campaign.py",
@@ -942,7 +951,7 @@ def prepare_finalist_selection(root, manifest):
     selections, worker_jobs, merge_jobs = {}, {}, {}
     jobs = root / "jobs" / "finalist_selection"
     manifest_path = root / "campaign.json"
-    dt = manifest["design"]["production_dt_s"]
+    dt = manifest["design"]["screening_dt_s"]
     for family in FAMILIES:
         summary = root / "closure" / family / "merged" / "refinement_summary.json"
         if not summary.is_file():
@@ -1654,8 +1663,8 @@ def build_campaign_manifest(
     roles,
     revision,
     physical_model_sha256,
-    stage="dt_validation_required",
-    timestep_status="provisional_pending_3d_validation",
+    stage="discovery",
+    timestep_status="pragmatic_user_approved_not_converged",
     timestep_evidence=None,
 ):
     """Build the canonical manifest model shared by CLI and UI preparation."""
@@ -1727,8 +1736,20 @@ def create(args):
     )
     revision = _revision()
     root.mkdir(parents=True, exist_ok=True)
-    # CLI creation remains the one-off calibration entrypoint.  The UI may
-    # enter Discovery directly only through separately pinned approval evidence.
+    timestep_evidence = {
+        "policy_spec_version": MOT_3D_TIMESTEP_POLICY_VERSION,
+        "policy_sha256": MOT_3D_TIMESTEP_POLICY_SHA256,
+        "policy_status": MOT_3D_TIMESTEP_POLICY["status"],
+        "convergence_claim": MOT_3D_TIMESTEP_POLICY["convergence_claim"],
+        "inconclusive_evidence": dict(
+            MOT_3D_TIMESTEP_POLICY["inconclusive_evidence"]
+        ),
+        "source_handoff": {
+            "campaign_sha256": upstream["campaign_sha256"],
+            "final_report_sha256": upstream["final_report_sha256"],
+            "input_registry_sha256": input_registry_digest(roles),
+        },
+    }
     manifest = build_campaign_manifest(
         name=args.name,
         input_directory=args.input_dir,
@@ -1736,6 +1757,7 @@ def create(args):
         roles=roles,
         revision=revision,
         physical_model_sha256=_relevant_hash(),
+        timestep_evidence=timestep_evidence,
     )
     save_file_json(root / "campaign.json", manifest)
     smoke, rounds, submitter = write_discovery_jobs(
@@ -1765,6 +1787,13 @@ def status(args):
 
 
 def approve_timestep(args):
+    raise RuntimeError(
+        "Formal timestep approval is retired. The 2026-10-10 study remains "
+        "archived as inconclusive; create a new campaign under the versioned "
+        "pragmatic timestep policy instead of mutating this provisional campaign."
+    )
+    # Historical validation implementation is retained below for reconstructing
+    # the former one-off workflow, but is intentionally unreachable.
     from studies.mot_3d.timestep_validation import (
         BOOTSTRAP_REPLICATES,
         EVIDENCE_FORMAT_VERSION,

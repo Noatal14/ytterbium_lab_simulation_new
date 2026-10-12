@@ -11,10 +11,15 @@ export type Mot3DSource = {
 };
 
 export type Mot3DBootstrapStatus = {
-  lifecycle: "ready" | "blocked_missing_approved_timestep";
+  lifecycle: "ready";
   sources: Mot3DSource[];
-  reason: string | null;
-  evidence_requirement: string | null;
+  reason: null;
+  evidence_requirement: null;
+  timestep_policy: {
+    status: "pragmatic_user_approved_after_inconclusive_study";
+    convergence_claim: "not_established";
+    sha256: string;
+  };
 };
 
 export type Mot3DBootstrapPreview = {
@@ -27,6 +32,8 @@ export type Mot3DBootstrapPreview = {
     solver: string;
     screening_dt_s: number;
     production_dt_s: number;
+    timestep_policy_status: "pragmatic_user_approved_after_inconclusive_study";
+    convergence_claim: "not_established";
     input_role_counts: { discovery: 12; refinement: 4; preliminary_check: 4 };
   };
   artifacts: { create: string[] };
@@ -80,10 +87,6 @@ const finitePositive = (value: unknown): value is number =>
 const integer = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value);
 
-function nullableText(value: unknown): value is string | null {
-  return value === null || boundedPrintable(value, 512);
-}
-
 function parseSource(value: unknown): Mot3DSource {
   const row = exactObject(
     value,
@@ -117,15 +120,29 @@ export function parseMot3DBootstrapStatus(
 ): Mot3DBootstrapStatus {
   const row = exactObject(
     value,
-    ["lifecycle", "sources", "reason", "evidence_requirement"],
+    [
+      "lifecycle",
+      "sources",
+      "reason",
+      "evidence_requirement",
+      "timestep_policy",
+    ],
+    "Invalid 3D bootstrap status.",
+  );
+  const policy = exactObject(
+    row.timestep_policy,
+    ["status", "convergence_claim", "sha256"],
     "Invalid 3D bootstrap status.",
   );
   if (
-    (row.lifecycle !== "ready" &&
-      row.lifecycle !== "blocked_missing_approved_timestep") ||
+    row.lifecycle !== "ready" ||
     !Array.isArray(row.sources) ||
-    !nullableText(row.reason) ||
-    !nullableText(row.evidence_requirement)
+    row.reason !== null ||
+    row.evidence_requirement !== null ||
+    policy.status !== "pragmatic_user_approved_after_inconclusive_study" ||
+    policy.convergence_claim !== "not_established" ||
+    !text(policy.sha256) ||
+    !SHA256.test(policy.sha256)
   )
     throw new Error("Invalid 3D bootstrap status.");
   const sources = row.sources.map(parseSource);
@@ -133,13 +150,7 @@ export function parseMot3DBootstrapStatus(
     new Set(sources.map((source) => source.source_id)).size !== sources.length
   )
     throw new Error("Invalid 3D bootstrap status.");
-  if (
-    row.lifecycle === "ready"
-      ? row.reason !== null || row.evidence_requirement !== null
-      : row.reason === null || row.evidence_requirement === null
-  )
-    throw new Error("Invalid 3D bootstrap status.");
-  return { ...row, sources } as Mot3DBootstrapStatus;
+  return { ...row, sources, timestep_policy: policy } as Mot3DBootstrapStatus;
 }
 
 export function parseMot3DBootstrapPreview(
@@ -171,6 +182,8 @@ export function parseMot3DBootstrapPreview(
       "solver",
       "screening_dt_s",
       "production_dt_s",
+      "timestep_policy_status",
+      "convergence_claim",
       "input_role_counts",
     ],
     "Invalid 3D bootstrap preview.",
@@ -210,9 +223,11 @@ export function parseMot3DBootstrapPreview(
     discovery.families[0] !== "angled_donut" ||
     discovery.families[1] !== "single_pass" ||
     discovery.solver !== "RK4StHybridCustom" ||
-    !finitePositive(discovery.screening_dt_s) ||
-    !finitePositive(discovery.production_dt_s) ||
-    discovery.screening_dt_s < discovery.production_dt_s ||
+    discovery.screening_dt_s !== 10e-6 ||
+    discovery.production_dt_s !== 0.625e-6 ||
+    discovery.timestep_policy_status !==
+      "pragmatic_user_approved_after_inconclusive_study" ||
+    discovery.convergence_claim !== "not_established" ||
     counts.discovery !== 12 ||
     counts.refinement !== 4 ||
     counts.preliminary_check !== 4 ||

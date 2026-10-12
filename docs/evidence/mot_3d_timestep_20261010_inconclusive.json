@@ -1,0 +1,10 @@
+{
+  "kind": "mot_3d_timestep_study_archive_v1",
+  "campaign_name": "mot_3d_s0_1p3_20261010_v1",
+  "study_date": "2026-10-10",
+  "reported_status": "inconclusive_degenerate_sentinel",
+  "interpretation": "The run did not establish timestep convergence and is retained only as provenance for the pragmatic runtime decision.",
+  "artifact_availability": "reported_on_zeus_not_imported",
+  "tasks_sha256": null,
+  "raw_result_registry_sha256": null
+}

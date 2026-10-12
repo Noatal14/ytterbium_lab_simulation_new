@@ -515,9 +515,9 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 
 MOT_3D_SIM_CONFIG = {
     "t_max_s": _NUMERICS["mot_3d"]["t_max_s"],
-    # Provisional values only.  The 0.625-us production value is supported by
-    # the 2D-MOT convergence study, not yet by a 3D-MOT convergence study.
-    # A new campaign must pass its paired dt-validation gate before discovery.
+    # Pragmatic, explicitly non-converged policy: use 10 us for all search and
+    # optimization stages, then 0.625 us for sealed final validation.  The
+    # versioned policy records the inconclusive study and user decision.
     "dt_s": _NUMERICS["mot_3d"]["dt_s"],
     "screening_dt_s": _NUMERICS["mot_3d"]["screening_dt_s"],
     "production_dt_s": _NUMERICS["mot_3d"]["production_dt_s"],

@@ -22,7 +22,7 @@ to this baseline deliberate and reviewable.
 | Remaining shared operating values | `config.py`: `FORCE_SCALE_N`; search bounds in `studies/mot_2d/optimization.py` | Simulation engines, studies, and executable campaign design | Scientific review; keep outside the generic 2D operating contract until separately migrated |
 | Executable 2D campaign science | `workflow_api/mot_2d_spec.py`: `ROLE_SEEDS`, `RELEVANT_FILES`, `FIXED_DESIGN`; orchestration constants in `studies/mot_2d_s0_campaign.py` | Campaign planner, runner, repository snapshot | Campaign design/provenance review |
 | Versioned 2D UI/job contract | `workflow_api/specifications/mot_2d_v1.json`, validated by `workflow_api/mot_2d_specification.py` | UI mutation and Zeus transfer presentation | Contract/schema review and generated-artifact verification |
-| 3D MOT | `config.py`: `MOT_3D_CONFIGURATIONS`, `MOT_3D_OPTIMIZATION_CONFIG`, `MOT_3D_SIM_CONFIG`, `MOT_3D_CAPTURE_CONFIG` | `lab_setup/laser_setup_3d.py`, `simulations/mot_3d.py`, `studies/mot_3d_campaign.py`, `studies/mot_3d/**` | Scientific review and new campaign identity |
+| 3D MOT | Geometry/bounds/capture remain in `config.py`; `lab_setup/specifications/mot_3d_timestep_policy_v1.json` owns the pragmatic search/final-validation timestep decision and its inconclusive provenance | `lab_setup/laser_setup_3d.py`, `simulations/mot_3d.py`, `studies/mot_3d_campaign.py`, `studies/mot_3d/**` | Scientific review, versioned policy change and new campaign identity |
 | Full-pipeline numerics | `config.py`: `FULL_SIM_CONFIG`, `DEFAULT_NUM_*`, `DEFAULT_RANDOM_SEED` | `simulations/pipeline.py`, simulation entry points and studies | Numerical validation |
 | Campaign serialization and provenance | `workflow_api/mot_2d_spec.py`, `studies/mot_2d_s0_campaign.py`, `studies/mot_3d_campaign.py`, `utils/file_helpers.py` | Generated manifests, PBS files, merge/final-report stages | Schema/design changes require regression tests; manifests freeze exact runs |
 
@@ -31,7 +31,9 @@ laboratory specification owns stable measured physical identity and the
 canonical Zeeman array; the Zeeman model-conventions specification owns the
 coordinate/sign/azimuth and software construction semantics; the
 numerical-policy specification owns reusable solver, timestep, horizon, and
-3D timestep-validation defaults; the generic 2D-MOT operating specification
+historical 3D timestep-study grid; the 3D timestep-policy specification owns
+the approved pragmatic stage mapping and explicitly makes no convergence claim;
+the generic 2D-MOT operating specification
 owns only its reusable five-field baseline; `config.py` preserves the public
 compatibility facade and owns only remaining reusable operating defaults;
 `workflow_api/mot_2d_spec.py` owns executable 2D campaign science; and the
@@ -66,12 +68,14 @@ direction, oven/source settings, every stored Zeeman profile, complete 2D and
 3D configuration trees, `FULL_SIM_CONFIG`, runtime defaults, executable 2D
 campaign design, the complete versioned 2D UI/job contract, and 3D campaign
 seed/round defaults.  Canonical sorted JSON for this payload has SHA-256
-`7ab56fadf365f6ec57d41860fa7ef4eaaf29f6e979aa16396bcbe378167ce74c`.
+`8de38dc91305491665540304f6ae6eb4cc7321ac9d9479797431ba24aab97750`.
 
 - 2D production timestep: `0.625 us`; 2D campaign working timestep:
   `1.25 us`; solver: `RK4StHybridCustom`.
-- 3D screening/production/reference timesteps: `1.25 us`, `0.625 us`, and
-  `0.3125 us`.  Candidate validation grid: `10, 5, 2.5, 1.25, 0.625 us`.
+- 3D search/optimization timestep: `10 us`; sealed final-validation timestep:
+  `0.625 us`. `mot_3d_timestep_policy_v1.json` owns the pragmatic decision and
+  explicitly records that convergence was not established. The historical
+  one-off grid/reference remain `10, 5, 2.5, 1.25, 0.625 us` and `0.3125 us`.
 - Active 3D presentation configuration: `angled_donut`; the campaign still
   evaluates both `angled_donut` and `single_pass`.
 - 2D sealed-validation Zeeman seeds: `3015..3034`.  The 3D handoff expects

@@ -50,7 +50,7 @@ EXPECTED_CONFIG_CONSUMERS = {
     "workflow_api/zeeman_local_execution.py", "workflow_api/zeeman_run_plan.py",
     "workflow_api/zeeman_run_specification.py", "workflow_api/mot_2d_run_plan.py",
     "workflow_api/mot_2d_run_specification.py",
-    "workflow_api/mot_3d_plan.py",
+    "workflow_api/mot_3d.py", "workflow_api/mot_3d_plan.py",
 }
 EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
     "studies/mot_2d_s0_campaign.py", "workflow_api/mot_2d_plan.py",
@@ -68,6 +68,7 @@ EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
 EXPECTED_ZEEMAN_OPERATING_CONSUMERS = {"config.py"}
 EXPECTED_MOT_2D_OPERATING_CONSUMERS = {"config.py"}
 EXPECTED_STRICT_SPECIFICATION_CONSUMERS = {
+    "lab_setup/mot_3d_timestep_policy.py",
     "lab_setup/mot_2d_operating_specification.py",
     "lab_setup/numerical_policy.py",
     "lab_setup/physical_specification.py",
@@ -210,7 +211,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     assert _canonical_sha256(payload) == (
-        "246b66ee690e1bb0aa8c0b243bc1fba159559f793b79d4a48dd0610d47f50270"
+        "8de38dc91305491665540304f6ae6eb4cc7321ac9d9479797431ba24aab97750"
     )
 
 

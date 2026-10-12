@@ -28,6 +28,11 @@ const status = {
   sources: [source],
   reason: null,
   evidence_requirement: null,
+  timestep_policy: {
+    status: "pragmatic_user_approved_after_inconclusive_study" as const,
+    convergence_claim: "not_established" as const,
+    sha256: "d".repeat(64),
+  },
 };
 const preview = {
   preview_token: "token",
@@ -40,8 +45,11 @@ const preview = {
       "single_pass",
     ],
     solver: "RK4StHybridCustom",
-    screening_dt_s: 1.25e-6,
+    screening_dt_s: 10e-6,
     production_dt_s: 0.625e-6,
+    timestep_policy_status:
+      "pragmatic_user_approved_after_inconclusive_study" as const,
+    convergence_claim: "not_established" as const,
     input_role_counts: {
       discovery: 12 as const,
       refinement: 4 as const,
@@ -95,6 +103,21 @@ describe("3D bootstrap strict contracts", () => {
     expect(() =>
       parseMot3DBootstrapStatus({
         ...status,
+        lifecycle: "blocked_missing_approved_timestep",
+      }),
+    ).toThrow();
+    expect(() =>
+      parseMot3DBootstrapStatus({
+        ...status,
+        timestep_policy: {
+          ...status.timestep_policy,
+          convergence_claim: "established",
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      parseMot3DBootstrapStatus({
+        ...status,
         sources: [{ ...source, campaign_name: "unsafe\nname" }],
       }),
     ).toThrow();
@@ -116,7 +139,28 @@ describe("3D bootstrap strict contracts", () => {
     ).toThrow();
     expect(() =>
       parseMot3DBootstrapPreview(
+        {
+          ...preview,
+          discovery: {
+            ...preview.discovery,
+            timestep_policy_status: "approved_by_paired_convergence_validation",
+          },
+        },
+        { sourceId: hash, campaignName: "mot_3d_run" },
+      ),
+    ).toThrow();
+    expect(() =>
+      parseMot3DBootstrapPreview(
         { ...preview, discovery: { ...preview.discovery, solver: "other" } },
+        { sourceId: hash, campaignName: "mot_3d_run" },
+      ),
+    ).toThrow();
+    expect(() =>
+      parseMot3DBootstrapPreview(
+        {
+          ...preview,
+          discovery: { ...preview.discovery, screening_dt_s: 1.25e-6 },
+        },
         { sourceId: hash, campaignName: "mot_3d_run" },
       ),
     ).toThrow();
@@ -134,26 +178,21 @@ describe("3D bootstrap strict contracts", () => {
     ).toThrow();
   });
 
-  it("shows a truthful fail-closed state without exposing timestep controls", async () => {
-    const blocked = api({
-      status: vi
-        .fn()
-        .mockResolvedValue({
-          lifecycle: "blocked_missing_approved_timestep",
-          sources: [],
-          reason: "The convergence result is not approved.",
-          evidence_requirement: "Approve the separate study.",
-        }),
-    });
-    render(<Mot3DCampaignCreation api={blocked} onBack={vi.fn()} />);
+  it("shows the pragmatic policy read-only and requires a new campaign", async () => {
+    render(<Mot3DCampaignCreation api={api()} onBack={vi.fn()} />);
     expect(
       await screen.findByRole("heading", {
-        name: /waiting for an approved timestep/i,
+        name: /Create a 3D-MOT Discovery campaign/i,
       }),
     ).toHaveFocus();
     expect(
-      screen.getByText(/will not substitute a provisional timestep/i),
+      screen.getByText(/older inconclusive 3D campaign cannot be resumed/i),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Search stages use 10 µs/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/timestep convergence is not established/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/timestep policy is read-only/i)).toBeInTheDocument();
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
   });
 
@@ -176,8 +215,11 @@ describe("3D bootstrap strict contracts", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/does not rerun timestep validation/i),
+      screen.getByText(/one-off study was inconclusive/i),
     ).toBeInTheDocument();
+    expect(screen.getByText("10 µs")).toBeInTheDocument();
+    expect(screen.getByText("0.625 µs")).toBeInTheDocument();
+    expect(screen.getByText("Not established")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: /Create Discovery campaign/i }),
     );
