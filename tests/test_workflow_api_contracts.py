@@ -68,6 +68,7 @@ class _Mot3DIndividualService(_IndividualService):
     def sources(self): return self.payloads["mot3d-sources"]
     def preview(self,payload,*,session_id): return self._result("mot3d-run-preview",payload,session_id)
     def confirm(self,payload,*,session_id): return self._result("mot3d-run-confirm",payload,session_id)
+    def start_local(self,payload,*,session_id): return self._result("mot3d-local-start",payload,session_id)
 
 
 @contextmanager
@@ -161,7 +162,7 @@ def collect_errors():
 def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     expected=_load("workflow_api_success.json");first,ledger,headers=collect_success(monkeypatch);second,_,_=collect_success(monkeypatch)
     assert first==second==expected
-    assert len(first["cases"])==67 and len({(row["method"],row["path"]) for row in first["cases"]})==67
+    assert len(first["cases"])==68 and len({(row["method"],row["path"]) for row in first["cases"]})==68
     assert all(row["body"].get("api_version")==1 for row in first["cases"])
     assert all(all(value==expected["common_headers"][key] for key,value in header.items() if key in expected["common_headers"]) for header in headers)
     assert [entry[0] for entry in ledger] == [
@@ -188,7 +189,7 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "production-status", "production-preview", "production-confirm",
         "production-submit-status", "production-submit-preview", "production-submit-confirm",
         "finalization-status", "finalization-preview", "finalization-confirm",
-        "mot3d-run-preview", "mot3d-run-confirm",
+        "mot3d-run-preview", "mot3d-run-confirm", "mot3d-local-start",
     ]
     session_ids={entry[2] for entry in ledger if entry[2] is not None};assert len(session_ids)==1
     assert all(entry[1] == ({"preview_token": "token"} if entry[0] == "creation-confirm" else {}) for entry in ledger)
@@ -206,7 +207,7 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
     post_cases = [row for row in expected["cases"] if row["method"] == "POST"]
 
     assert ReadOnlyWorkflowHandler is WorkflowHandler
-    assert len(POST_ROUTES) == len(post_cases) == 59
+    assert len(POST_ROUTES) == len(post_cases) == 60
     assert set(POST_ROUTES) == {row["path"] for row in post_cases}
     assert all(route.path == path for path, route in POST_ROUTES.items())
     assert all(route.success_status == row["status"] for row in post_cases for route in [POST_ROUTES[row["path"]]])
@@ -277,6 +278,7 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             ("/api/v1/individual-runs/mot-2d/zeus/refresh","individual_mot_2d_api","refresh_zeus","session_kw",200,"individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.","Exception"),
             ("/api/v1/individual-runs/mot-3d/preview","individual_mot_3d_api","preview","session_kw",200,"individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.","Exception"),
             ("/api/v1/individual-runs/mot-3d/confirm","individual_mot_3d_api","confirm","session_kw",201,"individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.","Exception"),
+            ("/api/v1/individual-runs/mot-3d/local/start","individual_mot_3d_api","start_local","session_kw",202,"individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.","Exception"),
         ]
 
 

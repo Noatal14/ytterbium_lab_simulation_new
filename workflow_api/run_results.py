@@ -565,9 +565,12 @@ def _validate_publication_plan_at(
     if retained:
         if receipt is not None or state_evidence is None:
             raise RunRecordError("Retained states have an invalid disposition.")
-        captured = result["metrics"].get(
-            "n_survivors" if family == "mot_2d" else "captured"
+        captured_field = (
+            "n_survivors" if family == "mot_2d"
+            else "residence_qualified_captured_count" if family == "mot_3d"
+            else "captured"
         )
+        captured = result["metrics"].get(captured_field)
         if (
             isinstance(captured, bool)
             or not isinstance(captured, int)

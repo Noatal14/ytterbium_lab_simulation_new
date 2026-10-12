@@ -75,7 +75,11 @@ def _preview_dto(plan: Mot3DRunPlan) -> dict[str, Any]:
         "run_id": records["run"]["run_id"], "family": "mot_3d",
         "source": {"id": plan.review.source_id, "kind": source["kind"], "qualification": plan.review.source_qualification, "fingerprint": source["fingerprint"], "pooled_particle_count": source["pooled_particle_count"]},
         "selection": {"algorithm": sampling["algorithm"], "version": sampling["version"], "seed": sampling["selection_seed"], "selected_count": sampling["selected_count"], "selected_identities_sha256": sampling["selected_identities_sha256"]},
-        "geometry": {"family": plan.review.geometry_family, "parameters": dict(plan.review.parameters)},
+        "geometry": {
+            "family": plan.review.geometry_family,
+            "parameters": dict(plan.review.parameters),
+            "derived_parameters": dict(resolved["mot_3d"]["derived_parameters"]),
+        },
         "execution": {"mode": plan.review.execution_mode, "particle_count": plan.review.particle_count, "simulation_seed": plan.review.simulation_seed},
         "retention": {"particle_states": plan.review.retain_particle_states},
         "suitability": plan.review.suitability, "output_disposition": plan.review.output_disposition,

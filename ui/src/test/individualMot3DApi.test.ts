@@ -24,7 +24,7 @@ const preview = () => ({
     run_id: "mot3d-test", family: "mot_3d",
     source: { id: sourceId, kind: "canonical_2d_campaign", qualification: "canonical_campaign_source", fingerprint: "b".repeat(64), pooled_particle_count: 100 },
     selection: { algorithm: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.sampling.algorithm, version: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.sampling.version, seed: 1, selected_count: 20, selected_identities_sha256: "c".repeat(64) },
-    geometry: { family: "angled_donut", parameters: { ...request.parameters } },
+    geometry: { family: "angled_donut", parameters: { ...request.parameters }, derived_parameters: {} },
     execution: { mode: "local", particle_count: 20, simulation_seed: 2 },
     retention: { particle_states: false }, suitability: "individual_only",
     output_disposition: "discard_survivor_states_after_summary",
@@ -53,6 +53,49 @@ const summary = (kind = "mot_3d") => ({
   created_at: "2026-10-12T12:00:00+00:00", updated_at: "2026-10-12T12:00:00+00:00",
   execution: { mode: "local", zeus_job_id: null }, retention: { particle_states_requested: false, status: "pending" },
   results: { availability: "not_ready", completed_at: null }, warnings: [],
+});
+const resultProvenance = () => ({
+  git_revision: "reviewed-commit",
+  configuration_sha256: "1".repeat(64),
+  inputs_sha256: "2".repeat(64),
+  laboratory_spec_sha256: "3".repeat(64),
+  numerical_policy_sha256: "4".repeat(64),
+  admission_specification_sha256: "5".repeat(64),
+  source_id: sourceId,
+  source_fingerprint: "6".repeat(64),
+  selection_algorithm: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.sampling.algorithm,
+  selection_version: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.sampling.version,
+  selection_seed: 1,
+  simulation_seed: 2,
+  geometry_family: "angled_donut",
+  solver: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.fixed_classification.solver,
+  timestep_s: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.fixed_classification.timestep_s,
+  t_max_s: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.fixed_classification.t_max_s,
+  convergence_claim: MOT_3D_INDIVIDUAL_SPECIFICATION_V1.fixed_classification.convergence_claim,
+});
+const completedDetail = () => ({
+  ...summary(),
+  record_state: "succeeded",
+  integrity: "complete_verified",
+  lifecycle: "results_ready",
+  next_action: "view_results",
+  retention: { particle_states_requested: false, status: "not_retained" },
+  results: { availability: "verified", completed_at: "2026-10-12T12:10:00+00:00" },
+  provenance: { git_revision: "reviewed-commit", configuration_sha256: "1".repeat(64), inputs_sha256: "2".repeat(64), laboratory_spec: {}, numerical_policy: {} },
+  configuration: { status: "complete", resolved: {} },
+  inputs: { status: "complete", artifacts: [] },
+  artifacts: [],
+  metrics: {
+    n_input: 20,
+    usable_at_end_count: 10,
+    usable_at_end_fraction: 0.5,
+    residence_qualified_captured_count: 4,
+    residence_qualified_captured_fraction: 0.2,
+    elapsed_s: 1.25,
+    selection_sha256: "7".repeat(64),
+    provenance: resultProvenance(),
+  },
+  error: null,
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -97,9 +140,22 @@ describe("individual 3D-MOT frontend contract", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("strictly decodes and deduplicates bounded local start requests", async () => {
+    const started = { status: "queued", run_id: "mot3d-test", execution_mode: "local" } as const;
+    const fetchMock = vi.fn().mockResolvedValueOnce(await envelope(started));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot3DApi(async () => "csrf");
+    const [first, second] = await Promise.all([api.startLocal("mot3d-test"), api.startLocal("mot3d-test")]);
+    expect(first).toEqual(started);
+    expect(second).toEqual(started);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ["extra plan field", (row: ReturnType<typeof preview>) => Object.assign(row.plan, { path: "secret" })],
     ["wrong family parameters", (row: ReturnType<typeof preview>) => { (row.plan.geometry.parameters as unknown as Record<string, number>).blue_detuning_gamma = -7; }],
+    ["unexpected donut derived value", (row: ReturnType<typeof preview>) => { Object.assign(row.plan.geometry.derived_parameters, { blue_detuning_gamma: -3 }); }],
+    ["omitted derived parameters", (row: ReturnType<typeof preview>) => { delete (row.plan.geometry as unknown as Record<string, unknown>).derived_parameters; }],
     ["local count over cap", (row: ReturnType<typeof preview>) => { row.plan.execution.particle_count = 1001; row.plan.selection.selected_count = 1001; row.plan.source.pooled_particle_count = 2000; }],
     ["contradictory retention", (row: ReturnType<typeof preview>) => { row.plan.retention.particle_states = true; }],
     ["changed sampling algorithm", (row: ReturnType<typeof preview>) => { row.plan.selection.algorithm = "other" as typeof row.plan.selection.algorithm; }],
@@ -135,5 +191,24 @@ describe("individual 3D-MOT frontend contract", () => {
   it("rejects malformed 3D run summaries", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope({ runs: [{ ...summary(), secret: "path" }], invalid_count: 0, total: 1, truncated: false })));
     await expect(createIndividualMot3DApi(async () => "csrf").runs()).rejects.toThrow(/Invalid/);
+  });
+
+  it("strictly decodes completed 3D metrics with nested provenance", async () => {
+    const row = completedDetail();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope(row)));
+    const decoded = await createIndividualMot3DApi(async () => "csrf").run(row.id);
+    expect(decoded.metrics?.residence_qualified_captured_fraction).toBe(0.2);
+    expect(decoded.metrics?.provenance.geometry_family).toBe("angled_donut");
+  });
+
+  it.each([
+    ["an inconsistent fraction", (row: ReturnType<typeof completedDetail>) => { row.metrics.usable_at_end_fraction = 0.6; }],
+    ["extra nested provenance", (row: ReturnType<typeof completedDetail>) => { Object.assign(row.metrics.provenance, { private_path: "/secret" }); }],
+    ["changed numerical evidence", (row: ReturnType<typeof completedDetail>) => { row.metrics.provenance.timestep_s = 0.01 as typeof row.metrics.provenance.timestep_s; }],
+    ["a malformed selection digest", (row: ReturnType<typeof completedDetail>) => { row.metrics.selection_sha256 = "not-a-digest"; }],
+  ])("rejects completed metrics with %s", async (_label, mutate) => {
+    const row = completedDetail(); mutate(row);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope(row)));
+    await expect(createIndividualMot3DApi(async () => "csrf").run(row.id)).rejects.toThrow(/Invalid/);
   });
 });

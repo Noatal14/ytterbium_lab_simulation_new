@@ -63,7 +63,7 @@ _MOT3D_CONTRACT_PAYLOADS = {
                 "selected_count": 20,
                 "selected_identities_sha256": "c" * 64,
             },
-            "geometry": {"family": "angled_donut", "parameters": _MOT3D_PARAMETERS},
+            "geometry": {"family": "angled_donut", "parameters": _MOT3D_PARAMETERS, "derived_parameters": {}},
             "execution": {"mode": "local", "particle_count": 20, "simulation_seed": 2},
             "retention": {"particle_states": False},
             "suitability": "individual_only",
@@ -104,6 +104,9 @@ _MOT3D_CONTRACT_PAYLOADS = {
         "lifecycle_state": "configured",
         "execution_started": False,
         "submitted_to_zeus": False,
+    },
+    "mot3d-local-start": {
+        "status": "queued", "run_id": "mot3d-contract", "execution_mode": "local",
     },
 }
 
@@ -648,6 +651,7 @@ _PAYLOADS.update({
     "mot3d-sources": _MOT3D_CONTRACT_PAYLOADS["mot3d-sources"],
     "mot3d-run-preview": _MOT3D_CONTRACT_PAYLOADS["mot3d-run-preview"],
     "mot3d-run-confirm": _MOT3D_CONTRACT_PAYLOADS["mot3d-run-confirm"],
+    "mot3d-local-start": _MOT3D_CONTRACT_PAYLOADS["mot3d-local-start"],
     "production-status":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"sensitivity"},"sensitivity":{"status":"ready_to_prepare_production","job_id":"402[].zeus-master","scheduler":{"state":"completed_success","task_count":17,"counts":{"queued":0,"running":0,"held":0,"succeeded":17,"failed":0},"job_id":"402[].zeus-master","submission_nonce":"b"*32}},"validation":{"status":"valid","completed_points":17,"expected_points":17},"next_action":"review_production_preparation","local_sync":{"status":"not_synchronized"}},
     "production-preview":{"preview_token":"production-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"a"*40,"s0_values":[1.3]},"from_stage":"sensitivity","to_stage":"production","sensitivity":{"job_id":"402[].zeus-master","completed_points":17,"expected_points":17},"artifacts":{"create":["sensitivity_summary.json","production/tasks.json","jobs/06_production.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/06_production.pbs","kind":"array","task_count":20,"array_throttle":4,"queue":"zeus_combined_q","cores_per_task":150,"memory_per_task_bytes":68719476736,"walltime_seconds":43200},"effects":{"prepare_production":True,"submit_production":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}},
     "production-confirm":{"status":"production_prepared","campaign_id":"campaign-id","stage":"production","artifacts":{"created":3,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}},

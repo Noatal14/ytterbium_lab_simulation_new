@@ -445,20 +445,23 @@ def analyze_masks(
     }
 
 
-def analyze_results(results, time_points, prequalified_input=False):
+def analyze_results(
+    results, time_points, prequalified_input=False, *, capture_config=None
+):
     """Build instantaneous usable and stricter historical metrics for one profile."""
+    capture = MOT_3D_CAPTURE_CONFIG if capture_config is None else capture_config
     inside_masks = inside_capture_masks(
         results,
         time_points,
         Geometry.MOT_3D_CENTER_M,
-        MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
+        capture["capture_radius_m"],
     )
     eligible_masks = instantaneous_capture_masks(
         results,
         time_points,
         Geometry.MOT_3D_CENTER_M,
-        MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
-        MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
+        capture["capture_radius_m"],
+        capture["maximum_final_speed_m_s"],
     )
     if prequalified_input:
         # Do not impose a second residence delay on a checkpoint cohort. Speed
@@ -469,16 +472,16 @@ def analyze_results(results, time_points, prequalified_input=False):
             results,
             time_points,
             inside_masks,
-            MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
-            MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
+            capture["minimum_residence_time_s"],
+            capture["maximum_final_speed_m_s"],
         )
     diagnostics = capture_diagnostics(
         results,
         eligible_masks,
         Geometry.MOT_3D_CENTER_M,
-        MOT_3D_CAPTURE_CONFIG["capture_radius_m"],
-        MOT_3D_CAPTURE_CONFIG["minimum_residence_time_s"],
-        MOT_3D_CAPTURE_CONFIG["maximum_final_speed_m_s"],
+        capture["capture_radius_m"],
+        capture["minimum_residence_time_s"],
+        capture["maximum_final_speed_m_s"],
     )
     return analyze_masks(
         inside_masks,

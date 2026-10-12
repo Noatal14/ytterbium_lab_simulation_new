@@ -5,6 +5,7 @@ import threading
 import pytest
 
 import workflow_api.mot_3d_run_plan as planning
+from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 from workflow_api.mot_3d_individual_sources import ResolvedMot3DSource
 from workflow_api.mot_3d_run_creation import Mot3DRunCreationService
 from workflow_api.mot_3d_run_specification import MOT_3D_RUN_SPECIFICATION
@@ -51,7 +52,11 @@ def test_preview_is_pure_private_evidence_is_hidden_and_confirm_only_configures(
     root = tmp_path / "repo"; root.mkdir(); creator = _service(root)
     preview = creator.preview(_request(), "session-a")
     assert set(preview["plan"]) == {"run_id", "family", "source", "selection", "geometry", "execution", "retention", "suitability", "output_disposition", "locked_settings", "lifecycle_state", "laboratory_specification", "numerical_policy", "plan_sha256", "execution_started", "submitted_to_zeus"}
-    assert preview["plan"]["geometry"]["family"] == "angled_donut"
+    assert preview["plan"]["geometry"] == {
+        "family": "angled_donut",
+        "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]),
+        "derived_parameters": {},
+    }
     assert "path" not in str(preview["plan"])
     result = creator.confirm(preview["preview_token"], "session-a")
     assert result == {"status": "created", "run_id": "mot3d-run-001", "family": "mot_3d", "path": "data/runs/mot_3d/mot3d-run-001", "lifecycle_state": "configured", "execution_started": False, "submitted_to_zeus": False}
@@ -60,6 +65,22 @@ def test_preview_is_pure_private_evidence_is_hidden_and_confirm_only_configures(
         assert store.read("mot_3d", "mot3d-run-001", "status")["state"] == "configured"
     finally: store.close()
     assert not list((root / result["path"] / "results").iterdir())
+
+
+def test_single_pass_preview_publishes_canonical_derived_geometry(tmp_path):
+    root = tmp_path / "repo"; root.mkdir()
+    request = _request()
+    request["geometry_family"] = "single_pass"
+    request["parameters"] = dict(MOT_3D_RUN_SPECIFICATION["defaults"]["single_pass"])
+    preview = _service(root).preview(request, "session-a")
+    _, _, expected = build_profile_from_parameters("single_pass", request["parameters"])
+    assert preview["plan"]["geometry"]["derived_parameters"] == expected
+    assert set(expected) == {
+        "blue_detuning_gamma",
+        "effective_slowing_z_offset_m",
+        "effective_slowing_field_G",
+        "reference_slowing_field_G",
+    }
 
 
 def test_session_expiry_repository_race_and_source_drift_fail_closed(tmp_path, source):
@@ -92,3 +113,10 @@ def test_preview_repository_race_and_store_are_bounded(tmp_path):
 def test_snapshot_ledger_includes_transitive_source_admission_authorities():
     assert "workflow_api/mot_2d_individual_sources.py" in MOT_3D_INDIVIDUAL_RELEVANT_FILES
     assert "workflow_api/run_results.py" in MOT_3D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/mot_2d_local_execution.py" in MOT_3D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/mot_3d_local_execution.py" in MOT_3D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/run_execution.py" in MOT_3D_INDIVIDUAL_RELEVANT_FILES
+    assert "workflow_api/zeeman_local_execution.py" in MOT_3D_INDIVIDUAL_RELEVANT_FILES
+    assert len(MOT_3D_INDIVIDUAL_RELEVANT_FILES) == len(
+        set(MOT_3D_INDIVIDUAL_RELEVANT_FILES)
+    )

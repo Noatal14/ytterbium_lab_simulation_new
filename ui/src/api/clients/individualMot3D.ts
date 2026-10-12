@@ -20,6 +20,12 @@ export type SinglePassParameters = CommonParameters & {
   blue_crossing_angle_deg: number;
   blue_crossing_z_offset_m: number;
 };
+export type SinglePassDerivedParameters = {
+  blue_detuning_gamma: number;
+  effective_slowing_z_offset_m: number;
+  effective_slowing_field_G: number;
+  reference_slowing_field_G: number;
+};
 type Mot3DRequestBase = {
   source_id: string;
   particle_count: number;
@@ -65,7 +71,9 @@ export type Mot3DPreview = {
     family: "mot_3d";
     source: { id: string; kind: Mot3DSource["source_kind"]; qualification: Mot3DSource["source_qualification"]; fingerprint: string; pooled_particle_count: number };
     selection: { algorithm: typeof spec.sampling.algorithm; version: typeof spec.sampling.version; seed: number; selected_count: number; selected_identities_sha256: string };
-    geometry: { family: Mot3DFamily; parameters: AngledDonutParameters | SinglePassParameters };
+    geometry:
+      | { family: "angled_donut"; parameters: AngledDonutParameters; derived_parameters: Record<never, never> }
+      | { family: "single_pass"; parameters: SinglePassParameters; derived_parameters: SinglePassDerivedParameters };
     execution: { mode: Mot3DMode; particle_count: number; simulation_seed: number };
     retention: { particle_states: boolean };
     suitability: "individual_only";
@@ -88,6 +96,11 @@ export type CreatedMot3DRun = {
   execution_started: false;
   submitted_to_zeus: false;
 };
+export type StartedLocalMot3DRun = {
+  status: "queued";
+  run_id: string;
+  execution_mode: "local";
+};
 export type Mot3DRun = {
   id: string;
   display_name: string;
@@ -97,8 +110,37 @@ export type Mot3DRun = {
   execution: { mode: Mot3DMode; zeus_job_id: string | null };
   retention: { particle_states_requested: boolean; status: string };
   results: { availability: string; completed_at: string | null };
-  metrics?: Record<string, unknown> | null;
+  metrics?: Mot3DResultMetrics | null;
   error?: { code: string; message: string } | null;
+};
+export type Mot3DResultProvenance = {
+  git_revision: string;
+  configuration_sha256: string;
+  inputs_sha256: string;
+  laboratory_spec_sha256: string;
+  numerical_policy_sha256: string;
+  admission_specification_sha256: string;
+  source_id: string;
+  source_fingerprint: string;
+  selection_algorithm: typeof spec.sampling.algorithm;
+  selection_version: typeof spec.sampling.version;
+  selection_seed: number;
+  simulation_seed: number;
+  geometry_family: Mot3DFamily;
+  solver: typeof spec.fixed_classification.solver;
+  timestep_s: typeof spec.fixed_classification.timestep_s;
+  t_max_s: typeof spec.fixed_classification.t_max_s;
+  convergence_claim: typeof spec.fixed_classification.convergence_claim;
+};
+export type Mot3DResultMetrics = {
+  n_input: number;
+  usable_at_end_count: number;
+  usable_at_end_fraction: number;
+  residence_qualified_captured_count: number;
+  residence_qualified_captured_fraction: number;
+  elapsed_s: number;
+  selection_sha256: string;
+  provenance: Mot3DResultProvenance;
 };
 
 type CreationContext = { runId: string; request: Mot3DRequest; csrf: string; generation: number };
@@ -146,6 +188,13 @@ function sameParameters(family: Mot3DFamily, left: unknown, right: unknown): boo
   return keys.every((key) => leftRecord[key] === rightRecord[key]);
 }
 
+function validDerivedParameters(family: Mot3DFamily, value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  if (family === "angled_donut") return exactKeys(value, []);
+  return exactKeys(value, ["blue_detuning_gamma", "effective_slowing_z_offset_m", "effective_slowing_field_G", "reference_slowing_field_G"])
+    && [value.blue_detuning_gamma, value.effective_slowing_z_offset_m, value.effective_slowing_field_G, value.reference_slowing_field_G].every(finite);
+}
+
 function validSpecificationReference(value: unknown, expected: SpecificationReference): value is SpecificationReference {
   return isRecord(value)
     && exactKeys(value, ["version", "sha256"])
@@ -172,13 +221,13 @@ function validLockedSettings(value: unknown, mode: Mot3DMode): value is LockedSe
 function parsePreview(value: unknown): Mot3DPreview {
   if (!isRecord(value) || !exactKeys(value, ["preview_token", "expires_in_seconds", "plan"]) || !printable(value.preview_token) || !integer(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !isRecord(value.plan)) invalid("review");
   const response = value as Record<string, unknown>, plan = response.plan as Record<string, unknown>;
-  if (!exactKeys(plan, ["run_id", "family", "source", "selection", "geometry", "execution", "retention", "suitability", "output_disposition", "locked_settings", "lifecycle_state", "laboratory_specification", "numerical_policy", "plan_sha256", "execution_started", "submitted_to_zeus"]) || !privateRunId(plan.run_id) || plan.family !== "mot_3d" || !isRecord(plan.source) || !exactKeys(plan.source, ["id", "kind", "qualification", "fingerprint", "pooled_particle_count"]) || !isRecord(plan.selection) || !exactKeys(plan.selection, ["algorithm", "version", "seed", "selected_count", "selected_identities_sha256"]) || !isRecord(plan.geometry) || !exactKeys(plan.geometry, ["family", "parameters"]) || !isRecord(plan.execution) || !exactKeys(plan.execution, ["mode", "particle_count", "simulation_seed"]) || !isRecord(plan.retention) || !exactKeys(plan.retention, ["particle_states"]) || plan.suitability !== "individual_only" || !["retain_survivor_states", "discard_survivor_states_after_summary"].includes(String(plan.output_disposition)) || plan.lifecycle_state !== "configured" || !validSpecificationReference(plan.laboratory_specification, spec.authority_references.laboratory_specification) || !validSpecificationReference(plan.numerical_policy, spec.authority_references.numerical_policy) || !hex64(plan.plan_sha256) || plan.execution_started !== false || plan.submitted_to_zeus !== false) invalid("review");
+  if (!exactKeys(plan, ["run_id", "family", "source", "selection", "geometry", "execution", "retention", "suitability", "output_disposition", "locked_settings", "lifecycle_state", "laboratory_specification", "numerical_policy", "plan_sha256", "execution_started", "submitted_to_zeus"]) || !privateRunId(plan.run_id) || plan.family !== "mot_3d" || !isRecord(plan.source) || !exactKeys(plan.source, ["id", "kind", "qualification", "fingerprint", "pooled_particle_count"]) || !isRecord(plan.selection) || !exactKeys(plan.selection, ["algorithm", "version", "seed", "selected_count", "selected_identities_sha256"]) || !isRecord(plan.geometry) || !exactKeys(plan.geometry, ["family", "parameters", "derived_parameters"]) || !isRecord(plan.execution) || !exactKeys(plan.execution, ["mode", "particle_count", "simulation_seed"]) || !isRecord(plan.retention) || !exactKeys(plan.retention, ["particle_states"]) || plan.suitability !== "individual_only" || !["retain_survivor_states", "discard_survivor_states_after_summary"].includes(String(plan.output_disposition)) || plan.lifecycle_state !== "configured" || !validSpecificationReference(plan.laboratory_specification, spec.authority_references.laboratory_specification) || !validSpecificationReference(plan.numerical_policy, spec.authority_references.numerical_policy) || !hex64(plan.plan_sha256) || plan.execution_started !== false || plan.submitted_to_zeus !== false) invalid("review");
   const source = plan.source as Record<string, unknown>, selection = plan.selection as Record<string, unknown>, geometry = plan.geometry as Record<string, unknown>, execution = plan.execution as Record<string, unknown>, retention = plan.retention as Record<string, unknown>;
   const family = geometry.family;
   const mode = execution.mode;
   const cap = mode === "local" ? spec.particle_count.maximum_by_execution_mode.local : mode === "zeus" ? spec.particle_count.maximum_by_execution_mode.zeus : 0;
   const sourcePair = (source.kind === "canonical_2d_campaign" && source.qualification === "canonical_campaign_source") || (source.kind === "retained_individual_mot_2d" && source.qualification === "verified_individual_result");
-  if (!sourceId(source.id) || !sourcePair || !hex64(source.fingerprint) || !integer(source.pooled_particle_count) || Number(source.pooled_particle_count) < 1 || selection.algorithm !== spec.sampling.algorithm || selection.version !== spec.sampling.version || !integer(selection.seed) || Number(selection.seed) < spec.selection_seed.minimum || Number(selection.seed) > spec.selection_seed.maximum || !integer(selection.selected_count) || Number(selection.selected_count) < 1 || Number(selection.selected_count) > Number(source.pooled_particle_count) || !hex64(selection.selected_identities_sha256) || (family !== "angled_donut" && family !== "single_pass") || !validParameters(family, geometry.parameters) || cap === 0 || !validLockedSettings(plan.locked_settings, mode as Mot3DMode) || !integer(execution.particle_count) || Number(execution.particle_count) < spec.particle_count.minimum || Number(execution.particle_count) > cap || Number(execution.particle_count) > Number(source.pooled_particle_count) || selection.selected_count !== execution.particle_count || !integer(execution.simulation_seed) || Number(execution.simulation_seed) < spec.simulation_seed.minimum || Number(execution.simulation_seed) > spec.simulation_seed.maximum || typeof retention.particle_states !== "boolean" || retention.particle_states !== (plan.output_disposition === "retain_survivor_states")) invalid("review");
+  if (!sourceId(source.id) || !sourcePair || !hex64(source.fingerprint) || !integer(source.pooled_particle_count) || Number(source.pooled_particle_count) < 1 || selection.algorithm !== spec.sampling.algorithm || selection.version !== spec.sampling.version || !integer(selection.seed) || Number(selection.seed) < spec.selection_seed.minimum || Number(selection.seed) > spec.selection_seed.maximum || !integer(selection.selected_count) || Number(selection.selected_count) < 1 || Number(selection.selected_count) > Number(source.pooled_particle_count) || !hex64(selection.selected_identities_sha256) || (family !== "angled_donut" && family !== "single_pass") || !validParameters(family, geometry.parameters) || !validDerivedParameters(family, geometry.derived_parameters) || cap === 0 || !validLockedSettings(plan.locked_settings, mode as Mot3DMode) || !integer(execution.particle_count) || Number(execution.particle_count) < spec.particle_count.minimum || Number(execution.particle_count) > cap || Number(execution.particle_count) > Number(source.pooled_particle_count) || selection.selected_count !== execution.particle_count || !integer(execution.simulation_seed) || Number(execution.simulation_seed) < spec.simulation_seed.minimum || Number(execution.simulation_seed) > spec.simulation_seed.maximum || typeof retention.particle_states !== "boolean" || retention.particle_states !== (plan.output_disposition === "retain_survivor_states")) invalid("review");
   return value as unknown as Mot3DPreview;
 }
 
@@ -187,7 +236,41 @@ function parseCreated(value: unknown): CreatedMot3DRun {
   return value as unknown as CreatedMot3DRun;
 }
 
+function parseLocalStart(value: unknown): StartedLocalMot3DRun {
+  if (!isRecord(value) || !exactKeys(value, ["status", "run_id", "execution_mode"]) || value.status !== "queued" || !privateRunId(value.run_id) || value.execution_mode !== "local") invalid("local start");
+  return value as unknown as StartedLocalMot3DRun;
+}
+
 const summaryKeys = ["id", "record_kind", "run_kind", "display_name", "stage_semantics", "source", "queried_at", "trust", "scientific_role", "record_state", "integrity", "lifecycle", "next_action", "created_at", "updated_at", "execution", "retention", "results", "warnings"];
+function validMot3DResultProvenance(value: unknown): value is Mot3DResultProvenance {
+  if (!isRecord(value) || !exactKeys(value, ["git_revision", "configuration_sha256", "inputs_sha256", "laboratory_spec_sha256", "numerical_policy_sha256", "admission_specification_sha256", "source_id", "source_fingerprint", "selection_algorithm", "selection_version", "selection_seed", "simulation_seed", "geometry_family", "solver", "timestep_s", "t_max_s", "convergence_claim"])) return false;
+  return printable(value.git_revision)
+    && [value.configuration_sha256, value.inputs_sha256, value.laboratory_spec_sha256, value.numerical_policy_sha256, value.admission_specification_sha256, value.source_fingerprint].every(hex64)
+    && sourceId(value.source_id)
+    && value.selection_algorithm === spec.sampling.algorithm
+    && value.selection_version === spec.sampling.version
+    && integer(value.selection_seed) && Number(value.selection_seed) >= spec.selection_seed.minimum && Number(value.selection_seed) <= spec.selection_seed.maximum
+    && integer(value.simulation_seed) && Number(value.simulation_seed) >= spec.simulation_seed.minimum && Number(value.simulation_seed) <= spec.simulation_seed.maximum
+    && (value.geometry_family === "angled_donut" || value.geometry_family === "single_pass")
+    && value.solver === spec.fixed_classification.solver
+    && value.timestep_s === spec.fixed_classification.timestep_s
+    && value.t_max_s === spec.fixed_classification.t_max_s
+    && value.convergence_claim === spec.fixed_classification.convergence_claim;
+}
+
+function validMot3DResultMetrics(value: unknown): value is Mot3DResultMetrics {
+  if (!isRecord(value) || !exactKeys(value, ["n_input", "usable_at_end_count", "usable_at_end_fraction", "residence_qualified_captured_count", "residence_qualified_captured_fraction", "elapsed_s", "selection_sha256", "provenance"])) return false;
+  const n = Number(value.n_input), usable = Number(value.usable_at_end_count), captured = Number(value.residence_qualified_captured_count);
+  return integer(value.n_input) && n > 0
+    && integer(value.usable_at_end_count) && integer(value.residence_qualified_captured_count)
+    && 0 <= captured && captured <= usable && usable <= n
+    && finite(value.usable_at_end_fraction) && value.usable_at_end_fraction === usable / n
+    && finite(value.residence_qualified_captured_fraction) && value.residence_qualified_captured_fraction === captured / n
+    && finite(value.elapsed_s) && value.elapsed_s >= 0
+    && hex64(value.selection_sha256)
+    && validMot3DResultProvenance(value.provenance);
+}
+
 function parseRun(value: unknown, detail = false): Mot3DRun {
   if (!isRecord(value) || !exactKeys(value, detail ? [...summaryKeys, "provenance", "configuration", "inputs", "artifacts", "metrics", "error"] : summaryKeys)) invalid("run");
   const row = value as Record<string, unknown>, execution = row.execution as Record<string, unknown>, retention = row.retention as Record<string, unknown>, results = row.results as Record<string, unknown>;
@@ -203,7 +286,7 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
   if ((execution.mode === "local" && execution.zeus_job_id !== null) || (execution.mode === "zeus" && ["queued", "running", "succeeded", "failed"].includes(state) && !jobId(execution.zeus_job_id))) invalid("run execution");
   if (detail) {
     const provenance = row.provenance, configuration = row.configuration, inputs = row.inputs;
-    if (!isRecord(provenance) || !exactKeys(provenance, ["git_revision", "configuration_sha256", "inputs_sha256", "laboratory_spec", "numerical_policy"]) || !printable(provenance.git_revision) || !hex64(provenance.configuration_sha256) || !hex64(provenance.inputs_sha256) || !isRecord(provenance.laboratory_spec) || !isRecord(provenance.numerical_policy) || !isRecord(configuration) || !exactKeys(configuration, ["status", "resolved"]) || configuration.status !== "complete" || !isRecord(configuration.resolved) || !isRecord(inputs) || !exactKeys(inputs, ["status", "artifacts"]) || inputs.status !== "complete" || !Array.isArray(inputs.artifacts) || !Array.isArray(row.artifacts) || (row.metrics !== null && (!isRecord(row.metrics) || !Object.values(row.metrics).every(finite))) || (row.error !== null && (!isRecord(row.error) || !exactKeys(row.error, ["code", "message"]) || !printable(row.error.code) || !printable(row.error.message)))) invalid("run detail");
+    if (!isRecord(provenance) || !exactKeys(provenance, ["git_revision", "configuration_sha256", "inputs_sha256", "laboratory_spec", "numerical_policy"]) || !printable(provenance.git_revision) || !hex64(provenance.configuration_sha256) || !hex64(provenance.inputs_sha256) || !isRecord(provenance.laboratory_spec) || !isRecord(provenance.numerical_policy) || !isRecord(configuration) || !exactKeys(configuration, ["status", "resolved"]) || configuration.status !== "complete" || !isRecord(configuration.resolved) || !isRecord(inputs) || !exactKeys(inputs, ["status", "artifacts"]) || inputs.status !== "complete" || !Array.isArray(inputs.artifacts) || !Array.isArray(row.artifacts) || (lifecycle === "results_ready" ? !validMot3DResultMetrics(row.metrics) : row.metrics !== null) || (row.error !== null && (!isRecord(row.error) || !exactKeys(row.error, ["code", "message"]) || !printable(row.error.code) || !printable(row.error.message)))) invalid("run detail");
   }
   return value as unknown as Mot3DRun;
 }
@@ -213,8 +296,9 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
   const reviews = new Map<string, CreationContext>();
   const confirmations = new Map<string, Promise<CreatedMot3DRun>>();
   const confirmed = new Map<string, CreatedMot3DRun>();
+  const localStarts = new Map<string, Promise<StartedLocalMot3DRun>>();
   return {
-    reset() { generation++; previewSequence++; readSequence++; reviews.clear(); confirmations.clear(); confirmed.clear(); },
+    reset() { generation++; previewSequence++; readSequence++; reviews.clear(); confirmations.clear(); confirmed.clear(); localStarts.clear(); },
     async sources() { return parseSources(await getData("/api/v1/individual-runs/mot-3d/sources")); },
     async preview(request: Mot3DRequest) {
       const currentGeneration = generation, sequence = ++previewSequence, csrf = await session();
@@ -237,6 +321,18 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       })();
       confirmations.set(token, task);
       try { return await task; } finally { confirmations.delete(token); }
+    },
+    async startLocal(id: string) {
+      if (!privateRunId(id)) throw new Error("The run identifier is invalid.");
+      const existing = localStarts.get(id); if (existing) return existing;
+      const currentGeneration = generation;
+      const task = (async () => {
+        const row = parseLocalStart(await postData("/api/v1/individual-runs/mot-3d/local/start", { run_id: id }, await session()));
+        if (currentGeneration !== generation || row.run_id !== id) throw new Error("The queued run is stale or mismatched.");
+        return row;
+      })();
+      localStarts.set(id, task);
+      try { return await task; } finally { localStarts.delete(id); }
     },
     async runs() {
       const currentGeneration = generation, sequence = ++readSequence;

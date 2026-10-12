@@ -99,6 +99,7 @@ def mot_3d_simulation(
     t_max=MOT_3D_SIM_CONFIG["t_max_s"],
     seed=DEFAULT_RANDOM_SEED,
     magnetic_gradient_G_cm=None,
+    capture_config=None,
 ):
     """Propagate saved 2D-MOT states through the 3D-MOT stage."""
     if len(survivor_states) == 0:
@@ -132,7 +133,13 @@ def mot_3d_simulation(
         npools=npools,
         seed_idx=seed,
     )
-    captured_states, _ = extract_3d_mot_captured(results)
+    capture = MOT_3D_CAPTURE_CONFIG if capture_config is None else capture_config
+    captured_states, _ = extract_3d_mot_captured(
+        results,
+        capture_radius_m=capture["capture_radius_m"],
+        minimum_residence_time_s=capture["minimum_residence_time_s"],
+        maximum_final_speed_m_s=capture["maximum_final_speed_m_s"],
+    )
     return results, captured_states
 
 
@@ -144,11 +151,12 @@ def run_3d_mot_from_file(input_file, output_file, summary_file, **kwargs):
     capture_percentage = (
         100.0 * captured_count / len(input_states) if len(input_states) else 0.0
     )
+    capture = kwargs.get("capture_config", MOT_3D_CAPTURE_CONFIG)
     summary = {
         "input_particle_count": len(input_states),
         "captured_particle_count": captured_count,
         "capture_percentage": capture_percentage,
-        "criterion": dict(MOT_3D_CAPTURE_CONFIG),
+        "criterion": dict(capture),
         "capture_center_m": list(Geometry.MOT_3D_CENTER_M),
         "magnetic_gradient_G_cm": float(
             kwargs.get("magnetic_gradient_G_cm")

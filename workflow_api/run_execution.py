@@ -153,6 +153,32 @@ def mot_2d_result_provenance(
     }
 
 
+def mot_3d_result_provenance(
+    run: Mapping[str, Any], configuration: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Build the exact provenance object required for individual 3D results."""
+    resolved = configuration["resolved"]
+    return {
+        "git_revision": run["git_revision"],
+        "configuration_sha256": run["configuration_sha256"],
+        "inputs_sha256": run["inputs_sha256"],
+        "laboratory_spec_sha256": configuration["laboratory_spec"]["sha256"],
+        "numerical_policy_sha256": configuration["numerical_policy"]["sha256"],
+        "admission_specification_sha256": resolved["admission_specification"]["sha256"],
+        "source_id": resolved["input_source"]["id"],
+        "source_fingerprint": resolved["input_source"]["fingerprint"],
+        "selection_algorithm": resolved["sampling"]["algorithm"],
+        "selection_version": resolved["sampling"]["version"],
+        "selection_seed": resolved["sampling"]["selection_seed"],
+        "simulation_seed": resolved["simulation"]["simulation_seed"],
+        "geometry_family": resolved["mot_3d"]["geometry_family"],
+        "solver": resolved["numerical_policy"]["solver"],
+        "timestep_s": resolved["numerical_policy"]["dt_s"],
+        "t_max_s": resolved["numerical_policy"]["t_max_s"],
+        "convergence_claim": resolved["numerical_policy"]["convergence_claim"],
+    }
+
+
 def _validate_family_metrics(
     family: str,
     run: Mapping[str, Any],
@@ -160,6 +186,38 @@ def _validate_family_metrics(
     configuration: Mapping[str, Any] | None = None,
 ) -> None:
     """Enforce family-specific scientific relationships before publication."""
+    if family == "mot_3d":
+        if configuration is None:
+            raise WorkerProductError("3D-MOT result validation requires configuration evidence.")
+        metrics = results["metrics"]
+        expected = {
+            "n_input", "usable_at_end_count", "usable_at_end_fraction",
+            "residence_qualified_captured_count",
+            "residence_qualified_captured_fraction", "elapsed_s",
+            "selection_sha256", "provenance",
+        }
+        resolved = configuration["resolved"]
+        n_input = metrics.get("n_input")
+        usable = metrics.get("usable_at_end_count")
+        captured = metrics.get("residence_qualified_captured_count")
+        elapsed = metrics.get("elapsed_s")
+        if (
+            set(metrics) != expected
+            or isinstance(n_input, bool) or not isinstance(n_input, int)
+            or n_input != run["particle_count"]
+            or n_input != resolved["sampling"]["selected_count"]
+            or isinstance(usable, bool) or not isinstance(usable, int)
+            or isinstance(captured, bool) or not isinstance(captured, int)
+            or not 0 <= captured <= usable <= n_input
+            or metrics.get("usable_at_end_fraction") != usable / n_input
+            or metrics.get("residence_qualified_captured_fraction") != captured / n_input
+            or isinstance(elapsed, bool) or not isinstance(elapsed, (int, float))
+            or not math.isfinite(float(elapsed)) or elapsed < 0
+            or metrics.get("selection_sha256") != resolved["sampling"]["selected_identities_sha256"]
+            or metrics.get("provenance") != mot_3d_result_provenance(run, configuration)
+        ):
+            raise WorkerProductError("3D-MOT result metrics are scientifically inconsistent.")
+        return
     if family == "mot_2d":
         if configuration is None:
             raise WorkerProductError("2D-MOT result validation requires configuration evidence.")

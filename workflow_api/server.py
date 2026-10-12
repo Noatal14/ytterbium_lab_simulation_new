@@ -155,6 +155,7 @@ def _post_routes() -> tuple[PostRoute, ...]:
         ("/api/v1/individual-runs/mot-2d/zeus/refresh","individual_mot_2d_api","refresh_zeus","session_kw","individual_mot_2d_unavailable","Individual 2D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
         ("/api/v1/individual-runs/mot-3d/preview","individual_mot_3d_api","preview","session_kw","individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.",HTTPStatus.OK,Exception),
         ("/api/v1/individual-runs/mot-3d/confirm","individual_mot_3d_api","confirm","session_kw","individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.",HTTPStatus.CREATED,Exception),
+        ("/api/v1/individual-runs/mot-3d/local/start","individual_mot_3d_api","start_local","session_kw","individual_mot_3d_unavailable","Individual 3D-MOT runs are unavailable.",HTTPStatus.ACCEPTED,Exception),
     ]
     return tuple(PostRoute(*row) for row in rows)
 
@@ -546,6 +547,10 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 
 
 def main() -> None:
+    # Keep scientific simulation/study modules behind process startup.  Merely
+    # importing the HTTP contract layer must not initialize physics modules.
+    from workflow_api.mot_3d_local_execution import Mot3DBoundedLocalExecutionPool
+
     from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
 
     authority = issue_execution_authority()
@@ -585,8 +590,11 @@ def main() -> None:
         WorkflowHandler.repository_root,
         Mot3DIndividualRepositorySnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/git")),
     )
+    mot_3d_local = Mot3DBoundedLocalExecutionPool(
+        WorkflowHandler.repository_root, authority, max_concurrent=1, max_pending=4,
+    )
     WorkflowHandler.individual_mot_3d_api = IndividualMot3DApi(
-        WorkflowHandler.repository_root, mot_3d_creation,
+        WorkflowHandler.repository_root, mot_3d_creation, mot_3d_local,
     )
     WorkflowHandler.individual_run_service = CanonicalIndividualRunRegistry(
         WorkflowHandler.repository_root
