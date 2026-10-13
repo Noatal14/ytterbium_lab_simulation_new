@@ -7,8 +7,10 @@ from pathlib import Path
 from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
 
-def select(family, closure_summary, count=3):
-    summary = json.loads(Path(closure_summary).read_text())
+def select_from_summary(family, summary, count=3):
+    """Pure finalist selector used by the guarded remote transition."""
+    if not isinstance(summary, dict):
+        raise TypeError("Closure summary must be an object.")
     if summary["family"] != family:
         raise ValueError("Closure summary and requested family disagree.")
     ranked = summary["ranked_candidates"]
@@ -43,9 +45,16 @@ def select(family, closure_summary, count=3):
     }
 
 
+def select(family, closure_summary, count=3):
+    summary = json.loads(Path(closure_summary).read_text())
+    return select_from_summary(family, summary, count)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--family", choices=("angled_donut", "single_pass"), required=True)
+    parser.add_argument(
+        "--family", choices=("angled_donut", "single_pass"), required=True
+    )
     parser.add_argument("--closure-summary", required=True)
     parser.add_argument("--count", type=int, default=3)
     parser.add_argument("--output", required=True)

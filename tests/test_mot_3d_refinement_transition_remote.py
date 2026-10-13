@@ -9,7 +9,7 @@ from workflow_api import mot_3d_preliminary_transition_remote as core
 from workflow_api import mot_3d_refinement_transition_remote as remote
 
 
-def _invoke(monkeypatch, root, payload, operation="prepare"):
+def _invoke(monkeypatch, root, payload, operation="prepare", receiver=remote):
     request = dict(payload)
     if operation == "prepare":
         request["nonce"] = "9" * 32
@@ -25,27 +25,29 @@ def _invoke(monkeypatch, root, payload, operation="prepare"):
             encoded,
         ],
     )
-    remote.main(trusted_root_override=root)
+    receiver.main(trusted_root_override=root)
 
 
-def _fixture(tmp_path, monkeypatch):
+def _fixture(tmp_path, monkeypatch, receiver=remote):
+    descriptor = receiver.DESCRIPTOR
     root = tmp_path / "repository"
     campaign = root / "data/optimization/mot_3d/campaign"
     (campaign / ".mot_ui").mkdir(parents=True)
-    manifest = {"name": "campaign", "stage": "refinement"}
+    manifest = {"name": "campaign", "stage": descriptor.from_stage}
     manifest_raw = json.dumps(manifest).encode()
     (campaign / "campaign.json").write_bytes(manifest_raw)
     for family in core.FAMILIES:
-        selection = campaign / f"selection/refinement/{family}.json"
+        selection = campaign / f"selection/{descriptor.selection_stage}/{family}.json"
         selection.parent.mkdir(parents=True, exist_ok=True)
         selection.write_text("{}")
         for kind in ("array", "merge"):
-            job = campaign / f"jobs/refinement/{family}_{kind}.pbs"
+            job = campaign / f"jobs/{descriptor.from_stage}/{family}_{kind}.pbs"
             job.parent.mkdir(parents=True, exist_ok=True)
             job.write_text(f"{family}-{kind}")
-    (campaign / "refinement_submission.json").write_text("receipt")
+    (campaign / descriptor.source_submission_receipt).write_text("receipt")
     result_paths = tuple(
-        f"refinement/results/result_{index:03d}.json" for index in range(200)
+        f"{descriptor.from_stage}/results/result_{index:03d}.json"
+        for index in range(200)
     )
     results = {}
     for name in result_paths:
@@ -55,17 +57,17 @@ def _fixture(tmp_path, monkeypatch):
         path.write_bytes(raw)
         results[name] = raw
     generated = {
-        "campaign.json": json.dumps({**manifest, "stage": "closure"}).encode(),
+        "campaign.json": json.dumps(
+            {**manifest, "stage": descriptor.to_stage}
+        ).encode(),
         **{
             name: name.encode()
-            for name in remote.DESCRIPTOR.generated_paths - {"campaign.json"}
+            for name in descriptor.generated_paths - {"campaign.json"}
         },
     }
     identity = {
-        "source_files": {
-            name: "a" * 64 for name in remote.DESCRIPTOR.source_identity_paths
-        },
-        "code_files": {name: "b" * 64 for name in remote.DESCRIPTOR.code_paths},
+        "source_files": {name: "a" * 64 for name in descriptor.source_identity_paths},
+        "code_files": {name: "b" * 64 for name in descriptor.code_paths},
         "stage3_local_sync_receipt_sha256": "c" * 64,
         "stage3_remote_receipt_sha256": "d" * 64,
         "stage3_bundle_sha256": "e" * 64,
@@ -75,9 +77,7 @@ def _fixture(tmp_path, monkeypatch):
             "transition_key": "3" * 64,
             "remote_transition_receipt_sha256": "4" * 64,
             "bundle_sha256": "5" * 64,
-            "files": {
-                name: "6" * 64 for name in remote.DESCRIPTOR.source_identity_paths
-            },
+            "files": {name: "6" * 64 for name in descriptor.source_identity_paths},
             "science": {"classification": "candidate_selection_not_final_validation"},
             "physical_model_sha256": "7" * 64,
             "upstream_campaign_sha256": "8" * 64,

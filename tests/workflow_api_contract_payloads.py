@@ -2014,6 +2014,34 @@ _closure_confirm["chain"]["families"][1].update(
     {"array_job_id": "712[].zeus-master", "merge_job_id": "713.zeus-master"}
 )
 
+_PAYLOADS["mot3d-closure-transition-status"] = deepcopy(
+    _PAYLOADS["mot3d-refinement-transition-status"]
+)
+_closure_transition_status = _PAYLOADS["mot3d-closure-transition-status"]
+_closure_transition_status["campaign"]["stage"] = "closure"
+_closure_transition_status["closure"] = _closure_transition_status.pop("refinement")
+_PAYLOADS["mot3d-closure-transition-preview"] = deepcopy(
+    _PAYLOADS["mot3d-refinement-transition-preview"]
+)
+_closure_transition_preview = _PAYLOADS["mot3d-closure-transition-preview"]
+_closure_transition_preview["preview_token"] = "mot3d-closure-transition-token"
+_closure_transition_preview["from_stage"] = "closure"
+_closure_transition_preview["to_stage"] = "finalist_selection"
+_closure_transition_preview["closure"] = _closure_transition_preview.pop("refinement")
+_closure_transition_preview["effects"] = {
+    "synchronize_closure": True,
+    "prepare_finalist_selection": True,
+    "submit_finalists": False,
+    "start_simulation": False,
+    "overwrite_existing": False,
+}
+_PAYLOADS["mot3d-closure-transition-confirm"] = deepcopy(
+    _PAYLOADS["mot3d-refinement-transition-confirm"]
+)
+_closure_transition_confirm = _PAYLOADS["mot3d-closure-transition-confirm"]
+_closure_transition_confirm["status"] = "finalist_selection_prepared"
+_closure_transition_confirm["stage"] = "finalist_selection"
+
 
 def fake_service_payloads() -> dict[str, object]:
     """Return fresh full public DTOs without consulting contract snapshots."""

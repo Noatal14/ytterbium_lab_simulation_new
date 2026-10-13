@@ -170,6 +170,10 @@ def _selection_path(family: str) -> str:
 def _result_paths(selections):
     if _descriptor().from_stage == "preliminary_check":
         return expected_paths(selections)
+    if _descriptor().from_stage == "closure":
+        from workflow_api.mot_3d_closure_results import expected_paths as closure_paths
+
+        return closure_paths(selections)
     from workflow_api.mot_3d_refinement_results import (
         expected_paths as refinement_paths,
     )
@@ -193,12 +197,22 @@ def _validate_results(
             campaign_absolute_path=str(campaign_path),
             project_directory=str(project_directory),
         )
-    else:
+    elif _descriptor().from_stage == "refinement":
         from workflow_api.mot_3d_refinement_results import (
             validate_refinement_result_bytes,
         )
 
         validated = validate_refinement_result_bytes(
+            manifest_bytes=manifest_raw,
+            selection_bytes=selections,
+            result_files=results,
+            campaign_absolute_path=str(campaign_path),
+            project_directory=str(project_directory),
+        )
+    else:
+        from workflow_api.mot_3d_closure_results import validate_closure_result_bytes
+
+        validated = validate_closure_result_bytes(
             manifest_bytes=manifest_raw,
             selection_bytes=selections,
             result_files=results,
@@ -211,9 +225,13 @@ def _validate_results(
 def _render_transition(relative, manifest, summaries):
     if _descriptor().to_stage == "refinement":
         return render_refinement_transition(relative, manifest, summaries)
-    from studies.mot_3d_campaign import render_closure_transition
+    if _descriptor().to_stage == "closure":
+        from studies.mot_3d_campaign import render_closure_transition
 
-    return render_closure_transition(relative, manifest, summaries)
+        return render_closure_transition(relative, manifest, summaries)
+    from studies.mot_3d_campaign import render_finalist_selection_transition
+
+    return render_finalist_selection_transition(relative, manifest, summaries)
 
 
 PRELIMINARY_GENERATED_PATHS = frozenset(

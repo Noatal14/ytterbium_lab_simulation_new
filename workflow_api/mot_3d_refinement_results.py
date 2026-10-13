@@ -38,9 +38,7 @@ RECOIL_SEEDS = (42001, 42002, 42003)
 EXPECTED_CANDIDATES_PER_FAMILY = 16
 EXPECTED_PARTICLES = 3000
 EXPECTED_RESULT_FILES = 200
-EXPECTED_MULTIPLICITY_METHOD = (
-    "paired centered-bootstrap max-T simultaneous intervals"
-)
+EXPECTED_MULTIPLICITY_METHOD = "paired centered-bootstrap max-T simultaneous intervals"
 REFINEMENT_RESULT_REASON_CODES = PRELIMINARY_RESULT_REASON_CODES
 
 
@@ -58,6 +56,18 @@ class ValidatedRefinementResults:
     evidence_sha256: str
 
 
+@dataclass(frozen=True)
+class FocusedResultPolicy:
+    stage: str = "refinement"
+    selection_kind: str = "mot_3d_focused_refinement_selection"
+    candidate_label: str = "refine"
+    selection_seed: int = REFINEMENT_SCIENTIFIC_DESIGN.selection_seed
+    bootstrap_seed: int = REFINEMENT_SCIENTIFIC_DESIGN.bootstrap_seed
+
+
+REFINEMENT_RESULT_POLICY = FocusedResultPolicy()
+
+
 def render_typescript_refinement_result_contract() -> str:
     encoded = json.dumps(REFINEMENT_RESULT_REASON_CODES, indent=2)
     return (
@@ -72,10 +82,12 @@ def _raise(code: str, error: Exception | None = None):
     raise RefinementResultError(code) from error
 
 
-def _candidate_ids(selection: Mapping[str, Any], family: str) -> tuple[str, ...]:
+def _candidate_ids(
+    selection: Mapping[str, Any], family: str, policy=REFINEMENT_RESULT_POLICY
+) -> tuple[str, ...]:
     candidates = selection.get("candidates")
     if (
-        selection.get("kind") != "mot_3d_focused_refinement_selection"
+        selection.get("kind") != policy.selection_kind
         or selection.get("family") != family
         or selection.get("candidate_count") != EXPECTED_CANDIDATES_PER_FAMILY
         or not isinstance(candidates, list)
@@ -86,26 +98,28 @@ def _candidate_ids(selection: Mapping[str, Any], family: str) -> tuple[str, ...]
         row.get("candidate_id") if isinstance(row, Mapping) else None
         for row in candidates
     )
-    prefix = f"{family}_refine_"
+    prefix = f"{family}_{policy.candidate_label}_"
     if identifiers != tuple(f"{prefix}{index:02d}" for index in range(16)):
         _raise("selection_mismatch")
     return identifiers  # type: ignore[return-value]
 
 
-def expected_paths(selections: Mapping[str, Mapping[str, Any]]) -> tuple[str, ...]:
+def expected_paths(
+    selections: Mapping[str, Mapping[str, Any]], policy=REFINEMENT_RESULT_POLICY
+) -> tuple[str, ...]:
     if set(selections) != set(FAMILIES):
         _raise("selection_mismatch")
     paths = set()
     for family in FAMILIES:
-        identifiers = _candidate_ids(selections[family], family)
+        identifiers = _candidate_ids(selections[family], family, policy)
         for worker in WORKERS:
-            root = f"refinement/{family}/worker_{worker}"
+            root = f"{policy.stage}/{family}/worker_{worker}"
             paths.add(f"{root}/particle_selection.json")
             for candidate_id in identifiers[worker::3]:
                 for seed in RECOIL_SEEDS:
                     stem = f"{candidate_id}_seed_{seed}"
                     paths.update({f"{root}/{stem}.json", f"{root}/{stem}.npz"})
-        paths.add(f"refinement/{family}/merged/refinement_summary.json")
+        paths.add(f"{policy.stage}/{family}/merged/refinement_summary.json")
     if len(paths) != EXPECTED_RESULT_FILES:
         _raise("artifact_registry_mismatch")
     return tuple(sorted(paths))
@@ -125,6 +139,7 @@ def validate_refinement_result_bytes(
     *,
     project_directory: str,
     campaign_absolute_path: str,
+    policy: FocusedResultPolicy = REFINEMENT_RESULT_POLICY,
 ) -> ValidatedRefinementResults:
     if (
         not isinstance(manifest_bytes, bytes)
@@ -154,7 +169,7 @@ def validate_refinement_result_bytes(
         _raise("malformed_json", exc)
     if set(selection_bytes) != set(FAMILIES):
         _raise("selection_mismatch")
-    paths = expected_paths(selections)
+    paths = expected_paths(selections, policy)
     if not isinstance(result_files, Mapping) or set(result_files) != set(paths):
         _raise("artifact_registry_mismatch")
     name = manifest.get("name")
@@ -163,10 +178,10 @@ def validate_refinement_result_bytes(
     source_root = _canonical_campaign_path(
         campaign_absolute_path, project_directory, name
     )
-    stage = manifest.get("stages", {}).get("refinement", {})
+    stage = manifest.get("stages", {}).get(policy.stage, {})
     design = manifest.get("design", {})
     if (
-        manifest.get("stage") != "refinement"
+        manifest.get("stage") != policy.stage
         or stage.get("classification") != "candidate_selection_not_final_validation"
         or stage.get("input_role") != "refinement"
         or design.get("screening_dt_s") != MOT_3D_TIMESTEP_POLICY["search_dt_s"]
@@ -180,7 +195,7 @@ def validate_refinement_result_bytes(
             input_role="refinement",
             input_ensembles=4,
             particles_per_ensemble=750,
-            selection_seed=REFINEMENT_SCIENTIFIC_DESIGN.selection_seed,
+            selection_seed=policy.selection_seed,
             expected_zeeman_seeds=tuple(range(3027, 3031)),
         )
     except PreliminaryResultError as exc:
@@ -189,11 +204,13 @@ def validate_refinement_result_bytes(
     hashes = {
         name: hashlib.sha256(raw).hexdigest() for name, raw in result_files.items()
     }
-    with tempfile.TemporaryDirectory(prefix="mot3d-refinement-verify-") as temporary:
+    with tempfile.TemporaryDirectory(
+        prefix=f"mot3d-{policy.stage}-verify-"
+    ) as temporary:
         root = Path(temporary)
         (root / "campaign.json").write_bytes(manifest_bytes)
         for family, raw in selection_bytes.items():
-            path = root / "selection" / "refinement" / f"{family}.json"
+            path = root / "selection" / policy.stage / f"{family}.json"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(raw)
         for relative, raw in result_files.items():
@@ -216,18 +233,24 @@ def validate_refinement_result_bytes(
                 suffix = PurePosixPath(relative).with_suffix(".npz").as_posix()
                 if record.get("outcomes_path") != f"{source_root}/{suffix}":
                     _raise("result_metadata_mismatch")
-                record["outcomes_path"] = str(root.joinpath(*PurePosixPath(suffix).parts))
+                record["outcomes_path"] = str(
+                    root.joinpath(*PurePosixPath(suffix).parts)
+                )
                 raw = json.dumps(record, indent=2, allow_nan=False).encode() + b"\n"
             path.write_bytes(raw)
 
         summaries = {}
         for family in FAMILIES:
             selection = selections[family]
-            identifiers = _candidate_ids(selection, family)
+            identifiers = _candidate_ids(selection, family, policy)
             json_paths, npz_paths, particle_rows = [], [], []
             for worker in WORKERS:
-                worker_root = root / "refinement" / family / f"worker_{worker}"
-                particle_rows.append(_strict_json(worker_root / "particle_selection.json", require_mapping=False))
+                worker_root = root / policy.stage / family / f"worker_{worker}"
+                particle_rows.append(
+                    _strict_json(
+                        worker_root / "particle_selection.json", require_mapping=False
+                    )
+                )
                 for candidate_id in identifiers[worker::3]:
                     for seed in RECOIL_SEEDS:
                         stem = f"{candidate_id}_seed_{seed}"
@@ -252,61 +275,108 @@ def validate_refinement_result_bytes(
             for record in records:
                 current = record.get("design")
                 if (
-                    set(record) != {
-                        "kind", "family", "candidate_id", "worker_index", "recoil_seed",
-                        "input_particle_count", "usable_at_end_count", "usable_ever_count",
-                        "peak_usable_count", "entered_capture_region_count", "slow_inside_count",
-                        "outcomes_path", "outcomes_sha256", "design",
+                    set(record)
+                    != {
+                        "kind",
+                        "family",
+                        "candidate_id",
+                        "worker_index",
+                        "recoil_seed",
+                        "input_particle_count",
+                        "usable_at_end_count",
+                        "usable_ever_count",
+                        "peak_usable_count",
+                        "entered_capture_region_count",
+                        "slow_inside_count",
+                        "outcomes_path",
+                        "outcomes_sha256",
+                        "design",
                     }
                     or record.get("input_particle_count") != EXPECTED_PARTICLES
                     or type(record.get("worker_index")) is not int
-                    or identifiers.index(record.get("candidate_id")) % 3 != record["worker_index"]
+                    or identifiers.index(record.get("candidate_id")) % 3
+                    != record["worker_index"]
                     or type(record.get("recoil_seed")) is not int
                     or record["recoil_seed"] not in RECOIL_SEEDS
                 ):
                     _raise("result_metadata_mismatch")
-                counts = [record[key] for key in ("usable_at_end_count", "usable_ever_count", "peak_usable_count", "entered_capture_region_count", "slow_inside_count")]
-                if any(type(value) is not int or not 0 <= value <= EXPECTED_PARTICLES for value in counts) or counts[2] < counts[0] or counts[4] > counts[3]:
+                counts = [
+                    record[key]
+                    for key in (
+                        "usable_at_end_count",
+                        "usable_ever_count",
+                        "peak_usable_count",
+                        "entered_capture_region_count",
+                        "slow_inside_count",
+                    )
+                ]
+                if (
+                    any(
+                        type(value) is not int or not 0 <= value <= EXPECTED_PARTICLES
+                        for value in counts
+                    )
+                    or counts[2] < counts[0]
+                    or counts[4] > counts[3]
+                ):
                     _raise("result_metadata_mismatch")
                 if frozen_design is None:
                     frozen_design = current
                 elif current != frozen_design:
                     _raise("design_mismatch")
-                selection_path = f"{source_root}/selection/refinement/{family}.json"
+                selection_path = f"{source_root}/selection/{policy.stage}/{family}.json"
                 if (
                     not isinstance(current, dict)
                     or set(current) != FROZEN_DESIGN_KEYS
-                    or current.get("campaign_manifest_path") != f"{source_root}/campaign.json"
+                    or current.get("campaign_manifest_path")
+                    != f"{source_root}/campaign.json"
                     or current.get("selection_path") != selection_path
-                    or current.get("git_commit") != manifest.get("provenance", {}).get("git_commit")
-                    or current.get("physical_model_sha256") != manifest.get("provenance", {}).get("physical_model_sha256")
+                    or current.get("git_commit")
+                    != manifest.get("provenance", {}).get("git_commit")
+                    or current.get("physical_model_sha256")
+                    != manifest.get("provenance", {}).get("physical_model_sha256")
                     or current.get("input_role") != "refinement"
-                    or current.get("campaign_manifest_sha256") != hashlib.sha256(manifest_bytes).hexdigest()
-                    or current.get("input_role_sha256") != hashlib.sha256(_canonical(manifest.get("input_roles", {}).get("refinement"))).hexdigest()
-                    or current.get("particle_selection_sha256") != hashlib.sha256(_canonical(expected_particles)).hexdigest()
-                    or current.get("selection_sha256") != hashlib.sha256(selection_bytes[family]).hexdigest()
+                    or current.get("campaign_manifest_sha256")
+                    != hashlib.sha256(manifest_bytes).hexdigest()
+                    or current.get("input_role_sha256")
+                    != hashlib.sha256(
+                        _canonical(manifest.get("input_roles", {}).get("refinement"))
+                    ).hexdigest()
+                    or current.get("particle_selection_sha256")
+                    != hashlib.sha256(_canonical(expected_particles)).hexdigest()
+                    or current.get("selection_sha256")
+                    != hashlib.sha256(selection_bytes[family]).hexdigest()
                     or current.get("dt_s") != MOT_3D_TIMESTEP_POLICY["search_dt_s"]
                     or current.get("t_max_s") != 0.1
                     or current.get("solver") != MOT_3D_TIMESTEP_POLICY["solver"]
                     or current.get("particles_per_ensemble") != 750
-                    or current.get("selection_seed") != REFINEMENT_SCIENTIFIC_DESIGN.selection_seed
+                    or current.get("selection_seed") != policy.selection_seed
                 ):
                     _raise("design_mismatch")
                 stem = f"{record['candidate_id']}_seed_{record['recoil_seed']}"
                 npz = next(path for path in npz_paths if path.stem == stem)
                 with np.load(npz, allow_pickle=False) as archive:
-                    usable, ever, groups = archive["usable_at_end"], archive["usable_ever"], archive["ensemble_ids"]
+                    usable, ever, groups = (
+                        archive["usable_at_end"],
+                        archive["usable_ever"],
+                        archive["ensemble_ids"],
+                    )
                     if (
-                        usable.shape != (3000,) or ever.shape != (3000,) or groups.shape != (3000,)
-                        or usable.dtype != np.bool_ or ever.dtype != np.bool_
+                        usable.shape != (3000,)
+                        or ever.shape != (3000,)
+                        or groups.shape != (3000,)
+                        or usable.dtype != np.bool_
+                        or ever.dtype != np.bool_
                         or not np.issubdtype(groups.dtype, np.integer)
-                        or [int(np.sum(groups == index)) for index in range(4)] != [750] * 4
+                        or [int(np.sum(groups == index)) for index in range(4)]
+                        != [750] * 4
                         or int(usable.sum()) != record["usable_at_end_count"]
                         or int(ever.sum()) != record["usable_ever_count"]
                         or np.any(usable & ~ever)
                     ):
                         _raise("result_archive_invalid")
-            summary_path = root / "refinement" / family / "merged" / "refinement_summary.json"
+            summary_path = (
+                root / policy.stage / family / "merged" / "refinement_summary.json"
+            )
             summary = _strict_json(summary_path)
             if (
                 summary.get("kind") != "merged_mot_3d_focused_refinement"
@@ -316,9 +386,10 @@ def validate_refinement_result_bytes(
                 or summary.get("ensemble_file_indices") != [12, 13, 14, 15]
                 or summary.get("recoil_seed_count") != 3
                 or summary.get("bootstrap_replicates") != 10_000
-                or summary.get("bootstrap_seed") != 62_001
+                or summary.get("bootstrap_seed") != policy.bootstrap_seed
                 or summary.get("multiplicity_method") != EXPECTED_MULTIPLICITY_METHOD
-                or summary.get("selection_sha256") != hashlib.sha256(selection_bytes[family]).hexdigest()
+                or summary.get("selection_sha256")
+                != hashlib.sha256(selection_bytes[family]).hexdigest()
                 or summary.get("design") != frozen_design
                 or not _finite_tree(summary)
             ):
@@ -327,7 +398,17 @@ def validate_refinement_result_bytes(
 
             output = root / "recomputed" / family
             with contextlib.redirect_stdout(io.StringIO()):
-                merge(Namespace(selection=str(root / "selection" / "refinement" / f"{family}.json"), input_root=str(root / "refinement" / family), output_dir=str(output), bootstrap_replicates=10_000, bootstrap_seed=62_001))
+                merge(
+                    Namespace(
+                        selection=str(
+                            root / "selection" / policy.stage / f"{family}.json"
+                        ),
+                        input_root=str(root / policy.stage / family),
+                        output_dir=str(output),
+                        bootstrap_replicates=10_000,
+                        bootstrap_seed=policy.bootstrap_seed,
+                    )
+                )
             if _strict_json(output / "refinement_summary.json") != summary:
                 _raise("summary_mismatch")
             summaries[family] = summary

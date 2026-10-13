@@ -305,6 +305,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Refinement result synchronization is unavailable.",
         ),
+        "mot_3d_closure_transition_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D Closure result synchronization is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -1166,6 +1170,48 @@ MOT_3D_REFINEMENT_TRANSITION = _generic_stage(
     },
     "mot_3d_refinement_transition_failed",
 )
+MOT_3D_CLOSURE_TRANSITION = _generic_stage(
+    {
+        "request_invalid",
+        "profile_invalid",
+        "campaign_not_found",
+        "closure_not_ready",
+        "closure_already_started",
+        "closure_partial_submission",
+        "closure_submission_outcome_unknown",
+        "closure_preparation_invalid",
+        "remote_response_invalid",
+        "local_files_changed",
+        "too_many_pending_previews",
+        "confirmation_invalid",
+        "confirmation_expired",
+        "local_or_remote_evidence_changed",
+        "local_sync_conflict",
+        "local_sync_outcome_unknown",
+        "transition_outcome_unknown",
+        "invalid_request",
+        "remote_checkout_mismatch",
+        "closure_transition_conflict",
+        "closure_transition_busy",
+        "closure_transition_outcome_unknown",
+        "closure_transition_not_prepared",
+        "zeus_unavailable",
+        "zeus_timeout",
+    },
+    "3D Closure result synchronization stopped safely.",
+    {
+        "closure_transition_conflict",
+        "closure_transition_busy",
+        "closure_transition_outcome_unknown",
+        "transition_outcome_unknown",
+        "closure_already_started",
+        "closure_partial_submission",
+        "closure_submission_outcome_unknown",
+        "local_sync_conflict",
+        "local_sync_outcome_unknown",
+    },
+    "mot_3d_closure_transition_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -1279,6 +1325,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "mot_3d_closure_submission": MOT_3D_CLOSURE_SUBMISSION,
         "mot_3d_preliminary_transition": MOT_3D_PRELIMINARY_TRANSITION,
         "mot_3d_refinement_transition": MOT_3D_REFINEMENT_TRANSITION,
+        "mot_3d_closure_transition": MOT_3D_CLOSURE_TRANSITION,
     }
 )
 

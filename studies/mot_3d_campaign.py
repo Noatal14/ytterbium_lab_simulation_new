@@ -1183,7 +1183,7 @@ def render_closure_transition(logical_campaign_root, manifest, refinement_summar
     return artifacts, updated
 
 
-def prepare_finalist_selection(root, manifest):
+def _prepare_finalist_selection_legacy(root, manifest):
     from studies.mot_3d.finalists.select import select
 
     selections, worker_jobs, merge_jobs = {}, {}, {}
@@ -1231,6 +1231,86 @@ def prepare_finalist_selection(root, manifest):
         "input_roles": ["discovery", "refinement", "preliminary_check"],
     }
     save_file_json(root / "campaign.json", manifest)
+
+
+def render_finalist_selection_transition(
+    logical_campaign_root, manifest, closure_summaries
+):
+    """Render Closure -> finalist-selection artifacts without filesystem I/O."""
+    from studies.mot_3d.finalists.select import select_from_summary
+
+    root = _canonical_campaign_logical_root(logical_campaign_root)
+    if set(closure_summaries) != set(FAMILIES):
+        raise ValueError("Both canonical closure family summaries are required.")
+    artifacts, selections = {}, {}
+    for family in FAMILIES:
+        payload = select_from_summary(family, closure_summaries[family], count=3)
+        relative = Path("selection") / "finalists" / f"{family}.json"
+        artifacts[relative.as_posix()] = json.dumps(
+            payload, indent=2, allow_nan=False
+        ).encode("utf-8")
+        selections[family] = root / relative
+        short = "don" if family == "angled_donut" else "sp"
+        family_root = root / "finalist_selection" / family
+        artifacts[f"jobs/finalist_selection/{family}_array.pbs"] = (
+            _header(f"m3d2_{short}_fin", manifest["provenance"]["git_commit"])
+            + f"python -u -m studies.mot_3d.finalists.run --family {family} "
+            f'--selection {selections[family]} --finalist-index "$PBS_ARRAY_INDEX" '
+            f"--input-manifest {root / 'campaign.json'} --npools 200 "
+            f"--dt {manifest['design']['screening_dt_s']} "
+            f"--output-dir {family_root}/finalist_${{PBS_ARRAY_INDEX}}\n"
+        ).encode("utf-8")
+        artifacts[f"jobs/finalist_selection/{family}_merge.pbs"] = (
+            _header(
+                f"m3d2_{short}_finm",
+                manifest["provenance"]["git_commit"],
+                "01:00:00",
+                1,
+                "4gb",
+            )
+            + f"python -u -m studies.mot_3d.finalists.merge --selection {selections[family]} "
+            f"--input-root {family_root} --output-dir {family_root}/merged "
+            "--bootstrap-seed 82001\n"
+        ).encode("utf-8")
+    updated = copy.deepcopy(manifest)
+    updated["stage"] = "finalist_selection"
+    updated.setdefault("stages", {})["finalist_selection"] = {
+        "classification": "final_candidate_selection_not_unbiased_validation",
+        "selection_files": {key: str(value) for key, value in selections.items()},
+        "worker_jobs": {
+            family: str(root / "jobs" / "finalist_selection" / f"{family}_array.pbs")
+            for family in FAMILIES
+        },
+        "merge_jobs": {
+            family: str(root / "jobs" / "finalist_selection" / f"{family}_merge.pbs")
+            for family in FAMILIES
+        },
+        "input_roles": ["discovery", "refinement", "preliminary_check"],
+    }
+    artifacts["campaign.json"] = json.dumps(updated, indent=2, allow_nan=False).encode(
+        "utf-8"
+    )
+    return artifacts, updated
+
+
+def prepare_finalist_selection(root, manifest):
+    """Prepare finalist selection through the portable canonical renderer."""
+    summaries = {}
+    for family in FAMILIES:
+        path = root / "closure" / family / "merged" / "refinement_summary.json"
+        if not path.is_file():
+            raise RuntimeError(f"Closure incomplete: {path}")
+        summaries[family] = json.loads(path.read_text(encoding="utf-8"))
+    logical_root = _canonical_campaign_logical_root(root)
+    artifacts, updated = render_finalist_selection_transition(
+        logical_root, manifest, summaries
+    )
+    for relative, raw in artifacts.items():
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    manifest.clear()
+    manifest.update(updated)
 
 
 def prepare_final_validation_inputs(root, manifest):

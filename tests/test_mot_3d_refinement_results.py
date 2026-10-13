@@ -17,15 +17,21 @@ from workflow_api.mot_3d_refinement_results import (
 from workflow_api.mot_3d_preliminary_results import (
     expected_selection_particle_provenance,
 )
+from workflow_api.mot_3d_closure_results import validate_closure_result_bytes
 
 
-def _selection(family):
+def _selection(
+    family,
+    *,
+    kind="mot_3d_focused_refinement_selection",
+    label="refine",
+):
     return {
-        "kind": "mot_3d_focused_refinement_selection",
+        "kind": kind,
         "family": family,
         "candidate_count": 16,
         "candidates": [
-            {"candidate_id": f"{family}_refine_{index:02d}"} for index in range(16)
+            {"candidate_id": f"{family}_{label}_{index:02d}"} for index in range(16)
         ],
     }
 
@@ -56,7 +62,30 @@ def test_registry_is_deterministic():
     )
 
 
-def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
+@pytest.mark.parametrize(
+    "validator,stage,selection_kind,label,selection_seed,bootstrap_seed",
+    [
+        (
+            validate_refinement_result_bytes,
+            "refinement",
+            "mot_3d_focused_refinement_selection",
+            "refine",
+            61001,
+            62001,
+        ),
+        (
+            validate_closure_result_bytes,
+            "closure",
+            "mot_3d_local_closure_selection",
+            "closure",
+            71001,
+            72001,
+        ),
+    ],
+)
+def test_closed_200_file_fixture_validates_and_binds_canonical_paths(
+    tmp_path, validator, stage, selection_kind, label, selection_seed, bootstrap_seed
+):
     project = "/home/tal.noa/ytterbium_lab_simulation_new"
     remote = f"{project}/data/optimization/mot_3d/campaign"
     root = tmp_path / "campaign"
@@ -81,12 +110,12 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
         )
     manifest = {
         "name": "campaign",
-        "stage": "refinement",
+        "stage": stage,
         "provenance": {"git_commit": "a" * 40, "physical_model_sha256": "b" * 64},
         "design": {"screening_dt_s": 1e-5, "solver": "RK4StHybridCustom"},
         "input_roles": {"refinement": roles},
         "stages": {
-            "refinement": {
+            stage: {
                 "classification": "candidate_selection_not_final_validation",
                 "input_role": "refinement",
             }
@@ -100,23 +129,23 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
         input_role="refinement",
         input_ensembles=4,
         particles_per_ensemble=750,
-        selection_seed=61001,
+        selection_seed=selection_seed,
         expected_zeeman_seeds=tuple(range(3027, 3031)),
     )
     selections, results = {}, {}
     for family in ("angled_donut", "single_pass"):
-        selection = _selection(family)
+        selection = _selection(family, kind=selection_kind, label=label)
         for row in selection["candidates"]:
             row.update({"parameters": {}, "resolved_profile": {}})
         selection_raw = json.dumps(selection, indent=2).encode() + b"\n"
         selections[family] = selection_raw
-        selection_path = root / "selection" / "refinement" / f"{family}.json"
+        selection_path = root / "selection" / stage / f"{family}.json"
         selection_path.parent.mkdir(parents=True, exist_ok=True)
         selection_path.write_bytes(selection_raw)
         design = {
             "campaign_manifest_path": f"{remote}/campaign.json",
             "campaign_manifest_sha256": hashlib.sha256(manifest_raw).hexdigest(),
-            "selection_path": f"{remote}/selection/refinement/{family}.json",
+            "selection_path": f"{remote}/selection/{stage}/{family}.json",
             "selection_sha256": hashlib.sha256(selection_raw).hexdigest(),
             "git_commit": "a" * 40,
             "physical_model_sha256": "b" * 64,
@@ -128,13 +157,13 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
             "t_max_s": 0.1,
             "solver": "RK4StHybridCustom",
             "particles_per_ensemble": 750,
-            "selection_seed": 61001,
+            "selection_seed": selection_seed,
             "particle_selection_sha256": hashlib.sha256(
                 json.dumps(particles, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest(),
         }
         for worker in range(3):
-            worker_root = root / "refinement" / family / f"worker_{worker}"
+            worker_root = root / stage / family / f"worker_{worker}"
             worker_root.mkdir(parents=True)
             (worker_root / "particle_selection.json").write_text(json.dumps(particles))
             for candidate in selection["candidates"][worker::3]:
@@ -175,13 +204,13 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
         merge(
             Namespace(
                 selection=str(selection_path),
-                input_root=str(root / "refinement" / family),
-                output_dir=str(root / "refinement" / family / "merged"),
+                input_root=str(root / stage / family),
+                output_dir=str(root / stage / family / "merged"),
                 bootstrap_replicates=10000,
-                bootstrap_seed=62001,
+                bootstrap_seed=bootstrap_seed,
             )
         )
-        for path in (root / "refinement" / family).rglob("*"):
+        for path in (root / stage / family).rglob("*"):
             if path.is_file():
                 relative = path.relative_to(root).as_posix()
                 raw = path.read_bytes()
@@ -196,7 +225,7 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
                     )
                     raw = json.dumps(row).encode()
                 results[relative] = raw
-    validated = validate_refinement_result_bytes(
+    validated = validator(
         manifest_raw,
         selections,
         results,
@@ -213,7 +242,7 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
         code,
     ):
         with pytest.raises(RefinementResultError, match=code):
-            validate_refinement_result_bytes(
+            validator(
                 manifest_value,
                 selection_value,
                 result_value,
@@ -246,14 +275,14 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
     bad[record_key] = json.dumps(row).encode()
     rejected(result_value=bad, code="result_registry_invalid")
     bad_manifest = json.loads(manifest_raw)
-    bad_manifest["stage"] = "closure"
+    bad_manifest["stage"] = "other_stage"
     rejected(manifest_value=json.dumps(bad_manifest).encode(), code="design_mismatch")
     bad_selections = dict(selections)
     row = json.loads(bad_selections["angled_donut"])
     row["candidate_count"] = 15
     bad_selections["angled_donut"] = json.dumps(row).encode()
     rejected(selection_value=bad_selections, code="selection_mismatch")
-    summary_key = "refinement/angled_donut/merged/refinement_summary.json"
+    summary_key = f"{stage}/angled_donut/merged/refinement_summary.json"
     bad = dict(results)
     row = json.loads(bad[summary_key])
     row["bootstrap_seed"] = 1
@@ -279,7 +308,7 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
 
     # Exact registry membership rejects additions and path substitutions.
     bad = dict(results)
-    bad["refinement/angled_donut/worker_0/unexpected.json"] = b"{}"
+    bad[f"{stage}/angled_donut/worker_0/unexpected.json"] = b"{}"
     rejected(result_value=bad, code="artifact_registry_mismatch")
     bad = dict(results)
     moved = bad.pop(record_key)
@@ -398,7 +427,7 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(tmp_path):
     reformatted = dict(results)
     payload = json.loads(reformatted[record_key])
     reformatted[record_key] = json.dumps(payload, indent=4).encode() + b"\n"
-    reformatted_validated = validate_refinement_result_bytes(
+    reformatted_validated = validator(
         manifest_raw,
         selections,
         reformatted,

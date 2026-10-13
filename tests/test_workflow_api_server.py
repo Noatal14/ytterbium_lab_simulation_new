@@ -475,6 +475,7 @@ def running_server(
     mot_3d_closure_submission_service=None,
     mot_3d_preliminary_transition_service=None,
     mot_3d_refinement_transition_service=None,
+    mot_3d_closure_transition_service=None,
 ):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
@@ -497,6 +498,7 @@ def running_server(
         mot_3d_preliminary_transition_service
     )
     handler.mot_3d_refinement_transition_service = mot_3d_refinement_transition_service
+    handler.mot_3d_closure_transition_service = mot_3d_closure_transition_service
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
@@ -1474,6 +1476,72 @@ def test_mot_3d_refinement_transition_http_boundary_is_explicit_and_session_boun
         )
         assert status == 201 and payload["data"]["simulation_started"] is False
     assert [call[0] for call in service.calls] == ["status", "preview", "confirm"]
+
+
+class _FakeMot3DClosureTransitionService:
+    def status(self, payload):
+        return {"source": "zeus", "next_action": "review_transition"}
+
+    def preview(self, payload, *, session_id):
+        return {"preview_token": "token", "effects": {"submit_finalists": False}}
+
+    def confirm(self, payload, *, session_id):
+        return {
+            "status": "finalist_selection_prepared",
+            "submitted_to_zeus": False,
+            "simulation_started": False,
+        }
+
+
+def test_mot_3d_closure_transition_http_boundary_is_explicit_and_session_bound():
+    with running_server(
+        request_count=5,
+        mot_3d_closure_transition_service=_FakeMot3DClosureTransitionService(),
+    ) as base_url:
+        session_status, headers, payload = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        assert session_status == 200, payload
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        request = {
+            "campaign_id": "campaign-id",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+        }
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/closure-transition/status",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(request),
+        )
+        assert status == 403 and payload["error"]["code"] == "untrusted_origin"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/closure-transition/status",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["next_action"] == "review_transition"
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/closure-transition/preview",
+            method="POST",
+            headers=trusted,
+            body=json.dumps(request),
+        )
+        assert status == 200 and payload["data"]["effects"]["submit_finalists"] is False
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/mot-3d/closure-transition/confirm",
+            method="POST",
+            headers=trusted,
+            body=json.dumps({"preview_token": "token"}),
+        )
+        assert (
+            status == 201 and payload["data"]["status"] == "finalist_selection_prepared"
+        )
 
 
 class _FakeZeusService:

@@ -11,6 +11,7 @@ from workflow_api.mot_3d_preliminary_transition import RemotePreliminaryTransiti
 from workflow_api.mot_3d_refinement_transition import (
     Mot3DRefinementTransitionCoordinator,
 )
+from workflow_api.mot_3d_closure_transition import Mot3DClosureTransitionCoordinator
 from workflow_api.mot_3d_refinement_submission import validate_prior_transition_sync
 from workflow_api import mot_3d_preliminary_transition as transition_module
 from workflow_api.verified_artifact_bundle import build_artifact_bundle
@@ -27,11 +28,19 @@ def sha(raw: bytes) -> str:
     return hashlib.sha256(raw).hexdigest()
 
 
-def fixture(tmp_path: Path, monkeypatch):
+def fixture(
+    tmp_path: Path,
+    monkeypatch,
+    *,
+    coordinator_type=Mot3DRefinementTransitionCoordinator,
+    from_stage="refinement",
+    to_stage="closure",
+    prepared_status="closure_prepared",
+):
     campaign = tmp_path / "data/optimization/mot_3d/campaign"
     campaign.mkdir(parents=True)
-    old = b'{"name":"campaign","stage":"refinement"}\n'
-    new = b'{"name":"campaign","stage":"closure"}\n'
+    old = json.dumps({"name": "campaign", "stage": from_stage}).encode() + b"\n"
+    new = json.dumps({"name": "campaign", "stage": to_stage}).encode() + b"\n"
     (campaign / "campaign.json").write_bytes(old)
     paths = frozenset(
         {"campaign.json", *(f"results/file_{index:03d}.json" for index in range(207))}
@@ -43,8 +52,8 @@ def fixture(tmp_path: Path, monkeypatch):
         files,
         campaign="campaign",
         commit=COMMIT,
-        from_stage="refinement",
-        to_stage="closure",
+        from_stage=from_stage,
+        to_stage=to_stage,
         expected_paths=paths,
     )
     identity = {
@@ -58,7 +67,7 @@ def fixture(tmp_path: Path, monkeypatch):
     transition_key = "e" * 64
     receipt = {
         "version": 1,
-        "status": "closure_prepared",
+        "status": prepared_status,
         "nonce": "f" * 32,
         "transition_key": transition_key,
         "commit": COMMIT,
@@ -76,7 +85,7 @@ def fixture(tmp_path: Path, monkeypatch):
         "single_pass": {"array": "11[].zeus-master", "merge": "21.zeus-master"},
     }
     state = RemotePreliminaryTransitionState(
-        "closure_prepared",
+        prepared_status,
         "main",
         jobs,
         6,
@@ -121,7 +130,7 @@ def fixture(tmp_path: Path, monkeypatch):
                 }
             )
 
-    coordinator = object.__new__(Mot3DRefinementTransitionCoordinator)
+    coordinator = object.__new__(coordinator_type)
     coordinator.clock = lambda: NOW
     monkeypatch.setattr(coordinator, "_expected_paths", lambda _fd: paths)
     return coordinator, plan, Transport(), state, files

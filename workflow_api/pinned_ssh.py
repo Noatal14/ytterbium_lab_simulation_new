@@ -43,6 +43,7 @@ class ReceiverKind(Enum):
     MOT_3D_REFINEMENT_SUBMISSION = "mot_3d_refinement_submission"
     MOT_3D_REFINEMENT_TRANSITION = "mot_3d_refinement_transition"
     MOT_3D_CLOSURE_SUBMISSION = "mot_3d_closure_submission"
+    MOT_3D_CLOSURE_TRANSITION = "mot_3d_closure_transition"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -105,6 +106,58 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_3D_CLOSURE_TRANSITION: _ReceiverDefinition(
+        "mot_3d_closure_transition_remote.py",
+        "<mot-3d-closure-transition>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.PREPARE,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        pinned_environment=True,
+        explicit_process_safety=True,
+        payload_before_receiver=True,
+        payload_stdin=True,
+    ),
     ReceiverKind.MOT_3D_REFINEMENT_TRANSITION: _ReceiverDefinition(
         "mot_3d_refinement_transition_remote.py",
         "<mot-3d-refinement-transition>",
@@ -1077,6 +1130,14 @@ class PinnedSshPolicy:
             repository_root,
             executable,
             timeout,
+        )
+
+    @classmethod
+    def mot_3d_closure_transition(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_CLOSURE_TRANSITION, repository_root, executable, timeout
         )
 
     @classmethod
