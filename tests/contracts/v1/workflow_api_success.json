@@ -3689,6 +3689,96 @@
       }
     },
     {
+      "id": "mot3d-finalist-transition-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/finalist-transition/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {"id": "campaign-id", "name": "mot_3d_contract", "stage": "finalist_selection"},
+          "scheduler": {"expected_array_tasks": 6, "expected_merge_jobs": 2, "completed_array_tasks": 6, "completed_merge_jobs": 2},
+          "validation": {"status": "valid", "result_artifacts": 44, "expected_result_artifacts": 44, "reason_code": null},
+          "transition": {"status": "not_prepared"},
+          "next_action": "review_transition",
+          "local_sync": {"status": "not_synchronized", "receipt_sha256": null},
+          "finalist_selection": {
+            "status": "ready_to_advance",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {"id": "angled_donut", "array_job_id": "610[].zeus-master", "merge_job_id": "611.zeus-master"},
+                {"id": "single_pass", "array_job_id": "612[].zeus-master", "merge_job_id": "613.zeus-master"}
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-finalist-transition-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/finalist-transition/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-finalist-transition-token",
+          "expires_in_seconds": 300,
+          "campaign": {"id": "campaign-id", "name": "mot_3d_contract", "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+          "from_stage": "finalist_selection",
+          "to_stage": "final_validation_input_generation",
+          "artifacts": {
+            "synchronize": {"result_files": 44, "submission_receipts": 1},
+            "create": {"selection_files": 1, "job_files": 3},
+            "update": ["campaign.json"],
+            "transfer_files": 50
+          },
+          "effects": {
+            "synchronize_finalist_selection": true,
+            "prepare_final_validation_inputs": true,
+            "submit_final_validation_inputs": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "finalist_selection": {
+            "result_artifacts": 44,
+            "expected_result_artifacts": 44,
+            "families": ["angled_donut", "single_pass"],
+            "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "winner_selection": {
+            "rule": "largest lower endpoint of the simultaneous two-sided 95% interval; ties broken by mean usable fraction",
+            "winners": [
+              {"family": "angled_donut", "candidate_id": "angled_donut_finalist_01"},
+              {"family": "single_pass", "candidate_id": "single_pass_finalist_01"}
+            ],
+            "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-finalist-transition-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/finalist-transition/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "final_validation_input_generation_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "final_validation_input_generation",
+          "artifacts": {"synchronized": 45, "created": 4, "updated": 1, "bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {"status": "synchronized", "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
+        }
+      }
+    },
+    {
       "id": "mot3d-zeus-recover",
       "method": "POST",
       "path": "/api/v1/individual-runs/mot-3d/zeus/recover",

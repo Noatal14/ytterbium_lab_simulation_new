@@ -624,13 +624,19 @@ def test_final_input_jobs_use_domain_module_paths(tmp_path, monkeypatch):
         (path / "finalist_summary.json").write_text(
             json.dumps(
                 {
+                    "kind": "merged_mot_3d_finalist_selection",
+                    "family": family,
                     "ranked_candidates": [
-                        {"candidate_id": f"{family}_winner", "parameters": parameters}
+                        {"candidate_id": f"{family}_winner", "parameters": parameters},
+                        {"candidate_id": f"{family}_runner_1", "parameters": parameters},
+                        {"candidate_id": f"{family}_runner_2", "parameters": parameters},
                     ]
                 }
             )
         )
     manifest = {
+        "name": "campaign",
+        "stage": "finalist_selection",
         "provenance": {"git_commit": "abc123"},
         "upstream_2d_campaign": {
             "expected_survivor_parameters": {

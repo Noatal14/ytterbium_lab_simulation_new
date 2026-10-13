@@ -17,7 +17,7 @@ import zipfile
 import re
 from argparse import Namespace
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
 import numpy as np
@@ -549,6 +549,77 @@ def _validate_npz_container(raw: bytes) -> None:
 def validate_npz_container_bytes(raw: bytes) -> None:
     """Public shared preflight for the canonical three-member outcome archive."""
     _validate_npz_container(raw)
+
+
+def validate_frozen_role_records(
+    records: object,
+    *,
+    project_directory: str,
+    expected_zeeman_seeds: tuple[int, ...],
+    source_git_commit: str,
+) -> list[Mapping[str, Any]]:
+    """Validate the immutable input-role ledger shared by later 3D stages."""
+
+    project = PurePosixPath(project_directory)
+    if (
+        type(project_directory) is not str
+        or not project.is_absolute()
+        or str(project) != project_directory
+        or any(part in {"", ".", ".."} for part in project.parts[1:])
+        or type(expected_zeeman_seeds) is not tuple
+        or any(type(seed) is not int or seed < 0 for seed in expected_zeeman_seeds)
+        or len(set(expected_zeeman_seeds)) != len(expected_zeeman_seeds)
+        or type(source_git_commit) is not str
+        or HEX40.fullmatch(source_git_commit) is None
+        or not isinstance(records, list)
+        or len(records) != len(expected_zeeman_seeds)
+    ):
+        raise PreliminaryResultError("particle_selection_mismatch")
+    validated = []
+    seen_mot_seeds: set[int] = set()
+    for index, record in enumerate(records):
+        if not isinstance(record, Mapping) or set(record) != FROZEN_ROLE_KEYS:
+            raise PreliminaryResultError("particle_selection_mismatch")
+        count = record["n_survivors"]
+        path = record["path"]
+        metadata_path = record["metadata_path"]
+        array_path = PurePosixPath(path) if type(path) is str else None
+        metadata = PurePosixPath(metadata_path) if type(metadata_path) is str else None
+        mot_seed = record["mot_seed"]
+        if (
+            type(count) is not int
+            or not 1 <= count <= 50_000
+            or type(record["zeeman_seed"]) is not int
+            or record["zeeman_seed"] != expected_zeeman_seeds[index]
+            or type(mot_seed) is not int
+            or mot_seed < 0
+            or mot_seed in seen_mot_seeds
+            or array_path is None
+            or metadata is None
+            or not array_path.is_absolute()
+            or not metadata.is_absolute()
+            or str(array_path) != path
+            or str(metadata) != metadata_path
+            or any(part in {"", ".", ".."} for part in array_path.parts[1:])
+            or any(part in {"", ".", ".."} for part in metadata.parts[1:])
+            or array_path.parts[: len(project.parts)] != project.parts
+            or metadata.parts[: len(project.parts)] != project.parts
+            or array_path.suffix != ".npy"
+            or metadata != array_path.with_suffix(".json")
+            or type(record["sha256"]) is not str
+            or HEX64.fullmatch(record["sha256"]) is None
+            or type(record["metadata_sha256"]) is not str
+            or HEX64.fullmatch(record["metadata_sha256"]) is None
+            or record["shape"] != [count, 6]
+            or record["dtype"] != "float64"
+            or record["source_git_commit"] != source_git_commit
+            or not isinstance(record["source_design"], Mapping)
+            or not isinstance(record["source_parameters"], Mapping)
+        ):
+            raise PreliminaryResultError("particle_selection_mismatch")
+        seen_mot_seeds.add(mot_seed)
+        validated.append(record)
+    return validated
 
 
 def expected_selection_particle_provenance(

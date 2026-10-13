@@ -100,7 +100,8 @@ class TransitionDescriptor:
             type(self.source_result_count) is not int
             or self.source_result_count <= 0
             or type(self.transfer_file_count) is not int
-            or self.transfer_file_count != self.source_result_count + 8
+            or self.transfer_file_count
+            != self.source_result_count + 1 + len(self.generated_paths)
             or not _safe_relative(self.source_submission_receipt)
             or type(self.prior_local_sync_receipt) is not str
             or not self.prior_local_sync_receipt.startswith(".mot_ui/sync/")
@@ -108,7 +109,7 @@ class TransitionDescriptor:
             or type(self.generated_paths) is not frozenset
             or type(self.source_identity_paths) is not frozenset
             or type(self.code_paths) is not frozenset
-            or len(self.generated_paths) != 7
+            or not 2 <= len(self.generated_paths) <= 16
             or type(self.prior_transition_file_count) is not int
             or self.prior_transition_file_count <= 0
         ):
@@ -174,6 +175,12 @@ def _result_paths(selections):
         from workflow_api.mot_3d_closure_results import expected_paths as closure_paths
 
         return closure_paths(selections)
+    if _descriptor().from_stage == "finalist_selection":
+        from workflow_api.mot_3d_finalist_results import (
+            expected_paths as finalist_paths,
+        )
+
+        return finalist_paths(selections)
     from workflow_api.mot_3d_refinement_results import (
         expected_paths as refinement_paths,
     )
@@ -209,7 +216,7 @@ def _validate_results(
             campaign_absolute_path=str(campaign_path),
             project_directory=str(project_directory),
         )
-    else:
+    elif _descriptor().from_stage == "closure":
         from workflow_api.mot_3d_closure_results import validate_closure_result_bytes
 
         validated = validate_closure_result_bytes(
@@ -219,16 +226,43 @@ def _validate_results(
             campaign_absolute_path=str(campaign_path),
             project_directory=str(project_directory),
         )
+    else:
+        from workflow_api.mot_3d_finalist_results import validate_finalist_result_bytes
+
+        validated = validate_finalist_result_bytes(
+            manifest_bytes=manifest_raw,
+            selection_bytes=selections,
+            result_files=results,
+            campaign_absolute_path=str(campaign_path),
+            project_directory=str(project_directory),
+        )
     return manifest, validated
 
 
-def _render_transition(relative, manifest, summaries):
+def _render_transition(relative, manifest, validated, manifest_raw):
+    summaries = validated.summaries
     if _descriptor().to_stage == "refinement":
         return render_refinement_transition(relative, manifest, summaries)
     if _descriptor().to_stage == "closure":
         from studies.mot_3d_campaign import render_closure_transition
 
         return render_closure_transition(relative, manifest, summaries)
+    if _descriptor().to_stage == "final_validation_input_generation":
+        from studies.mot_3d_campaign import render_final_validation_input_transition
+
+        summary_hashes = {
+            family: validated.hashes[
+                f"finalist_selection/{family}/merged/finalist_summary.json"
+            ]
+            for family in FAMILIES
+        }
+        return render_final_validation_input_transition(
+            relative,
+            manifest,
+            summaries,
+            summary_hashes,
+            hashlib.sha256(manifest_raw).hexdigest(),
+        )
     from studies.mot_3d_campaign import render_finalist_selection_transition
 
     return render_finalist_selection_transition(relative, manifest, summaries)
@@ -652,6 +686,7 @@ def _response(
     receipt=None,
     bundle=None,
     chunk=None,
+    winner_selection=None,
 ):
     print(
         json.dumps(
@@ -667,10 +702,66 @@ def _response(
                 "receipt": receipt,
                 "bundle": bundle,
                 "chunk": chunk,
+                "winner_selection": winner_selection,
             },
             separators=(",", ":"),
         )
     )
+
+
+def _winner_selection_from_summaries(summaries, evidence):
+    if _descriptor().from_stage != "finalist_selection":
+        return None
+    from studies.mot_3d.finalists.merge import FINALIST_WINNER_RANKING_RULE
+
+    winners = []
+    for family in FAMILIES:
+        summary = summaries[family]
+        candidate = summary["ranked_candidates"][0]["candidate_id"]
+        if (
+            type(candidate) is not str
+            or re.fullmatch(rf"{re.escape(family)}_finalist_0[1-3]", candidate) is None
+        ):
+            fail(_descriptor().error("conflict"))
+        winners.append({"family": family, "candidate_id": candidate})
+    return {
+        "rule": FINALIST_WINNER_RANKING_RULE,
+        "winners": winners,
+        "evidence_sha256": evidence,
+    }
+
+
+def _winner_selection_from_published(campaign_fd, evidence):
+    if _descriptor().from_stage != "finalist_selection":
+        return None
+    from studies.mot_3d.finalists.merge import FINALIST_WINNER_RANKING_RULE
+
+    locked = json_bytes(
+        read_relative_at(campaign_fd, "selection/locked_nominals.json", MAX_FILE),
+        error=_descriptor().error("outcome_unknown"),
+    )
+    families = locked.get("families")
+    if (
+        locked.get("kind") != "mot_3d_locked_nominals"
+        or not isinstance(families, dict)
+        or set(families) != set(FAMILIES)
+    ):
+        fail(_descriptor().error("outcome_unknown"))
+    winners = []
+    for family in FAMILIES:
+        row = families[family]
+        candidate = row.get("candidate_id") if isinstance(row, dict) else None
+        if (
+            type(candidate) is not str
+            or re.fullmatch(rf"{re.escape(family)}_finalist_0[1-3]", candidate) is None
+        ):
+            fail(_descriptor().error("outcome_unknown"))
+        winners.append({"family": family, "candidate_id": candidate})
+    return {
+        "rule": FINALIST_WINNER_RANKING_RULE,
+        "winners": winners,
+        "evidence_sha256": evidence,
+    }
 
 
 def _identity(
@@ -1256,6 +1347,9 @@ def main(*, trusted_root_override=None):
                     receipt=receipt,
                     bundle=receipt["bundle"],
                     chunk=chunk,
+                    winner_selection=_winner_selection_from_published(
+                        campaign_fd, receipt["evidence_sha256"]
+                    ),
                 )
                 return
             _response(
@@ -1268,6 +1362,9 @@ def main(*, trusted_root_override=None):
                 evidence=receipt["evidence_sha256"],
                 receipt=receipt,
                 bundle=receipt["bundle"],
+                winner_selection=_winner_selection_from_published(
+                    campaign_fd, receipt["evidence_sha256"]
+                ),
             )
             return
         if operation == "retrieve":
@@ -1340,6 +1437,9 @@ def main(*, trusted_root_override=None):
                 evidence=receipt["evidence_sha256"],
                 receipt=receipt,
                 bundle=receipt["bundle"],
+                winner_selection=_winner_selection_from_published(
+                    campaign_fd, receipt["evidence_sha256"]
+                ),
             )
             return
         if lifecycle != "completed_success_unvalidated":
@@ -1375,6 +1475,9 @@ def main(*, trusted_root_override=None):
                 2,
                 validation="valid",
                 evidence=validated.evidence_sha256,
+                winner_selection=_winner_selection_from_summaries(
+                    validated.summaries, validated.evidence_sha256
+                ),
             )
             return
         if (
@@ -1400,7 +1503,9 @@ def main(*, trusted_root_override=None):
             _exact_stage2(campaign_fd, payload["submission_key"], payload["commit"])
             if _scheduler(jobs) != ("completed_success_unvalidated", 6, 2):
                 fail(_descriptor().error("conflict"))
-            generated, _ = _render_transition(relative, manifest, validated.summaries)
+            generated, _ = _render_transition(
+                relative, manifest, validated, frozen["campaign.json"]
+            )
             if set(generated) != _descriptor().generated_paths:
                 fail(_descriptor().error("conflict"))
             files = dict(results)
@@ -1521,6 +1626,9 @@ def main(*, trusted_root_override=None):
             evidence=receipt["evidence_sha256"],
             receipt=receipt,
             bundle=receipt["bundle"],
+            winner_selection=_winner_selection_from_published(
+                campaign_fd, receipt["evidence_sha256"]
+            ),
         )
     finally:
         for fd in reversed(opened):

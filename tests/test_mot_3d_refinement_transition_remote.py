@@ -47,7 +47,7 @@ def _fixture(tmp_path, monkeypatch, receiver=remote):
     (campaign / descriptor.source_submission_receipt).write_text("receipt")
     result_paths = tuple(
         f"{descriptor.from_stage}/results/result_{index:03d}.json"
-        for index in range(200)
+        for index in range(descriptor.source_result_count)
     )
     results = {}
     for name in result_paths:
@@ -65,6 +65,16 @@ def _fixture(tmp_path, monkeypatch, receiver=remote):
             for name in descriptor.generated_paths - {"campaign.json"}
         },
     }
+    if "selection/locked_nominals.json" in generated:
+        generated["selection/locked_nominals.json"] = json.dumps(
+            {
+                "kind": "mot_3d_locked_nominals",
+                "families": {
+                    family: {"candidate_id": f"{family}_finalist_01"}
+                    for family in core.FAMILIES
+                },
+            }
+        ).encode()
     identity = {
         "source_files": {name: "a" * 64 for name in descriptor.source_identity_paths},
         "code_files": {name: "b" * 64 for name in descriptor.code_paths},

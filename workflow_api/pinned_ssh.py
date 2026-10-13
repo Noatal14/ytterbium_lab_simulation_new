@@ -45,6 +45,7 @@ class ReceiverKind(Enum):
     MOT_3D_CLOSURE_SUBMISSION = "mot_3d_closure_submission"
     MOT_3D_CLOSURE_TRANSITION = "mot_3d_closure_transition"
     MOT_3D_FINALIST_SUBMISSION = "mot_3d_finalist_submission"
+    MOT_3D_FINALIST_TRANSITION = "mot_3d_finalist_transition"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -107,6 +108,36 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_3D_FINALIST_TRANSITION: _ReceiverDefinition(
+        "mot_3d_finalist_transition_remote.py",
+        "<mot-3d-finalist-transition>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.PREPARE,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+        ),
+    ),
     ReceiverKind.MOT_3D_CLOSURE_TRANSITION: _ReceiverDefinition(
         "mot_3d_closure_transition_remote.py",
         "<mot-3d-closure-transition>",
@@ -1200,6 +1231,17 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.MOT_3D_FINALIST_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def mot_3d_finalist_transition(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_FINALIST_TRANSITION,
             repository_root,
             executable,
             timeout,

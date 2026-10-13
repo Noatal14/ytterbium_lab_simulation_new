@@ -186,9 +186,7 @@ def test_tampered_chunk_causes_zero_artifact_publication(tmp_path, monkeypatch):
         remote = original(**payload)
         row = dict(remote.chunk)
         row["content"] = base64.b64encode(b"bad").decode()
-        return RemotePreliminaryTransitionState(
-            *(remote.__dict__[name] for name in list(remote.__dict__)[:-1]), row
-        )
+        return replace(remote, chunk=row)
 
     transport.retrieve = corrupt
     with pytest.raises(Mot3DPreliminaryTransitionError) as error:

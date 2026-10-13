@@ -2074,6 +2074,59 @@ _closure_transition_confirm = _PAYLOADS["mot3d-closure-transition-confirm"]
 _closure_transition_confirm["status"] = "finalist_selection_prepared"
 _closure_transition_confirm["stage"] = "finalist_selection"
 
+_PAYLOADS["mot3d-finalist-transition-status"] = deepcopy(
+    _PAYLOADS["mot3d-closure-transition-status"]
+)
+_finalist_transition_status = _PAYLOADS["mot3d-finalist-transition-status"]
+_finalist_transition_status["campaign"]["stage"] = "finalist_selection"
+_finalist_transition_status["finalist_selection"] = _finalist_transition_status.pop(
+    "closure"
+)
+_finalist_transition_status["validation"].update(
+    {"result_artifacts": 44, "expected_result_artifacts": 44}
+)
+_PAYLOADS["mot3d-finalist-transition-preview"] = deepcopy(
+    _PAYLOADS["mot3d-closure-transition-preview"]
+)
+_finalist_transition_preview = _PAYLOADS["mot3d-finalist-transition-preview"]
+_finalist_transition_preview["preview_token"] = "mot3d-finalist-transition-token"
+_finalist_transition_preview["from_stage"] = "finalist_selection"
+_finalist_transition_preview["to_stage"] = "final_validation_input_generation"
+_finalist_transition_preview["finalist_selection"] = _finalist_transition_preview.pop(
+    "closure"
+)
+_finalist_transition_preview["finalist_selection"].update(
+    {"result_artifacts": 44, "expected_result_artifacts": 44}
+)
+_finalist_transition_preview["artifacts"] = {
+    "synchronize": {"result_files": 44, "submission_receipts": 1},
+    "create": {"selection_files": 1, "job_files": 3},
+    "update": ["campaign.json"],
+    "transfer_files": 50,
+}
+_finalist_transition_preview["winner_selection"] = {
+    "rule": "largest lower endpoint of the simultaneous two-sided 95% interval; ties broken by mean usable fraction",
+    "winners": [
+        {"family": family, "candidate_id": f"{family}_finalist_01"}
+        for family in ("angled_donut", "single_pass")
+    ],
+    "evidence_sha256": "b" * 64,
+}
+_finalist_transition_preview["effects"] = {
+    "synchronize_finalist_selection": True,
+    "prepare_final_validation_inputs": True,
+    "submit_final_validation_inputs": False,
+    "start_simulation": False,
+    "overwrite_existing": False,
+}
+_PAYLOADS["mot3d-finalist-transition-confirm"] = deepcopy(
+    _PAYLOADS["mot3d-closure-transition-confirm"]
+)
+_finalist_transition_confirm = _PAYLOADS["mot3d-finalist-transition-confirm"]
+_finalist_transition_confirm["status"] = "final_validation_input_generation_prepared"
+_finalist_transition_confirm["stage"] = "final_validation_input_generation"
+_finalist_transition_confirm["artifacts"].update({"synchronized": 45, "created": 4})
+
 
 def fake_service_payloads() -> dict[str, object]:
     """Return fresh full public DTOs without consulting contract snapshots."""

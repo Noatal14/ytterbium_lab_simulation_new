@@ -1313,22 +1313,59 @@ def prepare_finalist_selection(root, manifest):
     manifest.update(updated)
 
 
-def prepare_final_validation_inputs(root, manifest):
-    """Lock nominal winners before creating any new validation ensemble."""
+def render_final_validation_input_transition(
+    logical_campaign_root,
+    manifest,
+    finalist_summaries,
+    summary_hashes,
+    campaign_manifest_sha256_before_stage,
+):
+    """Render finalist winners and input-generation jobs without filesystem I/O."""
     from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
+    root = Path(logical_campaign_root)
+    expected_parts = ("data", "optimization", "mot_3d", manifest.get("name"))
+    if (
+        root.is_absolute()
+        or tuple(root.parts) != expected_parts
+        or type(manifest.get("name")) is not str
+        or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", manifest["name"]) is None
+        or manifest.get("stage") != "finalist_selection"
+        or set(finalist_summaries) != set(FAMILIES)
+        or set(summary_hashes) != set(FAMILIES)
+        or any(
+            type(value) is not str or re.fullmatch(r"[0-9a-f]{64}", value) is None
+            for value in (
+                campaign_manifest_sha256_before_stage,
+                *summary_hashes.values(),
+            )
+        )
+    ):
+        raise ValueError("logical campaign root must be canonical and relative")
+    original_manifest = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
     locked = {
         "kind": "mot_3d_locked_nominals",
         "classification": "locked_before_new_validation_inputs",
-        "campaign_manifest_sha256_before_stage": _sha256(root / "campaign.json"),
+        "campaign_manifest_sha256_before_stage": campaign_manifest_sha256_before_stage,
         "families": {},
     }
     for family in FAMILIES:
-        summary_path = (
-            root / "finalist_selection" / family / "merged" / "finalist_summary.json"
-        )
-        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary = finalist_summaries[family]
+        if (
+            not isinstance(summary, dict)
+            or summary.get("kind") != "merged_mot_3d_finalist_selection"
+            or summary.get("family") != family
+            or not isinstance(summary.get("ranked_candidates"), list)
+            or len(summary["ranked_candidates"]) != 3
+        ):
+            raise ValueError("finalist summary is not canonical")
         winner = summary["ranked_candidates"][0]
+        if (
+            not isinstance(winner, dict)
+            or type(winner.get("candidate_id")) is not str
+            or not isinstance(winner.get("parameters"), dict)
+        ):
+            raise ValueError("finalist winner is not canonical")
         profile, parameters, derived = build_profile_from_parameters(
             family, winner["parameters"]
         )
@@ -1337,10 +1374,9 @@ def prepare_final_validation_inputs(root, manifest):
             "parameters": parameters,
             "derived_parameters": derived,
             "resolved_profile": profile,
-            "selection_summary_sha256": _sha256(summary_path),
+            "selection_summary_sha256": summary_hashes[family],
         }
     locked_path = root / "selection" / "locked_nominals.json"
-    save_file_json(locked_path, locked)
     base = root / "final_validation_inputs"
     zeeman_dir = base / "after_zeeman"
     states_dir = base / "after_2d_mot"
@@ -1351,15 +1387,15 @@ def prepare_final_validation_inputs(root, manifest):
     profile = manifest["upstream_2d_campaign"]["expected_survivor_design"][
         "zeeman_profile"
     ]
-    zeeman_job = _write(
-        jobs / "01_generate_zeeman.pbs",
+    zeeman_job = jobs / "01_generate_zeeman.pbs"
+    zeeman_raw = (
         _header("m3d2_val_z", revision, "08:00:00")
         + "seed=$((3035 + PBS_ARRAY_INDEX))\n"
         + f'python -u -m studies.zeeman.generate_ensembles --seed "$seed" '
-        f"--npools 200 --output-dir {zeeman_dir}\n",
+        f"--npools 200 --output-dir {zeeman_dir}\n"
     )
-    mot_job = _write(
-        jobs / "02_generate_2d_survivors.pbs",
+    mot_job = jobs / "02_generate_2d_survivors.pbs"
+    mot_raw = (
         _header("m3d2_val_2d", revision, "12:00:00")
         + "zseed=$((3035 + PBS_ARRAY_INDEX))\n"
         + "mseed=$((43035 + PBS_ARRAY_INDEX))\n"
@@ -1368,15 +1404,16 @@ def prepare_final_validation_inputs(root, manifest):
         f"--expected-zeeman-profile {profile} --expected-git-commit {revision} "
         f"--s0 {params['s0']} --detuning-gamma {params['detuning_gamma']} "
         f"--magnet-radius-mm {1000 * params['magnet_radius']} --npools 200 "
-        f"--output-dir {output_2d} --save-survivor-states --states-dir {states_dir}\n",
+        f"--output-dir {output_2d} --save-survivor-states --states-dir {states_dir}\n"
     )
-    freeze_job = _write(
-        jobs / "03_freeze_inputs.pbs",
+    freeze_job = jobs / "03_freeze_inputs.pbs"
+    freeze_raw = (
         _header("m3d2_val_frz", revision, "00:30:00", 1, "8gb")
-        + f"python -u -m studies.mot_3d_campaign freeze-final-inputs --campaign {root}\n",
+        + f"python -u -m studies.mot_3d_campaign freeze-final-inputs --campaign {root}\n"
     )
-    manifest["stage"] = "final_validation_input_generation"
-    manifest.setdefault("stages", {})["final_validation_input_generation"] = {
+    updated = copy.deepcopy(manifest)
+    updated["stage"] = "final_validation_input_generation"
+    updated.setdefault("stages", {})["final_validation_input_generation"] = {
         "classification": "new_unopened_inputs_after_nominal_lock",
         "locked_nominals": str(locked_path),
         "zeeman_seeds": list(FINAL_VALIDATION_ZEEMAN_SEEDS),
@@ -1386,7 +1423,40 @@ def prepare_final_validation_inputs(root, manifest):
         "freeze_job": str(freeze_job),
         "input_manifest": str(base / "input_manifest.json"),
     }
-    save_file_json(root / "campaign.json", manifest)
+    assert (
+        json.dumps(manifest, sort_keys=True, separators=(",", ":")) == original_manifest
+    )
+    artifacts = {
+        "selection/locked_nominals.json": json.dumps(
+            locked, indent=2, allow_nan=False
+        ).encode(),
+        "jobs/final_validation_inputs/01_generate_zeeman.pbs": zeeman_raw.encode(),
+        "jobs/final_validation_inputs/02_generate_2d_survivors.pbs": mot_raw.encode(),
+        "jobs/final_validation_inputs/03_freeze_inputs.pbs": freeze_raw.encode(),
+        "campaign.json": json.dumps(updated, indent=2, allow_nan=False).encode(),
+    }
+    return artifacts, updated
+
+
+def prepare_final_validation_inputs(root, manifest):
+    """Lock nominal winners before creating any new validation ensemble."""
+    summaries, hashes = {}, {}
+    for family in FAMILIES:
+        path = root / "finalist_selection" / family / "merged/finalist_summary.json"
+        summaries[family] = json.loads(path.read_text(encoding="utf-8"))
+        hashes[family] = _sha256(path)
+    logical_root = (
+        root if not root.is_absolute() else Path("data/optimization/mot_3d") / root.name
+    )
+    artifacts, updated = render_final_validation_input_transition(
+        logical_root, manifest, summaries, hashes, _sha256(root / "campaign.json")
+    )
+    for relative, raw in artifacts.items():
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    manifest.clear()
+    manifest.update(updated)
 
 
 def _collect_final_validation_inputs(root, manifest):

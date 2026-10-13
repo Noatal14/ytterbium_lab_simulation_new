@@ -42,8 +42,12 @@ def fixture(
     old = json.dumps({"name": "campaign", "stage": from_stage}).encode() + b"\n"
     new = json.dumps({"name": "campaign", "stage": to_stage}).encode() + b"\n"
     (campaign / "campaign.json").write_bytes(old)
+    transfer_count = coordinator_type.expected_transfer_files
     paths = frozenset(
-        {"campaign.json", *(f"results/file_{index:03d}.json" for index in range(207))}
+        {
+            "campaign.json",
+            *(f"results/file_{index:03d}.json" for index in range(transfer_count - 1)),
+        }
     )
     files = {
         name: new if name == "campaign.json" else f"{name}\n".encode() for name in paths

@@ -97,6 +97,7 @@ class RemotePreliminaryTransitionState:
     receipt: Mapping[str, Any] | None
     bundle: Mapping[str, Any] | None
     chunk: Mapping[str, Any] | None
+    winner_selection: Mapping[str, Any] | None = None
 
 
 class PreliminaryTransitionTransport(Protocol):
@@ -151,6 +152,8 @@ class Mot3DPreliminaryTransitionCoordinator:
     expected_result_files = EXPECTED_RESULT_FILES
     expected_transfer_files = EXPECTED_TRANSFER_FILES
     open_action = "open_refinement"
+    created_selection_files = 2
+    created_job_files = 4
     not_ready_error = "preliminary_not_ready"
     effects = {
         "synchronize_preliminary_check": True,
@@ -708,7 +711,7 @@ class Mot3DPreliminaryTransitionCoordinator:
             token = self._previews.add(pending, expires_at=expires, capacity=CAPACITY)
         except OverflowError as exc:
             raise Mot3DPreliminaryTransitionError("too_many_pending_previews") from exc
-        return {
+        result = {
             "preview_token": token,
             "expires_in_seconds": TTL,
             "campaign": {"id": plan[0], "name": plan[3]["name"], "git_commit": plan[4]},
@@ -725,12 +728,20 @@ class Mot3DPreliminaryTransitionCoordinator:
                     "result_files": self.expected_result_files,
                     "submission_receipts": 1,
                 },
-                "create": {"selection_files": 2, "job_files": 4},
+                "create": {
+                    "selection_files": self.created_selection_files,
+                    "job_files": self.created_job_files,
+                },
                 "update": ["campaign.json"],
                 "transfer_files": self.expected_transfer_files,
             },
             "effects": dict(self.effects),
         }
+        result.update(self._preview_extension(state))
+        return result
+
+    def _preview_extension(self, state: RemotePreliminaryTransitionState):
+        return {}
 
     def confirm(self, request, *, session_id: str):
         if (
@@ -805,7 +816,9 @@ class Mot3DPreliminaryTransitionCoordinator:
                 "stage": self.to_stage,
                 "artifacts": {
                     "synchronized": self.expected_result_files + 1,
-                    "created": 6,
+                    "created": self.expected_transfer_files
+                    - self.expected_result_files
+                    - 2,
                     "updated": 1,
                     "bundle_sha256": prepared.bundle["bundle_sha256"],
                 },
@@ -1166,6 +1179,7 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
             "receipt",
             "bundle",
             "chunk",
+            "winner_selection",
         }
         if not isinstance(value, dict) or set(value) != keys:
             raise self.error_type("remote_response_invalid")
@@ -1181,6 +1195,7 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
             value["receipt"],
             value["bundle"],
             value["chunk"],
+            value["winner_selection"],
         )
 
     def inspect(self, **payload):

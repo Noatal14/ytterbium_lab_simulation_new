@@ -232,6 +232,16 @@ def _server(
         if services
         else None
     )
+    handler.mot_3d_finalist_transition_service = (
+        _Service(
+            "mot3d-finalist-transition",
+            ledger,
+            values,
+            "mot3d-finalist-transition-status",
+        )
+        if services
+        else None
+    )
     handler.zeus_service = _Service("zeus", ledger, values) if services else None
     handler.transfer_service = (
         _Service("transfer", ledger, values) if services else None
@@ -453,9 +463,8 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     first, ledger, headers = collect_success(monkeypatch)
     second, _, _ = collect_success(monkeypatch)
     assert first == second == expected
-    assert (
-        len(first["cases"])
-        == len({(row["method"], row["path"]) for row in first["cases"]})
+    assert len(first["cases"]) == len(
+        {(row["method"], row["path"]) for row in first["cases"]}
     )
     assert all(row["body"].get("api_version") == 1 for row in first["cases"])
     assert all(
@@ -556,6 +565,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-closure-transition-status",
         "mot3d-closure-transition-preview",
         "mot3d-closure-transition-confirm",
+        "mot3d-finalist-transition-status",
+        "mot3d-finalist-transition-preview",
+        "mot3d-finalist-transition-confirm",
         "mot3d-zeus-recover",
     ]
     session_ids = {entry[2] for entry in ledger if entry[2] is not None}
@@ -954,6 +966,36 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_closure_transition_unavailable",
             "3D Closure result synchronization is unavailable.",
             "Mot3DClosureTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/finalist-transition/status",
+            "mot_3d_finalist_transition_service",
+            "status",
+            "payload",
+            200,
+            "mot_3d_finalist_transition_unavailable",
+            "3D Finalist result synchronization is unavailable.",
+            "Mot3DFinalistTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/finalist-transition/preview",
+            "mot_3d_finalist_transition_service",
+            "preview",
+            "session_kw",
+            200,
+            "mot_3d_finalist_transition_unavailable",
+            "3D Finalist result synchronization is unavailable.",
+            "Mot3DFinalistTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/finalist-transition/confirm",
+            "mot_3d_finalist_transition_service",
+            "confirm",
+            "session_kw",
+            201,
+            "mot_3d_finalist_transition_unavailable",
+            "3D Finalist result synchronization is unavailable.",
+            "Mot3DFinalistTransitionError",
         ),
         (
             "/api/v1/zeus/snapshot",

@@ -6,6 +6,11 @@ import json
 from pathlib import Path
 
 import numpy as np
+
+FINALIST_WINNER_RANKING_RULE = (
+    "largest lower endpoint of the simultaneous two-sided 95% interval; "
+    "ties broken by mean usable fraction"
+)
 from studies.mot_3d.integrity import (
     expected_ensemble_ids,
     sha256,
