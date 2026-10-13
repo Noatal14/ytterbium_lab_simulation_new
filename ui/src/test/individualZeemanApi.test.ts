@@ -119,6 +119,30 @@ describe("individual Zeeman API trust boundary", () => {
     await expect(api.run(runSummary.id)).resolves.toMatchObject({ id: runSummary.id });
   });
 
+  it("accepts the verified detail returned for a completed local run", async () => {
+    const completed = {
+      ...runSummary,
+      record_state: "succeeded",
+      integrity: "complete_verified",
+      lifecycle: "results_ready",
+      next_action: "view_results",
+      execution: { mode: "local", zeus_job_id: null, progress: null },
+      retention: { particle_states_requested: false, status: "not_retained" },
+      results: { availability: "verified", completed_at: "2026-10-11T10:00:00+00:00" },
+      provenance: { git_revision: "a".repeat(40), configuration_sha256: "b".repeat(64), inputs_sha256: "c".repeat(64), laboratory_spec: { version: "laboratory-physical-v2", sha256: "d".repeat(64) }, numerical_policy: { version: "numerical-policy-v1", sha256: "e".repeat(64) } },
+      configuration: { status: "complete", resolved: { simulation: { particle_count: 200 } } },
+      inputs: { status: "complete", artifacts: [] },
+      artifacts: [{ kind: "retention_receipt", path: "results/state_retention_receipt.json", sha256: "f".repeat(64), size_bytes: 197 }],
+      metrics: { captured: 120, elapsed_s: 8.94, n_initial: 200, n_survivors: 120, survival_fraction: 0.6 },
+      error: null,
+    };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope(completed)));
+    await expect(createIndividualZeemanApi(async () => "csrf").run(runSummary.id)).resolves.toMatchObject({
+      lifecycle: "results_ready",
+      metrics: { n_survivors: 120 },
+    });
+  });
+
   it("selects only Zeeman records from the shared individual-run catalog", async () => {
     const mot2d = { ...runSummary, id: "individual-run-" + "b".repeat(24), run_kind: "mot_2d", display_name: "mot2d-one" };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope({ runs: [mot2d, runSummary], invalid_count: 0, total: 2, truncated: false })));
