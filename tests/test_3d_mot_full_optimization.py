@@ -1,3 +1,4 @@
+import json
 import math
 from types import SimpleNamespace
 
@@ -115,3 +116,32 @@ def test_design_identity_changes_with_frozen_input_sha():
     manifest["input_roles"]["discovery"][0]["sha256"] = "b"
     _, second = _design_identity(args, [], manifest)
     assert first != second
+
+
+def test_design_identity_is_stable_after_json_persistence(tmp_path):
+    args = SimpleNamespace(
+        family="angled_donut", worker_index=0, sampler_seed=1,
+        startup_trials=2, selection_seed=3, simulation_seed=4,
+        particles_per_ensemble=5, dt=1e-6, t_max=0.1,
+        input_role="discovery",
+    )
+    manifest = {
+        "provenance": {"git_commit": "abc", "physical_model_sha256": "model"},
+        "upstream_2d_campaign": {
+            "campaign_sha256": "campaign", "final_report_sha256": "report"
+        },
+        "input_roles": {"discovery": [{"path": "same.npy", "sha256": "a"}]},
+    }
+    design, design_id = _design_identity(args, [], manifest)
+    assert design == json.loads(json.dumps(design))
+
+    storage = f"sqlite:///{tmp_path / 'study.db'}"
+    study = optuna.create_study(
+        storage=storage, study_name="restartable", load_if_exists=True
+    )
+    lock_study_design(study, design, design_id)
+    del study
+
+    reopened = optuna.load_study(study_name="restartable", storage=storage)
+    resumed_design, resumed_id = _design_identity(args, [], manifest)
+    lock_study_design(reopened, resumed_design, resumed_id)
