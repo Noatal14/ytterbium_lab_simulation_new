@@ -119,6 +119,15 @@ describe("individual Zeeman API trust boundary", () => {
     await expect(api.run(runSummary.id)).resolves.toMatchObject({ id: runSummary.id });
   });
 
+  it("selects only Zeeman records from the shared individual-run catalog", async () => {
+    const mot2d = { ...runSummary, id: "individual-run-" + "b".repeat(24), run_kind: "mot_2d", display_name: "mot2d-one" };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope({ runs: [mot2d, runSummary], invalid_count: 0, total: 2, truncated: false })));
+
+    await expect(createIndividualZeemanApi(async () => "csrf").runs()).resolves.toEqual([
+      expect.objectContaining({ run_kind: "zeeman", display_name: "zeeman-one" }),
+    ]);
+  });
+
   it.each([
     ["local start extra field", { status: "queued", run_id: "zeeman-one", execution_mode: "local", pid: 7 }, "startLocal"],
     ["run list malformed total", { runs: [runSummary], invalid_count: 0, total: 2, truncated: false }, "runs"],
