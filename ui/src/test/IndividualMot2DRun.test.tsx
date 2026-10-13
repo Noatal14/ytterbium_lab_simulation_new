@@ -110,6 +110,20 @@ describe("IndividualMot2DRun", () => {
       42,
     );
   });
+  it("shows an action failure beside the button that triggered it", async () => {
+    const user = userEvent.setup(), service = api();
+    vi.mocked(service.preview).mockRejectedValue(
+      new Error("The 2D-MOT run could not be validated."),
+    );
+    render(<IndividualMot2DRun api={service} onBack={vi.fn()} />);
+    await screen.findByRole("option", { name: /October ensembles/ });
+    await user.click(
+      screen.getByRole("button", { name: "Validate and review" }),
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveClass("action-error");
+    expect(alert.closest("form")?.lastElementChild).toBe(alert);
+  });
   it("freezes the labelled Zeus identity after submission review", async () => {
     const user = userEvent.setup(),
       service = api(),

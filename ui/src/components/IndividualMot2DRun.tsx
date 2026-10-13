@@ -36,6 +36,12 @@ const message = (error: unknown) =>
   error instanceof Error
     ? error.message
     : "The request could not be completed safely.";
+const ActionError = ({ error }: { error: string | null }) =>
+  error ? (
+    <p className="action-error" role="alert">
+      {error}
+    </p>
+  ) : null;
 export function mot2dMonitorCopy(state: string | undefined) {
   if (!state)
     return {
@@ -309,12 +315,6 @@ export function IndividualMot2DRun({
           </li>
         ))}
       </ol>
-      {error && (
-        <div className="state-panel state-panel--error" role="alert">
-          <strong>Action needed</strong>
-          <p>{error}</p>
-        </div>
-      )}
       <div className="sr-only" aria-live="polite">
         {busy ? "Working" : `Current step: ${step}`}
       </div>
@@ -499,6 +499,7 @@ export function IndividualMot2DRun({
               {busy ? "Validating…" : "Validate and review"}
             </button>
           </div>
+          <ActionError error={error} />
         </form>
       )}
       {step === "review" && preview && (
@@ -568,6 +569,7 @@ export function IndividualMot2DRun({
               {busy ? "Creating…" : "Create reviewed run"}
             </button>
           </div>
+          <ActionError error={error} />
         </section>
       )}
       {step === "run" && runId && (
@@ -631,6 +633,7 @@ export function IndividualMot2DRun({
                   : "Start on this computer"}
             </button>
           </div>
+          <ActionError error={error} />
         </section>
       )}
       {step === "monitor" && (
@@ -659,6 +662,7 @@ export function IndividualMot2DRun({
               {busy ? "Checking…" : "Check status"}
             </button>
           </div>
+          <ActionError error={error} />
         </section>
       )}
       {step === "results" && run && (

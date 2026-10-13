@@ -42,7 +42,7 @@ class IndividualMot2DApi:
         return list_individual_mot_2d_sources(self.root)
 
     def preview(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
-        _exact(payload, {"source_id", "particle_count", "selection_seed", "mot_seed", "s0", "detuning_gamma", "magnet_radius_m", "retain_particle_states", "execution_mode"})
+        _exact(payload, {"source_id", "particle_count", "selection_seed", "mot_seed", "s0", "detuning_gamma", "magnet_radius_m", "npools", "retain_particle_states", "execution_mode"})
         return self.creation.preview(payload, session_id)
 
     def confirm(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:

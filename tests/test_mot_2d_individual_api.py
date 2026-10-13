@@ -32,6 +32,7 @@ REQUEST = {
     "s0": 1.3,
     "detuning_gamma": -0.9196610026631429,
     "magnet_radius_m": 0.04676406447474441,
+    "npools": 8,
     "retain_particle_states": False,
     "execution_mode": "local",
 }
