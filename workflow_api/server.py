@@ -139,6 +139,10 @@ from workflow_api.mot_3d_finalist_transition import (
     Mot3DFinalistTransitionCoordinator,
     Mot3DFinalistTransitionError,
 )
+from workflow_api.mot_3d_final_input_submission import (
+    Mot3DFinalInputSubmissionCoordinator,
+    Mot3DFinalInputSubmissionError,
+)
 from workflow_api.zeeman_individual_api import IndividualZeemanApi
 from workflow_api.zeeman_zeus_execution import ZeemanZeusError
 
@@ -519,6 +523,36 @@ def _post_routes() -> tuple[PostRoute, ...]:
             "3D Finalist result synchronization is unavailable.",
             HTTPStatus.CREATED,
             Mot3DFinalistTransitionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-final-validation-inputs/status",
+            "mot_3d_final_input_submission_service",
+            "status",
+            "payload",
+            "mot_3d_final_input_submission_unavailable",
+            "3D final-validation input submission is unavailable.",
+            HTTPStatus.OK,
+            Mot3DFinalInputSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-final-validation-inputs/preview",
+            "mot_3d_final_input_submission_service",
+            "preview",
+            "session_kw",
+            "mot_3d_final_input_submission_unavailable",
+            "3D final-validation input submission is unavailable.",
+            HTTPStatus.OK,
+            Mot3DFinalInputSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-final-validation-inputs/confirm",
+            "mot_3d_final_input_submission_service",
+            "confirm",
+            "session_kw",
+            "mot_3d_final_input_submission_unavailable",
+            "3D final-validation input submission is unavailable.",
+            HTTPStatus.CREATED,
+            Mot3DFinalInputSubmissionError,
         ),
         (
             "/api/v1/zeus/snapshot",
@@ -1220,6 +1254,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     ) = None
     mot_3d_closure_transition_service: Mot3DClosureTransitionCoordinator | None = None
     mot_3d_finalist_transition_service: Mot3DFinalistTransitionCoordinator | None = None
+    mot_3d_final_input_submission_service: (
+        Mot3DFinalInputSubmissionCoordinator | None
+    ) = None
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
     individual_mot_2d_api: IndividualMot2DApi | None = None
@@ -1255,6 +1292,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 and self.mot_3d_refinement_transition_service is None
                 and self.mot_3d_closure_transition_service is None
                 and self.mot_3d_finalist_transition_service is None
+                and self.mot_3d_final_input_submission_service is None
                 and self.zeus_service is None
                 and self.transfer_service is None
                 and self.submission_service is None
@@ -1553,6 +1591,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         except Mot3DFinalistTransitionError as error:
             resolved = resolve_error("mot_3d_finalist_transition", error.code)
+            self._error(resolved.code, resolved.message, resolved.status)
+            return
+        except Mot3DFinalInputSubmissionError as error:
+            resolved = resolve_error("mot_3d_final_input_submission", error.code)
             self._error(resolved.code, resolved.message, resolved.status)
             return
         except Mot3DPreliminaryTransitionError as error:
@@ -1901,6 +1943,11 @@ def main() -> None:
     )
     WorkflowHandler.mot_3d_finalist_transition_service = (
         Mot3DFinalistTransitionCoordinator(
+            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+        )
+    )
+    WorkflowHandler.mot_3d_final_input_submission_service = (
+        Mot3DFinalInputSubmissionCoordinator(
             WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
         )
     )

@@ -10,6 +10,7 @@ import type { useMot3DClosureSubmissionController } from "./controllers/useMot3D
 import type { useMot3DClosureTransitionController } from "./controllers/useMot3DClosureTransitionController";
 import type { useMot3DFinalistSubmissionController } from "./controllers/useMot3DFinalistSubmissionController";
 import type { useMot3DFinalistTransitionController } from "./controllers/useMot3DFinalistTransitionController";
+import type { useMot3DFinalInputSubmissionController } from "./controllers/useMot3DFinalInputSubmissionController";
 import { GuardedStageActions } from "./shared/GuardedStageActions";
 import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 
@@ -26,6 +27,7 @@ export function Mot3DCampaignFlow({
   closureTransition,
   finalist,
   finalistTransition,
+  finalInputSubmission,
   onConnectZeus,
   onViewJobs,
 }: {
@@ -45,6 +47,7 @@ export function Mot3DCampaignFlow({
   closureTransition?: ReturnType<typeof useMot3DClosureTransitionController>;
   finalist?: ReturnType<typeof useMot3DFinalistSubmissionController>;
   finalistTransition?: ReturnType<typeof useMot3DFinalistTransitionController>;
+  finalInputSubmission?: ReturnType<typeof useMot3DFinalInputSubmissionController>;
   onConnectZeus: () => void;
   onViewJobs: () => void;
 }) {
@@ -164,8 +167,27 @@ export function Mot3DCampaignFlow({
       )}
       {finalist && <Mot3DFinalistSubmissionStage visible={stage === "finalist_selection"} connected={connected} flow={finalist} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs} />}
       {finalistTransition && <Mot3DFinalistTransitionStage visible={stage === "finalist_selection" || stage === "final_validation_input_generation"} connected={connected} flow={finalistTransition} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs} />}
+      {finalInputSubmission && <Mot3DFinalInputSubmissionStage visible={stage === "final_validation_input_generation"} connected={connected} flow={finalInputSubmission} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs} />}
     </>
   );
+}
+
+function Mot3DFinalInputSubmissionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: { visible: boolean; connected: boolean; flow: ReturnType<typeof useMot3DFinalInputSubmissionController>; onConnectZeus: () => void; onViewJobs: () => void }) {
+  const panel = useRef<HTMLDivElement>(null), heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (flow.phase === "review") heading.current?.focus(); else if (["ready", "success", "blocked"].includes(flow.phase) || flow.error || ["submitted", "queued", "running", "completed_success_unvalidated"].includes(flow.status?.chain.status ?? "")) panel.current?.focus(); }, [flow.phase, flow.error, flow.status?.chain.status]);
+  if (!visible) return null;
+  const lifecycle = flow.status?.chain.status, waiting = ["submitted", "queued", "running"].includes(lifecycle ?? "") || (flow.phase === "success" && Boolean(flow.result)), finished = lifecycle === "completed_success_unvalidated", displayedJobs = flow.result?.chain.jobs ?? flow.status?.chain.jobs ?? [];
+  return <section className="section-block" aria-labelledby="mot3d-final-input-heading"><div className="section-heading"><p className="eyebrow">Current stage: Final-validation input generation</p><h2 id="mot3d-final-input-heading">Generate new, unopened validation inputs</h2><p>The chain creates 20 new Zeeman ensembles, runs the corresponding 20 2D-MOT survivor jobs, and then freezes the inputs. It does not run Final Validation.</p></div><div ref={panel} tabIndex={-1}>
+    {!connected && <div className="prepare-card"><div><strong>Connect to Zeus before reviewing input generation</strong><p>Connecting and checking status do not submit jobs.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+    {connected && flow.phase === "idle" && !flow.status && !flow.error && <div className="prepare-card"><div><strong>Check Zeus before submitting input generation</strong><p>This read-only check verifies whether the three-job chain already exists.</p></div><button className="primary-button" onClick={() => void flow.refresh()}>Check input-generation status</button></div>}
+    {flow.phase === "ready" && <div className="prepare-card"><div><strong>Input generation is prepared, but not submitted</strong><p>Review the exact Zeeman → 2D-MOT → freeze dependency chain before it starts.</p></div><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review input-generation jobs", confirmLabel: "Submit input generation to Zeus", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+    {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "confirming" ? "Submitting the reviewed input-generation chain" : "Checking input generation"} />}
+    {flow.phase === "review" && flow.preview && <div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Submit final-validation input generation</h3><p>The three jobs run in a strict after-success chain. A later job cannot start unless its upstream job succeeds.</p><ol className="timeline"><li className="timeline-item timeline-item--active"><span className="timeline-marker" aria-hidden="true" /><div><strong>1. Generate Zeeman ensembles</strong><p>20 new ensembles, seeds 3035–3054 · 200 CPUs · 64 GB · 08:00:00</p></div></li><li className="timeline-item timeline-item--empty"><span className="timeline-marker" aria-hidden="true" /><div><strong>2. Run 2D-MOT survivors</strong><p>20 corresponding jobs, seeds 43035–43054 · 200 CPUs · 64 GB · 12:00:00</p></div></li><li className="timeline-item timeline-item--empty"><span className="timeline-marker" aria-hidden="true" /><div><strong>3. Freeze the inputs</strong><p>One manifest job · 1 CPU · 8 GB · 00:30:00</p></div></li></ol><dl className="transfer-facts"><div><dt>Dependency</dt><dd>Each step starts only after the previous succeeds</dd></div><div><dt>Parallel pools</dt><dd>200</dd></div><div><dt>Final Validation</dt><dd>Not submitted</dd></div><div><dt>Report stage</dt><dd>Not submitted</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review input-generation jobs", confirmLabel: "Submit input generation to Zeus", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+    {waiting && !flow.error && <div className="state-panel state-panel--success" role="status"><strong>Input generation is running on Zeus</strong><p>No action is needed while the existing chain runs. Final Validation has not started.</p>{displayedJobs.some((job) => job.job_id) && <dl className="transfer-facts">{displayedJobs.map((job) => <div key={job.id}><dt>{job.id === "zeeman" ? "Zeeman job" : job.id === "mot_2d" ? "2D-MOT job" : "Freeze job"}</dt><dd>{job.job_id ?? "Waiting for upstream"}</dd></div>)}</dl>}<div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {finished && !flow.error && <div className="state-panel" role="status"><strong>Input-generation jobs finished on Zeus</strong><p>The scheduler reports that generation and freezing finished, but the app has not independently verified or synchronized the frozen input manifest. Final Validation and reporting have not started.</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Manual verification required</strong><p>The submission is partial or its outcome is unknown. Do not submit again; inspect the three existing Zeus jobs.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Input-generation submission stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "The outcome may be uncertain. Do not retry; inspect Zeus first." : "No submission was confirmed. Refresh status before reviewing again."}</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div></div>}
+  </div></section>;
 }
 
 function Mot3DFinalistTransitionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: { visible: boolean; connected: boolean; flow: ReturnType<typeof useMot3DFinalistTransitionController>; onConnectZeus: () => void; onViewJobs: () => void }) {

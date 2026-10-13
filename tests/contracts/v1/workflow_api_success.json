@@ -3779,6 +3779,57 @@
       }
     },
     {
+      "id": "mot3d-final-input-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-final-validation-inputs/status",
+      "status": 200,
+      "body": {"api_version": 1, "data": {
+        "source": "zeus", "queried_at": "2026-01-01T00:00:00+00:00",
+        "campaign": {"id": "mot3d-campaign", "name": "campaign", "stage": "final_validation_input_generation"},
+        "chain": {"status": "eligible", "dependency": "afterok linear chain", "jobs": [{"id": "zeeman", "job_id": null}, {"id": "mot_2d", "job_id": null}, {"id": "freeze", "job_id": null}]},
+        "scheduler": {"expected_array_tasks": 40, "expected_scalar_jobs": 1, "completed_array_tasks": 0, "completed_scalar_jobs": 0},
+        "next_action": "review_submission",
+        "local_sync": {"status": "synchronized", "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
+      }}
+    },
+    {
+      "id": "mot3d-final-input-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-final-validation-inputs/preview",
+      "status": 200,
+      "body": {"api_version": 1, "data": {
+        "preview_token": "mot3d-final-input-token", "expires_in_seconds": 300,
+        "campaign": {"id": "mot3d-campaign", "name": "campaign", "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+        "stage": {"id": "final_validation_input_generation", "label": "Final validation input generation"},
+        "chain": {"dependency": "afterok linear chain", "steps": [
+          {"id": "zeeman", "tasks": 20, "resources": {"ncpus": 200, "memory_gb": 64, "walltime": "08:00:00"}},
+          {"id": "mot_2d", "tasks": 20, "resources": {"ncpus": 200, "memory_gb": 64, "walltime": "12:00:00"}},
+          {"id": "freeze", "tasks": 1, "resources": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"}}
+        ]},
+        "science": {
+          "classification": "new_unopened_inputs_after_nominal_lock",
+          "zeeman_seeds": [3035,3036,3037,3038,3039,3040,3041,3042,3043,3044,3045,3046,3047,3048,3049,3050,3051,3052,3053,3054],
+          "mot_seeds": [43035,43036,43037,43038,43039,43040,43041,43042,43043,43044,43045,43046,43047,43048,43049,43050,43051,43052,43053,43054],
+          "zeeman_tasks": 20, "mot_tasks": 20, "npools": 200, "dependency": "afterok linear chain",
+          "resources": {"zeeman": {"ncpus": 200, "memory_gb": 64, "walltime": "08:00:00"}, "mot_2d": {"ncpus": 200, "memory_gb": 64, "walltime": "12:00:00"}, "freeze": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"}}
+        },
+        "effects": {"submit_input_generation": true, "start_final_validation": false, "advance_campaign": false, "modify_files": false},
+        "local_sync": {"status": "synchronized", "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
+      }}
+    },
+    {
+      "id": "mot3d-final-input-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-final-validation-inputs/confirm",
+      "status": 201,
+      "body": {"api_version": 1, "data": {
+        "status": "submitted", "campaign_id": "mot3d-campaign", "stage": "final_validation_input_generation",
+        "chain": {"dependency": "afterok linear chain", "jobs": [{"id": "zeeman", "job_id": "901[].zeus-master"}, {"id": "mot_2d", "job_id": "902[].zeus-master"}, {"id": "freeze", "job_id": "903.zeus-master"}]},
+        "submitted_to_zeus": true, "simulation_started": true, "final_validation_started": false,
+        "local_sync": {"status": "synchronized", "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}
+      }}
+    },
+    {
       "id": "mot3d-zeus-recover",
       "method": "POST",
       "path": "/api/v1/individual-runs/mot-3d/zeus/recover",

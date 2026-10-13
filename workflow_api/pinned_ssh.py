@@ -46,6 +46,7 @@ class ReceiverKind(Enum):
     MOT_3D_CLOSURE_TRANSITION = "mot_3d_closure_transition"
     MOT_3D_FINALIST_SUBMISSION = "mot_3d_finalist_submission"
     MOT_3D_FINALIST_TRANSITION = "mot_3d_finalist_transition"
+    MOT_3D_FINAL_INPUT_SUBMISSION = "mot_3d_final_input_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -108,6 +109,35 @@ class _ReceiverDefinition:
 
 
 _RECEIVERS = {
+    ReceiverKind.MOT_3D_FINAL_INPUT_SUBMISSION: _ReceiverDefinition(
+        "mot_3d_final_input_submission_remote.py",
+        "<mot-3d-final-input-submission>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+        ),
+    ),
     ReceiverKind.MOT_3D_FINALIST_TRANSITION: _ReceiverDefinition(
         "mot_3d_finalist_transition_remote.py",
         "<mot-3d-finalist-transition>",
@@ -1242,6 +1272,17 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.MOT_3D_FINALIST_TRANSITION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def mot_3d_final_input_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_FINAL_INPUT_SUBMISSION,
             repository_root,
             executable,
             timeout,

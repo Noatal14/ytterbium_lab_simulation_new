@@ -921,6 +921,101 @@ export const serverErrorCatalog = [
     "semantic": "other"
   },
   {
+    "domain": "mot_3d_final_input_submission",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "final_input_already_started",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "final_input_partial_submission",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "final_input_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "final_input_submission_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "final_input_submission_conflict",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "final_input_submission_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "invalid_request",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "local_or_remote_evidence_changed",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "remote_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_input_submission",
+    "code": "zeus_unavailable",
+    "semantic": "other"
+  },
+  {
     "domain": "mot_3d_finalist_submission",
     "code": "campaign_not_found",
     "semantic": "other"
@@ -2323,6 +2418,11 @@ export const serverErrorCatalog = [
   {
     "domain": "route_unavailable",
     "code": "mot_3d_discovery_transition_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "mot_3d_final_input_submission_unavailable",
     "semantic": "other"
   },
   {

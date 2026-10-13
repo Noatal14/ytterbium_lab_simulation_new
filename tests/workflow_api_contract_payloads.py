@@ -2046,6 +2046,92 @@ _finalist_confirm["chain"]["families"][1].update(
     {"array_job_id": "812[].zeus-master", "merge_job_id": "813.zeus-master"}
 )
 
+_PAYLOADS["mot3d-final-input-status"] = {
+    "source": "zeus",
+    "queried_at": "2026-01-01T00:00:00+00:00",
+    "campaign": {
+        "id": "mot3d-campaign",
+        "name": "campaign",
+        "stage": "final_validation_input_generation",
+    },
+    "chain": {
+        "status": "eligible",
+        "dependency": "afterok linear chain",
+        "jobs": [
+            {"id": "zeeman", "job_id": None},
+            {"id": "mot_2d", "job_id": None},
+            {"id": "freeze", "job_id": None},
+        ],
+    },
+    "scheduler": {
+        "expected_array_tasks": 40,
+        "expected_scalar_jobs": 1,
+        "completed_array_tasks": 0,
+        "completed_scalar_jobs": 0,
+    },
+    "next_action": "review_submission",
+    "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
+}
+_PAYLOADS["mot3d-final-input-preview"] = {
+    "preview_token": "mot3d-final-input-token",
+    "expires_in_seconds": 300,
+    "campaign": {
+        "id": "mot3d-campaign",
+        "name": "campaign",
+        "git_commit": "a" * 40,
+    },
+    "stage": {
+        "id": "final_validation_input_generation",
+        "label": "Final validation input generation",
+    },
+    "chain": {
+        "dependency": "afterok linear chain",
+        "steps": [
+            {"id": "zeeman", "tasks": 20, "resources": {"ncpus": 200, "memory_gb": 64, "walltime": "08:00:00"}},
+            {"id": "mot_2d", "tasks": 20, "resources": {"ncpus": 200, "memory_gb": 64, "walltime": "12:00:00"}},
+            {"id": "freeze", "tasks": 1, "resources": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"}},
+        ],
+    },
+    "science": {
+        "classification": "new_unopened_inputs_after_nominal_lock",
+        "zeeman_seeds": list(range(3035, 3055)),
+        "mot_seeds": list(range(43035, 43055)),
+        "zeeman_tasks": 20,
+        "mot_tasks": 20,
+        "npools": 200,
+        "dependency": "afterok linear chain",
+        "resources": {
+            "zeeman": {"ncpus": 200, "memory_gb": 64, "walltime": "08:00:00"},
+            "mot_2d": {"ncpus": 200, "memory_gb": 64, "walltime": "12:00:00"},
+            "freeze": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"},
+        },
+    },
+    "effects": {
+        "submit_input_generation": True,
+        "start_final_validation": False,
+        "advance_campaign": False,
+        "modify_files": False,
+    },
+    "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
+}
+_PAYLOADS["mot3d-final-input-confirm"] = {
+    "status": "submitted",
+    "campaign_id": "mot3d-campaign",
+    "stage": "final_validation_input_generation",
+    "chain": {
+        "dependency": "afterok linear chain",
+        "jobs": [
+            {"id": "zeeman", "job_id": "901[].zeus-master"},
+            {"id": "mot_2d", "job_id": "902[].zeus-master"},
+            {"id": "freeze", "job_id": "903.zeus-master"},
+        ],
+    },
+    "submitted_to_zeus": True,
+    "simulation_started": True,
+    "final_validation_started": False,
+    "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
+}
+
 _PAYLOADS["mot3d-closure-transition-status"] = deepcopy(
     _PAYLOADS["mot3d-refinement-transition-status"]
 )
