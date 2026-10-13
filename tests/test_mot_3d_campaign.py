@@ -78,17 +78,17 @@ def upstream_campaign(tmp_path, input_dir):
     (root / "campaign.json").write_text(
         json.dumps(
             {
-        "kind": "mot_2d_s0_campaign",
-        "stage": "complete",
-        "seed_roles": {"sealed_validation": seeds},
-        "mot_seeds": {"sealed_validation": mot_seeds},
+                "kind": "mot_2d_s0_campaign",
+                "stage": "complete",
+                "seed_roles": {"sealed_validation": seeds},
+                "mot_seeds": {"sealed_validation": mot_seeds},
                 "provenance": {
                     "git_commit": "2d-commit",
                     "physical_model_sha256": "2d-hash",
                 },
-        "stages": {"final_report": str(root / "final_report.json")},
-        "s0_values": [1.3],
-        "fixed_design": {"final_dt_s": 0.625e-6, "solver": "RK4StHybridCustom"},
+                "stages": {"final_report": str(root / "final_report.json")},
+                "s0_values": [1.3],
+                "fixed_design": {"final_dt_s": 0.625e-6, "solver": "RK4StHybridCustom"},
                 "ensemble_source": {
                     "directory": "corrected-zeeman-inputs",
                     "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
@@ -113,16 +113,16 @@ def upstream_campaign(tmp_path, input_dir):
     (root / "final_report.json").write_text(
         json.dumps(
             {
-        "kind": "mot_2d_s0_campaign_final_report",
+                "kind": "mot_2d_s0_campaign_final_report",
                 "results": [
                     {
-            "s0": 1.3,
-            "survivor_states_directory": str(input_dir),
-            "recommended_parameters": {
-                "s0": 1.3,
-                "detuning_gamma": -0.9,
-                "magnet_radius": 0.046,
-            },
+                        "s0": 1.3,
+                        "survivor_states_directory": str(input_dir),
+                        "recommended_parameters": {
+                            "s0": 1.3,
+                            "detuning_gamma": -0.9,
+                            "magnet_radius": 0.046,
+                        },
                     }
                 ],
             }
@@ -155,10 +155,12 @@ def test_freeze_inputs_rejects_tampering(input_dir):
 def test_freeze_inputs_accepts_consistent_additional_design_fields(input_dir):
     for metadata_path in input_dir.glob("*.json"):
         payload = json.loads(metadata_path.read_text())
-        payload["design"].update({
-            "uses_all_available_particles": True,
-            "npools": 150,
-        })
+        payload["design"].update(
+            {
+                "uses_all_available_particles": True,
+                "npools": 150,
+            }
+        )
         metadata_path.write_text(json.dumps(payload))
 
     roles = mot_3d_campaign.freeze_inputs(
@@ -212,14 +214,22 @@ def test_create_is_plan_only_and_freezes_new_design(
     )
     assert manifest["design"]["screening_dt_s"] == pytest.approx(10e-6)
     assert manifest["design"]["production_dt_s"] == pytest.approx(0.625e-6)
-    assert manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
-    assert manifest["design"]["timestep_evidence"]["convergence_claim"] == "not_established"
+    assert (
+        manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
+    )
+    assert (
+        manifest["design"]["timestep_evidence"]["convergence_claim"]
+        == "not_established"
+    )
     assert manifest["design"]["dt_validation_candidates_s"] == pytest.approx(
         [10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6]
     )
     assert manifest["design"]["dt_validation_reference_s"] == pytest.approx(0.3125e-6)
     assert "studies/mot_3d/timestep_validation.py" in mot_3d_campaign.relevant_files()
-    assert "lab_setup/specifications/mot_3d_timestep_policy_v1.json" in mot_3d_campaign.relevant_files()
+    assert (
+        "lab_setup/specifications/mot_3d_timestep_policy_v1.json"
+        in mot_3d_campaign.relevant_files()
+    )
 
     jobs = list((output / "jobs").rglob("*.pbs"))
     assert len(jobs) == 7
@@ -268,10 +278,15 @@ def test_ui_bootstrap_renders_discovery_only_from_pragmatic_policy(
         physical_model_sha256="b" * 64,
     )
     assert manifest["stage"] == "discovery"
-    assert manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
+    assert (
+        manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
+    )
     assert manifest["design"]["screening_dt_s"] == 10e-6
     assert manifest["design"]["production_dt_s"] == 0.625e-6
-    assert manifest["design"]["timestep_evidence"]["convergence_claim"] == "not_established"
+    assert (
+        manifest["design"]["timestep_evidence"]["convergence_claim"]
+        == "not_established"
+    )
     assert manifest["design"]["solver"] == "RK4StHybridCustom"
     assert [
         len(manifest["input_roles"][role])
@@ -518,15 +533,15 @@ def test_execution_revalidation_rejects_metadata_tampering(
     manifest.write_text(
         json.dumps(
             {
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
                 "upstream_2d_campaign": {
                     "sealed_seed_pairs": [
-            {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
+                        {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
                         for rows in roles.values()
                         for row in rows
                     ]
                 },
-        "input_roles": roles,
+                "input_roles": roles,
             }
         )
     )
@@ -547,15 +562,15 @@ def test_execution_revalidation_requires_exact_ordered_role(
     manifest.write_text(
         json.dumps(
             {
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
                 "upstream_2d_campaign": {
                     "sealed_seed_pairs": [
-            {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
+                        {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
                         for rows in roles.values()
                         for row in rows
                     ]
                 },
-        "input_roles": roles,
+                "input_roles": roles,
             }
         )
     )
@@ -577,10 +592,10 @@ def test_create_rejects_dirty_relevant_code(
     with pytest.raises(RuntimeError, match="dirty relevant files"):
         mot_3d_campaign.create(
             Namespace(
-            name="dirty",
-            input_dir=str(input_dir),
-            upstream_campaign=str(upstream_campaign),
-            output_dir=str(tmp_path / "campaign"),
+                name="dirty",
+                input_dir=str(input_dir),
+                upstream_campaign=str(upstream_campaign),
+                output_dir=str(tmp_path / "campaign"),
             )
         )
 
@@ -697,9 +712,7 @@ def test_upstream_handoff_accepts_legacy_records_without_metadata_hash(
         lambda metadata, allow_legacy: {"legacy_attested_profile": True},
     )
 
-    result = mot_3d_campaign.validate_upstream_2d_campaign(
-        upstream_campaign, input_dir
-    )
+    result = mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir)
 
     assert result["laboratory_provenance"]["legacy_attested_profile"] is True
 
@@ -785,9 +798,9 @@ def test_runtime_rejects_pair_changed_from_upstream(input_dir, tmp_path, monkeyp
     manifest.write_text(
         json.dumps(
             {
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
-        "upstream_2d_campaign": {"sealed_seed_pairs": registry},
-        "input_roles": roles,
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
+                "upstream_2d_campaign": {"sealed_seed_pairs": registry},
+                "input_roles": roles,
             }
         )
     )
@@ -897,15 +910,15 @@ def test_role_loader_uses_only_frozen_role_and_balances_particles(
     manifest.write_text(
         json.dumps(
             {
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "hash"},
                 "upstream_2d_campaign": {
                     "sealed_seed_pairs": [
-            {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
+                        {"zeeman_seed": row["zeeman_seed"], "mot_seed": row["mot_seed"]}
                         for rows in roles.values()
                         for row in rows
                     ]
                 },
-        "input_roles": roles,
+                "input_roles": roles,
             }
         )
     )
@@ -925,7 +938,8 @@ def test_selection_stage_submission_records_array_and_merge_ids(tmp_path):
     (root / "campaign.json").write_text(
         json.dumps(
             {
-        "stage": "refinement",
+                "kind": "mot_3d_campaign_v2",
+                "stage": "refinement",
                 "stages": {
                     "refinement": {
                         "worker_jobs": {
@@ -960,7 +974,8 @@ def test_selection_stage_partial_failure_preserves_submitted_array_id(tmp_path):
     (root / "campaign.json").write_text(
         json.dumps(
             {
-        "stage": "refinement",
+                "kind": "mot_3d_campaign_v2",
+                "stage": "refinement",
                 "stages": {
                     "refinement": {
                         "worker_jobs": {
@@ -1037,9 +1052,9 @@ def test_stage_design_changes_with_particle_sampling_identity(tmp_path):
     manifest.write_text(
         json.dumps(
             {
-        "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
-        "design": {"solver": "RK4StHybridCustom"},
-        "input_roles": {"refinement": [{"path": str(frozen_input)}]},
+                "provenance": {"git_commit": "abc", "physical_model_sha256": "physics"},
+                "design": {"solver": "RK4StHybridCustom"},
+                "input_roles": {"refinement": [{"path": str(frozen_input)}]},
             }
         )
     )
@@ -1081,7 +1096,9 @@ def test_stage_design_changes_with_particle_sampling_identity(tmp_path):
     )
 
 
-def test_formal_timestep_gate_is_retired_without_mutating_old_campaign(tmp_path, monkeypatch):
+def test_formal_timestep_gate_is_retired_without_mutating_old_campaign(
+    tmp_path, monkeypatch
+):
     root = tmp_path / "campaign"
     root.mkdir()
     manifest_path = root / "campaign.json"

@@ -36,22 +36,39 @@ EXPECTED_PARTICLES = (
 EXPECTED_RESULT_FILES = 152
 EXPECTED_BOOTSTRAP_REPLICATES = PRELIMINARY_SCIENTIFIC_DESIGN.bootstrap_replicates
 EXPECTED_BOOTSTRAP_SEED = PRELIMINARY_SCIENTIFIC_DESIGN.bootstrap_seed
-EXPECTED_MULTIPLICITY_METHOD = (
-    "paired centered-bootstrap max-T simultaneous intervals"
-)
+EXPECTED_MULTIPLICITY_METHOD = "paired centered-bootstrap max-T simultaneous intervals"
 CANDIDATE_ID = __import__("re").compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 FROZEN_ROLE_KEYS = {
-    "path", "metadata_path", "metadata_sha256", "sha256", "shape", "dtype",
-    "zeeman_seed", "mot_seed", "n_survivors", "source_git_commit",
-    "source_design", "source_parameters",
+    "path",
+    "metadata_path",
+    "metadata_sha256",
+    "sha256",
+    "shape",
+    "dtype",
+    "zeeman_seed",
+    "mot_seed",
+    "n_survivors",
+    "source_git_commit",
+    "source_design",
+    "source_parameters",
 }
 FROZEN_DESIGN_KEYS = {
-    "campaign_manifest_path", "campaign_manifest_sha256", "selection_path",
-    "selection_sha256", "git_commit", "physical_model_sha256", "input_role",
-    "input_role_sha256", "dt_s", "t_max_s", "solver", "particles_per_ensemble",
-    "selection_seed", "particle_selection_sha256",
+    "campaign_manifest_path",
+    "campaign_manifest_sha256",
+    "selection_path",
+    "selection_sha256",
+    "git_commit",
+    "physical_model_sha256",
+    "input_role",
+    "input_role_sha256",
+    "dt_s",
+    "t_max_s",
+    "solver",
+    "particles_per_ensemble",
+    "selection_seed",
+    "particle_selection_sha256",
 }
 PRELIMINARY_RESULT_REASON_CODES = (
     "design_mismatch",
@@ -165,7 +182,9 @@ def _candidate_ids(selection: Mapping[str, Any], family: str) -> tuple[str, ...]
         or len(candidates) != EXPECTED_CANDIDATES_PER_FAMILY
     ):
         raise PreliminaryResultError("selection_mismatch")
-    identifiers = tuple(row.get("candidate_id") for row in candidates if isinstance(row, dict))
+    identifiers = tuple(
+        row.get("candidate_id") for row in candidates if isinstance(row, dict)
+    )
     if (
         len(identifiers) != EXPECTED_CANDIDATES_PER_FAMILY
         or any(
@@ -183,7 +202,9 @@ def expected_paths(selections: Mapping[str, Mapping[str, Any]]) -> tuple[str, ..
     for family in FAMILIES:
         identifiers = _candidate_ids(selections[family], family)
         for worker in WORKERS:
-            paths.add(f"preliminary_check/{family}/worker_{worker}/particle_selection.json")
+            paths.add(
+                f"preliminary_check/{family}/worker_{worker}/particle_selection.json"
+            )
             for index, candidate_id in enumerate(identifiers):
                 if index % len(WORKERS) != worker:
                     continue
@@ -207,7 +228,9 @@ def _finite_tree(value: object) -> bool:
     if isinstance(value, list):
         return all(_finite_tree(child) for child in value)
     if isinstance(value, dict):
-        return all(isinstance(key, str) and _finite_tree(child) for key, child in value.items())
+        return all(
+            isinstance(key, str) and _finite_tree(child) for key, child in value.items()
+        )
     return False
 
 
@@ -299,10 +322,20 @@ def _validate_materialized_preliminary_results(
             if (
                 set(record)
                 != {
-                    "kind", "family", "candidate_id", "worker_index", "recoil_seed",
-                    "input_particle_count", "usable_at_end_count", "usable_ever_count",
-                    "peak_usable_count", "entered_capture_region_count",
-                    "slow_inside_count", "outcomes_path", "outcomes_sha256", "design",
+                    "kind",
+                    "family",
+                    "candidate_id",
+                    "worker_index",
+                    "recoil_seed",
+                    "input_particle_count",
+                    "usable_at_end_count",
+                    "usable_ever_count",
+                    "peak_usable_count",
+                    "entered_capture_region_count",
+                    "slow_inside_count",
+                    "outcomes_path",
+                    "outcomes_sha256",
+                    "design",
                 }
                 or record["kind"] != "mot_3d_early_independent_check_seed_result"
                 or record["family"] != family
@@ -316,14 +349,18 @@ def _validate_materialized_preliminary_results(
                 or not isinstance(record["input_particle_count"], int)
                 or isinstance(record["input_particle_count"], bool)
                 or record["input_particle_count"] != EXPECTED_PARTICLES
-                or identifiers.index(record["candidate_id"]) % 3 != record["worker_index"]
+                or identifiers.index(record["candidate_id"]) % 3
+                != record["worker_index"]
                 or any(
                     not isinstance(record[key], int)
                     or isinstance(record[key], bool)
                     or not 0 <= record[key] <= EXPECTED_PARTICLES
                     for key in (
-                        "usable_at_end_count", "usable_ever_count", "peak_usable_count",
-                        "entered_capture_region_count", "slow_inside_count",
+                        "usable_at_end_count",
+                        "usable_ever_count",
+                        "peak_usable_count",
+                        "entered_capture_region_count",
+                        "slow_inside_count",
                     )
                 )
                 or record["peak_usable_count"] < record["usable_at_end_count"]
@@ -353,7 +390,8 @@ def _validate_materialized_preliminary_results(
                         / f"{family}.json"
                     )
                 )
-                or current.get("git_commit") != manifest.get("provenance", {}).get("git_commit")
+                or current.get("git_commit")
+                != manifest.get("provenance", {}).get("git_commit")
                 or current.get("physical_model_sha256")
                 != manifest.get("provenance", {}).get("physical_model_sha256")
                 or current.get("input_role") != "preliminary_check"
@@ -376,9 +414,17 @@ def _validate_materialized_preliminary_results(
                 != _sha(campaign / "selection" / "discovery" / f"{family}.json")
             ):
                 raise PreliminaryResultError("design_mismatch")
-            npz_path = next(path for path in npz_paths if path.stem == f"{record['candidate_id']}_seed_{record['recoil_seed']}")
+            npz_path = next(
+                path
+                for path in npz_paths
+                if path.stem == f"{record['candidate_id']}_seed_{record['recoil_seed']}"
+            )
             with np.load(npz_path, allow_pickle=False) as archive:
-                if set(archive.files) != {"usable_at_end", "usable_ever", "ensemble_ids"}:
+                if set(archive.files) != {
+                    "usable_at_end",
+                    "usable_ever",
+                    "ensemble_ids",
+                }:
                     raise PreliminaryResultError("result_archive_invalid")
                 usable = np.asarray(archive["usable_at_end"])
                 ever = np.asarray(archive["usable_ever"])
@@ -394,7 +440,9 @@ def _validate_materialized_preliminary_results(
                     or any(
                         int(np.sum(groups == index))
                         != PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble
-                        for index in range(PRELIMINARY_SCIENTIFIC_DESIGN.input_ensembles)
+                        for index in range(
+                            PRELIMINARY_SCIENTIFIC_DESIGN.input_ensembles
+                        )
                     )
                     or int(usable.sum()) != record["usable_at_end_count"]
                     or int(ever.sum()) != record["usable_ever_count"]
@@ -402,7 +450,13 @@ def _validate_materialized_preliminary_results(
                 ):
                     raise PreliminaryResultError("result_archive_invalid")
 
-        summary_path = campaign / "preliminary_check" / family / "merged" / "early_check_summary.json"
+        summary_path = (
+            campaign
+            / "preliminary_check"
+            / family
+            / "merged"
+            / "early_check_summary.json"
+        )
         summary = _strict_json(summary_path)
         if (
             summary.get("kind") != "merged_mot_3d_early_independent_check"
@@ -436,7 +490,9 @@ def _validate_materialized_preliminary_results(
         # but fabricated summary cannot influence refinement selection.
         from studies.mot_3d.preliminary.merge import merge
 
-        with tempfile.TemporaryDirectory(prefix="mot3d-preliminary-verify-") as temporary:
+        with tempfile.TemporaryDirectory(
+            prefix="mot3d-preliminary-verify-"
+        ) as temporary:
             output = Path(temporary)
             with contextlib.redirect_stdout(io.StringIO()):
                 merge(
@@ -467,7 +523,9 @@ def _validate_npz_container(raw: bytes) -> None:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
             rows = archive.infolist()
             if len(rows) != 3 or {row.filename for row in rows} != {
-                "usable_at_end.npy", "usable_ever.npy", "ensemble_ids.npy"
+                "usable_at_end.npy",
+                "usable_ever.npy",
+                "ensemble_ids.npy",
             }:
                 raise PreliminaryResultError("result_archive_invalid")
             for row in rows:
@@ -486,6 +544,11 @@ def _validate_npz_container(raw: bytes) -> None:
         raise
     except Exception as exc:
         raise PreliminaryResultError("result_archive_invalid") from exc
+
+
+def validate_npz_container_bytes(raw: bytes) -> None:
+    """Public shared preflight for the canonical three-member outcome archive."""
+    _validate_npz_container(raw)
 
 
 def expected_selection_particle_provenance(
@@ -582,9 +645,7 @@ def expected_selection_particle_provenance(
             raise PreliminaryResultError("particle_selection_mismatch")
         seen_mot_seeds.add(mot_seed)
         rng = np.random.default_rng(
-            np.random.SeedSequence(
-                [selection_seed, zeeman_seed]
-            )
+            np.random.SeedSequence([selection_seed, zeeman_seed])
         )
         indices = np.sort(
             rng.choice(
@@ -654,8 +715,7 @@ def validate_preliminary_result_bytes(
     try:
         manifest = _strict_json_bytes(manifest_bytes)
         selections = {
-            family: _strict_json_bytes(selection_bytes[family])
-            for family in FAMILIES
+            family: _strict_json_bytes(selection_bytes[family]) for family in FAMILIES
         }
     except Exception as exc:
         raise PreliminaryResultError("malformed_json") from exc
@@ -668,7 +728,8 @@ def validate_preliminary_result_bytes(
         or expected_root.parts[1] != "home"
         or expected_root.parts[3] != "ytterbium_lab_simulation_new"
         or not campaign_path.is_absolute()
-        or campaign_path != expected_root / "data" / "optimization" / "mot_3d" / campaign_path.name
+        or campaign_path
+        != expected_root / "data" / "optimization" / "mot_3d" / campaign_path.name
         or str(campaign_path) != campaign_absolute_path
         or campaign_path.name != manifest.get("name")
     ):
@@ -700,8 +761,10 @@ def validate_preliminary_result_bytes(
                     raise PreliminaryResultError("malformed_json") from exc
                 if captured != expected_particle_selection:
                     raise PreliminaryResultError("particle_selection_mismatch")
-            if name.endswith(".json") and "worker_" in name and not name.endswith(
-                "particle_selection.json"
+            if (
+                name.endswith(".json")
+                and "worker_" in name
+                and not name.endswith("particle_selection.json")
             ):
                 try:
                     record = _strict_json_bytes(raw)
@@ -719,7 +782,9 @@ def validate_preliminary_result_bytes(
         validated = _validate_materialized_preliminary_results(
             campaign, manifest, source_campaign_path=campaign_absolute_path
         )
-    hashes = {name: hashlib.sha256(raw).hexdigest() for name, raw in result_files.items()}
+    hashes = {
+        name: hashlib.sha256(raw).hexdigest() for name, raw in result_files.items()
+    }
     evidence = hashlib.sha256(_canonical(hashes)).hexdigest()
     return ValidatedPreliminaryResults(
         tuple(sorted(result_files)), hashes, validated.summaries, evidence

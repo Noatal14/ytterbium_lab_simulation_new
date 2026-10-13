@@ -1,10 +1,74 @@
 """Integrity helpers shared by post-discovery 3D-MOT selection stages."""
 
 import hashlib
+import io
 import json
 from pathlib import Path
 
 import numpy as np
+
+
+OUTCOME_ARCHIVE_MEMBERS = frozenset({"usable_at_end", "usable_ever", "ensemble_ids"})
+
+
+def expected_ensemble_ids(counts):
+    if (
+        not isinstance(counts, (list, tuple))
+        or not counts
+        or any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in counts
+        )
+    ):
+        raise ValueError("Frozen ensemble counts must be positive integers.")
+    return np.concatenate(
+        [np.full(value, index, dtype=np.int64) for index, value in enumerate(counts)]
+    )
+
+
+def validate_outcome_archive(npz_path, input_particle_count, *, expected_sha256=None):
+    """Return strict, uncoerced outcome arrays from a canonical result archive."""
+    if (
+        isinstance(input_particle_count, bool)
+        or not isinstance(input_particle_count, int)
+        or input_particle_count <= 0
+    ):
+        raise ValueError("Outcome particle count must be a positive integer.")
+    try:
+        from workflow_api.mot_3d_preliminary_results import (
+            validate_npz_container_bytes,
+        )
+
+        with Path(npz_path).open("rb") as stream:
+            raw = stream.read(2 * 1024 * 1024 + 1)
+        if (
+            expected_sha256 is not None
+            and hashlib.sha256(raw).hexdigest() != expected_sha256
+        ):
+            raise ValueError(f"Outcome hash mismatch: {npz_path}")
+        validate_npz_container_bytes(raw)
+        with np.load(io.BytesIO(raw), allow_pickle=False) as data:
+            if set(data.files) != OUTCOME_ARCHIVE_MEMBERS:
+                raise ValueError(f"Unexpected outcome archive members: {npz_path}")
+            usable_at_end = np.asarray(data["usable_at_end"])
+            usable_ever = np.asarray(data["usable_ever"])
+            ensemble_ids = np.asarray(data["ensemble_ids"])
+    except (OSError, ValueError, TypeError) as error:
+        if isinstance(error, ValueError) and str(error).startswith("Unexpected"):
+            raise
+        raise ValueError(f"Invalid outcome archive: {npz_path}") from error
+    arrays = (usable_at_end, usable_ever, ensemble_ids)
+    if any(array.ndim != 1 or len(array) != input_particle_count for array in arrays):
+        raise ValueError(f"Outcome shape mismatch: {npz_path}")
+    if usable_at_end.dtype.kind != "b" or usable_ever.dtype.kind != "b":
+        raise ValueError(f"Outcome masks must have boolean dtype: {npz_path}")
+    if ensemble_ids.dtype.kind not in "iu" or np.any(ensemble_ids < 0):
+        raise ValueError(
+            f"Ensemble identifiers must be non-negative integers: {npz_path}"
+        )
+    if np.any(usable_at_end & ~usable_ever):
+        raise ValueError(f"End-usable particles must also be ever-usable: {npz_path}")
+    return usable_at_end, usable_ever, ensemble_ids
 
 
 def sha256(path):
@@ -16,8 +80,15 @@ def sha256(path):
 
 
 def frozen_stage_design(
-    manifest_path, selection_path, role, dt_s, t_max_s, *, particle_selection,
-    particles_per_ensemble=None, selection_seed=None,
+    manifest_path,
+    selection_path,
+    role,
+    dt_s,
+    t_max_s,
+    *,
+    particle_selection,
+    particles_per_ensemble=None,
+    selection_seed=None,
 ):
     manifest_path = Path(manifest_path)
     selection_path = Path(selection_path)
@@ -75,18 +146,16 @@ def validate_completed_result(
     }
     for key, value in expected.items():
         if payload.get(key) != value:
-            raise ValueError(f"Stale or contaminated result {json_path}: {key} mismatch.")
-    with np.load(npz_path) as data:
-        required = {"usable_at_end", "usable_ever", "ensemble_ids"}
-        if not required.issubset(data.files):
-            raise ValueError(f"Incomplete outcome archive: {npz_path}")
-        lengths = {len(np.asarray(data[key])) for key in required}
-        if lengths != {int(payload["input_particle_count"])}:
-            raise ValueError(f"Outcome length mismatch: {npz_path}")
+            raise ValueError(
+                f"Stale or contaminated result {json_path}: {key} mismatch."
+            )
+    validate_outcome_archive(npz_path, payload.get("input_particle_count"))
     return True
 
 
-def validate_artifact_registry(json_paths, npz_paths, *, candidates, recoil_seeds, kind, family):
+def validate_artifact_registry(
+    json_paths, npz_paths, *, candidates, recoil_seeds, kind, family
+):
     json_paths = list(json_paths)
     npz_paths = list(npz_paths)
     expected_stems = {
@@ -102,7 +171,9 @@ def validate_artifact_registry(json_paths, npz_paths, *, candidates, recoil_seed
         or set(json_stems) != expected_stems
         or set(npz_stems) != expected_stems
     ):
-        raise RuntimeError("Stage artifact registry is incomplete, duplicated, or contaminated.")
+        raise RuntimeError(
+            "Stage artifact registry is incomplete, duplicated, or contaminated."
+        )
     npz_by_stem = {path.stem: path for path in npz_paths}
     records = []
     for json_path in json_paths:
@@ -113,13 +184,27 @@ def validate_artifact_registry(json_paths, npz_paths, *, candidates, recoil_seed
             or row.get("family") != family
             or expected_stem != json_path.stem
         ):
-            raise ValueError(f"Artifact metadata disagrees with its registry key: {json_path}")
+            raise ValueError(
+                f"Artifact metadata disagrees with its registry key: {json_path}"
+            )
         npz_path = npz_by_stem[json_path.stem]
         if Path(row.get("outcomes_path", "")).resolve() != npz_path.resolve():
-            raise ValueError(f"Artifact points at an unexpected outcome archive: {json_path}")
-        if row.get("outcomes_sha256") != sha256(npz_path):
-            raise ValueError(f"Outcome hash mismatch: {npz_path}")
-        with np.load(npz_path) as data:
+            raise ValueError(
+                f"Artifact points at an unexpected outcome archive: {json_path}"
+            )
+        from workflow_api.mot_3d_preliminary_results import (
+            validate_npz_container_bytes,
+        )
+
+        try:
+            with Path(npz_path).open("rb") as stream:
+                raw = stream.read(2 * 1024 * 1024 + 1)
+            if hashlib.sha256(raw).hexdigest() != row.get("outcomes_sha256"):
+                raise ValueError(f"Outcome hash mismatch: {npz_path}")
+            validate_npz_container_bytes(raw)
+        except (OSError, ValueError) as error:
+            raise ValueError(f"Invalid outcome archive: {npz_path}") from error
+        with np.load(io.BytesIO(raw), allow_pickle=False) as data:
             required = {"usable_at_end", "usable_ever", "ensemble_ids"}
             if not required.issubset(data.files):
                 raise ValueError(f"Incomplete outcome archive: {npz_path}")
@@ -139,7 +224,11 @@ def simultaneous_intervals(bootstrap, means, alpha=0.05):
     studentized = centered / safe[None, :]
     studentized[:, standard_errors == 0] = 0.0
     critical = float(np.quantile(np.max(np.abs(studentized), axis=1), 1.0 - alpha))
-    return means - critical * standard_errors, means + critical * standard_errors, critical
+    return (
+        means - critical * standard_errors,
+        means + critical * standard_errors,
+        critical,
+    )
 
 
 def simultaneous_paired_differences(bootstrap, means, leader_index, alpha=0.05):

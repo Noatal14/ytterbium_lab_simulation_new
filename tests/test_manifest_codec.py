@@ -1,6 +1,9 @@
 import json
 import os
+import subprocess
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -9,9 +12,12 @@ from workflow_api.manifest_codec import (
     ManifestCodecError,
     ManifestFailure,
     decode_manifest,
+    normalize_manifest,
     read_manifest,
+    read_normalized_manifest,
 )
 from workflow_api.discovery import DiscoveryError, _read_manifest
+from studies import mot_2d_s0_campaign, mot_3d_campaign
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "campaign_manifests"
@@ -36,6 +42,158 @@ def test_existing_implicit_v1_fixtures_preserve_exact_bytes_and_model(
     assert document.raw_bytes == before
     assert document.model == json.loads(before)
     assert path.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    ("name", "family", "version"),
+    [
+        ("mot_2d_v1.json", "mot_2d", "mot-2d-manifest-v1"),
+        ("mot_3d_v1.json", "mot_3d", "mot-3d-manifest-v1"),
+    ],
+)
+def test_v1_normalization_adds_internal_version_without_rewriting_source(
+    name, family, version
+):
+    path = FIXTURES / name
+    before = path.read_bytes()
+    normalized = read_normalized_manifest(path, expected_family=family)
+
+    assert normalized.family == family
+    assert normalized.schema_version == version
+    assert normalized.raw_bytes == before
+    assert normalized.manifest == json.loads(before)
+    assert "schema_version" not in normalized.manifest
+    assert path.read_bytes() == before
+
+
+def test_normalized_manifest_is_detached_from_document_and_callers():
+    document = decode_manifest((FIXTURES / "mot_2d_v1.json").read_bytes())
+    normalized = normalize_manifest(document)
+    first = normalized.manifest
+    first["stage"] = "caller-change"
+    assert normalized.manifest["stage"] == "complete"
+    assert document.model["stage"] == "complete"
+
+
+def test_historical_2d_status_output_is_unchanged_through_versioned_codec(
+    tmp_path, capsys
+):
+    root = tmp_path / "campaign"
+    root.mkdir()
+    raw = (FIXTURES / "mot_2d_v1.json").read_bytes()
+    (root / "campaign.json").write_bytes(raw)
+
+    mot_2d_s0_campaign.status(SimpleNamespace(campaign=str(root)))
+
+    assert capsys.readouterr().out == (
+        "Campaign: fixture-2d\nCurrent stage: complete\ns0 values: [1.3]\n"
+    )
+    assert (root / "campaign.json").read_bytes() == raw
+
+
+def test_historical_3d_status_output_is_unchanged_through_versioned_codec(
+    tmp_path, capsys
+):
+    root = tmp_path / "campaign"
+    root.mkdir()
+    raw = (FIXTURES / "mot_3d_v1.json").read_bytes()
+    (root / "campaign.json").write_bytes(raw)
+
+    mot_3d_campaign.status(SimpleNamespace(campaign=str(root)))
+
+    assert capsys.readouterr().out == (
+        "Campaign: fixture-3d\nCurrent stage: dt_validation_required\n"
+    )
+    assert (root / "campaign.json").read_bytes() == raw
+
+
+def test_3d_status_cli_resolves_codec_before_dispatch(tmp_path):
+    root = tmp_path / "campaign"
+    root.mkdir()
+    (root / "campaign.json").write_bytes(
+        (FIXTURES / "mot_3d_v1.json").read_bytes()
+    )
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "studies.mot_3d_campaign",
+            "status",
+            "--campaign",
+            str(root),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == (
+        "Campaign: fixture-3d\nCurrent stage: dt_validation_required\n"
+    )
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"kind":"mot_2d_s0_campaign","kind":"mot_2d_s0_campaign"}',
+        b"{" + b" " * MAX_MANIFEST_BYTES,
+    ],
+)
+def test_2d_status_uses_the_same_strict_manifest_failures(tmp_path, raw):
+    root = tmp_path / "campaign"
+    root.mkdir()
+    (root / "campaign.json").write_bytes(raw)
+    with pytest.raises(ManifestCodecError):
+        mot_2d_s0_campaign.status(SimpleNamespace(campaign=str(root)))
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"kind":"mot_3d_campaign_v2","kind":"mot_3d_campaign_v2"}',
+        b"{" + b" " * MAX_MANIFEST_BYTES,
+    ],
+)
+def test_3d_status_uses_the_same_strict_manifest_failures(tmp_path, raw):
+    root = tmp_path / "campaign"
+    root.mkdir()
+    (root / "campaign.json").write_bytes(raw)
+    with pytest.raises(ManifestCodecError):
+        mot_3d_campaign.status(SimpleNamespace(campaign=str(root)))
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda root: mot_3d_campaign.status(SimpleNamespace(campaign=str(root))),
+        lambda root: mot_3d_campaign.advance_campaign(
+            SimpleNamespace(campaign=str(root))
+        ),
+        mot_3d_campaign.submit_discovery,
+        mot_3d_campaign.submit_selection_stage,
+        mot_3d_campaign.submit_final_validation_inputs,
+        mot_3d_campaign.freeze_final_validation_inputs,
+    ],
+)
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b'{"kind":"mot_3d_campaign_v2","kind":"mot_3d_campaign_v2"}',
+        b"{" + b" " * MAX_MANIFEST_BYTES,
+        b'{"kind":"mot_2d_s0_campaign","stage":"discovery"}',
+    ],
+)
+def test_every_public_3d_campaign_reader_uses_the_strict_codec(
+    tmp_path, operation, raw
+):
+    root = tmp_path / "campaign"
+    root.mkdir()
+    (root / "campaign.json").write_bytes(raw)
+
+    with pytest.raises(ManifestCodecError):
+        operation(root)
 
 
 def test_wrong_expected_family_and_unknown_kind_fail_closed():

@@ -358,7 +358,7 @@ def test_status_uses_manifest_sealed_seed_count(tmp_path, capsys):
     root = tmp_path / "campaign"
     (root / "production" / campaign.key(1.3) / "replicates").mkdir(parents=True)
     (root / "campaign.json").write_text(json.dumps({
-        "name": "test", "stage": "production", "s0_values": [1.3],
+        "kind": "mot_2d_s0_campaign", "name": "test", "stage": "production", "s0_values": [1.3],
         "seed_roles": {"sealed_validation": [91, 92, 93]},
     }))
     campaign.status(SimpleNamespace(campaign=str(root)))

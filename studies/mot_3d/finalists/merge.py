@@ -1,14 +1,18 @@
 """Merge full-existing-data finalist outcomes using a crossed paired bootstrap."""
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 import numpy as np
 from studies.mot_3d.integrity import (
+    expected_ensemble_ids,
+    sha256,
     simultaneous_intervals,
     simultaneous_paired_differences,
     validate_artifact_registry,
+    validate_outcome_archive,
 )
 from utils.file_helpers import save_file_json
 
@@ -16,11 +20,41 @@ from utils.file_helpers import save_file_json
 RECOIL_SEEDS = (43001, 43002, 43003)
 
 
+def _expected_frozen_ensemble_ids(design):
+    manifest_path = Path(design["campaign_manifest_path"])
+    if sha256(manifest_path) != design.get("campaign_manifest_sha256"):
+        raise ValueError("Finalist design does not bind the frozen campaign manifest.")
+    campaign_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    roles = campaign_manifest.get("input_roles")
+    if not isinstance(roles, dict):
+        raise ValueError("Finalist campaign has no frozen input roles.")
+    frozen_records = []
+    for role in ("discovery", "refinement", "preliminary_check"):
+        rows = roles.get(role)
+        if not isinstance(rows, list):
+            raise ValueError("Finalist campaign input role is invalid.")
+        frozen_records.extend(rows)
+    if len(frozen_records) != 20 or any(
+        not isinstance(row, dict) for row in frozen_records
+    ):
+        raise ValueError("Finalist campaign requires the exact 20 frozen ensembles.")
+    canonical = json.dumps(frozen_records, sort_keys=True, separators=(",", ":"))
+    if hashlib.sha256(canonical.encode()).hexdigest() != design.get(
+        "input_role_sha256"
+    ):
+        raise ValueError("Finalist design does not bind the frozen ensemble registry.")
+    return expected_ensemble_ids([row.get("n_survivors") for row in frozen_records])
+
+
 def merge(args):
     selection = json.loads(Path(args.selection).read_text())
     candidates = selection["candidates"]
     input_root = Path(args.input_root)
-    json_paths = [path for path in input_root.glob("finalist_*/*.json") if path.name != "particle_selection.json"]
+    json_paths = [
+        path
+        for path in input_root.glob("finalist_*/*.json")
+        if path.name != "particle_selection.json"
+    ]
     npz_paths = list(input_root.glob("finalist_*/*.npz"))
     result_records = validate_artifact_registry(
         json_paths,
@@ -31,7 +65,11 @@ def merge(args):
         family=selection["family"],
     )
     designs = [row.get("design") for row in result_records]
-    if not designs or not designs[0] or any(value != designs[0] for value in designs[1:]):
+    if (
+        not designs
+        or not designs[0]
+        or any(value != designs[0] for value in designs[1:])
+    ):
         raise ValueError("Finalist results contain mixed scientific designs.")
     outcome_rows = []
     ensemble_ids = None
@@ -39,23 +77,48 @@ def merge(args):
         arrays = []
         for seed in RECOIL_SEEDS:
             matches = list(
-                input_root.glob(f"finalist_*/{candidate['candidate_id']}_seed_{seed}.npz")
+                input_root.glob(
+                    f"finalist_*/{candidate['candidate_id']}_seed_{seed}.npz"
+                )
             )
             if len(matches) != 1:
                 raise ValueError(
                     f"Expected one outcome for {candidate['candidate_id']} seed {seed}; "
                     f"found {len(matches)}."
                 )
-            with np.load(matches[0]) as data:
-                arrays.append(np.asarray(data["usable_at_end"], dtype=bool))
-                current_ids = np.asarray(data["ensemble_ids"], dtype=int)
-                if ensemble_ids is None:
-                    ensemble_ids = current_ids
-                elif not np.array_equal(ensemble_ids, current_ids):
-                    raise ValueError("Particle grouping differs between finalists.")
+            row = next(
+                value
+                for value in result_records
+                if value["candidate_id"] == candidate["candidate_id"]
+                and value["recoil_seed"] == seed
+            )
+            usable_at_end, usable_ever, current_ids = validate_outcome_archive(
+                matches[0],
+                row["input_particle_count"],
+                expected_sha256=row["outcomes_sha256"],
+            )
+            if (
+                isinstance(row.get("usable_at_end_count"), bool)
+                or not isinstance(row.get("usable_at_end_count"), int)
+                or row["usable_at_end_count"] != int(usable_at_end.sum())
+                or isinstance(row.get("usable_ever_count"), bool)
+                or not isinstance(row.get("usable_ever_count"), int)
+                or row["usable_ever_count"] != int(usable_ever.sum())
+            ):
+                raise ValueError("Finalist outcome count disagrees with its archive.")
+            arrays.append(usable_at_end)
+            if ensemble_ids is None:
+                ensemble_ids = current_ids
+            elif not np.array_equal(ensemble_ids, current_ids):
+                raise ValueError("Particle grouping differs between finalists.")
         outcome_rows.append(np.stack(arrays))
     outcomes = np.stack(outcome_rows)
 
+    expected_ids = _expected_frozen_ensemble_ids(designs[0])
+    if not np.array_equal(ensemble_ids, expected_ids):
+        raise ValueError(
+            "Finalist particle grouping differs from the exact frozen ensemble order."
+        )
     groups = [np.flatnonzero(ensemble_ids == group) for group in range(20)]
     if any(len(group) == 0 for group in groups):
         raise ValueError("At least one expected ensemble is empty.")
@@ -64,10 +127,12 @@ def merge(args):
     for replicate in range(args.bootstrap_replicates):
         sampled_seeds = rng.integers(0, 3, size=3)
         sampled_groups = rng.integers(0, 20, size=20)
-        particle_indices = np.concatenate([
-            rng.choice(groups[group], size=len(groups[group]), replace=True)
-            for group in sampled_groups
-        ])
+        particle_indices = np.concatenate(
+            [
+                rng.choice(groups[group], size=len(groups[group]), replace=True)
+                for group in sampled_groups
+            ]
+        )
         bootstrap[replicate] = outcomes[:, sampled_seeds][:, :, particle_indices].mean(
             axis=(1, 2)
         )
@@ -77,23 +142,34 @@ def merge(args):
     upper = np.quantile(bootstrap, 0.975, axis=0)
     sim_lower, sim_upper, sim_critical = simultaneous_intervals(bootstrap, means)
     leader_index = int(np.argmax(sim_lower))
-    diff_lower, diff_upper, diff_critical = simultaneous_paired_differences(bootstrap, means, leader_index)
+    diff_lower, diff_upper, diff_critical = simultaneous_paired_differences(
+        bootstrap, means, leader_index
+    )
     records = []
     for index, candidate in enumerate(candidates):
         diff_ci = [float(diff_lower[index]), float(diff_upper[index])]
         records.append(
             {
-                **{key: value for key, value in candidate.items() if key != "resolved_profile"},
+                **{
+                    key: value
+                    for key, value in candidate.items()
+                    if key != "resolved_profile"
+                },
                 "mean_usable_fraction": float(means[index]),
                 "mean_usable_count": float(outcomes.shape[-1] * means[index]),
                 "bootstrap_95_ci": [float(lower[index]), float(upper[index])],
-                "simultaneous_95_ci": [float(sim_lower[index]), float(sim_upper[index])],
+                "simultaneous_95_ci": [
+                    float(sim_lower[index]),
+                    float(sim_upper[index]),
+                ],
                 "paired_difference_simultaneous_95_ci": diff_ci,
                 "paired_difference_half_width": float((diff_ci[1] - diff_ci[0]) / 2),
                 "seed_counts": [int(value) for value in outcomes[index].sum(axis=1)],
             }
         )
-    records.sort(key=lambda row: (-row["simultaneous_95_ci"][0], -row["mean_usable_fraction"]))
+    records.sort(
+        key=lambda row: (-row["simultaneous_95_ci"][0], -row["mean_usable_fraction"])
+    )
     summary = {
         "kind": "merged_mot_3d_finalist_selection",
         "family": selection["family"],

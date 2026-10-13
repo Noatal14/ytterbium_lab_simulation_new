@@ -55,6 +55,20 @@ class CampaignManifest:
         return copy.deepcopy(self._model)
 
 
+@dataclass(frozen=True)
+class NormalizedCampaignManifest:
+    """Version-tagged internal view without modifying authenticated V1 bytes."""
+
+    family: ManifestFamily
+    schema_version: str
+    raw_bytes: bytes
+    _manifest: dict[str, Any]
+
+    @property
+    def manifest(self) -> dict[str, Any]:
+        return copy.deepcopy(self._manifest)
+
+
 _KINDS: dict[str, tuple[ManifestFamily, str]] = {
     "mot_2d_s0_campaign": ("mot_2d", "mot-2d-manifest-v1"),
     "mot_3d_campaign_v2": ("mot_3d", "mot-3d-manifest-v1"),
@@ -130,6 +144,24 @@ def decode_manifest(
         ) from error
     family, version = classify_manifest(payload, expected_family=expected_family)
     return CampaignManifest(family, version, raw, payload)
+
+
+def normalize_manifest(document: CampaignManifest) -> NormalizedCampaignManifest:
+    """Dispatch an authenticated document to its immutable schema adapter.
+
+    Historical manifests have no explicit schema field.  Their ``kind`` is the
+    V1 discriminator; normalization makes that version explicit internally and
+    deliberately leaves the original model and bytes untouched.
+    """
+    if not isinstance(document, CampaignManifest):
+        raise TypeError("Campaign manifest document is invalid.")
+    family, version = classify_manifest(document.model, expected_family=document.family)
+    if version != document.version:
+        raise ManifestCodecError(
+            ManifestFailure.UNSUPPORTED_KIND,
+            "Campaign manifest adapter version is inconsistent.",
+        )
+    return NormalizedCampaignManifest(family, version, document.raw_bytes, document.model)
 
 
 def read_manifest(
@@ -214,3 +246,10 @@ def read_manifest(
             "Campaign manifest was truncated while it was read.",
         )
     return decode_manifest(raw, expected_family=expected_family)
+
+
+def read_normalized_manifest(
+    path: str | Path, *, expected_family: ManifestFamily | None = None
+) -> NormalizedCampaignManifest:
+    """Safely read and version-normalize one campaign manifest."""
+    return normalize_manifest(read_manifest(path, expected_family=expected_family))

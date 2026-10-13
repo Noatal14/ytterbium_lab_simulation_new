@@ -14,6 +14,7 @@ import math
 import os
 import shlex
 import subprocess
+import re
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +41,7 @@ from lab_setup.mot_3d_timestep_policy import (
 from utils.file_helpers import save_file_json
 from utils.data_paths import load_particle_states
 from workflow_api.mot_3d_provenance import input_registry_digest
+from workflow_api.manifest_codec import read_normalized_manifest
 from workflow_api.mot_3d_stage_topology import (
     CLOSURE_SCIENTIFIC_DESIGN,
     REFINEMENT_SCIENTIFIC_DESIGN,
@@ -47,6 +49,13 @@ from workflow_api.mot_3d_stage_topology import (
 
 
 FAMILIES = ("angled_donut", "single_pass")
+
+
+def _read_campaign_manifest(path):
+    """Read one historical campaign through the bounded version adapter."""
+    return read_normalized_manifest(path, expected_family="mot_3d").manifest
+
+
 CAMPAIGN_FILES = (
     "config.py",
     "lab_setup/physical_specification.py",
@@ -304,15 +313,15 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         "expected_survivor_parameters": matching[0].get("recommended_parameters"),
         "laboratory_provenance": (
             {
-            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-            "legacy_attested_profile": True,
+                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                "legacy_attested_profile": True,
             }
             if legacy_attested
             else {
-            "laboratory_spec_version": LABORATORY_SPEC_VERSION,
-            "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
-            "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-            "legacy_attested_profile": False,
+                "laboratory_spec_version": LABORATORY_SPEC_VERSION,
+                "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
+                "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
+                "legacy_attested_profile": False,
             }
         ),
     }
@@ -488,13 +497,13 @@ def load_role_particles(manifest_path, role, per_ensemble, selection_seed):
         ensemble_ids.extend([ensemble_id] * per_ensemble)
         provenance.append(
             {
-            "ensemble_id": ensemble_id,
-            "file": record["path"],
-            "array_sha256": record["sha256"],
-            "zeeman_seed": record["zeeman_seed"],
-            "mot_seed": record["mot_seed"],
-            "available_count": len(available),
-            "selected_indices": indices.tolist(),
+                "ensemble_id": ensemble_id,
+                "file": record["path"],
+                "array_sha256": record["sha256"],
+                "zeeman_seed": record["zeeman_seed"],
+                "mot_seed": record["mot_seed"],
+                "available_count": len(available),
+                "selected_indices": indices.tolist(),
             }
         )
     return np.concatenate(states), np.asarray(ensemble_ids), provenance
@@ -516,12 +525,12 @@ def load_all_frozen_particles(manifest_path):
         ensemble_ids.extend([ensemble_id] * len(available))
         provenance.append(
             {
-            "ensemble_id": ensemble_id,
-            "file": record["path"],
-            "array_sha256": record["sha256"],
-            "zeeman_seed": record["zeeman_seed"],
-            "mot_seed": record["mot_seed"],
-            "particle_count": len(available),
+                "ensemble_id": ensemble_id,
+                "file": record["path"],
+                "array_sha256": record["sha256"],
+                "zeeman_seed": record["zeeman_seed"],
+                "mot_seed": record["mot_seed"],
+                "particle_count": len(available),
             }
         )
     return np.concatenate(states), np.asarray(ensemble_ids), provenance
@@ -621,21 +630,21 @@ def render_discovery_jobs(
             relative = Path("jobs") / family / f"round_{round_index:02d}.pbs"
             family_paths.append(root / relative)
             rendered[relative.as_posix()] = (
-                    _header(f"m3d2_{short}_r{round_index}", revision)
-                    + "# Array directive is supplied by the submission chain.\n"
-                    + f"targets=({target_values})\n"
-                    + f"samplers=({sampler_values})\n"
-                    + 'worker="${PBS_ARRAY_INDEX}"\n'
-                    + 'target="${targets[$worker]}"\n'
-                    + 'sampler="${samplers[$worker]}"\n'
-                    + f"python -u -m studies.mot_3d.discovery.optimize "
+                _header(f"m3d2_{short}_r{round_index}", revision)
+                + "# Array directive is supplied by the submission chain.\n"
+                + f"targets=({target_values})\n"
+                + f"samplers=({sampler_values})\n"
+                + 'worker="${PBS_ARRAY_INDEX}"\n'
+                + 'target="${targets[$worker]}"\n'
+                + 'sampler="${samplers[$worker]}"\n'
+                + f"python -u -m studies.mot_3d.discovery.optimize "
                 f'--family {family} --worker-index "$worker" '
                 f'--target-completed-trials "$target" '
                 f'--sampler-seed "$sampler" '
                 f"--output-dir {shlex.quote(str(command_root/'discovery'/family))} "
-                    f"--input {quoted_input} "
-                    f"--input-manifest {quoted_manifest} --input-role discovery "
-                    f"--particles-per-ensemble 50 --npools 200 --dt {dt} "
+                f"--input {quoted_input} "
+                f"--input-manifest {quoted_manifest} --input-role discovery "
+                f"--particles-per-ensemble 50 --npools 200 --dt {dt} "
                 f"--timeout-s 68400\n"
             )
         round_paths[family] = family_paths
@@ -665,7 +674,7 @@ def write_discovery_jobs(root, revision, input_directory):
 def submit_discovery(campaign, qsub=None):
     """Submit once, atomically recording every raw Zeus job identifier."""
     root = Path(campaign)
-    manifest = json.loads((root / "campaign.json").read_text(encoding="utf-8"))
+    manifest = _read_campaign_manifest(root / "campaign.json")
     destination = root / "discovery_submission.json"
     if manifest.get("stage") != "discovery":
         raise RuntimeError(
@@ -998,16 +1007,20 @@ def _canonical_campaign_logical_root(root):
     path = Path(root)
     parts = path.parts
     marker = ("data", "optimization", "mot_3d")
-    matches = [index for index in range(len(parts) - 2) if parts[index:index + 3] == marker]
+    matches = [
+        index for index in range(len(parts) - 2) if parts[index : index + 3] == marker
+    ]
     if len(matches) != 1 or len(parts) != matches[0] + 4:
         raise ValueError("Campaign root must end in data/optimization/mot_3d/<name>.")
-    logical = Path(*parts[matches[0]:])
+    logical = Path(*parts[matches[0] :])
     if any(part in {"", ".", ".."} for part in logical.parts):
         raise ValueError("Campaign root is not canonical.")
     return logical
 
 
-def render_refinement_transition(logical_campaign_root, manifest, preliminary_summaries):
+def render_refinement_transition(
+    logical_campaign_root, manifest, preliminary_summaries
+):
     """Render the exact post-preliminary refinement artifacts without I/O.
 
     ``preliminary_summaries`` must already have crossed the strict scientific
@@ -1063,9 +1076,9 @@ def render_refinement_transition(logical_campaign_root, manifest, preliminary_su
         },
         "input_role": "refinement",
     }
-    artifacts["campaign.json"] = json.dumps(
-        updated, indent=2, allow_nan=False
-    ).encode("utf-8")
+    artifacts["campaign.json"] = json.dumps(updated, indent=2, allow_nan=False).encode(
+        "utf-8"
+    )
     return artifacts, updated
 
 
@@ -1164,9 +1177,9 @@ def render_closure_transition(logical_campaign_root, manifest, refinement_summar
         },
         "input_role": "refinement",
     }
-    artifacts["campaign.json"] = json.dumps(
-        updated, indent=2, allow_nan=False
-    ).encode("utf-8")
+    artifacts["campaign.json"] = json.dumps(updated, indent=2, allow_nan=False).encode(
+        "utf-8"
+    )
     return artifacts, updated
 
 
@@ -1404,20 +1417,20 @@ def _collect_final_validation_inputs(root, manifest):
             raise ValueError(f"Invalid new sealed survivor ensemble: {path}")
         ensembles.append(
             {
-            "zeeman_seed": zseed,
-            "mot_seed": mseed,
-            "path": str(path.resolve()),
-            "metadata_path": str(metadata_path.resolve()),
-            "sha256": _sha256(path),
-            "metadata_sha256": _sha256(metadata_path),
-            "replicate_path": str(replicate_path.resolve()),
-            "replicate_sha256": _sha256(replicate_path),
-            "zeeman_path": str(zeeman_path.resolve()),
-            "zeeman_sha256": _sha256(zeeman_path),
-            "zeeman_metadata_path": str(zeeman_metadata_path.resolve()),
-            "zeeman_metadata_sha256": _sha256(zeeman_metadata_path),
-            "shape": list(values.shape),
-            "n_survivors": len(values),
+                "zeeman_seed": zseed,
+                "mot_seed": mseed,
+                "path": str(path.resolve()),
+                "metadata_path": str(metadata_path.resolve()),
+                "sha256": _sha256(path),
+                "metadata_sha256": _sha256(metadata_path),
+                "replicate_path": str(replicate_path.resolve()),
+                "replicate_sha256": _sha256(replicate_path),
+                "zeeman_path": str(zeeman_path.resolve()),
+                "zeeman_sha256": _sha256(zeeman_path),
+                "zeeman_metadata_path": str(zeeman_metadata_path.resolve()),
+                "zeeman_metadata_sha256": _sha256(zeeman_metadata_path),
+                "shape": list(values.shape),
+                "n_survivors": len(values),
             }
         )
     return ensembles
@@ -1425,7 +1438,7 @@ def _collect_final_validation_inputs(root, manifest):
 
 def freeze_final_validation_inputs(campaign):
     root = Path(campaign)
-    manifest = json.loads((root / "campaign.json").read_text(encoding="utf-8"))
+    manifest = _read_campaign_manifest(root / "campaign.json")
     if manifest.get("stage") != "final_validation_input_generation":
         raise RuntimeError("Campaign is not awaiting final-validation inputs.")
     stage = manifest["stages"]["final_validation_input_generation"]
@@ -1558,10 +1571,169 @@ def _validate_precision_decision(
         not isinstance(stored_half_width, (int, float))
         or not np.isfinite(stored_half_width)
         or not np.isclose(stored_half_width, recomputed, rtol=0.0, atol=1e-12)
-        or bool(stored_decision) != (recomputed <= target)
+        or not isinstance(stored_decision, bool)
+        or stored_decision != (recomputed <= target)
     ):
         raise ValueError("Final-validation precision decision is inconsistent.")
     return recomputed, recomputed <= target
+
+
+FINAL_VALIDATION_SUMMARY_KEYS = frozenset(
+    {
+        "kind",
+        "classification",
+        "family",
+        "candidate_id",
+        "estimand",
+        "input_particle_count",
+        "ensemble_count",
+        "recoil_seed_count",
+        "conditional_efficiency",
+        "bootstrap_95_ci",
+        "ci_half_width",
+        "target_half_width",
+        "precision_target_met",
+        "expected_usable_per_10m_2d_survivors",
+        "expected_usable_per_10m_95_ci",
+        "new_ensemble_rate_sd",
+        "new_equivalent_ensemble_predictive_95_interval",
+        "predictive_method",
+        "bootstrap_method",
+        "bootstrap_replicates",
+        "bootstrap_seed",
+        "design",
+    }
+)
+
+
+def _finite_number(value):
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and np.isfinite(value)
+    )
+
+
+def _positive_int(value):
+    return not isinstance(value, bool) and isinstance(value, int) and value > 0
+
+
+def _validate_final_validation_summary_schema(summary, path):
+    if not isinstance(summary, dict) or set(summary) != FINAL_VALIDATION_SUMMARY_KEYS:
+        raise ValueError(f"Invalid sealed final-validation summary schema: {path}")
+
+
+_JOB_ID = re.compile(r"^[1-9][0-9]*(?:\[\])?\.[A-Za-z0-9][A-Za-z0-9.-]*$")
+FINAL_VALIDATION_SUBMISSION_KEYS = frozenset(
+    {
+        "kind",
+        "stage",
+        "status",
+        "dependency",
+        "families",
+        "campaign_manifest_sha256",
+        "worker_job_sha256",
+        "merge_job_sha256",
+    }
+)
+
+
+def _validate_final_validation_submission(root, manifest, stage, path):
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != FINAL_VALIDATION_SUBMISSION_KEYS
+        or payload.get("kind") != "mot_3d_selection_stage_submission"
+        or payload.get("stage") != "final_validation"
+        or payload.get("status") != "submitted"
+        or payload.get("dependency") != "afterok"
+        or payload.get("campaign_manifest_sha256") != _sha256(root / "campaign.json")
+    ):
+        raise RuntimeError("Final validation has an invalid submission record.")
+    families = payload.get("families")
+    worker_hashes = payload.get("worker_job_sha256")
+    merge_hashes = payload.get("merge_job_sha256")
+    if not all(
+        isinstance(value, dict) and set(value) == set(FAMILIES)
+        for value in (families, worker_hashes, merge_hashes)
+    ):
+        raise RuntimeError("Final validation submission family registry is invalid.")
+    for family in FAMILIES:
+        jobs = families[family]
+        if not isinstance(jobs, dict) or set(jobs) != {"array_job_id", "merge_job_id"}:
+            raise RuntimeError("Final validation submission job registry is invalid.")
+        array_id, merge_id = jobs["array_job_id"], jobs["merge_job_id"]
+        if (
+            not isinstance(array_id, str)
+            or not isinstance(merge_id, str)
+            or _JOB_ID.fullmatch(array_id) is None
+            or _JOB_ID.fullmatch(merge_id) is None
+            or "[]" not in array_id
+            or "[]" in merge_id
+            or worker_hashes[family] != _sha256(stage["worker_jobs"][family])
+            or merge_hashes[family] != _sha256(stage["merge_jobs"][family])
+        ):
+            raise RuntimeError("Final validation submission binding is invalid.")
+    return payload
+
+
+FINAL_REPORT_KEYS = frozenset(
+    {
+        "kind",
+        "classification",
+        "conditional_efficiency_denominator",
+        "results",
+        "result_summary_sha256",
+        "precision_target_met_for_both_families",
+        "selection_data_excluded_from_claim",
+        "provenance",
+    }
+)
+FINAL_REPORT_PROVENANCE_KEYS = frozenset(
+    {
+        "campaign_name",
+        "campaign_manifest_sha256",
+        "git_commit",
+        "physical_model_sha256",
+        "locked_nominals_sha256",
+        "input_manifest_sha256",
+        "final_validation_submission_sha256",
+        "production_dt_s",
+        "solver",
+    }
+)
+
+
+def _validate_final_report_schema(report):
+    provenance = report.get("provenance") if isinstance(report, dict) else None
+    if (
+        not isinstance(report, dict)
+        or set(report) != FINAL_REPORT_KEYS
+        or not isinstance(provenance, dict)
+        or set(provenance) != FINAL_REPORT_PROVENANCE_KEYS
+        or not isinstance(report.get("precision_target_met_for_both_families"), bool)
+        or report.get("selection_data_excluded_from_claim") is not True
+        or not isinstance(provenance.get("campaign_name"), str)
+        or not provenance["campaign_name"].strip()
+        or not isinstance(provenance.get("git_commit"), str)
+        or re.fullmatch(r"[0-9a-f]{40}", provenance["git_commit"]) is None
+        or any(
+            not isinstance(provenance.get(key), str)
+            or re.fullmatch(r"[0-9a-f]{64}", provenance[key]) is None
+            for key in (
+                "campaign_manifest_sha256",
+                "physical_model_sha256",
+                "locked_nominals_sha256",
+                "input_manifest_sha256",
+                "final_validation_submission_sha256",
+            )
+        )
+        or not _finite_number(provenance.get("production_dt_s"))
+        or provenance["production_dt_s"] <= 0.0
+        or not isinstance(provenance.get("solver"), str)
+        or not provenance["solver"]
+    ):
+        raise ValueError("Final report schema is invalid.")
 
 
 def _final_report_artifact(precision_met):
@@ -1585,11 +1757,10 @@ def _final_report_artifact(precision_met):
 def complete_final_validation(root, manifest):
     stage = manifest["stages"]["final_validation"]
     submission = root / "final_validation_submission.json"
-    if (
-        not submission.is_file()
-        or json.loads(submission.read_text()).get("status") != "submitted"
-    ):
+    if not submission.is_file():
         raise RuntimeError("Final validation has no complete submission record.")
+    _validate_final_validation_submission(root, manifest, stage, submission)
+    precompletion_manifest_sha256 = _sha256(root / "campaign.json")
     results = {}
     result_hashes = {}
     precision_met = True
@@ -1600,6 +1771,7 @@ def complete_final_validation(root, manifest):
         if not path.is_file():
             raise RuntimeError(f"Missing sealed final-validation summary: {path}")
         summary = json.loads(path.read_text(encoding="utf-8"))
+        _validate_final_validation_summary_schema(summary, path)
         interval = summary.get("bootstrap_95_ci", [])
         half_width = summary.get("ci_half_width")
         recomputed_half_width, computed_precision = _validate_precision_decision(
@@ -1623,19 +1795,23 @@ def complete_final_validation(root, manifest):
             or summary.get("classification")
             != "sealed_unbiased_estimate_pending_precision_gate"
             or summary.get("bootstrap_replicates") != 20_000
+            or not _positive_int(summary.get("bootstrap_replicates"))
             or summary.get("bootstrap_seed") != 92_001
+            or not _positive_int(summary.get("bootstrap_seed"))
             or summary.get("candidate_id") != locked["families"][family]["candidate_id"]
             or summary.get("ensemble_count") != len(inputs["ensembles"])
+            or not _positive_int(summary.get("ensemble_count"))
             or summary.get("recoil_seed_count") != 3
+            or not _positive_int(summary.get("recoil_seed_count"))
             or summary.get("input_particle_count") != inputs["total_survivors"]
+            or not _positive_int(summary.get("input_particle_count"))
             or summary.get("estimand")
             != "survivor-weighted conditional capture fraction"
             or summary.get("target_half_width") != 0.0075
             or summary.get("precision_target_met") != computed_precision
             or len(interval) != 2
-            or not all(np.isfinite(value) for value in interval)
-            or not isinstance(efficiency, (int, float))
-            or not np.isfinite(efficiency)
+            or not all(_finite_number(value) for value in interval)
+            or not _finite_number(efficiency)
             or not (0.0 <= interval[0] <= efficiency <= interval[1] <= 1.0)
             or summary.get("design") != expected_design
             or summary.get("bootstrap_method")
@@ -1647,10 +1823,17 @@ def complete_final_validation(root, manifest):
             or summary.get("predictive_method")
             != "empirical random-effects bootstrap of ensemble and recoil effects plus finite-particle binomial variation"
             or len(predictive) != 2
-            or not all(np.isfinite(value) for value in predictive)
+            or not all(_finite_number(value) for value in predictive)
             or not (0.0 <= predictive[0] <= predictive[1] <= 1.0)
+            or not _finite_number(summary.get("new_ensemble_rate_sd"))
+            or summary["new_ensemble_rate_sd"] < 0.0
         ):
             raise ValueError(f"Invalid sealed final-validation summary: {path}")
+        recomputed = _recompute_final_validation_summary(root, family, stage)
+        if recomputed != summary:
+            raise ValueError(
+                f"Final-validation summary does not match seed artifacts: {path}"
+            )
         precision_met &= bool(summary.get("precision_target_met"))
         results[family] = summary
         result_hashes[family] = _sha256(path)
@@ -1665,12 +1848,53 @@ def complete_final_validation(root, manifest):
         "result_summary_sha256": result_hashes,
         "precision_target_met_for_both_families": precision_met,
         "selection_data_excluded_from_claim": True,
+        "provenance": {
+            "campaign_name": manifest.get("name"),
+            "campaign_manifest_sha256": precompletion_manifest_sha256,
+            "git_commit": manifest.get("provenance", {}).get("git_commit"),
+            "physical_model_sha256": manifest.get("provenance", {}).get(
+                "physical_model_sha256"
+            ),
+            "locked_nominals_sha256": _sha256(stage["locked_nominals"]),
+            "input_manifest_sha256": _sha256(stage["input_manifest"]),
+            "final_validation_submission_sha256": _sha256(submission),
+            "production_dt_s": manifest.get("design", {}).get("production_dt_s"),
+            "solver": manifest.get("design", {}).get("solver"),
+        },
     }
     destination = root / filename
-    save_file_json(destination, report)
+    _validate_final_report_schema(report)
+    if destination.exists():
+        existing = json.loads(destination.read_text(encoding="utf-8"))
+        _validate_final_report_schema(existing)
+        if existing != report:
+            raise ValueError(f"Existing final report is incompatible: {destination}")
+    else:
+        save_file_json(destination, report)
     manifest["stage"] = next_stage
     manifest.setdefault("stages", {})[registry_key] = str(destination)
     save_file_json(root / "campaign.json", manifest)
+
+
+def _recompute_final_validation_summary(root, family, stage):
+    from studies.mot_3d.final_validation import merge
+
+    with __import__("tempfile").TemporaryDirectory() as temporary:
+        output = Path(temporary) / "summary.json"
+        merge(
+            argparse.Namespace(
+                input_root=str(root / "final_validation" / family),
+                output=str(output),
+                family=family,
+                locked_nominals=str(stage["locked_nominals"]),
+                input_manifest=str(stage["input_manifest"]),
+                campaign_manifest=str(root / "campaign.json"),
+                dt=MOT_3D_SIM_CONFIG["production_dt_s"],
+                bootstrap_replicates=20_000,
+                bootstrap_seed=92_001,
+            )
+        )
+        return json.loads(output.read_text(encoding="utf-8"))
 
 
 def validate_stage_complete(root, manifest, stage):
@@ -1728,7 +1952,7 @@ def validate_stage_complete(root, manifest, stage):
 
 def advance_campaign(args):
     root = Path(args.campaign)
-    manifest = json.loads((root / "campaign.json").read_text(encoding="utf-8"))
+    manifest = _read_campaign_manifest(root / "campaign.json")
     stage = manifest.get("stage")
     if stage == "discovery":
         submission = root / "discovery_submission.json"
@@ -1760,7 +1984,7 @@ def advance_campaign(args):
 
 def submit_selection_stage(campaign, qsub=None):
     root = Path(campaign)
-    manifest = json.loads((root / "campaign.json").read_text(encoding="utf-8"))
+    manifest = _read_campaign_manifest(root / "campaign.json")
     stage = manifest.get("stage")
     if stage not in (
         "preliminary_check",
@@ -1790,6 +2014,19 @@ def submit_selection_stage(campaign, qsub=None):
         "dependency": "afterok",
         "families": {},
     }
+    if stage == "final_validation":
+        record.update(
+            {
+                "campaign_manifest_sha256": _sha256(root / "campaign.json"),
+                "worker_job_sha256": {
+                    family: _sha256(design["worker_jobs"][family])
+                    for family in FAMILIES
+                },
+                "merge_job_sha256": {
+                    family: _sha256(design["merge_jobs"][family]) for family in FAMILIES
+                },
+            }
+        )
     save_file_json(destination, record)
     try:
         for family in FAMILIES:
@@ -1804,7 +2041,7 @@ def submit_selection_stage(campaign, qsub=None):
                     "qsub",
                     "-W",
                     f"depend=afterok:{array_id}",
-                design["merge_jobs"][family],
+                    design["merge_jobs"][family],
                 ]
             )
             record["families"][family]["merge_job_id"] = merge_id
@@ -1821,7 +2058,7 @@ def submit_selection_stage(campaign, qsub=None):
 
 def submit_final_validation_inputs(campaign, qsub=None):
     root = Path(campaign)
-    manifest = json.loads((root / "campaign.json").read_text(encoding="utf-8"))
+    manifest = _read_campaign_manifest(root / "campaign.json")
     if manifest.get("stage") != "final_validation_input_generation":
         raise RuntimeError("Campaign is not ready to generate final-validation inputs.")
     stage = manifest["stages"]["final_validation_input_generation"]
@@ -1894,33 +2131,33 @@ def build_campaign_manifest(
 ):
     """Build the canonical manifest model shared by CLI and UI preparation."""
     design = {
-            "families": list(FAMILIES),
-            "solver": MOT_3D_SIM_CONFIG["solver"],
-            "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
-            "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
+        "families": list(FAMILIES),
+        "solver": MOT_3D_SIM_CONFIG["solver"],
+        "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
+        "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
         "timestep_status": timestep_status,
-            "dt_validation_candidates_s": list(
-                MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]
-            ),
+        "dt_validation_candidates_s": list(
+            MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]
+        ),
         "dt_validation_reference_s": MOT_3D_SIM_CONFIG["dt_validation_reference_s"],
-            "green_full_angle_deg": 62.0,
-            "donut_shared_aperture_radius_m": 0.005,
-            "single_pass_green_aperture_radius_m": 0.005,
-            "single_pass_blue_aperture_radius_m": 0.0075,
-            "power_feasibility_status": "unknown_no_experimental_power_cap_provided",
-            "power_policy": (
-                "record per-candidate power proxies and boundary hits; do not "
-                "reject trials or claim laboratory feasibility"
-            ),
-            "selection_statistics": {
-                "estimand": "survivor-weighted conditional capture fraction",
-                "alpha": 0.05,
-                "bootstrap_replicates": 10_000,
-                "multiplicity": "paired max-T simultaneous confidence bounds",
-                "ranking_rule": "largest lower endpoint of the simultaneous two-sided 95% interval",
-            },
-            "optimization_bounds": MOT_3D_OPTIMIZATION_CONFIG,
-            "final_validation_inputs": "newly generated and sealed after finalist selection",
+        "green_full_angle_deg": 62.0,
+        "donut_shared_aperture_radius_m": 0.005,
+        "single_pass_green_aperture_radius_m": 0.005,
+        "single_pass_blue_aperture_radius_m": 0.0075,
+        "power_feasibility_status": "unknown_no_experimental_power_cap_provided",
+        "power_policy": (
+            "record per-candidate power proxies and boundary hits; do not "
+            "reject trials or claim laboratory feasibility"
+        ),
+        "selection_statistics": {
+            "estimand": "survivor-weighted conditional capture fraction",
+            "alpha": 0.05,
+            "bootstrap_replicates": 10_000,
+            "multiplicity": "paired max-T simultaneous confidence bounds",
+            "ranking_rule": "largest lower endpoint of the simultaneous two-sided 95% interval",
+        },
+        "optimization_bounds": MOT_3D_OPTIMIZATION_CONFIG,
+        "final_validation_inputs": "newly generated and sealed after finalist selection",
     }
     if timestep_evidence is not None:
         design["timestep_evidence"] = timestep_evidence
@@ -1966,9 +2203,7 @@ def create(args):
         "policy_sha256": MOT_3D_TIMESTEP_POLICY_SHA256,
         "policy_status": MOT_3D_TIMESTEP_POLICY["status"],
         "convergence_claim": MOT_3D_TIMESTEP_POLICY["convergence_claim"],
-        "inconclusive_evidence": dict(
-            MOT_3D_TIMESTEP_POLICY["inconclusive_evidence"]
-        ),
+        "inconclusive_evidence": dict(MOT_3D_TIMESTEP_POLICY["inconclusive_evidence"]),
         "source_handoff": {
             "campaign_sha256": upstream["campaign_sha256"],
             "final_report_sha256": upstream["final_report_sha256"],
@@ -2002,7 +2237,7 @@ def create(args):
 
 
 def status(args):
-    manifest = json.loads((Path(args.campaign) / "campaign.json").read_text())
+    manifest = _read_campaign_manifest(Path(args.campaign) / "campaign.json")
     print(f"Campaign: {manifest['name']}")
     print(f"Current stage: {manifest['stage']}")
     for role, rows in manifest["input_roles"].items():
@@ -2029,6 +2264,7 @@ def approve_timestep(args):
         T_MAX_S,
         merge as rebuild_timestep_evidence,
     )
+
     root = Path(args.campaign)
     manifest_path = root / "campaign.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))

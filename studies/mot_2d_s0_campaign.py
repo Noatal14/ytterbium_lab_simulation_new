@@ -32,6 +32,7 @@ from workflow_api.mot_2d_validation import (
     expected_sensitivity_tasks,
     validated_evaluation_outputs,
 )
+from workflow_api.manifest_codec import read_normalized_manifest
 from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
 
 FINAL_DT_S = MOT_2D_SIM_CONFIG["dt_s"]
@@ -218,6 +219,11 @@ def label(value):
 
 def read(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def read_campaign(path):
+    """Read an authenticated historical manifest through its version adapter."""
+    return read_normalized_manifest(path, expected_family="mot_2d").manifest
 
 
 def paths(root):
@@ -585,7 +591,7 @@ def finish(root, manifest):
 
 def advance(args):
     root = Path(args.campaign)
-    manifest = read(root / "campaign.json")
+    manifest = read_campaign(root / "campaign.json")
     assert_design(manifest)
     transitions = {"smoke": prepare_screen, "screen": prepare_refine,
                    "refine": prepare_confirmation, "confirmation": prepare_sensitivity,
@@ -598,7 +604,7 @@ def advance(args):
 
 def status(args):
     root = Path(args.campaign)
-    manifest = read(root / "campaign.json")
+    manifest = read_campaign(root / "campaign.json")
     print(f"Campaign: {manifest['name']}\nCurrent stage: {manifest['stage']}\ns0 values: {manifest['s0_values']}")
     stage = manifest["stage"]
     for value in manifest["s0_values"]:

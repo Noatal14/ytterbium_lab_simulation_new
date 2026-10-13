@@ -1,0 +1,45 @@
+{
+  "configuration": {
+    "schema_version": "run-configuration-v1",
+    "run_id": "fixture-run",
+    "family": "zeeman",
+    "laboratory_spec": {"version": "laboratory-physical-v1", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+    "numerical_policy": {"version": "numerical-policy-v1", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+    "resolved": {"example_si": 1.25, "enabled": true}
+  },
+  "inputs": {
+    "schema_version": "run-inputs-v1",
+    "run_id": "fixture-run",
+    "family": "zeeman",
+    "artifacts": []
+  },
+  "run": {
+    "schema_version": "individual-run-v1",
+    "run_id": "fixture-run",
+    "family": "zeeman",
+    "created_utc": "2026-10-11T10:00:00+00:00",
+    "execution_mode": "local",
+    "git_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "configuration_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "inputs_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "particle_count": 100,
+    "seed": 7,
+    "solver": "RK4StCustom",
+    "timestep_s": 0.00004,
+    "retention": {"particle_states": false},
+    "outputs": [
+      {"kind": "summary", "path": "results/summary.json", "required": true},
+      {"kind": "retention_receipt", "path": "results/state_retention_receipt.json", "required": true}
+    ],
+    "suitability": "individual_only"
+  },
+  "status": {
+    "schema_version": "run-status-v1",
+    "run_id": "fixture-run",
+    "revision": 0,
+    "state": "configured",
+    "updated_utc": "2026-10-11T10:00:00+00:00",
+    "execution": {"mode": "local", "local_pid": null, "zeus_job_id": null},
+    "error": null
+  }
+}

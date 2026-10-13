@@ -13,13 +13,32 @@ import numpy as np
 
 from simulations.mot_3d import mot_3d_simulation
 from studies.mot_3d.analysis.retention import analyze_results
-from studies.mot_3d.integrity import sha256, validate_completed_result
+from studies.mot_3d.integrity import (
+    expected_ensemble_ids,
+    sha256,
+    validate_completed_result,
+    validate_outcome_archive,
+)
 from utils.data_paths import load_particle_states
 from utils.file_helpers import save_file_json
 
 
 RECOIL_SEEDS = (44_001, 44_002, 44_003)
 TARGET_HALF_WIDTH = 0.0075
+SEED_RESULT_KEYS = frozenset(
+    {
+        "kind",
+        "family",
+        "candidate_id",
+        "recoil_seed",
+        "input_particle_count",
+        "usable_at_end_count",
+        "usable_ever_count",
+        "outcomes_path",
+        "outcomes_sha256",
+        "design",
+    }
+)
 
 
 def load_sealed_inputs(input_manifest, campaign_manifest, locked_nominals):
@@ -33,10 +52,17 @@ def load_sealed_inputs(input_manifest, campaign_manifest, locked_nominals):
     states, ensemble_ids = [], []
     for ensemble_id, row in enumerate(manifest["ensembles"]):
         path = Path(row["path"])
-        if sha256(path) != row["sha256"] or sha256(row["metadata_path"]) != row["metadata_sha256"]:
+        if (
+            sha256(path) != row["sha256"]
+            or sha256(row["metadata_path"]) != row["metadata_sha256"]
+        ):
             raise ValueError(f"Sealed input hash mismatch: {path}")
         values = np.asarray(load_particle_states(path), dtype=float)
-        if len(values) == 0 or list(values.shape) != row["shape"] or not np.all(np.isfinite(values)):
+        if (
+            len(values) == 0
+            or list(values.shape) != row["shape"]
+            or not np.all(np.isfinite(values))
+        ):
             raise ValueError(f"Invalid sealed input array: {path}")
         states.append(values)
         ensemble_ids.extend([ensemble_id] * len(values))
@@ -109,31 +135,38 @@ def run(args):
             os.unlink(temporary)
         except FileNotFoundError:
             pass
-    save_file_json(output, {
-        "kind": "mot_3d_sealed_final_validation_seed_result",
-        "family": args.family,
-        "candidate_id": candidate["candidate_id"],
-        "recoil_seed": args.recoil_seed,
-        "input_particle_count": len(states),
-        "usable_at_end_count": int(usable_end.sum()),
-        "usable_ever_count": int(usable_ever.sum()),
-        "outcomes_path": str(archive.resolve()),
-        "outcomes_sha256": sha256(archive),
-        "design": design,
-    })
+    save_file_json(
+        output,
+        {
+            "kind": "mot_3d_sealed_final_validation_seed_result",
+            "family": args.family,
+            "candidate_id": candidate["candidate_id"],
+            "recoil_seed": args.recoil_seed,
+            "input_particle_count": len(states),
+            "usable_at_end_count": int(usable_end.sum()),
+            "usable_ever_count": int(usable_ever.sum()),
+            "outcomes_path": str(archive.resolve()),
+            "outcomes_sha256": sha256(archive),
+            "design": design,
+        },
+    )
 
 
 def _bootstrap(outcomes, ensemble_ids, replicates, seed):
-    groups = [np.flatnonzero(ensemble_ids == value) for value in np.unique(ensemble_ids)]
+    groups = [
+        np.flatnonzero(ensemble_ids == value) for value in np.unique(ensemble_ids)
+    ]
     rng = np.random.default_rng(seed)
     draws = np.empty(replicates)
     for index in range(replicates):
         sampled_recoil = rng.integers(0, outcomes.shape[0], size=outcomes.shape[0])
         sampled_groups = rng.integers(0, len(groups), size=len(groups))
-        particles = np.concatenate([
-            rng.choice(groups[group], size=len(groups[group]), replace=True)
-            for group in sampled_groups
-        ])
+        particles = np.concatenate(
+            [
+                rng.choice(groups[group], size=len(groups[group]), replace=True)
+                for group in sampled_groups
+            ]
+        )
         draws[index] = outcomes[sampled_recoil][:, particles].mean()
     return draws
 
@@ -149,17 +182,26 @@ def merge(args):
     if destination.parent.resolve() == root.resolve():
         allowed.add(destination.name)
     unexpected = {
-        path.name for path in root.iterdir()
-        if path.is_file() and path.suffix in (".json", ".npz") and path.name not in allowed
+        path.name
+        for path in root.iterdir()
+        if path.is_file()
+        and path.suffix in (".json", ".npz")
+        and path.name not in allowed
     }
     if observed_json != expected_json or observed_npz != expected_npz:
-        raise RuntimeError("Final-validation artifact registry is incomplete or contaminated.")
+        raise RuntimeError(
+            "Final-validation artifact registry is incomplete or contaminated."
+        )
     if unexpected:
-        raise RuntimeError(f"Unexpected final-validation artifacts: {sorted(unexpected)}")
+        raise RuntimeError(
+            f"Unexpected final-validation artifacts: {sorted(unexpected)}"
+        )
     paths = sorted(root / name for name in expected_json)
     records = [json.loads(path.read_text(encoding="utf-8")) for path in paths]
     if len(records) != len(RECOIL_SEEDS):
-        raise RuntimeError(f"Expected {len(RECOIL_SEEDS)} recoil results, found {len(records)}.")
+        raise RuntimeError(
+            f"Expected {len(RECOIL_SEEDS)} recoil results, found {len(records)}."
+        )
     if {row.get("recoil_seed") for row in records} != set(RECOIL_SEEDS):
         raise ValueError("Final-validation recoil seed registry mismatch.")
     if any(
@@ -187,9 +229,13 @@ def merge(args):
         "classification": "sealed_unbiased_final_validation",
     }
     for path, row in zip(paths, records):
+        if set(row) != SEED_RESULT_KEYS:
+            raise ValueError(f"Unexpected final-validation result schema: {path}")
         seed = row["recoil_seed"]
         expected_archive = root / f"seed_{seed}.npz"
-        normalized_design = {key: value for key, value in row["design"].items() if key != "recoil_seed"}
+        normalized_design = {
+            key: value for key, value in row["design"].items() if key != "recoil_seed"
+        }
         if (
             row["family"] != args.family
             or row["candidate_id"] != expected_candidate
@@ -200,51 +246,67 @@ def merge(args):
         ):
             raise ValueError(f"Foreign or stale final-validation result: {path}")
     designs = [row.get("design") for row in records]
-    normalized = [{key: value for key, value in row.items() if key != "recoil_seed"} for row in designs]
+    normalized = [
+        {key: value for key, value in row.items() if key != "recoil_seed"}
+        for row in designs
+    ]
     if any(value != normalized[0] for value in normalized[1:]):
         raise ValueError("Final-validation results contain mixed designs.")
     arrays, ensemble_ids = [], None
     for row in sorted(records, key=lambda value: value["recoil_seed"]):
         archive = Path(row["outcomes_path"])
-        if sha256(archive) != row["outcomes_sha256"]:
-            raise ValueError(f"Final-validation outcome hash mismatch: {archive}")
-        with np.load(archive) as data:
-            required = {"usable_at_end", "usable_ever", "ensemble_ids"}
-            if not required.issubset(data.files):
-                raise ValueError(f"Incomplete final-validation archive: {archive}")
-            arrays.append(np.asarray(data["usable_at_end"], dtype=bool))
-            current = np.asarray(data["ensemble_ids"], dtype=int)
-            if len(arrays[-1]) != row["input_particle_count"] or len(current) != len(arrays[-1]):
-                raise ValueError(f"Final-validation outcome length mismatch: {archive}")
-            if ensemble_ids is None:
-                ensemble_ids = current
-            elif not np.array_equal(ensemble_ids, current):
-                raise ValueError("Final-validation particle grouping mismatch.")
+        usable_at_end, usable_ever, current = validate_outcome_archive(
+            archive,
+            row["input_particle_count"],
+            expected_sha256=row["outcomes_sha256"],
+        )
+        if (
+            isinstance(row["usable_at_end_count"], bool)
+            or not isinstance(row["usable_at_end_count"], int)
+            or row["usable_at_end_count"] != int(usable_at_end.sum())
+            or isinstance(row["usable_ever_count"], bool)
+            or not isinstance(row["usable_ever_count"], int)
+            or row["usable_ever_count"] != int(usable_ever.sum())
+        ):
+            raise ValueError(f"Final-validation count mismatch: {archive}")
+        arrays.append(usable_at_end)
+        if ensemble_ids is None:
+            ensemble_ids = current
+        elif not np.array_equal(ensemble_ids, current):
+            raise ValueError("Final-validation particle grouping mismatch.")
+    frozen_ids = expected_ensemble_ids(
+        [row["n_survivors"] for row in input_manifest["ensembles"]]
+    )
+    if not np.array_equal(ensemble_ids, frozen_ids):
+        raise ValueError(
+            "Final-validation particle grouping differs from sealed input order."
+        )
     outcomes = np.stack(arrays)
-    draws = _bootstrap(outcomes, ensemble_ids, args.bootstrap_replicates, args.bootstrap_seed)
+    draws = _bootstrap(
+        outcomes, ensemble_ids, args.bootstrap_replicates, args.bootstrap_seed
+    )
     estimate = float(outcomes.mean())
     interval = np.quantile(draws, [0.025, 0.975])
     half_width = float((interval[1] - interval[0]) / 2)
-    ensemble_rates = np.asarray([
-        outcomes[:, ensemble_ids == group].mean()
-        for group in np.unique(ensemble_ids)
-    ])
+    ensemble_rates = np.asarray(
+        [outcomes[:, ensemble_ids == group].mean() for group in np.unique(ensemble_ids)]
+    )
     recoil_rates = outcomes.mean(axis=1)
-    group_sizes = np.asarray([
-        np.count_nonzero(ensemble_ids == group) for group in np.unique(ensemble_ids)
-    ])
+    group_sizes = np.asarray(
+        [np.count_nonzero(ensemble_ids == group) for group in np.unique(ensemble_ids)]
+    )
     rng = np.random.default_rng(args.bootstrap_seed + 1)
     predictive = np.empty(args.bootstrap_replicates)
     ensemble_effects = ensemble_rates - estimate
     recoil_effects = recoil_rates - estimate
     for index in range(args.bootstrap_replicates):
-        probability = float(np.clip(
-            estimate
-            + rng.choice(ensemble_effects)
-            + rng.choice(recoil_effects),
-            0.0,
-            1.0,
-        ))
+        probability = float(
+            np.clip(
+                estimate + rng.choice(ensemble_effects) + rng.choice(recoil_effects),
+                0.0,
+                1.0,
+            )
+        )
         size = int(rng.choice(group_sizes))
         predictive[index] = rng.binomial(size, probability) / size
     summary = {
@@ -262,7 +324,9 @@ def merge(args):
         "target_half_width": TARGET_HALF_WIDTH,
         "precision_target_met": half_width <= TARGET_HALF_WIDTH,
         "expected_usable_per_10m_2d_survivors": 10_000_000 * estimate,
-        "expected_usable_per_10m_95_ci": [10_000_000 * float(value) for value in interval],
+        "expected_usable_per_10m_95_ci": [
+            10_000_000 * float(value) for value in interval
+        ],
         "new_ensemble_rate_sd": float(ensemble_rates.std(ddof=1)),
         "new_equivalent_ensemble_predictive_95_interval": [
             float(value) for value in np.quantile(predictive, [0.025, 0.975])
@@ -276,7 +340,9 @@ def merge(args):
     if destination.exists():
         existing = json.loads(destination.read_text(encoding="utf-8"))
         if existing != summary:
-            raise ValueError(f"Existing final-validation summary is incompatible: {destination}")
+            raise ValueError(
+                f"Existing final-validation summary is incompatible: {destination}"
+            )
         print(f"Skipping identical final-validation summary: {destination}")
         return
     save_file_json(destination, summary)
@@ -286,7 +352,9 @@ def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     command = commands.add_parser("run")
-    command.add_argument("--family", choices=("angled_donut", "single_pass"), required=True)
+    command.add_argument(
+        "--family", choices=("angled_donut", "single_pass"), required=True
+    )
     command.add_argument("--recoil-seed", type=int, choices=RECOIL_SEEDS, required=True)
     command.add_argument("--locked-nominals", required=True)
     command.add_argument("--input-manifest", required=True)
@@ -299,7 +367,9 @@ def parse_args(argv=None):
     command = commands.add_parser("merge")
     command.add_argument("--input-root", required=True)
     command.add_argument("--output", required=True)
-    command.add_argument("--family", choices=("angled_donut", "single_pass"), required=True)
+    command.add_argument(
+        "--family", choices=("angled_donut", "single_pass"), required=True
+    )
     command.add_argument("--locked-nominals", required=True)
     command.add_argument("--input-manifest", required=True)
     command.add_argument("--campaign-manifest", required=True)
