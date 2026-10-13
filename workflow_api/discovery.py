@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shlex
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from workflow_api.mot_2d_validation import (
     sealed_final_is_valid,
     validated_progress,
 )
+from workflow_api.mot_3d_provenance import input_registry_digest
 
 MAX_MANIFEST_BYTES = 2 * 1024 * 1024
 MAX_CAMPAIGNS_PER_KIND = 250
@@ -32,6 +34,24 @@ SUPPORTED_KINDS = {
     "mot_2d": "mot_2d_s0_campaign",
     "mot_3d": "mot_3d_campaign_v2",
 }
+CURRENT_3D_STAGES = (
+    "discovery",
+    "preliminary_check",
+    "refinement",
+    "closure",
+    "finalist_selection",
+    "final_validation_input_generation",
+    "final_validation",
+    "complete",
+)
+CURRENT_3D_ROLE_SEEDS = {
+    "discovery": tuple(range(3015, 3027)),
+    "refinement": tuple(range(3027, 3031)),
+    "preliminary_check": tuple(range(3031, 3035)),
+}
+CURRENT_3D_SEED_PAIRS = tuple(
+    {"zeeman_seed": seed, "mot_seed": 40000 + seed} for seed in range(3015, 3035)
+)
 
 
 class DiscoveryError(Exception):
@@ -101,6 +121,14 @@ def _identifier(family: str, relative_root: Path) -> str:
     return f"{family}-{digest}"
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def build_registry(repository_root: Path) -> dict[str, RegistryEntry]:
     repository_root = repository_root.resolve()
     registry: dict[str, RegistryEntry] = {}
@@ -131,7 +159,32 @@ def _warning(text: str, severity: str = "attention") -> dict[str, str]:
     return {"severity": severity, "message": text}
 
 
-def _modern_3d_contract(payload: dict[str, Any], progress: list[dict[str, Any]]) -> tuple[bool, tuple[str, ...]]:
+def _trusted_regular(repository_root: Path, recorded: Any) -> Path | None:
+    if not isinstance(recorded, str) or not recorded or "\x00" in recorded:
+        return None
+    candidate = Path(recorded)
+    candidate = candidate if candidate.is_absolute() else repository_root / candidate
+    try:
+        relative = candidate.relative_to(repository_root)
+    except ValueError:
+        return None
+    current = repository_root
+    try:
+        for part in relative.parts:
+            if part in {"", ".", ".."}:
+                return None
+            current /= part
+            if current.is_symlink():
+                return None
+        info = current.stat()
+    except OSError:
+        return None
+    return current if stat.S_ISREG(info.st_mode) else None
+
+
+def _modern_3d_contract(
+    payload: dict[str, Any], progress: list[dict[str, Any]], repository_root: Path
+) -> tuple[bool, tuple[str, ...]]:
     errors: list[str] = []
     provenance = payload.get("provenance") if isinstance(payload.get("provenance"), dict) else {}
     design = payload.get("design") if isinstance(payload.get("design"), dict) else {}
@@ -148,7 +201,13 @@ def _modern_3d_contract(payload: dict[str, Any], progress: list[dict[str, Any]])
     required_upstream = ("campaign_path", "campaign_sha256", "final_report_path", "final_report_sha256", "sealed_seed_pairs", "expected_survivor_design", "expected_survivor_parameters")
     if any(not upstream.get(key) for key in required_upstream):
         errors.append("validated upstream 2D handoff is incomplete")
-    if not roles or any(not isinstance(records, list) or not records for records in roles.values()):
+    if upstream.get("sealed_seed_pairs") != list(CURRENT_3D_SEED_PAIRS):
+        errors.append("upstream sealed seed-pair registry is not canonical")
+    if set(roles) != set(CURRENT_3D_ROLE_SEEDS) or any(
+        not isinstance(roles.get(role), list)
+        or tuple(record.get("zeeman_seed") for record in roles[role] if isinstance(record, dict)) != seeds
+        for role, seeds in CURRENT_3D_ROLE_SEEDS.items()
+    ):
         errors.append("frozen 3D input roles are incomplete")
     else:
         for records in roles.values():
@@ -156,14 +215,97 @@ def _modern_3d_contract(payload: dict[str, Any], progress: list[dict[str, Any]])
                 if not isinstance(record, dict) or any(record.get(key) is None for key in ("path", "metadata_path", "sha256", "metadata_sha256", "shape", "dtype", "zeeman_seed", "mot_seed", "source_design", "source_parameters")):
                     errors.append("frozen 3D input record is incomplete")
                     break
-    if payload.get("stage") != "dt_validation_required":
-        dt_row = next((row for row in progress if row.get("stage") == "dt_validation"), None)
-        if not dt_row or dt_row.get("status") != "complete":
-            errors.append("approved paired timestep evidence is unavailable")
-    # The canonical 3D manifest freezes upstream reports and every survivor
-    # ensemble. Milestone 2 does not yet revalidate that complete cross-file
-    # chain, so it must not grant continuation trust from structural checks.
-    errors.append("full frozen 3D upstream and input artifact validation is not available in this milestone")
+    expected_pairs = {
+        row.get("zeeman_seed"): row.get("mot_seed")
+        for row in upstream.get("sealed_seed_pairs", ())
+        if isinstance(row, dict)
+    }
+    if any(
+        expected_pairs.get(record.get("zeeman_seed")) != record.get("mot_seed")
+        for records in roles.values()
+        if isinstance(records, list)
+        for record in records
+        if isinstance(record, dict)
+    ):
+        errors.append("frozen 3D seed-pair registry differs from the upstream handoff")
+    frozen_records = [
+        record
+        for records in roles.values()
+        if isinstance(records, list)
+        for record in records
+        if isinstance(record, dict)
+    ]
+    if (
+        len({record.get("path") for record in frozen_records}) != len(frozen_records)
+        or len({record.get("metadata_path") for record in frozen_records}) != len(frozen_records)
+        or len({record.get("mot_seed") for record in frozen_records}) != len(frozen_records)
+    ):
+        errors.append("frozen 3D input registry contains duplicate identities")
+    upstream_campaign = _trusted_regular(repository_root, upstream.get("campaign_path"))
+    upstream_report = _trusted_regular(repository_root, upstream.get("final_report_path"))
+    if upstream_campaign is None or _file_sha256(upstream_campaign) != upstream.get("campaign_sha256"):
+        errors.append("upstream 2D campaign identity does not match its frozen bytes")
+    if upstream_report is None or _file_sha256(upstream_report) != upstream.get("final_report_sha256"):
+        errors.append("upstream 2D final-report identity does not match its frozen bytes")
+    for records in roles.values():
+        if not isinstance(records, list):
+            continue
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            array_path = _trusted_regular(repository_root, record.get("path"))
+            metadata_path = _trusted_regular(repository_root, record.get("metadata_path"))
+            if array_path is None or _file_sha256(array_path) != record.get("sha256"):
+                errors.append("frozen 3D input array identity is invalid")
+            if metadata_path is None or _file_sha256(metadata_path) != record.get("metadata_sha256"):
+                errors.append("frozen 3D input metadata identity is invalid")
+            if record.get("source_design") != upstream.get("expected_survivor_design"):
+                errors.append("frozen 3D input design differs from the upstream handoff")
+            if record.get("source_parameters") != upstream.get("expected_survivor_parameters"):
+                errors.append("frozen 3D input parameters differ from the upstream handoff")
+            if metadata_path is not None:
+                try:
+                    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                except (OSError, UnicodeError, json.JSONDecodeError):
+                    metadata = None
+                if (
+                    not isinstance(metadata, dict)
+                    or metadata.get("kind") != "mot_2d_final_survivor_ensemble"
+                    or metadata.get("zeeman_seed") != record.get("zeeman_seed")
+                    or metadata.get("mot_seed") != record.get("mot_seed")
+                    or metadata.get("shape") != record.get("shape")
+                    or metadata.get("dtype") != record.get("dtype")
+                    or metadata.get("n_survivors") != record.get("n_survivors")
+                ):
+                    errors.append("frozen 3D input metadata differs from its registry record")
+    try:
+        registry_sha256 = input_registry_digest(roles)
+    except (KeyError, TypeError, ValueError):
+        registry_sha256 = None
+    handoff = (
+        design.get("timestep_evidence", {}).get("source_handoff", {})
+        if isinstance(design.get("timestep_evidence"), dict)
+        else {}
+    )
+    if (
+        registry_sha256 is None
+        or handoff.get("input_registry_sha256") != registry_sha256
+        or handoff.get("campaign_sha256") != upstream.get("campaign_sha256")
+        or handoff.get("final_report_sha256") != upstream.get("final_report_sha256")
+    ):
+        errors.append("3D frozen handoff identity is inconsistent")
+    stage = payload.get("stage")
+    stages = payload.get("stages") if isinstance(payload.get("stages"), dict) else {}
+    if stage not in CURRENT_3D_STAGES:
+        errors.append("3D campaign stage is not part of the current guarded workflow")
+    required_stage = "final_validation" if stage == "complete" else stage
+    if required_stage in CURRENT_3D_STAGES and not isinstance(stages.get(required_stage), dict):
+        errors.append("current 3D stage record is incomplete")
+    timestep = next((row for row in progress if row.get("stage") == "dt_validation"), None)
+    if not timestep or timestep.get("status") != "complete":
+        errors.append("current 3D timestep policy validation is unavailable")
+    if not progress or any(row.get("status") in {"unknown", "inconsistent"} for row in progress):
+        errors.append("validated 3D stage progress is unavailable or inconsistent")
     return not errors, tuple(dict.fromkeys(errors))
 
 
@@ -210,6 +352,8 @@ def _progress_aware_plan(
     if row and row.get("status") == "in-progress":
         return None
     if row and row.get("status") == "complete":
+        if summary.get("kind") == "mot_3d_campaign_v2":
+            return None
         relative = root.relative_to(repository_root).as_posix()
         command = ["python", "-m", "studies.mot_2d_s0_campaign", "advance", "--campaign", relative]
         return {
@@ -265,7 +409,12 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
         )
     else:
         progress = list(summary.get("progress", []))
-        contract_ok, contract_errors = _modern_3d_contract(payload, progress)
+        contract_ok, contract_errors = _modern_3d_contract(payload, progress, repository_root)
+        remote_preparation = (
+            {"status": "ready", "reason_code": None}
+            if contract_ok
+            else {"status": "unavailable", "reason_code": "campaign-validation-failed"}
+        )
         sealed_final = any(row.get("stage") == "final_validation" and row.get("status") == "complete" for row in progress) and summary.get("stage") == "complete"
         if not contract_ok:
             progress = []

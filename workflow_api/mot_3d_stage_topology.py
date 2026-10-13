@@ -79,6 +79,18 @@ class FinalistSelectionScientificDesign:
     dt_s: float = MOT_3D_TIMESTEP_POLICY["search_dt_s"]
 
 
+@dataclass(frozen=True)
+class FinalValidationScientificDesign:
+    input_ensembles: int = 20
+    recoil_seeds: tuple[int, ...] = (44001, 44002, 44003)
+    t_max_s: float = 0.1
+    npools: int = 200
+    bootstrap_replicates: int = 20_000
+    bootstrap_seed: int = 92_001
+    solver: str = MOT_3D_TIMESTEP_POLICY["solver"]
+    dt_s: float = MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"]
+
+
 PRELIMINARY_CHECK_TOPOLOGY = SelectionStageTopology(
     stage="preliminary_check", candidates_per_family=12
 )
@@ -93,6 +105,13 @@ FINALIST_SELECTION_TOPOLOGY = SelectionStageTopology(
     stage="finalist_selection", candidates_per_family=3
 )
 FINALIST_SELECTION_SCIENTIFIC_DESIGN = FinalistSelectionScientificDesign()
+FINAL_VALIDATION_TOPOLOGY = SelectionStageTopology(
+    stage="final_validation",
+    candidates_per_family=1,
+    merge_memory_gb=8,
+    merge_walltime="02:00:00",
+)
+FINAL_VALIDATION_SCIENTIFIC_DESIGN = FinalValidationScientificDesign()
 
 
 def public_chain(

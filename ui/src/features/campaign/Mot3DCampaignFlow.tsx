@@ -9,6 +9,7 @@ import type { useMot3DRefinementTransitionController } from "./controllers/useMo
 import type { useMot3DClosureSubmissionController } from "./controllers/useMot3DClosureSubmissionController";
 import type { useMot3DClosureTransitionController } from "./controllers/useMot3DClosureTransitionController";
 import type { useMot3DFinalistSubmissionController } from "./controllers/useMot3DFinalistSubmissionController";
+import type { useMot3DFinalValidationSubmissionController } from "./controllers/useMot3DFinalValidationSubmissionController";
 import type { useMot3DFinalistTransitionController } from "./controllers/useMot3DFinalistTransitionController";
 import type { useMot3DFinalInputSubmissionController } from "./controllers/useMot3DFinalInputSubmissionController";
 import type { useMot3DFinalValidationTransitionController } from "./controllers/useMot3DFinalValidationTransitionController";
@@ -30,6 +31,7 @@ export function Mot3DCampaignFlow({
   finalistTransition,
   finalInputSubmission,
   finalValidationTransition,
+  finalValidation,
   onConnectZeus,
   onViewJobs,
 }: {
@@ -54,6 +56,9 @@ export function Mot3DCampaignFlow({
   >;
   finalValidationTransition?: ReturnType<
     typeof useMot3DFinalValidationTransitionController
+  >;
+  finalValidation?: ReturnType<
+    typeof useMot3DFinalValidationSubmissionController
   >;
   onConnectZeus: () => void;
   onViewJobs: () => void;
@@ -214,7 +219,174 @@ export function Mot3DCampaignFlow({
           onViewJobs={onViewJobs}
         />
       )}
+      {finalValidation && (
+        <Mot3DFinalValidationSubmissionStage
+          visible={stage === "final_validation"}
+          connected={connected}
+          flow={finalValidation}
+          onConnectZeus={onConnectZeus}
+          onViewJobs={onViewJobs}
+        />
+      )}
     </>
+  );
+}
+
+function Mot3DFinalValidationSubmissionStage({
+  visible,
+  connected,
+  flow,
+  onConnectZeus,
+  onViewJobs,
+}: {
+  visible: boolean;
+  connected: boolean;
+  flow: ReturnType<typeof useMot3DFinalValidationSubmissionController>;
+  onConnectZeus: () => void;
+  onViewJobs: () => void;
+}) {
+  const heading = useRef<HTMLHeadingElement>(null),
+    panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!visible) return;
+    if (flow.phase === "review") heading.current?.focus();
+    else if (
+      ["success", "blocked"].includes(flow.phase) ||
+      Boolean(flow.error) ||
+      ["submitted", "queued", "running", "completed_success_unvalidated"].includes(
+        flow.status?.submission.status ?? "",
+      )
+    )
+      panel.current?.focus();
+  }, [flow.error, flow.phase, flow.status?.submission.status, visible]);
+  if (!visible) return null;
+  const lifecycle = flow.status?.submission.status,
+    active =
+      ["submitted", "queued", "running"].includes(lifecycle ?? "") ||
+      (flow.phase === "success" &&
+        Boolean(flow.result) &&
+        lifecycle !== "completed_success_unvalidated"),
+    finished = lifecycle === "completed_success_unvalidated";
+  return (
+    <section
+      className="section-block"
+      aria-labelledby="mot3d-final-validation-submit-heading"
+    >
+      <div className="section-heading">
+        <p className="eyebrow">Current stage: Final Validation</p>
+        <h2 id="mot3d-final-validation-submit-heading">
+          Run sealed Final Validation
+        </h2>
+        <p>
+          One locked nominal per family is evaluated on all 20 sealed ensembles
+          and three recoil seeds. Scheduler completion is not a scientific
+          result.
+        </p>
+      </div>
+      {!connected ? (
+        <button className="primary-button" onClick={onConnectZeus}>
+          Connect to Zeus
+        </button>
+      ) : flow.phase === "idle" && !flow.status ? (
+        <button className="primary-button" onClick={() => void flow.refresh()}>
+          Check Final Validation status
+        </button>
+      ) : null}
+      {flow.phase === "ready" && (
+        <button className="primary-button" onClick={() => void flow.review()}>
+          Review Final Validation jobs
+        </button>
+      )}
+      {flow.phase === "review" && flow.preview && (
+        <div className="review-panel">
+          <h3 ref={heading} tabIndex={-1}>
+            Submit Final Validation
+          </h3>
+          <p>
+            Review four jobs: one three-task array and one merge per family.
+            Arrays use 200 CPUs and 64 GB for 24 hours; merges use 1 CPU and 8
+            GB for 2 hours.
+          </p>
+          <dl className="transfer-facts">
+            <div>
+              <dt>Sealed ensembles</dt>
+              <dd>20</dd>
+            </div>
+            <div>
+              <dt>Recoil seeds</dt>
+              <dd>3 per family</dd>
+            </div>
+            <div>
+              <dt>Timestep</dt>
+              <dd>0.625 µs</dd>
+            </div>
+            <div>
+              <dt>Later stages</dt>
+              <dd>Not submitted</dd>
+            </div>
+          </dl>
+          <button
+            className="primary-button"
+            onClick={() => void flow.confirm()}
+          >
+            Submit Final Validation to Zeus
+          </button>
+          <button className="secondary-button" onClick={flow.reset}>
+            Back
+          </button>
+        </div>
+      )}
+      {["checking", "reviewing", "confirming"].includes(flow.phase) && (
+        <Busy
+          title={
+            flow.phase === "confirming"
+              ? "Submitting reviewed Final Validation jobs"
+              : "Checking Final Validation"
+          }
+        />
+      )}{" "}
+      {active && !flow.error && (
+        <div
+          className="state-panel state-panel--success"
+          ref={panel}
+          role="status"
+          tabIndex={-1}
+        >
+          <strong>Final Validation is running on Zeus</strong>
+          <p>No action is needed while the reviewed jobs run.</p>
+          <button onClick={() => void flow.refresh()}>Refresh status</button>
+          <button onClick={onViewJobs}>Open Zeus jobs</button>
+        </div>
+      )}
+      {finished && !flow.error && (
+        <div className="state-panel" ref={panel} role="status" tabIndex={-1}>
+          <strong>Scheduler work finished</strong>
+          <p>
+            The sealed outputs are not yet scientifically validated,
+            synchronized, or reported. This is not a final result.
+          </p>
+          <button onClick={() => void flow.refresh()}>Refresh status</button>
+        </div>
+      )}
+      {(flow.phase === "blocked" || flow.error) && (
+        <div
+          className="state-panel state-panel--error"
+          ref={panel}
+          role="alert"
+          tabIndex={-1}
+        >
+          <AlertTriangle aria-hidden="true" />
+          <div>
+            <strong>Manual verification required</strong>
+              <p>
+                {flow.error || "The submission is partial or its outcome is unknown."}
+                {" "}Do not submit again; inspect Zeus.
+              </p>
+            <button onClick={onViewJobs}>Open Zeus jobs</button>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -239,7 +411,12 @@ function Mot3DFinalValidationTransitionStage({
     else if (
       ["ready", "success", "blocked"].includes(flow.phase) ||
       flow.error ||
-      ["review_transition", "synchronize_results", "open_final_validation", "inspect_zeus"].includes(flow.status?.next_action ?? "")
+      [
+        "review_transition",
+        "synchronize_results",
+        "open_final_validation",
+        "inspect_zeus",
+      ].includes(flow.status?.next_action ?? "")
     )
       panel.current?.focus();
   }, [visible, flow.phase, flow.error, flow.status?.next_action]);

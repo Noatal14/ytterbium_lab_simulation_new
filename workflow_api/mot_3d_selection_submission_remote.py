@@ -16,7 +16,7 @@ FAMILIES = ("angled_donut", "single_pass")
 @dataclass(frozen=True)
 class ReceiverDescriptor:
     stage: str
-    input_role: str | tuple[str, ...]
+    input_role: str | tuple[str, ...] | None
     transition_receipt: str
     jobs: Mapping[str, Mapping[str, str]]
     files: frozenset[str]
@@ -25,11 +25,16 @@ class ReceiverDescriptor:
     transition_status: str
     outcome_error: str
     preparation_error: str
+    non_job_files: frozenset[str] | None = None
+    science_keys: frozenset[str] | None = None
+    dt_design_key: str = "screening_dt_s"
 
     def __post_init__(self):
         if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.stage) is None:
             raise ValueError("invalid receiver stage")
-        if isinstance(self.input_role, str):
+        if self.input_role is None:
+            pass
+        elif isinstance(self.input_role, str):
             if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.input_role) is None:
                 raise ValueError("invalid receiver input role")
         elif (
@@ -47,6 +52,7 @@ class ReceiverDescriptor:
             "refinement": "refinement.json",
             "closure": "refinement_to_closure.json",
             "finalist_selection": "closure_to_finalist_selection.json",
+            "final_validation": "final_validation_inputs_to_final_validation.json",
         }
         if self.transition_receipt != expected_transition_receipts.get(self.stage):
             raise ValueError("invalid receiver transition receipt")
@@ -64,15 +70,21 @@ class ReceiverDescriptor:
             if dict(row) != expected:
                 raise ValueError("invalid receiver jobs")
             jobs[family] = MappingProxyType(expected)
-        expected_files = frozenset(
-            {
-                "campaign.json",
-                *(
-                    f"selection/{'discovery' if self.stage == 'preliminary_check' else 'finalists' if self.stage == 'finalist_selection' else self.stage}/{family}.json"
-                    for family in FAMILIES
-                ),
-                *(path for family in FAMILIES for path in jobs[family].values()),
-            }
+        non_job_files = self.non_job_files
+        if non_job_files is None:
+            non_job_files = frozenset(
+                {
+                    "campaign.json",
+                    *(
+                        f"selection/{'discovery' if self.stage == 'preliminary_check' else 'finalists' if self.stage == 'finalist_selection' else self.stage}/{family}.json"
+                        for family in FAMILIES
+                    ),
+                }
+            )
+        if type(non_job_files) is not frozenset:
+            raise ValueError("invalid receiver non-job files")
+        expected_files = non_job_files | frozenset(
+            path for family in FAMILIES for path in jobs[family].values()
         )
         if type(self.files) is not frozenset or self.files != expected_files:
             raise ValueError("invalid receiver files")
@@ -102,7 +114,7 @@ class ReceiverDescriptor:
             "bootstrap_replicates",
             "bootstrap_seed",
         }
-        expected_science_keys = (
+        expected_science_keys = self.science_keys or (
             finalist_science_keys
             if self.stage == "finalist_selection"
             else standard_science_keys
@@ -115,7 +127,7 @@ class ReceiverDescriptor:
         science = dict(self.science)
         if science["dt_s"] is not None or science["solver"] is not None:
             raise ValueError("runtime science must be manifest-derived")
-        if self.stage == "finalist_selection":
+        if self.stage in {"finalist_selection", "final_validation"}:
             numeric_names = (
                 "candidates_per_family",
                 "input_ensembles",
@@ -123,9 +135,10 @@ class ReceiverDescriptor:
                 "bootstrap_replicates",
                 "bootstrap_seed",
             )
-            expected_classification = (
-                "final_candidate_selection_not_unbiased_validation"
-            )
+            expected_classification = {
+                "finalist_selection": "final_candidate_selection_not_unbiased_validation",
+                "final_validation": "sealed_unbiased_final_validation",
+            }[self.stage]
         else:
             numeric_names = (
                 "candidates_per_family",
@@ -151,6 +164,22 @@ class ReceiverDescriptor:
             )
         ):
             raise ValueError("invalid receiver science")
+        expected_dt_key = (
+            "production_dt_s"
+            if science["classification"] == "sealed_unbiased_final_validation"
+            else "screening_dt_s"
+        )
+        if self.dt_design_key != expected_dt_key:
+            raise ValueError("invalid receiver timestep authority")
+        if science["classification"] == "sealed_unbiased_final_validation" and (
+            science["candidates_per_family"] != 1
+            or science["input_ensembles"] != 20
+            or tuple(science["recoil_seeds"]) != (44001, 44002, 44003)
+            or science["npools"] != 200
+            or science["bootstrap_replicates"] != 20_000
+            or science["bootstrap_seed"] != 92_001
+        ):
+            raise ValueError("invalid final-validation science")
         science["recoil_seeds"] = tuple(science["recoil_seeds"])
         if type(self.code_names) is not frozenset or not self.code_names:
             raise ValueError("invalid receiver code ledger")
@@ -499,6 +528,7 @@ _RUNNER = ContextVar("selection_submission_run", default=_run_impl)
 _PUBLISHER = ContextVar("selection_submission_publish", default=_publish_at_impl)
 _REPLACER = ContextVar("selection_submission_replace", default=_replace_at_impl)
 _UNLINKER = ContextVar("selection_submission_unlink", default=_unlink_at_impl)
+_IDENTITY = ContextVar("selection_submission_identity", default=None)
 
 
 def run(argv, input_data=None, limit=1024 * 1024):
@@ -522,6 +552,31 @@ def empty_jobs():
 
 
 def compatibility(jobs, status, submission_key, nonce, commit, created, submitted=None):
+    if _config().stage == "final_validation" and status == "submitted":
+        identity = _IDENTITY.get()
+        if not isinstance(identity, Mapping):
+            fail(_config().preparation_error)
+        files = identity["files"]
+        return {
+            "kind": "mot_3d_selection_stage_submission",
+            "stage": "final_validation",
+            "status": "submitted",
+            "dependency": "afterok",
+            "families": {
+                family: {
+                    "array_job_id": jobs[family]["array"],
+                    "merge_job_id": jobs[family]["merge"],
+                }
+                for family in FAMILIES
+            },
+            "campaign_manifest_sha256": files["campaign.json"],
+            "worker_job_sha256": {
+                family: files[_config().jobs[family]["array"]] for family in FAMILIES
+            },
+            "merge_job_sha256": {
+                family: files[_config().jobs[family]["merge"]] for family in FAMILIES
+            },
+        }
     return {
         "kind": "mot_3d_selection_stage_submission",
         "stage": _config().stage,
@@ -730,6 +785,7 @@ def main(*, trusted_root_override=None):
         or any(not exact_match(HEX64, x) for x in identity["code_files"].values())
     ):
         fail("invalid_request")
+    _IDENTITY.set(identity)
     campaign = root.joinpath(*relative.parts)
     root_fd = os.open(root, DIR_FLAGS)
     campaign_fd = root_fd
@@ -786,15 +842,18 @@ def main(*, trusted_root_override=None):
     stage = manifest.get("stages", {}).get(_config().stage, {})
     expected_science = dict(_config().science)
     expected_science["recoil_seeds"] = list(expected_science["recoil_seeds"])
-    expected_science["dt_s"] = design.get("screening_dt_s")
+    expected_science["dt_s"] = design.get(_config().dt_design_key)
     expected_science["solver"] = design.get("solver")
     if (
         identity["science"] != expected_science
         or stage.get("classification") != expected_science["classification"]
         or (
-            stage.get("input_role") != _config().input_role
-            if isinstance(_config().input_role, str)
-            else stage.get("input_roles") != list(_config().input_role)
+            _config().input_role is not None
+            and (
+                stage.get("input_role") != _config().input_role
+                if isinstance(_config().input_role, str)
+                else stage.get("input_roles") != list(_config().input_role)
+            )
         )
     ):
         fail(_config().preparation_error)

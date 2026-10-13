@@ -29,6 +29,7 @@ import { createMot3DRefinementTransitionApi } from "../api/clients/mot3dRefineme
 import { createMot3DClosureSubmissionApi } from "../api/clients/mot3dClosureSubmission";
 import { createMot3DClosureTransitionApi } from "../api/clients/mot3dClosureTransition";
 import { createMot3DFinalistSubmissionApi } from "../api/clients/mot3dFinalistSubmission";
+import { createMot3DFinalValidationSubmissionApi } from "../api/clients/mot3dFinalValidationSubmission";
 import { createMot3DFinalistTransitionApi } from "../api/clients/mot3dFinalistTransition";
 import { createMot3DFinalInputSubmissionApi } from "../api/clients/mot3dFinalInputSubmission";
 import { createMot3DFinalValidationTransitionApi } from "../api/clients/mot3dFinalValidationTransition";
@@ -136,6 +137,10 @@ describe("backend-generated workflow API contract snapshots", () => {
     await mot3dFinalValidationTransition.status(campaignId, profile);
     const finalValidationTransitionPreview = await mot3dFinalValidationTransition.preview(campaignId, profile, "a".repeat(40));
     await mot3dFinalValidationTransition.confirm(finalValidationTransitionPreview.preview_token);
+    const mot3dFinalValidation = createMot3DFinalValidationSubmissionApi(async () => "<csrf-token>");
+    await mot3dFinalValidation.status(campaignId, profile);
+    const mot3dFinalValidationPreview = await mot3dFinalValidation.preview(campaignId, profile);
+    await mot3dFinalValidation.confirm(mot3dFinalValidationPreview.preview_token);
     await mot3dFinalist.status(campaignId, profile);
     const mot3dFinalistPreview = await mot3dFinalist.preview(campaignId, profile);
     await mot3dFinalist.confirm(mot3dFinalistPreview.preview_token);

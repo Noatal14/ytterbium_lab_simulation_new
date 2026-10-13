@@ -28,6 +28,7 @@ import type { Mot3DRefinementSubmissionLifecycle } from "../../api/clients/mot3d
 import type { Mot3DRefinementSubmissionUiState } from "./controllers/useMot3DRefinementSubmissionController";
 import type { Mot3DRefinementTransitionLifecycle } from "../../api/clients/mot3dRefinementTransition";
 import type { Mot3DRefinementTransitionUiState } from "./controllers/useMot3DRefinementTransitionController";
+import type { GuardedStagePhase } from "./shared/useGuardedStageController";
 
 const words = (value: string) =>
   value.replaceAll("_", " ").replaceAll("-", " ");
@@ -59,6 +60,10 @@ export function CampaignPriorityPanel({
   mot3DRefinementLifecycle = null,
   mot3DRefinementTransitionState = "idle",
   mot3DRefinementTransitionLifecycle = null,
+  mot3DLatePhase = "idle",
+  mot3DLateKind = "submission",
+  mot3DLateLifecycle = null,
+  mot3DLateNextAction = null,
   copyStatus,
   onCopyCommand,
 }: {
@@ -88,6 +93,10 @@ export function CampaignPriorityPanel({
   mot3DRefinementLifecycle?: Mot3DRefinementSubmissionLifecycle | null;
   mot3DRefinementTransitionState?: Mot3DRefinementTransitionUiState;
   mot3DRefinementTransitionLifecycle?: Mot3DRefinementTransitionLifecycle | null;
+  mot3DLatePhase?: GuardedStagePhase;
+  mot3DLateKind?: "submission" | "transition";
+  mot3DLateLifecycle?: string | null;
+  mot3DLateNextAction?: string | null;
   copyStatus: string;
   onCopyCommand: () => void;
 }) {
@@ -161,6 +170,29 @@ export function CampaignPriorityPanel({
               : remoteLifecycle
                 ? "Smoke check needs attention"
                 : null);
+
+  if (campaign.family === "mot_3d" && !trusted) {
+    return <section className="priority-panel priority-panel--blocked" aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">Inspection only</h2><p>This campaign does not pass the current 3D workflow contract. No status, submission, synchronization, or advance action is available.</p></section>;
+  }
+
+  if (campaign.family === "mot_3d" && ["closure", "finalist_selection", "final_validation_input_generation", "final_validation"].includes(campaign.stage)) {
+    const labels: Record<string, [string, string]> = {
+      closure: ["Closure", "Finalist Selection"],
+      finalist_selection: ["Finalist Selection", "final-validation input generation"],
+      final_validation_input_generation: ["Final-validation input generation", "Final Validation"],
+      final_validation: ["Final Validation", "final result validation"],
+    };
+    const [current, next] = labels[campaign.stage];
+    const manual = ["partial", "outcome_unknown", "held", "completed_failed", "status_unknown", "outputs_invalid"].includes(mot3DLateLifecycle ?? "");
+    const active = ["submitted", "queued", "running"].includes(mot3DLateLifecycle ?? "");
+    const validationRequired = ["completed_success_unvalidated", "ready_to_advance"].includes(mot3DLateLifecycle ?? "");
+    const prepared = ["finalist_selection_prepared", "final_validation_input_generation_prepared", "final_validation_prepared"].includes(mot3DLateLifecycle ?? "");
+    const blocked = mot3DLatePhase === "blocked" || manual || mot3DLateNextAction === "inspect_zeus";
+    const review = ["ready", "reviewing", "review"].includes(mot3DLatePhase);
+    const success = prepared || mot3DLatePhase === "success" || Boolean(mot3DLateNextAction?.startsWith("open_"));
+    const busy = ["checking", "confirming"].includes(mot3DLatePhase);
+    return <section className={`priority-panel ${blocked ? "priority-panel--blocked" : ""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{blocked ? "Manual verification required" : success ? `${next} is prepared` : validationRequired ? "Scientific validation and synchronization required" : active ? "No action needed" : review ? `Review ${current}` : busy ? `Checking ${current}` : `Check ${current} status`}</h2><p><strong>Current stage:</strong> {current}.</p><p>{blocked ? "The remote outcome or scientific evidence is not safely actionable. Do not retry automatically; inspect Zeus manually." : success ? `The verified transition prepared ${next}. No later job was submitted or simulation started.` : validationRequired ? "The scheduler chain finished, but its outputs still require stage-specific scientific validation and synchronization before the campaign can advance." : active ? `The reviewed ${current} jobs are submitted, queued, or running on Zeus. Wait for completion; do not submit again.` : review ? `Review the exact stage-specific ${mot3DLateKind} evidence and effects below before confirming. Scheduler completion alone is not scientific validation.` : busy ? "The application is checking or confirming the stage-specific operation. Do not start another action." : `Use the ${current} controls below to check the authoritative stage status.`}</p></section>;
+  }
 
   if (campaign.family === "mot_3d" && campaign.stage === "refinement") {
     if (mot3DRefinementTransitionState!=="idle"||mot3DRefinementTransitionLifecycle){const blocked=mot3DRefinementTransitionState==="terminal"||["not_submitted","held","completed_failed","status_unknown","partial","outcome_unknown"].includes(mot3DRefinementTransitionLifecycle??"");const prepared=mot3DRefinementTransitionState==="prepared"||mot3DRefinementTransitionLifecycle==="closure_prepared";const ready=["ready","review"].includes(mot3DRefinementTransitionState);return <section className={`priority-panel ${blocked?"priority-panel--blocked":""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{blocked?"Manual verification required":prepared?"Closure is prepared":ready?"Scientific validation and synchronization required":"No action needed"}</h2><p><strong>Current stage:</strong> Refinement.</p><p>{blocked?"The Refinement evidence or transition outcome is not safely actionable. Inspect Zeus before continuing.":prepared?"Verified results are synchronized and Closure files are ready. No Closure job has started.":ready?"Review the verified result set before synchronization prepares Closure.":"The application is checking or synchronizing evidence. No additional action is needed."}</p></section>}

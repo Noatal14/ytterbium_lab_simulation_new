@@ -202,6 +202,13 @@ def _server(
         if services
         else None
     )
+    handler.mot_3d_final_validation_submission_service = (
+        _Service(
+            "mot3d-final-validation", ledger, values, "mot3d-final-validation-status"
+        )
+        if services
+        else None
+    )
     handler.mot_3d_final_input_submission_service = (
         _Service("mot3d-final-input", ledger, values, "mot3d-final-input-status")
         if services
@@ -514,6 +521,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-finalist-status",
         "mot3d-finalist-preview",
         "mot3d-finalist-confirm",
+        "mot3d-final-validation-status",
+        "mot3d-final-validation-preview",
+        "mot3d-final-validation-confirm",
         "mot3d-preliminary-transition-status",
         "mot3d-preliminary-transition-preview",
         "mot3d-preliminary-transition-confirm",
@@ -897,6 +907,27 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_finalist_submission_unavailable",
             "3D Finalist Selection submission is unavailable.",
             "Mot3DFinalistSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-final-validation/status",
+            "mot_3d_final_validation_submission_service", "status", "payload", 200,
+            "mot_3d_final_validation_submission_unavailable",
+            "3D Final Validation submission is unavailable.",
+            "Mot3DFinalValidationSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-final-validation/preview",
+            "mot_3d_final_validation_submission_service", "preview", "session_kw", 200,
+            "mot_3d_final_validation_submission_unavailable",
+            "3D Final Validation submission is unavailable.",
+            "Mot3DFinalValidationSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-final-validation/confirm",
+            "mot_3d_final_validation_submission_service", "confirm", "session_kw", 201,
+            "mot_3d_final_validation_submission_unavailable",
+            "3D Final Validation submission is unavailable.",
+            "Mot3DFinalValidationSubmissionError",
         ),
         (
             "/api/v1/zeus/mot-3d/preliminary-transition/status",

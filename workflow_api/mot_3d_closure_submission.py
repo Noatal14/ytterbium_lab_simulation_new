@@ -160,6 +160,8 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
     preparation_error = "closure_preparation_invalid"
     validation_candidates = CLOSURE_TOPOLOGY.candidates_per_family
     sync_receipt_name = "refinement_to_closure.json"
+    expected_dt_s = 1e-5
+    expected_solver = "RK4StHybridCustom"
 
     def _science(self, manifest):
         design = manifest.get("design", {})
@@ -220,7 +222,10 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
             finally:
                 os.close(campaign_fd)
             science = self._science(manifest)
-            if science["dt_s"] != 1e-5 or science["solver"] != "RK4StHybridCustom":
+            if (
+                science["dt_s"] != self.expected_dt_s
+                or science["solver"] != self.expected_solver
+            ):
                 raise ValueError
             root_fd = os.open(self.root, _DIRECTORY_FLAGS)
             try:

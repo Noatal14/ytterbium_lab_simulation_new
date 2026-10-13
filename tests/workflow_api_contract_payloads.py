@@ -2046,6 +2046,41 @@ _finalist_confirm["chain"]["families"][1].update(
     {"array_job_id": "812[].zeus-master", "merge_job_id": "813.zeus-master"}
 )
 
+_PAYLOADS["mot3d-final-validation-status"] = deepcopy(_PAYLOADS["mot3d-finalist-status"])
+_final_validation_status = _PAYLOADS["mot3d-final-validation-status"]
+_final_validation_status["campaign"]["stage"] = "final_validation"
+_final_validation_status["validation"]["expected_candidates_per_family"] = 1
+_PAYLOADS["mot3d-final-validation-preview"] = deepcopy(_PAYLOADS["mot3d-finalist-preview"])
+_final_validation_preview = _PAYLOADS["mot3d-final-validation-preview"]
+_final_validation_preview["preview_token"] = "mot3d-final-validation-token"
+_final_validation_preview["stage"] = {"id": "final_validation", "label": "Final Validation"}
+_final_validation_preview["resources"]["merge"].update(
+    {"memory_gb": 8, "walltime": "02:00:00"}
+)
+_final_validation_preview["science"] = {
+    "classification": "sealed_unbiased_final_validation",
+    "candidates_per_family": 1,
+    "input_ensembles": 20,
+    "recoil_seeds": [44001, 44002, 44003],
+    "dt_s": 0.000000625,
+    "t_max_s": 0.1,
+    "solver": "RK4StHybridCustom",
+    "npools": 200,
+    "bootstrap_replicates": 20000,
+    "bootstrap_seed": 92001,
+}
+_final_validation_preview["effects"].pop("submit_finalist_selection")
+_final_validation_preview["effects"]["submit_final_validation"] = True
+_PAYLOADS["mot3d-final-validation-confirm"] = deepcopy(_PAYLOADS["mot3d-finalist-confirm"])
+_final_validation_confirm = _PAYLOADS["mot3d-final-validation-confirm"]
+_final_validation_confirm["stage"] = "final_validation"
+_final_validation_confirm["chain"]["families"][0].update(
+    {"array_job_id": "910[].zeus-master", "merge_job_id": "911.zeus-master"}
+)
+_final_validation_confirm["chain"]["families"][1].update(
+    {"array_job_id": "912[].zeus-master", "merge_job_id": "913.zeus-master"}
+)
+
 _PAYLOADS["mot3d-final-input-status"] = {
     "source": "zeus",
     "queried_at": "2026-01-01T00:00:00+00:00",

@@ -71,6 +71,47 @@ describe("CampaignPriorityPanel", () => {
     expect(screen.getByText(/No submission has been reviewed or started by this check/)).toBeVisible();
   });
 
+  it.each([
+    ["closure", "Review Closure"],
+    ["finalist_selection", "Review Finalist Selection"],
+    ["final_validation_input_generation", "Review Final-validation input generation"],
+    ["final_validation", "Review Final Validation"],
+  ])("routes the 3D %s priority through its stage controller", (stage, heading) => {
+    render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage } as Campaign} mot3DLatePhase="ready" mot3DLateNextAction="review_submission" />);
+    expect(screen.getByRole("heading", { name: heading })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Zeus preparation is unavailable" })).not.toBeInTheDocument();
+  });
+
+  it("blocks every 3D action when the campaign contract is untrusted", () => {
+    render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage: "closure", trust: "legacy-incomplete" } as Campaign} mot3DLatePhase="ready" mot3DLateNextAction="review_submission" />);
+    expect(screen.getByRole("heading", { name: "Inspection only" })).toBeVisible();
+    expect(screen.queryByText("Review Closure")).not.toBeInTheDocument();
+  });
+
+  it.each(["closure", "finalist_selection", "final_validation_input_generation", "final_validation"])("maps authoritative late-stage lifecycles for %s", (stage) => {
+    const lateCampaign = { ...campaignFixture, family: "mot_3d", stage } as Campaign;
+    const view = render(<CampaignPriorityPanel {...base} campaign={lateCampaign} mot3DLateLifecycle="submitted" />);
+    expect(screen.getByRole("heading", { name: "No action needed" })).toBeVisible();
+    view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} mot3DLateLifecycle="running" />);
+    expect(screen.getByRole("heading", { name: "No action needed" })).toBeVisible();
+    view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} mot3DLateLifecycle="completed_success_unvalidated" />);
+    expect(screen.getByRole("heading", { name: "Scientific validation and synchronization required" })).toBeVisible();
+    view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} mot3DLateLifecycle="partial" />);
+    expect(screen.getByRole("heading", { name: "Manual verification required" })).toBeVisible();
+    view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} mot3DLateLifecycle="outcome_unknown" />);
+    expect(screen.getByRole("heading", { name: "Manual verification required" })).toBeVisible();
+  });
+
+  it.each([
+    ["closure", "finalist_selection_prepared", "Finalist Selection is prepared"],
+    ["finalist_selection", "final_validation_input_generation_prepared", "final-validation input generation is prepared"],
+    ["final_validation_input_generation", "final_validation_prepared", "Final Validation is prepared"],
+    ["final_validation", "final_validation_prepared", "final result validation is prepared"],
+  ])("maps the prepared transition at %s", (stage, lifecycle, heading) => {
+    render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage } as Campaign} mot3DLateKind="transition" mot3DLateLifecycle={lifecycle} />);
+    expect(screen.getByRole("heading", { name: heading })).toBeVisible();
+  });
+
   it.each([["submitted", "No action needed"], ["terminal", "Check Zeus jobs before continuing"], ["unknown", "Check Zeus jobs before continuing"]] as const)("keeps Smoke content while Screening submission %s controls the heading", (state, heading) => {
     render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenSubmitState={state} />);
     expect(screen.getByRole("heading", { name: heading })).toBeVisible();

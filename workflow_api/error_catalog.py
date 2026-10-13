@@ -301,6 +301,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Finalist Selection submission is unavailable.",
         ),
+        "mot_3d_final_validation_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D Final Validation submission is unavailable.",
+        ),
         "mot_3d_preliminary_transition_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Preliminary-check result synchronization is unavailable.",
@@ -1130,6 +1134,21 @@ MOT_3D_FINALIST_SUBMISSION = _generic_stage(
     },
     "mot_3d_finalist_submission_failed",
 )
+MOT_3D_FINAL_VALIDATION_SUBMISSION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "final_validation_preparation_invalid", "final_validation_already_started",
+        "final_validation_partial_submission", "final_validation_submission_outcome_unknown",
+        "remote_checkout_mismatch", "remote_response_invalid", "local_files_changed",
+        "too_many_pending_previews", "confirmation_invalid", "confirmation_expired",
+        "zeus_authentication_required", "zeus_host_key_untrusted", "zeus_timeout",
+        "zeus_unreachable",
+    },
+    "3D Final Validation submission stopped safely.",
+    {"final_validation_already_started", "final_validation_partial_submission",
+     "final_validation_submission_outcome_unknown"},
+    "mot_3d_final_validation_submission_failed",
+)
 MOT_3D_PRELIMINARY_TRANSITION = _generic_stage(
     {
         "request_invalid",
@@ -1464,6 +1483,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "mot_3d_refinement_submission": MOT_3D_REFINEMENT_SUBMISSION,
         "mot_3d_closure_submission": MOT_3D_CLOSURE_SUBMISSION,
         "mot_3d_finalist_submission": MOT_3D_FINALIST_SUBMISSION,
+        "mot_3d_final_validation_submission": MOT_3D_FINAL_VALIDATION_SUBMISSION,
         "mot_3d_preliminary_transition": MOT_3D_PRELIMINARY_TRANSITION,
         "mot_3d_refinement_transition": MOT_3D_REFINEMENT_TRANSITION,
         "mot_3d_closure_transition": MOT_3D_CLOSURE_TRANSITION,

@@ -10,6 +10,7 @@ vi.mock("../features/campaign/TransferStage", () => ({ TransferStage: () => null
 vi.mock("../features/campaign/SmokeStage", () => ({ SmokePointsTable: () => null }));
 vi.mock("../features/campaign/ScreeningStage", () => ({ ScreeningFacts: () => null }));
 vi.mock("../features/campaign/RefinementStage", () => ({ RefinementReceipt: () => null }));
+vi.mock("../features/campaign/Mot3DCampaignFlow", () => ({ Mot3DCampaignFlow: () => <section data-testid="mot3d-flow" /> }));
 
 vi.mock("../features/campaign/SmokeFlow", () => ({
   SmokeFlow: (props: any) => <section>
@@ -61,7 +62,7 @@ const campaign = {
 const profile = { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" };
 const preview = { preview_token: "token" };
 
-function renderDetail(target: string) {
+function renderDetail(target: string, detailCampaign: any = campaign) {
   const unknown = (kind: string) => {
     if (target !== kind) return Promise.resolve({});
     const ErrorType = {
@@ -75,7 +76,7 @@ function renderDetail(target: string) {
     return Promise.reject(new ErrorType("internal_secret_code", "Internal details must not permit a retry."));
   };
   render(<CampaignDetail
-    campaign={campaign as any}
+    campaign={detailCampaign as any}
     onBack={vi.fn()}
     transfer={{ preview: vi.fn(), confirm: vi.fn() } as any}
     submission={{ preview: async () => preview, confirm: () => unknown("smoke") } as any}
@@ -95,6 +96,12 @@ function renderDetail(target: string) {
 }
 
 describe("state-changing confirmations fail closed on unknown typed server errors", () => {
+  it("does not mount any 3D action flow for an untrusted campaign", () => {
+    renderDetail("none", { ...campaign, family: "mot_3d", stage: "closure", trust: "legacy-incomplete", remote_preparation: { status: "unavailable", reason_code: "campaign-validation-failed" } });
+    expect(screen.getByRole("heading", { name: "Inspection only" })).toBeVisible();
+    expect(screen.queryByTestId("mot3d-flow")).not.toBeInTheDocument();
+  });
+
   it.each([
     ["smoke", null, "review smoke", "confirm smoke", "smoke-submission-state", "terminal"],
     ["screenPrepare", "refresh smoke", "review screening preparation", "confirm screening preparation", "screening-preparation-state", "terminal"],
