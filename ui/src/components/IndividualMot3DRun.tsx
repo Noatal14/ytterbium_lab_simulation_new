@@ -13,6 +13,7 @@ import type {
 } from "../api/clients/individualMot3D";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/mot3dIndividualSpec.v1";
 import { RunProgressPanel } from "./RunProgressPanel";
+import { confirmRememberedZeusRun, readRememberedIndividualRun, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
 
 type Step = "configure" | "validate" | "review" | "run" | "monitor" | "results";
 const steps: [Step, string][] = [
@@ -91,7 +92,7 @@ export async function refreshMot3DTransaction(
 }
 
 export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; onBack: () => void }) {
-  const title = useRef<HTMLHeadingElement>(null), requestSequence = useRef(0), mounted = useRef(true);
+  const title = useRef<HTMLHeadingElement>(null), requestSequence = useRef(0), mounted = useRef(true), recoveryStarted = useRef(false);
   const [step, setStep] = useState<Step>("configure"), [sources, setSources] = useState<Mot3DSource[]>([]), [sourceId, setSourceId] = useState("");
   const [family, setFamily] = useState<Mot3DFamily>("angled_donut"), [mode, setMode] = useState<Mot3DMode>("local");
   const [particles, setParticles] = useState<number>(spec.particle_count.default), [selectionSeed, setSelectionSeed] = useState<number>(spec.selection_seed.default), [simulationSeed, setSimulationSeed] = useState<number>(spec.simulation_seed.default), [npools, setNpools] = useState<number>(spec.local_worker_count.default);
@@ -110,6 +111,7 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
     return () => { mounted.current = false; requestSequence.current += 1; };
   }, [api]);
   useEffect(() => { title.current?.focus(); }, [step]);
+  useEffect(() => { if (recoveryStarted.current) return; recoveryStarted.current = true; void (async () => { const remembered = readRememberedIndividualRun("mot_3d"); const found = await recoverIndividualRun("mot_3d", api); if (!mounted.current || !found) return; if (found.execution.mode === "zeus") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (!mounted.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot3DRun); setStep(found.lifecycle === "results_ready" ? "results" : "monitor"); })().catch((caught) => { if (mounted.current) setError(errorMessage(caught)); }); }, [api]);
 
   const selected = sources.find((row) => row.id === sourceId);
   const maximumParticles = Math.min(spec.particle_count.maximum_by_execution_mode[mode], selected?.available_particle_count.pooled ?? 0);
@@ -165,12 +167,14 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
     if (!runId) return;
     const sequence = ++requestSequence.current; setBusy(true); setError(null);
     try {
-      if (mode === "local") await api.startLocal(runId);
+      if (mode === "local") { await api.startLocal(runId); rememberIndividualRun("mot_3d", runId, "local"); }
       else if (!zeusToken) {
         const reviewed = await api.previewZeus(runId, username);
         if (mounted.current && sequence === requestSequence.current) { setZeusToken(reviewed.preview_token); setZeusReconciliation(reviewed.effects.reconcile_existing_job); }
         return;
-      } else await api.confirmZeus(zeusToken);
+      } else {
+        await confirmRememberedZeusRun("mot_3d", runId, username, () => api.confirmZeus(zeusToken));
+      }
       if (mounted.current && sequence === requestSequence.current) setStep("monitor");
     } catch (caught) { if (mounted.current && sequence === requestSequence.current) setError(errorMessage(caught)); }
     finally { if (mounted.current && sequence === requestSequence.current) setBusy(false); }

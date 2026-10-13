@@ -388,4 +388,14 @@ describe("individual 2D-MOT client", () => {
     );
     await expect(pending).rejects.toThrow(/stale/);
   });
+  it("rehydrates a fresh-client Zeus binding read-only, then refreshes explicitly", async () => {
+    const recovered = { run_id: "mot2d-test", family: "mot_2d", job_id: "501.zeus-master", scheduler_state: "running", exit_status: null, local_state: "queued", read_only: true };
+    const fetchMock = vi.fn().mockResolvedValueOnce(await envelope(recovered)).mockResolvedValueOnce(await envelope({ state: "running", job_id: "501.zeus-master" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot2DApi(async () => "csrf");
+    await expect(api.recoverZeus("mot2d-test", "tal.noa")).resolves.toEqual(recovered);
+    await expect(api.refreshZeus("mot2d-test", "tal.noa")).resolves.toEqual({ state: "running", job_id: "501.zeus-master" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "mot2d-test", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });
+  });
 });

@@ -1,5 +1,6 @@
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { isRunProgress, type RunProgress } from "./individualZeeman";
+import { individualZeusApiError, parseIndividualZeusRecovery } from "./individualZeusRecovery";
 
 export type Mot2DMode = "local" | "zeus";
 export type Mot2DSource = {
@@ -639,7 +640,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
     zconfirms = new Map<string, Promise<ReturnType<typeof parseZeusResult>>>(),
     jobs = new Map<
       string,
-      { profile: Profile; jobId: string; submissionKey: string }
+      { profile: Profile; jobId: string; submissionKey?: string }
     >(),
     refreshes = new Map<string, number>();
   return {
@@ -790,6 +791,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
             "/api/v1/individual-runs/mot-2d/zeus/confirm",
             { preview_token: token },
             c.csrf,
+            individualZeusApiError,
           ),
         );
         if (
@@ -844,6 +846,23 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
         throw new Error("The Zeus status is stale or mismatched.");
       return row;
     },
+    async recoverZeus(id: string, username: string) {
+      const profile = makeProfile(username),
+        activeGeneration = generation;
+      const row = parseIndividualZeusRecovery(
+        await postData(
+          "/api/v1/individual-runs/mot-2d/zeus/recover",
+          { run_id: id, profile },
+          await session(),
+        ),
+        "mot_2d",
+        id,
+      );
+      if (activeGeneration !== generation)
+        throw new Error("The Zeus recovery response is stale.");
+      jobs.set(id, { profile, jobId: row.job_id });
+      return row;
+    },
     async runs() {
       const activeGeneration = generation,
         current = ++readSequence;
@@ -866,6 +885,12 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
         .filter((row) => isRecord(row) && row.run_kind === "mot_2d")
         .map((row) => parseRun(row));
     },
+    async catalog() {
+      const raw = await getData("/api/v1/individual-runs");
+      if (!isRecord(raw) || !exactKeys(raw, ["runs", "invalid_count", "total", "truncated"]) || !Array.isArray(raw.runs) || !integer(raw.invalid_count) || Number(raw.invalid_count) < 0 || raw.total !== raw.runs.length || typeof raw.truncated !== "boolean") invalid("run list");
+      const value = raw as Record<string, unknown>;
+      return { runs: (value.runs as unknown[]).filter((row) => isRecord(row) && row.run_kind === "mot_2d").map((row) => parseRun(row)), invalid_count: Number(value.invalid_count), total: Number(value.total), truncated: value.truncated as boolean };
+    },
     async run(publicId: string) {
       const activeGeneration = generation,
         current = ++readSequence;
@@ -882,4 +907,8 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
     },
   };
 }
-export type IndividualMot2DApi = ReturnType<typeof createIndividualMot2DApi>;
+type IndividualMot2DImplementation = ReturnType<typeof createIndividualMot2DApi>;
+export type IndividualMot2DApi = Omit<IndividualMot2DImplementation, "catalog" | "recoverZeus"> & {
+  catalog?: IndividualMot2DImplementation["catalog"];
+  recoverZeus?: IndividualMot2DImplementation["recoverZeus"];
+};

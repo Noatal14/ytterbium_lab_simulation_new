@@ -26,6 +26,7 @@ import { createPreliminaryCheckApi } from "../api/clients/mot3dPreliminaryCheck"
 import { createMot3DPreliminaryTransitionApi } from "../api/clients/mot3dPreliminaryTransition";
 import { createMot3DRefinementSubmissionApi } from "../api/clients/mot3dRefinementSubmission";
 import { createMot3DRefinementTransitionApi } from "../api/clients/mot3dRefinementTransition";
+import { createMot3DClosureSubmissionApi } from "../api/clients/mot3dClosureSubmission";
 import { createIndividualMot3DApi, type Mot3DRequest } from "../api/clients/individualMot3D";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
@@ -109,6 +110,10 @@ describe("backend-generated workflow API contract snapshots", () => {
     await mot3dRefinementTransition.status(campaignId, profile);
     const mot3dRefinementTransitionPreview = await mot3dRefinementTransition.preview(campaignId, profile);
     await mot3dRefinementTransition.confirm(mot3dRefinementTransitionPreview.preview_token);
+    const mot3dClosure = createMot3DClosureSubmissionApi(async () => "<csrf-token>");
+    await mot3dClosure.status(campaignId, profile);
+    const mot3dClosurePreview = await mot3dClosure.preview(campaignId, profile);
+    await mot3dClosure.confirm(mot3dClosurePreview.preview_token);
     await zeusApi.snapshot(profile.username, profile.project_directory);
 
     const transferPreview = await transferApi.preview(campaignId, profile);
@@ -179,6 +184,7 @@ describe("backend-generated workflow API contract snapshots", () => {
     await individualMot3D.startLocal(createdMot3D.run_id);
     const mot3DZeusPreview = await individualMot3D.previewZeus(createdMot3D.run_id, "tal.noa");
     await individualMot3D.confirmZeus(mot3DZeusPreview.preview_token);
+    await individualMot3D.recoverZeus(createdMot3D.run_id, "tal.noa");
     await individualMot3D.refreshZeus(createdMot3D.run_id, "tal.noa");
 
     const exercisedPaths = new Set(fetchMock.mock.calls.map(([input, init]) => `${String(init?.method ?? "GET").toUpperCase()} ${typeof input === "string" ? input : String(input)}`));

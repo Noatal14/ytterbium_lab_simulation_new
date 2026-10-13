@@ -15,6 +15,7 @@ import type {
   Mot2DSource,
 } from "../api/clients/individualMot2D";
 import { RunProgressPanel } from "./RunProgressPanel";
+import { confirmRememberedZeusRun, readRememberedIndividualRun, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
 
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const labels: [Step, string][] = [
@@ -129,6 +130,7 @@ export function IndividualMot2DRun({
 }) {
   const title = useRef<HTMLHeadingElement>(null);
   const refreshRequest = useRef(0);
+  const recoveryStarted = useRef(false);
   const [step, setStep] = useState<Step>("configure"),
     [sources, setSources] = useState<Mot2DSource[]>([]),
     [source, setSource] = useState("");
@@ -175,6 +177,7 @@ export function IndividualMot2DRun({
       refreshRequest.current += 1;
     };
   }, [api]);
+  useEffect(() => { if (recoveryStarted.current) return; recoveryStarted.current = true; const id = refreshRequest.current; void (async () => { const remembered = readRememberedIndividualRun("mot_2d"); const found = await recoverIndividualRun("mot_2d", api); if (id !== refreshRequest.current || !found) return; if (found.execution.mode === "zeus") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (id !== refreshRequest.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot2DRun); setStep(found.lifecycle === "results_ready" ? "results" : "monitor"); })().catch((caught) => { if (id === refreshRequest.current) setError(message(caught)); }); }, [api]);
   const selected = sources.find((row) => row.id === source),
     max = Math.min(
       mode === "local" ? 1000 : 50000,
@@ -255,10 +258,12 @@ export function IndividualMot2DRun({
   async function start() {
     if (!runId) return;
     await act(async () => {
-      if (mode === "local") await api.startLocal(runId);
+      if (mode === "local") { await api.startLocal(runId); rememberIndividualRun("mot_2d", runId, "local"); }
       else if (!zeusToken)
         setZeusToken((await api.previewZeus(runId, username)).preview_token);
-      else await api.confirmZeus(zeusToken);
+      else {
+        await confirmRememberedZeusRun("mot_2d", runId, username, () => api.confirmZeus(zeusToken));
+      }
       if (mode === "local" || zeusToken) setStep("monitor");
     });
   }

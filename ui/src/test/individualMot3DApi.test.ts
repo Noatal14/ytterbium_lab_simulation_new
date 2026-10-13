@@ -247,4 +247,15 @@ describe("individual 3D-MOT frontend contract", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope(row)));
     await expect(createIndividualMot3DApi(async () => "csrf").run(row.id)).rejects.toThrow(/Invalid/);
   });
+
+  it("rehydrates a fresh-client Zeus binding read-only, then refreshes explicitly", async () => {
+    const recovered = { run_id: "mot3d-test", family: "mot_3d", job_id: "502.zeus-master", scheduler_state: "running", exit_status: null, local_state: "queued", read_only: true };
+    const fetchMock = vi.fn().mockResolvedValueOnce(await envelope(recovered)).mockResolvedValueOnce(await envelope({ state: "running", job_id: "502.zeus-master" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot3DApi(async () => "csrf");
+    await expect(api.recoverZeus("mot3d-test", "tal.noa")).resolves.toEqual(recovered);
+    await expect(api.refreshZeus("mot3d-test", "tal.noa")).resolves.toEqual({ state: "running", job_id: "502.zeus-master" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/individual-runs/mot-3d/zeus/recover");
+  });
 });

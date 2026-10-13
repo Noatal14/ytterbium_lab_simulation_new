@@ -46,9 +46,12 @@ test("operator reviews and explicitly starts one local Zeeman run", async ({ pag
   await page.getByRole("button", { name: "Start on this computer" }).click();
   await expect(page.getByText(/Check run progress/)).toBeVisible();
   expect(starts).toBe(1);
+  await page.reload();
+  await page.getByRole("button", { name: "Configure Zeeman run" }).click();
   await expect(page.getByRole("heading", { name: "Verified results are ready" })).toBeVisible();
   await expect(page.getByText("120", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  expect(starts).toBe(1);
 });

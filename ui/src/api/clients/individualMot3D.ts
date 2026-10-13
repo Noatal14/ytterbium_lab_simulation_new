@@ -1,6 +1,7 @@
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../../generated/mot3dIndividualSpec.v1";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { isRunProgress, type RunProgress } from "./individualZeeman";
+import { individualZeusApiError, parseIndividualZeusRecovery } from "./individualZeusRecovery";
 
 export type Mot3DMode = "local" | "zeus";
 export type Mot3DFamily = "angled_donut" | "single_pass";
@@ -328,7 +329,7 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
   const zeusReviews = new Map<string, ZeusContext>();
   const zeusResults = new Map<string, ReturnType<typeof parseZeusResult>>();
   const zeusConfirmations = new Map<string, Promise<ReturnType<typeof parseZeusResult>>>();
-  const jobs = new Map<string, { profile: Profile; jobId: string; submissionKey: string }>();
+  const jobs = new Map<string, { profile: Profile; jobId: string; submissionKey?: string }>();
   const refreshes = new Map<string, number>();
   return {
     reset() { generation++; previewSequence++; zeusSequence++; readSequence++; reviews.clear(); confirmations.clear(); confirmed.clear(); localStarts.clear(); zeusReviews.clear(); zeusResults.clear(); zeusConfirmations.clear(); jobs.clear(); refreshes.clear(); },
@@ -382,7 +383,7 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       const context = zeusReviews.get(token); if (!context) throw new Error("The Zeus review is no longer active.");
       zeusReviews.delete(token);
       const task = (async () => {
-        const row = parseZeusResult(await postData("/api/v1/individual-runs/mot-3d/zeus/confirm", { preview_token: token }, context.csrf));
+        const row = parseZeusResult(await postData("/api/v1/individual-runs/mot-3d/zeus/confirm", { preview_token: token }, context.csrf, individualZeusApiError));
         if (context.generation !== generation) throw new Error("The Zeus submission response is stale.");
         if (row.run_id !== context.runId || row.submission_key !== context.submissionKey) throw new Error("The Zeus submission did not match the reviewed job.");
         const existing = jobs.get(row.run_id);
@@ -404,6 +405,18 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       if (row.job_id !== context.jobId) throw new Error("The Zeus status did not match the submitted job.");
       return row;
     },
+    async recoverZeus(id: string, username: string) {
+      if (!privateRunId(id)) throw new Error("The run identifier is invalid.");
+      const profile = makeProfile(username), currentGeneration = generation;
+      const row = parseIndividualZeusRecovery(
+        await postData("/api/v1/individual-runs/mot-3d/zeus/recover", { run_id: id, profile }, await session()),
+        "mot_3d",
+        id,
+      );
+      if (currentGeneration !== generation) throw new Error("The Zeus recovery response is stale.");
+      jobs.set(id, { profile, jobId: row.job_id });
+      return row;
+    },
     async runs() {
       const currentGeneration = generation, sequence = ++readSequence;
       const value = await getData("/api/v1/individual-runs");
@@ -411,6 +424,12 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       if (!isRecord(value) || !exactKeys(value, ["runs", "invalid_count", "total", "truncated"]) || !Array.isArray(value.runs) || !integer(value.invalid_count) || Number(value.invalid_count) < 0 || value.total !== value.runs.length || typeof value.truncated !== "boolean") invalid("run list");
       const catalog = value as Record<string, unknown>;
       return (catalog.runs as unknown[]).filter((row: unknown) => isRecord(row) && row.run_kind === "mot_3d").map((row: unknown) => parseRun(row));
+    },
+    async catalog() {
+      const value = await getData("/api/v1/individual-runs");
+      if (!isRecord(value) || !exactKeys(value, ["runs", "invalid_count", "total", "truncated"]) || !Array.isArray(value.runs) || !integer(value.invalid_count) || Number(value.invalid_count) < 0 || value.total !== value.runs.length || typeof value.truncated !== "boolean") invalid("run list");
+      const catalog = value as Record<string, unknown>;
+      return { runs: (catalog.runs as unknown[]).filter((row) => isRecord(row) && row.run_kind === "mot_3d").map((row) => parseRun(row)), invalid_count: Number(catalog.invalid_count), total: Number(catalog.total), truncated: catalog.truncated as boolean };
     },
     async run(id: string) {
       if (!publicRunId(id)) throw new Error("The run identifier is invalid.");
@@ -422,4 +441,8 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
   };
 }
 
-export type IndividualMot3DApi = ReturnType<typeof createIndividualMot3DApi>;
+type IndividualMot3DImplementation = ReturnType<typeof createIndividualMot3DApi>;
+export type IndividualMot3DApi = Omit<IndividualMot3DImplementation, "catalog" | "recoverZeus"> & {
+  catalog?: IndividualMot3DImplementation["catalog"];
+  recoverZeus?: IndividualMot3DImplementation["recoverZeus"];
+};

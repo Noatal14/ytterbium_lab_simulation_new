@@ -70,6 +70,38 @@ describe("individual Zeeman API trust boundary", () => {
     await expect(api.refreshZeus("zeeman-one", "tal.noa")).resolves.toMatchObject({ state: "running" });
   });
 
+  it("recovers a fresh read-only Zeus binding before an explicit refresh", async () => {
+    const recovered = { run_id: "zeeman-one", family: "zeeman", job_id: "12345.zeus-master", scheduler_state: "running", exit_status: null, local_state: "queued", read_only: true };
+    const fetchMock = vi.fn().mockResolvedValueOnce(envelope(recovered)).mockResolvedValueOnce(envelope({ state: "running", job_id: "12345.zeus-master" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualZeemanApi(async () => "csrf");
+    await expect(api.recoverZeus("zeeman-one", "tal.noa")).resolves.toEqual(recovered);
+    await expect(api.refreshZeus("zeeman-one", "tal.noa")).resolves.toEqual({ state: "running", job_id: "12345.zeus-master" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/individual-runs/zeeman/zeus/recover");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "zeeman-one", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });
+  });
+
+  it.each([
+    ["wrong family", { family: "mot_2d" }],
+    ["wrong run", { run_id: "zeeman-other" }],
+    ["extra submission key", { submission_key: "a".repeat(64) }],
+    ["not read only", { read_only: false }],
+    ["bad job", { job_id: "12345[]" }],
+  ])("rejects a %s recovery response", async (_label, change) => {
+    const recovered = { run_id: "zeeman-one", family: "zeeman", job_id: "12345.zeus-master", scheduler_state: "running", exit_status: null, local_state: "queued", read_only: true, ...change };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope(recovered)));
+    await expect(createIndividualZeemanApi(async () => "csrf").recoverZeus("zeeman-one", "tal.noa")).rejects.toThrow(/recovery/);
+  });
+
+  it("fails closed when the server rejects the remembered Zeus profile", async () => {
+    const response = new Response(JSON.stringify({ error: { code: "zeeman_zeus_profile_or_submission_identity_mismatch", message: "The saved run belongs to a different Zeus profile." } }), { status: 409, headers: { "Content-Type": "application/json" } });
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
+    const api = createIndividualZeemanApi(async () => "csrf");
+    await expect(api.recoverZeus("zeeman-one", "other.user")).rejects.toThrow(/different Zeus profile/);
+    await expect(api.refreshZeus("zeeman-one", "other.user")).rejects.toThrow(/profile/);
+  });
+
   it.each([
     ["wrong run", { status: "submitted", run_id: "zeeman-two", job_id: "12345.zeus-master", submission_key: "d".repeat(64) }],
     ["wrong submission", { status: "submitted", run_id: "zeeman-one", job_id: "12345.zeus-master", submission_key: "e".repeat(64) }],
