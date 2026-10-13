@@ -65,7 +65,12 @@ def _design_identity(args, provenance, manifest_payload):
         "upstream_final_report_sha256": upstream.get("final_report_sha256"),
     }
     encoded = json.dumps(design, sort_keys=True, separators=(",", ":"))
-    return design, hashlib.sha256(encoded.encode()).hexdigest()
+    # Optuna persists user attributes as JSON.  Return that same canonical
+    # representation so a newly constructed design (whose config bounds may
+    # contain tuples) compares equal after the study is reopened (when those
+    # bounds have become JSON lists).
+    canonical_design = json.loads(encoded)
+    return canonical_design, hashlib.sha256(encoded.encode()).hexdigest()
 
 
 def acquire_worker_lock(output_dir):

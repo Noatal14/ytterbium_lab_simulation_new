@@ -883,6 +883,7 @@ def validate_discovery_complete(root, manifest, family):
             expected_common, worker_index=worker, sampler_seed=SAMPLER_SEEDS[worker]
         )
         encoded = json.dumps(expected_design, sort_keys=True, separators=(",", ":"))
+        expected_design = json.loads(encoded)
         expected_id = hashlib.sha256(encoded.encode()).hexdigest()
         for path in paths:
             row = json.loads(path.read_text(encoding="utf-8"))
