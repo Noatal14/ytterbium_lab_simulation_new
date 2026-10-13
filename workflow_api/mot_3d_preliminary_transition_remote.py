@@ -46,7 +46,9 @@ from workflow_api.mot_3d_preliminary_submission_remote import (
 )
 from workflow_api.verified_artifact_bundle import (
     MAX_CHUNK_BYTES,
+    MAX_REVIEWED_FILE_BYTES,
     MAX_TOTAL_BYTES,
+    MAX_REVIEWED_TOTAL_BYTES,
     build_artifact_bundle,
 )
 
@@ -78,6 +80,9 @@ class TransitionDescriptor:
     prior_transition_name: str
     prior_transition_status: str
     prior_transition_file_count: int
+    bundle_max_total_bytes: int = MAX_TOTAL_BYTES
+    submission_evidence: str = "family_chain"
+    artifact_max_file_bytes: int = MAX_FILE
 
     def __post_init__(self):
         safe = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -112,6 +117,10 @@ class TransitionDescriptor:
             or not 2 <= len(self.generated_paths) <= 16
             or type(self.prior_transition_file_count) is not int
             or self.prior_transition_file_count <= 0
+            or self.bundle_max_total_bytes
+            not in {MAX_TOTAL_BYTES, MAX_REVIEWED_TOTAL_BYTES}
+            or self.submission_evidence not in {"family_chain", "linear_chain"}
+            or self.artifact_max_file_bytes not in {MAX_FILE, MAX_REVIEWED_FILE_BYTES}
         ):
             raise ValueError("invalid transition descriptor")
 
@@ -169,6 +178,10 @@ def _selection_path(family: str) -> str:
 
 
 def _result_paths(selections):
+    if _descriptor().submission_evidence == "linear_chain":
+        from workflow_api.mot_3d_final_input_results import expected_paths as input_paths
+
+        return input_paths()
     if _descriptor().from_stage == "preliminary_check":
         return expected_paths(selections)
     if _descriptor().from_stage == "closure":
@@ -192,7 +205,20 @@ def _validate_results(
     manifest_raw, selections, results, project_directory, campaign_path
 ):
     manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
-    if _descriptor().from_stage == "preliminary_check":
+    if _descriptor().submission_evidence == "linear_chain":
+        from workflow_api.mot_3d_final_input_results import (
+            validate_final_input_result_bytes,
+        )
+
+        validated = validate_final_input_result_bytes(
+            manifest_bytes=manifest_raw,
+            locked_nominals_bytes=selections["locked_nominals"],
+            submission_bytes=selections["submission"],
+            result_files=results,
+            campaign_absolute_path=str(campaign_path),
+            project_directory=str(project_directory),
+        )
+    elif _descriptor().from_stage == "preliminary_check":
         particle = expected_preliminary_particle_selection(
             manifest, project_directory=str(project_directory)
         )
@@ -240,6 +266,10 @@ def _validate_results(
 
 
 def _render_transition(relative, manifest, validated, manifest_raw):
+    if _descriptor().submission_evidence == "linear_chain":
+        from studies.mot_3d_campaign import render_final_validation_transition
+
+        return render_final_validation_transition(relative, manifest)
     summaries = validated.summaries
     if _descriptor().to_stage == "refinement":
         return render_refinement_transition(relative, manifest, summaries)
@@ -368,11 +398,15 @@ def _exact_bundle(value: object, *, file_count: int) -> bool:
         or type(value["file_count"]) is not int
         or value["file_count"] != file_count
         or type(value["uncompressed_bytes"]) is not int
-        or not file_count <= value["uncompressed_bytes"] <= MAX_TOTAL_BYTES
+        or not file_count
+        <= value["uncompressed_bytes"]
+        <= _descriptor().bundle_max_total_bytes
         or not isinstance(value["bundle_sha256"], str)
         or HEX64.fullmatch(value["bundle_sha256"]) is None
         or not isinstance(value["chunks"], list)
-        or not 1 <= len(value["chunks"]) <= 16
+        or not 1
+        <= len(value["chunks"])
+        <= _descriptor().bundle_max_total_bytes // MAX_CHUNK_BYTES
     ):
         return False
     return all(
@@ -514,6 +548,8 @@ def _open_submissions(campaign_fd: int):
 
 
 def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
+    if _descriptor().submission_evidence == "linear_chain":
+        return _exact_linear_submission(campaign_fd, submission_key, commit)
     submissions_fd = _open_submissions(campaign_fd)
     try:
         final = strict_json_at(
@@ -649,7 +685,136 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
         os.close(submissions_fd)
 
 
+def _exact_linear_submission(campaign_fd: int, submission_key: str, commit: str):
+    """Validate the exact durable three-step submission evidence."""
+    from workflow_api.mot_3d_linear_submission_remote import (
+        ARRAY as LINEAR_ARRAY,
+        SCALAR as LINEAR_SCALAR,
+        STEPS,
+    )
+
+    submissions_fd = _open_submissions(campaign_fd)
+    try:
+        final = strict_json_at(
+            submissions_fd,
+            f"{_descriptor().from_stage}.json",
+            keys={
+                "version",
+                "status",
+                "submission_key",
+                "nonce",
+                "commit",
+                "jobs",
+                "created_unix_s",
+                "submitted_unix_s",
+            },
+        )
+        jobs = final.get("jobs")
+        if (
+            type(final.get("version")) is not int
+            or final["version"] != 1
+            or final.get("status") != "submitted"
+            or final.get("submission_key") != submission_key
+            or final.get("commit") != commit
+            or type(final.get("nonce")) is not str
+            or HEX32.fullmatch(final["nonce"]) is None
+            or not stamp(final.get("created_unix_s"))
+            or not stamp(final.get("submitted_unix_s"))
+            or final["submitted_unix_s"] < final["created_unix_s"]
+            or not isinstance(jobs, dict)
+            or set(jobs) != set(STEPS)
+        ):
+            fail(_descriptor().error("conflict"))
+        seen = set()
+        previous = final["created_unix_s"]
+        for index, step_name in enumerate(STEPS):
+            job = jobs[step_name]
+            pattern = LINEAR_ARRAY if index < 2 else LINEAR_SCALAR
+            if type(job) is not str or pattern.fullmatch(job) is None:
+                fail(_descriptor().error("conflict"))
+            number = job.split("[", 1)[0].split(".", 1)[0]
+            if number in seen:
+                fail(_descriptor().error("conflict"))
+            seen.add(number)
+            receipt = strict_json_at(
+                submissions_fd,
+                f"{_descriptor().from_stage}_{step_name}.json",
+                keys={
+                    "status",
+                    "submission_key",
+                    "nonce",
+                    "commit",
+                    "step",
+                    "pbs_sha256",
+                    "depends_on",
+                    "created_unix_s",
+                    "job_id",
+                    "completed_unix_s",
+                },
+            )
+            dependency = None if index == 0 else jobs[STEPS[index - 1]]
+            pbs = read_relative_at(
+                campaign_fd,
+                f"jobs/final_validation_inputs/{index + 1:02d}_{('generate_zeeman', 'generate_2d_survivors', 'freeze_inputs')[index]}.pbs",
+                MAX_FILE,
+            )
+            if (
+                receipt.get("status") != "submitted"
+                or receipt.get("submission_key") != submission_key
+                or receipt.get("nonce") != final["nonce"]
+                or receipt.get("commit") != commit
+                or receipt.get("step") != step_name
+                or receipt.get("pbs_sha256") != _sha(pbs)
+                or receipt.get("depends_on") != dependency
+                or receipt.get("job_id") != job
+                or not stamp(receipt.get("created_unix_s"))
+                or not stamp(receipt.get("completed_unix_s"))
+                or not previous
+                <= receipt["created_unix_s"]
+                <= receipt["completed_unix_s"]
+                <= final["submitted_unix_s"]
+            ):
+                fail(_descriptor().error("conflict"))
+            previous = receipt["completed_unix_s"]
+        compatibility = json_bytes(
+            read_relative_at(
+                campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
+            ),
+            keys={
+                "kind",
+                "status",
+                "submission_key",
+                "nonce",
+                "commit",
+                "created_unix_s",
+                "zeeman_array_job_id",
+                "mot_array_job_id",
+                "freeze_job_id",
+            },
+            error=_descriptor().error("conflict"),
+        )
+        if compatibility != {
+            "kind": "mot_3d_final_validation_input_submission",
+            "status": "submitted",
+            "submission_key": submission_key,
+            "nonce": final["nonce"],
+            "commit": commit,
+            "created_unix_s": final["created_unix_s"],
+            "zeeman_array_job_id": jobs["zeeman"],
+            "mot_array_job_id": jobs["mot_2d"],
+            "freeze_job_id": jobs["freeze"],
+        }:
+            fail(_descriptor().error("conflict"))
+        return final, jobs
+    finally:
+        os.close(submissions_fd)
+
+
 def _scheduler(jobs):
+    if _descriptor().submission_evidence == "linear_chain":
+        from workflow_api.mot_3d_linear_submission_remote import scheduler_state
+
+        return scheduler_state(jobs, run=run)
     states = []
     arrays = merges = 0
     for family in FAMILIES:
@@ -706,6 +871,18 @@ def _response(
             },
             separators=(",", ":"),
         )
+    )
+
+
+def _terminal_counts() -> tuple[int, int]:
+    return (40, 1) if _descriptor().submission_evidence == "linear_chain" else (6, 2)
+
+
+def _winner_from_validated(validated):
+    if _descriptor().from_stage != "finalist_selection":
+        return None
+    return _winner_selection_from_summaries(
+        validated.summaries, validated.evidence_sha256
     )
 
 
@@ -983,16 +1160,29 @@ def _capture(
     manifest_raw: bytes,
 ):
     manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
-    selections = {
-        family: read_relative_at(campaign_fd, _selection_path(family), MAX_FILE)
-        for family in FAMILIES
-    }
-    parsed = {
-        family: json_bytes(raw, error=_descriptor().error("conflict"))
-        for family, raw in selections.items()
-    }
+    if _descriptor().submission_evidence == "linear_chain":
+        selections = {
+            "locked_nominals": read_relative_at(
+                campaign_fd, "selection/locked_nominals.json", MAX_FILE
+            ),
+            "submission": read_relative_at(
+                campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
+            ),
+        }
+        parsed = None
+    else:
+        selections = {
+            family: read_relative_at(campaign_fd, _selection_path(family), MAX_FILE)
+            for family in FAMILIES
+        }
+        parsed = {
+            family: json_bytes(raw, error=_descriptor().error("conflict"))
+            for family, raw in selections.items()
+        }
     results = {
-        name: read_relative_at(campaign_fd, name, MAX_FILE)
+        name: read_relative_at(
+            campaign_fd, name, _descriptor().artifact_max_file_bytes
+        )
         for name in _result_paths(parsed)
     }
     manifest, validated = _validate_results(
@@ -1036,13 +1226,17 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
         )
     ):
         fail(_descriptor().error("outcome_unknown"))
-    selections = {
-        family: json_bytes(
-            read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
-            error=_descriptor().error("outcome_unknown"),
-        )
-        for family in FAMILIES
-    }
+    selections = (
+        None
+        if _descriptor().submission_evidence == "linear_chain"
+        else {
+            family: json_bytes(
+                read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
+                error=_descriptor().error("outcome_unknown"),
+            )
+            for family in FAMILIES
+        }
+    )
     exact_paths = (
         frozenset(_result_paths(selections))
         | {_descriptor().source_submission_receipt}
@@ -1051,9 +1245,17 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
     if set(receipt["files"]) != exact_paths:
         fail(_descriptor().error("outcome_unknown"))
     for name, expected in receipt["files"].items():
-        if _sha(read_relative_at(campaign_fd, name, MAX_FILE)) != expected:
+        if _sha(
+            read_relative_at(
+                campaign_fd, name, _descriptor().artifact_max_file_bytes
+            )
+        ) != expected:
             fail(_descriptor().error("outcome_unknown"))
-    packed = bounded_at(transitions_fd, _descriptor().bundle_name, MAX_TOTAL_BYTES)
+    packed = bounded_at(
+        transitions_fd,
+        _descriptor().bundle_name,
+        _descriptor().bundle_max_total_bytes,
+    )
     chunks = [
         packed[index : index + MAX_CHUNK_BYTES]
         for index in range(0, len(packed), MAX_CHUNK_BYTES)
@@ -1340,8 +1542,7 @@ def main(*, trusted_root_override=None):
                     _descriptor().prepared_status,
                     branch,
                     jobs,
-                    6,
-                    2,
+                    *_terminal_counts(),
                     validation="valid",
                     evidence=receipt["evidence_sha256"],
                     receipt=receipt,
@@ -1356,8 +1557,7 @@ def main(*, trusted_root_override=None):
                 _descriptor().prepared_status,
                 branch,
                 jobs,
-                6,
-                2,
+                *_terminal_counts(),
                 validation="valid",
                 evidence=receipt["evidence_sha256"],
                 receipt=receipt,
@@ -1431,8 +1631,7 @@ def main(*, trusted_root_override=None):
                 _descriptor().prepared_status,
                 branch,
                 jobs,
-                6,
-                2,
+                *_terminal_counts(),
                 validation="valid",
                 evidence=receipt["evidence_sha256"],
                 receipt=receipt,
@@ -1460,8 +1659,7 @@ def main(*, trusted_root_override=None):
                 "completed_success_unvalidated",
                 branch,
                 jobs,
-                6,
-                2,
+                *_terminal_counts(),
                 validation="scientifically_invalid",
                 reason=getattr(exc, "code", "result_registry_invalid"),
             )
@@ -1471,13 +1669,10 @@ def main(*, trusted_root_override=None):
                 "ready_to_advance",
                 branch,
                 jobs,
-                6,
-                2,
+                *_terminal_counts(),
                 validation="valid",
                 evidence=validated.evidence_sha256,
-                winner_selection=_winner_selection_from_summaries(
-                    validated.summaries, validated.evidence_sha256
-                ),
+                winner_selection=_winner_from_validated(validated),
             )
             return
         if (
@@ -1513,13 +1708,17 @@ def main(*, trusted_root_override=None):
                 campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
             )
             files.update(generated)
-            parsed = {
-                family: json_bytes(
-                    read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
-                    error=_descriptor().error("conflict"),
-                )
-                for family in FAMILIES
-            }
+            parsed = (
+                None
+                if _descriptor().submission_evidence == "linear_chain"
+                else {
+                    family: json_bytes(
+                        read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
+                        error=_descriptor().error("conflict"),
+                    )
+                    for family in FAMILIES
+                }
+            )
             expected_transfer = (
                 frozenset(_result_paths(parsed))
                 | {_descriptor().source_submission_receipt}
@@ -1537,6 +1736,8 @@ def main(*, trusted_root_override=None):
                 from_stage=_descriptor().from_stage,
                 to_stage=_descriptor().to_stage,
                 expected_paths=expected_transfer,
+                max_total_bytes=_descriptor().bundle_max_total_bytes,
+                max_file_bytes=_descriptor().artifact_max_file_bytes,
             )
             hashes = {name: _sha(raw) for name, raw in files.items()}
             pending = {
@@ -1620,8 +1821,7 @@ def main(*, trusted_root_override=None):
             _descriptor().prepared_status,
             branch,
             jobs,
-            6,
-            2,
+            *_terminal_counts(),
             validation="valid",
             evidence=receipt["evidence_sha256"],
             receipt=receipt,

@@ -61,6 +61,7 @@ from workflow_api.pinned_ssh import (
 from workflow_api.verified_artifact_bundle import (
     MAX_CHUNKS,
     MAX_FILE_BYTES,
+    MAX_REVIEWED_FILE_BYTES,
     MAX_TOTAL_BYTES,
     unpack_artifact_bundle,
 )
@@ -133,10 +134,14 @@ def _matches(pattern, value: object) -> bool:
 
 
 def _read_relative(root_fd: int, relative: str) -> bytes:
+    return _read_relative_bound(root_fd, relative, MAX_FILE_BYTES)
+
+
+def _read_relative_bound(root_fd: int, relative: str, limit: int) -> bytes:
     path = PurePosixPath(relative)
     parent = _open_parent_at(root_fd, path.parts[:-1], create=False)
     try:
-        return _bounded_read_at(parent, path.name, MAX_FILE_BYTES)
+        return _bounded_read_at(parent, path.name, limit)
     finally:
         os.close(parent)
 
@@ -162,6 +167,14 @@ class Mot3DPreliminaryTransitionCoordinator:
         "start_simulation": False,
         "overwrite_existing": False,
     }
+    bundle_max_total_bytes = MAX_TOTAL_BYTES
+    bundle_max_file_bytes = MAX_FILE_BYTES
+    expected_array_tasks = 6
+    expected_merge_jobs = 2
+
+    @classmethod
+    def _public_chain(cls, jobs):
+        return public_chain(jobs, topology=cls.topology)
 
     def __init__(
         self,
@@ -470,9 +483,9 @@ class Mot3DPreliminaryTransitionCoordinator:
                 raise Mot3DPreliminaryTransitionError("remote_response_invalid")
         if (
             type(state.completed_array_tasks) is not int
-            or not 0 <= state.completed_array_tasks <= 6
+            or not 0 <= state.completed_array_tasks <= cls.expected_array_tasks
             or type(state.completed_merge_jobs) is not int
-            or not 0 <= state.completed_merge_jobs <= 2
+            or not 0 <= state.completed_merge_jobs <= cls.expected_merge_jobs
         ):
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
         if state.validation not in {"not_started", "valid", "scientifically_invalid"}:
@@ -501,7 +514,7 @@ class Mot3DPreliminaryTransitionCoordinator:
         if state.lifecycle in terminal and (
             state.completed_array_tasks,
             state.completed_merge_jobs,
-        ) != (6, 2):
+        ) != (cls.expected_array_tasks, cls.expected_merge_jobs):
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
         if state.validation == "valid":
             if (
@@ -544,10 +557,12 @@ class Mot3DPreliminaryTransitionCoordinator:
             or type(bundle.get("uncompressed_bytes")) is not int
             or not cls.expected_transfer_files
             <= bundle["uncompressed_bytes"]
-            <= MAX_TOTAL_BYTES
+            <= cls.bundle_max_total_bytes
             or not _matches(HEX64, bundle.get("bundle_sha256"))
             or not isinstance(bundle.get("chunks"), list)
-            or not 1 <= len(bundle["chunks"]) <= MAX_CHUNKS
+            or not 1
+            <= len(bundle["chunks"])
+            <= cls.bundle_max_total_bytes // (4 * 1024 * 1024)
         ):
             raise Mot3DPreliminaryTransitionError("remote_response_invalid")
         for index, row in enumerate(bundle["chunks"]):
@@ -655,13 +670,13 @@ class Mot3DPreliminaryTransitionCoordinator:
             },
             self.public_stage_key: {
                 "status": public,
-                "chain": public_chain(state.jobs, topology=self.topology),
+                "chain": self._public_chain(state.jobs),
             },
             "scheduler": {
                 "completed_array_tasks": state.completed_array_tasks,
-                "expected_array_tasks": 6,
+                "expected_array_tasks": self.expected_array_tasks,
                 "completed_merge_jobs": state.completed_merge_jobs,
-                "expected_merge_jobs": 2,
+                "expected_merge_jobs": self.expected_merge_jobs,
             },
             "validation": {
                 "status": state.validation,
@@ -970,6 +985,8 @@ class Mot3DPreliminaryTransitionCoordinator:
                     from_stage=self.from_stage,
                     to_stage=self.to_stage,
                     expected_paths=expected,
+                    max_total_bytes=self.bundle_max_total_bytes,
+                    max_file_bytes=self.bundle_max_file_bytes,
                 )
             except Exception as exc:
                 raise Mot3DPreliminaryTransitionError(
@@ -998,7 +1015,12 @@ class Mot3DPreliminaryTransitionCoordinator:
                     path = PurePosixPath(name)
                     parent = _open_parent_at(campaign_fd, path.parts[:-1], create=False)
                     try:
-                        if _bounded_read_at(parent, path.name, MAX_FILE_BYTES) != data:
+                        if (
+                            _bounded_read_at(
+                                parent, path.name, self.bundle_max_file_bytes
+                            )
+                            != data
+                        ):
                             raise Mot3DPreliminaryTransitionError("local_sync_conflict")
                     finally:
                         os.close(parent)
@@ -1073,9 +1095,9 @@ class Mot3DPreliminaryTransitionCoordinator:
             if fd >= 0:
                 os.close(fd)
 
-    @staticmethod
+    @classmethod
     def _verify_local_at(
-        campaign_fd: int, state, raw: bytes, expected: frozenset[str]
+        cls, campaign_fd: int, state, raw: bytes, expected: frozenset[str]
     ) -> bool:
         try:
             receipt = _strict_json(raw)
@@ -1104,7 +1126,12 @@ class Mot3DPreliminaryTransitionCoordinator:
             for name, digest in receipt["files"].items():
                 if (
                     not _matches(HEX64, digest)
-                    or _sha(_read_relative(campaign_fd, name)) != digest
+                    or _sha(
+                        _read_relative_bound(
+                            campaign_fd, name, cls.bundle_max_file_bytes
+                        )
+                    )
+                    != digest
                 ):
                     return False
             return True

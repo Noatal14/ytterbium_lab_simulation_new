@@ -14,16 +14,35 @@ from typing import Mapping
 
 
 MAX_FILE_BYTES = 2 * 1024 * 1024
+MAX_REVIEWED_FILE_BYTES = 8 * 1024 * 1024
 MAX_TOTAL_BYTES = 64 * 1024 * 1024
+MAX_REVIEWED_TOTAL_BYTES = 128 * 1024 * 1024
 MAX_CHUNK_BYTES = 4 * 1024 * 1024
 MAX_CHUNKS = 16
-MAX_ENCODED_PAYLOAD_BYTES = 2 * MAX_TOTAL_BYTES
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 class ArtifactBundleError(ValueError):
     pass
+
+
+def _total_bound(value: object) -> int:
+    if type(value) is not int or value not in {
+        MAX_TOTAL_BYTES,
+        MAX_REVIEWED_TOTAL_BYTES,
+    }:
+        raise ArtifactBundleError("invalid artifact bundle bound")
+    return value
+
+
+def _file_bound(value: object) -> int:
+    if type(value) is not int or value not in {
+        MAX_FILE_BYTES,
+        MAX_REVIEWED_FILE_BYTES,
+    }:
+        raise ArtifactBundleError("invalid artifact file bound")
+    return value
 
 
 def canonical_json(value: object) -> bytes:
@@ -49,7 +68,9 @@ def _safe_path(value: object) -> bool:
         and "//" not in value
         and not value.endswith("/")
         and bool(path.parts)
-        and all(part not in {"", ".", ".."} and NAME.fullmatch(part) for part in path.parts)
+        and all(
+            part not in {"", ".", ".."} and NAME.fullmatch(part) for part in path.parts
+        )
     )
 
 
@@ -84,7 +105,11 @@ def build_artifact_bundle(
     from_stage: str,
     to_stage: str,
     expected_paths: frozenset[str],
+    max_total_bytes: int = MAX_TOTAL_BYTES,
+    max_file_bytes: int = MAX_FILE_BYTES,
 ) -> BuiltArtifactBundle:
+    max_total_bytes = _total_bound(max_total_bytes)
+    max_file_bytes = _file_bound(max_file_bytes)
     if (
         not isinstance(campaign, str)
         or NAME.fullmatch(campaign) is None
@@ -103,10 +128,10 @@ def build_artifact_bundle(
     rows = []
     for path in sorted(expected_paths):
         data = files[path]
-        if not isinstance(data, bytes) or not 0 < len(data) <= MAX_FILE_BYTES:
+        if not isinstance(data, bytes) or not 0 < len(data) <= max_file_bytes:
             raise ArtifactBundleError("artifact exceeds per-file bound")
         total += len(data)
-        if total > MAX_TOTAL_BYTES:
+        if total > max_total_bytes:
             raise ArtifactBundleError("artifact bundle exceeds total bound")
         rows.append(
             {
@@ -130,7 +155,7 @@ def build_artifact_bundle(
         packed[index : index + MAX_CHUNK_BYTES]
         for index in range(0, len(packed), MAX_CHUNK_BYTES)
     )
-    if not chunks or len(chunks) > MAX_CHUNKS:
+    if not chunks or len(chunks) > max_total_bytes // MAX_CHUNK_BYTES:
         raise ArtifactBundleError("artifact bundle exceeds chunk bound")
     manifest = {
         "version": 1,
@@ -154,11 +179,15 @@ def unpack_artifact_bundle(
     from_stage: str,
     to_stage: str,
     expected_paths: frozenset[str],
+    max_total_bytes: int = MAX_TOTAL_BYTES,
+    max_file_bytes: int = MAX_FILE_BYTES,
 ) -> dict[str, bytes]:
+    max_total_bytes = _total_bound(max_total_bytes)
+    max_file_bytes = _file_bound(max_file_bytes)
     if (
         not isinstance(packed, bytes)
         or not packed
-        or len(packed) > MAX_TOTAL_BYTES
+        or len(packed) > max_total_bytes
         or not isinstance(campaign, str)
         or NAME.fullmatch(campaign) is None
         or not isinstance(commit, str)
@@ -176,19 +205,18 @@ def unpack_artifact_bundle(
     uncompressed_bytes = manifest.get("uncompressed_bytes")
     chunk_rows = manifest.get("chunks")
     if (
-        set(manifest) != {
-            "version", "file_count", "uncompressed_bytes", "bundle_sha256", "chunks"
-        }
+        set(manifest)
+        != {"version", "file_count", "uncompressed_bytes", "bundle_sha256", "chunks"}
         or type(manifest.get("version")) is not int
         or manifest.get("version") != 1
         or manifest.get("file_count") != len(expected_paths)
         or isinstance(manifest.get("file_count"), bool)
         or not isinstance(uncompressed_bytes, int)
         or isinstance(uncompressed_bytes, bool)
-        or not len(expected_paths) <= uncompressed_bytes <= MAX_TOTAL_BYTES
+        or not len(expected_paths) <= uncompressed_bytes <= max_total_bytes
         or manifest.get("bundle_sha256") != sha256(packed)
         or not isinstance(chunk_rows, list)
-        or not 1 <= len(chunk_rows) <= MAX_CHUNKS
+        or not 1 <= len(chunk_rows) <= max_total_bytes // MAX_CHUNK_BYTES
     ):
         raise ArtifactBundleError("invalid bundle manifest")
     chunks = tuple(
@@ -203,8 +231,8 @@ def unpack_artifact_bundle(
         raise ArtifactBundleError("invalid bundle chunks")
     try:
         with gzip.GzipFile(fileobj=io.BytesIO(packed), mode="rb") as stream:
-            raw = stream.read(MAX_ENCODED_PAYLOAD_BYTES + 1)
-        if len(raw) > MAX_ENCODED_PAYLOAD_BYTES:
+            raw = stream.read(2 * max_total_bytes + 1)
+        if len(raw) > 2 * max_total_bytes:
             raise ArtifactBundleError("expanded bundle exceeds bound")
         payload = _strict_json(raw)
     except ArtifactBundleError:
@@ -215,7 +243,12 @@ def unpack_artifact_bundle(
         not isinstance(payload, dict)
         or set(payload)
         != {
-            "version", "campaign", "commit", "from_stage", "to_stage", "files",
+            "version",
+            "campaign",
+            "commit",
+            "from_stage",
+            "to_stage",
+            "files",
             "uncompressed_bytes",
         }
         or payload.get("version") != 1
@@ -231,7 +264,12 @@ def unpack_artifact_bundle(
     result = {}
     total = 0
     for row in payload["files"]:
-        if not isinstance(row, dict) or set(row) != {"path", "size", "sha256", "content"}:
+        if not isinstance(row, dict) or set(row) != {
+            "path",
+            "size",
+            "sha256",
+            "content",
+        }:
             raise ArtifactBundleError("invalid bundle entry")
         path = row["path"]
         if path in result or path not in expected_paths or not _safe_path(path):
@@ -242,11 +280,11 @@ def unpack_artifact_bundle(
         if (
             not isinstance(size, int)
             or isinstance(size, bool)
-            or not 0 < size <= MAX_FILE_BYTES
+            or not 0 < size <= max_file_bytes
             or not isinstance(digest, str)
             or re.fullmatch(r"[0-9a-f]{64}", digest) is None
             or not isinstance(content, str)
-            or len(content) > 4 * ((MAX_FILE_BYTES + 2) // 3)
+            or len(content) > 4 * ((max_file_bytes + 2) // 3)
         ):
             raise ArtifactBundleError("invalid bundle entry")
         try:

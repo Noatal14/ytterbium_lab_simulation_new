@@ -321,6 +321,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D final-validation input submission is unavailable.",
         ),
+        "mot_3d_final_validation_transition_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D final-validation preparation is unavailable.",
+        ),
         "individual_zeeman_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "Individual Zeeman runs are unavailable.",
@@ -1325,6 +1329,29 @@ MOT_3D_FINAL_INPUT_SUBMISSION = _generic_stage(
     },
     "mot_3d_final_input_submission_failed",
 )
+MOT_3D_FINAL_VALIDATION_TRANSITION = _generic_stage(
+    {
+        "request_invalid", "profile_invalid", "campaign_not_found",
+        "final_validation_inputs_not_ready", "final_input_preparation_invalid",
+        "final_input_already_started", "final_input_partial_submission",
+        "final_input_submission_outcome_unknown", "remote_response_invalid",
+        "local_files_changed", "too_many_pending_previews", "confirmation_invalid",
+        "confirmation_expired", "local_or_remote_evidence_changed",
+        "local_sync_conflict", "local_sync_outcome_unknown",
+        "transition_outcome_unknown", "invalid_request", "remote_checkout_mismatch",
+        "final_validation_transition_conflict", "final_validation_transition_busy",
+        "final_validation_transition_outcome_unknown",
+        "final_validation_transition_not_prepared", "zeus_unavailable", "zeus_timeout",
+    },
+    "3D final-validation preparation stopped safely.",
+    {
+        "final_input_partial_submission", "final_input_submission_outcome_unknown",
+        "final_validation_transition_conflict", "final_validation_transition_busy",
+        "final_validation_transition_outcome_unknown", "transition_outcome_unknown",
+        "local_sync_conflict", "local_sync_outcome_unknown",
+    },
+    "mot_3d_final_validation_transition_failed",
+)
 
 
 def _include_fallback_codes(domain: ErrorDomain, codes: set[str]) -> ErrorDomain:
@@ -1442,6 +1469,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "mot_3d_closure_transition": MOT_3D_CLOSURE_TRANSITION,
         "mot_3d_finalist_transition": MOT_3D_FINALIST_TRANSITION,
         "mot_3d_final_input_submission": MOT_3D_FINAL_INPUT_SUBMISSION,
+        "mot_3d_final_validation_transition": MOT_3D_FINAL_VALIDATION_TRANSITION,
     }
 )
 

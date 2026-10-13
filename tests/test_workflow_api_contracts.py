@@ -247,6 +247,16 @@ def _server(
         if services
         else None
     )
+    handler.mot_3d_final_validation_transition_service = (
+        _Service(
+            "mot3d-final-validation-transition",
+            ledger,
+            values,
+            "mot3d-final-validation-transition-status",
+        )
+        if services
+        else None
+    )
     handler.zeus_service = _Service("zeus", ledger, values) if services else None
     handler.transfer_service = (
         _Service("transfer", ledger, values) if services else None
@@ -576,6 +586,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
             "mot3d-final-input-status",
             "mot3d-final-input-preview",
             "mot3d-final-input-confirm",
+            "mot3d-final-validation-transition-status",
+            "mot3d-final-validation-transition-preview",
+            "mot3d-final-validation-transition-confirm",
             "mot3d-zeus-recover",
     ]
     session_ids = {entry[2] for entry in ledger if entry[2] is not None}
@@ -1034,6 +1047,36 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_final_input_submission_unavailable",
             "3D final-validation input submission is unavailable.",
             "Mot3DFinalInputSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-transition/status",
+            "mot_3d_final_validation_transition_service",
+            "status",
+            "payload",
+            200,
+            "mot_3d_final_validation_transition_unavailable",
+            "3D final-validation preparation is unavailable.",
+            "Mot3DFinalValidationTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-transition/preview",
+            "mot_3d_final_validation_transition_service",
+            "preview",
+            "session_kw",
+            200,
+            "mot_3d_final_validation_transition_unavailable",
+            "3D final-validation preparation is unavailable.",
+            "Mot3DFinalValidationTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-transition/confirm",
+            "mot_3d_final_validation_transition_service",
+            "confirm",
+            "session_kw",
+            201,
+            "mot_3d_final_validation_transition_unavailable",
+            "3D final-validation preparation is unavailable.",
+            "Mot3DFinalValidationTransitionError",
         ),
         (
             "/api/v1/zeus/snapshot",

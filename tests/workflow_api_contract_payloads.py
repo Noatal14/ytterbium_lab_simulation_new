@@ -2213,6 +2213,80 @@ _finalist_transition_confirm["status"] = "final_validation_input_generation_prep
 _finalist_transition_confirm["stage"] = "final_validation_input_generation"
 _finalist_transition_confirm["artifacts"].update({"synchronized": 45, "created": 4})
 
+_PAYLOADS["mot3d-final-validation-transition-status"] = deepcopy(
+    _PAYLOADS["mot3d-finalist-transition-status"]
+)
+_final_validation_transition_status = _PAYLOADS[
+    "mot3d-final-validation-transition-status"
+]
+_final_validation_transition_status["campaign"]["stage"] = (
+    "final_validation_input_generation"
+)
+_final_validation_transition_status["final_validation_input_generation"] = (
+    _final_validation_transition_status.pop("finalist_selection")
+)
+_final_validation_transition_status["final_validation_input_generation"]["chain"] = {
+    "dependency": "afterok linear chain",
+    "jobs": [
+        {"id": "zeeman", "job_id": "901[].zeus-master"},
+        {"id": "mot_2d", "job_id": "902[].zeus-master"},
+        {"id": "freeze", "job_id": "903.zeus-master"},
+    ],
+}
+_final_validation_transition_status["validation"].update(
+    {"result_artifacts": 101, "expected_result_artifacts": 101}
+)
+_final_validation_transition_status["scheduler"] = {
+    "completed_array_tasks": 40,
+    "expected_array_tasks": 40,
+    "completed_scalar_jobs": 1,
+    "expected_scalar_jobs": 1,
+}
+_PAYLOADS["mot3d-final-validation-transition-preview"] = deepcopy(
+    _PAYLOADS["mot3d-finalist-transition-preview"]
+)
+_final_validation_transition_preview = _PAYLOADS[
+    "mot3d-final-validation-transition-preview"
+]
+_final_validation_transition_preview.pop("winner_selection")
+_final_validation_transition_preview["preview_token"] = (
+    "mot3d-final-validation-transition-token"
+)
+_final_validation_transition_preview["from_stage"] = (
+    "final_validation_input_generation"
+)
+_final_validation_transition_preview["to_stage"] = "final_validation"
+_final_validation_transition_preview["final_validation_input_generation"] = (
+    _final_validation_transition_preview.pop("finalist_selection")
+)
+_final_validation_transition_preview["final_validation_input_generation"].update(
+    {"result_artifacts": 101, "expected_result_artifacts": 101}
+)
+_final_validation_transition_preview["artifacts"] = {
+    "synchronize": {"result_files": 101, "submission_receipts": 1},
+    "create": {"selection_files": 0, "job_files": 4},
+    "update": ["campaign.json"],
+    "transfer_files": 107,
+}
+_final_validation_transition_preview["effects"] = {
+    "synchronize_final_validation_inputs": True,
+    "prepare_final_validation": True,
+    "submit_final_validation": False,
+    "start_simulation": False,
+    "overwrite_existing": False,
+}
+_PAYLOADS["mot3d-final-validation-transition-confirm"] = deepcopy(
+    _PAYLOADS["mot3d-finalist-transition-confirm"]
+)
+_final_validation_transition_confirm = _PAYLOADS[
+    "mot3d-final-validation-transition-confirm"
+]
+_final_validation_transition_confirm["status"] = "final_validation_prepared"
+_final_validation_transition_confirm["stage"] = "final_validation"
+_final_validation_transition_confirm["artifacts"].update(
+    {"synchronized": 102, "created": 4}
+)
+
 
 def fake_service_payloads() -> dict[str, object]:
     """Return fresh full public DTOs without consulting contract snapshots."""

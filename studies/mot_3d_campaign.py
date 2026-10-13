@@ -1656,36 +1656,42 @@ def validate_final_validation_inputs(root, manifest):
     return payload
 
 
-def prepare_final_validation(root, manifest):
+def render_final_validation_transition(logical_root, manifest):
+    """Purely render the four final-validation PBS files and advanced manifest."""
+    root = Path(logical_root)
+    if (
+        root.is_absolute()
+        or root.parts[:3] != ("data", "optimization", "mot_3d")
+        or len(root.parts) != 4
+        or any(part in {"", ".", ".."} for part in root.parts)
+        or manifest.get("stage") != "final_validation_input_generation"
+        or manifest.get("name") != root.name
+    ):
+        raise ValueError("Invalid portable final-validation campaign root.")
     stage = manifest["stages"]["final_validation_input_generation"]
     input_manifest = Path(stage["input_manifest"])
-    submission = root / "final_validation_input_generation_submission.json"
-    if (
-        not submission.is_file()
-        or json.loads(submission.read_text()).get("status") != "submitted"
-    ):
-        raise RuntimeError(
-            "Final-validation input generation has no complete submission record."
-        )
-    validate_final_validation_inputs(root, manifest)
     locked = Path(stage["locked_nominals"])
     jobs = root / "jobs" / "final_validation"
-    worker_jobs, merge_jobs = {}, {}
+    expected_locked = root / "selection" / "locked_nominals.json"
+    expected_input_manifest = root / "final_validation_inputs" / "input_manifest.json"
+    if locked != expected_locked or input_manifest != expected_input_manifest:
+        raise ValueError("Final-validation input paths are not canonical.")
+    worker_jobs, merge_jobs, artifacts = {}, {}, {}
     dt = manifest["design"]["production_dt_s"]
     for family in FAMILIES:
         short = "don" if family == "angled_donut" else "sp"
         family_root = root / "final_validation" / family
-        worker_jobs[family] = _write(
-            jobs / f"{family}_array.pbs",
+        worker_jobs[family] = jobs / f"{family}_array.pbs"
+        artifacts[worker_jobs[family].relative_to(root).as_posix()] = (
             _header(f"m3d2_{short}_val", manifest["provenance"]["git_commit"])
             + 'seeds=(44001 44002 44003)\nseed="${seeds[$PBS_ARRAY_INDEX]}"\n'
             + f"python -u -m studies.mot_3d.final_validation run --family {family} "
             f'--recoil-seed "$seed" --locked-nominals {locked} '
             f"--input-manifest {input_manifest} --campaign-manifest {root/'campaign.json'} "
-            f"--output {family_root}/seed_${{seed}}.json --npools 200 --dt {dt}\n",
-        )
-        merge_jobs[family] = _write(
-            jobs / f"{family}_merge.pbs",
+            f"--output {family_root}/seed_${{seed}}.json --npools 200 --dt {dt}\n"
+        ).encode("utf-8")
+        merge_jobs[family] = jobs / f"{family}_merge.pbs"
+        artifacts[merge_jobs[family].relative_to(root).as_posix()] = (
             _header(
                 f"m3d2_{short}_valm",
                 manifest["provenance"]["git_commit"],
@@ -1698,17 +1704,42 @@ def prepare_final_validation(root, manifest):
             f"--locked-nominals {locked} --input-manifest {input_manifest} "
             f"--campaign-manifest {root/'campaign.json'} --dt {dt} "
             f"--output {family_root}/final_validation_summary.json "
-            "--bootstrap-replicates 20000 --bootstrap-seed 92001\n",
-        )
-    manifest["stage"] = "final_validation"
-    manifest.setdefault("stages", {})["final_validation"] = {
+            "--bootstrap-replicates 20000 --bootstrap-seed 92001\n"
+        ).encode("utf-8")
+    updated = copy.deepcopy(manifest)
+    updated["stage"] = "final_validation"
+    updated.setdefault("stages", {})["final_validation"] = {
         "classification": "sealed_unbiased_final_validation",
         "locked_nominals": str(locked),
         "input_manifest": str(input_manifest),
         "worker_jobs": {key: str(value) for key, value in worker_jobs.items()},
         "merge_jobs": {key: str(value) for key, value in merge_jobs.items()},
     }
-    save_file_json(root / "campaign.json", manifest)
+    artifacts["campaign.json"] = json.dumps(
+        updated, indent=2, allow_nan=False
+    ).encode("utf-8")
+    return artifacts, updated
+
+
+def prepare_final_validation(root, manifest):
+    stage = manifest["stages"]["final_validation_input_generation"]
+    submission = root / "final_validation_input_generation_submission.json"
+    if (
+        not submission.is_file()
+        or json.loads(submission.read_text()).get("status") != "submitted"
+    ):
+        raise RuntimeError(
+            "Final-validation input generation has no complete submission record."
+        )
+    validate_final_validation_inputs(root, manifest)
+    logical_root = root if not root.is_absolute() else Path("data/optimization/mot_3d") / root.name
+    artifacts, updated = render_final_validation_transition(logical_root, manifest)
+    for relative, raw in artifacts.items():
+        destination = root / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+    manifest.clear()
+    manifest.update(updated)
 
 
 def _validate_precision_decision(

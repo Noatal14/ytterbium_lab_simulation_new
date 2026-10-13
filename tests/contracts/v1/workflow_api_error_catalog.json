@@ -1593,6 +1593,188 @@
       "message": "3D final-validation input submission stopped safely."
     },
     {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "<fallback>",
+      "code": "mot_3d_final_validation_transition_failed",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_input_already_started",
+      "code": "final_input_already_started",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_input_partial_submission",
+      "code": "final_input_partial_submission",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_input_preparation_invalid",
+      "code": "final_input_preparation_invalid",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_input_submission_outcome_unknown",
+      "code": "final_input_submission_outcome_unknown",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_validation_inputs_not_ready",
+      "code": "final_validation_inputs_not_ready",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_validation_transition_busy",
+      "code": "final_validation_transition_busy",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_validation_transition_conflict",
+      "code": "final_validation_transition_conflict",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_validation_transition_not_prepared",
+      "code": "final_validation_transition_not_prepared",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "final_validation_transition_outcome_unknown",
+      "code": "final_validation_transition_outcome_unknown",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "invalid_request",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "local_or_remote_evidence_changed",
+      "code": "local_or_remote_evidence_changed",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "local_sync_conflict",
+      "code": "local_sync_conflict",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "local_sync_outcome_unknown",
+      "code": "local_sync_outcome_unknown",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "transition_outcome_unknown",
+      "code": "transition_outcome_unknown",
+      "status": 409,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
+      "domain": "mot_3d_final_validation_transition",
+      "case": "zeus_unavailable",
+      "code": "zeus_unavailable",
+      "status": 412,
+      "message": "3D final-validation preparation stopped safely."
+    },
+    {
       "domain": "mot_3d_finalist_submission",
       "case": "<fallback>",
       "code": "mot_3d_finalist_submission_failed",
@@ -3635,6 +3817,13 @@
       "code": "mot_3d_final_input_submission_unavailable",
       "status": 503,
       "message": "3D final-validation input submission is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "mot_3d_final_validation_transition_unavailable",
+      "code": "mot_3d_final_validation_transition_unavailable",
+      "status": 503,
+      "message": "3D final-validation preparation is unavailable."
     },
     {
       "domain": "route_unavailable",

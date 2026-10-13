@@ -1,5 +1,6 @@
 import gzip
 import json
+import os
 
 import pytest
 
@@ -7,6 +8,7 @@ from workflow_api.verified_artifact_bundle import (
     ArtifactBundleError,
     build_artifact_bundle,
     unpack_artifact_bundle,
+    MAX_REVIEWED_TOTAL_BYTES,
 )
 
 
@@ -46,7 +48,12 @@ def test_bundle_rejects_registry_and_content_mutations():
 
 @pytest.mark.parametrize(
     "paths",
-    [frozenset(), frozenset({"../escape"}), frozenset({"/absolute"}), frozenset({"a//b"})],
+    [
+        frozenset(),
+        frozenset({"../escape"}),
+        frozenset({"/absolute"}),
+        frozenset({"a//b"}),
+    ],
 )
 def test_bundle_rejects_unsafe_closed_registries(paths):
     with pytest.raises(ArtifactBundleError):
@@ -71,10 +78,14 @@ def test_unpack_rejects_manifest_schema_boolean_and_reordered_chunks():
     )
     with pytest.raises(ArtifactBundleError):
         build_artifact_bundle(files, **arguments)
-    bundle = build_artifact_bundle({"a": b"x"}, **{**arguments, "expected_paths": frozenset({"a"})})
+    bundle = build_artifact_bundle(
+        {"a": b"x"}, **{**arguments, "expected_paths": frozenset({"a"})}
+    )
     bad = dict(bundle.manifest, version=True)
     with pytest.raises(ArtifactBundleError):
-        unpack_artifact_bundle(bundle.packed, bad, **{**arguments, "expected_paths": frozenset({"a"})})
+        unpack_artifact_bundle(
+            bundle.packed, bad, **{**arguments, "expected_paths": frozenset({"a"})}
+        )
     for invalid in (None, [], "manifest"):
         with pytest.raises(ArtifactBundleError):
             unpack_artifact_bundle(
@@ -84,7 +95,11 @@ def test_unpack_rejects_manifest_schema_boolean_and_reordered_chunks():
             )
     wrong_chunk = dict(bundle.manifest)
     wrong_chunk["chunks"] = [
-        {"index": 1, "size": len(bundle.packed), "sha256": bundle.manifest["bundle_sha256"]}
+        {
+            "index": 1,
+            "size": len(bundle.packed),
+            "sha256": bundle.manifest["bundle_sha256"],
+        }
     ]
     with pytest.raises(ArtifactBundleError):
         unpack_artifact_bundle(
@@ -94,7 +109,9 @@ def test_unpack_rejects_manifest_schema_boolean_and_reordered_chunks():
         )
 
 
-@pytest.mark.parametrize("field,value", [("commit", None), ("from_stage", 1), ("to_stage", False)])
+@pytest.mark.parametrize(
+    "field,value", [("commit", None), ("from_stage", 1), ("to_stage", False)]
+)
 def test_build_rejects_wrong_scalar_types(field, value):
     arguments = {
         "campaign": "campaign",
@@ -136,3 +153,46 @@ def test_unpack_rejects_duplicate_json_keys_and_nonfinite_values():
         }
         with pytest.raises(ArtifactBundleError):
             unpack_artifact_bundle(packed, manifest, **arguments)
+
+
+def test_reviewed_128_mib_bound_is_explicit_and_default_stays_64_mib():
+    block = os.urandom(2 * 1024 * 1024)
+    files = {f"artifact-{index}.bin": block for index in range(33)}
+    arguments = dict(
+        campaign="campaign",
+        commit="a" * 40,
+        from_stage="final_validation_input_generation",
+        to_stage="final_validation",
+        expected_paths=frozenset(files),
+    )
+    with pytest.raises(ArtifactBundleError):
+        build_artifact_bundle(files, **arguments)
+    built = build_artifact_bundle(
+        files, **arguments, max_total_bytes=MAX_REVIEWED_TOTAL_BYTES
+    )
+    assert built.manifest["uncompressed_bytes"] > 64 * 1024 * 1024
+    assert (
+        unpack_artifact_bundle(
+            built.packed,
+            built.manifest,
+            **arguments,
+            max_total_bytes=MAX_REVIEWED_TOTAL_BYTES,
+        )
+        == files
+    )
+    with pytest.raises(ArtifactBundleError):
+        unpack_artifact_bundle(built.packed, built.manifest, **arguments)
+
+
+@pytest.mark.parametrize("bound", [True, 0, 65 * 1024 * 1024, 256 * 1024 * 1024])
+def test_bundle_rejects_unreviewed_or_bool_total_bounds(bound):
+    with pytest.raises(ArtifactBundleError):
+        build_artifact_bundle(
+            {"a": b"x"},
+            campaign="campaign",
+            commit="a" * 40,
+            from_stage="preliminary_check",
+            to_stage="refinement",
+            expected_paths=frozenset({"a"}),
+            max_total_bytes=bound,
+        )
