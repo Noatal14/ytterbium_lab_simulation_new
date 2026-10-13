@@ -1097,6 +1097,15 @@ _PAYLOADS.update(
             "submission_key": "d" * 64,
         },
         "zeeman-zeus-refresh": {"state": "running", "job_id": "500.zeus-master"},
+        "zeeman-zeus-recover": {
+            "run_id": "zeeman-contract",
+            "family": "zeeman",
+            "job_id": "500.zeus-master",
+            "scheduler_state": "running",
+            "exit_status": None,
+            "local_state": "queued",
+            "read_only": True,
+        },
         "mot2d-sources": {
             "contract_version": "mot-2d-individual-source-catalog-v1",
             "sources": [],
@@ -1143,6 +1152,15 @@ _PAYLOADS.update(
             "submission_key": "d" * 64,
         },
         "mot2d-zeus-refresh": {"state": "running", "job_id": "501.zeus-master"},
+        "mot2d-zeus-recover": {
+            "run_id": "mot2d-contract",
+            "family": "mot_2d",
+            "job_id": "501.zeus-master",
+            "scheduler_state": "running",
+            "exit_status": None,
+            "local_state": "queued",
+            "read_only": True,
+        },
         "mot3d-sources": _MOT3D_CONTRACT_PAYLOADS["mot3d-sources"],
         "mot3d-run-preview": _MOT3D_CONTRACT_PAYLOADS["mot3d-run-preview"],
         "mot3d-run-confirm": _MOT3D_CONTRACT_PAYLOADS["mot3d-run-confirm"],
@@ -1150,6 +1168,15 @@ _PAYLOADS.update(
         "mot3d-zeus-preview": _MOT3D_CONTRACT_PAYLOADS["mot3d-zeus-preview"],
         "mot3d-zeus-confirm": _MOT3D_CONTRACT_PAYLOADS["mot3d-zeus-confirm"],
         "mot3d-zeus-refresh": _MOT3D_CONTRACT_PAYLOADS["mot3d-zeus-refresh"],
+        "mot3d-zeus-recover": {
+            "run_id": "mot3d-contract",
+            "family": "mot_3d",
+            "job_id": "502.zeus-master",
+            "scheduler_state": "running",
+            "exit_status": None,
+            "local_state": "queued",
+            "read_only": True,
+        },
         "production-status": {
             "source": "zeus",
             "queried_at": "2026-10-08T00:00:00+00:00",
@@ -1963,6 +1990,28 @@ _PAYLOADS.update(
             "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
         },
     }
+)
+
+# Closure uses the same reviewed two-family chain contract as Refinement with
+# only its stage-specific scientific identity and effect changed.
+_PAYLOADS["mot3d-closure-status"] = deepcopy(_PAYLOADS["mot3d-refinement-status"])
+_PAYLOADS["mot3d-closure-status"]["campaign"]["stage"] = "closure"
+_PAYLOADS["mot3d-closure-preview"] = deepcopy(_PAYLOADS["mot3d-refinement-preview"])
+_closure_preview = _PAYLOADS["mot3d-closure-preview"]
+_closure_preview["preview_token"] = "mot3d-closure-token"
+_closure_preview["stage"] = {"id": "closure", "label": "Closure"}
+_closure_preview["science"]["selection_seed"] = 71001
+_closure_preview["science"]["bootstrap_seed"] = 72001
+_closure_preview["effects"].pop("submit_refinement")
+_closure_preview["effects"]["submit_closure"] = True
+_PAYLOADS["mot3d-closure-confirm"] = deepcopy(_PAYLOADS["mot3d-refinement-confirm"])
+_closure_confirm = _PAYLOADS["mot3d-closure-confirm"]
+_closure_confirm["stage"] = "closure"
+_closure_confirm["chain"]["families"][0].update(
+    {"array_job_id": "710[].zeus-master", "merge_job_id": "711.zeus-master"}
+)
+_closure_confirm["chain"]["families"][1].update(
+    {"array_job_id": "712[].zeus-master", "merge_job_id": "713.zeus-master"}
 )
 
 

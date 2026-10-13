@@ -20,7 +20,9 @@ _GENERIC_STDOUT_LIMIT = 8 * 1024 * 1024
 _GENERIC_STDERR_LIMIT = 256 * 1024
 
 
-def _bounded_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+def _bounded_run(
+    argv: list[str], **kwargs: object
+) -> subprocess.CompletedProcess[bytes]:
     """Narrow injection seam backed by bounded streaming in production."""
     return PinnedSshRunner._run_bounded(argv, kwargs)
 
@@ -40,6 +42,7 @@ class ReceiverKind(Enum):
     MOT_3D_PRELIMINARY_TRANSITION = "mot_3d_preliminary_transition"
     MOT_3D_REFINEMENT_SUBMISSION = "mot_3d_refinement_submission"
     MOT_3D_REFINEMENT_TRANSITION = "mot_3d_refinement_transition"
+    MOT_3D_CLOSURE_SUBMISSION = "mot_3d_closure_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -77,13 +80,21 @@ class _ReceiverDefinition:
     operations: frozenset[ReceiverOperation]
     wrap_process_oserror: bool
     ssh_arguments: tuple[str, ...] = (
-        "-F", "none", "-T",
-        "-o", "BatchMode=yes",
-        "-o", "PasswordAuthentication=no",
-        "-o", "KbdInteractiveAuthentication=no",
-        "-o", "StrictHostKeyChecking=yes",
-        "-o", "ForwardAgent=no",
-        "-o", "ClearAllForwardings=yes",
+        "-F",
+        "none",
+        "-T",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "PasswordAuthentication=no",
+        "-o",
+        "KbdInteractiveAuthentication=no",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ForwardAgent=no",
+        "-o",
+        "ClearAllForwardings=yes",
     )
     pinned_environment: bool = False
     explicit_process_safety: bool = False
@@ -95,127 +106,483 @@ class _ReceiverDefinition:
 
 _RECEIVERS = {
     ReceiverKind.MOT_3D_REFINEMENT_TRANSITION: _ReceiverDefinition(
-        "mot_3d_refinement_transition_remote.py", "<mot-3d-refinement-transition>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE,
-                   ReceiverOperation.STATUS, ReceiverOperation.RETRIEVE}), True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        "mot_3d_refinement_transition_remote.py",
+        "<mot-3d-refinement-transition>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.PREPARE,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.MOT_3D_PRELIMINARY_TRANSITION: _ReceiverDefinition(
-        "mot_3d_preliminary_transition_remote.py", "<mot-3d-preliminary-transition>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE,
-                   ReceiverOperation.STATUS, ReceiverOperation.RETRIEVE}), True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        "mot_3d_preliminary_transition_remote.py",
+        "<mot-3d-preliminary-transition>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.PREPARE,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.MOT_3D_PRELIMINARY_SUBMISSION: _ReceiverDefinition(
-        "mot_3d_preliminary_submission_remote.py", "<mot-3d-preliminary-submission>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT,
-                   ReceiverOperation.STATUS}), True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        "mot_3d_preliminary_submission_remote.py",
+        "<mot-3d-preliminary-submission>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.MOT_3D_REFINEMENT_SUBMISSION: _ReceiverDefinition(
-        "mot_3d_refinement_submission_remote.py", "<mot-3d-refinement-submission>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT,
-                   ReceiverOperation.STATUS}), True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        "mot_3d_refinement_submission_remote.py",
+        "<mot-3d-refinement-submission>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
+    ),
+    ReceiverKind.MOT_3D_CLOSURE_SUBMISSION: _ReceiverDefinition(
+        "mot_3d_closure_submission_remote.py",
+        "<mot-3d-closure-submission>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.MOT_3D_DISCOVERY_TRANSITION: _ReceiverDefinition(
-        "mot_3d_discovery_transition_remote.py", "<mot-3d-discovery-transition>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE,
-                   ReceiverOperation.STATUS, ReceiverOperation.RETRIEVE}),
+        "mot_3d_discovery_transition_remote.py",
+        "<mot-3d-discovery-transition>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.PREPARE,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
         True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.MOT_3D_INDIVIDUAL: _ReceiverDefinition(
-        "mot_3d_zeus_remote.py", "<mot-3d-individual>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
-                   ReceiverOperation.SUBMIT, ReceiverOperation.STATUS,
-                   ReceiverOperation.RETRIEVE}),
+        "mot_3d_zeus_remote.py",
+        "<mot-3d-individual>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.STAGE,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
         True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.MOT_2D_INDIVIDUAL: _ReceiverDefinition(
-        "mot_2d_zeus_remote.py", "<mot-2d-individual>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
-                   ReceiverOperation.SUBMIT, ReceiverOperation.STATUS,
-                   ReceiverOperation.RETRIEVE}),
+        "mot_2d_zeus_remote.py",
+        "<mot-2d-individual>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.STAGE,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
         True,
-        ("-F", "none", "-T", "-o", "BatchMode=yes",
-         "-o", "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
-         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-         "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-         "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-         "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-         "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-         "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR"),
-        True, True, True, False, False, True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.ZEEMAN_INDIVIDUAL: _ReceiverDefinition(
         "zeeman_zeus_remote.py",
         "<zeeman-individual>",
-        frozenset({
-            ReceiverOperation.INSPECT, ReceiverOperation.STAGE,
-            ReceiverOperation.SUBMIT, ReceiverOperation.STATUS,
-            ReceiverOperation.RETRIEVE,
-        }),
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.STAGE,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
         True,
         (
-            "-F", "none", "-T", "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1", "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no", "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no", "-o", "ProxyCommand=none",
-            "-o", "ProxyJump=none", "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no", "-o", "LogLevel=ERROR",
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
         ),
         True,
         True,
@@ -236,11 +603,13 @@ _RECEIVERS = {
     ReceiverKind.CONFIRMATION_SUBMISSION: _ReceiverDefinition(
         "zeus_confirmation_submission_remote.py",
         "<confirmation-submit>",
-        frozenset({
-            ReceiverOperation.INSPECT,
-            ReceiverOperation.SUBMIT,
-            ReceiverOperation.STATUS,
-        }),
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
         True,
     ),
     ReceiverKind.SENSITIVITY_PREPARATION: _ReceiverDefinition(
@@ -252,21 +621,25 @@ _RECEIVERS = {
     ReceiverKind.SENSITIVITY_SUBMISSION: _ReceiverDefinition(
         "zeus_sensitivity_submission_remote.py",
         "<sensitivity-submit>",
-        frozenset({
-            ReceiverOperation.INSPECT,
-            ReceiverOperation.SUBMIT,
-            ReceiverOperation.STATUS,
-        }),
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
         True,
     ),
     ReceiverKind.PRODUCTION_SUBMISSION: _ReceiverDefinition(
         "zeus_production_submission_remote.py",
         "<production-submit>",
-        frozenset({
-            ReceiverOperation.INSPECT,
-            ReceiverOperation.SUBMIT,
-            ReceiverOperation.STATUS,
-        }),
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
         True,
     ),
     ReceiverKind.PRODUCTION_PREPARATION: _ReceiverDefinition(
@@ -305,22 +678,39 @@ _RECEIVERS = {
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
         False,
         (
-            "-F", "none", "-T",
-            "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0",
-            "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no",
-            "-o", "ProxyCommand=none",
-            "-o", "ProxyJump=none",
-            "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no",
-            "-o", "LogLevel=ERROR",
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
         ),
         True,
         True,
@@ -332,22 +722,39 @@ _RECEIVERS = {
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT}),
         False,
         (
-            "-F", "none", "-T",
-            "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0",
-            "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no",
-            "-o", "ProxyCommand=none",
-            "-o", "ProxyJump=none",
-            "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no",
-            "-o", "LogLevel=ERROR",
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
         ),
         True,
         True,
@@ -359,22 +766,39 @@ _RECEIVERS = {
         frozenset({ReceiverOperation.INSPECT, ReceiverOperation.SUBMIT}),
         False,
         (
-            "-F", "none", "-T",
-            "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0",
-            "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no",
-            "-o", "ProxyCommand=none",
-            "-o", "ProxyJump=none",
-            "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no",
-            "-o", "LogLevel=ERROR",
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
         ),
         True,
         True,
@@ -387,22 +811,39 @@ _RECEIVERS = {
         frozenset(),
         False,
         (
-            "-F", "none", "-T",
-            "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0",
-            "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no",
-            "-o", "ProxyCommand=none",
-            "-o", "ProxyJump=none",
-            "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no",
-            "-o", "LogLevel=ERROR",
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
         ),
         True,
         True,
@@ -416,22 +857,39 @@ _RECEIVERS = {
         frozenset(),
         False,
         (
-            "-F", "none", "-T",
-            "-o", "BatchMode=yes",
-            "-o", "PasswordAuthentication=no",
-            "-o", "KbdInteractiveAuthentication=no",
-            "-o", "NumberOfPasswordPrompts=0",
-            "-o", "ConnectTimeout=8",
-            "-o", "ConnectionAttempts=1",
-            "-o", "StrictHostKeyChecking=yes",
-            "-o", "ForwardAgent=no",
-            "-o", "ClearAllForwardings=yes",
-            "-o", "PermitLocalCommand=no",
-            "-o", "ProxyCommand=none",
-            "-o", "ProxyJump=none",
-            "-o", "KnownHostsCommand=none",
-            "-o", "CanonicalizeHostname=no",
-            "-o", "LogLevel=ERROR",
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
         ),
         True,
         True,
@@ -559,8 +1017,12 @@ class PinnedSshPolicy:
     def mot_3d_discovery_transition(
         cls, repository_root: Path, executable: Path, *, timeout: float
     ) -> "PinnedSshPolicy":
-        return cls(ReceiverKind.MOT_3D_DISCOVERY_TRANSITION,
-                   repository_root, executable, timeout)
+        return cls(
+            ReceiverKind.MOT_3D_DISCOVERY_TRANSITION,
+            repository_root,
+            executable,
+            timeout,
+        )
 
     @classmethod
     def mot_3d_preliminary_submission(
@@ -577,8 +1039,12 @@ class PinnedSshPolicy:
     def mot_3d_preliminary_transition(
         cls, repository_root: Path, executable: Path, *, timeout: float
     ) -> "PinnedSshPolicy":
-        return cls(ReceiverKind.MOT_3D_PRELIMINARY_TRANSITION,
-                   repository_root, executable, timeout)
+        return cls(
+            ReceiverKind.MOT_3D_PRELIMINARY_TRANSITION,
+            repository_root,
+            executable,
+            timeout,
+        )
 
     @classmethod
     def mot_3d_refinement_submission(
@@ -602,6 +1068,16 @@ class PinnedSshPolicy:
             timeout,
         )
 
+    @classmethod
+    def mot_3d_closure_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_CLOSURE_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
+        )
 
     @classmethod
     def refinement_submission(
@@ -721,7 +1197,10 @@ class PinnedSshRunner:
     """Run one closed receiver without accepting commands or SSH options."""
 
     def __init__(self, policy: PinnedSshPolicy):
-        if type(policy.receiver) is not ReceiverKind or policy.receiver not in _RECEIVERS:
+        if (
+            type(policy.receiver) is not ReceiverKind
+            or policy.receiver not in _RECEIVERS
+        ):
             raise ValueError("Unsupported pinned SSH receiver.")
         self._policy = policy
 
@@ -734,17 +1213,23 @@ class PinnedSshRunner:
         if type(profile) is not ZeusProfile:
             raise ValueError("Invalid pinned SSH profile.")
         try:
-            validated_profile = ZeusProfile.parse({
-                "username": profile.username,
-                "project_directory": profile.project_directory,
-            })
+            validated_profile = ZeusProfile.parse(
+                {
+                    "username": profile.username,
+                    "project_directory": profile.project_directory,
+                }
+            )
         except ValueError as error:
             raise ValueError("Invalid pinned SSH profile.") from error
         if validated_profile != profile:
             raise ValueError("Invalid pinned SSH profile.")
         definition = _RECEIVERS[self._policy.receiver]
-        if type(operation) is not ReceiverOperation or operation not in definition.operations:
+        if (
+            type(operation) is not ReceiverOperation
+            or operation not in definition.operations
+        ):
             raise ValueError("Unsupported pinned SSH operation.")
+
         def encode_payload() -> str:
             return base64.urlsafe_b64encode(
                 json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -789,16 +1274,18 @@ class PinnedSshRunner:
                 raise ValueError("Invalid individual 2D-MOT project identity.")
             interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
             prefix = f"cd -- {shlex.quote(expected_project)} && exec "
-        remote = prefix + shlex.join((
-            interpreter,
-            "-c",
-            wrapper,
-            script,
-            operation.value,
-            profile.username,
-            profile.project_directory,
-            "-" if definition.payload_stdin else encoded,
-        ))
+        remote = prefix + shlex.join(
+            (
+                interpreter,
+                "-c",
+                wrapper,
+                script,
+                operation.value,
+                profile.username,
+                profile.project_directory,
+                "-" if definition.payload_stdin else encoded,
+            )
+        )
         argv = [
             str(self._policy.ssh_executable),
             *definition.ssh_arguments,
@@ -918,8 +1405,10 @@ class PinnedSshRunner:
         feeder.join(timeout=1)
         for reader in readers:
             reader.join(timeout=1)
-        if exceeded.is_set() or feeder.is_alive() or any(
-            reader.is_alive() for reader in readers
+        if (
+            exceeded.is_set()
+            or feeder.is_alive()
+            or any(reader.is_alive() for reader in readers)
         ):
             terminate()
             process.wait()
@@ -935,10 +1424,12 @@ class PinnedSshRunner:
         if type(profile) is not ZeusProfile:
             raise ValueError("Invalid pinned SSH profile.")
         try:
-            validated_profile = ZeusProfile.parse({
-                "username": profile.username,
-                "project_directory": profile.project_directory,
-            })
+            validated_profile = ZeusProfile.parse(
+                {
+                    "username": profile.username,
+                    "project_directory": profile.project_directory,
+                }
+            )
         except ValueError as error:
             raise ValueError("Invalid pinned SSH profile.") from error
         if validated_profile != profile:
@@ -1037,10 +1528,12 @@ class PinnedSshRunner:
         if type(profile) is not ZeusProfile:
             raise ValueError("Invalid pinned SSH profile.")
         try:
-            validated_profile = ZeusProfile.parse({
-                "username": profile.username,
-                "project_directory": profile.project_directory,
-            })
+            validated_profile = ZeusProfile.parse(
+                {
+                    "username": profile.username,
+                    "project_directory": profile.project_directory,
+                }
+            )
         except ValueError as error:
             raise ValueError("Invalid pinned SSH profile.") from error
         if validated_profile != profile:
@@ -1062,18 +1555,26 @@ class PinnedSshRunner:
         encoded = base64.urlsafe_b64encode(
             json.dumps(paths, separators=(",", ":")).encode()
         ).decode("ascii")
-        script = base64.urlsafe_b64encode(
-            _REMOTE_TRANSFER_SCRIPT.encode()
-        ).decode("ascii")
+        script = base64.urlsafe_b64encode(_REMOTE_TRANSFER_SCRIPT.encode()).decode(
+            "ascii"
+        )
         wrapper = (
             "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
             "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
         )
-        command = shlex.join((
-            "python3", "-c", wrapper, script, operation.value,
-            profile.username, profile.project_directory, encoded,
-            expected_commit,
-        ))
+        command = shlex.join(
+            (
+                "python3",
+                "-c",
+                wrapper,
+                script,
+                operation.value,
+                profile.username,
+                profile.project_directory,
+                encoded,
+                expected_commit,
+            )
+        )
         arguments = [
             str(self._policy.ssh_executable),
             *definition.ssh_arguments,
@@ -1148,8 +1649,10 @@ class PinnedSshRunner:
         writer.join(timeout=1)
         for reader in readers:
             reader.join(timeout=1)
-        if exceeded.is_set() or writer.is_alive() or any(
-            reader.is_alive() for reader in readers
+        if (
+            exceeded.is_set()
+            or writer.is_alive()
+            or any(reader.is_alive() for reader in readers)
         ):
             process.kill()
             raise ZeusPreparationError("remote_response_invalid")

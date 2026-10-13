@@ -16,6 +16,8 @@ FAMILIES = ("angled_donut", "single_pass")
 @dataclass(frozen=True)
 class ReceiverDescriptor:
     stage: str
+    input_role: str
+    transition_receipt: str
     jobs: Mapping[str, Mapping[str, str]]
     files: frozenset[str]
     science: Mapping[str, object]
@@ -27,6 +29,15 @@ class ReceiverDescriptor:
     def __post_init__(self):
         if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.stage) is None:
             raise ValueError("invalid receiver stage")
+        if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.input_role) is None:
+            raise ValueError("invalid receiver input role")
+        expected_transition_receipts = {
+            "preliminary_check": "preliminary_check.json",
+            "refinement": "refinement.json",
+            "closure": "refinement_to_closure.json",
+        }
+        if self.transition_receipt != expected_transition_receipts.get(self.stage):
+            raise ValueError("invalid receiver transition receipt")
         if set(self.jobs) != set(FAMILIES):
             raise ValueError("invalid receiver jobs")
         jobs = {}
@@ -733,11 +744,14 @@ def main(*, trusted_root_override=None):
     if (
         identity["science"] != expected_science
         or stage.get("classification") != expected_science["classification"]
-        or stage.get("input_role") != _config().stage
+        or stage.get("input_role") != _config().input_role
     ):
         fail(_config().preparation_error)
     transition = json_bytes(
-        read_relative_at(campaign_fd, f".mot_ui/transitions/{_config().stage}.json")
+        read_relative_at(
+            campaign_fd,
+            f".mot_ui/transitions/{_config().transition_receipt}",
+        )
     )
     if (
         digest(transition) != identity["remote_transition_receipt_sha256"]

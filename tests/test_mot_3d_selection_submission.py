@@ -118,6 +118,8 @@ def test_remote_descriptors_are_deeply_immutable_and_exact():
     with pytest.raises(ValueError):
         remote_core.ReceiverDescriptor(
             stage="refinement",
+            input_role="refinement",
+            transition_receipt="refinement.json",
             jobs=refinement_remote.JOBS,
             files=refinement_remote.FILES,
             science={**refinement_remote.SCIENCE, "selection_seed": True},

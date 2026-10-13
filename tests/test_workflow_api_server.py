@@ -27,6 +27,7 @@ from workflow_api.error_catalog import ERROR_DOMAINS
 from workflow_api.mot_2d_sources import list_sources
 from workflow_api.mot_2d_plan import RELEVANT_FILES
 from workflow_api.mot_3d_refinement_submission import Mot3DRefinementSubmissionError
+from workflow_api.mot_3d_closure_submission import Mot3DClosureSubmissionError
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.zeus_snapshot import ZeusProfile
@@ -471,6 +472,7 @@ def running_server(
     mot_3d_discovery_transition_service=None,
     mot_3d_preliminary_submission_service=None,
     mot_3d_refinement_submission_service=None,
+    mot_3d_closure_submission_service=None,
     mot_3d_preliminary_transition_service=None,
     mot_3d_refinement_transition_service=None,
 ):
@@ -490,6 +492,7 @@ def running_server(
         mot_3d_preliminary_submission_service
     )
     handler.mot_3d_refinement_submission_service = mot_3d_refinement_submission_service
+    handler.mot_3d_closure_submission_service = mot_3d_closure_submission_service
     handler.mot_3d_preliminary_transition_service = (
         mot_3d_preliminary_transition_service
     )
@@ -561,6 +564,42 @@ def test_refinement_submission_subtype_uses_its_own_error_domain():
         assert status == int(expected.status)
         assert payload["error"] == {
             "code": "refinement_partial_submission",
+            "message": expected.message,
+        }
+
+
+class _ClosureSubmissionFailure:
+    def preview(self, payload, *, session_id):
+        raise Mot3DClosureSubmissionError("closure_partial_submission")
+
+
+def test_closure_submission_subtype_uses_its_own_error_domain():
+    service = _ClosureSubmissionFailure()
+    with running_server(
+        request_count=2, mot_3d_closure_submission_service=service
+    ) as base_url:
+        status, headers, payload = request_json(
+            f"{base_url}/api/v1/session",
+            headers={"Sec-Fetch-Site": "same-origin"},
+        )
+        assert status == 200
+        trusted = _session_headers(
+            base_url,
+            headers["Set-Cookie"].split(";", 1)[0],
+            payload["data"]["csrf_token"],
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/zeus/submissions/mot-3d-closure/preview",
+            method="POST",
+            headers=trusted,
+            body="{}",
+        )
+        expected = ERROR_DOMAINS["mot_3d_closure_submission"].entries[
+            "closure_partial_submission"
+        ]
+        assert status == int(expected.status)
+        assert payload["error"] == {
+            "code": "closure_partial_submission",
             "message": expected.message,
         }
 

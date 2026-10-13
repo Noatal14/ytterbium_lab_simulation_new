@@ -293,6 +293,10 @@ ROUTE_UNAVAILABLE = _frozen(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Refinement submission is unavailable.",
         ),
+        "mot_3d_closure_submission_unavailable": _spec(
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            "3D Closure submission is unavailable.",
+        ),
         "mot_3d_preliminary_transition_unavailable": _spec(
             HTTPStatus.SERVICE_UNAVAILABLE,
             "3D Preliminary-check result synchronization is unavailable.",
@@ -1050,6 +1054,34 @@ MOT_3D_REFINEMENT_SUBMISSION = _generic_stage(
     },
     "mot_3d_refinement_submission_failed",
 )
+MOT_3D_CLOSURE_SUBMISSION = _generic_stage(
+    {
+        "request_invalid",
+        "profile_invalid",
+        "campaign_not_found",
+        "closure_preparation_invalid",
+        "closure_already_started",
+        "closure_partial_submission",
+        "closure_submission_outcome_unknown",
+        "remote_checkout_mismatch",
+        "remote_response_invalid",
+        "local_files_changed",
+        "too_many_pending_previews",
+        "confirmation_invalid",
+        "confirmation_expired",
+        "zeus_authentication_required",
+        "zeus_host_key_untrusted",
+        "zeus_timeout",
+        "zeus_unreachable",
+    },
+    "3D Closure submission stopped safely.",
+    {
+        "closure_already_started",
+        "closure_partial_submission",
+        "closure_submission_outcome_unknown",
+    },
+    "mot_3d_closure_submission_failed",
+)
 MOT_3D_PRELIMINARY_TRANSITION = _generic_stage(
     {
         "request_invalid",
@@ -1244,6 +1276,7 @@ ERROR_DOMAINS: Mapping[str, ErrorDomain] = MappingProxyType(
         "mot_3d_discovery_transition": MOT_3D_DISCOVERY_TRANSITION,
         "mot_3d_preliminary_submission": MOT_3D_PRELIMINARY_SUBMISSION,
         "mot_3d_refinement_submission": MOT_3D_REFINEMENT_SUBMISSION,
+        "mot_3d_closure_submission": MOT_3D_CLOSURE_SUBMISSION,
         "mot_3d_preliminary_transition": MOT_3D_PRELIMINARY_TRANSITION,
         "mot_3d_refinement_transition": MOT_3D_REFINEMENT_TRANSITION,
     }

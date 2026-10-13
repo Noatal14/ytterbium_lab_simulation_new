@@ -115,6 +115,10 @@ from workflow_api.mot_3d_refinement_submission import (
     Mot3DRefinementSubmissionCoordinator,
     Mot3DRefinementSubmissionError,
 )
+from workflow_api.mot_3d_closure_submission import (
+    Mot3DClosureSubmissionCoordinator,
+    Mot3DClosureSubmissionError,
+)
 from workflow_api.mot_3d_preliminary_transition import (
     Mot3DPreliminaryTransitionCoordinator,
     Mot3DPreliminaryTransitionError,
@@ -323,6 +327,36 @@ def _post_routes() -> tuple[PostRoute, ...]:
             "3D Refinement submission is unavailable.",
             HTTPStatus.CREATED,
             Mot3DRefinementSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-closure/status",
+            "mot_3d_closure_submission_service",
+            "status",
+            "payload",
+            "mot_3d_closure_submission_unavailable",
+            "3D Closure submission is unavailable.",
+            HTTPStatus.OK,
+            Mot3DClosureSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-closure/preview",
+            "mot_3d_closure_submission_service",
+            "preview",
+            "session_kw",
+            "mot_3d_closure_submission_unavailable",
+            "3D Closure submission is unavailable.",
+            HTTPStatus.OK,
+            Mot3DClosureSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-closure/confirm",
+            "mot_3d_closure_submission_service",
+            "confirm",
+            "session_kw",
+            "mot_3d_closure_submission_unavailable",
+            "3D Closure submission is unavailable.",
+            HTTPStatus.CREATED,
+            Mot3DClosureSubmissionError,
         ),
         (
             "/api/v1/zeus/mot-3d/preliminary-transition/status",
@@ -815,6 +849,16 @@ def _post_routes() -> tuple[PostRoute, ...]:
             Exception,
         ),
         (
+            "/api/v1/individual-runs/zeeman/zeus/recover",
+            "individual_zeeman_api",
+            "recover_zeus",
+            "session_kw",
+            "individual_zeeman_unavailable",
+            "Individual Zeeman runs are unavailable.",
+            HTTPStatus.OK,
+            Exception,
+        ),
+        (
             "/api/v1/individual-runs/mot-2d/preview",
             "individual_mot_2d_api",
             "preview",
@@ -868,6 +912,16 @@ def _post_routes() -> tuple[PostRoute, ...]:
             "/api/v1/individual-runs/mot-2d/zeus/refresh",
             "individual_mot_2d_api",
             "refresh_zeus",
+            "session_kw",
+            "individual_mot_2d_unavailable",
+            "Individual 2D-MOT runs are unavailable.",
+            HTTPStatus.OK,
+            Exception,
+        ),
+        (
+            "/api/v1/individual-runs/mot-2d/zeus/recover",
+            "individual_mot_2d_api",
+            "recover_zeus",
             "session_kw",
             "individual_mot_2d_unavailable",
             "Individual 2D-MOT runs are unavailable.",
@@ -934,6 +988,16 @@ def _post_routes() -> tuple[PostRoute, ...]:
             HTTPStatus.OK,
             Exception,
         ),
+        (
+            "/api/v1/individual-runs/mot-3d/zeus/recover",
+            "individual_mot_3d_api",
+            "recover_zeus",
+            "session_kw",
+            "individual_mot_3d_unavailable",
+            "Individual 3D-MOT runs are unavailable.",
+            HTTPStatus.OK,
+            Exception,
+        ),
     ]
     return tuple(PostRoute(*row) for row in rows)
 
@@ -952,6 +1016,14 @@ _INDIVIDUAL_ZEUS_ERRORS = {
     "profile_invalid": (
         HTTPStatus.BAD_REQUEST,
         "The Zeus connection profile is invalid.",
+    ),
+    "recovery_request_invalid": (
+        HTTPStatus.BAD_REQUEST,
+        "The Zeus recovery evidence is invalid.",
+    ),
+    "submission_identity_invalid": (
+        HTTPStatus.CONFLICT,
+        "The durable Zeus submission identity is invalid.",
     ),
     "run_not_submittable": (
         HTTPStatus.CONFLICT,
@@ -1036,6 +1108,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     mot_3d_refinement_submission_service: (
         Mot3DRefinementSubmissionCoordinator | None
     ) = None
+    mot_3d_closure_submission_service: Mot3DClosureSubmissionCoordinator | None = None
     mot_3d_preliminary_transition_service: (
         Mot3DPreliminaryTransitionCoordinator | None
     ) = None
@@ -1071,6 +1144,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 and self.mot_3d_discovery_transition_service is None
                 and self.mot_3d_preliminary_submission_service is None
                 and self.mot_3d_refinement_submission_service is None
+                and self.mot_3d_closure_submission_service is None
                 and self.mot_3d_preliminary_transition_service is None
                 and self.mot_3d_refinement_transition_service is None
                 and self.zeus_service is None
@@ -1349,6 +1423,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             resolved = resolve_error("mot_3d_refinement_submission", error.code)
             self._error(resolved.code, resolved.message, resolved.status)
             return
+        except Mot3DClosureSubmissionError as error:
+            resolved = resolve_error("mot_3d_closure_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status)
+            return
         except Mot3DPreliminarySubmissionError as error:
             resolved = resolve_error("mot_3d_preliminary_submission", error.code)
             self._error(resolved.code, resolved.message, resolved.status)
@@ -1542,6 +1620,7 @@ def main() -> None:
 
     authority = issue_execution_authority()
     from workflow_api.run_progress import IndividualRunProgressRegistry
+
     progress_registry = IndividualRunProgressRegistry()
     zeeman_creation = ZeemanRunCreationService(
         WorkflowHandler.repository_root,
@@ -1664,6 +1743,13 @@ def main() -> None:
     )
     WorkflowHandler.mot_3d_refinement_submission_service = (
         Mot3DRefinementSubmissionCoordinator(
+            WorkflowHandler.repository_root,
+            Path("/usr/bin/ssh"),
+            Path("/usr/bin/git"),
+        )
+    )
+    WorkflowHandler.mot_3d_closure_submission_service = (
+        Mot3DClosureSubmissionCoordinator(
             WorkflowHandler.repository_root,
             Path("/usr/bin/ssh"),
             Path("/usr/bin/git"),

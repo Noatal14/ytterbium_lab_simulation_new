@@ -95,6 +95,9 @@ class _IndividualService:
     def refresh_zeus(self, payload, *, session_id):
         return self._result("zeeman-zeus-refresh", payload, session_id)
 
+    def recover_zeus(self, payload, *, session_id):
+        return self._result("zeeman-zeus-recover", payload, session_id)
+
 
 class _Mot2DIndividualService(_IndividualService):
     def sources(self):
@@ -118,6 +121,9 @@ class _Mot2DIndividualService(_IndividualService):
     def refresh_zeus(self, payload, *, session_id):
         return self._result("mot2d-zeus-refresh", payload, session_id)
 
+    def recover_zeus(self, payload, *, session_id):
+        return self._result("mot2d-zeus-recover", payload, session_id)
+
 
 class _Mot3DIndividualService(_IndividualService):
     def sources(self):
@@ -140,6 +146,9 @@ class _Mot3DIndividualService(_IndividualService):
 
     def refresh_zeus(self, payload, *, session_id):
         return self._result("mot3d-zeus-refresh", payload, session_id)
+
+    def recover_zeus(self, payload, *, session_id):
+        return self._result("mot3d-zeus-recover", payload, session_id)
 
 
 @contextmanager
@@ -180,6 +189,11 @@ def _server(
     )
     handler.mot_3d_refinement_submission_service = (
         _Service("mot3d-refinement", ledger, values, "mot3d-refinement-status")
+        if services
+        else None
+    )
+    handler.mot_3d_closure_submission_service = (
+        _Service("mot3d-closure", ledger, values, "mot3d-closure-status")
         if services
         else None
     )
@@ -425,8 +439,8 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     second, _, _ = collect_success(monkeypatch)
     assert first == second == expected
     assert (
-        len(first["cases"]) == 86
-        and len({(row["method"], row["path"]) for row in first["cases"]}) == 86
+        len(first["cases"]) == 92
+        and len({(row["method"], row["path"]) for row in first["cases"]}) == 92
     )
     assert all(row["body"].get("api_version") == 1 for row in first["cases"])
     assert all(
@@ -455,6 +469,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-refinement-status",
         "mot3d-refinement-preview",
         "mot3d-refinement-confirm",
+        "mot3d-closure-status",
+        "mot3d-closure-preview",
+        "mot3d-closure-confirm",
         "mot3d-preliminary-transition-status",
         "mot3d-preliminary-transition-preview",
         "mot3d-preliminary-transition-confirm",
@@ -495,12 +512,14 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "zeeman-zeus-preview",
         "zeeman-zeus-confirm",
         "zeeman-zeus-refresh",
+        "zeeman-zeus-recover",
         "mot2d-run-preview",
         "mot2d-run-confirm",
         "mot2d-local-start",
         "mot2d-zeus-preview",
         "mot2d-zeus-confirm",
         "mot2d-zeus-refresh",
+        "mot2d-zeus-recover",
         "production-status",
         "production-preview",
         "production-confirm",
@@ -516,6 +535,7 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-zeus-preview",
         "mot3d-zeus-confirm",
         "mot3d-zeus-refresh",
+        "mot3d-zeus-recover",
     ]
     session_ids = {entry[2] for entry in ledger if entry[2] is not None}
     assert len(session_ids) == 1
@@ -763,6 +783,36 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_refinement_submission_unavailable",
             "3D Refinement submission is unavailable.",
             "Mot3DRefinementSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-closure/status",
+            "mot_3d_closure_submission_service",
+            "status",
+            "payload",
+            200,
+            "mot_3d_closure_submission_unavailable",
+            "3D Closure submission is unavailable.",
+            "Mot3DClosureSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-closure/preview",
+            "mot_3d_closure_submission_service",
+            "preview",
+            "session_kw",
+            200,
+            "mot_3d_closure_submission_unavailable",
+            "3D Closure submission is unavailable.",
+            "Mot3DClosureSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-closure/confirm",
+            "mot_3d_closure_submission_service",
+            "confirm",
+            "session_kw",
+            201,
+            "mot_3d_closure_submission_unavailable",
+            "3D Closure submission is unavailable.",
+            "Mot3DClosureSubmissionError",
         ),
         (
             "/api/v1/zeus/mot-3d/preliminary-transition/status",
@@ -1255,6 +1305,16 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "Exception",
         ),
         (
+            "/api/v1/individual-runs/zeeman/zeus/recover",
+            "individual_zeeman_api",
+            "recover_zeus",
+            "session_kw",
+            200,
+            "individual_zeeman_unavailable",
+            "Individual Zeeman runs are unavailable.",
+            "Exception",
+        ),
+        (
             "/api/v1/individual-runs/mot-2d/preview",
             "individual_mot_2d_api",
             "preview",
@@ -1315,6 +1375,16 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "Exception",
         ),
         (
+            "/api/v1/individual-runs/mot-2d/zeus/recover",
+            "individual_mot_2d_api",
+            "recover_zeus",
+            "session_kw",
+            200,
+            "individual_mot_2d_unavailable",
+            "Individual 2D-MOT runs are unavailable.",
+            "Exception",
+        ),
+        (
             "/api/v1/individual-runs/mot-3d/preview",
             "individual_mot_3d_api",
             "preview",
@@ -1368,6 +1438,16 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "/api/v1/individual-runs/mot-3d/zeus/refresh",
             "individual_mot_3d_api",
             "refresh_zeus",
+            "session_kw",
+            200,
+            "individual_mot_3d_unavailable",
+            "Individual 3D-MOT runs are unavailable.",
+            "Exception",
+        ),
+        (
+            "/api/v1/individual-runs/mot-3d/zeus/recover",
+            "individual_mot_3d_api",
+            "recover_zeus",
             "session_kw",
             200,
             "individual_mot_3d_unavailable",

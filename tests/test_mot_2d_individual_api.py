@@ -8,8 +8,11 @@ from workflow_api.zeus_snapshot import ZeusProfile
 
 
 class Creation:
-    def preview(self, request, session): return {"request": request, "session": session}
-    def confirm(self, token, session): return {"token": token, "session": session}
+    def preview(self, request, session):
+        return {"request": request, "session": session}
+
+    def confirm(self, token, session):
+        return {"token": token, "session": session}
 
 
 class Local:
@@ -19,9 +22,17 @@ class Local:
 
 
 class Zeus:
-    def preview(self, **kwargs): return kwargs
-    def confirm(self, **kwargs): return kwargs
-    def refresh(self, **kwargs): return kwargs
+    def preview(self, **kwargs):
+        return kwargs
+
+    def confirm(self, **kwargs):
+        return kwargs
+
+    def refresh(self, **kwargs):
+        return kwargs
+
+    def recover(self, **kwargs):
+        return kwargs
 
 
 REQUEST = {
@@ -38,49 +49,123 @@ REQUEST = {
 }
 
 
-def api(tmp_path): return IndividualMot2DApi(tmp_path, Creation(), Local(), Zeus())
+def api(tmp_path):
+    return IndividualMot2DApi(tmp_path, Creation(), Local(), Zeus())
 
 
 def test_closed_creation_and_execution_boundaries(tmp_path, monkeypatch):
-    monkeypatch.setattr("workflow_api.mot_2d_individual_api.inspect_run", lambda *_: SimpleNamespace(family="mot_2d", run={"family":"mot_2d","execution_mode":"local"}, state="configured", integrity="active"))
+    monkeypatch.setattr(
+        "workflow_api.mot_2d_individual_api.inspect_run",
+        lambda *_: SimpleNamespace(
+            family="mot_2d",
+            run={"family": "mot_2d", "execution_mode": "local"},
+            state="configured",
+            integrity="active",
+        ),
+    )
     boundary = api(tmp_path)
     assert boundary.preview(REQUEST, session_id="owner")["session"] == "owner"
-    assert boundary.confirm({"preview_token": "token"}, session_id="owner") == {"token": "token", "session": "owner"}
-    assert boundary.start_local({"run_id": "mot2d-one"}, session_id="owner") == {"status": "queued", "run_id": "mot2d-one", "execution_mode": "local"}
-    profile = {"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}
-    reviewed = boundary.preview_zeus({"run_id": "mot2d-one", "profile": profile}, session_id="owner")
+    assert boundary.confirm({"preview_token": "token"}, session_id="owner") == {
+        "token": "token",
+        "session": "owner",
+    }
+    assert boundary.start_local({"run_id": "mot2d-one"}, session_id="owner") == {
+        "status": "queued",
+        "run_id": "mot2d-one",
+        "execution_mode": "local",
+    }
+    profile = {
+        "username": "tal.noa",
+        "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+    }
+    reviewed = boundary.preview_zeus(
+        {"run_id": "mot2d-one", "profile": profile}, session_id="owner"
+    )
     assert reviewed["profile"] == ZeusProfile.parse(profile)
-    assert boundary.confirm_zeus({"preview_token": "ztoken"}, session_id="owner")["session"] == "owner"
-    assert boundary.refresh_zeus({"run_id": "mot2d-one", "profile": profile}, session_id="owner")["run_id"] == "mot2d-one"
+    assert (
+        boundary.confirm_zeus({"preview_token": "ztoken"}, session_id="owner")[
+            "session"
+        ]
+        == "owner"
+    )
+    assert (
+        boundary.refresh_zeus(
+            {"run_id": "mot2d-one", "profile": profile}, session_id="owner"
+        )["run_id"]
+        == "mot2d-one"
+    )
+    recovered = boundary.recover_zeus(
+        {
+            "run_id": "mot2d-one",
+            "profile": profile,
+        },
+        session_id="fresh",
+    )
+    assert recovered["session"] == "fresh"
+    assert "expected_job_id" not in recovered
+    assert "submission_key" not in recovered
 
 
 @pytest.mark.parametrize(
     "snapshot",
     [
-        SimpleNamespace(family="zeeman", run={"family":"zeeman","execution_mode":"local"}, state="configured", integrity="active"),
-        SimpleNamespace(family="mot_2d", run={"family":"mot_2d","execution_mode":"zeus"}, state="configured", integrity="active"),
-        SimpleNamespace(family="mot_2d", run={"family":"mot_2d","execution_mode":"local"}, state="running", integrity="active"),
-        SimpleNamespace(family="mot_2d", run={"family":"mot_2d","execution_mode":"local"}, state="configured", integrity="invalid"),
+        SimpleNamespace(
+            family="zeeman",
+            run={"family": "zeeman", "execution_mode": "local"},
+            state="configured",
+            integrity="active",
+        ),
+        SimpleNamespace(
+            family="mot_2d",
+            run={"family": "mot_2d", "execution_mode": "zeus"},
+            state="configured",
+            integrity="active",
+        ),
+        SimpleNamespace(
+            family="mot_2d",
+            run={"family": "mot_2d", "execution_mode": "local"},
+            state="running",
+            integrity="active",
+        ),
+        SimpleNamespace(
+            family="mot_2d",
+            run={"family": "mot_2d", "execution_mode": "local"},
+            state="configured",
+            integrity="invalid",
+        ),
     ],
 )
-def test_local_start_preflight_rejects_before_scheduling(tmp_path, monkeypatch, snapshot):
-    local=Local(); local.calls=0
-    def submit(*args): local.calls += 1; return SimpleNamespace(run_id=args[-1])
-    local.submit=submit
-    boundary=IndividualMot2DApi(tmp_path, Creation(), local, Zeus())
-    monkeypatch.setattr("workflow_api.mot_2d_individual_api.inspect_run", lambda *_: snapshot)
+def test_local_start_preflight_rejects_before_scheduling(
+    tmp_path, monkeypatch, snapshot
+):
+    local = Local()
+    local.calls = 0
+
+    def submit(*args):
+        local.calls += 1
+        return SimpleNamespace(run_id=args[-1])
+
+    local.submit = submit
+    boundary = IndividualMot2DApi(tmp_path, Creation(), local, Zeus())
+    monkeypatch.setattr(
+        "workflow_api.mot_2d_individual_api.inspect_run", lambda *_: snapshot
+    )
     with pytest.raises(ValueError, match="not ready"):
-        boundary.start_local({"run_id":"mot2d-one"}, session_id="owner")
+        boundary.start_local({"run_id": "mot2d-one"}, session_id="owner")
     assert local.calls == 0
 
 
 def test_local_start_integrity_failure_never_reaches_pool(tmp_path, monkeypatch):
-    local=Local(); local.calls=0
-    local.submit=lambda *_: setattr(local, "calls", local.calls + 1)
-    boundary=IndividualMot2DApi(tmp_path, Creation(), local, Zeus())
-    monkeypatch.setattr("workflow_api.mot_2d_individual_api.inspect_run", lambda *_: (_ for _ in ()).throw(OSError("swapped")))
+    local = Local()
+    local.calls = 0
+    local.submit = lambda *_: setattr(local, "calls", local.calls + 1)
+    boundary = IndividualMot2DApi(tmp_path, Creation(), local, Zeus())
+    monkeypatch.setattr(
+        "workflow_api.mot_2d_individual_api.inspect_run",
+        lambda *_: (_ for _ in ()).throw(OSError("swapped")),
+    )
     with pytest.raises(ValueError, match="could not be verified"):
-        boundary.start_local({"run_id":"mot2d-one"}, session_id="owner")
+        boundary.start_local({"run_id": "mot2d-one"}, session_id="owner")
     assert local.calls == 0
 
 

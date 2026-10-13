@@ -872,6 +872,132 @@
       "message": "Campaign record has an unsupported workflow kind."
     },
     {
+      "domain": "mot_3d_closure_submission",
+      "case": "<fallback>",
+      "code": "mot_3d_closure_submission_failed",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "closure_already_started",
+      "code": "closure_already_started",
+      "status": 409,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "closure_partial_submission",
+      "code": "closure_partial_submission",
+      "status": 409,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "closure_preparation_invalid",
+      "code": "closure_preparation_invalid",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "closure_submission_outcome_unknown",
+      "code": "closure_submission_outcome_unknown",
+      "status": 409,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_closure_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "3D Closure submission stopped safely."
+    },
+    {
       "domain": "mot_3d_discovery_submission",
       "case": "<fallback>",
       "code": "mot_3d_discovery_submission_failed",
@@ -2851,6 +2977,13 @@
       "code": "mot_3d_bootstrap_unavailable",
       "status": 503,
       "message": "3D campaign preparation is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "mot_3d_closure_submission_unavailable",
+      "code": "mot_3d_closure_submission_unavailable",
+      "status": 503,
+      "message": "3D Closure submission is unavailable."
     },
     {
       "domain": "route_unavailable",

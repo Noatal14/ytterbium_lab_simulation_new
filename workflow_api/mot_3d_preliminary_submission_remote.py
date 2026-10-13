@@ -48,6 +48,8 @@ CODE_NAMES = frozenset(
 )
 DESCRIPTOR = core.ReceiverDescriptor(
     stage="preliminary_check",
+    input_role="preliminary_check",
+    transition_receipt="preliminary_check.json",
     jobs=JOBS,
     files=FILES,
     science=SCIENCE,

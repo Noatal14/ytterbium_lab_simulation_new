@@ -526,6 +526,91 @@ export const serverErrorCatalog = [
     "semantic": "other"
   },
   {
+    "domain": "mot_3d_closure_submission",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "closure_already_started",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "closure_partial_submission",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "closure_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "closure_submission_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "remote_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "zeus_authentication_required",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "zeus_host_key_untrusted",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_closure_submission",
+    "code": "zeus_unreachable",
+    "semantic": "other"
+  },
+  {
     "domain": "mot_3d_discovery_submission",
     "code": "campaign_not_found",
     "semantic": "other"
@@ -1888,6 +1973,11 @@ export const serverErrorCatalog = [
   {
     "domain": "route_unavailable",
     "code": "mot_3d_bootstrap_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "mot_3d_closure_submission_unavailable",
     "semantic": "other"
   },
   {
