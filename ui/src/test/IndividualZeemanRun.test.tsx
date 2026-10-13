@@ -65,6 +65,23 @@ describe("individual Zeeman wizard", () => {
     expect(api.confirm).not.toHaveBeenCalled();
   });
 
+  it("keeps validation inside Configure instead of presenting it as a user step", async () => {
+    const api = fake();
+    const pending = deferred<Awaited<ReturnType<IndividualZeemanApi["preview"]>>>();
+    vi.mocked(api.preview).mockReturnValue(pending.promise);
+    const user = userEvent.setup();
+    render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
+
+    expect(screen.queryByText("Validate", { selector: ".run-stepper li" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /validate and review/i }));
+    expect(screen.getByRole("button", { name: "Validating…" })).toBeDisabled();
+    expect(screen.getByText("Configure", { selector: ".run-stepper li" })).toHaveAttribute("aria-current", "step");
+
+    pending.resolve(preview);
+    await screen.findByRole("heading", { name: /validated run plan/i });
+    expect(screen.getByText("Review", { selector: ".run-stepper li" })).toHaveAttribute("aria-current", "step");
+  });
+
   it("keeps creation and local start as separate explicit clicks", async () => {
     const api = fake(); const user = userEvent.setup(); render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
     await user.click(screen.getByRole("button", { name: /validate and review/i }));
