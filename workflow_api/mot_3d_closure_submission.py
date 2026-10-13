@@ -97,14 +97,16 @@ def _read_relative(root_fd: int, relative: str, limit=8 * 1024 * 1024) -> bytes:
 
 
 def validate_prior_transition_sync(
-    campaign_fd: int, expected_paths: frozenset[str]
+    campaign_fd: int,
+    expected_paths: frozenset[str],
+    receipt_name: str = "refinement_to_closure.json",
 ) -> tuple[dict[str, object], bytes]:
     """Return the exact descriptor-bound Stage3 synchronization attestation."""
     mot_fd = _open_directory_at(campaign_fd, ".mot_ui", create=False)
     try:
         sync_fd = _open_directory_at(mot_fd, "sync", create=False)
         try:
-            raw = _bounded_read_at(sync_fd, "refinement_to_closure.json", 256 * 1024)
+            raw = _bounded_read_at(sync_fd, receipt_name, 256 * 1024)
         finally:
             os.close(sync_fd)
     finally:
@@ -151,6 +153,30 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
     partial_code = "closure_partial_submission"
     outcome_unknown_code = "closure_submission_outcome_unknown"
     completed_action = "await_result_synchronization"
+    authority_class = Mot3DRefinementTransitionCoordinator
+    expected_stage = "closure"
+    files = FILES
+    code_files = CODE_FILES
+    preparation_error = "closure_preparation_invalid"
+    validation_candidates = CLOSURE_TOPOLOGY.candidates_per_family
+    sync_receipt_name = "refinement_to_closure.json"
+
+    def _science(self, manifest):
+        design = manifest.get("design", {})
+        return {
+            "classification": "candidate_selection_not_final_validation",
+            "candidates_per_family": CLOSURE_TOPOLOGY.candidates_per_family,
+            "input_ensembles": 4,
+            "particles_per_ensemble": CLOSURE_SCIENTIFIC_DESIGN.particles_per_ensemble,
+            "total_particles": 3000,
+            "recoil_seeds": [42001, 42002, 42003],
+            "dt_s": design.get("screening_dt_s"),
+            "t_max_s": 0.1,
+            "solver": design.get("solver"),
+            "selection_seed": CLOSURE_SCIENTIFIC_DESIGN.selection_seed,
+            "bootstrap_replicates": 10_000,
+            "bootstrap_seed": CLOSURE_SCIENTIFIC_DESIGN.bootstrap_seed,
+        }
 
     @staticmethod
     def _validate(state, operation: str):
@@ -168,7 +194,7 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
         return PinnedSshMot3DClosureSubmissionTransport(self.root, self.ssh, profile)
 
     def _plan(self, request: Mapping[str, object]):
-        authority = Mot3DRefinementTransitionCoordinator(
+        authority = self.authority_class(
             self.root,
             self.ssh,
             self.git,
@@ -179,41 +205,28 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
             campaign_id, profile, campaign, manifest, commit = base[:5]
             expected_sync_paths = base[9]
             if (
-                manifest.get("stage") != "closure"
+                manifest.get("stage") != self.expected_stage
                 or manifest.get("name") != campaign.name
             ):
                 raise ValueError
             campaign_fd = os.open(campaign, _DIRECTORY_FLAGS)
             try:
                 sync, sync_raw = validate_prior_transition_sync(
-                    campaign_fd, expected_sync_paths
+                    campaign_fd, expected_sync_paths, self.sync_receipt_name
                 )
                 files = {
-                    name: _sha(_read_relative(campaign_fd, name)) for name in FILES
+                    name: _sha(_read_relative(campaign_fd, name)) for name in self.files
                 }
             finally:
                 os.close(campaign_fd)
-            design = manifest.get("design", {})
-            science = {
-                "classification": "candidate_selection_not_final_validation",
-                "candidates_per_family": CLOSURE_TOPOLOGY.candidates_per_family,
-                "input_ensembles": 4,
-                "particles_per_ensemble": CLOSURE_SCIENTIFIC_DESIGN.particles_per_ensemble,
-                "total_particles": 3000,
-                "recoil_seeds": [42001, 42002, 42003],
-                "dt_s": design.get("screening_dt_s"),
-                "t_max_s": 0.1,
-                "solver": design.get("solver"),
-                "selection_seed": CLOSURE_SCIENTIFIC_DESIGN.selection_seed,
-                "bootstrap_replicates": 10_000,
-                "bootstrap_seed": CLOSURE_SCIENTIFIC_DESIGN.bootstrap_seed,
-            }
+            science = self._science(manifest)
             if science["dt_s"] != 1e-5 or science["solver"] != "RK4StHybridCustom":
                 raise ValueError
             root_fd = os.open(self.root, _DIRECTORY_FLAGS)
             try:
                 code_files = {
-                    name: _sha(_read_relative(root_fd, name)) for name in CODE_FILES
+                    name: _sha(_read_relative(root_fd, name))
+                    for name in self.code_files
                 }
             finally:
                 os.close(root_fd)
@@ -257,7 +270,7 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
             ):
                 raise ValueError
         except Exception as exc:
-            raise Mot3DClosureSubmissionError("closure_preparation_invalid") from exc
+            raise Mot3DClosureSubmissionError(self.preparation_error) from exc
         revision = subprocess.run(
             [self.git, "-C", self.root, "rev-parse", "HEAD"],
             capture_output=True,
@@ -315,7 +328,7 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
             raise Mot3DClosureSubmissionError(exc.code) from exc
         value["validation"] = {
             "status": "not_started",
-            "expected_candidates_per_family": CLOSURE_TOPOLOGY.candidates_per_family,
+            "expected_candidates_per_family": self.validation_candidates,
             "expected_recoil_seeds_per_candidate": 3,
         }
         return value

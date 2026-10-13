@@ -16,7 +16,7 @@ FAMILIES = ("angled_donut", "single_pass")
 @dataclass(frozen=True)
 class ReceiverDescriptor:
     stage: str
-    input_role: str
+    input_role: str | tuple[str, ...]
     transition_receipt: str
     jobs: Mapping[str, Mapping[str, str]]
     files: frozenset[str]
@@ -29,12 +29,24 @@ class ReceiverDescriptor:
     def __post_init__(self):
         if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.stage) is None:
             raise ValueError("invalid receiver stage")
-        if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.input_role) is None:
-            raise ValueError("invalid receiver input role")
+        if isinstance(self.input_role, str):
+            if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.input_role) is None:
+                raise ValueError("invalid receiver input role")
+        elif (
+            type(self.input_role) is not tuple
+            or not self.input_role
+            or any(
+                not isinstance(role, str)
+                or re.fullmatch(r"[a-z][a-z0-9_]{0,63}", role) is None
+                for role in self.input_role
+            )
+        ):
+            raise ValueError("invalid receiver input roles")
         expected_transition_receipts = {
             "preliminary_check": "preliminary_check.json",
             "refinement": "refinement.json",
             "closure": "refinement_to_closure.json",
+            "finalist_selection": "closure_to_finalist_selection.json",
         }
         if self.transition_receipt != expected_transition_receipts.get(self.stage):
             raise ValueError("invalid receiver transition receipt")
@@ -56,7 +68,7 @@ class ReceiverDescriptor:
             {
                 "campaign.json",
                 *(
-                    f"selection/{'discovery' if self.stage == 'preliminary_check' else self.stage}/{family}.json"
+                    f"selection/{'discovery' if self.stage == 'preliminary_check' else 'finalists' if self.stage == 'finalist_selection' else self.stage}/{family}.json"
                     for family in FAMILIES
                 ),
                 *(path for family in FAMILIES for path in jobs[family].values()),
@@ -64,7 +76,7 @@ class ReceiverDescriptor:
         )
         if type(self.files) is not frozenset or self.files != expected_files:
             raise ValueError("invalid receiver files")
-        if not isinstance(self.science, Mapping) or set(self.science) != {
+        standard_science_keys = {
             "classification",
             "candidates_per_family",
             "input_ensembles",
@@ -77,24 +89,59 @@ class ReceiverDescriptor:
             "selection_seed",
             "bootstrap_replicates",
             "bootstrap_seed",
-        }:
+        }
+        finalist_science_keys = {
+            "classification",
+            "candidates_per_family",
+            "input_ensembles",
+            "recoil_seeds",
+            "dt_s",
+            "t_max_s",
+            "solver",
+            "npools",
+            "bootstrap_replicates",
+            "bootstrap_seed",
+        }
+        expected_science_keys = (
+            finalist_science_keys
+            if self.stage == "finalist_selection"
+            else standard_science_keys
+        )
+        if (
+            not isinstance(self.science, Mapping)
+            or set(self.science) != expected_science_keys
+        ):
             raise ValueError("invalid receiver science")
         science = dict(self.science)
         if science["dt_s"] is not None or science["solver"] is not None:
             raise ValueError("runtime science must be manifest-derived")
+        if self.stage == "finalist_selection":
+            numeric_names = (
+                "candidates_per_family",
+                "input_ensembles",
+                "npools",
+                "bootstrap_replicates",
+                "bootstrap_seed",
+            )
+            expected_classification = (
+                "final_candidate_selection_not_unbiased_validation"
+            )
+        else:
+            numeric_names = (
+                "candidates_per_family",
+                "input_ensembles",
+                "particles_per_ensemble",
+                "total_particles",
+                "selection_seed",
+                "bootstrap_replicates",
+                "bootstrap_seed",
+            )
+            expected_classification = "candidate_selection_not_final_validation"
         if (
-            science["classification"] != "candidate_selection_not_final_validation"
+            science["classification"] != expected_classification
             or any(
                 type(science[name]) is not int or science[name] <= 0
-                for name in (
-                    "candidates_per_family",
-                    "input_ensembles",
-                    "particles_per_ensemble",
-                    "total_particles",
-                    "selection_seed",
-                    "bootstrap_replicates",
-                    "bootstrap_seed",
-                )
+                for name in numeric_names
             )
             or type(science["t_max_s"]) not in {int, float}
             or science["t_max_s"] != 0.1
@@ -744,7 +791,11 @@ def main(*, trusted_root_override=None):
     if (
         identity["science"] != expected_science
         or stage.get("classification") != expected_science["classification"]
-        or stage.get("input_role") != _config().input_role
+        or (
+            stage.get("input_role") != _config().input_role
+            if isinstance(_config().input_role, str)
+            else stage.get("input_roles") != list(_config().input_role)
+        )
     ):
         fail(_config().preparation_error)
     transition = json_bytes(

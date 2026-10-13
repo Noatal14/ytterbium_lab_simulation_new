@@ -1,101 +1,3710 @@
 {
   "schema_version": 1,
-  "common_headers": {"cache-control":"no-store","content-type":"application/json; charset=utf-8","x-content-type-options":"nosniff"},
+  "common_headers": {
+    "cache-control": "no-store",
+    "content-type": "application/json; charset=utf-8",
+    "x-content-type-options": "nosniff"
+  },
   "cases": [
-    {"id":"health","method":"GET","path":"/api/health","status":200,"body":{"api_version":1,"status":"ok"}},
-    {"id":"workflows","method":"GET","path":"/api/workflows","status":200,"body":{"api_version":1,"data":[]}},
-    {"id":"session","method":"GET","path":"/api/v1/session","status":200,"headers":{"set-cookie":"<session-cookie>"},"body":{"api_version":1,"data":{"csrf_token":"<csrf-token>"}}},
-    {"id":"campaigns","method":"GET","path":"/api/v1/campaigns","status":200,"body":{"api_version":1,"data":{"campaigns":[],"invalid_count":0,"total":0}}},
-    {"id":"sources","method":"GET","path":"/api/v1/campaigns/2d/sources","status":200,"body":{"api_version":1,"data":{"sources":[],"invalid_count":0,"total":0}}},
-    {"id":"campaign-detail","method":"GET","path":"/api/v1/campaigns/campaign-id","status":200,"body":{"api_version":1,"data":{"id":"campaign-id","family":"mot_2d","kind":"mot_2d_s0_campaign","name":"Campaign","path":"data/optimization/mot_2d/campaign-id","stage":"smoke","stage_semantics":"prepared-workflow-stage","scheduler_status":"unchecked","trust":"trusted-current","scientific_role":"candidate-selection","progress":[],"warnings":[],"next_plan":null,"s0_values":[1.3],"families":[],"git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","remote_preparation":{"status":"ready","reason_code":null}}}},
-    {"id":"creation-preview","method":"POST","path":"/api/v1/campaigns/2d/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"creation-token","expires_in_seconds":300,"plan":{"name":"Campaign","path":"data/optimization/mot_2d/campaign-id","s0_values":[1.3],"source_id":"source","files":["campaign.json","jobs/01_smoke.pbs"],"stage":"smoke"},"scientific_design":{},"provenance":{"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","input_count":35},"duplicate":null}}},
-    {"id":"creation-confirm","method":"POST","path":"/api/v1/campaigns/2d/confirm","status":201,"body":{"api_version":1,"data":{"status":"created","campaign_id":"campaign-id","path":"data/optimization/mot_2d/campaign-id","stage":"smoke","submitted_to_zeus":false}}},
-    {"id":"mot3d-bootstrap-status","method":"POST","path":"/api/v1/campaigns/3d/bootstrap/status","status":200,"body":{"api_version":1,"data":{"lifecycle":"ready","sources":[],"reason":null,"evidence_requirement":null,"timestep_policy":{"status":"pragmatic_user_approved_after_inconclusive_study","convergence_claim":"not_established","sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-bootstrap-preview","method":"POST","path":"/api/v1/campaigns/3d/bootstrap/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-bootstrap-token","expires_in_seconds":300,"campaign":{"name":"mot_3d_contract","stage":"discovery"},"source":{"source_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","campaign_name":"Completed 2D","s0":1.3,"sealed_ensemble_count":20,"completion":"complete","provenance_fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"discovery":{"families":["angled_donut","single_pass"],"solver":"RK4StHybridCustom","screening_dt_s":0.00001,"production_dt_s":6.25e-7,"timestep_policy_status":"pragmatic_user_approved_after_inconclusive_study","convergence_claim":"not_established","input_role_counts":{"discovery":12,"refinement":4,"preliminary_check":4}},"artifacts":{"create":["campaign.json","jobs/01_smoke_angled_donut.pbs","jobs/01_smoke_single_pass.pbs","jobs/02_submit_discovery_chain.sh","jobs/angled_donut/round_01.pbs","jobs/angled_donut/round_02.pbs","jobs/single_pass/round_01.pbs","jobs/single_pass/round_02.pbs","jobs/single_pass/round_03.pbs"]},"effects":{"create_campaign":true,"submit_job":false,"start_simulation":false,"prepare_dt_validation":false}}}},
-    {"id":"mot3d-bootstrap-confirm","method":"POST","path":"/api/v1/campaigns/3d/bootstrap/confirm","status":201,"body":{"api_version":1,"data":{"lifecycle":"discovery_prepared","campaign_name":"mot_3d_contract","stage":"discovery","submitted_to_zeus":false,"bootstrap_key":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}}},
-    {"id":"mot3d-discovery-status","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-discovery/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-11T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"discovery"},"submission":{"status":"not_submitted","chain":{"angled_donut":[],"single_pass":[]}},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"mot3d-discovery-preview","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-discovery/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-discovery-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"stage":{"id":"discovery","label":"Discovery"},"chain":{"families":[{"id":"angled_donut","rounds":2},{"id":"single_pass","rounds":3}],"arrays":5,"tasks_per_array":3,"dependency":"afterok within each family"},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_discovery_chain":true,"submit_smoke":false,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true}}}},
-    {"id":"mot3d-discovery-confirm","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-discovery/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"discovery","chain":{"angled_donut":["500[].zeus-master","501[].zeus-master"],"single_pass":["502[].zeus-master","503[].zeus-master","504[].zeus-master"]},"submitted_at":"2026-10-11T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"mot3d-transition-status","method":"POST","path":"/api/v1/zeus/mot-3d/discovery-transition/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"discovery"},"discovery":{"status":"ready_to_advance","chain":{"angled_donut":["500[].zeus-master","501[].zeus-master"],"single_pass":["502[].zeus-master","503[].zeus-master","504[].zeus-master"]}},"validation":{"status":"valid","completed_trials":950,"expected_trials":950},"next_action":"review_transition","local_sync":{"status":"not_synchronized","receipt_sha256":null}}}},
-    {"id":"mot3d-transition-preview","method":"POST","path":"/api/v1/zeus/mot-3d/discovery-transition/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-transition-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"from_stage":"discovery","to_stage":"preliminary_check","discovery":{"completed_trials":950,"expected_trials":950,"families":["angled_donut","single_pass"],"evidence_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"artifacts":{"synchronize":{"trial_registries":950,"merged_files":4},"create":{"selection_files":2,"job_files":4},"update":["campaign.json"]},"effects":{"synchronize_discovery":true,"prepare_preliminary_check":true,"submit_preliminary_check":false,"start_simulation":false,"overwrite_existing":false}}}},
-    {"id":"mot3d-transition-confirm","method":"POST","path":"/api/v1/zeus/mot-3d/discovery-transition/confirm","status":201,"body":{"api_version":1,"data":{"status":"preliminary_check_prepared","campaign_id":"campaign-id","stage":"preliminary_check","artifacts":{"synchronized":954,"created":6,"updated":1,"bundle_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-preliminary-status","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-preliminary-check/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"preliminary_check"},"submission":{"status":"not_submitted","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":null,"merge_job_id":null},{"id":"single_pass","array_job_id":null,"merge_job_id":null}]}},"scheduler":{"expected_array_tasks":6,"expected_merge_jobs":2,"completed_array_tasks":0,"completed_merge_jobs":0},"validation":{"status":"not_started","expected_candidates_per_family":12,"expected_recoil_seeds_per_candidate":3},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"mot3d-preliminary-preview","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-preliminary-check/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-preliminary-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"stage":{"id":"preliminary_check","label":"Preliminary check"},"chain":{"families":[{"id":"angled_donut","array_tasks":3,"merge_jobs":1},{"id":"single_pass","array_tasks":3,"merge_jobs":1}],"qsub_calls":4,"dependency":"afterok within each family"},"resources":{"array":{"ncpus_per_task":200,"memory_gb_per_task":64,"walltime":"24:00:00"},"merge":{"ncpus":1,"memory_gb":4,"walltime":"01:00:00"}},"science":{"classification":"candidate_selection_not_final_validation","candidates_per_family":12,"input_ensembles":4,"particles_per_ensemble":150,"total_particles":600,"recoil_seeds":[41001,41002,41003],"dt_s":0.00001,"t_max_s":0.1,"solver":"RK4StHybridCustom","selection_seed":51001,"bootstrap_replicates":10000,"bootstrap_seed":52001},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_preliminary_check":true,"start_simulation":true,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true}}}},
-    {"id":"mot3d-preliminary-confirm","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-preliminary-check/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"preliminary_check","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":"510[].zeus-master","merge_job_id":"511.zeus-master"},{"id":"single_pass","array_job_id":"512[].zeus-master","merge_job_id":"513.zeus-master"}]},"submitted_at":"2026-10-12T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"mot3d-refinement-status","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-refinement/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"refinement"},"submission":{"status":"not_submitted","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":null,"merge_job_id":null},{"id":"single_pass","array_job_id":null,"merge_job_id":null}]}},"scheduler":{"expected_array_tasks":6,"expected_merge_jobs":2,"completed_array_tasks":0,"completed_merge_jobs":0},"validation":{"status":"not_started","expected_candidates_per_family":16,"expected_recoil_seeds_per_candidate":3},"next_action":"review_submission","local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-refinement-preview","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-refinement/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-refinement-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"stage":{"id":"refinement","label":"Refinement"},"chain":{"families":[{"id":"angled_donut","array_tasks":3,"merge_jobs":1},{"id":"single_pass","array_tasks":3,"merge_jobs":1}],"qsub_calls":4,"dependency":"afterok within each family"},"resources":{"array":{"ncpus_per_task":200,"memory_gb_per_task":64,"walltime":"24:00:00"},"merge":{"ncpus":1,"memory_gb":4,"walltime":"01:00:00"}},"science":{"classification":"candidate_selection_not_final_validation","candidates_per_family":16,"input_ensembles":4,"particles_per_ensemble":750,"total_particles":3000,"recoil_seeds":[42001,42002,42003],"dt_s":0.00001,"t_max_s":0.1,"solver":"RK4StHybridCustom","selection_seed":61001,"bootstrap_replicates":10000,"bootstrap_seed":62001},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_refinement":true,"start_simulation":true,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true},"local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-refinement-confirm","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-refinement/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"refinement","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":"610[].zeus-master","merge_job_id":"611.zeus-master"},{"id":"single_pass","array_job_id":"612[].zeus-master","merge_job_id":"613.zeus-master"}]},"submitted_at":"2026-10-12T00:00:00+00:00","local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-closure-status","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-closure/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"closure"},"submission":{"status":"not_submitted","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":null,"merge_job_id":null},{"id":"single_pass","array_job_id":null,"merge_job_id":null}]}},"scheduler":{"expected_array_tasks":6,"expected_merge_jobs":2,"completed_array_tasks":0,"completed_merge_jobs":0},"validation":{"status":"not_started","expected_candidates_per_family":16,"expected_recoil_seeds_per_candidate":3},"next_action":"review_submission","local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-closure-preview","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-closure/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-closure-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"stage":{"id":"closure","label":"Closure"},"chain":{"families":[{"id":"angled_donut","array_tasks":3,"merge_jobs":1},{"id":"single_pass","array_tasks":3,"merge_jobs":1}],"qsub_calls":4,"dependency":"afterok within each family"},"resources":{"array":{"ncpus_per_task":200,"memory_gb_per_task":64,"walltime":"24:00:00"},"merge":{"ncpus":1,"memory_gb":4,"walltime":"01:00:00"}},"science":{"classification":"candidate_selection_not_final_validation","candidates_per_family":16,"input_ensembles":4,"particles_per_ensemble":750,"total_particles":3000,"recoil_seeds":[42001,42002,42003],"dt_s":0.00001,"t_max_s":0.1,"solver":"RK4StHybridCustom","selection_seed":71001,"bootstrap_replicates":10000,"bootstrap_seed":72001},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"start_simulation":true,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true,"submit_closure":true},"local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-closure-confirm","method":"POST","path":"/api/v1/zeus/submissions/mot-3d-closure/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"closure","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":"710[].zeus-master","merge_job_id":"711.zeus-master"},{"id":"single_pass","array_job_id":"712[].zeus-master","merge_job_id":"713.zeus-master"}]},"submitted_at":"2026-10-12T00:00:00+00:00","local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-preliminary-transition-status","method":"POST","path":"/api/v1/zeus/mot-3d/preliminary-transition/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"preliminary_check"},"preliminary":{"status":"ready_to_advance","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":"510[].zeus-master","merge_job_id":"511.zeus-master"},{"id":"single_pass","array_job_id":"512[].zeus-master","merge_job_id":"513.zeus-master"}]}},"scheduler":{"expected_array_tasks":6,"expected_merge_jobs":2,"completed_array_tasks":6,"completed_merge_jobs":2},"validation":{"status":"valid","result_artifacts":152,"expected_result_artifacts":152,"reason_code":null},"transition":{"status":"not_prepared"},"next_action":"review_transition","local_sync":{"status":"not_synchronized","receipt_sha256":null}}}},
-    {"id":"mot3d-preliminary-transition-preview","method":"POST","path":"/api/v1/zeus/mot-3d/preliminary-transition/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-preliminary-transition-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"from_stage":"preliminary_check","to_stage":"refinement","preliminary":{"result_artifacts":152,"expected_result_artifacts":152,"families":["angled_donut","single_pass"],"evidence_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"artifacts":{"synchronize":{"result_files":152,"submission_receipts":1},"create":{"selection_files":2,"job_files":4},"update":["campaign.json"],"transfer_files":160},"effects":{"synchronize_preliminary_check":true,"prepare_refinement":true,"submit_refinement":false,"start_simulation":false,"overwrite_existing":false}}}},
-    {"id":"mot3d-preliminary-transition-confirm","method":"POST","path":"/api/v1/zeus/mot-3d/preliminary-transition/confirm","status":201,"body":{"api_version":1,"data":{"status":"refinement_prepared","campaign_id":"campaign-id","stage":"refinement","artifacts":{"synchronized":153,"created":6,"updated":1,"bundle_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-refinement-transition-status","method":"POST","path":"/api/v1/zeus/mot-3d/refinement-transition/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"refinement"},"refinement":{"status":"ready_to_advance","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":"610[].zeus-master","merge_job_id":"611.zeus-master"},{"id":"single_pass","array_job_id":"612[].zeus-master","merge_job_id":"613.zeus-master"}]}},"scheduler":{"expected_array_tasks":6,"expected_merge_jobs":2,"completed_array_tasks":6,"completed_merge_jobs":2},"validation":{"status":"valid","result_artifacts":200,"expected_result_artifacts":200,"reason_code":null},"transition":{"status":"not_prepared"},"next_action":"review_transition","local_sync":{"status":"not_synchronized","receipt_sha256":null}}}},
-    {"id":"mot3d-refinement-transition-preview","method":"POST","path":"/api/v1/zeus/mot-3d/refinement-transition/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-refinement-transition-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"from_stage":"refinement","to_stage":"closure","refinement":{"result_artifacts":200,"expected_result_artifacts":200,"families":["angled_donut","single_pass"],"evidence_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"artifacts":{"synchronize":{"result_files":200,"submission_receipts":1},"create":{"selection_files":2,"job_files":4},"update":["campaign.json"],"transfer_files":208},"effects":{"synchronize_refinement":true,"prepare_closure":true,"submit_closure":false,"start_simulation":false,"overwrite_existing":false}}}},
-    {"id":"mot3d-refinement-transition-confirm","method":"POST","path":"/api/v1/zeus/mot-3d/refinement-transition/confirm","status":201,"body":{"api_version":1,"data":{"status":"closure_prepared","campaign_id":"campaign-id","stage":"closure","artifacts":{"synchronized":201,"created":6,"updated":1,"bundle_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"zeus-snapshot","method":"POST","path":"/api/v1/zeus/snapshot","status":200,"body":{"api_version":1,"data":{"connection_status":"connected","profile":{"host":"zeus.technion.ac.il","username":"tal.noa","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","authentication":"ssh-key-or-agent"},"remote":{"project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"scheduler":{"status":"available","queried_at":"2026-10-08T00:00:00+00:00","jobs":[]}}}},
-    {"id":"transfer-preview","method":"POST","path":"/api/v1/zeus/transfers/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"transfer-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","path":"data/optimization/mot_2d/campaign-id","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"destination":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","campaign_directory":"/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/campaign-id"},"artifacts":{"ensemble_count":35,"total_count":72,"missing_count":72,"identical_count":0,"total_bytes":100,"missing_bytes":100},"effects":{"copy_missing_only":true,"overwrite_existing":false,"submit_jobs":false,"run_simulation":false}}}},
-    {"id":"transfer-confirm","method":"POST","path":"/api/v1/zeus/transfers/confirm","status":201,"body":{"api_version":1,"data":{"status":"prepared","campaign_id":"campaign-id","destination":"/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/campaign-id","transferred_count":72,"reused_identical_count":0,"bytes_transferred":100,"submitted_to_zeus":false,"simulation_started":false}}},
-    {"id":"smoke-submit-preview","method":"POST","path":"/api/v1/zeus/submissions/smoke/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"smoke-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","path":"data/optimization/mot_2d/campaign-id","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"stage":{"id":"smoke","label":"Smoke check","purpose":"Validate setup."},"job":{"file":"jobs/01_smoke.pbs","kind":"job","task_count":1,"queue":"zeus_combined_q","cores_per_task":1,"memory_per_task_bytes":68719476736,"walltime_seconds":1200},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"inputs":{"verified_count":72,"status":"ready"},"effects":{"submit_smoke":true,"submit_later_stages":false,"modify_files":false},"later_stages_locked":true}}},
-    {"id":"smoke-submit-confirm","method":"POST","path":"/api/v1/zeus/submissions/smoke/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"smoke","job_id":"100.zeus-master","submitted_at":"2026-10-08T00:00:00+00:00","later_stages_locked":true}}},
-    {"id":"smoke-status","method":"POST","path":"/api/v1/zeus/smoke/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"smoke"},"submission":{"job_id":"100.zeus-master"},"scheduler":{"state":"completed_success","raw_state":"F","exit_status":0},"validation":{"status":"valid","points":[{"s0":1.3,"captured":0,"input":2,"efficiency":0.0}],"artifact_count":3},"lifecycle":"ready_to_prepare_screen","next_action":"review_screening_preparation"}}},
-    {"id":"screening-preview","method":"POST","path":"/api/v1/zeus/screening/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"screen-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"from_stage":"smoke","to_stage":"screen","smoke":{"job_id":"100.zeus-master","points":[{"s0":1.3,"captured":0,"input":2,"efficiency":0.0}],"artifact_count":3},"artifacts":{"create":["screen/tasks.json","jobs/02_screen.pbs"],"update":["campaign.json"]},"effects":{"prepare_screening":true,"submit_screening":false,"start_simulation":false,"overwrite_existing":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"screening-confirm","method":"POST","path":"/api/v1/zeus/screening/confirm","status":201,"body":{"api_version":1,"data":{"status":"screening_prepared","campaign_id":"campaign-id","stage":"screen","artifacts":{"created":2,"updated":1},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"screen-submit-preview","method":"POST","path":"/api/v1/zeus/submissions/screening/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"screen-submit-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"stage":{"id":"screen","label":"Screening","purpose":"Broad search."},"job":{"file":"jobs/02_screen.pbs","kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":86400},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"inputs":{"verified_count":72,"status":"ready"},"smoke":{"status":"validated","job_id":"100.zeus-master","point_count":1},"effects":{"submit_screening":true,"submit_later_stages":false,"modify_files":false},"later_stages_locked":true}}},
-    {"id":"screen-submit-confirm","method":"POST","path":"/api/v1/zeus/submissions/screening/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"screen","job_id":"200[].zeus-master","submitted_at":"2026-10-08T00:00:00+00:00","later_stages_locked":true}}},
-    {"id":"screen-status","method":"POST","path":"/api/v1/zeus/screen/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"screen"},"submission":{"job_id":"200[].zeus-master"},"scheduler":{"state":"completed_success","raw_state":"F","exit_status":0,"task_count":3,"counts":{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0}},"validation":{"status":"valid","completed_trials":51,"expected_trials":51,"candidate_count":3},"lifecycle":"ready_to_prepare_refinement","next_action":"review_refinement_preparation"}}},
-    {"id":"refinement-preview","method":"POST","path":"/api/v1/zeus/refinement/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"refine-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"from_stage":"screen","to_stage":"refine","bounds":{"detuning_gamma":{"low":-3.0,"high":-0.1},"magnet_radius_m":{"low":0.03,"high":0.06}},"screening":{"job_id":"200[].zeus-master","completed_trials":51,"expected_trials":51,"candidates":[{"s0":1.3,"rank":1,"detuning_gamma":-1.0,"magnet_radius_m":0.04,"mean_conditional_efficiency":0.03,"source":"screen/s0_1p300000/worker0/trials/trial_0001.json"},{"s0":1.3,"rank":2,"detuning_gamma":-1.1,"magnet_radius_m":0.041,"mean_conditional_efficiency":0.02,"source":"screen/s0_1p300000/worker1/trials/trial_0002.json"},{"s0":1.3,"rank":3,"detuning_gamma":-1.2,"magnet_radius_m":0.042,"mean_conditional_efficiency":0.01,"source":"screen/s0_1p300000/worker2/trials/trial_0003.json"}]},"artifacts":{"create":["screening_candidates.json","refine/tasks.json","jobs/03_refine_round_01.pbs","jobs/03_refine_round_02.pbs","jobs/03_refine_round_03.pbs","jobs/03_refine_round_04.pbs","jobs/03_submit_refinement_chain.sh"],"update":["campaign.json"]},"effects":{"prepare_refinement":true,"submit_refinement":false,"start_simulation":false,"overwrite_existing":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"refinement-confirm","method":"POST","path":"/api/v1/zeus/refinement/confirm","status":201,"body":{"api_version":1,"data":{"status":"refinement_prepared","campaign_id":"campaign-id","stage":"refine","artifacts":{"created":7,"updated":1},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"refinement-submit-status","method":"POST","path":"/api/v1/zeus/submissions/refinement/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"refine"},"chain":{"status":"not_submitted","dependency":"afterok","rounds":[{"round":1,"state":"not_submitted","job_id":null,"depends_on_job_id":null},{"round":2,"state":"not_submitted","job_id":null,"depends_on_job_id":null},{"round":3,"state":"not_submitted","job_id":null,"depends_on_job_id":null},{"round":4,"state":"not_submitted","job_id":null,"depends_on_job_id":null}]},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"refinement-submit-preview","method":"POST","path":"/api/v1/zeus/submissions/refinement/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"chain-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"stage":{"id":"refine","label":"Refinement"},"chain":{"dependency":"afterok","rounds":[{"round":1,"file":"jobs/03_refine_round_01.pbs","cumulative_target":3,"kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":72000,"depends_on":null},{"round":2,"file":"jobs/03_refine_round_02.pbs","cumulative_target":6,"kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":72000,"depends_on":1},{"round":3,"file":"jobs/03_refine_round_03.pbs","cumulative_target":9,"kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":72000,"depends_on":2},{"round":4,"file":"jobs/03_refine_round_04.pbs","cumulative_target":10,"kind":"array","task_count":3,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":72000,"depends_on":3}]},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_refinement_chain":true,"start_simulation":true,"submit_later_stages":false,"modify_files":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"refinement-submit-confirm","method":"POST","path":"/api/v1/zeus/submissions/refinement/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"refine","chain":{"status":"submitted","rounds":[{"round":1,"job_id":"301[].zeus-master","depends_on_job_id":null},{"round":2,"job_id":"302[].zeus-master","depends_on_job_id":"301[].zeus-master"},{"round":3,"job_id":"303[].zeus-master","depends_on_job_id":"302[].zeus-master"},{"round":4,"job_id":"304[].zeus-master","depends_on_job_id":"303[].zeus-master"}]},"submitted_at":"2026-10-08T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"confirmation-status","method":"POST","path":"/api/v1/zeus/refinement-chain/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"refine"},"chain":{"status":"ready_to_prepare_confirmation","rounds":[{"round":1,"job_id":"301[].zeus-master","depends_on_job_id":null,"scheduler":{"state":"completed_success","task_count":3,"counts":{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0}}},{"round":2,"job_id":"302[].zeus-master","depends_on_job_id":"301[].zeus-master","scheduler":{"state":"completed_success","task_count":3,"counts":{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0}}},{"round":3,"job_id":"303[].zeus-master","depends_on_job_id":"302[].zeus-master","scheduler":{"state":"completed_success","task_count":3,"counts":{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0}}},{"round":4,"job_id":"304[].zeus-master","depends_on_job_id":"303[].zeus-master","scheduler":{"state":"completed_success","task_count":3,"counts":{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0}}}]},"validation":{"status":"valid","completed_trials":30,"expected_trials":30,"candidate_count":5},"next_action":"review_confirmation_preparation","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"confirmation-preview","method":"POST","path":"/api/v1/zeus/confirmation/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"confirmation-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"from_stage":"refine","to_stage":"confirmation","bounds":{"detuning_gamma":{"low":-3.0,"high":-0.1},"magnet_radius_m":{"low":0.03,"high":0.06}},"refinement":{"round_job_ids":["301[].zeus-master","302[].zeus-master","303[].zeus-master","304[].zeus-master"],"completed_trials":30,"expected_trials":30,"candidates":[{"s0":1.3,"rank":1,"detuning_gamma":-1.01,"magnet_radius_m":0.0401,"mean_conditional_efficiency":0.05,"source":"refine/s0_1p300000/worker0/trials/trial_0001.json"},{"s0":1.3,"rank":2,"detuning_gamma":-1.02,"magnet_radius_m":0.0402,"mean_conditional_efficiency":0.04,"source":"refine/s0_1p300000/worker1/trials/trial_0002.json"},{"s0":1.3,"rank":3,"detuning_gamma":-1.03,"magnet_radius_m":0.0403,"mean_conditional_efficiency":0.03,"source":"refine/s0_1p300000/worker2/trials/trial_0003.json"},{"s0":1.3,"rank":4,"detuning_gamma":-1.04,"magnet_radius_m":0.0404,"mean_conditional_efficiency":0.02,"source":"refine/s0_1p300000/worker0/trials/trial_0004.json"},{"s0":1.3,"rank":5,"detuning_gamma":-1.05,"magnet_radius_m":0.0405,"mean_conditional_efficiency":0.01,"source":"refine/s0_1p300000/worker1/trials/trial_0005.json"}]},"artifacts":{"create":["refined_candidates.json","confirmation/tasks.json","jobs/04_confirmation.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/04_confirmation.pbs","kind":"array","task_count":5,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":36000},"effects":{"prepare_confirmation":true,"submit_confirmation":false,"start_simulation":false,"overwrite_existing":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"confirmation-confirm","method":"POST","path":"/api/v1/zeus/confirmation/confirm","status":201,"body":{"api_version":1,"data":{"status":"confirmation_prepared","campaign_id":"campaign-id","stage":"confirmation","artifacts":{"created":3,"updated":1},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"confirmation-submit-status","method":"POST","path":"/api/v1/zeus/submissions/confirmation/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"confirmation"},"submission":{"status":"not_submitted","job_id":null},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"confirmation-submit-preview","method":"POST","path":"/api/v1/zeus/submissions/confirmation/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"confirmation-submit-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"stage":{"id":"confirmation","label":"Confirmation"},"job":{"file":"jobs/04_confirmation.pbs","kind":"array","task_count":5,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":36000},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_confirmation":true,"start_simulation":true,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"confirmation-submit-confirm","method":"POST","path":"/api/v1/zeus/submissions/confirmation/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"confirmation","job_id":"401[].zeus-master","submitted_at":"2026-10-08T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"sensitivity-status","method":"POST","path":"/api/v1/zeus/confirmation-results/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"confirmation"},"confirmation":{"status":"ready_to_prepare_sensitivity","job_id":"401[].zeus-master","scheduler":{"state":"completed_success","task_count":5,"counts":{"queued":0,"running":0,"held":0,"succeeded":5,"failed":0},"job_id":"401[].zeus-master","submission_nonce":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}},"validation":{"status":"valid","completed_points":5,"expected_points":5},"next_action":"review_sensitivity_preparation","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"sensitivity-preview","method":"POST","path":"/api/v1/zeus/sensitivity/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"sensitivity-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"from_stage":"confirmation","to_stage":"sensitivity","confirmation":{"job_id":"401[].zeus-master","completed_points":5,"expected_points":5},"artifacts":{"create":["winners.json","sensitivity/tasks.json","jobs/05_sensitivity.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/05_sensitivity.pbs","kind":"array","task_count":17,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":36000},"effects":{"prepare_sensitivity":true,"submit_sensitivity":false,"start_simulation":false,"overwrite_existing":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"sensitivity-confirm","method":"POST","path":"/api/v1/zeus/sensitivity/confirm","status":201,"body":{"api_version":1,"data":{"status":"sensitivity_prepared","campaign_id":"campaign-id","stage":"sensitivity","artifacts":{"created":3,"updated":1},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"sensitivity-submit-status","method":"POST","path":"/api/v1/zeus/submissions/sensitivity/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"sensitivity"},"submission":{"status":"not_submitted","job_id":null},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"sensitivity-submit-preview","method":"POST","path":"/api/v1/zeus/submissions/sensitivity/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"sensitivity-submit-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"stage":{"id":"sensitivity","label":"Sensitivity"},"job":{"file":"jobs/05_sensitivity.pbs","kind":"array","task_count":17,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":36000},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_sensitivity":true,"start_simulation":true,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"sensitivity-submit-confirm","method":"POST","path":"/api/v1/zeus/submissions/sensitivity/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"sensitivity","job_id":"402[].zeus-master","submitted_at":"2026-10-08T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"zeeman-run-preview","method":"POST","path":"/api/v1/individual-runs/zeeman/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"zeeman-token","expires_in_seconds":300,"plan":{"run_id":"zeeman-contract","family":"zeeman","execution_mode":"local","particle_count":10,"seed":42,"retain_particle_states":false,"suitability":"individual_only","output_disposition":"summary_only","locked_settings":{},"resolved_configuration":{},"lifecycle_state":"configured","laboratory_specification":{},"numerical_policy":{},"plan_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","execution_started":false,"submitted_to_zeus":false}}}},
-    {"id":"zeeman-run-confirm","method":"POST","path":"/api/v1/individual-runs/zeeman/confirm","status":201,"body":{"api_version":1,"data":{"status":"created","run_id":"zeeman-contract","family":"zeeman","path":"data/runs/zeeman/zeeman-contract","lifecycle_state":"configured","execution_started":false,"submitted_to_zeus":false}}},
-    {"id":"zeeman-local-start","method":"POST","path":"/api/v1/individual-runs/zeeman/local/start","status":202,"body":{"api_version":1,"data":{"status":"queued","run_id":"zeeman-contract","execution_mode":"local"}}},
-    {"id":"zeeman-zeus-preview","method":"POST","path":"/api/v1/individual-runs/zeeman/zeus/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"zeus-token","expires_in_seconds":300,"run_id":"zeeman-contract","job":{"kind":"scalar","array":false,"pbs_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"package_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","submission_key":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","effects":{"submit_one_job":true,"reconcile_existing_job":false,"cancel_job":false}}}},
-    {"id":"zeeman-zeus-confirm","method":"POST","path":"/api/v1/individual-runs/zeeman/zeus/confirm","status":202,"body":{"api_version":1,"data":{"status":"submitted","run_id":"zeeman-contract","job_id":"500.zeus-master","submission_key":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}},
-    {"id":"zeeman-zeus-refresh","method":"POST","path":"/api/v1/individual-runs/zeeman/zeus/refresh","status":200,"body":{"api_version":1,"data":{"state":"running","job_id":"500.zeus-master"}}},
-    {"id":"zeeman-zeus-recover","method":"POST","path":"/api/v1/individual-runs/zeeman/zeus/recover","status":200,"body":{"api_version":1,"data":{"run_id":"zeeman-contract","family":"zeeman","job_id":"500.zeus-master","scheduler_state":"running","exit_status":null,"local_state":"queued","read_only":true}}},
-    {"id":"mot2d-sources","method":"GET","path":"/api/v1/individual-runs/mot-2d/sources","status":200,"body":{"api_version":1,"data":{"contract_version":"mot-2d-individual-source-catalog-v1","sources":[],"invalid_count":0,"total":0,"truncated":false}}},
-    {"id":"mot2d-run-preview","method":"POST","path":"/api/v1/individual-runs/mot-2d/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot2d-token","expires_in_seconds":300,"plan":{}}}},
-    {"id":"mot2d-run-confirm","method":"POST","path":"/api/v1/individual-runs/mot-2d/confirm","status":201,"body":{"api_version":1,"data":{"status":"created","run_id":"mot2d-contract","family":"mot_2d","path":"data/runs/mot_2d/mot2d-contract","lifecycle_state":"configured","execution_started":false,"submitted_to_zeus":false}}},
-    {"id":"mot2d-local-start","method":"POST","path":"/api/v1/individual-runs/mot-2d/local/start","status":202,"body":{"api_version":1,"data":{"status":"queued","run_id":"mot2d-contract","execution_mode":"local"}}},
-    {"id":"mot2d-zeus-preview","method":"POST","path":"/api/v1/individual-runs/mot-2d/zeus/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot2d-zeus-token","expires_in_seconds":300,"run_id":"mot2d-contract","job":{"kind":"scalar","array":false,"pbs_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"package_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","submission_key":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","effects":{"submit_one_job":true,"reconcile_existing_job":false,"cancel_job":false}}}},
-    {"id":"mot2d-zeus-confirm","method":"POST","path":"/api/v1/individual-runs/mot-2d/zeus/confirm","status":202,"body":{"api_version":1,"data":{"status":"submitted","run_id":"mot2d-contract","job_id":"501.zeus-master","submission_key":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}},
-    {"id":"mot2d-zeus-refresh","method":"POST","path":"/api/v1/individual-runs/mot-2d/zeus/refresh","status":200,"body":{"api_version":1,"data":{"state":"running","job_id":"501.zeus-master"}}},
-    {"id":"mot2d-zeus-recover","method":"POST","path":"/api/v1/individual-runs/mot-2d/zeus/recover","status":200,"body":{"api_version":1,"data":{"run_id":"mot2d-contract","family":"mot_2d","job_id":"501.zeus-master","scheduler_state":"running","exit_status":null,"local_state":"queued","read_only":true}}},
-    {"id":"production-status","method":"POST","path":"/api/v1/zeus/sensitivity-results/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"sensitivity"},"sensitivity":{"status":"ready_to_prepare_production","job_id":"402[].zeus-master","scheduler":{"state":"completed_success","task_count":17,"counts":{"queued":0,"running":0,"held":0,"succeeded":17,"failed":0},"job_id":"402[].zeus-master","submission_nonce":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}},"validation":{"status":"valid","completed_points":17,"expected_points":17},"next_action":"review_production_preparation","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"production-preview","method":"POST","path":"/api/v1/zeus/production/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"production-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"from_stage":"sensitivity","to_stage":"production","sensitivity":{"job_id":"402[].zeus-master","completed_points":17,"expected_points":17},"artifacts":{"create":["sensitivity_summary.json","production/tasks.json","jobs/06_production.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/06_production.pbs","kind":"array","task_count":20,"array_throttle":4,"queue":"zeus_combined_q","cores_per_task":150,"memory_per_task_bytes":68719476736,"walltime_seconds":43200},"effects":{"prepare_production":true,"submit_production":false,"start_simulation":false,"overwrite_existing":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"production-confirm","method":"POST","path":"/api/v1/zeus/production/confirm","status":201,"body":{"api_version":1,"data":{"status":"production_prepared","campaign_id":"campaign-id","stage":"production","artifacts":{"created":3,"updated":1},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"production-submit-status","method":"POST","path":"/api/v1/zeus/submissions/production/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"production"},"submission":{"status":"not_submitted","job_id":null},"next_action":"review_submission","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"production-submit-preview","method":"POST","path":"/api/v1/zeus/submissions/production/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"production-submit-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"stage":{"id":"production","label":"Production"},"job":{"file":"jobs/06_production.pbs","kind":"array","task_count":20,"array_throttle":4,"queue":"zeus_combined_q","cores_per_task":150,"memory_per_task_bytes":68719476736,"walltime_seconds":43200},"remote":{"host":"zeus.technion.ac.il","project_directory":"/home/tal.noa/ytterbium_lab_simulation_new","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","branch":"main","dirty":false},"effects":{"submit_production":true,"start_simulation":true,"submit_later_stages":false,"modify_campaign_files":false,"record_submission_receipt":true},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"production-submit-confirm","method":"POST","path":"/api/v1/zeus/submissions/production/confirm","status":201,"body":{"api_version":1,"data":{"status":"submitted","campaign_id":"campaign-id","stage":"production","job_id":"403[].zeus-master","submitted_at":"2026-10-08T00:00:00+00:00","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"finalization-status","method":"POST","path":"/api/v1/zeus/production-results/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-08T00:00:00+00:00","campaign":{"id":"campaign-id","name":"Campaign","stage":"production"},"production":{"status":"ready_to_finalize","job_id":"403[].zeus-master","scheduler":{"state":"completed_success","task_count":20,"counts":{"queued":0,"running":0,"held":0,"succeeded":20,"failed":0},"job_id":"403[].zeus-master","submission_nonce":"cccccccccccccccccccccccccccccccc"}},"validation":{"status":"valid","completed_ensembles":20,"expected_ensembles":20},"next_action":"review_finalization","local_sync":{"status":"not_synchronized"}}}},
-    {"id":"finalization-preview","method":"POST","path":"/api/v1/zeus/finalization/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"finalization-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"Campaign","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","s0_values":[1.3]},"from_stage":"production","to_stage":"complete","production":{"job_id":"403[].zeus-master","completed_ensembles":20,"expected_ensembles":20},"results":[{"s0":1.3,"n_ensembles":20,"total_input":1000,"total_survivors":100,"recommended_parameters":{"s0":1.3,"detuning_gamma":-0.92,"magnet_radius":0.0467},"prediction":{"reporting_zeeman_survivors":10000000,"simulated_zeeman_survivors":1000,"simulated_captured_atoms":100,"pooled_conditional_efficiency":0.1,"expected_captured_atoms":1000000,"predicted_95_interval_fraction":[0.09,0.11],"predicted_95_captured_atoms_interval":[900000,1100000],"predicted_95_half_width_fraction":0.01,"predicted_95_half_width_percentage_points":1.0,"binomial_mean_variance":0.0001,"empirical_between_ensemble_mean_variance":0.0002,"selected_mean_variance":0.0002,"selected_mean_variance_source":"empirical_between_ensemble","critical_value":2.093,"future_counting_variance":9e-9,"uncertainty_method":"cluster-aware parametric bootstrap","bootstrap_replicates":20000},"target_uncertainty_passes":true,"robustness_status":"not_established_pending_adaptive_challenger_validation","near_optimality_status":"not_established_pending_domain_challenger_elimination","warnings":["robust_operating_region_not_established","epsilon_near_optimality_not_established"],"retention":"retained","output_suitability":"eligible_as_3d_campaign_input"}],"artifacts":{"create":["final_report.json","production/s0_1p300000/summary.json"],"update":["campaign.json"]},"effects":{"finalize_campaign":true,"submit_job":false,"start_simulation":false,"overwrite_existing":false},"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"finalization-confirm","method":"POST","path":"/api/v1/zeus/finalization/confirm","status":201,"body":{"api_version":1,"data":{"status":"campaign_complete","campaign_id":"campaign-id","stage":"complete","results":[{"s0":1.3,"n_ensembles":20,"total_input":1000,"total_survivors":100,"recommended_parameters":{"s0":1.3,"detuning_gamma":-0.92,"magnet_radius":0.0467},"prediction":{"reporting_zeeman_survivors":10000000,"simulated_zeeman_survivors":1000,"simulated_captured_atoms":100,"pooled_conditional_efficiency":0.1,"expected_captured_atoms":1000000,"predicted_95_interval_fraction":[0.09,0.11],"predicted_95_captured_atoms_interval":[900000,1100000],"predicted_95_half_width_fraction":0.01,"predicted_95_half_width_percentage_points":1.0,"binomial_mean_variance":0.0001,"empirical_between_ensemble_mean_variance":0.0002,"selected_mean_variance":0.0002,"selected_mean_variance_source":"empirical_between_ensemble","critical_value":2.093,"future_counting_variance":9e-9,"uncertainty_method":"cluster-aware parametric bootstrap","bootstrap_replicates":20000},"target_uncertainty_passes":true,"robustness_status":"not_established_pending_adaptive_challenger_validation","near_optimality_status":"not_established_pending_domain_challenger_elimination","warnings":["robust_operating_region_not_established","epsilon_near_optimality_not_established"],"retention":"retained","output_suitability":"eligible_as_3d_campaign_input"}],"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"not_synchronized"}}}},
-    {"id":"mot3d-sources","method":"GET","path":"/api/v1/individual-runs/mot-3d/sources","status":200,"body":{"api_version":1,"data":{"contract_version":"mot-3d-individual-source-catalog-v1","sources":[{"id":"mot3d-source-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source_kind":"canonical_2d_campaign","label":"campaign · s0 1.3","ensemble_count":20,"available_particle_count":{"pooled":100,"minimum_per_ensemble":5,"maximum_per_ensemble":5},"source_qualification":"canonical_campaign_source","result_suitability":"individual_only","provenance":{"validation":"completed_canonical_2d_campaign","campaign_name":"campaign","s0":1.3,"ensemble_count":20,"campaign_sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","final_report_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","fingerprint":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}}],"invalid_count":0,"total":1,"truncated":false}}},
-    {"id":"mot3d-run-preview","method":"POST","path":"/api/v1/individual-runs/mot-3d/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-token","expires_in_seconds":300,"plan":{"run_id":"mot3d-contract","family":"mot_3d","source":{"id":"mot3d-source-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","kind":"canonical_2d_campaign","qualification":"canonical_campaign_source","fingerprint":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","pooled_particle_count":100},"selection":{"algorithm":"pcg64-raw-partial-fisher-yates-unbiased","version":"v1","seed":1,"selected_count":20,"selected_identities_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"geometry":{"family":"angled_donut","parameters":{"green_s0":30,"green_detuning_gamma":-25,"green_waist_m":0.0075,"blue_s0":1.5,"blue_waist_m":0.0075,"magnetic_gradient_G_cm":2.5,"blue_detuning_gamma":-3,"core_shell_split_radius_m":0.0025},"derived_parameters":{}},"execution":{"mode":"local","particle_count":20,"simulation_seed":2},"retention":{"particle_states":false},"suitability":"individual_only","output_disposition":"discard_survivor_states_after_summary","locked_settings":{"solver":"RK4StHybridCustom","timestep_s":0.00001,"t_max_s":0.1,"convergence_claim":"not_established","capture":{"capture_radius_m":0.005,"maximum_final_speed_m_s":1,"minimum_residence_time_s":0.005},"sampling_algorithm":"pcg64-raw-partial-fisher-yates-unbiased","sampling_version":"v1","workers":8},"lifecycle_state":"configured","laboratory_specification":{"version":"laboratory-physical-v2","sha256":"1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3"},"numerical_policy":{"version":"numerical-policy-v1","sha256":"08a6ad18017ff9a649e46dc94595be24922b3838ffd7c183cdf1a9c9c097cef1"},"plan_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","execution_started":false,"submitted_to_zeus":false}}}},
-    {"id":"mot3d-run-confirm","method":"POST","path":"/api/v1/individual-runs/mot-3d/confirm","status":201,"body":{"api_version":1,"data":{"status":"created","run_id":"mot3d-contract","family":"mot_3d","path":"data/runs/mot_3d/mot3d-contract","lifecycle_state":"configured","execution_started":false,"submitted_to_zeus":false}}},
-    {"id":"mot3d-local-start","method":"POST","path":"/api/v1/individual-runs/mot-3d/local/start","status":202,"body":{"api_version":1,"data":{"status":"queued","run_id":"mot3d-contract","execution_mode":"local"}}},
-    {"id":"mot3d-zeus-preview","method":"POST","path":"/api/v1/individual-runs/mot-3d/zeus/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-zeus-token","expires_in_seconds":300,"run_id":"mot3d-contract","job":{"kind":"scalar","array":false,"pbs_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},"package_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc","submission_key":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd","effects":{"submit_one_job":true,"reconcile_existing_job":false,"cancel_job":false}}}},
-    {"id":"mot3d-zeus-confirm","method":"POST","path":"/api/v1/individual-runs/mot-3d/zeus/confirm","status":202,"body":{"api_version":1,"data":{"status":"submitted","run_id":"mot3d-contract","job_id":"502.zeus-master","submission_key":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}},
-    {"id":"mot3d-zeus-refresh","method":"POST","path":"/api/v1/individual-runs/mot-3d/zeus/refresh","status":200,"body":{"api_version":1,"data":{"state":"running","job_id":"502.zeus-master"}}}
-    ,{"id":"mot3d-closure-transition-status","method":"POST","path":"/api/v1/zeus/mot-3d/closure-transition/status","status":200,"body":{"api_version":1,"data":{"source":"zeus","queried_at":"2026-10-12T00:00:00+00:00","campaign":{"id":"campaign-id","name":"mot_3d_contract","stage":"closure"},"scheduler":{"expected_array_tasks":6,"expected_merge_jobs":2,"completed_array_tasks":6,"completed_merge_jobs":2},"validation":{"status":"valid","result_artifacts":200,"expected_result_artifacts":200,"reason_code":null},"transition":{"status":"not_prepared"},"next_action":"review_transition","local_sync":{"status":"not_synchronized","receipt_sha256":null},"closure":{"status":"ready_to_advance","chain":{"dependency":"afterok within each family","families":[{"id":"angled_donut","array_job_id":"610[].zeus-master","merge_job_id":"611.zeus-master"},{"id":"single_pass","array_job_id":"612[].zeus-master","merge_job_id":"613.zeus-master"}]}}}}},
-    {"id":"mot3d-closure-transition-preview","method":"POST","path":"/api/v1/zeus/mot-3d/closure-transition/preview","status":200,"body":{"api_version":1,"data":{"preview_token":"mot3d-closure-transition-token","expires_in_seconds":300,"campaign":{"id":"campaign-id","name":"mot_3d_contract","git_commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},"from_stage":"closure","to_stage":"finalist_selection","artifacts":{"synchronize":{"result_files":200,"submission_receipts":1},"create":{"selection_files":2,"job_files":4},"update":["campaign.json"],"transfer_files":208},"effects":{"synchronize_closure":true,"prepare_finalist_selection":true,"submit_finalists":false,"start_simulation":false,"overwrite_existing":false},"closure":{"result_artifacts":200,"expected_result_artifacts":200,"families":["angled_donut","single_pass"],"evidence_sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}}},
-    {"id":"mot3d-closure-transition-confirm","method":"POST","path":"/api/v1/zeus/mot-3d/closure-transition/confirm","status":201,"body":{"api_version":1,"data":{"status":"finalist_selection_prepared","campaign_id":"campaign-id","stage":"finalist_selection","artifacts":{"synchronized":201,"created":6,"updated":1,"bundle_sha256":"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},"submitted_to_zeus":false,"simulation_started":false,"local_sync":{"status":"synchronized","receipt_sha256":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}},
-    {"id":"mot3d-zeus-recover","method":"POST","path":"/api/v1/individual-runs/mot-3d/zeus/recover","status":200,"body":{"api_version":1,"data":{"run_id":"mot3d-contract","family":"mot_3d","job_id":"502.zeus-master","scheduler_state":"running","exit_status":null,"local_state":"queued","read_only":true}}}
+    {
+      "id": "health",
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "status": "ok"
+      }
+    },
+    {
+      "id": "workflows",
+      "method": "GET",
+      "path": "/api/workflows",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": []
+      }
+    },
+    {
+      "id": "session",
+      "method": "GET",
+      "path": "/api/v1/session",
+      "status": 200,
+      "headers": {
+        "set-cookie": "<session-cookie>"
+      },
+      "body": {
+        "api_version": 1,
+        "data": {
+          "csrf_token": "<csrf-token>"
+        }
+      }
+    },
+    {
+      "id": "campaigns",
+      "method": "GET",
+      "path": "/api/v1/campaigns",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "campaigns": [],
+          "invalid_count": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "id": "sources",
+      "method": "GET",
+      "path": "/api/v1/campaigns/2d/sources",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "sources": [],
+          "invalid_count": 0,
+          "total": 0
+        }
+      }
+    },
+    {
+      "id": "campaign-detail",
+      "method": "GET",
+      "path": "/api/v1/campaigns/campaign-id",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "id": "campaign-id",
+          "family": "mot_2d",
+          "kind": "mot_2d_s0_campaign",
+          "name": "Campaign",
+          "path": "data/optimization/mot_2d/campaign-id",
+          "stage": "smoke",
+          "stage_semantics": "prepared-workflow-stage",
+          "scheduler_status": "unchecked",
+          "trust": "trusted-current",
+          "scientific_role": "candidate-selection",
+          "progress": [],
+          "warnings": [],
+          "next_plan": null,
+          "s0_values": [
+            1.3
+          ],
+          "families": [],
+          "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "remote_preparation": {
+            "status": "ready",
+            "reason_code": null
+          }
+        }
+      }
+    },
+    {
+      "id": "creation-preview",
+      "method": "POST",
+      "path": "/api/v1/campaigns/2d/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "creation-token",
+          "expires_in_seconds": 300,
+          "plan": {
+            "name": "Campaign",
+            "path": "data/optimization/mot_2d/campaign-id",
+            "s0_values": [
+              1.3
+            ],
+            "source_id": "source",
+            "files": [
+              "campaign.json",
+              "jobs/01_smoke.pbs"
+            ],
+            "stage": "smoke"
+          },
+          "scientific_design": {},
+          "provenance": {
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "input_count": 35
+          },
+          "duplicate": null
+        }
+      }
+    },
+    {
+      "id": "creation-confirm",
+      "method": "POST",
+      "path": "/api/v1/campaigns/2d/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "created",
+          "campaign_id": "campaign-id",
+          "path": "data/optimization/mot_2d/campaign-id",
+          "stage": "smoke",
+          "submitted_to_zeus": false
+        }
+      }
+    },
+    {
+      "id": "mot3d-bootstrap-status",
+      "method": "POST",
+      "path": "/api/v1/campaigns/3d/bootstrap/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "lifecycle": "ready",
+          "sources": [],
+          "reason": null,
+          "evidence_requirement": null,
+          "timestep_policy": {
+            "status": "pragmatic_user_approved_after_inconclusive_study",
+            "convergence_claim": "not_established",
+            "sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-bootstrap-preview",
+      "method": "POST",
+      "path": "/api/v1/campaigns/3d/bootstrap/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-bootstrap-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "name": "mot_3d_contract",
+            "stage": "discovery"
+          },
+          "source": {
+            "source_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "campaign_name": "Completed 2D",
+            "s0": 1.3,
+            "sealed_ensemble_count": 20,
+            "completion": "complete",
+            "provenance_fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "discovery": {
+            "families": [
+              "angled_donut",
+              "single_pass"
+            ],
+            "solver": "RK4StHybridCustom",
+            "screening_dt_s": 1e-05,
+            "production_dt_s": 6.25e-07,
+            "timestep_policy_status": "pragmatic_user_approved_after_inconclusive_study",
+            "convergence_claim": "not_established",
+            "input_role_counts": {
+              "discovery": 12,
+              "refinement": 4,
+              "preliminary_check": 4
+            }
+          },
+          "artifacts": {
+            "create": [
+              "campaign.json",
+              "jobs/01_smoke_angled_donut.pbs",
+              "jobs/01_smoke_single_pass.pbs",
+              "jobs/02_submit_discovery_chain.sh",
+              "jobs/angled_donut/round_01.pbs",
+              "jobs/angled_donut/round_02.pbs",
+              "jobs/single_pass/round_01.pbs",
+              "jobs/single_pass/round_02.pbs",
+              "jobs/single_pass/round_03.pbs"
+            ]
+          },
+          "effects": {
+            "create_campaign": true,
+            "submit_job": false,
+            "start_simulation": false,
+            "prepare_dt_validation": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-bootstrap-confirm",
+      "method": "POST",
+      "path": "/api/v1/campaigns/3d/bootstrap/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "lifecycle": "discovery_prepared",
+          "campaign_name": "mot_3d_contract",
+          "stage": "discovery",
+          "submitted_to_zeus": false,
+          "bootstrap_key": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      }
+    },
+    {
+      "id": "mot3d-discovery-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-discovery/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-11T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "discovery"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "chain": {
+              "angled_donut": [],
+              "single_pass": []
+            }
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-discovery-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-discovery/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-discovery-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "stage": {
+            "id": "discovery",
+            "label": "Discovery"
+          },
+          "chain": {
+            "families": [
+              {
+                "id": "angled_donut",
+                "rounds": 2
+              },
+              {
+                "id": "single_pass",
+                "rounds": 3
+              }
+            ],
+            "arrays": 5,
+            "tasks_per_array": 3,
+            "dependency": "afterok within each family"
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_discovery_chain": true,
+            "submit_smoke": false,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-discovery-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-discovery/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "discovery",
+          "chain": {
+            "angled_donut": [
+              "500[].zeus-master",
+              "501[].zeus-master"
+            ],
+            "single_pass": [
+              "502[].zeus-master",
+              "503[].zeus-master",
+              "504[].zeus-master"
+            ]
+          },
+          "submitted_at": "2026-10-11T00:00:00+00:00",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-transition-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/discovery-transition/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "discovery"
+          },
+          "discovery": {
+            "status": "ready_to_advance",
+            "chain": {
+              "angled_donut": [
+                "500[].zeus-master",
+                "501[].zeus-master"
+              ],
+              "single_pass": [
+                "502[].zeus-master",
+                "503[].zeus-master",
+                "504[].zeus-master"
+              ]
+            }
+          },
+          "validation": {
+            "status": "valid",
+            "completed_trials": 950,
+            "expected_trials": 950
+          },
+          "next_action": "review_transition",
+          "local_sync": {
+            "status": "not_synchronized",
+            "receipt_sha256": null
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-transition-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/discovery-transition/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-transition-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "from_stage": "discovery",
+          "to_stage": "preliminary_check",
+          "discovery": {
+            "completed_trials": 950,
+            "expected_trials": 950,
+            "families": [
+              "angled_donut",
+              "single_pass"
+            ],
+            "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "artifacts": {
+            "synchronize": {
+              "trial_registries": 950,
+              "merged_files": 4
+            },
+            "create": {
+              "selection_files": 2,
+              "job_files": 4
+            },
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "effects": {
+            "synchronize_discovery": true,
+            "prepare_preliminary_check": true,
+            "submit_preliminary_check": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-transition-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/discovery-transition/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "preliminary_check_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "preliminary_check",
+          "artifacts": {
+            "synchronized": 954,
+            "created": 6,
+            "updated": 1,
+            "bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-preliminary-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-preliminary-check/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "preliminary_check"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                }
+              ]
+            }
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 0,
+            "completed_merge_jobs": 0
+          },
+          "validation": {
+            "status": "not_started",
+            "expected_candidates_per_family": 12,
+            "expected_recoil_seeds_per_candidate": 3
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-preliminary-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-preliminary-check/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-preliminary-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "stage": {
+            "id": "preliminary_check",
+            "label": "Preliminary check"
+          },
+          "chain": {
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              },
+              {
+                "id": "single_pass",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              }
+            ],
+            "qsub_calls": 4,
+            "dependency": "afterok within each family"
+          },
+          "resources": {
+            "array": {
+              "ncpus_per_task": 200,
+              "memory_gb_per_task": 64,
+              "walltime": "24:00:00"
+            },
+            "merge": {
+              "ncpus": 1,
+              "memory_gb": 4,
+              "walltime": "01:00:00"
+            }
+          },
+          "science": {
+            "classification": "candidate_selection_not_final_validation",
+            "candidates_per_family": 12,
+            "input_ensembles": 4,
+            "particles_per_ensemble": 150,
+            "total_particles": 600,
+            "recoil_seeds": [
+              41001,
+              41002,
+              41003
+            ],
+            "dt_s": 1e-05,
+            "t_max_s": 0.1,
+            "solver": "RK4StHybridCustom",
+            "selection_seed": 51001,
+            "bootstrap_replicates": 10000,
+            "bootstrap_seed": 52001
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_preliminary_check": true,
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-preliminary-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-preliminary-check/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "preliminary_check",
+          "chain": {
+            "dependency": "afterok within each family",
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_job_id": "510[].zeus-master",
+                "merge_job_id": "511.zeus-master"
+              },
+              {
+                "id": "single_pass",
+                "array_job_id": "512[].zeus-master",
+                "merge_job_id": "513.zeus-master"
+              }
+            ]
+          },
+          "submitted_at": "2026-10-12T00:00:00+00:00",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-refinement-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-refinement/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "refinement"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                }
+              ]
+            }
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 0,
+            "completed_merge_jobs": 0
+          },
+          "validation": {
+            "status": "not_started",
+            "expected_candidates_per_family": 16,
+            "expected_recoil_seeds_per_candidate": 3
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-refinement-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-refinement/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-refinement-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "stage": {
+            "id": "refinement",
+            "label": "Refinement"
+          },
+          "chain": {
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              },
+              {
+                "id": "single_pass",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              }
+            ],
+            "qsub_calls": 4,
+            "dependency": "afterok within each family"
+          },
+          "resources": {
+            "array": {
+              "ncpus_per_task": 200,
+              "memory_gb_per_task": 64,
+              "walltime": "24:00:00"
+            },
+            "merge": {
+              "ncpus": 1,
+              "memory_gb": 4,
+              "walltime": "01:00:00"
+            }
+          },
+          "science": {
+            "classification": "candidate_selection_not_final_validation",
+            "candidates_per_family": 16,
+            "input_ensembles": 4,
+            "particles_per_ensemble": 750,
+            "total_particles": 3000,
+            "recoil_seeds": [
+              42001,
+              42002,
+              42003
+            ],
+            "dt_s": 1e-05,
+            "t_max_s": 0.1,
+            "solver": "RK4StHybridCustom",
+            "selection_seed": 61001,
+            "bootstrap_replicates": 10000,
+            "bootstrap_seed": 62001
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_refinement": true,
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true
+          },
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-refinement-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-refinement/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "refinement",
+          "chain": {
+            "dependency": "afterok within each family",
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_job_id": "610[].zeus-master",
+                "merge_job_id": "611.zeus-master"
+              },
+              {
+                "id": "single_pass",
+                "array_job_id": "612[].zeus-master",
+                "merge_job_id": "613.zeus-master"
+              }
+            ]
+          },
+          "submitted_at": "2026-10-12T00:00:00+00:00",
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-closure-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-closure/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "closure"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                }
+              ]
+            }
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 0,
+            "completed_merge_jobs": 0
+          },
+          "validation": {
+            "status": "not_started",
+            "expected_candidates_per_family": 16,
+            "expected_recoil_seeds_per_candidate": 3
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-closure-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-closure/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-closure-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "stage": {
+            "id": "closure",
+            "label": "Closure"
+          },
+          "chain": {
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              },
+              {
+                "id": "single_pass",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              }
+            ],
+            "qsub_calls": 4,
+            "dependency": "afterok within each family"
+          },
+          "resources": {
+            "array": {
+              "ncpus_per_task": 200,
+              "memory_gb_per_task": 64,
+              "walltime": "24:00:00"
+            },
+            "merge": {
+              "ncpus": 1,
+              "memory_gb": 4,
+              "walltime": "01:00:00"
+            }
+          },
+          "science": {
+            "classification": "candidate_selection_not_final_validation",
+            "candidates_per_family": 16,
+            "input_ensembles": 4,
+            "particles_per_ensemble": 750,
+            "total_particles": 3000,
+            "recoil_seeds": [
+              42001,
+              42002,
+              42003
+            ],
+            "dt_s": 1e-05,
+            "t_max_s": 0.1,
+            "solver": "RK4StHybridCustom",
+            "selection_seed": 71001,
+            "bootstrap_replicates": 10000,
+            "bootstrap_seed": 72001
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true,
+            "submit_closure": true
+          },
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-closure-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-closure/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "closure",
+          "chain": {
+            "dependency": "afterok within each family",
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_job_id": "710[].zeus-master",
+                "merge_job_id": "711.zeus-master"
+              },
+              {
+                "id": "single_pass",
+                "array_job_id": "712[].zeus-master",
+                "merge_job_id": "713.zeus-master"
+              }
+            ]
+          },
+          "submitted_at": "2026-10-12T00:00:00+00:00",
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-finalist-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-finalist-selection/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "finalist_selection"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": null,
+                  "merge_job_id": null
+                }
+              ]
+            }
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 0,
+            "completed_merge_jobs": 0
+          },
+          "validation": {
+            "status": "not_started",
+            "expected_candidates_per_family": 3,
+            "expected_recoil_seeds_per_candidate": 3
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-finalist-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-finalist-selection/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-finalist-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "stage": {
+            "id": "finalist_selection",
+            "label": "Finalist Selection"
+          },
+          "chain": {
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              },
+              {
+                "id": "single_pass",
+                "array_tasks": 3,
+                "merge_jobs": 1
+              }
+            ],
+            "qsub_calls": 4,
+            "dependency": "afterok within each family"
+          },
+          "resources": {
+            "array": {
+              "ncpus_per_task": 200,
+              "memory_gb_per_task": 64,
+              "walltime": "24:00:00"
+            },
+            "merge": {
+              "ncpus": 1,
+              "memory_gb": 4,
+              "walltime": "01:00:00"
+            }
+          },
+          "science": {
+            "classification": "final_candidate_selection_not_unbiased_validation",
+            "candidates_per_family": 3,
+            "input_ensembles": 20,
+            "recoil_seeds": [
+              43001,
+              43002,
+              43003
+            ],
+            "dt_s": 1e-05,
+            "t_max_s": 0.1,
+            "solver": "RK4StHybridCustom",
+            "npools": 200,
+            "bootstrap_replicates": 10000,
+            "bootstrap_seed": 82001
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true,
+            "submit_finalist_selection": true
+          },
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-finalist-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/mot-3d-finalist-selection/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "finalist_selection",
+          "chain": {
+            "dependency": "afterok within each family",
+            "families": [
+              {
+                "id": "angled_donut",
+                "array_job_id": "810[].zeus-master",
+                "merge_job_id": "811.zeus-master"
+              },
+              {
+                "id": "single_pass",
+                "array_job_id": "812[].zeus-master",
+                "merge_job_id": "813.zeus-master"
+              }
+            ]
+          },
+          "submitted_at": "2026-10-12T00:00:00+00:00",
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-preliminary-transition-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/preliminary-transition/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "preliminary_check"
+          },
+          "preliminary": {
+            "status": "ready_to_advance",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": "510[].zeus-master",
+                  "merge_job_id": "511.zeus-master"
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": "512[].zeus-master",
+                  "merge_job_id": "513.zeus-master"
+                }
+              ]
+            }
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 6,
+            "completed_merge_jobs": 2
+          },
+          "validation": {
+            "status": "valid",
+            "result_artifacts": 152,
+            "expected_result_artifacts": 152,
+            "reason_code": null
+          },
+          "transition": {
+            "status": "not_prepared"
+          },
+          "next_action": "review_transition",
+          "local_sync": {
+            "status": "not_synchronized",
+            "receipt_sha256": null
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-preliminary-transition-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/preliminary-transition/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-preliminary-transition-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "from_stage": "preliminary_check",
+          "to_stage": "refinement",
+          "preliminary": {
+            "result_artifacts": 152,
+            "expected_result_artifacts": 152,
+            "families": [
+              "angled_donut",
+              "single_pass"
+            ],
+            "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "artifacts": {
+            "synchronize": {
+              "result_files": 152,
+              "submission_receipts": 1
+            },
+            "create": {
+              "selection_files": 2,
+              "job_files": 4
+            },
+            "update": [
+              "campaign.json"
+            ],
+            "transfer_files": 160
+          },
+          "effects": {
+            "synchronize_preliminary_check": true,
+            "prepare_refinement": true,
+            "submit_refinement": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-preliminary-transition-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/preliminary-transition/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "refinement_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "refinement",
+          "artifacts": {
+            "synchronized": 153,
+            "created": 6,
+            "updated": 1,
+            "bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-refinement-transition-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/refinement-transition/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "refinement"
+          },
+          "refinement": {
+            "status": "ready_to_advance",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": "610[].zeus-master",
+                  "merge_job_id": "611.zeus-master"
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": "612[].zeus-master",
+                  "merge_job_id": "613.zeus-master"
+                }
+              ]
+            }
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 6,
+            "completed_merge_jobs": 2
+          },
+          "validation": {
+            "status": "valid",
+            "result_artifacts": 200,
+            "expected_result_artifacts": 200,
+            "reason_code": null
+          },
+          "transition": {
+            "status": "not_prepared"
+          },
+          "next_action": "review_transition",
+          "local_sync": {
+            "status": "not_synchronized",
+            "receipt_sha256": null
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-refinement-transition-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/refinement-transition/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-refinement-transition-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "from_stage": "refinement",
+          "to_stage": "closure",
+          "refinement": {
+            "result_artifacts": 200,
+            "expected_result_artifacts": 200,
+            "families": [
+              "angled_donut",
+              "single_pass"
+            ],
+            "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "artifacts": {
+            "synchronize": {
+              "result_files": 200,
+              "submission_receipts": 1
+            },
+            "create": {
+              "selection_files": 2,
+              "job_files": 4
+            },
+            "update": [
+              "campaign.json"
+            ],
+            "transfer_files": 208
+          },
+          "effects": {
+            "synchronize_refinement": true,
+            "prepare_closure": true,
+            "submit_closure": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-refinement-transition-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/refinement-transition/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "closure_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "closure",
+          "artifacts": {
+            "synchronized": 201,
+            "created": 6,
+            "updated": 1,
+            "bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "zeus-snapshot",
+      "method": "POST",
+      "path": "/api/v1/zeus/snapshot",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "connection_status": "connected",
+          "profile": {
+            "host": "zeus.technion.ac.il",
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "authentication": "ssh-key-or-agent"
+          },
+          "remote": {
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "scheduler": {
+            "status": "available",
+            "queried_at": "2026-10-08T00:00:00+00:00",
+            "jobs": []
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/transfers/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "transfer-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "path": "data/optimization/mot_2d/campaign-id",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "destination": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "campaign_directory": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/campaign-id"
+          },
+          "artifacts": {
+            "ensemble_count": 35,
+            "total_count": 72,
+            "missing_count": 72,
+            "identical_count": 0,
+            "total_bytes": 100,
+            "missing_bytes": 100
+          },
+          "effects": {
+            "copy_missing_only": true,
+            "overwrite_existing": false,
+            "submit_jobs": false,
+            "run_simulation": false
+          }
+        }
+      }
+    },
+    {
+      "id": "transfer-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/transfers/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "prepared",
+          "campaign_id": "campaign-id",
+          "destination": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/campaign-id",
+          "transferred_count": 72,
+          "reused_identical_count": 0,
+          "bytes_transferred": 100,
+          "submitted_to_zeus": false,
+          "simulation_started": false
+        }
+      }
+    },
+    {
+      "id": "smoke-submit-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/smoke/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "smoke-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "path": "data/optimization/mot_2d/campaign-id",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "stage": {
+            "id": "smoke",
+            "label": "Smoke check",
+            "purpose": "Validate setup."
+          },
+          "job": {
+            "file": "jobs/01_smoke.pbs",
+            "kind": "job",
+            "task_count": 1,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 1,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 1200
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "inputs": {
+            "verified_count": 72,
+            "status": "ready"
+          },
+          "effects": {
+            "submit_smoke": true,
+            "submit_later_stages": false,
+            "modify_files": false
+          },
+          "later_stages_locked": true
+        }
+      }
+    },
+    {
+      "id": "smoke-submit-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/smoke/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "smoke",
+          "job_id": "100.zeus-master",
+          "submitted_at": "2026-10-08T00:00:00+00:00",
+          "later_stages_locked": true
+        }
+      }
+    },
+    {
+      "id": "smoke-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/smoke/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "smoke"
+          },
+          "submission": {
+            "job_id": "100.zeus-master"
+          },
+          "scheduler": {
+            "state": "completed_success",
+            "raw_state": "F",
+            "exit_status": 0
+          },
+          "validation": {
+            "status": "valid",
+            "points": [
+              {
+                "s0": 1.3,
+                "captured": 0,
+                "input": 2,
+                "efficiency": 0.0
+              }
+            ],
+            "artifact_count": 3
+          },
+          "lifecycle": "ready_to_prepare_screen",
+          "next_action": "review_screening_preparation"
+        }
+      }
+    },
+    {
+      "id": "screening-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/screening/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "screen-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "from_stage": "smoke",
+          "to_stage": "screen",
+          "smoke": {
+            "job_id": "100.zeus-master",
+            "points": [
+              {
+                "s0": 1.3,
+                "captured": 0,
+                "input": 2,
+                "efficiency": 0.0
+              }
+            ],
+            "artifact_count": 3
+          },
+          "artifacts": {
+            "create": [
+              "screen/tasks.json",
+              "jobs/02_screen.pbs"
+            ],
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "effects": {
+            "prepare_screening": true,
+            "submit_screening": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "screening-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/screening/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "screening_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "screen",
+          "artifacts": {
+            "created": 2,
+            "updated": 1
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "screen-submit-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/screening/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "screen-submit-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "stage": {
+            "id": "screen",
+            "label": "Screening",
+            "purpose": "Broad search."
+          },
+          "job": {
+            "file": "jobs/02_screen.pbs",
+            "kind": "array",
+            "task_count": 3,
+            "array_throttle": 3,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 200,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 86400
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "inputs": {
+            "verified_count": 72,
+            "status": "ready"
+          },
+          "smoke": {
+            "status": "validated",
+            "job_id": "100.zeus-master",
+            "point_count": 1
+          },
+          "effects": {
+            "submit_screening": true,
+            "submit_later_stages": false,
+            "modify_files": false
+          },
+          "later_stages_locked": true
+        }
+      }
+    },
+    {
+      "id": "screen-submit-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/screening/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "screen",
+          "job_id": "200[].zeus-master",
+          "submitted_at": "2026-10-08T00:00:00+00:00",
+          "later_stages_locked": true
+        }
+      }
+    },
+    {
+      "id": "screen-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/screen/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "screen"
+          },
+          "submission": {
+            "job_id": "200[].zeus-master"
+          },
+          "scheduler": {
+            "state": "completed_success",
+            "raw_state": "F",
+            "exit_status": 0,
+            "task_count": 3,
+            "counts": {
+              "queued": 0,
+              "running": 0,
+              "held": 0,
+              "succeeded": 3,
+              "failed": 0
+            }
+          },
+          "validation": {
+            "status": "valid",
+            "completed_trials": 51,
+            "expected_trials": 51,
+            "candidate_count": 3
+          },
+          "lifecycle": "ready_to_prepare_refinement",
+          "next_action": "review_refinement_preparation"
+        }
+      }
+    },
+    {
+      "id": "refinement-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/refinement/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "refine-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "from_stage": "screen",
+          "to_stage": "refine",
+          "bounds": {
+            "detuning_gamma": {
+              "low": -3.0,
+              "high": -0.1
+            },
+            "magnet_radius_m": {
+              "low": 0.03,
+              "high": 0.06
+            }
+          },
+          "screening": {
+            "job_id": "200[].zeus-master",
+            "completed_trials": 51,
+            "expected_trials": 51,
+            "candidates": [
+              {
+                "s0": 1.3,
+                "rank": 1,
+                "detuning_gamma": -1.0,
+                "magnet_radius_m": 0.04,
+                "mean_conditional_efficiency": 0.03,
+                "source": "screen/s0_1p300000/worker0/trials/trial_0001.json"
+              },
+              {
+                "s0": 1.3,
+                "rank": 2,
+                "detuning_gamma": -1.1,
+                "magnet_radius_m": 0.041,
+                "mean_conditional_efficiency": 0.02,
+                "source": "screen/s0_1p300000/worker1/trials/trial_0002.json"
+              },
+              {
+                "s0": 1.3,
+                "rank": 3,
+                "detuning_gamma": -1.2,
+                "magnet_radius_m": 0.042,
+                "mean_conditional_efficiency": 0.01,
+                "source": "screen/s0_1p300000/worker2/trials/trial_0003.json"
+              }
+            ]
+          },
+          "artifacts": {
+            "create": [
+              "screening_candidates.json",
+              "refine/tasks.json",
+              "jobs/03_refine_round_01.pbs",
+              "jobs/03_refine_round_02.pbs",
+              "jobs/03_refine_round_03.pbs",
+              "jobs/03_refine_round_04.pbs",
+              "jobs/03_submit_refinement_chain.sh"
+            ],
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "effects": {
+            "prepare_refinement": true,
+            "submit_refinement": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "refinement-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/refinement/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "refinement_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "refine",
+          "artifacts": {
+            "created": 7,
+            "updated": 1
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "refinement-submit-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/refinement/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "refine"
+          },
+          "chain": {
+            "status": "not_submitted",
+            "dependency": "afterok",
+            "rounds": [
+              {
+                "round": 1,
+                "state": "not_submitted",
+                "job_id": null,
+                "depends_on_job_id": null
+              },
+              {
+                "round": 2,
+                "state": "not_submitted",
+                "job_id": null,
+                "depends_on_job_id": null
+              },
+              {
+                "round": 3,
+                "state": "not_submitted",
+                "job_id": null,
+                "depends_on_job_id": null
+              },
+              {
+                "round": 4,
+                "state": "not_submitted",
+                "job_id": null,
+                "depends_on_job_id": null
+              }
+            ]
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "refinement-submit-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/refinement/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "chain-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "stage": {
+            "id": "refine",
+            "label": "Refinement"
+          },
+          "chain": {
+            "dependency": "afterok",
+            "rounds": [
+              {
+                "round": 1,
+                "file": "jobs/03_refine_round_01.pbs",
+                "cumulative_target": 3,
+                "kind": "array",
+                "task_count": 3,
+                "array_throttle": 3,
+                "queue": "zeus_combined_q",
+                "cores_per_task": 200,
+                "memory_per_task_bytes": 68719476736,
+                "walltime_seconds": 72000,
+                "depends_on": null
+              },
+              {
+                "round": 2,
+                "file": "jobs/03_refine_round_02.pbs",
+                "cumulative_target": 6,
+                "kind": "array",
+                "task_count": 3,
+                "array_throttle": 3,
+                "queue": "zeus_combined_q",
+                "cores_per_task": 200,
+                "memory_per_task_bytes": 68719476736,
+                "walltime_seconds": 72000,
+                "depends_on": 1
+              },
+              {
+                "round": 3,
+                "file": "jobs/03_refine_round_03.pbs",
+                "cumulative_target": 9,
+                "kind": "array",
+                "task_count": 3,
+                "array_throttle": 3,
+                "queue": "zeus_combined_q",
+                "cores_per_task": 200,
+                "memory_per_task_bytes": 68719476736,
+                "walltime_seconds": 72000,
+                "depends_on": 2
+              },
+              {
+                "round": 4,
+                "file": "jobs/03_refine_round_04.pbs",
+                "cumulative_target": 10,
+                "kind": "array",
+                "task_count": 3,
+                "array_throttle": 3,
+                "queue": "zeus_combined_q",
+                "cores_per_task": 200,
+                "memory_per_task_bytes": 68719476736,
+                "walltime_seconds": 72000,
+                "depends_on": 3
+              }
+            ]
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_refinement_chain": true,
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_files": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "refinement-submit-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/refinement/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "refine",
+          "chain": {
+            "status": "submitted",
+            "rounds": [
+              {
+                "round": 1,
+                "job_id": "301[].zeus-master",
+                "depends_on_job_id": null
+              },
+              {
+                "round": 2,
+                "job_id": "302[].zeus-master",
+                "depends_on_job_id": "301[].zeus-master"
+              },
+              {
+                "round": 3,
+                "job_id": "303[].zeus-master",
+                "depends_on_job_id": "302[].zeus-master"
+              },
+              {
+                "round": 4,
+                "job_id": "304[].zeus-master",
+                "depends_on_job_id": "303[].zeus-master"
+              }
+            ]
+          },
+          "submitted_at": "2026-10-08T00:00:00+00:00",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/refinement-chain/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "refine"
+          },
+          "chain": {
+            "status": "ready_to_prepare_confirmation",
+            "rounds": [
+              {
+                "round": 1,
+                "job_id": "301[].zeus-master",
+                "depends_on_job_id": null,
+                "scheduler": {
+                  "state": "completed_success",
+                  "task_count": 3,
+                  "counts": {
+                    "queued": 0,
+                    "running": 0,
+                    "held": 0,
+                    "succeeded": 3,
+                    "failed": 0
+                  }
+                }
+              },
+              {
+                "round": 2,
+                "job_id": "302[].zeus-master",
+                "depends_on_job_id": "301[].zeus-master",
+                "scheduler": {
+                  "state": "completed_success",
+                  "task_count": 3,
+                  "counts": {
+                    "queued": 0,
+                    "running": 0,
+                    "held": 0,
+                    "succeeded": 3,
+                    "failed": 0
+                  }
+                }
+              },
+              {
+                "round": 3,
+                "job_id": "303[].zeus-master",
+                "depends_on_job_id": "302[].zeus-master",
+                "scheduler": {
+                  "state": "completed_success",
+                  "task_count": 3,
+                  "counts": {
+                    "queued": 0,
+                    "running": 0,
+                    "held": 0,
+                    "succeeded": 3,
+                    "failed": 0
+                  }
+                }
+              },
+              {
+                "round": 4,
+                "job_id": "304[].zeus-master",
+                "depends_on_job_id": "303[].zeus-master",
+                "scheduler": {
+                  "state": "completed_success",
+                  "task_count": 3,
+                  "counts": {
+                    "queued": 0,
+                    "running": 0,
+                    "held": 0,
+                    "succeeded": 3,
+                    "failed": 0
+                  }
+                }
+              }
+            ]
+          },
+          "validation": {
+            "status": "valid",
+            "completed_trials": 30,
+            "expected_trials": 30,
+            "candidate_count": 5
+          },
+          "next_action": "review_confirmation_preparation",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/confirmation/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "confirmation-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "from_stage": "refine",
+          "to_stage": "confirmation",
+          "bounds": {
+            "detuning_gamma": {
+              "low": -3.0,
+              "high": -0.1
+            },
+            "magnet_radius_m": {
+              "low": 0.03,
+              "high": 0.06
+            }
+          },
+          "refinement": {
+            "round_job_ids": [
+              "301[].zeus-master",
+              "302[].zeus-master",
+              "303[].zeus-master",
+              "304[].zeus-master"
+            ],
+            "completed_trials": 30,
+            "expected_trials": 30,
+            "candidates": [
+              {
+                "s0": 1.3,
+                "rank": 1,
+                "detuning_gamma": -1.01,
+                "magnet_radius_m": 0.0401,
+                "mean_conditional_efficiency": 0.05,
+                "source": "refine/s0_1p300000/worker0/trials/trial_0001.json"
+              },
+              {
+                "s0": 1.3,
+                "rank": 2,
+                "detuning_gamma": -1.02,
+                "magnet_radius_m": 0.0402,
+                "mean_conditional_efficiency": 0.04,
+                "source": "refine/s0_1p300000/worker1/trials/trial_0002.json"
+              },
+              {
+                "s0": 1.3,
+                "rank": 3,
+                "detuning_gamma": -1.03,
+                "magnet_radius_m": 0.0403,
+                "mean_conditional_efficiency": 0.03,
+                "source": "refine/s0_1p300000/worker2/trials/trial_0003.json"
+              },
+              {
+                "s0": 1.3,
+                "rank": 4,
+                "detuning_gamma": -1.04,
+                "magnet_radius_m": 0.0404,
+                "mean_conditional_efficiency": 0.02,
+                "source": "refine/s0_1p300000/worker0/trials/trial_0004.json"
+              },
+              {
+                "s0": 1.3,
+                "rank": 5,
+                "detuning_gamma": -1.05,
+                "magnet_radius_m": 0.0405,
+                "mean_conditional_efficiency": 0.01,
+                "source": "refine/s0_1p300000/worker1/trials/trial_0005.json"
+              }
+            ]
+          },
+          "artifacts": {
+            "create": [
+              "refined_candidates.json",
+              "confirmation/tasks.json",
+              "jobs/04_confirmation.pbs"
+            ],
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "job": {
+            "file": "jobs/04_confirmation.pbs",
+            "kind": "array",
+            "task_count": 5,
+            "array_throttle": 3,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 200,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 36000
+          },
+          "effects": {
+            "prepare_confirmation": true,
+            "submit_confirmation": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/confirmation/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "confirmation_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "confirmation",
+          "artifacts": {
+            "created": 3,
+            "updated": 1
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-submit-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/confirmation/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "confirmation"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "job_id": null
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-submit-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/confirmation/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "confirmation-submit-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "stage": {
+            "id": "confirmation",
+            "label": "Confirmation"
+          },
+          "job": {
+            "file": "jobs/04_confirmation.pbs",
+            "kind": "array",
+            "task_count": 5,
+            "array_throttle": 3,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 200,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 36000
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_confirmation": true,
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "confirmation-submit-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/confirmation/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "confirmation",
+          "job_id": "401[].zeus-master",
+          "submitted_at": "2026-10-08T00:00:00+00:00",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensitivity-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/confirmation-results/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "confirmation"
+          },
+          "confirmation": {
+            "status": "ready_to_prepare_sensitivity",
+            "job_id": "401[].zeus-master",
+            "scheduler": {
+              "state": "completed_success",
+              "task_count": 5,
+              "counts": {
+                "queued": 0,
+                "running": 0,
+                "held": 0,
+                "succeeded": 5,
+                "failed": 0
+              },
+              "job_id": "401[].zeus-master",
+              "submission_nonce": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "validation": {
+            "status": "valid",
+            "completed_points": 5,
+            "expected_points": 5
+          },
+          "next_action": "review_sensitivity_preparation",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensitivity-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/sensitivity/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "sensitivity-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "from_stage": "confirmation",
+          "to_stage": "sensitivity",
+          "confirmation": {
+            "job_id": "401[].zeus-master",
+            "completed_points": 5,
+            "expected_points": 5
+          },
+          "artifacts": {
+            "create": [
+              "winners.json",
+              "sensitivity/tasks.json",
+              "jobs/05_sensitivity.pbs"
+            ],
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "job": {
+            "file": "jobs/05_sensitivity.pbs",
+            "kind": "array",
+            "task_count": 17,
+            "array_throttle": 3,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 200,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 36000
+          },
+          "effects": {
+            "prepare_sensitivity": true,
+            "submit_sensitivity": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensitivity-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/sensitivity/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "sensitivity_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "sensitivity",
+          "artifacts": {
+            "created": 3,
+            "updated": 1
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensitivity-submit-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/sensitivity/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "sensitivity"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "job_id": null
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensitivity-submit-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/sensitivity/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "sensitivity-submit-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "stage": {
+            "id": "sensitivity",
+            "label": "Sensitivity"
+          },
+          "job": {
+            "file": "jobs/05_sensitivity.pbs",
+            "kind": "array",
+            "task_count": 17,
+            "array_throttle": 3,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 200,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 36000
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_sensitivity": true,
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "sensitivity-submit-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/sensitivity/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "sensitivity",
+          "job_id": "402[].zeus-master",
+          "submitted_at": "2026-10-08T00:00:00+00:00",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "zeeman-run-preview",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "zeeman-token",
+          "expires_in_seconds": 300,
+          "plan": {
+            "run_id": "zeeman-contract",
+            "family": "zeeman",
+            "execution_mode": "local",
+            "particle_count": 10,
+            "seed": 42,
+            "retain_particle_states": false,
+            "suitability": "individual_only",
+            "output_disposition": "summary_only",
+            "locked_settings": {},
+            "resolved_configuration": {},
+            "lifecycle_state": "configured",
+            "laboratory_specification": {},
+            "numerical_policy": {},
+            "plan_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "execution_started": false,
+            "submitted_to_zeus": false
+          }
+        }
+      }
+    },
+    {
+      "id": "zeeman-run-confirm",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "created",
+          "run_id": "zeeman-contract",
+          "family": "zeeman",
+          "path": "data/runs/zeeman/zeeman-contract",
+          "lifecycle_state": "configured",
+          "execution_started": false,
+          "submitted_to_zeus": false
+        }
+      }
+    },
+    {
+      "id": "zeeman-local-start",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/local/start",
+      "status": 202,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "queued",
+          "run_id": "zeeman-contract",
+          "execution_mode": "local"
+        }
+      }
+    },
+    {
+      "id": "zeeman-zeus-preview",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/zeus/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "zeus-token",
+          "expires_in_seconds": 300,
+          "run_id": "zeeman-contract",
+          "job": {
+            "kind": "scalar",
+            "array": false,
+            "pbs_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "package_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "submission_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "effects": {
+            "submit_one_job": true,
+            "reconcile_existing_job": false,
+            "cancel_job": false
+          }
+        }
+      }
+    },
+    {
+      "id": "zeeman-zeus-confirm",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/zeus/confirm",
+      "status": 202,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "run_id": "zeeman-contract",
+          "job_id": "500.zeus-master",
+          "submission_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
+    },
+    {
+      "id": "zeeman-zeus-refresh",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/zeus/refresh",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "state": "running",
+          "job_id": "500.zeus-master"
+        }
+      }
+    },
+    {
+      "id": "zeeman-zeus-recover",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/zeeman/zeus/recover",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "run_id": "zeeman-contract",
+          "family": "zeeman",
+          "job_id": "500.zeus-master",
+          "scheduler_state": "running",
+          "exit_status": null,
+          "local_state": "queued",
+          "read_only": true
+        }
+      }
+    },
+    {
+      "id": "mot2d-sources",
+      "method": "GET",
+      "path": "/api/v1/individual-runs/mot-2d/sources",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "contract_version": "mot-2d-individual-source-catalog-v1",
+          "sources": [],
+          "invalid_count": 0,
+          "total": 0,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "mot2d-run-preview",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot2d-token",
+          "expires_in_seconds": 300,
+          "plan": {}
+        }
+      }
+    },
+    {
+      "id": "mot2d-run-confirm",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "created",
+          "run_id": "mot2d-contract",
+          "family": "mot_2d",
+          "path": "data/runs/mot_2d/mot2d-contract",
+          "lifecycle_state": "configured",
+          "execution_started": false,
+          "submitted_to_zeus": false
+        }
+      }
+    },
+    {
+      "id": "mot2d-local-start",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/local/start",
+      "status": 202,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "queued",
+          "run_id": "mot2d-contract",
+          "execution_mode": "local"
+        }
+      }
+    },
+    {
+      "id": "mot2d-zeus-preview",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/zeus/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot2d-zeus-token",
+          "expires_in_seconds": 300,
+          "run_id": "mot2d-contract",
+          "job": {
+            "kind": "scalar",
+            "array": false,
+            "pbs_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "package_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "submission_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "effects": {
+            "submit_one_job": true,
+            "reconcile_existing_job": false,
+            "cancel_job": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot2d-zeus-confirm",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/zeus/confirm",
+      "status": 202,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "run_id": "mot2d-contract",
+          "job_id": "501.zeus-master",
+          "submission_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
+    },
+    {
+      "id": "mot2d-zeus-refresh",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/zeus/refresh",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "state": "running",
+          "job_id": "501.zeus-master"
+        }
+      }
+    },
+    {
+      "id": "mot2d-zeus-recover",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-2d/zeus/recover",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "run_id": "mot2d-contract",
+          "family": "mot_2d",
+          "job_id": "501.zeus-master",
+          "scheduler_state": "running",
+          "exit_status": null,
+          "local_state": "queued",
+          "read_only": true
+        }
+      }
+    },
+    {
+      "id": "production-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/sensitivity-results/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "sensitivity"
+          },
+          "sensitivity": {
+            "status": "ready_to_prepare_production",
+            "job_id": "402[].zeus-master",
+            "scheduler": {
+              "state": "completed_success",
+              "task_count": 17,
+              "counts": {
+                "queued": 0,
+                "running": 0,
+                "held": 0,
+                "succeeded": 17,
+                "failed": 0
+              },
+              "job_id": "402[].zeus-master",
+              "submission_nonce": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+            }
+          },
+          "validation": {
+            "status": "valid",
+            "completed_points": 17,
+            "expected_points": 17
+          },
+          "next_action": "review_production_preparation",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "production-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/production/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "production-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "from_stage": "sensitivity",
+          "to_stage": "production",
+          "sensitivity": {
+            "job_id": "402[].zeus-master",
+            "completed_points": 17,
+            "expected_points": 17
+          },
+          "artifacts": {
+            "create": [
+              "sensitivity_summary.json",
+              "production/tasks.json",
+              "jobs/06_production.pbs"
+            ],
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "job": {
+            "file": "jobs/06_production.pbs",
+            "kind": "array",
+            "task_count": 20,
+            "array_throttle": 4,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 150,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 43200
+          },
+          "effects": {
+            "prepare_production": true,
+            "submit_production": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "production-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/production/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "production_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "production",
+          "artifacts": {
+            "created": 3,
+            "updated": 1
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "production-submit-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/production/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "production"
+          },
+          "submission": {
+            "status": "not_submitted",
+            "job_id": null
+          },
+          "next_action": "review_submission",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "production-submit-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/production/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "production-submit-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "stage": {
+            "id": "production",
+            "label": "Production"
+          },
+          "job": {
+            "file": "jobs/06_production.pbs",
+            "kind": "array",
+            "task_count": 20,
+            "array_throttle": 4,
+            "queue": "zeus_combined_q",
+            "cores_per_task": 150,
+            "memory_per_task_bytes": 68719476736,
+            "walltime_seconds": 43200
+          },
+          "remote": {
+            "host": "zeus.technion.ac.il",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+            "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "branch": "main",
+            "dirty": false
+          },
+          "effects": {
+            "submit_production": true,
+            "start_simulation": true,
+            "submit_later_stages": false,
+            "modify_campaign_files": false,
+            "record_submission_receipt": true
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "production-submit-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/submissions/production/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "campaign_id": "campaign-id",
+          "stage": "production",
+          "job_id": "403[].zeus-master",
+          "submitted_at": "2026-10-08T00:00:00+00:00",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "finalization-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/production-results/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-08T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "stage": "production"
+          },
+          "production": {
+            "status": "ready_to_finalize",
+            "job_id": "403[].zeus-master",
+            "scheduler": {
+              "state": "completed_success",
+              "task_count": 20,
+              "counts": {
+                "queued": 0,
+                "running": 0,
+                "held": 0,
+                "succeeded": 20,
+                "failed": 0
+              },
+              "job_id": "403[].zeus-master",
+              "submission_nonce": "cccccccccccccccccccccccccccccccc"
+            }
+          },
+          "validation": {
+            "status": "valid",
+            "completed_ensembles": 20,
+            "expected_ensembles": 20
+          },
+          "next_action": "review_finalization",
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "finalization-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/finalization/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "finalization-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "Campaign",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "s0_values": [
+              1.3
+            ]
+          },
+          "from_stage": "production",
+          "to_stage": "complete",
+          "production": {
+            "job_id": "403[].zeus-master",
+            "completed_ensembles": 20,
+            "expected_ensembles": 20
+          },
+          "results": [
+            {
+              "s0": 1.3,
+              "n_ensembles": 20,
+              "total_input": 1000,
+              "total_survivors": 100,
+              "recommended_parameters": {
+                "s0": 1.3,
+                "detuning_gamma": -0.92,
+                "magnet_radius": 0.0467
+              },
+              "prediction": {
+                "reporting_zeeman_survivors": 10000000,
+                "simulated_zeeman_survivors": 1000,
+                "simulated_captured_atoms": 100,
+                "pooled_conditional_efficiency": 0.1,
+                "expected_captured_atoms": 1000000,
+                "predicted_95_interval_fraction": [
+                  0.09,
+                  0.11
+                ],
+                "predicted_95_captured_atoms_interval": [
+                  900000,
+                  1100000
+                ],
+                "predicted_95_half_width_fraction": 0.01,
+                "predicted_95_half_width_percentage_points": 1.0,
+                "binomial_mean_variance": 0.0001,
+                "empirical_between_ensemble_mean_variance": 0.0002,
+                "selected_mean_variance": 0.0002,
+                "selected_mean_variance_source": "empirical_between_ensemble",
+                "critical_value": 2.093,
+                "future_counting_variance": 9e-09,
+                "uncertainty_method": "cluster-aware parametric bootstrap",
+                "bootstrap_replicates": 20000
+              },
+              "target_uncertainty_passes": true,
+              "robustness_status": "not_established_pending_adaptive_challenger_validation",
+              "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+              "warnings": [
+                "robust_operating_region_not_established",
+                "epsilon_near_optimality_not_established"
+              ],
+              "retention": "retained",
+              "output_suitability": "eligible_as_3d_campaign_input"
+            }
+          ],
+          "artifacts": {
+            "create": [
+              "final_report.json",
+              "production/s0_1p300000/summary.json"
+            ],
+            "update": [
+              "campaign.json"
+            ]
+          },
+          "effects": {
+            "finalize_campaign": true,
+            "submit_job": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "finalization-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/finalization/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "campaign_complete",
+          "campaign_id": "campaign-id",
+          "stage": "complete",
+          "results": [
+            {
+              "s0": 1.3,
+              "n_ensembles": 20,
+              "total_input": 1000,
+              "total_survivors": 100,
+              "recommended_parameters": {
+                "s0": 1.3,
+                "detuning_gamma": -0.92,
+                "magnet_radius": 0.0467
+              },
+              "prediction": {
+                "reporting_zeeman_survivors": 10000000,
+                "simulated_zeeman_survivors": 1000,
+                "simulated_captured_atoms": 100,
+                "pooled_conditional_efficiency": 0.1,
+                "expected_captured_atoms": 1000000,
+                "predicted_95_interval_fraction": [
+                  0.09,
+                  0.11
+                ],
+                "predicted_95_captured_atoms_interval": [
+                  900000,
+                  1100000
+                ],
+                "predicted_95_half_width_fraction": 0.01,
+                "predicted_95_half_width_percentage_points": 1.0,
+                "binomial_mean_variance": 0.0001,
+                "empirical_between_ensemble_mean_variance": 0.0002,
+                "selected_mean_variance": 0.0002,
+                "selected_mean_variance_source": "empirical_between_ensemble",
+                "critical_value": 2.093,
+                "future_counting_variance": 9e-09,
+                "uncertainty_method": "cluster-aware parametric bootstrap",
+                "bootstrap_replicates": 20000
+              },
+              "target_uncertainty_passes": true,
+              "robustness_status": "not_established_pending_adaptive_challenger_validation",
+              "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+              "warnings": [
+                "robust_operating_region_not_established",
+                "epsilon_near_optimality_not_established"
+              ],
+              "retention": "retained",
+              "output_suitability": "eligible_as_3d_campaign_input"
+            }
+          ],
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "not_synchronized"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-sources",
+      "method": "GET",
+      "path": "/api/v1/individual-runs/mot-3d/sources",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "contract_version": "mot-3d-individual-source-catalog-v1",
+          "sources": [
+            {
+              "id": "mot3d-source-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "source_kind": "canonical_2d_campaign",
+              "label": "campaign · s0 1.3",
+              "ensemble_count": 20,
+              "available_particle_count": {
+                "pooled": 100,
+                "minimum_per_ensemble": 5,
+                "maximum_per_ensemble": 5
+              },
+              "source_qualification": "canonical_campaign_source",
+              "result_suitability": "individual_only",
+              "provenance": {
+                "validation": "completed_canonical_2d_campaign",
+                "campaign_name": "campaign",
+                "s0": 1.3,
+                "ensemble_count": 20,
+                "campaign_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                "final_report_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              }
+            }
+          ],
+          "invalid_count": 0,
+          "total": 1,
+          "truncated": false
+        }
+      }
+    },
+    {
+      "id": "mot3d-run-preview",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-token",
+          "expires_in_seconds": 300,
+          "plan": {
+            "run_id": "mot3d-contract",
+            "family": "mot_3d",
+            "source": {
+              "id": "mot3d-source-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "canonical_2d_campaign",
+              "qualification": "canonical_campaign_source",
+              "fingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "pooled_particle_count": 100
+            },
+            "selection": {
+              "algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+              "version": "v1",
+              "seed": 1,
+              "selected_count": 20,
+              "selected_identities_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            },
+            "geometry": {
+              "family": "angled_donut",
+              "parameters": {
+                "green_s0": 30,
+                "green_detuning_gamma": -25,
+                "green_waist_m": 0.0075,
+                "blue_s0": 1.5,
+                "blue_waist_m": 0.0075,
+                "magnetic_gradient_G_cm": 2.5,
+                "blue_detuning_gamma": -3,
+                "core_shell_split_radius_m": 0.0025
+              },
+              "derived_parameters": {}
+            },
+            "execution": {
+              "mode": "local",
+              "particle_count": 20,
+              "simulation_seed": 2
+            },
+            "retention": {
+              "particle_states": false
+            },
+            "suitability": "individual_only",
+            "output_disposition": "discard_survivor_states_after_summary",
+            "locked_settings": {
+              "solver": "RK4StHybridCustom",
+              "timestep_s": 1e-05,
+              "t_max_s": 0.1,
+              "convergence_claim": "not_established",
+              "capture": {
+                "capture_radius_m": 0.005,
+                "maximum_final_speed_m_s": 1,
+                "minimum_residence_time_s": 0.005
+              },
+              "sampling_algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+              "sampling_version": "v1",
+              "workers": 8
+            },
+            "lifecycle_state": "configured",
+            "laboratory_specification": {
+              "version": "laboratory-physical-v2",
+              "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3"
+            },
+            "numerical_policy": {
+              "version": "numerical-policy-v1",
+              "sha256": "08a6ad18017ff9a649e46dc94595be24922b3838ffd7c183cdf1a9c9c097cef1"
+            },
+            "plan_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            "execution_started": false,
+            "submitted_to_zeus": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-run-confirm",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "created",
+          "run_id": "mot3d-contract",
+          "family": "mot_3d",
+          "path": "data/runs/mot_3d/mot3d-contract",
+          "lifecycle_state": "configured",
+          "execution_started": false,
+          "submitted_to_zeus": false
+        }
+      }
+    },
+    {
+      "id": "mot3d-local-start",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/local/start",
+      "status": 202,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "queued",
+          "run_id": "mot3d-contract",
+          "execution_mode": "local"
+        }
+      }
+    },
+    {
+      "id": "mot3d-zeus-preview",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/zeus/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-zeus-token",
+          "expires_in_seconds": 300,
+          "run_id": "mot3d-contract",
+          "job": {
+            "kind": "scalar",
+            "array": false,
+            "pbs_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          },
+          "package_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "submission_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "effects": {
+            "submit_one_job": true,
+            "reconcile_existing_job": false,
+            "cancel_job": false
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-zeus-confirm",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/zeus/confirm",
+      "status": 202,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "submitted",
+          "run_id": "mot3d-contract",
+          "job_id": "502.zeus-master",
+          "submission_key": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        }
+      }
+    },
+    {
+      "id": "mot3d-zeus-refresh",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/zeus/refresh",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "state": "running",
+          "job_id": "502.zeus-master"
+        }
+      }
+    },
+    {
+      "id": "mot3d-closure-transition-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/closure-transition/status",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "source": "zeus",
+          "queried_at": "2026-10-12T00:00:00+00:00",
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "stage": "closure"
+          },
+          "scheduler": {
+            "expected_array_tasks": 6,
+            "expected_merge_jobs": 2,
+            "completed_array_tasks": 6,
+            "completed_merge_jobs": 2
+          },
+          "validation": {
+            "status": "valid",
+            "result_artifacts": 200,
+            "expected_result_artifacts": 200,
+            "reason_code": null
+          },
+          "transition": {
+            "status": "not_prepared"
+          },
+          "next_action": "review_transition",
+          "local_sync": {
+            "status": "not_synchronized",
+            "receipt_sha256": null
+          },
+          "closure": {
+            "status": "ready_to_advance",
+            "chain": {
+              "dependency": "afterok within each family",
+              "families": [
+                {
+                  "id": "angled_donut",
+                  "array_job_id": "610[].zeus-master",
+                  "merge_job_id": "611.zeus-master"
+                },
+                {
+                  "id": "single_pass",
+                  "array_job_id": "612[].zeus-master",
+                  "merge_job_id": "613.zeus-master"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-closure-transition-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/closure-transition/preview",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "preview_token": "mot3d-closure-transition-token",
+          "expires_in_seconds": 300,
+          "campaign": {
+            "id": "campaign-id",
+            "name": "mot_3d_contract",
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "from_stage": "closure",
+          "to_stage": "finalist_selection",
+          "artifacts": {
+            "synchronize": {
+              "result_files": 200,
+              "submission_receipts": 1
+            },
+            "create": {
+              "selection_files": 2,
+              "job_files": 4
+            },
+            "update": [
+              "campaign.json"
+            ],
+            "transfer_files": 208
+          },
+          "effects": {
+            "synchronize_closure": true,
+            "prepare_finalist_selection": true,
+            "submit_finalists": false,
+            "start_simulation": false,
+            "overwrite_existing": false
+          },
+          "closure": {
+            "result_artifacts": 200,
+            "expected_result_artifacts": 200,
+            "families": [
+              "angled_donut",
+              "single_pass"
+            ],
+            "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-closure-transition-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/closure-transition/confirm",
+      "status": 201,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "status": "finalist_selection_prepared",
+          "campaign_id": "campaign-id",
+          "stage": "finalist_selection",
+          "artifacts": {
+            "synchronized": 201,
+            "created": 6,
+            "updated": 1,
+            "bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+          },
+          "submitted_to_zeus": false,
+          "simulation_started": false,
+          "local_sync": {
+            "status": "synchronized",
+            "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          }
+        }
+      }
+    },
+    {
+      "id": "mot3d-zeus-recover",
+      "method": "POST",
+      "path": "/api/v1/individual-runs/mot-3d/zeus/recover",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "run_id": "mot3d-contract",
+          "family": "mot_3d",
+          "job_id": "502.zeus-master",
+          "scheduler_state": "running",
+          "exit_status": null,
+          "local_state": "queued",
+          "read_only": true
+        }
+      }
+    }
   ]
 }

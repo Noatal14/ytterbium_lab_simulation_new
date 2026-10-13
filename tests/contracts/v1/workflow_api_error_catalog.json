@@ -1453,6 +1453,132 @@
       "message": "3D Discovery result synchronization stopped safely."
     },
     {
+      "domain": "mot_3d_finalist_submission",
+      "case": "<fallback>",
+      "code": "mot_3d_finalist_submission_failed",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "campaign_not_found",
+      "code": "campaign_not_found",
+      "status": 404,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "confirmation_expired",
+      "code": "confirmation_expired",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "confirmation_invalid",
+      "code": "confirmation_invalid",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "finalist_selection_already_started",
+      "code": "finalist_selection_already_started",
+      "status": 409,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "finalist_selection_partial_submission",
+      "code": "finalist_selection_partial_submission",
+      "status": 409,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "finalist_selection_preparation_invalid",
+      "code": "finalist_selection_preparation_invalid",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "finalist_selection_submission_outcome_unknown",
+      "code": "finalist_selection_submission_outcome_unknown",
+      "status": 409,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "local_files_changed",
+      "code": "local_files_changed",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "profile_invalid",
+      "code": "profile_invalid",
+      "status": 400,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "remote_checkout_mismatch",
+      "code": "remote_checkout_mismatch",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "remote_response_invalid",
+      "code": "remote_response_invalid",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "request_invalid",
+      "code": "request_invalid",
+      "status": 400,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "too_many_pending_previews",
+      "code": "too_many_pending_previews",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "zeus_authentication_required",
+      "code": "zeus_authentication_required",
+      "status": 401,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "zeus_host_key_untrusted",
+      "code": "zeus_host_key_untrusted",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "zeus_timeout",
+      "code": "zeus_timeout",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
+      "domain": "mot_3d_finalist_submission",
+      "case": "zeus_unreachable",
+      "code": "zeus_unreachable",
+      "status": 412,
+      "message": "3D Finalist Selection submission stopped safely."
+    },
+    {
       "domain": "mot_3d_preliminary_submission",
       "case": "<fallback>",
       "code": "mot_3d_preliminary_submission_failed",
@@ -3180,6 +3306,13 @@
       "code": "mot_3d_discovery_transition_unavailable",
       "status": 503,
       "message": "3D Discovery result synchronization is unavailable."
+    },
+    {
+      "domain": "route_unavailable",
+      "case": "mot_3d_finalist_submission_unavailable",
+      "code": "mot_3d_finalist_submission_unavailable",
+      "status": 503,
+      "message": "3D Finalist Selection submission is unavailable."
     },
     {
       "domain": "route_unavailable",

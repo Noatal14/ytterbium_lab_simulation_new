@@ -119,6 +119,10 @@ from workflow_api.mot_3d_closure_submission import (
     Mot3DClosureSubmissionCoordinator,
     Mot3DClosureSubmissionError,
 )
+from workflow_api.mot_3d_finalist_submission import (
+    Mot3DFinalistSubmissionCoordinator,
+    Mot3DFinalistSubmissionError,
+)
 from workflow_api.mot_3d_preliminary_transition import (
     Mot3DPreliminaryTransitionCoordinator,
     Mot3DPreliminaryTransitionError,
@@ -361,6 +365,36 @@ def _post_routes() -> tuple[PostRoute, ...]:
             "3D Closure submission is unavailable.",
             HTTPStatus.CREATED,
             Mot3DClosureSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-finalist-selection/status",
+            "mot_3d_finalist_submission_service",
+            "status",
+            "payload",
+            "mot_3d_finalist_submission_unavailable",
+            "3D Finalist Selection submission is unavailable.",
+            HTTPStatus.OK,
+            Mot3DFinalistSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-finalist-selection/preview",
+            "mot_3d_finalist_submission_service",
+            "preview",
+            "session_kw",
+            "mot_3d_finalist_submission_unavailable",
+            "3D Finalist Selection submission is unavailable.",
+            HTTPStatus.OK,
+            Mot3DFinalistSubmissionError,
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-finalist-selection/confirm",
+            "mot_3d_finalist_submission_service",
+            "confirm",
+            "session_kw",
+            "mot_3d_finalist_submission_unavailable",
+            "3D Finalist Selection submission is unavailable.",
+            HTTPStatus.CREATED,
+            Mot3DFinalistSubmissionError,
         ),
         (
             "/api/v1/zeus/mot-3d/preliminary-transition/status",
@@ -1143,6 +1177,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         Mot3DRefinementSubmissionCoordinator | None
     ) = None
     mot_3d_closure_submission_service: Mot3DClosureSubmissionCoordinator | None = None
+    mot_3d_finalist_submission_service: Mot3DFinalistSubmissionCoordinator | None = None
     mot_3d_preliminary_transition_service: (
         Mot3DPreliminaryTransitionCoordinator | None
     ) = None
@@ -1180,6 +1215,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 and self.mot_3d_preliminary_submission_service is None
                 and self.mot_3d_refinement_submission_service is None
                 and self.mot_3d_closure_submission_service is None
+                and self.mot_3d_finalist_submission_service is None
                 and self.mot_3d_preliminary_transition_service is None
                 and self.mot_3d_refinement_transition_service is None
                 and self.mot_3d_closure_transition_service is None
@@ -1457,6 +1493,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         except Mot3DRefinementSubmissionError as error:
             resolved = resolve_error("mot_3d_refinement_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status)
+            return
+        except Mot3DFinalistSubmissionError as error:
+            resolved = resolve_error("mot_3d_finalist_submission", error.code)
             self._error(resolved.code, resolved.message, resolved.status)
             return
         except Mot3DClosureSubmissionError as error:
@@ -1793,6 +1833,11 @@ def main() -> None:
             WorkflowHandler.repository_root,
             Path("/usr/bin/ssh"),
             Path("/usr/bin/git"),
+        )
+    )
+    WorkflowHandler.mot_3d_finalist_submission_service = (
+        Mot3DFinalistSubmissionCoordinator(
+            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
         )
     )
     WorkflowHandler.mot_3d_preliminary_transition_service = (

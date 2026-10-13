@@ -28,6 +28,7 @@ import { createMot3DRefinementSubmissionApi } from "../api/clients/mot3dRefineme
 import { createMot3DRefinementTransitionApi } from "../api/clients/mot3dRefinementTransition";
 import { createMot3DClosureSubmissionApi } from "../api/clients/mot3dClosureSubmission";
 import { createMot3DClosureTransitionApi } from "../api/clients/mot3dClosureTransition";
+import { createMot3DFinalistSubmissionApi } from "../api/clients/mot3dFinalistSubmission";
 import { createIndividualMot3DApi, type Mot3DRequest } from "../api/clients/individualMot3D";
 
 type SnapshotCase = (typeof successSnapshot.cases)[number];
@@ -119,6 +120,10 @@ describe("backend-generated workflow API contract snapshots", () => {
     await mot3dClosureTransition.status(campaignId, profile);
     const mot3dClosureTransitionPreview = await mot3dClosureTransition.preview(campaignId, profile);
     await mot3dClosureTransition.confirm(mot3dClosureTransitionPreview.preview_token);
+    const mot3dFinalist = createMot3DFinalistSubmissionApi(async () => "<csrf-token>");
+    await mot3dFinalist.status(campaignId, profile);
+    const mot3dFinalistPreview = await mot3dFinalist.preview(campaignId, profile);
+    await mot3dFinalist.confirm(mot3dFinalistPreview.preview_token);
     await zeusApi.snapshot(profile.username, profile.project_directory);
 
     const transferPreview = await transferApi.preview(campaignId, profile);

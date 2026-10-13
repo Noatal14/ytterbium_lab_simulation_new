@@ -44,6 +44,7 @@ class ReceiverKind(Enum):
     MOT_3D_REFINEMENT_TRANSITION = "mot_3d_refinement_transition"
     MOT_3D_CLOSURE_SUBMISSION = "mot_3d_closure_submission"
     MOT_3D_CLOSURE_TRANSITION = "mot_3d_closure_transition"
+    MOT_3D_FINALIST_SUBMISSION = "mot_3d_finalist_submission"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -375,6 +376,59 @@ _RECEIVERS = {
     ReceiverKind.MOT_3D_CLOSURE_SUBMISSION: _ReceiverDefinition(
         "mot_3d_closure_submission_remote.py",
         "<mot-3d-closure-submission>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.SUBMIT,
+                ReceiverOperation.STATUS,
+            }
+        ),
+        True,
+        (
+            "-F",
+            "none",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "PasswordAuthentication=no",
+            "-o",
+            "KbdInteractiveAuthentication=no",
+            "-o",
+            "NumberOfPasswordPrompts=0",
+            "-o",
+            "ConnectTimeout=8",
+            "-o",
+            "ConnectionAttempts=1",
+            "-o",
+            "StrictHostKeyChecking=yes",
+            "-o",
+            "ForwardAgent=no",
+            "-o",
+            "ClearAllForwardings=yes",
+            "-o",
+            "PermitLocalCommand=no",
+            "-o",
+            "ProxyCommand=none",
+            "-o",
+            "ProxyJump=none",
+            "-o",
+            "KnownHostsCommand=none",
+            "-o",
+            "CanonicalizeHostname=no",
+            "-o",
+            "LogLevel=ERROR",
+        ),
+        True,
+        True,
+        True,
+        False,
+        False,
+        True,
+    ),
+    ReceiverKind.MOT_3D_FINALIST_SUBMISSION: _ReceiverDefinition(
+        "mot_3d_finalist_submission_remote.py",
+        "<mot-3d-finalist-submission>",
         frozenset(
             {
                 ReceiverOperation.INSPECT,
@@ -1138,6 +1192,17 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.MOT_3D_CLOSURE_TRANSITION, repository_root, executable, timeout
+        )
+
+    @classmethod
+    def mot_3d_finalist_submission(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_FINALIST_SUBMISSION,
+            repository_root,
+            executable,
+            timeout,
         )
 
     @classmethod

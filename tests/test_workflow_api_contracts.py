@@ -197,6 +197,11 @@ def _server(
         if services
         else None
     )
+    handler.mot_3d_finalist_submission_service = (
+        _Service("mot3d-finalist", ledger, values, "mot3d-finalist-status")
+        if services
+        else None
+    )
     handler.mot_3d_preliminary_transition_service = (
         _Service(
             "mot3d-preliminary-transition",
@@ -449,8 +454,8 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     second, _, _ = collect_success(monkeypatch)
     assert first == second == expected
     assert (
-        len(first["cases"]) == 95
-        and len({(row["method"], row["path"]) for row in first["cases"]}) == 95
+        len(first["cases"])
+        == len({(row["method"], row["path"]) for row in first["cases"]})
     )
     assert all(row["body"].get("api_version") == 1 for row in first["cases"])
     assert all(
@@ -482,6 +487,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "mot3d-closure-status",
         "mot3d-closure-preview",
         "mot3d-closure-confirm",
+        "mot3d-finalist-status",
+        "mot3d-finalist-preview",
+        "mot3d-finalist-confirm",
         "mot3d-preliminary-transition-status",
         "mot3d-preliminary-transition-preview",
         "mot3d-preliminary-transition-confirm",
@@ -826,6 +834,36 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_closure_submission_unavailable",
             "3D Closure submission is unavailable.",
             "Mot3DClosureSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-finalist-selection/status",
+            "mot_3d_finalist_submission_service",
+            "status",
+            "payload",
+            200,
+            "mot_3d_finalist_submission_unavailable",
+            "3D Finalist Selection submission is unavailable.",
+            "Mot3DFinalistSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-finalist-selection/preview",
+            "mot_3d_finalist_submission_service",
+            "preview",
+            "session_kw",
+            200,
+            "mot_3d_finalist_submission_unavailable",
+            "3D Finalist Selection submission is unavailable.",
+            "Mot3DFinalistSubmissionError",
+        ),
+        (
+            "/api/v1/zeus/submissions/mot-3d-finalist-selection/confirm",
+            "mot_3d_finalist_submission_service",
+            "confirm",
+            "session_kw",
+            201,
+            "mot_3d_finalist_submission_unavailable",
+            "3D Finalist Selection submission is unavailable.",
+            "Mot3DFinalistSubmissionError",
         ),
         (
             "/api/v1/zeus/mot-3d/preliminary-transition/status",

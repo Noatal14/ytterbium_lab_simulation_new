@@ -2014,6 +2014,38 @@ _closure_confirm["chain"]["families"][1].update(
     {"array_job_id": "712[].zeus-master", "merge_job_id": "713.zeus-master"}
 )
 
+_PAYLOADS["mot3d-finalist-status"] = deepcopy(_PAYLOADS["mot3d-closure-status"])
+_finalist_status = _PAYLOADS["mot3d-finalist-status"]
+_finalist_status["campaign"]["stage"] = "finalist_selection"
+_finalist_status["validation"]["expected_candidates_per_family"] = 3
+_PAYLOADS["mot3d-finalist-preview"] = deepcopy(_PAYLOADS["mot3d-closure-preview"])
+_finalist_preview = _PAYLOADS["mot3d-finalist-preview"]
+_finalist_preview["preview_token"] = "mot3d-finalist-token"
+_finalist_preview["stage"] = {"id": "finalist_selection", "label": "Finalist Selection"}
+_finalist_preview["science"] = {
+    "classification": "final_candidate_selection_not_unbiased_validation",
+    "candidates_per_family": 3,
+    "input_ensembles": 20,
+    "recoil_seeds": [43001, 43002, 43003],
+    "dt_s": 0.00001,
+    "t_max_s": 0.1,
+    "solver": "RK4StHybridCustom",
+    "npools": 200,
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 82001,
+}
+_finalist_preview["effects"].pop("submit_closure")
+_finalist_preview["effects"]["submit_finalist_selection"] = True
+_PAYLOADS["mot3d-finalist-confirm"] = deepcopy(_PAYLOADS["mot3d-closure-confirm"])
+_finalist_confirm = _PAYLOADS["mot3d-finalist-confirm"]
+_finalist_confirm["stage"] = "finalist_selection"
+_finalist_confirm["chain"]["families"][0].update(
+    {"array_job_id": "810[].zeus-master", "merge_job_id": "811.zeus-master"}
+)
+_finalist_confirm["chain"]["families"][1].update(
+    {"array_job_id": "812[].zeus-master", "merge_job_id": "813.zeus-master"}
+)
+
 _PAYLOADS["mot3d-closure-transition-status"] = deepcopy(
     _PAYLOADS["mot3d-refinement-transition-status"]
 )

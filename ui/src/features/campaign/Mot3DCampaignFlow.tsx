@@ -8,6 +8,7 @@ import type { useMot3DRefinementSubmissionController } from "./controllers/useMo
 import type { useMot3DRefinementTransitionController } from "./controllers/useMot3DRefinementTransitionController";
 import type { useMot3DClosureSubmissionController } from "./controllers/useMot3DClosureSubmissionController";
 import type { useMot3DClosureTransitionController } from "./controllers/useMot3DClosureTransitionController";
+import type { useMot3DFinalistSubmissionController } from "./controllers/useMot3DFinalistSubmissionController";
 import { GuardedStageActions } from "./shared/GuardedStageActions";
 import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 
@@ -22,6 +23,7 @@ export function Mot3DCampaignFlow({
   refinementTransition,
   closure,
   closureTransition,
+  finalist,
   onConnectZeus,
   onViewJobs,
 }: {
@@ -39,6 +41,7 @@ export function Mot3DCampaignFlow({
   >;
   closure?: ReturnType<typeof useMot3DClosureSubmissionController>;
   closureTransition?: ReturnType<typeof useMot3DClosureTransitionController>;
+  finalist?: ReturnType<typeof useMot3DFinalistSubmissionController>;
   onConnectZeus: () => void;
   onViewJobs: () => void;
 }) {
@@ -156,8 +159,27 @@ export function Mot3DCampaignFlow({
           onViewJobs={onViewJobs}
         />
       )}
+      {finalist && <Mot3DFinalistSubmissionStage visible={stage === "finalist_selection"} connected={connected} flow={finalist} onConnectZeus={onConnectZeus} onViewJobs={onViewJobs} />}
     </>
   );
+}
+
+function Mot3DFinalistSubmissionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: { visible: boolean; connected: boolean; flow: ReturnType<typeof useMot3DFinalistSubmissionController>; onConnectZeus: () => void; onViewJobs: () => void }) {
+  const panel = useRef<HTMLDivElement>(null), heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { if (flow.phase === "review") heading.current?.focus(); else if (["ready", "blocked"].includes(flow.phase) || flow.error) panel.current?.focus(); }, [flow.phase, flow.error]);
+  if (!visible) return null;
+  const lifecycle = flow.status?.submission.status, waiting = ["submitted", "queued", "running"].includes(lifecycle ?? "") || (flow.phase === "success" && Boolean(flow.result)), finished = lifecycle === "completed_success_unvalidated";
+  return <section className="section-block" aria-labelledby="mot3d-finalist-submit-heading"><div className="section-heading"><p className="eyebrow">Current stage: Finalist Selection</p><h2 id="mot3d-finalist-submit-heading">Run the full-data finalist comparison</h2><p>Three finalists per family are compared across all 20 frozen ensembles and three recoil seeds. This selects final candidates; it is not independent final validation.</p></div><div ref={panel} tabIndex={-1}>
+    {!connected && <div className="prepare-card"><div><strong>Connect to Zeus before reviewing Finalist Selection</strong><p>Connecting and checking status do not submit or start jobs.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+    {connected && flow.phase === "idle" && !flow.status && !flow.error && <div className="prepare-card"><div><strong>Check Zeus before reviewing Finalist Selection</strong><p>This read-only check verifies whether the prepared jobs already exist.</p></div><button className="primary-button" onClick={() => void flow.refresh()}>Check Finalist Selection status</button></div>}
+    {flow.phase === "ready" && <div className="prepare-card"><div><strong>Finalist Selection is prepared, but not submitted</strong><p>Review the exact four-job plan before the full-data comparison starts.</p></div><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review Finalist Selection jobs", confirmLabel: "Submit Finalist Selection to Zeus", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+    {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "confirming" ? "Submitting the reviewed Finalist Selection jobs" : "Checking Finalist Selection"} />}
+    {flow.phase === "review" && flow.preview && <div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Submit Finalist Selection</h3><p>Each family has one three-task array followed by one merge. The families stay independent, and no validation or report stage is submitted.</p><dl className="transfer-facts"><div><dt>Finalists</dt><dd>3 per family</dd></div><div><dt>Frozen ensembles</dt><dd>All 20</dd></div><div><dt>Recoil seeds</dt><dd>3 per finalist</dd></div><div><dt>Zeus submissions</dt><dd>4 jobs total</dd></div><div><dt>Scientific role</dt><dd>Final candidate selection</dd></div><div><dt>Later stages</dt><dd>Not submitted</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review Finalist Selection jobs", confirmLabel: "Submit Finalist Selection to Zeus", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+    {waiting && !flow.error && <div className="state-panel state-panel--success" role="status"><strong>Finalist Selection is running on Zeus</strong><p>No action is needed while the reviewed jobs run. Zeus continues independently.</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {finished && !flow.error && <div className="state-panel" role="status"><strong>Finalist Selection jobs finished on Zeus</strong><p>The scheduler completed all jobs, but results are not yet scientifically validated, synchronized, or reported. Do not treat this as the final campaign result.</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Manual verification required</strong><p>The submission is partial or its outcome is unknown. Do not submit again; inspect the existing Zeus jobs.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+    {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Finalist Selection submission stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "The outcome may be uncertain. Do not retry; inspect Zeus first." : "No submission was confirmed. Refresh status before reviewing again."}</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div></div>}
+  </div></section>;
 }
 
 function Mot3DClosureTransitionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: {
