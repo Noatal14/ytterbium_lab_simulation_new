@@ -633,6 +633,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
     confirmationResults = new Map<string, ReturnType<typeof parseCreated>>(),
     confirmations = new Map<string, Promise<ReturnType<typeof parseCreated>>>(),
     localStarts = new Map<string, Promise<ReturnType<typeof parseLocal>>>(),
+    localStartResults = new Map<string, ReturnType<typeof parseLocal>>(),
     zreviews = new Map<string, ZeusContext>(),
     zresults = new Map<string, ReturnType<typeof parseZeusResult>>(),
     zconfirms = new Map<string, Promise<ReturnType<typeof parseZeusResult>>>(),
@@ -651,6 +652,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
       confirmationResults.clear();
       confirmations.clear();
       localStarts.clear();
+      localStartResults.clear();
       zreviews.clear();
       zresults.clear();
       zconfirms.clear();
@@ -725,6 +727,8 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
       }
     },
     async startLocal(id: string) {
+      const completed = localStartResults.get(id);
+      if (completed) return completed;
       const old = localStarts.get(id);
       if (old) return old;
       const g = generation,
@@ -738,10 +742,15 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
           );
           if (g !== generation || row.run_id !== id)
             throw new Error("The queued run is stale or mismatched.");
+          localStartResults.set(id, row);
           return row;
         })();
       localStarts.set(id, task);
-      return task;
+      try {
+        return await task;
+      } finally {
+        if (localStarts.get(id) === task) localStarts.delete(id);
+      }
     },
     async previewZeus(id: string, username: string) {
       const g = generation,

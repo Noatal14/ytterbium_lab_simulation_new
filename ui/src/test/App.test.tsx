@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App } from "../App";
 import { ScreeningSubmissionApiError, SubmissionApiError, ZeusApiError } from "../api/campaigns";
@@ -129,6 +129,50 @@ describe("onboarding home", () => {
     await waitFor(() => expect(list).toHaveBeenCalledTimes(2));
     await user.click(screen.getByRole("button", { name: "Return to campaigns" }));
     expect(await screen.findByText("Fixed s0 1.3")).toBeInTheDocument();
+  });
+
+  it("coalesces rapid 2D campaign review clicks synchronously", async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof creationFixture.preview>>) => void;
+    const pending = new Promise<Awaited<ReturnType<typeof creationFixture.preview>>>((done) => { resolve = done; });
+    const preview = vi.fn(() => pending);
+    const user = userEvent.setup();
+    render(<App api={fixtureApi} creation={{ ...creationFixture, preview }} />);
+    await user.click(screen.getByRole("button", { name: "Start 2D-MOT campaign" }));
+    await screen.findByRole("option", { name: /after_zeeman\/production/ });
+    await user.type(screen.getByLabelText(/^Campaign name/), "Fixed s0 1.3");
+    await user.type(screen.getByLabelText(/^Campaign folder/), "s0_1p3");
+    await user.selectOptions(screen.getByLabelText(/^Zeeman ensemble source/), "source-1");
+    await user.type(screen.getByLabelText(/^Fixed s₀ values/), "1.3");
+    const button = screen.getByRole("button", { name: "Review campaign" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(preview).toHaveBeenCalledTimes(1);
+    resolve(await creationFixture.preview());
+    expect(await screen.findByRole("heading", { name: "Review before creating" })).toBeVisible();
+  });
+
+  it("does not allow Back to retire an in-flight campaign confirmation", async () => {
+    let resolve!: (value: Awaited<ReturnType<typeof creationFixture.confirm>>) => void;
+    const pending = new Promise<Awaited<ReturnType<typeof creationFixture.confirm>>>((done) => { resolve = done; });
+    const confirm = vi.fn(() => pending);
+    const user = userEvent.setup();
+    render(<App api={fixtureApi} creation={{ ...creationFixture, confirm }} />);
+    await user.click(screen.getByRole("button", { name: "Start 2D-MOT campaign" }));
+    await screen.findByRole("option", { name: /after_zeeman\/production/ });
+    await user.type(screen.getByLabelText(/^Campaign name/), "Fixed s0 1.3");
+    await user.type(screen.getByLabelText(/^Campaign folder/), "s0_1p3");
+    await user.selectOptions(screen.getByLabelText(/^Zeeman ensemble source/), "source-1");
+    await user.type(screen.getByLabelText(/^Fixed s₀ values/), "1.3");
+    await user.click(screen.getByRole("button", { name: "Review campaign" }));
+    const create = await screen.findByRole("button", { name: "Create campaign" });
+    fireEvent.click(create);
+    const back = screen.getByRole("button", { name: "Back to configuration" });
+    expect(back).toBeDisabled();
+    fireEvent.click(back);
+    expect(screen.getByRole("heading", { name: "Review before creating" })).toBeVisible();
+    resolve(await creationFixture.confirm());
+    expect(await screen.findByRole("heading", { name: "Campaign created and validated" })).toBeVisible();
+    expect(confirm).toHaveBeenCalledTimes(1);
   });
 
   it("never labels a non-portable campaign ready on the Zeus jobs page", async () => {

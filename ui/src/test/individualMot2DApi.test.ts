@@ -59,6 +59,52 @@ const preview = () => ({
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("individual 2D-MOT client", () => {
+  it("allows a safe local-start retry after a rejected request", async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error("temporary local service failure"))
+      .mockResolvedValueOnce(await envelope({ status: "queued", run_id: "mot2d-test", execution_mode: "local" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot2DApi(async () => "csrf");
+    await expect(api.startLocal("mot2d-test")).rejects.toThrow(/temporary/);
+    await expect(api.startLocal("mot2d-test")).resolves.toMatchObject({ run_id: "mot2d-test" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("coalesces concurrent local starts and caches the successful result", async () => {
+    let resolve!: (value: Response) => void;
+    const pending = new Promise<Response>((done) => { resolve = done; });
+    const fetchMock = vi.fn(() => pending);
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot2DApi(async () => "csrf");
+    const first = api.startLocal("mot2d-test");
+    const second = api.startLocal("mot2d-test");
+    resolve(await envelope({ status: "queued", run_id: "mot2d-test", execution_mode: "local" }));
+    await expect(first).resolves.toEqual(await second);
+    await expect(api.startLocal("mot2d-test")).resolves.toMatchObject({ run_id: "mot2d-test" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a pre-reset local start evict the replacement request", async () => {
+    let resolveFirst!: (value: Response) => void;
+    let resolveSecond!: (value: Response) => void;
+    const firstResponse = new Promise<Response>((done) => { resolveFirst = done; });
+    const secondResponse = new Promise<Response>((done) => { resolveSecond = done; });
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => firstResponse)
+      .mockImplementationOnce(() => secondResponse);
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualMot2DApi(async () => "csrf");
+    const first = api.startLocal("mot2d-test");
+    api.reset();
+    const replacement = api.startLocal("mot2d-test");
+    resolveFirst(await envelope({ status: "queued", run_id: "mot2d-test", execution_mode: "local" }));
+    await expect(first).rejects.toThrow(/stale/);
+    const third = api.startLocal("mot2d-test");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    resolveSecond(await envelope({ status: "queued", run_id: "mot2d-test", execution_mode: "local" }));
+    await expect(replacement).resolves.toEqual(await third);
+  });
+
   it("rejects extra source fields", async () => {
     vi.stubGlobal(
       "fetch",

@@ -284,7 +284,7 @@ export function IndividualMot2DRun({
       if (requestId === refreshRequest.current) setBusy(false);
     }
   }
-  useEffect(() => { if (step !== "monitor" || mode !== "local" || !runId) return; let active = true, inFlight = false; const poll = async () => { if (inFlight) return; inFlight = true; try { const summary = (await api.runs()).find((item) => item.display_name === runId); if (active && summary) { const found = summary.lifecycle === "results_ready" ? await api.run(summary.id) : summary; if (active) { setRun(found); if (found.lifecycle === "results_ready") setStep("results"); } } } finally { inFlight = false; } }; const timer = window.setInterval(() => void poll(), 1000); return () => { active = false; window.clearInterval(timer); }; }, [api, mode, runId, step]);
+  useEffect(() => { if (step !== "monitor" || mode !== "local" || !runId) return; let active = true, inFlight = false; const poll = async () => { if (inFlight) return; inFlight = true; try { const summary = (await api.runs()).find((item) => item.display_name === runId); if (!summary) throw new Error("The run has not appeared in the verified run list yet. Try checking again shortly."); if (active) { const found = summary.lifecycle === "results_ready" ? await api.run(summary.id) : summary; if (active) { setError(null); setRun(found); if (found.lifecycle === "results_ready") setStep("results"); } } } catch (caught) { if (active) setError(message(caught)); } finally { inFlight = false; } }; const timer = window.setInterval(() => void poll(), 1000); return () => { active = false; window.clearInterval(timer); }; }, [api, mode, runId, step]);
   const current = labels.findIndex(([id]) => id === step);
   return (
     <main id="main" className="individual-run-page">

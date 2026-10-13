@@ -107,6 +107,49 @@ describe("individual Zeeman API trust boundary", () => {
     await expect(first).resolves.toEqual(await second); expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("allows a safe local-start retry after a rejected request", async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new Error("temporary local service failure"))
+      .mockResolvedValueOnce(envelope({ status: "queued", run_id: "zeeman-one", execution_mode: "local" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualZeemanApi(async () => "csrf");
+    await expect(api.startLocal("zeeman-one")).rejects.toThrow(/temporary/);
+    await expect(api.startLocal("zeeman-one")).resolves.toMatchObject({ run_id: "zeeman-one" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("coalesces concurrent local starts and caches the successful result", async () => {
+    const response = deferred<ReturnType<typeof envelope>>();
+    const fetchMock = vi.fn(() => response.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualZeemanApi(async () => "csrf");
+    const first = api.startLocal("zeeman-one");
+    const second = api.startLocal("zeeman-one");
+    response.resolve(envelope({ status: "queued", run_id: "zeeman-one", execution_mode: "local" }));
+    await expect(first).resolves.toEqual(await second);
+    await expect(api.startLocal("zeeman-one")).resolves.toMatchObject({ run_id: "zeeman-one" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a pre-reset local start evict the replacement request", async () => {
+    const firstResponse = deferred<ReturnType<typeof envelope>>();
+    const secondResponse = deferred<ReturnType<typeof envelope>>();
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => firstResponse.promise)
+      .mockImplementationOnce(() => secondResponse.promise);
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createIndividualZeemanApi(async () => "csrf");
+    const first = api.startLocal("zeeman-one");
+    api.reset();
+    const replacement = api.startLocal("zeeman-one");
+    firstResponse.resolve(envelope({ status: "queued", run_id: "zeeman-one", execution_mode: "local" }));
+    await expect(first).rejects.toThrow(/stale/);
+    const third = api.startLocal("zeeman-one");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    secondResponse.resolve(envelope({ status: "queued", run_id: "zeeman-one", execution_mode: "local" }));
+    await expect(replacement).resolves.toEqual(await third);
+  });
+
   it("strictly parses local-start, run-list, and run-detail responses", async () => {
     const detail = { ...runSummary, provenance: { git_revision: "a".repeat(40), configuration_sha256: "b".repeat(64), inputs_sha256: "c".repeat(64), laboratory_spec: {}, numerical_policy: {} }, configuration: { status: "complete", resolved: {} }, inputs: { status: "complete", artifacts: [] }, artifacts: [], metrics: null, error: null };
     vi.stubGlobal("fetch", vi.fn()

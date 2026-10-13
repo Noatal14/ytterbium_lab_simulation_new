@@ -28,6 +28,7 @@ const errorTitle: Record<string, string> = {
 
 export function ZeusJobs({ campaigns, api, loading, error, onInspect, savedSnapshot = null, onSnapshot }: { campaigns: Campaign[]; api: ZeusApi; loading: boolean; error: string | null; onInspect: (id: string) => void; savedSnapshot?: ZeusSnapshot | null; onSnapshot?: (snapshot: ZeusSnapshot | null) => void }) {
   const title = useRef<HTMLHeadingElement>(null);
+  const requestGeneration = useRef(0);
   const [username, setUsername] = useState(savedSnapshot?.profile.username ?? "");
   const [snapshot, setSnapshot] = useState<ZeusSnapshot | null>(savedSnapshot);
   const [connection, setConnection] = useState<"not_configured" | "checking" | "connected" | "error">(savedSnapshot ? "connected" : "not_configured");
@@ -37,12 +38,17 @@ export function ZeusJobs({ campaigns, api, loading, error, onInspect, savedSnaps
   const usernameInvalid = cleanUsername.length > 0 && !usernameValid;
   const projectDirectory = usernameValid ? `/home/${cleanUsername}/ytterbium_lab_simulation_new` : "";
   useEffect(() => { title.current?.focus(); }, []);
+  useEffect(() => () => { requestGeneration.current += 1; }, []);
 
   async function checkZeus() {
     if (!usernameValid) return;
+    const request = ++requestGeneration.current;
+    const requestedUsername = cleanUsername;
+    const requestedDirectory = projectDirectory;
     setConnection("checking"); setConnectionError(null);
-    try { const next = await api.snapshot(cleanUsername, projectDirectory); setSnapshot(next); onSnapshot?.(next); setConnection("connected"); }
+    try { const next = await api.snapshot(requestedUsername, requestedDirectory); if (request !== requestGeneration.current) return; setSnapshot(next); onSnapshot?.(next); setConnection("connected"); }
     catch (caught) {
+      if (request !== requestGeneration.current) return;
       const issue = caught instanceof ZeusApiError ? caught : new ZeusApiError("check_failed", "The read-only Zeus check failed safely.");
       setSnapshot(null); onSnapshot?.(null); setConnectionError({ code: issue.code, message: issue.message }); setConnection("error");
     }
@@ -55,7 +61,7 @@ export function ZeusJobs({ campaigns, api, loading, error, onInspect, savedSnaps
     <section className="connection-setup" aria-labelledby="connection-heading">
       <div className="section-heading"><h2 id="connection-heading">Connect to Zeus</h2><p>Enter your Technion username. The project directory is derived automatically.</p></div>
       <div className="connection-form">
-        <div className="connection-field connection-field--username"><label htmlFor="technion-username">Technion username</label><input id="technion-username" value={username} onChange={(event) => { setUsername(event.target.value); setSnapshot(null); onSnapshot?.(null); setConnection("not_configured"); setConnectionError(null); }} autoComplete="username" placeholder="for example, tal.noa" aria-invalid={usernameInvalid} aria-describedby={usernameInvalid ? "username-error" : undefined} /></div>
+        <div className="connection-field connection-field--username"><label htmlFor="technion-username">Technion username</label><input id="technion-username" value={username} onChange={(event) => { requestGeneration.current += 1; setUsername(event.target.value); setSnapshot(null); onSnapshot?.(null); setConnection("not_configured"); setConnectionError(null); }} autoComplete="username" placeholder="for example, tal.noa" aria-invalid={usernameInvalid} aria-describedby={usernameInvalid ? "username-error" : undefined} /></div>
         <div className="connection-field connection-field--directory"><label htmlFor="remote-directory">Remote project directory</label><input id="remote-directory" value={projectDirectory} readOnly placeholder="Derived from your username" /></div>
         {usernameInvalid && <p id="username-error" className="field-error username-error" role="status">Enter the username you use to sign in to Technion services.</p>}
         <div className="authentication-note"><strong>Authentication <span className="help"><button type="button" aria-label="About SSH authentication"><CircleHelp aria-hidden="true" /></button><span role="tooltip">Uses an existing key loaded in your active SSH agent. An operating-system credential store may remember its passphrase, but the SSH agent supplies the key. The application never sees or stores your password, passphrase, or private key.</span></span></strong><p>Existing key loaded in the active SSH agent. No password is accepted or stored.</p><details className="connection-guide"><summary>First time connecting? View setup guide</summary><ol><li>Connect this computer to the Technion VPN.</li><li>Create a dedicated SSH key on this computer, not inside Zeus.</li><li>Load the private key into the active SSH agent. Your operating system may also remember its passphrase.</li><li>Before accepting any first terminal connection to <code>zeus.technion.ac.il</code>, compare the displayed server fingerprint with an official Technion source or administrator. Continue only if it matches; never disable host-key checking.</li><li>Follow the official Technion instructions to install only the <code>.pub</code> public key in your Zeus account. A terminal or portal may request your Zeus password; this application never will.</li><li>Return here and select <strong>Connect and check status</strong>.</li></ol><p>Never paste your Zeus password, private key, or key passphrase into this application, documentation, or chat.</p></details></div>
