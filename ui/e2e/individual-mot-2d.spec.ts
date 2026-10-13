@@ -86,6 +86,7 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
             locked_settings: {
               solver: "RK4StHybridCustom",
               timestep_s: 0.000000625,
+              workers: 8,
             },
             lifecycle_state: "configured",
             laboratory_specification: {},

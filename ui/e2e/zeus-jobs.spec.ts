@@ -25,7 +25,7 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
     } } });
   });
   await page.goto("/");
-  await page.getByRole("link", { name: "Zeus jobs" }).click();
+  await page.getByRole("link", { name: "Zeus connection" }).click();
   await expect(page.getByRole("heading", { name: "Monitor jobs safely" })).toBeVisible();
   await expect(page.getByText("Not connected", { exact: true })).toBeVisible();
   const setupGuide = page.getByText("First time connecting? View setup guide");
