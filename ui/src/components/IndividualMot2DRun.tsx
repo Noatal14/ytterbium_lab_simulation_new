@@ -15,7 +15,7 @@ import type {
   Mot2DSource,
 } from "../api/clients/individualMot2D";
 import { RunProgressPanel } from "./RunProgressPanel";
-import { confirmRememberedZeusRun, readRememberedIndividualRun, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
+import { confirmRememberedZeusRun, readRememberedIndividualRun, recoveredRunStep, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
 
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const labels: [Step, string][] = [
@@ -177,7 +177,7 @@ export function IndividualMot2DRun({
       refreshRequest.current += 1;
     };
   }, [api]);
-  useEffect(() => { if (recoveryStarted.current) return; recoveryStarted.current = true; const id = refreshRequest.current; void (async () => { const remembered = readRememberedIndividualRun("mot_2d"); const found = await recoverIndividualRun("mot_2d", api); if (id !== refreshRequest.current || !found) return; if (found.execution.mode === "zeus") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (id !== refreshRequest.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot2DRun); setStep(found.lifecycle === "results_ready" ? "results" : "monitor"); })().catch((caught) => { if (id === refreshRequest.current) setError(message(caught)); }); }, [api]);
+  useEffect(() => { if (recoveryStarted.current) return; recoveryStarted.current = true; const id = refreshRequest.current; void (async () => { const remembered = readRememberedIndividualRun("mot_2d"); const found = await recoverIndividualRun("mot_2d", api); if (id !== refreshRequest.current || !found) return; if (found.execution.mode === "zeus") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (id !== refreshRequest.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot2DRun); setStep(recoveredRunStep(found)); })().catch((caught) => { if (id === refreshRequest.current) setError(message(caught)); }); }, [api]);
   const selected = sources.find((row) => row.id === source),
     max = Math.min(
       mode === "local" ? 1000 : 50000,
@@ -252,6 +252,7 @@ export function IndividualMot2DRun({
       await act(async () => {
         const row = await api.confirm(preview.preview_token);
         setRunId(row.run_id);
+        if (mode === "local") rememberIndividualRun("mot_2d", row.run_id, "local");
         setStep("run");
       });
   }

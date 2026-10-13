@@ -14,6 +14,12 @@ type Profile = ZeusSnapshot["profile"];
 export class Mot3DClosureSubmissionApiError extends Error {
   constructor(public code: string, message: string) { super(message); }
 }
+export const closureConfirmIsUncertain = (cause: unknown) =>
+  cause instanceof Mot3DClosureSubmissionApiError && [
+    "closure_submission_outcome_unknown",
+    "closure_partial_submission",
+    "closure_already_started",
+  ].includes(cause.code);
 const closureErrorCodes = new Set([
   "request_invalid", "profile_invalid", "campaign_not_found", "closure_preparation_invalid",
   "closure_already_started", "closure_partial_submission", "closure_submission_outcome_unknown",

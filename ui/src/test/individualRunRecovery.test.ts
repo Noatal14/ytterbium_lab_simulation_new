@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { confirmRememberedZeusRun, forgetIndividualRun, readRememberedIndividualRun, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
+import { confirmRememberedZeusRun, forgetIndividualRun, readRememberedIndividualRun, recoveredRunStep, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
 import { IndividualZeusApiError } from "../api/clients/individualZeusRecovery";
 
 const row = (overrides: Record<string, unknown> = {}) => ({
@@ -20,6 +20,53 @@ describe("individual run recovery", () => {
     const api = { runs: vi.fn(async () => [summary]), run: vi.fn() };
     await expect(recoverIndividualRun("mot_2d", api)).resolves.toEqual(summary);
     expect(api.runs).toHaveBeenCalledOnce(); expect(api.run).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["zeeman" as const, "zeeman-recovery"],
+    ["mot_2d" as const, "mot2d-recovery"],
+    ["mot_3d" as const, "mot3d-recovery"],
+  ])("restores a created local %s run to Run without auto-starting", async (family, displayName) => {
+    rememberIndividualRun(family, displayName, "local");
+    const summary = row({ display_name: displayName, lifecycle: "configured", record_state: "configured" });
+    const startLocal = vi.fn<(runId: string) => Promise<{ status: "queued" }>>(async () => ({ status: "queued" }));
+    const found = await recoverIndividualRun(family, { runs: vi.fn(async () => [summary]), run: vi.fn() });
+
+    expect(found).not.toBeNull();
+    expect(recoveredRunStep(found!)).toBe("run");
+    expect(startLocal).not.toHaveBeenCalled();
+
+    await startLocal(displayName);
+    expect(startLocal).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["zeeman" as const, "zeeman-recovery"],
+    ["mot_2d" as const, "mot2d-recovery"],
+    ["mot_3d" as const, "mot3d-recovery"],
+  ])("recovers a local %s run after a lost start response without restarting", async (family, displayName) => {
+    rememberIndividualRun(family, displayName, "local");
+    const startLocal = vi.fn<(runId: string) => Promise<never>>(async () => { throw new Error("response lost after local start"); });
+    await expect(startLocal(displayName)).rejects.toThrow(/response lost/);
+
+    const summary = row({ display_name: displayName, lifecycle: "running", record_state: "running" });
+    const found = await recoverIndividualRun(family, { runs: vi.fn(async () => [summary]), run: vi.fn() });
+
+    expect(found).not.toBeNull();
+    expect(recoveredRunStep(found!)).toBe("monitor");
+    expect(startLocal).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["configured", "configured", "run"],
+    ["configured", "validated", "run"],
+    ["configured", "reviewed", "run"],
+    ["queued", "queued", "monitor"],
+    ["running", "running", "monitor"],
+    ["failed", "failed", "monitor"],
+    ["results_ready", "succeeded", "results"],
+  ])("maps lifecycle %s / record %s to %s", (lifecycle, recordState, expected) => {
+    expect(recoveredRunStep(row({ lifecycle, record_state: recordState }))).toBe(expected);
   });
 
   it("re-fetches exact verified detail for a completed run", async () => {

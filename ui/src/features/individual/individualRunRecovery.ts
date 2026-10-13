@@ -21,6 +21,12 @@ export type RecoverableRun = {
   execution: { mode: RecoverableExecutionMode };
 };
 
+export function recoveredRunStep(run: RecoverableRun): "run" | "monitor" | "results" {
+  if (run.lifecycle === "results_ready") return "results";
+  if (["configured", "validated", "reviewed"].includes(run.record_state)) return "run";
+  return "monitor";
+}
+
 const key = (family: RecoverableRunFamily) => `ytterbium.individual-run.${family}.v1`;
 const identifiers: Record<RecoverableRunFamily, RegExp> = {
   zeeman: /^zeeman-[a-z0-9-]{1,120}$/,

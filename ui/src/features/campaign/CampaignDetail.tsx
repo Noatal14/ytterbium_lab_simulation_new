@@ -36,10 +36,14 @@ import { mot3DRefinementSubmissionApi, type Mot3DRefinementSubmissionApi } from 
 import { useMot3DRefinementSubmissionController } from "./controllers/useMot3DRefinementSubmissionController";
 import { mot3DRefinementTransitionApi, type Mot3DRefinementTransitionApi } from "../../api/clients/mot3dRefinementTransition";
 import { useMot3DRefinementTransitionController } from "./controllers/useMot3DRefinementTransitionController";
+import { mot3DClosureSubmissionApi, type Mot3DClosureSubmissionApi } from "../../api/clients/mot3dClosureSubmission";
+import { useMot3DClosureSubmissionController } from "./controllers/useMot3DClosureSubmissionController";
+import { mot3DClosureTransitionApi, type Mot3DClosureTransitionApi } from "../../api/clients/mot3dClosureTransition";
+import { useMot3DClosureTransitionController } from "./controllers/useMot3DClosureTransitionController";
 
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
 
-export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, screeningSubmission, screeningLifecycle, refinementSubmission, refinementLifecycle, confirmationSubmission=confirmationSubmissionApi, sensitivity=sensitivityApi, sensitivitySubmission=sensitivitySubmissionApi, production=productionApi, productionSubmission=productionSubmissionApi, finalization=finalizationApi, mot3DDiscovery=mot3DDiscoveryApi, mot3DDiscoveryTransition=mot3DDiscoveryTransitionApi, preliminaryCheck=preliminaryCheckApi, mot3DPreliminaryTransition=mot3DPreliminaryTransitionApi, mot3DRefinementSubmission=mot3DRefinementSubmissionApi, mot3DRefinementTransition=mot3DRefinementTransitionApi, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; screeningSubmission: ScreeningSubmissionApi; screeningLifecycle: ScreeningLifecycleApi; refinementSubmission: RefinementSubmissionApi; refinementLifecycle: RefinementLifecycleApi; confirmationSubmission?: ConfirmationSubmissionApi; sensitivity?: SensitivityApi; sensitivitySubmission?: SensitivitySubmissionApi; production?:ProductionApi; productionSubmission?:ProductionSubmissionApi; finalization?:FinalizationApi; mot3DDiscovery?: Mot3DDiscoveryApi; mot3DDiscoveryTransition?: Mot3DDiscoveryTransitionApi; preliminaryCheck?: PreliminaryCheckApi; mot3DPreliminaryTransition?: Mot3DPreliminaryTransitionApi; mot3DRefinementSubmission?:Mot3DRefinementSubmissionApi; mot3DRefinementTransition?:Mot3DRefinementTransitionApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
+export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, screeningSubmission, screeningLifecycle, refinementSubmission, refinementLifecycle, confirmationSubmission=confirmationSubmissionApi, sensitivity=sensitivityApi, sensitivitySubmission=sensitivitySubmissionApi, production=productionApi, productionSubmission=productionSubmissionApi, finalization=finalizationApi, mot3DDiscovery=mot3DDiscoveryApi, mot3DDiscoveryTransition=mot3DDiscoveryTransitionApi, preliminaryCheck=preliminaryCheckApi, mot3DPreliminaryTransition=mot3DPreliminaryTransitionApi, mot3DRefinementSubmission=mot3DRefinementSubmissionApi, mot3DRefinementTransition=mot3DRefinementTransitionApi, mot3DClosureSubmission=mot3DClosureSubmissionApi, mot3DClosureTransition=mot3DClosureTransitionApi, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; screeningSubmission: ScreeningSubmissionApi; screeningLifecycle: ScreeningLifecycleApi; refinementSubmission: RefinementSubmissionApi; refinementLifecycle: RefinementLifecycleApi; confirmationSubmission?: ConfirmationSubmissionApi; sensitivity?: SensitivityApi; sensitivitySubmission?: SensitivitySubmissionApi; production?:ProductionApi; productionSubmission?:ProductionSubmissionApi; finalization?:FinalizationApi; mot3DDiscovery?: Mot3DDiscoveryApi; mot3DDiscoveryTransition?: Mot3DDiscoveryTransitionApi; preliminaryCheck?: PreliminaryCheckApi; mot3DPreliminaryTransition?: Mot3DPreliminaryTransitionApi; mot3DRefinementSubmission?:Mot3DRefinementSubmissionApi; mot3DRefinementTransition?:Mot3DRefinementTransitionApi; mot3DClosureSubmission?:Mot3DClosureSubmissionApi; mot3DClosureTransition?:Mot3DClosureTransitionApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
   const trusted = campaign.trust === "trusted-current";
   const command = campaign.next_plan?.display_command ?? "";
   const [copyStatus, setCopyStatus] = useState("");
@@ -66,6 +70,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const mot3DPreliminaryTransitionFlow=useMot3DPreliminaryTransitionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:campaign.family==="mot_3d"&&(campaign.stage==="preliminary_check"||campaign.stage==="refinement"),api:mot3DPreliminaryTransition});
   const mot3DRefinementSubmissionFlow=useMot3DRefinementSubmissionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:campaign.family==="mot_3d"&&campaign.stage==="refinement",api:mot3DRefinementSubmission});
   const mot3DRefinementTransitionFlow=useMot3DRefinementTransitionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:campaign.family==="mot_3d"&&(campaign.stage==="refinement"||campaign.stage==="closure"),api:mot3DRefinementTransition});
+  const mot3DClosureSubmissionFlow=useMot3DClosureSubmissionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:campaign.family==="mot_3d"&&campaign.stage==="closure",api:mot3DClosureSubmission});
+  const mot3DClosureTransitionFlow=useMot3DClosureTransitionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:campaign.family==="mot_3d"&&(campaign.stage==="closure"||campaign.stage==="finalist_selection"),api:mot3DClosureTransition});
   const title = useRef<HTMLHeadingElement>(null);
   const reviewButton = useRef<HTMLButtonElement>(null);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
@@ -106,6 +112,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
         preliminaryTransition={mot3DPreliminaryTransitionFlow}
         refinement={mot3DRefinementSubmissionFlow}
         refinementTransition={mot3DRefinementTransitionFlow}
+        closure={mot3DClosureSubmissionFlow}
+        closureTransition={mot3DClosureTransitionFlow}
         onConnectZeus={onConnectZeus}
         onViewJobs={onViewJobs}
       />

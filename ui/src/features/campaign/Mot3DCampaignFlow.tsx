@@ -6,6 +6,9 @@ import type { useMot3DPreliminaryCheckController } from "./controllers/useMot3DP
 import type { useMot3DPreliminaryTransitionController } from "./controllers/useMot3DPreliminaryTransitionController";
 import type { useMot3DRefinementSubmissionController } from "./controllers/useMot3DRefinementSubmissionController";
 import type { useMot3DRefinementTransitionController } from "./controllers/useMot3DRefinementTransitionController";
+import type { useMot3DClosureSubmissionController } from "./controllers/useMot3DClosureSubmissionController";
+import type { useMot3DClosureTransitionController } from "./controllers/useMot3DClosureTransitionController";
+import { GuardedStageActions } from "./shared/GuardedStageActions";
 import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 
 export function Mot3DCampaignFlow({
@@ -17,6 +20,8 @@ export function Mot3DCampaignFlow({
   preliminaryTransition,
   refinement,
   refinementTransition,
+  closure,
+  closureTransition,
   onConnectZeus,
   onViewJobs,
 }: {
@@ -32,6 +37,8 @@ export function Mot3DCampaignFlow({
   refinementTransition?: ReturnType<
     typeof useMot3DRefinementTransitionController
   >;
+  closure?: ReturnType<typeof useMot3DClosureSubmissionController>;
+  closureTransition?: ReturnType<typeof useMot3DClosureTransitionController>;
   onConnectZeus: () => void;
   onViewJobs: () => void;
 }) {
@@ -131,7 +138,104 @@ export function Mot3DCampaignFlow({
           onViewJobs={onViewJobs}
         />
       )}
+      {closure && (
+        <Mot3DClosureSubmissionStage
+          visible={stage === "closure"}
+          connected={connected}
+          flow={closure}
+          onConnectZeus={onConnectZeus}
+          onViewJobs={onViewJobs}
+        />
+      )}
+      {closureTransition && (
+        <Mot3DClosureTransitionStage
+          visible={stage === "closure" || stage === "finalist_selection"}
+          connected={connected}
+          flow={closureTransition}
+          onConnectZeus={onConnectZeus}
+          onViewJobs={onViewJobs}
+        />
+      )}
     </>
+  );
+}
+
+function Mot3DClosureTransitionStage({ visible, connected, flow, onConnectZeus, onViewJobs }: {
+  visible: boolean;
+  connected: boolean;
+  flow: ReturnType<typeof useMot3DClosureTransitionController>;
+  onConnectZeus: () => void;
+  onViewJobs: () => void;
+}) {
+  const focus = useRef<HTMLDivElement>(null), heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (flow.phase === "review") heading.current?.focus();
+    else if (["ready", "success", "blocked"].includes(flow.phase) || flow.error) focus.current?.focus();
+  }, [flow.phase, flow.error]);
+  if (!visible) return null;
+  const lifecycle = flow.status?.closure.status;
+  const waiting = ["submitted", "queued", "running"].includes(lifecycle ?? "");
+  const schedulerOnly = lifecycle === "completed_success_unvalidated" && flow.status?.validation.status === "not_started";
+  const invalid = flow.status?.validation.status === "scientifically_invalid";
+  const recovery = lifecycle === "finalist_selection_prepared" && flow.status?.local_sync.status === "not_synchronized";
+  return <section className="section-block" aria-labelledby="mot3d-closure-transition-heading">
+    <div className="section-heading"><p className="eyebrow">Closure result verification</p><h2 id="mot3d-closure-transition-heading">Validate Closure and prepare finalist selection</h2><p>Scheduler completion is not a scientific result. The complete Closure evidence must pass validation and bounded synchronization first.</p></div>
+    <div ref={focus} tabIndex={-1}>
+      {!connected && <div className="prepare-card"><div><strong>Connect to Zeus to verify Closure results</strong><p>This status check never submits a job.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+      {connected && flow.phase === "idle" && !flow.status && !flow.error && <div className="prepare-card"><div><strong>Check the completed Closure evidence</strong><p>No finalist-selection job will be submitted by this step.</p></div><button className="primary-button" onClick={() => void flow.refresh()}>Check Closure results</button></div>}
+      {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "confirming" ? "Synchronizing verified Closure evidence" : "Checking Closure evidence"} />}
+      {waiting && <div className="state-panel" role="status"><strong>Closure is still running on Zeus</strong><p>No action is needed while its existing jobs run.</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+      {schedulerOnly && <div className="prepare-card"><div><strong>Jobs finished; scientific validation is still required</strong><p>Review the bounded verification before preparing finalist selection.</p></div><button className="primary-button" onClick={() => void flow.review()}>Review verification</button></div>}
+      {flow.phase === "ready" && flow.status?.validation.status === "valid" && <div className="prepare-card"><div><strong>{recovery ? "Finalist selection is prepared remotely; local synchronization is incomplete" : "All Closure artifacts are scientifically valid"}</strong><p>Review the exact synchronization. It creates preparation files only and submits no jobs.</p></div><button className="primary-button" onClick={() => void flow.review()}>Review synchronization</button></div>}
+      {flow.phase === "review" && flow.preview && <div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Synchronize Closure and prepare finalist selection</h3><p>Synchronize 200 verified result files and one receipt, then create two selections and four job files. No job or simulation starts.</p><dl className="transfer-facts"><div><dt>Scientific artifacts</dt><dd>200 of 200</dd></div><div><dt>Transfer registry</dt><dd>208 files</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Final validation</dt><dd>Not performed here</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review verification", confirmLabel: "Synchronize and prepare finalist selection", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+      {flow.phase === "success" && <div className="state-panel state-panel--success" role="status"><strong>Finalist selection is prepared</strong><p>Verified Closure evidence is synchronized. No finalist-selection job has been submitted, and no final result is being claimed.</p></div>}
+      {(flow.phase === "blocked" || invalid) && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>{invalid ? "Closure evidence is scientifically invalid" : "Manual verification required"}</strong><p>{invalid ? "Finalist selection remains blocked." : "The transition outcome is not safely actionable. Do not retry; inspect Zeus and the campaign state."}</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+      {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Closure verification stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "The outcome may be uncertain. Do not retry; inspect the campaign and Zeus first." : "No transition was confirmed. Refresh status before reviewing again."}</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div></div>}
+    </div>
+  </section>;
+}
+
+function Mot3DClosureSubmissionStage({
+  visible,
+  connected,
+  flow,
+  onConnectZeus,
+  onViewJobs,
+}: {
+  visible: boolean;
+  connected: boolean;
+  flow: ReturnType<typeof useMot3DClosureSubmissionController>;
+  onConnectZeus: () => void;
+  onViewJobs: () => void;
+}) {
+  const panel = useRef<HTMLDivElement>(null), heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (flow.phase === "review") heading.current?.focus();
+    else if (["ready", "success", "blocked"].includes(flow.phase) || flow.error) panel.current?.focus();
+  }, [flow.phase, flow.error]);
+  if (!visible) return null;
+  const lifecycle = flow.status?.submission.status;
+  const waiting = ["submitted", "queued", "running"].includes(lifecycle ?? "") || (flow.phase === "success" && Boolean(flow.result));
+  const finished = lifecycle === "completed_success_unvalidated";
+  return (
+    <section className="section-block" aria-labelledby="mot3d-closure-submit-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Current stage: Closure</p>
+        <h2 id="mot3d-closure-submit-heading">Run the final candidate comparison</h2>
+        <p>Closure runs only the prepared final candidate sets. Scheduler completion is not scientific validation and will require a later verified result step.</p>
+      </div>
+      <div ref={panel} tabIndex={-1}>
+        {!connected && <div className="prepare-card"><div><strong>Connect to Zeus before reviewing Closure</strong><p>Connection and status checks do not submit or start jobs.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+        {connected && flow.phase === "idle" && !flow.status && !flow.error && <div className="prepare-card"><div><strong>Check Zeus before reviewing Closure</strong><p>This read-only check verifies whether the prepared Closure jobs already exist.</p></div><button className="primary-button" onClick={() => void flow.refresh()}>Check Closure status</button></div>}
+        {flow.phase === "ready" && flow.status?.next_action === "review_submission" && <div className="prepare-card"><div><strong>Closure is prepared, but not submitted</strong><p>Review the exact four-job plan before any final comparison starts.</p></div><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review Closure jobs", confirmLabel: "Submit Closure to Zeus", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+        {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "checking" ? "Checking Closure status" : flow.phase === "reviewing" ? "Preparing the Closure review" : "Submitting the reviewed Closure jobs"} />}
+        {flow.phase === "review" && flow.preview && <div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Submit Closure</h3><p>Each family has one three-task array followed by one merge job. The families remain independent, and no later stage is submitted.</p><dl className="transfer-facts"><div><dt>Angled donut</dt><dd>3-task array + merge</dd></div><div><dt>Single pass</dt><dd>3-task array + merge</dd></div><div><dt>Zeus submissions</dt><dd>4 jobs total</dd></div><div><dt>Input ensembles</dt><dd>4 · 3,000 particles total</dd></div><div><dt>Candidate evaluations</dt><dd>16 per family · 3 recoil seeds</dd></div><div><dt>Scientific validation</dt><dd>Required after completion</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{ refreshLabel: "Refresh status", reviewLabel: "Review Closure jobs", confirmLabel: "Submit Closure to Zeus", resetLabel: "Back" }} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+        {waiting && !flow.error && <div className="state-panel state-panel--success" role="status"><strong>Closure is running on Zeus</strong><p>No action is needed while the reviewed arrays and merge jobs are queued or running. Zeus continues independently.</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+        {finished && !flow.error && <div className="state-panel" role="status"><strong>Closure jobs finished on Zeus</strong><p>The scheduler completed all four jobs, but the scientific outputs have not been validated or synchronized. Do not treat this as a final result.</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Refresh status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+        {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Manual verification required</strong><p>The Closure submission is partial or its outcome is unknown. Do not submit again; inspect the existing Zeus jobs.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+        {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true" /><div><strong>Closure submission stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "The submission outcome may be uncertain. Do not retry; inspect Zeus first." : "No submission was confirmed by this action. Check status before reviewing again."}</p><div className="form-actions"><button className="secondary-button" onClick={() => void flow.refresh()}>Check Zeus status</button><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div></div>}
+      </div>
+    </section>
   );
 }
 

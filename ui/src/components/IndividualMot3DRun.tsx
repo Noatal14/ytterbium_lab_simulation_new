@@ -13,7 +13,7 @@ import type {
 } from "../api/clients/individualMot3D";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/mot3dIndividualSpec.v1";
 import { RunProgressPanel } from "./RunProgressPanel";
-import { confirmRememberedZeusRun, readRememberedIndividualRun, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
+import { confirmRememberedZeusRun, readRememberedIndividualRun, recoveredRunStep, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
 
 type Step = "configure" | "validate" | "review" | "run" | "monitor" | "results";
 const steps: [Step, string][] = [
@@ -111,7 +111,7 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
     return () => { mounted.current = false; requestSequence.current += 1; };
   }, [api]);
   useEffect(() => { title.current?.focus(); }, [step]);
-  useEffect(() => { if (recoveryStarted.current) return; recoveryStarted.current = true; void (async () => { const remembered = readRememberedIndividualRun("mot_3d"); const found = await recoverIndividualRun("mot_3d", api); if (!mounted.current || !found) return; if (found.execution.mode === "zeus") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (!mounted.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot3DRun); setStep(found.lifecycle === "results_ready" ? "results" : "monitor"); })().catch((caught) => { if (mounted.current) setError(errorMessage(caught)); }); }, [api]);
+  useEffect(() => { if (recoveryStarted.current) return; recoveryStarted.current = true; void (async () => { const remembered = readRememberedIndividualRun("mot_3d"); const found = await recoverIndividualRun("mot_3d", api); if (!mounted.current || !found) return; if (found.execution.mode === "zeus") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (!mounted.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot3DRun); setStep(recoveredRunStep(found)); })().catch((caught) => { if (mounted.current) setError(errorMessage(caught)); }); }, [api]);
 
   const selected = sources.find((row) => row.id === sourceId);
   const maximumParticles = Math.min(spec.particle_count.maximum_by_execution_mode[mode], selected?.available_particle_count.pooled ?? 0);
@@ -159,7 +159,7 @@ export function IndividualMot3DRun({ api, onBack }: { api: IndividualMot3DApi; o
     const sequence = ++requestSequence.current; setBusy(true); setError(null);
     try {
       const created = await api.confirm(preview.preview_token);
-      if (mounted.current && sequence === requestSequence.current) { setRunId(created.run_id); setStep("run"); }
+      if (mounted.current && sequence === requestSequence.current) { setRunId(created.run_id); if (mode === "local") rememberIndividualRun("mot_3d", created.run_id, "local"); setStep("run"); }
     } catch (caught) { if (mounted.current && sequence === requestSequence.current) setError(errorMessage(caught)); }
     finally { if (mounted.current && sequence === requestSequence.current) setBusy(false); }
   }
