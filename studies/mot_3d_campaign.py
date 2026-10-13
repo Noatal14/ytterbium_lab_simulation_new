@@ -1715,9 +1715,9 @@ def render_final_validation_transition(logical_root, manifest):
         "worker_jobs": {key: str(value) for key, value in worker_jobs.items()},
         "merge_jobs": {key: str(value) for key, value in merge_jobs.items()},
     }
-    artifacts["campaign.json"] = json.dumps(
-        updated, indent=2, allow_nan=False
-    ).encode("utf-8")
+    artifacts["campaign.json"] = json.dumps(updated, indent=2, allow_nan=False).encode(
+        "utf-8"
+    )
     return artifacts, updated
 
 
@@ -1732,7 +1732,9 @@ def prepare_final_validation(root, manifest):
             "Final-validation input generation has no complete submission record."
         )
     validate_final_validation_inputs(root, manifest)
-    logical_root = root if not root.is_absolute() else Path("data/optimization/mot_3d") / root.name
+    logical_root = (
+        root if not root.is_absolute() else Path("data/optimization/mot_3d") / root.name
+    )
     artifacts, updated = render_final_validation_transition(logical_root, manifest)
     for relative, raw in artifacts.items():
         destination = root / relative
@@ -2061,10 +2063,26 @@ def _recompute_final_validation_summary(root, family, stage):
     from studies.mot_3d.final_validation import merge
 
     with __import__("tempfile").TemporaryDirectory() as temporary:
-        output = Path(temporary) / "summary.json"
+        scratch = Path(temporary)
+        inputs = scratch / "inputs"
+        inputs.mkdir()
+        for seed in (44001, 44002, 44003):
+            for suffix in (".json", ".npz"):
+                source = root / "final_validation" / family / f"seed_{seed}{suffix}"
+                destination = inputs / source.name
+                if suffix == ".json":
+                    row = json.loads(source.read_text(encoding="utf-8"))
+                    row["outcomes_path"] = str(inputs / f"seed_{seed}.npz")
+                    destination.write_text(
+                        json.dumps(row, separators=(",", ":"), allow_nan=False),
+                        encoding="utf-8",
+                    )
+                else:
+                    destination.write_bytes(source.read_bytes())
+        output = scratch / "summary.json"
         merge(
             argparse.Namespace(
-                input_root=str(root / "final_validation" / family),
+                input_root=str(inputs),
                 output=str(output),
                 family=family,
                 locked_nominals=str(stage["locked_nominals"]),

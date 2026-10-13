@@ -175,12 +175,14 @@ export function CampaignPriorityPanel({
     return <section className="priority-panel priority-panel--blocked" aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">Inspection only</h2><p>This campaign does not pass the current 3D workflow contract. No status, submission, synchronization, or advance action is available.</p></section>;
   }
 
-  if (campaign.family === "mot_3d" && ["closure", "finalist_selection", "final_validation_input_generation", "final_validation"].includes(campaign.stage)) {
+  if (campaign.family === "mot_3d" && ["closure", "finalist_selection", "final_validation_input_generation", "final_validation", "complete", "final_validation_extension_required"].includes(campaign.stage)) {
     const labels: Record<string, [string, string]> = {
       closure: ["Closure", "Finalist Selection"],
       finalist_selection: ["Finalist Selection", "final-validation input generation"],
       final_validation_input_generation: ["Final-validation input generation", "Final Validation"],
       final_validation: ["Final Validation", "final result validation"],
+      complete: ["Final Validation", "final report"],
+      final_validation_extension_required: ["Final Validation", "scientific extension decision"],
     };
     const [current, next] = labels[campaign.stage];
     const manual = ["partial", "outcome_unknown", "held", "completed_failed", "status_unknown", "outputs_invalid"].includes(mot3DLateLifecycle ?? "");
@@ -191,6 +193,11 @@ export function CampaignPriorityPanel({
     const review = ["ready", "reviewing", "review"].includes(mot3DLatePhase);
     const success = prepared || mot3DLatePhase === "success" || Boolean(mot3DLateNextAction?.startsWith("open_"));
     const busy = ["checking", "confirming"].includes(mot3DLatePhase);
+    if ((campaign.stage === "complete" || campaign.stage === "final_validation_extension_required") || (campaign.stage === "final_validation" && ["review_completion", "synchronize_results", "open_final_report", "review_extension_required"].includes(mot3DLateNextAction ?? ""))) {
+      const extension = campaign.stage === "final_validation_extension_required" || mot3DLateNextAction === "review_extension_required";
+      const final = campaign.stage === "complete" || mot3DLateNextAction === "open_final_report";
+      return <section className={`priority-panel ${extension ? "priority-panel--blocked" : ""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{extension ? "Precision target not met" : final ? "Final report is ready" : "Review sealed Final Validation evidence"}</h2><p><strong>Current stage:</strong> Final Validation.</p><p>{extension ? "No winner or final-performance claim is available, and no scientifically approved extension policy exists. Review the recorded precision result; no extension action is offered." : final ? "The final report is derived only from the new sealed ensembles. No later job or simulation was started." : "Review both families’ sealed estimates and precision intervals before synchronizing exactly one terminal outcome. This operation submits no job."}</p></section>;
+    }
     return <section className={`priority-panel ${blocked ? "priority-panel--blocked" : ""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{blocked ? "Manual verification required" : success ? `${next} is prepared` : validationRequired ? "Scientific validation and synchronization required" : active ? "No action needed" : review ? `Review ${current}` : busy ? `Checking ${current}` : `Check ${current} status`}</h2><p><strong>Current stage:</strong> {current}.</p><p>{blocked ? "The remote outcome or scientific evidence is not safely actionable. Do not retry automatically; inspect Zeus manually." : success ? `The verified transition prepared ${next}. No later job was submitted or simulation started.` : validationRequired ? "The scheduler chain finished, but its outputs still require stage-specific scientific validation and synchronization before the campaign can advance." : active ? `The reviewed ${current} jobs are submitted, queued, or running on Zeus. Wait for completion; do not submit again.` : review ? `Review the exact stage-specific ${mot3DLateKind} evidence and effects below before confirming. Scheduler completion alone is not scientific validation.` : busy ? "The application is checking or confirming the stage-specific operation. Do not start another action." : `Use the ${current} controls below to check the authoritative stage status.`}</p></section>;
   }
 

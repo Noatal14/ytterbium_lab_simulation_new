@@ -49,6 +49,7 @@ class ReceiverKind(Enum):
     MOT_3D_FINAL_INPUT_SUBMISSION = "mot_3d_final_input_submission"
     MOT_3D_FINAL_VALIDATION_TRANSITION = "mot_3d_final_validation_transition"
     MOT_3D_FINAL_VALIDATION_SUBMISSION = "mot_3d_final_validation_submission"
+    MOT_3D_FINAL_VALIDATION_COMPLETION = "mot_3d_final_validation_completion"
     REFINEMENT_SUBMISSION = "refinement_submission"
     SCREENING_PREPARATION = "screening_preparation"
     SCREENING_SUBMISSION = "screening_submission"
@@ -173,6 +174,25 @@ _RECEIVERS = {
     ReceiverKind.MOT_3D_FINAL_VALIDATION_TRANSITION: _ReceiverDefinition(
         "mot_3d_final_validation_transition_remote.py",
         "<mot-3d-final-validation-transition>",
+        frozenset(
+            {
+                ReceiverOperation.INSPECT,
+                ReceiverOperation.PREPARE,
+                ReceiverOperation.STATUS,
+                ReceiverOperation.RETRIEVE,
+            }
+        ),
+        True,
+        (
+            "-F", "none", "-T", "-o", "BatchMode=yes", "-o",
+            "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
+            "-o", "StrictHostKeyChecking=yes", "-o", "ForwardAgent=no", "-o",
+            "ClearAllForwardings=yes",
+        ),
+    ),
+    ReceiverKind.MOT_3D_FINAL_VALIDATION_COMPLETION: _ReceiverDefinition(
+        "mot_3d_final_validation_completion_remote.py",
+        "<mot-3d-final-validation-completion>",
         frozenset(
             {
                 ReceiverOperation.INSPECT,
@@ -1345,6 +1365,17 @@ class PinnedSshPolicy:
     ) -> "PinnedSshPolicy":
         return cls(
             ReceiverKind.MOT_3D_FINAL_VALIDATION_TRANSITION,
+            repository_root,
+            executable,
+            timeout,
+        )
+
+    @classmethod
+    def mot_3d_final_validation_completion(
+        cls, repository_root: Path, executable: Path, *, timeout: float
+    ) -> "PinnedSshPolicy":
+        return cls(
+            ReceiverKind.MOT_3D_FINAL_VALIDATION_COMPLETION,
             repository_root,
             executable,
             timeout,

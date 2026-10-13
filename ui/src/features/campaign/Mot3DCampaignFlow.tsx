@@ -13,6 +13,7 @@ import type { useMot3DFinalValidationSubmissionController } from "./controllers/
 import type { useMot3DFinalistTransitionController } from "./controllers/useMot3DFinalistTransitionController";
 import type { useMot3DFinalInputSubmissionController } from "./controllers/useMot3DFinalInputSubmissionController";
 import type { useMot3DFinalValidationTransitionController } from "./controllers/useMot3DFinalValidationTransitionController";
+import type { useMot3DFinalValidationCompletionController } from "./controllers/useMot3DFinalValidationCompletionController";
 import { GuardedStageActions } from "./shared/GuardedStageActions";
 import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 
@@ -32,6 +33,7 @@ export function Mot3DCampaignFlow({
   finalInputSubmission,
   finalValidationTransition,
   finalValidation,
+  finalValidationCompletion,
   onConnectZeus,
   onViewJobs,
 }: {
@@ -59,6 +61,9 @@ export function Mot3DCampaignFlow({
   >;
   finalValidation?: ReturnType<
     typeof useMot3DFinalValidationSubmissionController
+  >;
+  finalValidationCompletion?: ReturnType<
+    typeof useMot3DFinalValidationCompletionController
   >;
   onConnectZeus: () => void;
   onViewJobs: () => void;
@@ -228,7 +233,63 @@ export function Mot3DCampaignFlow({
           onViewJobs={onViewJobs}
         />
       )}
+      {finalValidationCompletion && (
+        <Mot3DFinalValidationCompletionStage
+          visible={["final_validation", "complete", "final_validation_extension_required"].includes(stage)}
+          connected={connected}
+          flow={finalValidationCompletion}
+          onConnectZeus={onConnectZeus}
+          onViewJobs={onViewJobs}
+        />
+      )}
     </>
+  );
+}
+
+function Mot3DFinalValidationCompletionStage({
+  visible,
+  connected,
+  flow,
+  onConnectZeus,
+  onViewJobs,
+}: {
+  visible: boolean;
+  connected: boolean;
+  flow: ReturnType<typeof useMot3DFinalValidationCompletionController>;
+  onConnectZeus: () => void;
+  onViewJobs: () => void;
+}) {
+  const panel = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (!visible) return;
+    if (flow.phase === "review") heading.current?.focus();
+    else if (["ready", "success", "blocked"].includes(flow.phase) || flow.error) panel.current?.focus();
+  }, [visible, flow.phase, flow.error]);
+  if (!visible) return null;
+  const evidence = flow.preview?.completion ?? flow.result?.completion ?? flow.status?.completion.detail;
+  const outcome = evidence?.outcome ?? flow.status?.completion.status;
+  const extension = outcome === "final_validation_extension_required";
+  const failing = evidence?.families.filter((family) => !family.precision_target_met) ?? [];
+  return (
+    <section className="section-block" aria-labelledby="final-validation-completion-heading">
+      <div className="section-heading">
+        <p className="eyebrow">Sealed result validation</p>
+        <h2 id="final-validation-completion-heading">Complete Final Validation</h2>
+        <p>Validate and synchronize the results from the 20 sealed, newly generated ensembles per family. This operation submits no job and starts no simulation.</p>
+      </div>
+      <div ref={panel} tabIndex={-1}>
+        {!connected && <div className="prepare-card"><div><strong>Connect to Zeus to validate the sealed results</strong><p>Checking status does not submit or restart work.</p></div><button className="primary-button" onClick={onConnectZeus}>Connect to Zeus</button></div>}
+        {connected && flow.phase === "idle" && !flow.status && !flow.error && <div className="prepare-card"><div><strong>Check Final Validation evidence</strong><p>Scheduler completion is not a scientific result.</p></div><button className="primary-button" onClick={() => void flow.refresh()}>Check sealed results</button></div>}
+        {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "confirming" ? "Synchronizing sealed evidence" : "Checking sealed Final Validation evidence"} />}
+        {flow.phase === "ready" && <div className="prepare-card"><div><strong>Sealed Final Validation evidence is ready for review</strong><p>Review both families and the precision decision before synchronizing one terminal outcome.</p></div><button className="primary-button" onClick={() => void flow.review()}>Review completion</button></div>}
+        {flow.phase === "review" && flow.preview && evidence && <div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Review the sealed Final Validation result</h3><p>These estimates use only the new sealed ensembles. The precision target is a 95% interval half-width of at most 0.0075 for both families.</p><div className="review-grid">{evidence.families.map((family) => <article className="review-card" key={family.family}><h4>{family.family === "angled_donut" ? "Angled donut" : "Single pass"}</h4><dl><div><dt>Locked finalist</dt><dd>{family.candidate_id}</dd></div><div><dt>Conditional efficiency</dt><dd>{family.conditional_efficiency.toFixed(6)}</dd></div><div><dt>95% interval</dt><dd>{family.bootstrap_95_ci[0].toFixed(6)}–{family.bootstrap_95_ci[1].toFixed(6)}</dd></div><div><dt>Half-width</dt><dd>{family.ci_half_width.toFixed(6)}</dd></div><div><dt>Precision target</dt><dd>{family.precision_target_met ? "Pass" : "Not met"}</dd></div></dl></article>)}</div><div className={extension ? "state-panel state-panel--error" : "state-panel state-panel--success"}><strong>{extension ? "Precision is not established for both families" : "Both families meet the precision target"}</strong><p>{extension ? `The reviewed outcome is extension required. Failing ${failing.length === 1 ? "family" : "families"}: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. No extension policy is defined, so this interface will not submit one or claim a winner.` : "Confirming will publish a final report derived only from the sealed new ensembles."}</p></div><dl className="transfer-facts"><div><dt>Verified result artifacts</dt><dd>14 of 14</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Simulation started</dt><dd>No</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{refreshLabel:"Refresh status",reviewLabel:"Review completion",confirmLabel:extension ? "Record extension required" : "Synchronize and publish final report",resetLabel:"Back"}} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+        {flow.phase === "success" && !extension && <div className="state-panel state-panel--success" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. No additional job was submitted or simulation started.</p></div>}
+        {flow.phase === "success" && extension && <div className="state-panel state-panel--error" role="status"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation extension is required</strong><p>{failing.length ? `Precision was not established for: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. ` : "The precision target was not met. "}No winner or final performance claim is available. No scientifically approved extension policy exists, so no extension action is offered.</p></div></div>}
+        {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Manual verification required</strong><p>The remote completion outcome is uncertain. Do not retry; inspect the existing Zeus evidence.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
+        {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation completion stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "Do not retry; inspect Zeus and the campaign first." : "Refresh authoritative status before reviewing again."}</p></div></div>}
+      </div>
+    </section>
   );
 }
 

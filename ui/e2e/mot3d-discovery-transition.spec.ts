@@ -47,6 +47,36 @@ test("verified Discovery synchronization is explicit, accessible, and responsive
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
 
+test("sealed Final Validation completion is explicit, zero-submit, accessible, and responsive", async ({ page }) => {
+  const current = { ...campaign, stage: "final_validation" };
+  const familyJobs = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: "610[].zeus-master", merge_job_id: "611.zeus-master" }, { id: "single_pass", array_job_id: "612[].zeus-master", merge_job_id: "613.zeus-master" }] };
+  const detail = { outcome: "complete", families: [{ family: "angled_donut", candidate_id: "angled_donut_finalist_02", conditional_efficiency: .5, bootstrap_95_ci: [.495, .505], ci_half_width: .0050000000000000044, precision_target_met: true }, { family: "single_pass", candidate_id: "single_pass_finalist_03", conditional_efficiency: .5, bootstrap_95_ci: [.495, .505], ci_half_width: .0050000000000000044, precision_target_met: true }], evidence_sha256: "b".repeat(64) };
+  await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [current], invalid_count: 0, total: 1 } } }));
+  await page.route(`**/api/v1/campaigns/${id}`, (route) => route.fulfill({ json: { api_version: 1, data: current } }));
+  await page.route("**/api/v1/session", (route) => route.fulfill({ json: { api_version: 1, data: { csrf_token: "csrf" } } }));
+  await page.route("**/api/v1/zeus/snapshot", (route) => route.fulfill({ json: { api_version: 1, data: { connection_status: "connected", profile, remote: { project_directory: profile.project_directory, git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available", queried_at: "2026-10-13T10:00:00Z", jobs: [] } } } }));
+  await page.route("**/api/v1/zeus/mot-3d/final-validation-completion/status", (route) => route.fulfill({ json: { api_version: 1, data: { source: "zeus", campaign: { id, name: current.name, stage: "final_validation" }, final_validation: { status: "ready_to_advance", chain: familyJobs }, scheduler: { completed_array_tasks: 6, expected_array_tasks: 6, completed_merge_jobs: 2, expected_merge_jobs: 2 }, validation: { status: "valid", result_artifacts: 14, expected_result_artifacts: 14, reason_code: null }, completion: { status: "not_completed", detail: null }, next_action: "review_completion", local_sync: { status: "not_synchronized", receipt_sha256: null } } } }));
+  await page.route("**/api/v1/zeus/mot-3d/final-validation-completion/preview", (route) => route.fulfill({ json: { api_version: 1, data: { preview_token: "completion-token", expires_in_seconds: 300, campaign: { id, name: current.name, git_commit: "a".repeat(40) }, from_stage: "final_validation", to_stage: "complete_or_extension_required", final_validation: { result_artifacts: 14, expected_result_artifacts: 14, families: ["angled_donut", "single_pass"], evidence_sha256: "b".repeat(64) }, artifacts: { synchronize: { result_files: 14, submission_receipts: 1 }, create: { terminal_files: 1 }, update: ["campaign.json"], transfer_files: 17 }, effects: { synchronize_final_validation: true, complete_final_validation: true, submit_extension: false, start_simulation: false, overwrite_existing: false }, completion: detail } } }));
+  await page.route("**/api/v1/zeus/mot-3d/final-validation-completion/confirm", (route) => route.fulfill({ status: 201, json: { api_version: 1, data: { status: "complete", campaign_id: id, stage: "complete", artifacts: { synchronized: 15, created: 1, updated: 1, bundle_sha256: "c".repeat(64) }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "synchronized", receipt_sha256: "d".repeat(64) } } } }));
+  await page.goto("/");
+  await page.getByRole("link", { name: "Zeus connection" }).click();
+  await page.getByLabel("Technion username").fill("tal.noa");
+  await page.getByRole("button", { name: "Connect and check status" }).click();
+  await page.getByRole("button", { name: "Inspect campaign" }).click();
+  const stage = page.getByRole("region", { name: "Complete Final Validation" });
+  await stage.getByRole("button", { name: "Check sealed results" }).click();
+  await stage.getByRole("button", { name: "Review completion" }).click();
+  await expect(stage.getByRole("heading", { name: "Review the sealed Final Validation result" })).toBeFocused();
+  await expect(stage.getByText("0.005000", { exact: true })).toHaveCount(2);
+  await expect(stage.getByText(/derived only from the sealed new ensembles/)).toBeVisible();
+  await expect(stage.getByText("None", { exact: true })).toBeVisible();
+  await stage.getByRole("button", { name: "Synchronize and publish final report" }).click();
+  await expect(stage.getByText("Final report is ready")).toBeVisible();
+  await expect(stage.getByText(/No additional job was submitted/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
 test("preliminary-check submission is explicit and scheduler completion stays unvalidated", async ({ page }) => {
   const preliminaryCampaign = { ...campaign, stage: "preliminary_check", progress: [{ stage: "discovery", completed: 950, expected: 950, status: "complete" }, { stage: "preliminary_check", completed: 0, expected: 72, status: "not-started" }] };
   const empty = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: null, merge_job_id: null }, { id: "single_pass", array_job_id: null, merge_job_id: null }] };

@@ -857,6 +857,9 @@ class Mot3DPreliminaryTransitionCoordinator:
             | GENERATED_PATHS
         )
 
+    def _bundle_to_stage(self, state: RemotePreliminaryTransitionState) -> str:
+        return self.to_stage
+
     def _synchronize(self, plan, transport, state) -> str:
         campaign_fd = mot_fd = sync_fd = lock_fd = -1
         receipt_digest = canonical_digest(state.receipt)
@@ -983,7 +986,7 @@ class Mot3DPreliminaryTransitionCoordinator:
                     campaign=plan[2].name,
                     commit=plan[4],
                     from_stage=self.from_stage,
-                    to_stage=self.to_stage,
+                    to_stage=self._bundle_to_stage(state),
                     expected_paths=expected,
                     max_total_bytes=self.bundle_max_total_bytes,
                     max_file_bytes=self.bundle_max_file_bytes,

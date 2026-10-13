@@ -6,6 +6,7 @@ venv/
 .vscode/
 .DS_Store
 ui/node_modules/
+/node_modules/
 ui/dist/
 ui/playwright-report/
 ui/test-results/
@@ -21,6 +22,7 @@ data/zeeman_survivors_states.json
 /data/optimization/mot_3d/**
 /data/particle_states/after_2d_mot/**
 /data/particle_states/after_zeeman/**
+/data/runs/
 
 # PBS/Zeus scheduler output. Scientific summaries belong under data/ instead.
 *.zeus-master.out

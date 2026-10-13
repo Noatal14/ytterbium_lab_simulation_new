@@ -1016,6 +1016,136 @@ export const serverErrorCatalog = [
     "semantic": "other"
   },
   {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "campaign_not_found",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "confirmation_expired",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "confirmation_invalid",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_already_started",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_completion_busy",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_completion_conflict",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_completion_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_completion_not_prepared",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_completion_not_ready",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_completion_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_partial_submission",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_preparation_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "final_validation_submission_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "invalid_request",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "local_files_changed",
+    "semantic": "fresh_review"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "local_or_remote_evidence_changed",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "local_sync_conflict",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "local_sync_outcome_unknown",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "profile_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "remote_checkout_mismatch",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "remote_response_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "request_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "too_many_pending_previews",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "transition_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "zeus_timeout",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_final_validation_completion",
+    "code": "zeus_unavailable",
+    "semantic": "other"
+  },
+  {
     "domain": "mot_3d_final_validation_submission",
     "code": "campaign_not_found",
     "semantic": "other"
@@ -2633,6 +2763,11 @@ export const serverErrorCatalog = [
   {
     "domain": "route_unavailable",
     "code": "mot_3d_final_input_submission_unavailable",
+    "semantic": "other"
+  },
+  {
+    "domain": "route_unavailable",
+    "code": "mot_3d_final_validation_completion_unavailable",
     "semantic": "other"
   },
   {

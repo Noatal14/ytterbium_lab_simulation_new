@@ -50,10 +50,12 @@ import { mot3DFinalValidationTransitionApi, type Mot3DFinalValidationTransitionA
 import { useMot3DFinalValidationTransitionController } from "./controllers/useMot3DFinalValidationTransitionController";
 import { mot3DFinalValidationSubmissionApi } from "../../api/clients/mot3dFinalValidationSubmission";
 import { useMot3DFinalValidationSubmissionController } from "./controllers/useMot3DFinalValidationSubmissionController";
+import { mot3DFinalValidationCompletionApi, type Mot3DFinalValidationCompletionApi } from "../../api/clients/mot3dFinalValidationCompletion";
+import { useMot3DFinalValidationCompletionController } from "./controllers/useMot3DFinalValidationCompletionController";
 
 const words = (value: string) => value.replaceAll("_", " ").replaceAll("-", " ");
 
-export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, screeningSubmission, screeningLifecycle, refinementSubmission, refinementLifecycle, confirmationSubmission=confirmationSubmissionApi, sensitivity=sensitivityApi, sensitivitySubmission=sensitivitySubmissionApi, production=productionApi, productionSubmission=productionSubmissionApi, finalization=finalizationApi, mot3DDiscovery=mot3DDiscoveryApi, mot3DDiscoveryTransition=mot3DDiscoveryTransitionApi, preliminaryCheck=preliminaryCheckApi, mot3DPreliminaryTransition=mot3DPreliminaryTransitionApi, mot3DRefinementSubmission=mot3DRefinementSubmissionApi, mot3DRefinementTransition=mot3DRefinementTransitionApi, mot3DClosureSubmission=mot3DClosureSubmissionApi, mot3DClosureTransition=mot3DClosureTransitionApi, mot3DFinalistSubmission=mot3DFinalistSubmissionApi, mot3DFinalistTransition=mot3DFinalistTransitionApi, mot3DFinalInputSubmission=mot3DFinalInputSubmissionApi, mot3DFinalValidationTransition=mot3DFinalValidationTransitionApi, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; screeningSubmission: ScreeningSubmissionApi; screeningLifecycle: ScreeningLifecycleApi; refinementSubmission: RefinementSubmissionApi; refinementLifecycle: RefinementLifecycleApi; confirmationSubmission?: ConfirmationSubmissionApi; sensitivity?: SensitivityApi; sensitivitySubmission?: SensitivitySubmissionApi; production?:ProductionApi; productionSubmission?:ProductionSubmissionApi; finalization?:FinalizationApi; mot3DDiscovery?: Mot3DDiscoveryApi; mot3DDiscoveryTransition?: Mot3DDiscoveryTransitionApi; preliminaryCheck?: PreliminaryCheckApi; mot3DPreliminaryTransition?: Mot3DPreliminaryTransitionApi; mot3DRefinementSubmission?:Mot3DRefinementSubmissionApi; mot3DRefinementTransition?:Mot3DRefinementTransitionApi; mot3DClosureSubmission?:Mot3DClosureSubmissionApi; mot3DClosureTransition?:Mot3DClosureTransitionApi; mot3DFinalistSubmission?:Mot3DFinalistSubmissionApi; mot3DFinalistTransition?:Mot3DFinalistTransitionApi; mot3DFinalInputSubmission?:Mot3DFinalInputSubmissionApi; mot3DFinalValidationTransition?:Mot3DFinalValidationTransitionApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
+export function CampaignDetail({ campaign, onBack, transfer, submission, lifecycle, screeningSubmission, screeningLifecycle, refinementSubmission, refinementLifecycle, confirmationSubmission=confirmationSubmissionApi, sensitivity=sensitivityApi, sensitivitySubmission=sensitivitySubmissionApi, production=productionApi, productionSubmission=productionSubmissionApi, finalization=finalizationApi, mot3DDiscovery=mot3DDiscoveryApi, mot3DDiscoveryTransition=mot3DDiscoveryTransitionApi, preliminaryCheck=preliminaryCheckApi, mot3DPreliminaryTransition=mot3DPreliminaryTransitionApi, mot3DRefinementSubmission=mot3DRefinementSubmissionApi, mot3DRefinementTransition=mot3DRefinementTransitionApi, mot3DClosureSubmission=mot3DClosureSubmissionApi, mot3DClosureTransition=mot3DClosureTransitionApi, mot3DFinalistSubmission=mot3DFinalistSubmissionApi, mot3DFinalistTransition=mot3DFinalistTransitionApi, mot3DFinalInputSubmission=mot3DFinalInputSubmissionApi, mot3DFinalValidationTransition=mot3DFinalValidationTransitionApi, mot3DFinalValidationCompletion=mot3DFinalValidationCompletionApi, zeusSnapshot, onConnectZeus, onViewJobs }: { campaign: Campaign; onBack: () => void; transfer: TransferApi; submission: SubmissionApi; lifecycle: SmokeLifecycleApi; screeningSubmission: ScreeningSubmissionApi; screeningLifecycle: ScreeningLifecycleApi; refinementSubmission: RefinementSubmissionApi; refinementLifecycle: RefinementLifecycleApi; confirmationSubmission?: ConfirmationSubmissionApi; sensitivity?: SensitivityApi; sensitivitySubmission?: SensitivitySubmissionApi; production?:ProductionApi; productionSubmission?:ProductionSubmissionApi; finalization?:FinalizationApi; mot3DDiscovery?: Mot3DDiscoveryApi; mot3DDiscoveryTransition?: Mot3DDiscoveryTransitionApi; preliminaryCheck?: PreliminaryCheckApi; mot3DPreliminaryTransition?: Mot3DPreliminaryTransitionApi; mot3DRefinementSubmission?:Mot3DRefinementSubmissionApi; mot3DRefinementTransition?:Mot3DRefinementTransitionApi; mot3DClosureSubmission?:Mot3DClosureSubmissionApi; mot3DClosureTransition?:Mot3DClosureTransitionApi; mot3DFinalistSubmission?:Mot3DFinalistSubmissionApi; mot3DFinalistTransition?:Mot3DFinalistTransitionApi; mot3DFinalInputSubmission?:Mot3DFinalInputSubmissionApi; mot3DFinalValidationTransition?:Mot3DFinalValidationTransitionApi; mot3DFinalValidationCompletion?:Mot3DFinalValidationCompletionApi; zeusSnapshot: ZeusSnapshot | null; onConnectZeus: () => void; onViewJobs: () => void }) {
   const trusted = campaign.trust === "trusted-current";
   const current3D = campaign.family === "mot_3d" && trusted;
   const command = campaign.next_plan?.display_command ?? "";
@@ -88,16 +90,19 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
   const mot3DFinalInputSubmissionFlow=useMot3DFinalInputSubmissionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:current3D&&campaign.stage==="final_validation_input_generation",api:mot3DFinalInputSubmission});
   const mot3DFinalValidationTransitionFlow=useMot3DFinalValidationTransitionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:current3D&&(campaign.stage==="final_validation_input_generation"||campaign.stage==="final_validation"),api:mot3DFinalValidationTransition});
   const mot3DFinalValidationSubmissionFlow=useMot3DFinalValidationSubmissionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:current3D&&campaign.stage==="final_validation",api:mot3DFinalValidationSubmissionApi});
+  const mot3DFinalValidationCompletionFlow=useMot3DFinalValidationCompletionController({campaignId:campaign.id,snapshot:zeusSnapshot,enabled:current3D&&["final_validation","complete","final_validation_extension_required"].includes(campaign.stage),api:mot3DFinalValidationCompletion});
   const late3DFlow = campaign.stage === "closure"
     ? (mot3DClosureTransitionFlow.phase !== "idle" || mot3DClosureTransitionFlow.status ? mot3DClosureTransitionFlow : mot3DClosureSubmissionFlow)
     : campaign.stage === "finalist_selection"
       ? (mot3DFinalistTransitionFlow.phase !== "idle" || mot3DFinalistTransitionFlow.status ? mot3DFinalistTransitionFlow : mot3DFinalistSubmissionFlow)
       : campaign.stage === "final_validation_input_generation"
         ? (mot3DFinalValidationTransitionFlow.phase !== "idle" || mot3DFinalValidationTransitionFlow.status ? mot3DFinalValidationTransitionFlow : mot3DFinalInputSubmissionFlow)
-        : campaign.stage === "final_validation"
-          ? (mot3DFinalValidationSubmissionFlow.phase !== "idle" || mot3DFinalValidationSubmissionFlow.status ? mot3DFinalValidationSubmissionFlow : mot3DFinalValidationTransitionFlow)
+        : ["final_validation", "complete", "final_validation_extension_required"].includes(campaign.stage)
+          ? (["complete", "final_validation_extension_required"].includes(campaign.stage) || mot3DFinalValidationCompletionFlow.phase !== "idle" || mot3DFinalValidationCompletionFlow.status
+            ? mot3DFinalValidationCompletionFlow
+            : mot3DFinalValidationSubmissionFlow.phase !== "idle" || mot3DFinalValidationSubmissionFlow.status ? mot3DFinalValidationSubmissionFlow : mot3DFinalValidationTransitionFlow)
           : null;
-  const late3DTransition = late3DFlow === mot3DClosureTransitionFlow || late3DFlow === mot3DFinalistTransitionFlow || late3DFlow === mot3DFinalValidationTransitionFlow;
+  const late3DTransition = late3DFlow === mot3DClosureTransitionFlow || late3DFlow === mot3DFinalistTransitionFlow || late3DFlow === mot3DFinalValidationTransitionFlow || late3DFlow === mot3DFinalValidationCompletionFlow;
   const late3DLifecycle = late3DFlow === mot3DClosureSubmissionFlow
     ? mot3DClosureSubmissionFlow.status?.submission.status
     : late3DFlow === mot3DFinalistSubmissionFlow
@@ -106,6 +111,8 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
         ? mot3DFinalInputSubmissionFlow.status?.chain.status
         : late3DFlow === mot3DFinalValidationSubmissionFlow
           ? mot3DFinalValidationSubmissionFlow.status?.submission.status
+        : late3DFlow === mot3DFinalValidationCompletionFlow
+          ? mot3DFinalValidationCompletionFlow.status?.final_validation.status
         : late3DFlow === mot3DClosureTransitionFlow
           ? mot3DClosureTransitionFlow.status?.closure.status
           : late3DFlow === mot3DFinalistTransitionFlow
@@ -160,6 +167,7 @@ export function CampaignDetail({ campaign, onBack, transfer, submission, lifecyc
         finalInputSubmission={mot3DFinalInputSubmissionFlow}
         finalValidationTransition={mot3DFinalValidationTransitionFlow}
         finalValidation={mot3DFinalValidationSubmissionFlow}
+        finalValidationCompletion={mot3DFinalValidationCompletionFlow}
         onConnectZeus={onConnectZeus}
         onViewJobs={onViewJobs}
       />

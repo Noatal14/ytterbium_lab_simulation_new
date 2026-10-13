@@ -4356,6 +4356,27 @@
       }
     },
     {
+      "id": "mot3d-final-validation-completion-status",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/final-validation-completion/status",
+      "status": 200,
+      "body": {"api_version": 1, "data": {"source": "zeus", "campaign": {"id": "campaign-id", "name": "mot_3d_contract", "stage": "complete"}, "final_validation": {"status": "complete", "chain": {"dependency": "afterok within each family", "families": [{"id": "angled_donut", "array_job_id": "610[].zeus-master", "merge_job_id": "611.zeus-master"}, {"id": "single_pass", "array_job_id": "612[].zeus-master", "merge_job_id": "613.zeus-master"}]}}, "scheduler": {"completed_array_tasks": 6, "expected_array_tasks": 6, "completed_merge_jobs": 2, "expected_merge_jobs": 2}, "validation": {"status": "valid", "result_artifacts": 14, "expected_result_artifacts": 14, "reason_code": null}, "completion": {"status": "complete", "detail": {"outcome": "complete", "families": [{"family": "angled_donut", "candidate_id": "angled_donut_finalist_02", "conditional_efficiency": 0.5, "bootstrap_95_ci": [0.495, 0.505], "ci_half_width": 0.0050000000000000044, "precision_target_met": true}, {"family": "single_pass", "candidate_id": "single_pass_finalist_02", "conditional_efficiency": 0.5, "bootstrap_95_ci": [0.495, 0.505], "ci_half_width": 0.0050000000000000044, "precision_target_met": true}], "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}, "next_action": "open_final_report", "local_sync": {"status": "synchronized", "receipt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}}}
+    },
+    {
+      "id": "mot3d-final-validation-completion-preview",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/final-validation-completion/preview",
+      "status": 200,
+      "body": {"api_version": 1, "data": {"preview_token": "mot3d-final-validation-completion-token", "expires_in_seconds": 300, "campaign": {"id": "campaign-id", "name": "mot_3d_contract", "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, "from_stage": "final_validation", "to_stage": "complete_or_extension_required", "final_validation": {"result_artifacts": 14, "expected_result_artifacts": 14, "families": ["angled_donut", "single_pass"], "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, "artifacts": {"synchronize": {"result_files": 14, "submission_receipts": 1}, "create": {"terminal_files": 1}, "update": ["campaign.json"], "transfer_files": 17}, "effects": {"synchronize_final_validation": true, "complete_final_validation": true, "submit_extension": false, "start_simulation": false, "overwrite_existing": false}, "completion": {"outcome": "complete", "families": [{"family": "angled_donut", "candidate_id": "angled_donut_finalist_02", "conditional_efficiency": 0.5, "bootstrap_95_ci": [0.495, 0.505], "ci_half_width": 0.0050000000000000044, "precision_target_met": true}, {"family": "single_pass", "candidate_id": "single_pass_finalist_02", "conditional_efficiency": 0.5, "bootstrap_95_ci": [0.495, 0.505], "ci_half_width": 0.0050000000000000044, "precision_target_met": true}], "evidence_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}}}
+    },
+    {
+      "id": "mot3d-final-validation-completion-confirm",
+      "method": "POST",
+      "path": "/api/v1/zeus/mot-3d/final-validation-completion/confirm",
+      "status": 201,
+      "body": {"api_version": 1, "data": {"status": "complete", "campaign_id": "campaign-id", "stage": "complete", "artifacts": {"synchronized": 15, "created": 1, "updated": 1, "bundle_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}, "submitted_to_zeus": false, "simulation_started": false, "local_sync": {"status": "synchronized", "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}}
+    },
+    {
       "id": "mot3d-zeus-recover",
       "method": "POST",
       "path": "/api/v1/individual-runs/mot-3d/zeus/recover",

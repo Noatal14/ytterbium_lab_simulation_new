@@ -23,7 +23,12 @@ from urllib.parse import urlsplit
 from workflow_api.server import ReadOnlyWorkflowHandler, workflow_catalog_payload
 import workflow_api.server as server_module
 from workflow_api.mot_2d_validation import modern_contract, validated_progress
-from workflow_api.discovery import DiscoveryError, _modern_3d_contract, _progress_aware_plan, list_campaigns
+from workflow_api.discovery import (
+    DiscoveryError,
+    _modern_3d_contract,
+    _progress_aware_plan,
+    list_campaigns,
+)
 from workflow_api.mot_3d_provenance import input_registry_digest
 from workflow_api.error_catalog import ERROR_DOMAINS
 from workflow_api.mot_2d_sources import list_sources
@@ -406,12 +411,15 @@ def test_progress_aware_plan_never_emits_a_2d_advance_for_3d(tmp_path):
     root = tmp_path / "repo"
     campaign = root / "data/optimization/mot_3d/current"
     campaign.mkdir(parents=True)
-    assert _progress_aware_plan(
-        {"kind": "mot_3d_campaign_v2", "stage": "closure"},
-        [{"stage": "closure", "status": "complete"}],
-        campaign,
-        root,
-    ) is None
+    assert (
+        _progress_aware_plan(
+            {"kind": "mot_3d_campaign_v2", "stage": "closure"},
+            [{"stage": "closure", "status": "complete"}],
+            campaign,
+            root,
+        )
+        is None
+    )
 
 
 def current_3d_contract_fixture(root):
@@ -419,7 +427,10 @@ def current_3d_contract_fixture(root):
     frozen = root / "data/particle_states/after_2d_mot/source"
     upstream.mkdir(parents=True)
     frozen.mkdir(parents=True)
-    campaign_bytes, report_bytes = b'{"kind":"mot_2d_s0_campaign"}', b'{"kind":"mot_2d_s0_campaign_final_report"}'
+    campaign_bytes, report_bytes = (
+        b'{"kind":"mot_2d_s0_campaign"}',
+        b'{"kind":"mot_2d_s0_campaign_final_report"}',
+    )
     array_bytes, metadata_bytes = b"NUMPY", b'{"kind":"mot_2d_final_survivor_ensemble"}'
     (upstream / "campaign.json").write_bytes(campaign_bytes)
     (upstream / "final_report.json").write_bytes(report_bytes)
@@ -450,7 +461,9 @@ def current_3d_contract_fixture(root):
             "expected_survivor_parameters": {"s0": 1.3},
         },
         "input_roles": {},
-        "stages": {"closure": {"classification": "candidate_selection_not_final_validation"}},
+        "stages": {
+            "closure": {"classification": "candidate_selection_not_final_validation"}
+        },
     }
     for role, seeds in {
         "discovery": range(3015, 3027),
@@ -462,96 +475,180 @@ def current_3d_contract_fixture(root):
             array_path = frozen / f"input_{seed}.npy"
             metadata_path = frozen / f"input_{seed}.json"
             array_path.write_bytes(array_bytes)
-            current_metadata = json.dumps({
-                "kind": "mot_2d_final_survivor_ensemble", "zeeman_seed": seed,
-                "mot_seed": 40000 + seed, "shape": [1, 6], "dtype": "float64",
-                "n_survivors": 1,
-            }, sort_keys=True).encode()
+            current_metadata = json.dumps(
+                {
+                    "kind": "mot_2d_final_survivor_ensemble",
+                    "zeeman_seed": seed,
+                    "mot_seed": 40000 + seed,
+                    "shape": [1, 6],
+                    "dtype": "float64",
+                    "n_survivors": 1,
+                },
+                sort_keys=True,
+            ).encode()
             metadata_path.write_bytes(current_metadata)
-            records.append({
-                "path": array_path.relative_to(root).as_posix(),
-                "metadata_path": metadata_path.relative_to(root).as_posix(),
-                "sha256": hashlib.sha256(array_bytes).hexdigest(),
-                "metadata_sha256": hashlib.sha256(current_metadata).hexdigest(),
-                "shape": [1, 6], "dtype": "float64", "n_survivors": 1,
-                "zeeman_seed": seed, "mot_seed": 40000 + seed,
-                "source_design": {"solver": "RK4StHybridCustom"},
-                "source_parameters": {"s0": 1.3},
-            })
+            records.append(
+                {
+                    "path": array_path.relative_to(root).as_posix(),
+                    "metadata_path": metadata_path.relative_to(root).as_posix(),
+                    "sha256": hashlib.sha256(array_bytes).hexdigest(),
+                    "metadata_sha256": hashlib.sha256(current_metadata).hexdigest(),
+                    "shape": [1, 6],
+                    "dtype": "float64",
+                    "n_survivors": 1,
+                    "zeeman_seed": seed,
+                    "mot_seed": 40000 + seed,
+                    "source_design": {"solver": "RK4StHybridCustom"},
+                    "source_parameters": {"s0": 1.3},
+                }
+            )
         record["input_roles"][role] = records
     digest = input_registry_digest(record["input_roles"])
-    record["design"]["timestep_evidence"] = {"source_handoff": {
-        "campaign_sha256": record["upstream_2d_campaign"]["campaign_sha256"],
-        "final_report_sha256": record["upstream_2d_campaign"]["final_report_sha256"],
-        "input_registry_sha256": digest,
-    }}
+    record["design"]["timestep_evidence"] = {
+        "source_handoff": {
+            "campaign_sha256": record["upstream_2d_campaign"]["campaign_sha256"],
+            "final_report_sha256": record["upstream_2d_campaign"][
+                "final_report_sha256"
+            ],
+            "input_registry_sha256": digest,
+        }
+    }
     return record
 
 
 def test_current_3d_contract_has_no_obsolete_unconditional_blocker(tmp_path):
     record = current_3d_contract_fixture(tmp_path)
-    ok, errors = _modern_3d_contract(record, [
-        {"stage": "dt_validation", "status": "complete"},
-        {"stage": "closure", "status": "not-started"},
-    ], tmp_path)
+    ok, errors = _modern_3d_contract(
+        record,
+        [
+            {"stage": "dt_validation", "status": "complete"},
+            {"stage": "closure", "status": "not-started"},
+        ],
+        tmp_path,
+    )
     assert ok, errors
 
 
-@pytest.mark.parametrize("mutation", [
-    "upstream_hash", "upstream_bytes", "upstream_traversal", "upstream_symlink",
-    "report_hash", "report_bytes", "report_traversal", "report_symlink",
-    "array_hash", "array_bytes", "array_traversal", "array_symlink",
-    "metadata_hash", "metadata_bytes", "metadata_traversal", "metadata_symlink",
-    "registry", "role_order", "seed_pair", "extra_pair", "reordered_pairs", "duplicate_pair",
-    "source_design", "source_parameters", "metadata_record",
-])
-def test_current_3d_contract_rejects_forged_or_unsafe_frozen_identity(tmp_path, mutation):
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "upstream_hash",
+        "upstream_bytes",
+        "upstream_traversal",
+        "upstream_symlink",
+        "report_hash",
+        "report_bytes",
+        "report_traversal",
+        "report_symlink",
+        "array_hash",
+        "array_bytes",
+        "array_traversal",
+        "array_symlink",
+        "metadata_hash",
+        "metadata_bytes",
+        "metadata_traversal",
+        "metadata_symlink",
+        "registry",
+        "role_order",
+        "seed_pair",
+        "extra_pair",
+        "reordered_pairs",
+        "duplicate_pair",
+        "source_design",
+        "source_parameters",
+        "metadata_record",
+    ],
+)
+def test_current_3d_contract_rejects_forged_or_unsafe_frozen_identity(
+    tmp_path, mutation
+):
     record = current_3d_contract_fixture(tmp_path)
     frozen = record["input_roles"]["discovery"][0]
     upstream = record["upstream_2d_campaign"]
-    if mutation == "upstream_hash": upstream["campaign_sha256"] = "0" * 64
-    elif mutation == "upstream_bytes": (tmp_path / upstream["campaign_path"]).write_bytes(b"changed")
-    elif mutation == "upstream_traversal": upstream["campaign_path"] = "../outside.json"
+    if mutation == "upstream_hash":
+        upstream["campaign_sha256"] = "0" * 64
+    elif mutation == "upstream_bytes":
+        (tmp_path / upstream["campaign_path"]).write_bytes(b"changed")
+    elif mutation == "upstream_traversal":
+        upstream["campaign_path"] = "../outside.json"
     elif mutation == "upstream_symlink":
-        target = tmp_path / upstream["campaign_path"]; replacement = tmp_path / "upstream.json"
-        replacement.write_bytes(target.read_bytes()); target.unlink(); target.symlink_to(replacement)
-    elif mutation == "report_hash": upstream["final_report_sha256"] = "0" * 64
-    elif mutation == "report_bytes": (tmp_path / upstream["final_report_path"]).write_bytes(b"changed")
-    elif mutation == "report_traversal": upstream["final_report_path"] = "../outside.json"
+        target = tmp_path / upstream["campaign_path"]
+        replacement = tmp_path / "upstream.json"
+        replacement.write_bytes(target.read_bytes())
+        target.unlink()
+        target.symlink_to(replacement)
+    elif mutation == "report_hash":
+        upstream["final_report_sha256"] = "0" * 64
+    elif mutation == "report_bytes":
+        (tmp_path / upstream["final_report_path"]).write_bytes(b"changed")
+    elif mutation == "report_traversal":
+        upstream["final_report_path"] = "../outside.json"
     elif mutation == "report_symlink":
-        target = tmp_path / upstream["final_report_path"]; replacement = tmp_path / "report.json"
-        replacement.write_bytes(target.read_bytes()); target.unlink(); target.symlink_to(replacement)
-    elif mutation == "array_hash": frozen["sha256"] = "0" * 64
-    elif mutation == "array_bytes": (tmp_path / frozen["path"]).write_bytes(b"changed")
-    elif mutation == "array_traversal": frozen["path"] = "../outside.npy"
+        target = tmp_path / upstream["final_report_path"]
+        replacement = tmp_path / "report.json"
+        replacement.write_bytes(target.read_bytes())
+        target.unlink()
+        target.symlink_to(replacement)
+    elif mutation == "array_hash":
+        frozen["sha256"] = "0" * 64
+    elif mutation == "array_bytes":
+        (tmp_path / frozen["path"]).write_bytes(b"changed")
+    elif mutation == "array_traversal":
+        frozen["path"] = "../outside.npy"
     elif mutation == "array_symlink":
-        target = tmp_path / frozen["path"]; replacement = tmp_path / "replacement.npy"
-        replacement.write_bytes(target.read_bytes()); target.unlink(); target.symlink_to(replacement)
-    elif mutation == "metadata_hash": frozen["metadata_sha256"] = "0" * 64
-    elif mutation == "metadata_bytes": (tmp_path / frozen["metadata_path"]).write_bytes(b"changed")
-    elif mutation == "metadata_traversal": frozen["metadata_path"] = "../outside.json"
+        target = tmp_path / frozen["path"]
+        replacement = tmp_path / "replacement.npy"
+        replacement.write_bytes(target.read_bytes())
+        target.unlink()
+        target.symlink_to(replacement)
+    elif mutation == "metadata_hash":
+        frozen["metadata_sha256"] = "0" * 64
+    elif mutation == "metadata_bytes":
+        (tmp_path / frozen["metadata_path"]).write_bytes(b"changed")
+    elif mutation == "metadata_traversal":
+        frozen["metadata_path"] = "../outside.json"
     elif mutation == "metadata_symlink":
-        target = tmp_path / frozen["metadata_path"]; replacement = tmp_path / "replacement.json"
-        replacement.write_bytes(target.read_bytes()); target.unlink(); target.symlink_to(replacement)
-    elif mutation == "registry": record["design"]["timestep_evidence"]["source_handoff"]["input_registry_sha256"] = "0" * 64
-    elif mutation == "role_order": record["input_roles"]["discovery"].reverse()
-    elif mutation == "seed_pair": upstream["sealed_seed_pairs"][0]["mot_seed"] += 1
-    elif mutation == "extra_pair": upstream["sealed_seed_pairs"].append({"zeeman_seed": 3035, "mot_seed": 43035})
-    elif mutation == "reordered_pairs": upstream["sealed_seed_pairs"].reverse()
-    elif mutation == "duplicate_pair": upstream["sealed_seed_pairs"][1] = dict(upstream["sealed_seed_pairs"][0])
+        target = tmp_path / frozen["metadata_path"]
+        replacement = tmp_path / "replacement.json"
+        replacement.write_bytes(target.read_bytes())
+        target.unlink()
+        target.symlink_to(replacement)
+    elif mutation == "registry":
+        record["design"]["timestep_evidence"]["source_handoff"][
+            "input_registry_sha256"
+        ] = ("0" * 64)
+    elif mutation == "role_order":
+        record["input_roles"]["discovery"].reverse()
+    elif mutation == "seed_pair":
+        upstream["sealed_seed_pairs"][0]["mot_seed"] += 1
+    elif mutation == "extra_pair":
+        upstream["sealed_seed_pairs"].append({"zeeman_seed": 3035, "mot_seed": 43035})
+    elif mutation == "reordered_pairs":
+        upstream["sealed_seed_pairs"].reverse()
+    elif mutation == "duplicate_pair":
+        upstream["sealed_seed_pairs"][1] = dict(upstream["sealed_seed_pairs"][0])
     elif mutation in {"source_design", "source_parameters"}:
         frozen[mutation] = {"forged": True}
-        record["design"]["timestep_evidence"]["source_handoff"]["input_registry_sha256"] = input_registry_digest(record["input_roles"])
+        record["design"]["timestep_evidence"]["source_handoff"][
+            "input_registry_sha256"
+        ] = input_registry_digest(record["input_roles"])
     else:
         path = tmp_path / frozen["metadata_path"]
-        metadata = json.loads(path.read_text()); metadata["n_survivors"] = 2
+        metadata = json.loads(path.read_text())
+        metadata["n_survivors"] = 2
         path.write_text(json.dumps(metadata, sort_keys=True))
         frozen["metadata_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
-        record["design"]["timestep_evidence"]["source_handoff"]["input_registry_sha256"] = input_registry_digest(record["input_roles"])
-    ok, errors = _modern_3d_contract(record, [
-        {"stage": "dt_validation", "status": "complete"},
-        {"stage": "closure", "status": "not-started"},
-    ], tmp_path)
+        record["design"]["timestep_evidence"]["source_handoff"][
+            "input_registry_sha256"
+        ] = input_registry_digest(record["input_roles"])
+    ok, errors = _modern_3d_contract(
+        record,
+        [
+            {"stage": "dt_validation", "status": "complete"},
+            {"stage": "closure", "status": "not-started"},
+        ],
+        tmp_path,
+    )
     assert not ok
     assert errors
 
@@ -632,6 +729,7 @@ def running_server(
     mot_3d_preliminary_transition_service=None,
     mot_3d_refinement_transition_service=None,
     mot_3d_closure_transition_service=None,
+    mot_3d_final_validation_completion_service=None,
 ):
     handler = type("TestHandler", (ReadOnlyWorkflowHandler,), {})
     handler.sessions = {}
@@ -655,6 +753,9 @@ def running_server(
     )
     handler.mot_3d_refinement_transition_service = mot_3d_refinement_transition_service
     handler.mot_3d_closure_transition_service = mot_3d_closure_transition_service
+    handler.mot_3d_final_validation_completion_service = (
+        mot_3d_final_validation_completion_service
+    )
     if repository_root is not None:
         handler.repository_root = repository_root
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)

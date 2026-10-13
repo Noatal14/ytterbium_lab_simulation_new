@@ -10,7 +10,7 @@ vi.mock("../features/campaign/TransferStage", () => ({ TransferStage: () => null
 vi.mock("../features/campaign/SmokeStage", () => ({ SmokePointsTable: () => null }));
 vi.mock("../features/campaign/ScreeningStage", () => ({ ScreeningFacts: () => null }));
 vi.mock("../features/campaign/RefinementStage", () => ({ RefinementReceipt: () => null }));
-vi.mock("../features/campaign/Mot3DCampaignFlow", () => ({ Mot3DCampaignFlow: () => <section data-testid="mot3d-flow" /> }));
+vi.mock("../features/campaign/Mot3DCampaignFlow", () => ({ Mot3DCampaignFlow: (props: any) => <section data-testid="mot3d-flow" data-stage={props.stage} data-completion-phase={props.finalValidationCompletion?.phase} /> }));
 
 vi.mock("../features/campaign/SmokeFlow", () => ({
   SmokeFlow: (props: any) => <section>
@@ -96,6 +96,16 @@ function renderDetail(target: string, detailCampaign: any = campaign) {
 }
 
 describe("state-changing confirmations fail closed on unknown typed server errors", () => {
+  it.each([
+    ["complete", "Final report is ready"],
+    ["final_validation_extension_required", "Precision target not met"],
+  ])("routes terminal 3D stage %s through completion after reload", (stage, priority) => {
+    renderDetail("none", { ...campaign, family: "mot_3d", stage, trust: "trusted-current" });
+    expect(screen.getByTestId("mot3d-flow")).toHaveAttribute("data-stage", stage);
+    expect(screen.getByTestId("mot3d-flow")).toHaveAttribute("data-completion-phase", "idle");
+    expect(screen.getByRole("heading", { name: priority })).toBeVisible();
+  });
+
   it("does not mount any 3D action flow for an untrusted campaign", () => {
     renderDetail("none", { ...campaign, family: "mot_3d", stage: "closure", trust: "legacy-incomplete", remote_preparation: { status: "unavailable", reason_code: "campaign-validation-failed" } });
     expect(screen.getByRole("heading", { name: "Inspection only" })).toBeVisible();

@@ -82,6 +82,16 @@ describe("CampaignPriorityPanel", () => {
     expect(screen.queryByRole("heading", { name: "Zeus preparation is unavailable" })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["complete", "open_final_report", "Final report is ready", /derived only from the new sealed ensembles/],
+    ["final_validation_extension_required", "review_extension_required", "Precision target not met", /No winner or final-performance claim is available/],
+  ])("restores the authoritative %s terminal priority after reload", (stage, _nextAction, heading, copy) => {
+    render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage } as Campaign} />);
+    expect(screen.getByRole("heading", { name: heading })).toBeVisible();
+    expect(screen.getByText(copy)).toBeVisible();
+    expect(screen.queryByText(/Zeus preparation is unavailable/)).not.toBeInTheDocument();
+  });
+
   it("blocks every 3D action when the campaign contract is untrusted", () => {
     render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage: "closure", trust: "legacy-incomplete" } as Campaign} mot3DLatePhase="ready" mot3DLateNextAction="review_submission" />);
     expect(screen.getByRole("heading", { name: "Inspection only" })).toBeVisible();

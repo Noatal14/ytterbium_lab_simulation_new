@@ -264,6 +264,16 @@ def _server(
         if services
         else None
     )
+    handler.mot_3d_final_validation_completion_service = (
+        _Service(
+            "mot3d-final-validation-completion",
+            ledger,
+            values,
+            "mot3d-final-validation-completion-status",
+        )
+        if services
+        else None
+    )
     handler.zeus_service = _Service("zeus", ledger, values) if services else None
     handler.transfer_service = (
         _Service("transfer", ledger, values) if services else None
@@ -599,6 +609,9 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
             "mot3d-final-validation-transition-status",
             "mot3d-final-validation-transition-preview",
             "mot3d-final-validation-transition-confirm",
+            "mot3d-final-validation-completion-status",
+            "mot3d-final-validation-completion-preview",
+            "mot3d-final-validation-completion-confirm",
             "mot3d-zeus-recover",
     ]
     session_ids = {entry[2] for entry in ledger if entry[2] is not None}
@@ -1108,6 +1121,36 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "mot_3d_final_validation_transition_unavailable",
             "3D final-validation preparation is unavailable.",
             "Mot3DFinalValidationTransitionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-completion/status",
+            "mot_3d_final_validation_completion_service",
+            "status",
+            "payload",
+            200,
+            "mot_3d_final_validation_completion_unavailable",
+            "3D final-validation completion is unavailable.",
+            "Mot3DFinalValidationCompletionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-completion/preview",
+            "mot_3d_final_validation_completion_service",
+            "preview",
+            "session_kw",
+            200,
+            "mot_3d_final_validation_completion_unavailable",
+            "3D final-validation completion is unavailable.",
+            "Mot3DFinalValidationCompletionError",
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-completion/confirm",
+            "mot_3d_final_validation_completion_service",
+            "confirm",
+            "session_kw",
+            201,
+            "mot_3d_final_validation_completion_unavailable",
+            "3D final-validation completion is unavailable.",
+            "Mot3DFinalValidationCompletionError",
         ),
         (
             "/api/v1/zeus/snapshot",

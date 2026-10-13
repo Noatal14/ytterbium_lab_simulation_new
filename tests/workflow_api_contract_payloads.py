@@ -2322,6 +2322,96 @@ _final_validation_transition_confirm["artifacts"].update(
     {"synchronized": 102, "created": 4}
 )
 
+_final_validation_completion_detail = {
+    "outcome": "complete",
+    "families": [
+        {
+            "family": family,
+            "candidate_id": f"{family}_finalist_02",
+            "conditional_efficiency": 0.5,
+            "bootstrap_95_ci": [0.495, 0.505],
+            "ci_half_width": 0.0050000000000000044,
+            "precision_target_met": True,
+        }
+        for family in ("angled_donut", "single_pass")
+    ],
+    "evidence_sha256": "b" * 64,
+}
+
+_PAYLOADS["mot3d-final-validation-completion-status"] = {
+    "source": "zeus",
+    "campaign": {"id": "campaign-id", "name": "mot_3d_contract", "stage": "complete"},
+    "final_validation": {
+        "status": "complete",
+        "chain": deepcopy(
+            _PAYLOADS["mot3d-closure-transition-status"]["closure"]["chain"]
+        ),
+    },
+    "scheduler": {
+        "completed_array_tasks": 6,
+        "expected_array_tasks": 6,
+        "completed_merge_jobs": 2,
+        "expected_merge_jobs": 2,
+    },
+    "validation": {
+        "status": "valid",
+        "result_artifacts": 14,
+        "expected_result_artifacts": 14,
+        "reason_code": None,
+    },
+    "completion": {
+        "status": "complete",
+        "detail": deepcopy(_final_validation_completion_detail),
+    },
+    "next_action": "open_final_report",
+    "local_sync": {"status": "synchronized", "receipt_sha256": "a" * 64},
+}
+_PAYLOADS["mot3d-final-validation-completion-preview"] = {
+    "preview_token": "mot3d-final-validation-completion-token",
+    "expires_in_seconds": 300,
+    "campaign": {
+        "id": "campaign-id",
+        "name": "mot_3d_contract",
+        "git_commit": "a" * 40,
+    },
+    "from_stage": "final_validation",
+    "to_stage": "complete_or_extension_required",
+    "final_validation": {
+        "result_artifacts": 14,
+        "expected_result_artifacts": 14,
+        "families": ["angled_donut", "single_pass"],
+        "evidence_sha256": "b" * 64,
+    },
+    "artifacts": {
+        "synchronize": {"result_files": 14, "submission_receipts": 1},
+        "create": {"terminal_files": 1},
+        "update": ["campaign.json"],
+        "transfer_files": 17,
+    },
+    "effects": {
+        "synchronize_final_validation": True,
+        "complete_final_validation": True,
+        "submit_extension": False,
+        "start_simulation": False,
+        "overwrite_existing": False,
+    },
+    "completion": deepcopy(_final_validation_completion_detail),
+}
+_PAYLOADS["mot3d-final-validation-completion-confirm"] = {
+    "status": "complete",
+    "campaign_id": "campaign-id",
+    "stage": "complete",
+    "artifacts": {
+        "synchronized": 15,
+        "created": 1,
+        "updated": 1,
+        "bundle_sha256": "c" * 64,
+    },
+    "submitted_to_zeus": False,
+    "simulation_started": False,
+    "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
+}
+
 
 def fake_service_payloads() -> dict[str, object]:
     """Return fresh full public DTOs without consulting contract snapshots."""

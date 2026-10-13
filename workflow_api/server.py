@@ -151,6 +151,10 @@ from workflow_api.mot_3d_final_validation_transition import (
     Mot3DFinalValidationTransitionCoordinator,
     Mot3DFinalValidationTransitionError,
 )
+from workflow_api.mot_3d_final_validation_completion import (
+    Mot3DFinalValidationCompletionCoordinator,
+    Mot3DFinalValidationCompletionError,
+)
 from workflow_api.zeeman_individual_api import IndividualZeemanApi
 from workflow_api.zeeman_zeus_execution import ZeemanZeusError
 
@@ -612,6 +616,36 @@ def _post_routes() -> tuple[PostRoute, ...]:
             "3D final-validation preparation is unavailable.",
             HTTPStatus.CREATED,
             Mot3DFinalValidationTransitionError,
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-completion/status",
+            "mot_3d_final_validation_completion_service",
+            "status",
+            "payload",
+            "mot_3d_final_validation_completion_unavailable",
+            "3D final-validation completion is unavailable.",
+            HTTPStatus.OK,
+            Mot3DFinalValidationCompletionError,
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-completion/preview",
+            "mot_3d_final_validation_completion_service",
+            "preview",
+            "session_kw",
+            "mot_3d_final_validation_completion_unavailable",
+            "3D final-validation completion is unavailable.",
+            HTTPStatus.OK,
+            Mot3DFinalValidationCompletionError,
+        ),
+        (
+            "/api/v1/zeus/mot-3d/final-validation-completion/confirm",
+            "mot_3d_final_validation_completion_service",
+            "confirm",
+            "session_kw",
+            "mot_3d_final_validation_completion_unavailable",
+            "3D final-validation completion is unavailable.",
+            HTTPStatus.CREATED,
+            Mot3DFinalValidationCompletionError,
         ),
         (
             "/api/v1/zeus/snapshot",
@@ -1322,6 +1356,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
     mot_3d_final_validation_transition_service: (
         Mot3DFinalValidationTransitionCoordinator | None
     ) = None
+    mot_3d_final_validation_completion_service: (
+        Mot3DFinalValidationCompletionCoordinator | None
+    ) = None
     individual_run_service: IndividualRunRegistry | None = None
     individual_zeeman_api: IndividualZeemanApi | None = None
     individual_mot_2d_api: IndividualMot2DApi | None = None
@@ -1358,6 +1395,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 and self.mot_3d_closure_transition_service is None
                 and self.mot_3d_finalist_transition_service is None
                 and self.mot_3d_final_input_submission_service is None
+                and self.mot_3d_final_validation_completion_service is None
                 and self.zeus_service is None
                 and self.transfer_service is None
                 and self.submission_service is None
@@ -1664,6 +1702,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         except Mot3DFinalInputSubmissionError as error:
             resolved = resolve_error("mot_3d_final_input_submission", error.code)
+            self._error(resolved.code, resolved.message, resolved.status)
+            return
+        except Mot3DFinalValidationCompletionError as error:
+            resolved = resolve_error("mot_3d_final_validation_completion", error.code)
             self._error(resolved.code, resolved.message, resolved.status)
             return
         except Mot3DFinalValidationTransitionError as error:
@@ -2031,6 +2073,11 @@ def main() -> None:
     )
     WorkflowHandler.mot_3d_final_validation_transition_service = (
         Mot3DFinalValidationTransitionCoordinator(
+            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+        )
+    )
+    WorkflowHandler.mot_3d_final_validation_completion_service = (
+        Mot3DFinalValidationCompletionCoordinator(
             WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
         )
     )

@@ -83,6 +83,9 @@ class TransitionDescriptor:
     bundle_max_total_bytes: int = MAX_TOTAL_BYTES
     submission_evidence: str = "family_chain"
     artifact_max_file_bytes: int = MAX_FILE
+    workflow_kind: str = "selection_transition"
+    terminal_statuses: frozenset[str] = frozenset()
+    generated_file_count: int | None = None
 
     def __post_init__(self):
         safe = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -106,7 +109,13 @@ class TransitionDescriptor:
             or self.source_result_count <= 0
             or type(self.transfer_file_count) is not int
             or self.transfer_file_count
-            != self.source_result_count + 1 + len(self.generated_paths)
+            != self.source_result_count
+            + 1
+            + (
+                len(self.generated_paths)
+                if self.generated_file_count is None
+                else self.generated_file_count
+            )
             or not _safe_relative(self.source_submission_receipt)
             or type(self.prior_local_sync_receipt) is not str
             or not self.prior_local_sync_receipt.startswith(".mot_ui/sync/")
@@ -121,6 +130,17 @@ class TransitionDescriptor:
             not in {MAX_TOTAL_BYTES, MAX_REVIEWED_TOTAL_BYTES}
             or self.submission_evidence not in {"family_chain", "linear_chain"}
             or self.artifact_max_file_bytes not in {MAX_FILE, MAX_REVIEWED_FILE_BYTES}
+            or self.workflow_kind
+            not in {"selection_transition", "final_validation_completion"}
+            or type(self.terminal_statuses) is not frozenset
+            or (
+                self.workflow_kind == "final_validation_completion"
+                and (
+                    self.generated_file_count != 2
+                    or self.terminal_statuses
+                    != frozenset({"complete", "final_validation_extension_required"})
+                )
+            )
         ):
             raise ValueError("invalid transition descriptor")
 
@@ -177,9 +197,61 @@ def _selection_path(family: str) -> str:
     return f"selection/{_descriptor().selection_stage}/{family}.json"
 
 
+def _receipt_status_valid(status: object) -> bool:
+    descriptor = _descriptor()
+    return (
+        status == descriptor.prepared_status or status in descriptor.terminal_statuses
+    )
+
+
+def _generated_paths_valid(paths: object) -> bool:
+    descriptor = _descriptor()
+    if type(paths) is not set:
+        paths = set(paths)
+    if descriptor.workflow_kind != "final_validation_completion":
+        return paths == descriptor.generated_paths
+    return paths in (
+        {"campaign.json", "final_report.json"},
+        {"campaign.json", "final_validation_status.json"},
+    )
+
+
+def _terminal_status(files: Mapping[str, object]) -> str:
+    descriptor = _descriptor()
+    if descriptor.workflow_kind != "final_validation_completion":
+        return descriptor.prepared_status
+    if "final_report.json" in files:
+        return "complete"
+    if "final_validation_status.json" in files:
+        return "final_validation_extension_required"
+    fail(descriptor.error("outcome_unknown"))
+
+
+def _completion_terminals(campaign_fd: int) -> dict[str, bytes]:
+    if _descriptor().workflow_kind != "final_validation_completion":
+        return {}
+    found = {}
+    for name in ("final_report.json", "final_validation_status.json"):
+        if not regular_exists_at(campaign_fd, name):
+            continue
+        try:
+            found[name] = read_relative_at(campaign_fd, name, MAX_FILE)
+        except Exception:
+            fail(_descriptor().error("outcome_unknown"))
+    return found
+
+
 def _result_paths(selections):
+    if _descriptor().workflow_kind == "final_validation_completion":
+        from workflow_api.mot_3d_final_validation_results import (
+            expected_paths as final_validation_paths,
+        )
+
+        return final_validation_paths()
     if _descriptor().submission_evidence == "linear_chain":
-        from workflow_api.mot_3d_final_input_results import expected_paths as input_paths
+        from workflow_api.mot_3d_final_input_results import (
+            expected_paths as input_paths,
+        )
 
         return input_paths()
     if _descriptor().from_stage == "preliminary_check":
@@ -205,7 +277,25 @@ def _validate_results(
     manifest_raw, selections, results, project_directory, campaign_path
 ):
     manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
-    if _descriptor().submission_evidence == "linear_chain":
+    if _descriptor().workflow_kind == "final_validation_completion":
+        from workflow_api.mot_3d_final_validation_results import (
+            validate_final_validation_result_bytes,
+        )
+
+        validated = validate_final_validation_result_bytes(
+            manifest_bytes=manifest_raw,
+            locked_nominals_bytes=selections["locked_nominals"],
+            input_manifest_bytes=selections["input_manifest"],
+            generation_submission_bytes=selections["generation_submission"],
+            submission_bytes=selections["submission"],
+            job_files=selections["job_files"],
+            input_files=selections["input_files"],
+            result_files=results,
+            logical_campaign_root=f"data/optimization/mot_3d/{manifest.get('name')}",
+            project_directory=str(project_directory),
+            campaign_absolute_path=str(campaign_path),
+        )
+    elif _descriptor().submission_evidence == "linear_chain":
         from workflow_api.mot_3d_final_input_results import (
             validate_final_input_result_bytes,
         )
@@ -266,6 +356,11 @@ def _validate_results(
 
 
 def _render_transition(relative, manifest, validated, manifest_raw):
+    if _descriptor().workflow_kind == "final_validation_completion":
+        return {
+            "campaign.json": validated.campaign_bytes,
+            validated.terminal_name: validated.terminal_bytes,
+        }, validated.outcome
     if _descriptor().submission_evidence == "linear_chain":
         from studies.mot_3d_campaign import render_final_validation_transition
 
@@ -879,6 +974,26 @@ def _terminal_counts() -> tuple[int, int]:
 
 
 def _winner_from_validated(validated):
+    if _descriptor().workflow_kind == "final_validation_completion":
+        return {
+            "outcome": validated.outcome,
+            "families": [
+                {
+                    "family": family,
+                    "candidate_id": validated.summaries[family]["candidate_id"],
+                    "conditional_efficiency": validated.summaries[family][
+                        "conditional_efficiency"
+                    ],
+                    "bootstrap_95_ci": validated.summaries[family]["bootstrap_95_ci"],
+                    "ci_half_width": validated.summaries[family]["ci_half_width"],
+                    "precision_target_met": validated.summaries[family][
+                        "precision_target_met"
+                    ],
+                }
+                for family in FAMILIES
+            ],
+            "evidence_sha256": validated.evidence_sha256,
+        }
     if _descriptor().from_stage != "finalist_selection":
         return None
     return _winner_selection_from_summaries(
@@ -909,6 +1024,43 @@ def _winner_selection_from_summaries(summaries, evidence):
 
 
 def _winner_selection_from_published(campaign_fd, evidence):
+    if _descriptor().workflow_kind == "final_validation_completion":
+        terminal = None
+        outcome = None
+        terminals = _completion_terminals(campaign_fd)
+        for name, candidate in (
+            ("final_report.json", "complete"),
+            ("final_validation_status.json", "final_validation_extension_required"),
+        ):
+            if name not in terminals:
+                continue
+            value = json_bytes(
+                terminals[name], error=_descriptor().error("outcome_unknown")
+            )
+            if terminal is not None:
+                fail(_descriptor().error("outcome_unknown"))
+            terminal, outcome = value, candidate
+        if terminal is None:
+            fail(_descriptor().error("outcome_unknown"))
+        return {
+            "outcome": outcome,
+            "families": [
+                {
+                    "family": family,
+                    "candidate_id": terminal["results"][family]["candidate_id"],
+                    "conditional_efficiency": terminal["results"][family][
+                        "conditional_efficiency"
+                    ],
+                    "bootstrap_95_ci": terminal["results"][family]["bootstrap_95_ci"],
+                    "ci_half_width": terminal["results"][family]["ci_half_width"],
+                    "precision_target_met": terminal["results"][family][
+                        "precision_target_met"
+                    ],
+                }
+                for family in FAMILIES
+            ],
+            "evidence_sha256": evidence,
+        }
     if _descriptor().from_stage != "finalist_selection":
         return None
     from studies.mot_3d.finalists.merge import FINALIST_WINNER_RANKING_RULE
@@ -1041,21 +1193,28 @@ def _identity(
         f".mot_ui/transitions/{_descriptor().prior_transition_name}.json",
         MAX_FILE,
     )
-    transition_row = json_bytes(
-        transition,
-        keys={
-            "status",
-            "nonce",
-            "transition_key",
-            "commit",
-            "bootstrap_digest",
-            "submission_key",
-            "chain",
-            "bundle",
-            "completed_unix_s",
-        },
-        error=_descriptor().error("conflict"),
-    )
+    if _descriptor().workflow_kind == "final_validation_completion":
+        transition_row = json_bytes(
+            transition,
+            keys=FINAL_KEYS,
+            error=_descriptor().error("conflict"),
+        )
+    else:
+        transition_row = json_bytes(
+            transition,
+            keys={
+                "status",
+                "nonce",
+                "transition_key",
+                "commit",
+                "bootstrap_digest",
+                "submission_key",
+                "chain",
+                "bundle",
+                "completed_unix_s",
+            },
+            error=_descriptor().error("conflict"),
+        )
     stage1_bundle = read_relative_at(
         campaign_fd,
         f".mot_ui/transitions/{_descriptor().prior_transition_name}.bundle.gz",
@@ -1070,7 +1229,27 @@ def _identity(
         {"index": index, "size": len(chunk), "sha256": _sha(chunk)}
         for index, chunk in enumerate(chunks)
     ]
-    if (
+    if _descriptor().workflow_kind == "final_validation_completion":
+        if (
+            _sha(transition) != identity["stage3_remote_receipt_sha256"]
+            or transition_row["status"] != _descriptor().prior_transition_status
+            or transition_row["commit"] != payload["commit"]
+            or type(transition_row["nonce"]) is not str
+            or HEX32.fullmatch(transition_row["nonce"]) is None
+            or type(transition_row["transition_key"]) is not str
+            or HEX64.fullmatch(transition_row["transition_key"]) is None
+            or not stamp(transition_row["completed_unix_s"])
+            or not _exact_bundle(
+                transition_row["bundle"],
+                file_count=_descriptor().prior_transition_file_count,
+            )
+            or _sha(stage1_bundle) != identity["stage3_bundle_sha256"]
+            or transition_row["bundle"]["bundle_sha256"]
+            != identity["stage3_bundle_sha256"]
+            or transition_row["bundle"]["chunks"] != expected_chunks
+        ):
+            fail(_descriptor().error("conflict"))
+    elif (
         _sha(transition)
         != identity[
             (
@@ -1160,7 +1339,42 @@ def _capture(
     manifest_raw: bytes,
 ):
     manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
-    if _descriptor().submission_evidence == "linear_chain":
+    if _descriptor().workflow_kind == "final_validation_completion":
+        from workflow_api.mot_3d_final_input_results import (
+            expected_paths as final_input_paths,
+        )
+
+        selections = {
+            "locked_nominals": read_relative_at(
+                campaign_fd, "selection/locked_nominals.json", MAX_FILE
+            ),
+            "input_manifest": read_relative_at(
+                campaign_fd, "final_validation_inputs/input_manifest.json", MAX_FILE
+            ),
+            "generation_submission": read_relative_at(
+                campaign_fd,
+                "final_validation_input_generation_submission.json",
+                MAX_FILE,
+            ),
+            "submission": read_relative_at(
+                campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
+            ),
+            "job_files": {
+                f"jobs/final_validation/{family}_{kind}.pbs": read_relative_at(
+                    campaign_fd,
+                    f"jobs/final_validation/{family}_{kind}.pbs",
+                    MAX_FILE,
+                )
+                for family in FAMILIES
+                for kind in ("array", "merge")
+            },
+            "input_files": {
+                name: read_relative_at(campaign_fd, name, MAX_REVIEWED_FILE_BYTES)
+                for name in final_input_paths()
+            },
+        }
+        parsed = None
+    elif _descriptor().submission_evidence == "linear_chain":
         selections = {
             "locked_nominals": read_relative_at(
                 campaign_fd, "selection/locked_nominals.json", MAX_FILE
@@ -1180,9 +1394,7 @@ def _capture(
             for family, raw in selections.items()
         }
     results = {
-        name: read_relative_at(
-            campaign_fd, name, _descriptor().artifact_max_file_bytes
-        )
+        name: read_relative_at(campaign_fd, name, _descriptor().artifact_max_file_bytes)
         for name in _result_paths(parsed)
     }
     manifest, validated = _validate_results(
@@ -1196,7 +1408,7 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
         set(receipt) != FINAL_KEYS
         or type(receipt["version"]) is not int
         or receipt["version"] != 1
-        or receipt["status"] != _descriptor().prepared_status
+        or not _receipt_status_valid(receipt["status"])
         or receipt["transition_key"] != payload["transition_key"]
         or receipt["commit"] != payload["commit"]
         or receipt["submission_key"] != payload["submission_key"]
@@ -1229,6 +1441,7 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
     selections = (
         None
         if _descriptor().submission_evidence == "linear_chain"
+        or _descriptor().workflow_kind == "final_validation_completion"
         else {
             family: json_bytes(
                 read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
@@ -1237,19 +1450,32 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
             for family in FAMILIES
         }
     )
-    exact_paths = (
-        frozenset(_result_paths(selections))
-        | {_descriptor().source_submission_receipt}
-        | _descriptor().generated_paths
+    generated = (
+        set(receipt["files"])
+        - set(_result_paths(selections))
+        - {_descriptor().source_submission_receipt}
     )
-    if set(receipt["files"]) != exact_paths:
+    exact_paths = (
+        set(_result_paths(selections))
+        | {_descriptor().source_submission_receipt}
+        | generated
+    )
+    if set(receipt["files"]) != exact_paths or not _generated_paths_valid(generated):
         fail(_descriptor().error("outcome_unknown"))
+    if _descriptor().workflow_kind == "final_validation_completion":
+        terminal = _completion_terminals(campaign_fd)
+        expected_terminal = generated - {"campaign.json"}
+        if set(terminal) != expected_terminal:
+            fail(_descriptor().error("outcome_unknown"))
     for name, expected in receipt["files"].items():
-        if _sha(
-            read_relative_at(
-                campaign_fd, name, _descriptor().artifact_max_file_bytes
+        if (
+            _sha(
+                read_relative_at(
+                    campaign_fd, name, _descriptor().artifact_max_file_bytes
+                )
             )
-        ) != expected:
+            != expected
+        ):
             fail(_descriptor().error("outcome_unknown"))
     packed = bounded_at(
         transitions_fd,
@@ -1539,7 +1765,7 @@ def main(*, trusted_root_override=None):
                     "content": base64.b64encode(chunks[index]).decode("ascii"),
                 }
                 _response(
-                    _descriptor().prepared_status,
+                    receipt["status"],
                     branch,
                     jobs,
                     *_terminal_counts(),
@@ -1554,7 +1780,7 @@ def main(*, trusted_root_override=None):
                 )
                 return
             _response(
-                _descriptor().prepared_status,
+                receipt["status"],
                 branch,
                 jobs,
                 *_terminal_counts(),
@@ -1604,7 +1830,7 @@ def main(*, trusted_root_override=None):
                 }
                 receipt.update(
                     {
-                        "status": _descriptor().prepared_status,
+                        "status": _terminal_status(pending_receipt["files"]),
                         "completed_unix_s": int(time.time()),
                     }
                 )
@@ -1628,7 +1854,7 @@ def main(*, trusted_root_override=None):
             finally:
                 os.close(lock_fd)
             _response(
-                _descriptor().prepared_status,
+                receipt["status"],
                 branch,
                 jobs,
                 *_terminal_counts(),
@@ -1698,11 +1924,24 @@ def main(*, trusted_root_override=None):
             _exact_stage2(campaign_fd, payload["submission_key"], payload["commit"])
             if _scheduler(jobs) != ("completed_success_unvalidated", 6, 2):
                 fail(_descriptor().error("conflict"))
-            generated, _ = _render_transition(
+            generated, _render_metadata = _render_transition(
                 relative, manifest, validated, frozen["campaign.json"]
             )
-            if set(generated) != _descriptor().generated_paths:
+            terminal_status = _terminal_status(generated)
+            if not _generated_paths_valid(set(generated)):
                 fail(_descriptor().error("conflict"))
+            if _descriptor().workflow_kind == "final_validation_completion":
+                existing_terminals = _completion_terminals(campaign_fd)
+                selected_terminal = set(generated) - {"campaign.json"}
+                if any(name not in selected_terminal for name in existing_terminals):
+                    fail(_descriptor().error("conflict"))
+                if existing_terminals and pending_receipt is None:
+                    fail(_descriptor().error("conflict"))
+                if any(
+                    existing_terminals[name] != generated[name]
+                    for name in existing_terminals
+                ):
+                    fail(_descriptor().error("conflict"))
             files = dict(results)
             files[_descriptor().source_submission_receipt] = read_relative_at(
                 campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
@@ -1711,9 +1950,12 @@ def main(*, trusted_root_override=None):
             parsed = (
                 None
                 if _descriptor().submission_evidence == "linear_chain"
+                or _descriptor().workflow_kind == "final_validation_completion"
                 else {
                     family: json_bytes(
-                        read_relative_at(campaign_fd, _selection_path(family), MAX_FILE),
+                        read_relative_at(
+                            campaign_fd, _selection_path(family), MAX_FILE
+                        ),
                         error=_descriptor().error("conflict"),
                     )
                     for family in FAMILIES
@@ -1722,7 +1964,7 @@ def main(*, trusted_root_override=None):
             expected_transfer = (
                 frozenset(_result_paths(parsed))
                 | {_descriptor().source_submission_receipt}
-                | _descriptor().generated_paths
+                | frozenset(generated)
             )
             if (
                 set(files) != expected_transfer
@@ -1734,7 +1976,11 @@ def main(*, trusted_root_override=None):
                 campaign=relative.name,
                 commit=payload["commit"],
                 from_stage=_descriptor().from_stage,
-                to_stage=_descriptor().to_stage,
+                to_stage=(
+                    terminal_status
+                    if _descriptor().workflow_kind == "final_validation_completion"
+                    else _descriptor().to_stage
+                ),
                 expected_paths=expected_transfer,
                 max_total_bytes=_descriptor().bundle_max_total_bytes,
                 max_file_bytes=_descriptor().artifact_max_file_bytes,
@@ -1774,7 +2020,7 @@ def main(*, trusted_root_override=None):
                     canonical(pending) + b"\n",
                     identical_ok=False,
                 )
-            for name in sorted(_descriptor().generated_paths - {"campaign.json"}):
+            for name in sorted(set(generated) - {"campaign.json"}):
                 _publish_relative(campaign_fd, name, generated[name])
             _publish_bytes(
                 transitions_fd,
@@ -1790,7 +2036,7 @@ def main(*, trusted_root_override=None):
             }
             receipt.update(
                 {
-                    "status": _descriptor().prepared_status,
+                    "status": terminal_status,
                     "bundle": built.manifest,
                     "completed_unix_s": int(time.time()),
                 }
@@ -1818,7 +2064,7 @@ def main(*, trusted_root_override=None):
             finally:
                 os.close(lock_fd)
         _response(
-            _descriptor().prepared_status,
+            receipt["status"],
             branch,
             jobs,
             *_terminal_counts(),
