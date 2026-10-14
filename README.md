@@ -1,6 +1,6 @@
 # Yb-171 Laser-Cooling Simulation
 
-**New to the project? Start with [`GETTING_STARTED.md`](GETTING_STARTED.md).**
+**New to the project? Start with [`UI_QUICKSTART.md`](UI_QUICKSTART.md).**
 
 This repository models a Yb-171 atomic beam and the downstream laser-cooling stages used to study a compact apparatus: a thermal source, a Zeeman slower, a 2D MOT, and, where applicable, a 3D MOT and transport region.
 

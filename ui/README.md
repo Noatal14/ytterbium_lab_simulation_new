@@ -1,11 +1,15 @@
 # Simulation control center UI
 
-This directory contains the local web interface. It can create and inspect a
-frozen 2D campaign, prepare its exact inputs on Zeus, and guide the guarded
-Smoke, Screening, Refinement, and Confirmation workflow. Every mutation or
-scheduler submission requires a separate review and explicit confirmation.
-Nothing submits automatically, arbitrary commands are unavailable, and an
-uncertain scheduler outcome blocks retry until Zeus is checked manually.
+For the short, user-facing launch and operation guide, start with
+[`../UI_QUICKSTART.md`](../UI_QUICKSTART.md). This file documents development
+and implementation details.
+
+This directory contains the local web interface. It supports individual
+Zeeman, 2D-MOT, and 3D-MOT simulations and the guarded 2D-MOT and 3D-MOT
+campaign workflows. Every mutation or scheduler submission requires a separate
+review and explicit confirmation. Nothing submits automatically, arbitrary
+commands are unavailable, and an uncertain scheduler outcome blocks retry
+until Zeus is checked manually.
 
 ## Development
 

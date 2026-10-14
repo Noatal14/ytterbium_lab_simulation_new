@@ -240,7 +240,7 @@ from the commit pinned by an active campaign.
 
 ## Reading order for a new contributor
 
-1. `GETTING_STARTED.md`
+1. `UI_QUICKSTART.md`
 2. this document
 3. `README.md`
 4. `PROJECT_HANDOFF.md`
