@@ -1199,3 +1199,40 @@ def test_timestep_gate_rejects_wrong_production_dt(tmp_path):
         mot_3d_campaign.approve_timestep(
             Namespace(campaign=str(root), evidence=str(evidence))
         )
+
+
+def test_selection_candidate_count_accepts_current_and_legacy_metadata():
+    assert (
+        mot_3d_campaign._selection_candidate_count(
+            {"selected_candidate_count": 12, "candidates": [{}] * 12}
+        )
+        == 12
+    )
+    assert mot_3d_campaign._selection_candidate_count({"candidate_count": 4}) == 4
+    assert (
+        mot_3d_campaign._selection_candidate_count(
+            {"selected_candidate_count": 7, "candidate_count": 7}
+        )
+        == 7
+    )
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {},
+        {"selected_candidate_count": None},
+        {"selected_candidate_count": True},
+        {"selected_candidate_count": None, "candidate_count": 12},
+    ],
+)
+def test_selection_candidate_count_rejects_missing_or_invalid_metadata(selection):
+    with pytest.raises(ValueError, match="candidate count is missing or invalid"):
+        mot_3d_campaign._selection_candidate_count(selection)
+
+
+def test_selection_candidate_count_rejects_conflicting_metadata():
+    with pytest.raises(ValueError, match="candidate counts conflict"):
+        mot_3d_campaign._selection_candidate_count(
+            {"selected_candidate_count": 12, "candidate_count": 11}
+        )

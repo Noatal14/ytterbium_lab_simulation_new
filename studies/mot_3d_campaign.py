@@ -2096,6 +2096,25 @@ def _recompute_final_validation_summary(root, family, stage):
         return json.loads(output.read_text(encoding="utf-8"))
 
 
+def _selection_candidate_count(selection):
+    """Read the selected count from current or legacy selection metadata."""
+    current_present = "selected_candidate_count" in selection
+    key = "selected_candidate_count" if current_present else "candidate_count"
+    value = selection.get(key)
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ValueError("Stage selection candidate count is missing or invalid.")
+    if current_present and "candidate_count" in selection:
+        legacy = selection["candidate_count"]
+        if (
+            not isinstance(legacy, int)
+            or isinstance(legacy, bool)
+            or legacy < 0
+            or legacy != value
+        ):
+            raise ValueError("Stage selection candidate counts conflict.")
+    return value
+
+
 def validate_stage_complete(root, manifest, stage):
     submission = root / f"{stage}_submission.json"
     if not submission.is_file():
@@ -2131,7 +2150,7 @@ def validate_stage_complete(root, manifest, stage):
             raise ValueError(f"Stage {stage} summary family mismatch.")
         selection_path = Path(design["selection_files"][family])
         selection = json.loads(selection_path.read_text(encoding="utf-8"))
-        if summary.get("candidate_count") != selection.get("candidate_count"):
+        if summary.get("candidate_count") != _selection_candidate_count(selection):
             raise ValueError(f"Stage {stage} summary candidate count mismatch.")
         if (
             summary.get("bootstrap_replicates") != 10_000
