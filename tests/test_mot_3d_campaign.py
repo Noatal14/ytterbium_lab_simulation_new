@@ -257,9 +257,7 @@ def test_create_is_plan_only_and_freezes_new_design(
         )
         tokens = shlex.split(command)
         assert tokens[tokens.index("--input") + 1] == input_dir.resolve().as_posix()
-        assert tokens[tokens.index("--input-manifest") + 1] == str(
-            output / "campaign.json"
-        )
+        assert tokens[tokens.index("--input-manifest") + 1] == (output / "campaign.json").as_posix()
 
 
 def test_ui_bootstrap_renders_discovery_only_from_pragmatic_policy(
