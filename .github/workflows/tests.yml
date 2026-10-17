@@ -157,6 +157,8 @@ jobs:
           python -m pip install -e ./atomsmltr
       - name: Run native host compatibility suite
         run: python scripts/check_host_compatibility.py
+      - name: Compare real serial and spawn simulation results
+        run: python scripts/smoke_host_simulations.py
       - name: Install browser test dependencies
         working-directory: ui
         run: |
