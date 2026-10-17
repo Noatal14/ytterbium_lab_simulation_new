@@ -87,3 +87,47 @@ run does not automatically become an approved campaign input.
 If the application reports a problem that its guidance does not resolve, save
 the exact message and the relevant campaign or run name. Do not manually edit
 campaign manifests or generated job files.
+
+
+## Windows (PowerShell)
+
+Use Python 3.12 and Node.js 24 LTS with Git installed and available on PATH.
+Windows ARM64 and x64 use the same source tree. Keep the checkout on a local
+NTFS volume, rather than a shared Mac folder, for native locking and hard links.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m pip install -e .\atomsmltr
+$env:PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
+cd ui
+npm.cmd ci
+npm.cmd run dev
+```
+
+Open the localhost URL printed by Vite. The PYTHON setting selects the venv
+without changing PowerShell execution policy or requiring activation scripts.
+For backend tests, return to the repository root and run:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/check_host_compatibility.py
+cd ui
+npm.cmd test
+npm.cmd run build
+npx.cmd playwright install chromium
+npx.cmd playwright test --project=desktop --workers=2
+npx.cmd playwright test --config=playwright.real-backend.config.ts
+```
+
+The native filesystem adapter retains handle-relative reads, exclusive locks,
+no-overwrite publication and rejection of reparse points. Windows prevents some
+POSIX directory-swap attacks while a publication lock is held; dedicated Windows
+tests check that rejection. File contents are flushed before publication, but
+Windows does not provide the POSIX directory-fsync durability guarantee. Atomic
+visibility is retained; a power loss has weaker metadata durability.
+
+Tests needing POSIX FIFOs or unavailable symlink privileges are reported as
+skipped; junction rejection is tested without enabling Developer Mode. The
+complete Python suite also tests POSIX receiver programs that execute on Zeus;
+run that full suite on Linux/macOS. Remote submission still requires the usual
+VPN, SSH keys and verified server host key on the Windows account.

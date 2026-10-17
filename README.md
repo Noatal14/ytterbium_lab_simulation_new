@@ -321,6 +321,8 @@ The exact upstream revision and the full set of project-specific modifications c
 
 This project relies on Python scientific libraries, plus the local vendored `atomsmltr` package.
 
+For native Windows installation and checks, see [UI_QUICKSTART.md](UI_QUICKSTART.md#windows-powershell).
+
 ### Recommended setup
 
 ```bash
