@@ -12,7 +12,7 @@ PathKind = Literal["file", "dir"]
 
 
 def _relative_identity(value: str | os.PathLike[str]) -> PurePosixPath:
-    text = os.fspath(value)
+    text = value.as_posix() if isinstance(value, Path) else os.fspath(value)
     if not isinstance(text, str):
         raise ValueError("Repository path must be text.")
     if (
@@ -20,6 +20,7 @@ def _relative_identity(value: str | os.PathLike[str]) -> PurePosixPath:
         or len(text.encode("utf-8")) > MAX_REPOSITORY_PATH_BYTES
         or not text.isprintable()
         or "\\" in text
+        or ":" in text
     ):
         raise ValueError("Repository path is not a canonical portable path.")
     candidate = PurePosixPath(text)
@@ -54,7 +55,7 @@ def _reject_symlink_components(repository_root: Path, candidate: Path) -> None:
     current = repository_root
     for part in relative.parts:
         current = current / part
-        if current.is_symlink():
+        if current.is_symlink() or current.is_junction():
             raise ValueError("Repository path contains a symbolic link.")
 
 

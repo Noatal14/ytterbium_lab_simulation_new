@@ -79,3 +79,15 @@ def test_windows_junction_is_rejected(tmp_path):
     with pytest.raises(OSError):
         fd = os.open(junction, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
         os.close(fd)
+
+
+def test_positioned_read_preserves_file_offset(tmp_path):
+    path = tmp_path / 'bytes'
+    path.write_bytes(b'0123456789')
+    fd = os.open(path, os.O_RDONLY)
+    try:
+        os.lseek(fd, 3, os.SEEK_SET)
+        assert os.pread(fd, 4, 5) == b'5678'
+        assert os.lseek(fd, 0, os.SEEK_CUR) == 3
+    finally:
+        os.close(fd)

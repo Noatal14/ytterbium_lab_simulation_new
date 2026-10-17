@@ -22,3 +22,16 @@ def windows_symlink_fixture_permission(monkeypatch):
             raise
 
     monkeypatch.setattr(Path, 'symlink_to', symlink_to)
+
+
+@pytest.fixture(autouse=True)
+def deterministic_individual_worker_budget(monkeypatch, request):
+    # Individual-run fixtures request eight workers. CPU-limit regression
+    # tests explicitly override this deterministic unit-test host again.
+    if request.module.__name__.split('.')[-1] in {
+        'test_run_execution', 'test_individual_run_api',
+        'test_zeeman_individual_api', 'test_zeeman_individual_http',
+        'test_workflow_api_contracts', 'test_workflow_api_server',
+    }:
+        import workflow_api.zeeman_run_specification as specification
+        monkeypatch.setattr(specification.os, 'cpu_count', lambda: 16)

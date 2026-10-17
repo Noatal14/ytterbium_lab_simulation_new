@@ -110,3 +110,8 @@ def test_rejects_invalid_allowed_root(repository):
     for allowed in ("/data/particle_states", "data/../particle_states"):
         with pytest.raises(ValueError):
             canonical_repo_relative(root, state, allowed_root=allowed, require="file")
+
+
+def test_native_path_objects_are_canonicalized(repository):
+    root, source, state = repository
+    assert canonical_repo_relative(root, state, allowed_root=Path(ALLOWED), require='file') == f'{ALLOWED}/profile/state.npy'

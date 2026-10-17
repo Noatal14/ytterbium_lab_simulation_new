@@ -59,6 +59,8 @@ else:
     nt.RtlNtStatusToDosError.argtypes = [w.LONG]
     nt.RtlNtStatusToDosError.restype = U
     kernel.CloseHandle.argtypes = [H]
+    kernel.ReOpenFile.argtypes = [H, U, U, U]
+    kernel.ReOpenFile.restype = H
     kernel.GetFileAttributesW.argtypes = [w.LPCWSTR]
     kernel.GetFinalPathNameByHandleW.argtypes = [H, w.LPWSTR, w.DWORD, w.DWORD]
     kernel.GetFinalPathNameByHandleW.restype = w.DWORD
@@ -152,6 +154,21 @@ else:
                 return _os.mkdir(path, mode)
             raw = native_open(path, parent=dir_fd, access=0x100001, disposition=2, options=0x20 | 1 | 0x200000)
             kernel.CloseHandle(raw)
+
+        def pread(self, fd, count, offset):
+            # ReOpenFile pins the same file object with an independent offset.
+            # Duplicating a CRT descriptor would share (and mutate) the offset.
+            if count < 0 or offset < 0:
+                raise OSError(errno.EINVAL, 'Negative read range')
+            raw = kernel.ReOpenFile(handle(fd), 0x80000000, 7, 0)
+            if raw == c.c_void_p(-1).value:
+                raise c.WinError(c.get_last_error())
+            reader = msvcrt.open_osfhandle(raw, _os.O_RDONLY | _os.O_BINARY)
+            try:
+                _os.lseek(reader, offset, _os.SEEK_SET)
+                return _os.read(reader, count)
+            finally:
+                _os.close(reader)
 
         def fsync(self, fd):
             if not _stat.S_ISDIR(_os.fstat(fd).st_mode):
