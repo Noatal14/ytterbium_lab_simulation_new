@@ -15,7 +15,7 @@ def executable(name):
     if path is None:
         raise FileNotFoundError(f"Required executable is unavailable: {name}")
     from pathlib import Path
-    return Path(path)
+    return Path(path).resolve(strict=True)
 
 
 if sys.platform != 'win32':
@@ -27,7 +27,6 @@ else:
     import errno
     import msvcrt
     import stat as _stat
-    import threading
 
     nt = c.WinDLL('ntdll')
     kernel = c.WinDLL('kernel32', use_last_error=True)
@@ -61,7 +60,6 @@ else:
     kernel.CloseHandle.argtypes = [H]
     kernel.ReOpenFile.argtypes = [H, U, U, U]
     kernel.ReOpenFile.restype = H
-    kernel.GetFileAttributesW.argtypes = [w.LPCWSTR]
     kernel.GetFinalPathNameByHandleW.argtypes = [H, w.LPWSTR, w.DWORD, w.DWORD]
     kernel.GetFinalPathNameByHandleW.restype = w.DWORD
     kernel.LockFileEx.argtypes = [H, w.DWORD, w.DWORD, w.DWORD, w.DWORD, c.POINTER(Overlapped)]
