@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+import json
 import threading
 
 import pytest
@@ -51,6 +52,7 @@ def source(monkeypatch):
 def test_preview_is_pure_private_evidence_is_hidden_and_confirm_only_configures(tmp_path):
     root = tmp_path / "repo"; root.mkdir(); creator = _service(root)
     preview = creator.preview(_request(), "session-a")
+    assert json.loads(json.dumps(preview)) == preview
     assert set(preview["plan"]) == {"run_id", "family", "source", "selection", "geometry", "execution", "retention", "suitability", "output_disposition", "locked_settings", "lifecycle_state", "laboratory_specification", "numerical_policy", "plan_sha256", "execution_started", "submitted_to_zeus"}
     assert preview["plan"]["geometry"] == {
         "family": "angled_donut",
@@ -73,6 +75,7 @@ def test_single_pass_preview_publishes_canonical_derived_geometry(tmp_path):
     request["geometry_family"] = "single_pass"
     request["parameters"] = dict(MOT_3D_RUN_SPECIFICATION["defaults"]["single_pass"])
     preview = _service(root).preview(request, "session-a")
+    assert json.loads(json.dumps(preview)) == preview
     _, _, expected = build_profile_from_parameters("single_pass", request["parameters"])
     assert preview["plan"]["geometry"]["derived_parameters"] == expected
     assert set(expected) == {

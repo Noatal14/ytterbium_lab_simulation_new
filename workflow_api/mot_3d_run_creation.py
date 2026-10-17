@@ -83,7 +83,7 @@ def _preview_dto(plan: Mot3DRunPlan) -> dict[str, Any]:
         "execution": {"mode": plan.review.execution_mode, "particle_count": plan.review.particle_count, "simulation_seed": plan.review.simulation_seed},
         "retention": {"particle_states": plan.review.retain_particle_states},
         "suitability": plan.review.suitability, "output_disposition": plan.review.output_disposition,
-        "locked_settings": dict(plan.review.locked_settings), "lifecycle_state": "configured",
+        "locked_settings": {**plan.review.locked_settings, "capture": dict(plan.review.locked_settings["capture"])}, "lifecycle_state": "configured",
         "laboratory_specification": dict(configuration["laboratory_spec"]), "numerical_policy": dict(configuration["numerical_policy"]),
         "plan_sha256": plan.plan_sha256, "execution_started": False, "submitted_to_zeus": False,
     }
