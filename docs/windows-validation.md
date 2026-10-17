@@ -74,6 +74,37 @@ are preserved. Fresh clones and future Git updates should retain the policy.
 
 ## Scope and operational limits
 
+### Real Windows UI chain, 2026-10-17
+
+Visible Microsoft Edge, controlled by Playwright inside Windows, exercised the
+real UI and Python API without mocked routes. Every stage was reviewed, created,
+started locally, and displayed `Verified results are ready`.
+
+| Stage | Input particles | Output | Runtime | Workers |
+| --- | --- | --- | --- | --- |
+| Zeeman | 200 | 120 survivors | 19.485 s | 4 |
+| 2D-MOT | 120 retained Zeeman survivors | 4 survivors | 882.563 s | 4 |
+| 3D-MOT, angled donut | 4 retained 2D-MOT survivors | 0 usable / 0 residence-qualified captured | 82.594 s | 2 |
+
+The run IDs were `zeeman-2339c599c4ab007cc2837409`,
+`mot2d-7810e02c9c2218e72834a71a`, and
+`mot3d-770a2f91b5f7f8874835f318`. All three catalog records were
+`succeeded`, `complete_verified`, and local, with no Zeus job IDs. Both downstream
+input manifests referenced the preceding run's actual `results/states.npy`;
+the SHA-256 values matched the files on disk. States were retained at every stage.
+Zero capture in this small 3D sample is a numerical outcome, not an execution
+failure. This checks the chain and does not establish scientific convergence.
+
+The real HTTP path exposed two 3D review defects: the adapter rejected the UI's
+explicit `npools` field, and nested immutable capture settings were not JSON
+serializable. Both were fixed on macOS and transferred with Git to Windows.
+The API, planning, and creation regression tests passed on both systems
+(14 tests each), including legacy requests and JSON round trips for both
+geometry families. The successful 3D run used revision
+`b4a1e5b4f8935944073fe774ab3781d1d2b5f8d5`; upstream runs used `9cc871d`.
+
+### Remaining scope
+
 - Native Windows ARM64 was exercised locally. Windows x64 and macOS CI jobs
   were added, but the new GitHub jobs have not been dispatched in this task.
 - The UI and its Python host run natively; WSL is not required. Keep working
