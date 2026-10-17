@@ -12,7 +12,9 @@ from typing import Callable, Mapping
 try:
     import fcntl
 except ImportError:  # Only imported on Windows; remote execution remains POSIX.
-    from workflow_api.platform_io import locking as fcntl, os, re
+    from workflow_api.platform_io import locking as fcntl
+import os
+import re
 
 from workflow_api.mot_3d_selection_submission_remote import (
     ARRAY,

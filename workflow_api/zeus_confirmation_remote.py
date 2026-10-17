@@ -1,6 +1,10 @@
 """Pinned Refinement-chain inspector and no-submit Confirmation publisher."""
 from __future__ import annotations
-import base64,fcntl,hashlib,json,os,re,stat,subprocess,sys,time
+import base64, hashlib, json, os, re, stat, subprocess, sys, time
+try:
+    import fcntl
+except ImportError:
+    from workflow_api.platform_io import locking as fcntl
 from pathlib import Path,PurePosixPath
 def fail(code,status=20):print(json.dumps({"error":code}));raise SystemExit(status)
 def sha(path,limit=64*1024*1024):

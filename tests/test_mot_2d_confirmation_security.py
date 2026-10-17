@@ -5,7 +5,7 @@ import base64
 import hashlib
 import sys
 import time
-import fcntl
+from workflow_api.platform_io import locking as fcntl
 import os
 from types import SimpleNamespace
 from pathlib import Path

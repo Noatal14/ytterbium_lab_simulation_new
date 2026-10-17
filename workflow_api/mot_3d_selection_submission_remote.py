@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-import base64, fcntl, hashlib, json, os, re, stat, subprocess, sys, tempfile, time
+import base64, hashlib, json, os, re, stat, subprocess, sys, tempfile, time
+try:
+    import fcntl
+except ImportError:
+    from workflow_api.platform_io import locking as fcntl
 from contextvars import ContextVar
 from contextlib import contextmanager
 from dataclasses import dataclass

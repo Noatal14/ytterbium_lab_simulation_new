@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
-import fcntl
+from workflow_api.platform_io import locking as fcntl
 import json
 import os
 import subprocess

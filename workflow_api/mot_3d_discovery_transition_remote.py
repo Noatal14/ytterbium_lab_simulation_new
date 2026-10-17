@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-import base64, fcntl, gzip, hashlib, json, os, re, stat, subprocess, sys, time
+import base64, gzip, hashlib, json, os, re, stat, subprocess, sys, time
+try:
+    import fcntl
+except ImportError:
+    from workflow_api.platform_io import locking as fcntl
 from pathlib import Path, PurePosixPath
 
 HEX32 = re.compile(r"^[0-9a-f]{32}$")
