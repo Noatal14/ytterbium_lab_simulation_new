@@ -137,6 +137,35 @@ Mac run IDs: `zeeman-67875ae54c5c712c3bea0e37`,
 `mot2d-04e0a605e5033dd68c230943`, and
 `mot3d-47ef814fb13d1bcf02e5a395`. All three completed with verified results.
 
+### Single-pass 3D-MOT comparison, 2026-10-17
+
+Four saved survivors from each host's preceding 2D-MOT run were selected with
+selection seed 42, simulation seed 42, and two workers. Windows used the real
+UI in visible Edge; macOS used the production creation and local worker services.
+Both hosts used revision `2d17cfe`, the canonical Single-pass defaults, and
+identical resolved science, derived geometry, and selected particle identities.
+
+Parameters: green s0 30, detuning -25 gamma, waist 0.01 m; blue s0 0.75,
+waist 0.01 m, detuning anchor -2.034161875 gamma; magnetic gradient 2.5 G/cm;
+crossing angle 45 degrees and requested z offset -0.05 m. The resolved blue
+detuning was -2 gamma and effective slowing offset -0.061 m. The solver was
+RK4StHybridCustom, dt 1e-5 s, t_max 0.1 s, with gravity and stochastic sampling.
+
+Both runs completed with verified results: 4 inputs, 0 usable at simulation end,
+and 0 residence-qualified captures. Runtime was 10.125 s on macOS and 15.031 s
+on Windows; this was not a controlled performance benchmark. Run IDs:
+`mot3d-7c57d5354a63c2ec6e915c12` (Mac) and
+`mot3d-e3cd03864630f94426968cfc` (Windows).
+
+Because both retained survivor arrays were empty, an additional unchanged-engine
+repeat retained diagnostic trajectories for all four inputs on each host.
+Captured arrays matched each host's original result exactly. The four trajectory
+shapes were `(6, 452)`, `(6, 687)`, `(6, 489)`, and `(6, 627)`. Time arrays were
+identical, and all position/velocity samples matched with `rtol=1e-9`, `atol=1e-10`.
+Across all samples, the maximum absolute position difference was 2.1306e-13 m
+and the maximum velocity difference was 8.2892e-11 m/s. No scientific equations
+or numerical settings were changed.
+
 ### Remaining scope
 
 - Native Windows ARM64 was exercised locally. Windows x64 and macOS CI jobs
