@@ -257,19 +257,19 @@ def render_discovery_bootstrap(
     )
     manifest["jobs"] = {
         "smoke": {
-            key: str(portable_destination / value.relative_to(destination))
+            key: (portable_destination / value.relative_to(destination)).as_posix()
             for key, value in smoke.items()
         },
         "discovery_rounds": {
             family: [
-                str(portable_destination / path.relative_to(destination))
+                (portable_destination / path.relative_to(destination)).as_posix()
                 for path in rounds[family]
             ]
             for family in FAMILIES
         },
-        "discovery_submit_chain": str(
+        "discovery_submit_chain": (
             portable_destination / submitter.relative_to(destination)
-        ),
+        ).as_posix(),
         "dependency": "afterok",
     }
     files = {name: text.encode("utf-8") for name, text in jobs.items()}

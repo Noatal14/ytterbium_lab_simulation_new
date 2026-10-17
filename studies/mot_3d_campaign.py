@@ -596,8 +596,8 @@ def render_discovery_jobs(
         if command_input is not None
         else Path(input_directory).resolve()
     )
-    quoted_input = shlex.quote(str(input_path))
-    quoted_manifest = shlex.quote(str(manifest_path))
+    quoted_input = shlex.quote(input_path.as_posix())
+    quoted_manifest = shlex.quote(manifest_path.as_posix())
     dt = MOT_3D_SIM_CONFIG["screening_dt_s"]
     rendered = {}
     smoke_paths = {}
@@ -610,7 +610,7 @@ def render_discovery_jobs(
             + f"python -u -m studies.mot_3d.discovery.optimize --family {family} "
             f"--worker-index 0 --target-completed-trials 1 "
             f"--sampler-seed {281001 + index} "
-            f"--output-dir {shlex.quote(str(command_root/'smoke'/family))} "
+            f"--output-dir {shlex.quote((command_root/'smoke'/family).as_posix())} "
             f"--input {quoted_input} "
             f"--input-manifest {quoted_manifest} --input-role discovery "
             f"--particles-per-ensemble 1 --npools 12 --dt {dt} --timeout-s 3000\n"
@@ -641,7 +641,7 @@ def render_discovery_jobs(
                 f'--family {family} --worker-index "$worker" '
                 f'--target-completed-trials "$target" '
                 f'--sampler-seed "$sampler" '
-                f"--output-dir {shlex.quote(str(command_root/'discovery'/family))} "
+                f"--output-dir {shlex.quote((command_root/'discovery'/family).as_posix())} "
                 f"--input {quoted_input} "
                 f"--input-manifest {quoted_manifest} --input-role discovery "
                 f"--particles-per-ensemble 50 --npools 200 --dt {dt} "
@@ -655,7 +655,7 @@ def render_discovery_jobs(
         "#!/bin/bash",
         "set -euo pipefail",
         "python -u -m studies.mot_3d_campaign submit-discovery "
-        f'--campaign "{command_root}"',
+        f'--campaign "{command_root.as_posix()}"',
     ]
     rendered["jobs/02_submit_discovery_chain.sh"] = "\n".join(lines) + "\n"
     return rendered, smoke_paths, round_paths, submitter
