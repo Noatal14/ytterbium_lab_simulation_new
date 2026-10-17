@@ -62,7 +62,7 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
   const [mot2dS0, setMot2dS0] = useState<number>(spec.mot_2d_controls.s0.default);
   const [mot2dDetuning, setMot2dDetuning] = useState<number>(spec.mot_2d_controls.detuning_gamma.default);
   const [mot2dRadiusMm, setMot2dRadiusMm] = useState<number>(1000 * spec.mot_2d_controls.magnet_radius_m.default);
-  const [npools, setNpools] = useState<number>(spec.worker_policy.local.default);
+  const [npools, setNpools] = useState<number>(() => Math.min(spec.worker_policy.local.default, navigator.hardwareConcurrency || spec.worker_policy.local.default));
   const [retain, setRetain] = useState(true); const [mode, setMode] = useState<ZeemanMode>("local");
   const [preview, setPreview] = useState<ZeemanPreview | null>(null); const [runId, setRunId] = useState<string | null>(null);
   const [username, setUsername] = useState(""); const [run, setRun] = useState<IndividualRun | null>(null);
@@ -84,7 +84,7 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
   const particleMaximum = spec.particle_count.maximum_by_execution_mode[mode];
   const localWorkerMaximum = Math.min(spec.worker_policy.local.maximum, navigator.hardwareConcurrency || spec.worker_policy.local.default, particles);
   const valid = Number.isInteger(particles) && particles >= spec.particle_count.minimum && particles <= particleMaximum && Number.isInteger(seed) && seed >= spec.seed.minimum && seed <= spec.seed.maximum && mot2dS0 >= spec.mot_2d_controls.s0.minimum && mot2dS0 <= spec.mot_2d_controls.s0.maximum && mot2dDetuning >= spec.mot_2d_controls.detuning_gamma.minimum && mot2dDetuning <= spec.mot_2d_controls.detuning_gamma.maximum && mot2dRadiusMm >= 1000 * spec.mot_2d_controls.magnet_radius_m.minimum && mot2dRadiusMm <= 1000 * spec.mot_2d_controls.magnet_radius_m.maximum && Number.isInteger(npools) && (mode === "local" ? npools >= spec.worker_policy.local.minimum && npools <= localWorkerMaximum : npools === spec.worker_policy.zeus.fixed);
-  function changeMode(next: ZeemanMode) { setParticles((current) => particleCountAfterModeChange(current, mode, next)); setNpools(next === "local" ? spec.worker_policy.local.default : spec.worker_policy.zeus.fixed); setMode(next); }
+  function changeMode(next: ZeemanMode) { setParticles((current) => particleCountAfterModeChange(current, mode, next)); setNpools(next === "local" ? Math.min(spec.worker_policy.local.default, navigator.hardwareConcurrency || spec.worker_policy.local.default) : spec.worker_policy.zeus.fixed); setMode(next); }
 
   return <main id="main" className="individual-run-page">
     <button className="text-button back-button" onClick={onBack}><ArrowLeft aria-hidden="true" /> Back to home</button>

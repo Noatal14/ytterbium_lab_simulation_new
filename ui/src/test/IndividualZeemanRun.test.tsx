@@ -9,6 +9,22 @@ function fake(): IndividualZeemanApi { return { reset: vi.fn(), preview: vi.fn()
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 
 describe("individual Zeeman wizard", () => {
+  it("keeps the default usable on a four-core Windows VM", async () => {
+    const original = Object.getOwnPropertyDescriptor(navigator, "hardwareConcurrency");
+    Object.defineProperty(navigator, "hardwareConcurrency", { configurable: true, value: 4 });
+    try {
+      const api = fake();
+      const user = userEvent.setup();
+      render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
+      expect(screen.getByRole("spinbutton", { name: /CPU worker processes/i })).toHaveValue(4);
+      await user.click(screen.getByRole("button", { name: /validate and review/i }));
+      await screen.findByRole("heading", { name: /validated run plan/i });
+      expect(api.preview).toHaveBeenCalledWith(expect.objectContaining({ npools: 4 }));
+    } finally {
+      if (original) Object.defineProperty(navigator, "hardwareConcurrency", original);
+      else Reflect.deleteProperty(navigator, "hardwareConcurrency");
+    }
+  });
   it("hides fixed internal polarization controls from the user-facing JSON", () => {
     const original = { boundary: { laser: { s0: 1.3, swap_polarization: false } } };
     expect(userVisibleLockedSettings(original)).toEqual({ boundary: { laser: { s0: 1.3 } } });
