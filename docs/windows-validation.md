@@ -103,6 +103,40 @@ The API, planning, and creation regression tests passed on both systems
 geometry families. The successful 3D run used revision
 `b4a1e5b4f8935944073fe774ab3781d1d2b5f8d5`; upstream runs used `9cc871d`.
 
+### Independent macOS chain comparison, 2026-10-17
+
+The same production creation services and local worker pools ran an independent
+chain on macOS ARM64 at revision `6831654`. Each stage consumed the preceding
+Mac stage's states; the downloaded Windows states were comparison references
+only. Their sizes and SHA-256 values matched the verified Windows artifact
+registry. All resolved scientific configuration fields, seeds, worker counts,
+and selected particle identities matched. Run/source identifiers, timestamps,
+input fingerprints, Git provenance, and runtime were allowed to differ.
+
+| Stage | Matching outcome on both hosts | Mac runtime | Windows runtime |
+| --- | --- | --- | --- |
+| Zeeman | 120 survivors / 200 initial | 12.061 s | 19.485 s |
+| 2D-MOT | 4 survivors / 120 input | 463.371 s | 882.563 s |
+| 3D-MOT, angled donut | 0 usable and 0 residence-qualified captured / 4 input | 23.365 s | 82.594 s |
+
+All scientific scalar metrics and selection hashes matched exactly. Retained
+survivor arrays matched with the preselected comparison tolerances
+`rtol=1e-9`, `atol=1e-10`; they were not byte-identical.
+
+| Retained state arrays | Maximum position difference (m) | Maximum velocity difference (m/s) |
+| --- | --- | --- |
+| Zeeman, 120 x 6 | 1.6793e-15 | 1.3792e-11 |
+| 2D-MOT, 4 x 6 | 2.1643e-14 | 4.2138e-12 |
+
+Both 3D survivor arrays had shape `(0, 6)`, so that stage compares the input
+selection and capture metrics, not nonempty final survivor coordinates. Full
+trajectories were not retained by the application. These are functional and
+numerical repeatability checks, not convergence or controlled speed benchmarks.
+
+Mac run IDs: `zeeman-67875ae54c5c712c3bea0e37`,
+`mot2d-04e0a605e5033dd68c230943`, and
+`mot3d-47ef814fb13d1bcf02e5a395`. All three completed with verified results.
+
 ### Remaining scope
 
 - Native Windows ARM64 was exercised locally. Windows x64 and macOS CI jobs
