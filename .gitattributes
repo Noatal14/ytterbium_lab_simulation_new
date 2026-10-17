@@ -10,3 +10,4 @@
 *.zip binary
 *.woff binary
 *.woff2 binary
+*.bat -text
