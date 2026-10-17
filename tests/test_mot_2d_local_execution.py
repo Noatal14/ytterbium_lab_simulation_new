@@ -142,6 +142,8 @@ def test_input_artifact_mutation_is_rejected_before_engine(tmp_path, replacement
     if replacement == "symlink":
         backup = target.with_name("backup.npy"); target.rename(backup); target.symlink_to(backup.name)
     elif replacement == "fifo":
+        if not hasattr(os, "mkfifo"):
+            pytest.skip("POSIX FIFO fixture is unavailable on Windows")
         target.unlink(); os.mkfifo(target)
     else:
         target.write_bytes(b"x" * record["size_bytes"])

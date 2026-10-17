@@ -22,7 +22,7 @@ test("browser uses the real workflow handler session and CSRF boundary", async (
   });
 
   await page.goto("/");
-  await page.getByRole("link", { name: "Zeus jobs" }).click();
+  await page.getByRole("link", { name: "Zeus connection" }).click();
 
   await page.getByLabel("Technion username").fill("tal.noa");
   await expect(page.getByLabel("Remote project directory")).toHaveValue(

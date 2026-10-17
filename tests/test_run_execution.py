@@ -2,6 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import hashlib
 import os
+import sys
 from pathlib import Path
 import shutil
 import subprocess
@@ -446,6 +447,7 @@ def test_execution_lease_detects_aba_during_worker_without_mutating_run(
 
 
 @pytest.mark.parametrize("target", ["root", "data", "runs", "family", "run"])
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows blocks rename while publication locks are held; covered by native rejection test")
 def test_swap_during_artifact_publication_never_marks_replacement_failed(
     tmp_path, monkeypatch, target
 ):
@@ -476,6 +478,7 @@ def test_swap_during_artifact_publication_never_marks_replacement_failed(
 
 
 @pytest.mark.parametrize("target", ["root", "data", "runs", "family", "run"])
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows blocks rename while publication locks are held; covered by native rejection test")
 def test_swap_during_success_publication_leaves_replacement_running(
     tmp_path, monkeypatch, target
 ):
@@ -505,6 +508,7 @@ def test_swap_during_success_publication_leaves_replacement_running(
 
 
 @pytest.mark.parametrize("target", ["root", "data", "runs", "family", "run"])
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows blocks rename while publication locks are held; covered by native rejection test")
 def test_aba_during_artifact_publication_is_rejected_before_success(
     tmp_path, monkeypatch, target
 ):
@@ -534,6 +538,7 @@ def test_aba_during_artifact_publication_is_rejected_before_success(
 
 
 @pytest.mark.parametrize("target", ["root", "data", "runs", "family", "run"])
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows blocks rename while publication locks are held; covered by native rejection test")
 def test_recovery_swap_never_finalizes_or_mutates_replacement(
     tmp_path, monkeypatch, target
 ):
@@ -701,3 +706,29 @@ def test_valid_alternate_run_swapped_after_inspection_never_starts_worker(
     replacement = real_inspect(root, "zeeman", "zeeman-run-001")
     assert replacement.state == "configured"
     assert replacement.configuration["resolved"]["simulation"]["seed"] == 99
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="Windows lock/rename semantics")
+@pytest.mark.parametrize("target", ["root", "data", "runs", "family", "run"])
+def test_windows_blocks_publication_directory_replacement(tmp_path, monkeypatch, target):
+    root = make_run(tmp_path)
+    path = execution_target(root, target)
+    real_publish = ExecutorLifecycleStore._publish_or_verify
+    blocked = []
+
+    def attempt_swap(parent, name, content):
+        real_publish(parent, name, content)
+        with pytest.raises(PermissionError):
+            path.rename(path.with_name(path.name + "-replaced"))
+        blocked.append(True)
+        raise RunRecordError("Publication mutation was blocked")
+
+    monkeypatch.setattr(ExecutorLifecycleStore, "_publish_or_verify", staticmethod(attempt_swap))
+    coordinator = IndividualRunExecutionCoordinator(
+        root, FakeWorker(discarded_product()), issue_execution_authority(), clock=lambda: NOW
+    )
+    with pytest.raises(RunRecordError):
+        coordinator.execute("zeeman", "zeeman-run-001")
+    assert blocked
+    assert inspect_run(root, "zeeman", "zeeman-run-001").state == "running"
+    assert not path.with_name(path.name + "-replaced").exists()

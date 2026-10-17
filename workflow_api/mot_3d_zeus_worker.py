@@ -7,7 +7,7 @@ import base64
 from io import BytesIO
 import hashlib
 import json
-import os
+from workflow_api.platform_io import os
 from pathlib import Path, PurePosixPath
 import stat
 import tempfile
