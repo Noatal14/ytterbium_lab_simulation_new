@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import socket
 import time
 import threading
 from dataclasses import dataclass
@@ -1825,7 +1826,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         length = int(raw_length)
         if length > 32 * 1024:
             raise ValueError("Request body is too large.")
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        raw = self.rfile.read(length)
+        self._body_consumed = True
+        payload = json.loads(raw.decode("utf-8"))
         if not isinstance(payload, dict):
             raise ValueError("JSON body must be an object.")
 
@@ -1866,6 +1869,21 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         status: HTTPStatus = HTTPStatus.OK,
         extra_headers: dict[str, str] | None = None,
     ) -> None:
+        # Closing a Windows socket with an unread POST body can reset the
+        # connection and discard the error response. Drain only a small,
+        # explicitly bounded body, without parsing or authorizing it.
+        if status >= 400 and self.command == "POST" and not getattr(self, "_body_consumed", False):
+            length = self.headers.get("Content-Length", "")
+            if length.isdigit() and int(length) <= 32 * 1024 and not self.headers.get("Transfer-Encoding"):
+                previous_timeout = self.connection.gettimeout()
+                try:
+                    self.connection.settimeout(0.25)
+                    self.rfile.read(int(length))
+                except (OSError, socket.timeout):
+                    pass
+                finally:
+                    self._body_consumed = True
+                    self.connection.settimeout(previous_timeout)
         body = json.dumps(payload, sort_keys=True).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")

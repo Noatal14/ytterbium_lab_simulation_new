@@ -92,8 +92,8 @@ def modern_2d_manifest(repository_root, name="modern", stage="smoke"):
             frozen[role].append(
                 {
                     "zeeman_seed": seed,
-                    "path": str(state.relative_to(repository_root)),
-                    "metadata_path": str(metadata.relative_to(repository_root)),
+                    "path": state.relative_to(repository_root).as_posix(),
+                    "metadata_path": metadata.relative_to(repository_root).as_posix(),
                     "sha256": digest,
                     "metadata_sha256": metadata_digest,
                     "shape": [10, 6],

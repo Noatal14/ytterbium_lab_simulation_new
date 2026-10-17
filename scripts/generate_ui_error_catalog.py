@@ -82,7 +82,7 @@ def main() -> None:
             parser.exit(1, f"frontend error catalog is out of date: {args.output}\n")
         return
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(content)
+    args.output.write_text(content, encoding="utf-8", newline="\n")
 
 
 if __name__ == "__main__":
