@@ -8,10 +8,10 @@ explicit, session-owned preview to that authority, downloads its closed
 from __future__ import annotations
 
 import base64
-import fcntl
+from workflow_api.platform_io import locking as fcntl
 import hashlib
 import json
-import os
+from workflow_api.platform_io import os
 import re
 import secrets
 import subprocess

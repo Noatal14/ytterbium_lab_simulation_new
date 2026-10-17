@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
-import fcntl
+from workflow_api.platform_io import locking as fcntl
 import math
-import os
+from workflow_api.platform_io import os
 from pathlib import Path, PurePosixPath
 from types import MappingProxyType
 from typing import Any, Callable, Mapping, Protocol

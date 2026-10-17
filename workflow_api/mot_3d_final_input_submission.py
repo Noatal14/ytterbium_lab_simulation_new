@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
-import os
+from workflow_api.platform_io import os
 from pathlib import Path
 import re
 import secrets

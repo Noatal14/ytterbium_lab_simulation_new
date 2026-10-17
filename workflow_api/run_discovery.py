@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import os
+from workflow_api.platform_io import os
 from pathlib import Path
 import re
 import stat

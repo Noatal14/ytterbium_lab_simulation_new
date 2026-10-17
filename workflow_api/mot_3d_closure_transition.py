@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import os
+from workflow_api.platform_io import os
 
 from workflow_api.mot_3d_closure_results import CLOSURE_RESULT_REASON_CODES
 from workflow_api.mot_3d_closure_submission import (

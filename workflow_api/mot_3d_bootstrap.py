@@ -8,7 +8,7 @@ import errno
 import hashlib
 import json
 import math
-import os
+from workflow_api.platform_io import os
 from pathlib import Path
 import re
 import secrets

@@ -5,7 +5,7 @@ import { probeWorkflowApi, superviseChildren } from "./dev-lib.mjs";
 
 const uiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = path.resolve(uiRoot, "..");
-const python = process.env.PYTHON || "python3";
+const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
 const vite = path.join(uiRoot, "node_modules", "vite", "bin", "vite.js");
 const children = [];
 const apiState = await probeWorkflowApi();

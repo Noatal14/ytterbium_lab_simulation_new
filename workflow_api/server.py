@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
+from workflow_api.platform_io import executable
 from workflow_api import list_workflows
 from workflow_api.discovery import DiscoveryError, get_campaign, list_campaigns
 from workflow_api.error_catalog import resolve_error, resolve_wire_error
@@ -1902,7 +1903,7 @@ def main() -> None:
     zeeman_creation = ZeemanRunCreationService(
         WorkflowHandler.repository_root,
         ZeemanRepositorySnapshotProvider(
-            WorkflowHandler.repository_root, Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("git")
         ),
     )
     zeeman_local = BoundedLocalExecutionPool(
@@ -1915,7 +1916,7 @@ def main() -> None:
 
     def zeeman_transport(profile: ZeusProfile) -> PinnedSshZeemanTransport:
         return PinnedSshZeemanTransport(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), profile
+            WorkflowHandler.repository_root, executable("ssh"), profile
         )
 
     zeeman_zeus = IndividualZeemanZeusCoordinator(
@@ -1929,7 +1930,7 @@ def main() -> None:
     mot_2d_creation = Mot2DRunCreationService(
         WorkflowHandler.repository_root,
         Mot2DIndividualRepositorySnapshotProvider(
-            WorkflowHandler.repository_root, Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("git")
         ),
     )
     mot_2d_local = Mot2DBoundedLocalExecutionPool(
@@ -1942,7 +1943,7 @@ def main() -> None:
 
     def mot_2d_transport(profile: ZeusProfile) -> PinnedSshMot2DTransport:
         return PinnedSshMot2DTransport(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), profile
+            WorkflowHandler.repository_root, executable("ssh"), profile
         )
 
     mot_2d_zeus = IndividualMot2DZeusCoordinator(
@@ -1959,7 +1960,7 @@ def main() -> None:
     mot_3d_creation = Mot3DRunCreationService(
         WorkflowHandler.repository_root,
         Mot3DIndividualRepositorySnapshotProvider(
-            WorkflowHandler.repository_root, Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("git")
         ),
     )
     mot_3d_local = Mot3DBoundedLocalExecutionPool(
@@ -1972,7 +1973,7 @@ def main() -> None:
 
     def mot_3d_transport(profile: ZeusProfile) -> PinnedSshMot3DTransport:
         return PinnedSshMot3DTransport(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), profile
+            WorkflowHandler.repository_root, executable("ssh"), profile
         )
 
     mot_3d_zeus = IndividualMot3DZeusCoordinator(
@@ -1993,7 +1994,7 @@ def main() -> None:
     WorkflowHandler.creation_service = CreationService(
         WorkflowHandler.repository_root,
         RepositorySnapshotProvider(
-            WorkflowHandler.repository_root, Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("git")
         ),
     )
     WorkflowHandler.mot_3d_bootstrap_service = Mot3DDiscoveryBootstrapService(
@@ -2001,157 +2002,157 @@ def main() -> None:
     )
     WorkflowHandler.mot_3d_discovery_submission_service = (
         ZeusMot3DDiscoverySubmissionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_discovery_transition_service = (
         Mot3DDiscoveryTransitionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.mot_3d_preliminary_submission_service = (
         Mot3DPreliminarySubmissionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.mot_3d_refinement_submission_service = (
         Mot3DRefinementSubmissionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.mot_3d_closure_submission_service = (
         Mot3DClosureSubmissionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.mot_3d_finalist_submission_service = (
         Mot3DFinalistSubmissionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_final_validation_submission_service = (
         Mot3DFinalValidationSubmissionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_preliminary_transition_service = (
         Mot3DPreliminaryTransitionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.mot_3d_refinement_transition_service = (
         Mot3DRefinementTransitionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.mot_3d_closure_transition_service = (
         Mot3DClosureTransitionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_finalist_transition_service = (
         Mot3DFinalistTransitionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_final_input_submission_service = (
         Mot3DFinalInputSubmissionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_final_validation_transition_service = (
         Mot3DFinalValidationTransitionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.mot_3d_final_validation_completion_service = (
         Mot3DFinalValidationCompletionCoordinator(
-            WorkflowHandler.repository_root, Path("/usr/bin/ssh"), Path("/usr/bin/git")
+            WorkflowHandler.repository_root, executable("ssh"), executable("git")
         )
     )
     WorkflowHandler.zeus_service = ZeusSnapshotService(
-        ZeusSnapshotProvider(WorkflowHandler.repository_root, Path("/usr/bin/ssh")),
+        ZeusSnapshotProvider(WorkflowHandler.repository_root, executable("ssh")),
     )
     WorkflowHandler.transfer_service = ZeusPreparationCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.submission_service = ZeusSmokeSubmissionCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.screening_service = ZeusScreeningCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.screen_submission_service = ZeusScreenSubmissionCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.refinement_service = ZeusRefinementCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.refinement_submission_service = ZeusRefinementSubmissionCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.confirmation_service = ZeusConfirmationCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.confirmation_submission_service = (
         ZeusConfirmationSubmissionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.sensitivity_service = ZeusSensitivityCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.sensitivity_submission_service = (
         ZeusSensitivitySubmissionCoordinator(
             WorkflowHandler.repository_root,
-            Path("/usr/bin/ssh"),
-            Path("/usr/bin/git"),
+            executable("ssh"),
+            executable("git"),
         )
     )
     WorkflowHandler.production_service = ZeusProductionCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.production_submission_service = ZeusProductionSubmissionCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     WorkflowHandler.finalization_service = ZeusFinalizationCoordinator(
         WorkflowHandler.repository_root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        executable("ssh"),
+        executable("git"),
     )
     server = ThreadingHTTPServer((HOST, PORT), WorkflowHandler)
     print(f"Local workflow API listening on http://{HOST}:{PORT}")

@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
-import fcntl
+from workflow_api.platform_io import locking as fcntl
 import hashlib
 import json
 import math
-import os
+from workflow_api.platform_io import os
 from pathlib import Path, PurePosixPath
 import re
 import secrets

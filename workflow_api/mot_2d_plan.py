@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
+from workflow_api.platform_io import os
 import re
 import shlex
 import shutil
@@ -626,6 +626,9 @@ def materialize(plan: CampaignPlan, precommit_validate: Any | None = None) -> No
 
 def _rename_no_replace(source: Path, destination: Path) -> None:
     """Atomically publish a directory without ever replacing a destination."""
+    if sys.platform == "win32":
+        os.rename(source, destination)
+        return
     library = ctypes.CDLL(None, use_errno=True)
     source_bytes = os.fsencode(source); destination_bytes = os.fsencode(destination)
     if sys.platform == "darwin":

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import math
-import os
+from workflow_api.platform_io import os
 from typing import Mapping
 
 from workflow_api.mot_3d_discovery_transition import _DIRECTORY_FLAGS

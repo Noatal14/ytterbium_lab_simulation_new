@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-import os
+from workflow_api.platform_io import os
 import sqlite3
 import stat
 from pathlib import Path

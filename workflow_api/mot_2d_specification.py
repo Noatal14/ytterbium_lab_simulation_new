@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import math
-import os
+from workflow_api.platform_io import os
 import stat
 from functools import lru_cache
 from pathlib import Path

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
+from workflow_api.platform_io import os
 import re
 import stat
 from pathlib import Path

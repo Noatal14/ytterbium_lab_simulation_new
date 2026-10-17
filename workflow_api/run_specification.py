@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
+from workflow_api.platform_io import os
 from pathlib import Path, PurePosixPath
 import stat
 from types import MappingProxyType

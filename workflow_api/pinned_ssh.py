@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
-import os
+from workflow_api.platform_io import os
 import shlex
 import subprocess
 import threading

@@ -5,7 +5,10 @@ vectors are fixed here and no caller-provided command or path is executed.
 """
 
 import base64
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Only imported on Windows; remote execution remains POSIX.
+    from workflow_api.platform_io import locking as fcntl
 import hashlib
 import json
 import os

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import os
+from workflow_api.platform_io import os
 from pathlib import Path
 from typing import Mapping
 

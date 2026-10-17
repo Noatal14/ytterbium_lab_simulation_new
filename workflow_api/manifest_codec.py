@@ -12,7 +12,7 @@ from dataclasses import dataclass
 import copy
 from enum import Enum
 import json
-import os
+from workflow_api.platform_io import os
 from pathlib import Path
 import stat
 from typing import Any, Literal

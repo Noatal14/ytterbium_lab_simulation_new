@@ -1,7 +1,10 @@
 """Allowlisted remote receiver for scalar individual 3D-MOT Zeus jobs."""
 
 import base64
-import fcntl
+try:
+    import fcntl
+except ImportError:  # Only imported on Windows; remote execution remains POSIX.
+    from workflow_api.platform_io import locking as fcntl
 import hashlib
 import json
 import os

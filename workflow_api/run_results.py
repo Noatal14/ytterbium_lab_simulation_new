@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 import hashlib
-import os
+from workflow_api.platform_io import os
 from pathlib import Path, PurePosixPath
 import stat
 from types import MappingProxyType

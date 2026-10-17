@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from workflow_api.platform_io import os
 import re
 import subprocess
 import tempfile

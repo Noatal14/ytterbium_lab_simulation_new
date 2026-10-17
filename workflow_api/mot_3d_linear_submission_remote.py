@@ -9,7 +9,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Callable, Mapping
-import fcntl, os, re
+try:
+    import fcntl
+except ImportError:  # Only imported on Windows; remote execution remains POSIX.
+    from workflow_api.platform_io import locking as fcntl, os, re
 
 from workflow_api.mot_3d_selection_submission_remote import (
     ARRAY,

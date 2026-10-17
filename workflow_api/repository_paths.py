@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from workflow_api.platform_io import os
 from pathlib import Path, PurePosixPath
 from typing import Literal
 

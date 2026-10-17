@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-import os
+from workflow_api.platform_io import os
 
 from workflow_api.mot_3d_discovery_transition import _DIRECTORY_FLAGS, _strict_json
 from workflow_api.mot_3d_finalist_results import FINALIST_RESULT_REASON_CODES
