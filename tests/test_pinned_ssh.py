@@ -1,4 +1,5 @@
 from __future__ import annotations
+from workflow_api.platform_io import executable
 
 import base64
 import inspect
@@ -120,7 +121,7 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
     payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
     transport = PinnedSshRefinementTransport(
         tmp_path,
-        Path("/usr/bin/ssh"),
+        executable("ssh"),
         _profile(),
         timeout=37,
     )
@@ -142,7 +143,7 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
         "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
     ))
     assert observed["argv"] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -194,7 +195,7 @@ def test_runner_rejects_raw_or_unsupported_operation_before_process_creation(
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.refinement_transition(
-        tmp_path, Path("/usr/bin/ssh"), timeout=60,
+        tmp_path, executable("ssh"), timeout=60,
     ))
     with pytest.raises(ValueError, match="operation"):
         runner.run("inspect", _profile(), {})  # type: ignore[arg-type]
@@ -226,7 +227,7 @@ def test_runner_revalidates_exact_profile_before_receiver_read_or_process(
 
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
     runner = PinnedSshRunner(PinnedSshPolicy.refinement_transition(
-        tmp_path, Path("/usr/bin/ssh"), timeout=60,
+        tmp_path, executable("ssh"), timeout=60,
     ))
     with pytest.raises(ValueError, match="profile"):
         runner.run(ReceiverOperation.INSPECT, profile, {})
@@ -245,7 +246,7 @@ def test_refinement_timeout_translation_is_unchanged(
         raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
 
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
-    transport = PinnedSshRefinementTransport(tmp_path, Path("/usr/bin/ssh"), _profile())
+    transport = PinnedSshRefinementTransport(tmp_path, executable("ssh"), _profile())
     with pytest.raises(ZeusRefinementError) as caught:
         getattr(transport, operation)(example=True)
     assert caught.value.code == expected
@@ -258,7 +259,7 @@ def test_refinement_process_oserror_remains_raw(tmp_path, monkeypatch, operation
 
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", fail)
     transport = PinnedSshRefinementTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(OSError, match="ssh unavailable"):
         getattr(transport, operation)(example=True)
@@ -281,7 +282,7 @@ def test_refinement_process_and_decode_error_translation_is_unchanged(
             argv, returncode, stdout, stderr,
         ),
     )
-    transport = PinnedSshRefinementTransport(tmp_path, Path("/usr/bin/ssh"), _profile())
+    transport = PinnedSshRefinementTransport(tmp_path, executable("ssh"), _profile())
     with pytest.raises(ZeusRefinementError) as caught:
         getattr(transport, operation)(example=True)
     assert caught.value.code == expected
@@ -304,7 +305,7 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
     payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
     transport = PinnedSshConfirmationTransport(
         tmp_path,
-        Path("/usr/bin/ssh"),
+        executable("ssh"),
         _profile(),
     )
     state = getattr(transport, operation)(**payload)
@@ -325,7 +326,7 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
         "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
     ))
     assert observed["argv"] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -365,7 +366,7 @@ def test_confirmation_timeout_and_oserror_translation_is_unchanged(
 
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", fail)
     transport = PinnedSshConfirmationTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusConfirmationError) as caught:
         getattr(transport, operation)(example=True)
@@ -390,7 +391,7 @@ def test_confirmation_receiver_read_oserror_remains_raw(
 
     monkeypatch.setattr(Path, "read_bytes", fail_confirmation_receiver)
     transport = PinnedSshConfirmationTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(OSError, match="receiver unreadable"):
         getattr(transport, operation)(example=True)
@@ -415,7 +416,7 @@ def test_confirmation_process_and_decode_error_translation_is_unchanged(
         ),
     )
     transport = PinnedSshConfirmationTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusConfirmationError) as caught:
         getattr(transport, operation)(example=True)
@@ -433,7 +434,7 @@ def test_confirmation_remote_error_code_translation_is_unchanged(
         ),
     )
     transport = PinnedSshConfirmationTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusConfirmationError) as caught:
         getattr(transport, operation)(example=True)
@@ -466,7 +467,7 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     payload = {"campaign": "data/optimization/mot_2d/c", "chain_key": "a" * 64}
     transport = PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     state = getattr(transport, operation)(**payload)
     assert state.status == "eligible"
@@ -489,7 +490,7 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
         "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
     ))
     assert observed["argv"] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -533,7 +534,7 @@ def test_refinement_submission_oserror_boundaries_remain_raw(
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     expected = "receiver unreadable" if failure == "receiver_read" else "ssh unavailable"
     with pytest.raises(OSError, match=expected):
@@ -553,7 +554,7 @@ def test_refinement_submission_timeout_translation_is_unchanged(
 
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusRefinementSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -578,7 +579,7 @@ def test_refinement_submission_process_and_decode_mapping_is_unchanged(
         ),
     )
     transport = PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusRefinementSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -596,7 +597,7 @@ def test_refinement_submission_non_dict_response_mapping_is_unchanged(
         ),
     )
     transport = PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusRefinementSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -614,7 +615,7 @@ def test_refinement_submission_remote_error_code_propagates_unchanged(
         ),
     )
     transport = PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusRefinementSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -636,7 +637,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     payload = {"campaign": "data/optimization/mot_2d/c", "commit": "a" * 40}
     state = getattr(PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(), timeout=37,
+        tmp_path, executable("ssh"), _profile(), timeout=37,
     ), operation)(**payload)
     assert state.lifecycle == "running"
 
@@ -651,7 +652,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -677,7 +678,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         "timeout": 37,
         "check": False,
         "env": {
-            "PATH": str(Path("/usr/bin")),
+            "PATH": str(executable("ssh").parent),
             "HOME": str(Path.home()),
             "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
@@ -699,10 +700,10 @@ def test_screening_runner_omits_absent_ssh_agent_from_pinned_environment(
 
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     ).inspect(example=True)
     assert observed["env"] == {
-        "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
     }
     assert observed["timeout"] == 45
 
@@ -721,7 +722,7 @@ def test_screening_serializes_payload_before_receiver_read(tmp_path, monkeypatch
         lambda *args, **kwargs: process_calls.append((args, kwargs)),
     )
     transport = PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(TypeError):
         transport.inspect(unserializable=object())
@@ -749,7 +750,7 @@ def test_screening_oserror_boundaries_remain_raw(
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     expected = "receiver unreadable" if failure == "receiver_read" else "ssh unavailable"
     with pytest.raises(OSError, match=expected):
@@ -771,7 +772,7 @@ def test_screening_timeout_mapping_is_unchanged(
         ),
     )
     transport = PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreeningError) as caught:
         getattr(transport, operation)(example=True)
@@ -796,7 +797,7 @@ def test_screening_process_and_decode_mapping_is_unchanged(
         ),
     )
     transport = PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreeningError) as caught:
         getattr(transport, operation)(example=True)
@@ -814,7 +815,7 @@ def test_screening_remote_error_code_propagates_unchanged(
         ),
     )
     transport = PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreeningError) as caught:
         getattr(transport, operation)(example=True)
@@ -836,7 +837,7 @@ def test_screening_hardened_connection_errors_override_operation_ambiguity(
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
     )
     transport = PinnedSshScreeningTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreeningError) as caught:
         getattr(transport, operation)(example=True)
@@ -878,7 +879,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     state = getattr(PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     ), operation)(**payload)
     assert state.status == ("eligible" if operation == "inspect" else "submitted")
 
@@ -893,7 +894,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -919,7 +920,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         "timeout": 45,
         "check": False,
         "env": {
-            "PATH": str(Path("/usr/bin")),
+            "PATH": str(executable("ssh").parent),
             "HOME": str(Path.home()),
             "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
@@ -938,7 +939,7 @@ def test_screen_submission_serializes_before_receiver_read(tmp_path, monkeypatch
         lambda *args, **kwargs: process_calls.append((args, kwargs)),
     )
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(TypeError):
         transport.inspect(unserializable=object())
@@ -966,7 +967,7 @@ def test_screen_submission_oserror_boundaries_remain_raw(
     monkeypatch.setattr(Path, "read_bytes", read_bytes)
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     expected = "receiver unreadable" if failure == "receiver_read" else "ssh unavailable"
     with pytest.raises(OSError, match=expected):
@@ -986,7 +987,7 @@ def test_screen_submission_timeout_mapping_is_unchanged(
 
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreenSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -1013,7 +1014,7 @@ def test_screen_submission_process_and_decode_mapping_is_unchanged(
         ),
     )
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreenSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -1035,7 +1036,7 @@ def test_screen_submission_hardened_connection_errors_are_unchanged(
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
     )
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreenSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -1053,7 +1054,7 @@ def test_screen_submission_remote_error_propagates_unchanged(
         ),
     )
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), _profile(),
+        tmp_path, executable("ssh"), _profile(),
     )
     with pytest.raises(ZeusScreenSubmissionError) as caught:
         getattr(transport, operation)(example=True)
@@ -1097,7 +1098,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshSmokeSubmissionTransport(
-        root, Path("/usr/bin/ssh"), _profile(),
+        root, executable("ssh"), _profile(),
     )
     state = getattr(transport, operation)(**payload)
     assert state.status == ("eligible" if operation == "inspect" else "submitted")
@@ -1116,7 +1117,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
@@ -1135,7 +1136,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
         "timeout": 45,
         "check": False,
         "env": {
-            "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1152,7 +1153,7 @@ def test_smoke_submission_serializes_before_embedded_receiver(tmp_path, monkeypa
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     transport = PinnedSshSmokeSubmissionTransport(
-        root, Path("/usr/bin/ssh"), _profile(),
+        root, executable("ssh"), _profile(),
     )
     with pytest.raises(TypeError):
         transport.inspect(unserializable=object())
@@ -1170,7 +1171,7 @@ def test_smoke_submission_process_oserror_remains_raw(
         lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ssh unavailable")),
     )
     transport = PinnedSshSmokeSubmissionTransport(
-        root, Path("/usr/bin/ssh"), _profile(),
+        root, executable("ssh"), _profile(),
     )
     payload = _smoke_payload()
     if operation == "submit":
@@ -1200,7 +1201,7 @@ def test_smoke_submission_stdout_cap_allows_exact_boundary(
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, stdout, b""),
     )
     transport = PinnedSshSmokeSubmissionTransport(
-        root, Path("/usr/bin/ssh"), _profile(),
+        root, executable("ssh"), _profile(),
     )
     assert getattr(transport, operation)(**payload).status == response["status"]
 
@@ -1221,7 +1222,7 @@ def test_smoke_submission_stdout_cap_rejects_one_byte_over(
         ),
     )
     transport = PinnedSshSmokeSubmissionTransport(
-        root, Path("/usr/bin/ssh"), _profile(),
+        root, executable("ssh"), _profile(),
     )
     payload = _smoke_payload()
     if operation == "submit":
@@ -1250,7 +1251,7 @@ def test_smoke_submission_stderr_cap_precedes_authentication_mapping(
         lambda argv, **kwargs: subprocess.CompletedProcess(argv, 255, b"", stderr),
     )
     transport = PinnedSshSmokeSubmissionTransport(
-        root, Path("/usr/bin/ssh"), _profile(),
+        root, executable("ssh"), _profile(),
     )
     payload = _smoke_payload()
     if operation == "submit":
@@ -1284,7 +1285,7 @@ def test_snapshot_runner_preserves_exact_bounded_popen_contract(
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
     monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     assert runner.snapshot(_profile()) == (7, b"snapshot-output", b"snapshot-errors")
     remote = shlex.split(observed["argv"][-1])
@@ -1298,7 +1299,7 @@ def test_snapshot_runner_preserves_exact_bounded_popen_contract(
         "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
+        str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
@@ -1312,7 +1313,7 @@ def test_snapshot_runner_preserves_exact_bounded_popen_contract(
     assert observed["kwargs"] == {
         "cwd": tmp_path,
         "env": {
-            "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1331,7 +1332,7 @@ def test_snapshot_runner_rejects_hostile_profile_before_popen(tmp_path, monkeypa
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     with pytest.raises(ValueError, match="Invalid pinned SSH profile"):
         runner.snapshot(ZeusProfile(
@@ -1347,7 +1348,7 @@ def test_snapshot_runner_preserves_raw_popen_oserror(tmp_path, monkeypatch):
         lambda *args, **kwargs: (_ for _ in ()).throw(OSError("ssh unavailable")),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     with pytest.raises(OSError, match="ssh unavailable"):
         runner.snapshot(_profile())
@@ -1382,7 +1383,7 @@ def test_snapshot_runner_preserves_exact_stream_cap_boundary(
         lambda *args, **kwargs: process,
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     if overflow:
         with pytest.raises(ZeusSnapshotError, match="malformed_remote_response"):
@@ -1415,7 +1416,7 @@ def test_snapshot_runner_timeout_kills_then_waits_again(tmp_path, monkeypatch):
         lambda *args, **kwargs: Process(),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     with pytest.raises(ZeusSnapshotError, match="zeus_timeout"):
         runner.snapshot(_profile())
@@ -1446,7 +1447,7 @@ def test_snapshot_timeout_preserves_raw_cleanup_oserror(
         lambda *args, **kwargs: Process(),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     expected = "kill failed" if failure == "kill" else "wait failed"
     with pytest.raises(OSError, match=expected):
@@ -1475,7 +1476,7 @@ def test_snapshot_overflow_drain_kill_oserror_is_swallowed(tmp_path, monkeypatch
         lambda *args, **kwargs: process,
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     with pytest.raises(ZeusSnapshotError, match="malformed_remote_response"):
         runner.snapshot(_profile())
@@ -1505,7 +1506,7 @@ def test_snapshot_alive_reader_is_killed_and_rejected(tmp_path, monkeypatch):
         lambda *args, **kwargs: Process(),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     ))
     with pytest.raises(ZeusSnapshotError, match="malformed_remote_response"):
         runner.snapshot(_profile())
@@ -1532,10 +1533,10 @@ def test_snapshot_runner_omits_absent_agent_socket(tmp_path, monkeypatch):
     monkeypatch.delenv("SSH_AUTH_SOCK", raising=False)
     monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
     PinnedSshRunner(PinnedSshPolicy.snapshot(
-        tmp_path, Path("/usr/bin/ssh"), timeout=25,
+        tmp_path, executable("ssh"), timeout=25,
     )).snapshot(_profile())
     assert observed["env"] == {
-        "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
     }
 
 
@@ -1579,7 +1580,7 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
     monkeypatch.setenv("SSH_AUTH_SOCK", "/tmp/test-agent.sock")
     monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     paths = ("data/particle_states/after_zeeman/p/a.npy",)
     payload = b"payload" if operation is not TransferOperation.INSPECT else b""
@@ -1606,7 +1607,7 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
         "stderr": subprocess.PIPE,
         "cwd": tmp_path,
         "env": {
-            "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1624,7 +1625,7 @@ def test_transfer_runner_enforces_input_cap_before_popen(tmp_path, monkeypatch):
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     with pytest.raises(Exception) as caught:
         runner.transfer(
@@ -1642,7 +1643,7 @@ def test_transfer_runner_rejects_non_bytes_before_popen(tmp_path, monkeypatch):
         lambda *args, **kwargs: calls.append((args, kwargs)),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     with pytest.raises(ValueError, match="Invalid pinned SSH transfer payload"):
         runner.transfer(
@@ -1682,7 +1683,7 @@ def test_transfer_runner_preserves_exact_output_boundaries(
         lambda *args, **kwargs: process,
     )
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     if overflow:
         with pytest.raises(Exception) as caught:
@@ -1733,7 +1734,7 @@ def test_transfer_runner_writes_exact_max_payload_and_closes(
     )
     payload = b"x" * MAX_TRANSFER_BYTES
     PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     )).transfer(TransferOperation.INPUTS, _profile(), (), "a" * 40, payload)
     assert process.stdin.length == MAX_TRANSFER_BYTES
     assert process.stdin.digest.hexdigest() == __import__("hashlib").sha256(payload).hexdigest()
@@ -1771,7 +1772,7 @@ def test_transfer_runner_preserves_timeout_and_oserror_lifecycle(
 
     monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", popen)
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     if failure == "timeout":
         with pytest.raises(Exception) as caught:
@@ -1823,7 +1824,7 @@ def test_transfer_writer_errors_are_swallowed_with_legacy_close_order(
         lambda *args, **kwargs: process,
     )
     PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     )).transfer(TransferOperation.INPUTS, _profile(), (), "a" * 40, b"x")
     assert not process.stdin.close_attempted
 
@@ -1860,7 +1861,7 @@ def test_transfer_empty_payload_still_attempts_and_swallows_close(
         lambda *args, **kwargs: process,
     )
     PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     )).transfer(TransferOperation.INSPECT, _profile(), (), "a" * 40, b"")
     assert process.stdin.close_attempted
 
@@ -1900,7 +1901,7 @@ def test_transfer_stuck_thread_is_killed_and_rejected(
         lambda *args, **kwargs: Process(),
     )
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     with pytest.raises(Exception) as caught:
         runner.transfer(
@@ -1933,7 +1934,7 @@ def test_transfer_overflow_drain_kill_oserror_is_swallowed(tmp_path, monkeypatch
         lambda *args, **kwargs: process,
     )
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(
-        tmp_path, Path("/usr/bin/ssh"), timeout=120,
+        tmp_path, executable("ssh"), timeout=120,
     ))
     with pytest.raises(ZeusPreparationError, match="remote_response_invalid"):
         runner.transfer(
@@ -1975,7 +1976,7 @@ def test_transfer_transport_connection_mapping_is_unchanged(
         lambda *args, **kwargs: Process(),
     )
     transport = PinnedSshZeusPreparationTransport(
-        root, Path("/usr/bin/ssh"), _profile(), "a" * 40,
+        root, executable("ssh"), _profile(), "a" * 40,
     )
     with pytest.raises(ZeusPreparationError) as caught:
         transport.inspect(())
@@ -2002,7 +2003,7 @@ def test_transfer_unknown_remote_error_falls_back_unchanged(tmp_path, monkeypatc
         lambda *args, **kwargs: Process(),
     )
     transport = PinnedSshZeusPreparationTransport(
-        root, Path("/usr/bin/ssh"), _profile(), "a" * 40,
+        root, executable("ssh"), _profile(), "a" * 40,
     )
     with pytest.raises(ZeusPreparationError) as caught:
         transport.inspect(())
