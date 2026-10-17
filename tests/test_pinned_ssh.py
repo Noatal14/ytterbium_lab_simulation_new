@@ -142,7 +142,7 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
         "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
     ))
     assert observed["argv"] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -325,7 +325,7 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
         "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
     ))
     assert observed["argv"] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -489,7 +489,7 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
         "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
     ))
     assert observed["argv"] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -651,7 +651,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -677,7 +677,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         "timeout": 37,
         "check": False,
         "env": {
-            "PATH": "/usr/bin",
+            "PATH": str(Path("/usr/bin")),
             "HOME": str(Path.home()),
             "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
@@ -702,7 +702,7 @@ def test_screening_runner_omits_absent_ssh_agent_from_pinned_environment(
         tmp_path, Path("/usr/bin/ssh"), _profile(),
     ).inspect(example=True)
     assert observed["env"] == {
-        "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
     }
     assert observed["timeout"] == 45
 
@@ -893,7 +893,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
         "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
@@ -919,7 +919,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         "timeout": 45,
         "check": False,
         "env": {
-            "PATH": "/usr/bin",
+            "PATH": str(Path("/usr/bin")),
             "HOME": str(Path.home()),
             "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
@@ -1116,7 +1116,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
@@ -1135,7 +1135,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
         "timeout": 45,
         "check": False,
         "env": {
-            "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1298,7 +1298,7 @@ def test_snapshot_runner_preserves_exact_bounded_popen_contract(
         "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
-        "/usr/bin/ssh", "-F", "none", "-T",
+        str(Path("/usr/bin/ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes", "-o", "PasswordAuthentication=no",
         "-o", "KbdInteractiveAuthentication=no",
         "-o", "NumberOfPasswordPrompts=0", "-o", "ConnectTimeout=8",
@@ -1312,7 +1312,7 @@ def test_snapshot_runner_preserves_exact_bounded_popen_contract(
     assert observed["kwargs"] == {
         "cwd": tmp_path,
         "env": {
-            "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1535,7 +1535,7 @@ def test_snapshot_runner_omits_absent_agent_socket(tmp_path, monkeypatch):
         tmp_path, Path("/usr/bin/ssh"), timeout=25,
     )).snapshot(_profile())
     assert observed["env"] == {
-        "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
     }
 
 
@@ -1606,7 +1606,7 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
         "stderr": subprocess.PIPE,
         "cwd": tmp_path,
         "env": {
-            "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(Path("/usr/bin")), "HOME": str(Path.home()), "LC_ALL": "C",
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
