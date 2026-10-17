@@ -42,6 +42,7 @@ _FIELDS = {
     "selection_seed",
     "simulation_seed",
     "parameters",
+    "npools",
     "retain_particle_states",
     "execution_mode",
 }
@@ -69,7 +70,8 @@ class IndividualMot3DApi:
         return list_individual_mot_3d_sources(self.root)
 
     def preview(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
-        _exact(payload, _FIELDS)
+        # Older clients omit workers; the plan parser supplies their default.
+        _exact(payload, _FIELDS if "npools" in payload else _FIELDS - {"npools"})
         return self.creation.preview(payload, session_id)
 
     def confirm(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:

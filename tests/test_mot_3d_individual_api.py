@@ -1,4 +1,5 @@
 from workflow_api.mot_3d_individual_api import IndividualMot3DApi
+import pytest
 
 
 class Creation:
@@ -14,7 +15,8 @@ class Creation:
         return {"ok": True}
 
 
-def test_api_is_exact_and_session_bound(tmp_path, monkeypatch):
+@pytest.mark.parametrize("explicit_workers", [False, True])
+def test_api_is_exact_and_session_bound(tmp_path, explicit_workers):
     creation = Creation()
     api = IndividualMot3DApi(tmp_path, creation)
     request = {
@@ -27,6 +29,8 @@ def test_api_is_exact_and_session_bound(tmp_path, monkeypatch):
         "retain_particle_states": False,
         "execution_mode": "local",
     }
+    if explicit_workers:
+        request["npools"] = 2
     assert api.preview(request, session_id="session") == {"ok": True}
     assert api.confirm({"preview_token": "token"}, session_id="session") == {"ok": True}
     assert creation.calls == [
