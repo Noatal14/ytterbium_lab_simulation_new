@@ -327,3 +327,11 @@ def test_per_session_rate_limit_is_thread_safe(tmp_path):
         list(pool.map(attempt, range(20)))
     assert outcomes.count("allowed") == 12
     assert outcomes.count("blocked") == 8
+
+
+@pytest.fixture(autouse=True)
+def fixed_cpu_budget(monkeypatch):
+    # These fixtures explicitly request eight workers. Model a known host;
+    # CPU-limit tests override this again to exercise smaller hosts.
+    import workflow_api.zeeman_run_specification as specification
+    monkeypatch.setattr(specification.os, "cpu_count", lambda: 16)

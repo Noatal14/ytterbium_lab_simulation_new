@@ -23,6 +23,7 @@ RELEVANT_FILES = (
     "studies/mot_2d/optimization.py", "studies/mot_2d/production.py",
     "utils/mot_2d_study.py", "utils/file_helpers.py", "utils/RK4StHybridCustom.py",
     "workflow_api/mot_2d_spec.py", "workflow_api/mot_2d_plan.py",
+    "workflow_api/platform_io.py",
     "workflow_api/mot_2d_sources.py",
     "workflow_api/mot_2d_late_stage.py",
     "workflow_api/mot_2d_prediction.py",

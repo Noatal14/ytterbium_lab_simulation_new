@@ -10,7 +10,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: "python3 integration/real_backend_server.py",
+      command: `"${process.env.PYTHON || (process.platform === "win32" ? "python" : "python3")}" integration/real_backend_server.py`,
       url: "http://127.0.0.1:8765/api/health",
       reuseExistingServer: false,
       timeout: 30_000,

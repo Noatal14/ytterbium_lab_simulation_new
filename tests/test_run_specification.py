@@ -109,6 +109,7 @@ def test_duplicate_json_keys_are_rejected():
 @pytest.mark.parametrize(
     "payload",
     [b"not json", b"\xff", b"x" * (run_specification.MAX_SPECIFICATION_BYTES + 1)],
+    ids=["invalid-json", "invalid-utf8", "oversized"],
 )
 def test_loader_rejects_invalid_or_oversized_files(tmp_path, monkeypatch, payload):
     path = tmp_path / "individual_run_v1.json"

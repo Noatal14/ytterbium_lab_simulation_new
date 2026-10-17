@@ -1,3 +1,4 @@
+from workflow_api.platform_io import executable
 import hashlib
 import json
 import subprocess
@@ -147,10 +148,10 @@ def test_materialize_race_creates_exactly_once(tmp_path):
 
 def test_snapshot_provider_allows_only_clean_fixed_paths(tmp_path):
     repository(tmp_path)
-    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    subprocess.run(["/usr/bin/git", "add", "."], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    provider = RepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    subprocess.run([str(executable("git")), "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([str(executable("git")), "add", "."], cwd=tmp_path, check=True)
+    subprocess.run([str(executable("git")), "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    provider = RepositorySnapshotProvider(tmp_path, Path(str(executable("git"))))
     assert len(provider.capture().commit) == 40
     (tmp_path / "config.py").write_text("dirty")
     with pytest.raises(RuntimeError, match="uncommitted"):
@@ -185,15 +186,15 @@ def test_zeeman_snapshot_provider_audits_exact_runtime_and_planner_ledger(tmp_pa
     (tmp_path / "simulations").mkdir()
     planner = tmp_path / "simulations/zeeman.py"
     planner.write_text("# zeeman runtime\n")
-    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    subprocess.run(["/usr/bin/git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run([str(executable("git")), "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([str(executable("git")), "add", "."], cwd=tmp_path, check=True)
     subprocess.run(
-        ["/usr/bin/git", "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"],
+        [str(executable("git")), "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"],
         cwd=tmp_path,
         check=True,
         stdout=subprocess.DEVNULL,
     )
-    provider = ZeemanRepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    provider = ZeemanRepositorySnapshotProvider(tmp_path, Path(str(executable("git"))))
     assert provider.paths == ZEEMAN_RELEVANT_FILES
     assert len(provider.capture().commit) == 40
     planner.write_text("# dirty zeeman runtime\n")
@@ -211,13 +212,13 @@ def test_individual_mot_2d_snapshot_audits_shared_local_execution_runtime(tmp_pa
     runtime = tmp_path / "workflow_api/zeeman_local_execution.py"
     runtime.parent.mkdir()
     runtime.write_text("# shared bounded execution runtime\n")
-    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    subprocess.run(["/usr/bin/git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run([str(executable("git")), "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([str(executable("git")), "add", "."], cwd=tmp_path, check=True)
     subprocess.run(
-        ["/usr/bin/git", "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"],
+        [str(executable("git")), "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"],
         cwd=tmp_path, check=True, stdout=subprocess.DEVNULL,
     )
-    provider = Mot2DIndividualRepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    provider = Mot2DIndividualRepositorySnapshotProvider(tmp_path, Path(str(executable("git"))))
     assert provider.paths == MOT_2D_INDIVIDUAL_RELEVANT_FILES
     assert len(provider.capture().commit) == 40
     runtime.write_text("# dirty shared bounded execution runtime\n")
@@ -233,10 +234,10 @@ def test_planner_is_in_clean_guard_and_physical_model_hash(tmp_path):
     planner.write_text("changed planner")
     after, _ = physical_model_hash(tmp_path)
     assert after != before
-    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    subprocess.run(["/usr/bin/git", "add", "."], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    provider = RepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    subprocess.run([str(executable("git")), "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([str(executable("git")), "add", "."], cwd=tmp_path, check=True)
+    subprocess.run([str(executable("git")), "-c", "user.name=test", "-c", "user.email=test@example", "commit", "-m", "initial"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    provider = RepositorySnapshotProvider(tmp_path, Path(str(executable("git"))))
     planner.write_text("dirty planner")
     with pytest.raises(RuntimeError, match="uncommitted"):
         provider.capture()
@@ -244,10 +245,10 @@ def test_planner_is_in_clean_guard_and_physical_model_hash(tmp_path):
 
 def test_snapshot_provider_rejects_repository_execution_helpers(tmp_path):
     repository(tmp_path)
-    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    subprocess.run([str(executable("git")), "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
     (tmp_path / ".git/config").write_text("[core]\n\tfsmonitor = /tmp/unsafe\n")
     with pytest.raises(ValueError, match="unsupported helpers"):
-        RepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+        RepositorySnapshotProvider(tmp_path, Path(str(executable("git"))))
 
 
 def service(tmp_path, **kwargs):
@@ -432,8 +433,8 @@ def test_parent_fsync_failure_after_publish_is_recoverable_success(tmp_path, mon
 
 def test_git_output_is_bounded_without_memory_capture(tmp_path, monkeypatch):
     repository(tmp_path)
-    subprocess.run(["/usr/bin/git", "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
-    provider = RepositorySnapshotProvider(tmp_path, Path("/usr/bin/git"))
+    subprocess.run([str(executable("git")), "init"], cwd=tmp_path, check=True, stdout=subprocess.DEVNULL)
+    provider = RepositorySnapshotProvider(tmp_path, Path(str(executable("git"))))
     instances = []
     class NoisyProcess:
         def __init__(self):

@@ -202,3 +202,11 @@ def test_planning_has_no_filesystem_process_network_or_zeus_effects(monkeypatch)
     monkeypatch.setattr("socket.create_connection", forbidden)
     plan = build_zeeman_run_plan(REQUEST, **CONTEXT)
     assert plan.status["state"] == "configured"
+
+
+@pytest.fixture(autouse=True)
+def fixed_cpu_budget(monkeypatch):
+    # These fixtures explicitly request eight workers. Model a known host;
+    # CPU-limit tests override this again to exercise smaller hosts.
+    import workflow_api.zeeman_run_specification as specification
+    monkeypatch.setattr(specification.os, "cpu_count", lambda: 16)

@@ -401,3 +401,11 @@ def test_cancelled_key_cannot_be_resubmitted_before_durable_cancel_cas(
         allow_update.set()
         BlockingCoordinator.release.set()
         pool.close()
+
+
+@pytest.fixture(autouse=True)
+def fixed_cpu_budget(monkeypatch):
+    # These fixtures explicitly request eight workers. Model a known host;
+    # CPU-limit tests override this again to exercise smaller hosts.
+    import workflow_api.zeeman_run_specification as specification
+    monkeypatch.setattr(specification.os, "cpu_count", lambda: 16)
