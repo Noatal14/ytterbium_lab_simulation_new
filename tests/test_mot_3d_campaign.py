@@ -1,6 +1,6 @@
 import hashlib
 import json
-import os
+from workflow_api.platform_io import os
 import shlex
 from argparse import Namespace
 from pathlib import Path
@@ -256,7 +256,7 @@ def test_create_is_plan_only_and_freezes_new_design(
             if "studies.mot_3d.discovery.optimize" in line
         )
         tokens = shlex.split(command)
-        assert tokens[tokens.index("--input") + 1] == str(input_dir.resolve())
+        assert tokens[tokens.index("--input") + 1] == input_dir.resolve().as_posix()
         assert tokens[tokens.index("--input-manifest") + 1] == str(
             output / "campaign.json"
         )
@@ -486,10 +486,8 @@ def test_discovery_jobs_quote_hostile_input_path(tmp_path):
             if "studies.mot_3d.discovery.optimize" in line
         )
         tokens = shlex.split(command)
-        assert tokens[tokens.index("--input") + 1] == str(input_dir.resolve())
-        assert tokens[tokens.index("--input-manifest") + 1] == str(
-            root / "campaign.json"
-        )
+        assert tokens[tokens.index("--input") + 1] == input_dir.resolve().as_posix()
+        assert tokens[tokens.index("--input-manifest") + 1] == (root / "campaign.json").as_posix()
 
 
 def test_discovery_loader_accepts_frozen_role_manifest(

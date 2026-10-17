@@ -139,8 +139,11 @@ else:
                 raise
 
         def stat(self, path, *, dir_fd=None, follow_symlinks=True):
-            if dir_fd is None:
-                return _os.stat(path, follow_symlinks=follow_symlinks)
+            if isinstance(path, int):
+                return _os.fstat(path)
+            # CPython Windows path-stat exposes creation time as ctime,
+            # whereas handle-stat exposes change time. Keep path and handle
+            # attestations on the same native metadata semantics.
             fd = self.open(path, _os.O_RDONLY | (0 if follow_symlinks else self.O_NOFOLLOW), dir_fd=dir_fd)
             try:
                 return _os.fstat(fd)

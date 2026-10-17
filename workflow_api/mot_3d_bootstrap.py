@@ -73,6 +73,9 @@ def _rename_no_replace(
     parent_descriptor: int, source_name: str, destination_name: str
 ) -> None:
     """Atomically publish sibling directories without replacing an entry."""
+    if os.name == "nt":
+        os.rename(source_name, destination_name, src_dir_fd=parent_descriptor, dst_dir_fd=parent_descriptor)
+        return
     libc = ctypes.CDLL(None, use_errno=True)
     source = os.fsencode(source_name)
     destination = os.fsencode(destination_name)
@@ -514,9 +517,9 @@ class Mot3DDiscoveryBootstrapService:
                 staging_identity = _identity(os.fstat(staging_descriptor))
                 if (
                     _identity(os.fstat(parent_descriptor)) != _identity(parent_before)
-                    or _identity(destination.parent.stat(follow_symlinks=False))
+                    or _identity(os.stat(destination.parent, follow_symlinks=False))
                     != _identity(parent_before)
-                    or _identity(staging.stat(follow_symlinks=False))
+                    or _identity(os.stat(staging, follow_symlinks=False))
                     != staging_identity
                 ):
                     os.close(staging_descriptor)

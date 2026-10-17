@@ -91,3 +91,16 @@ def test_positioned_read_preserves_file_offset(tmp_path):
         assert os.lseek(fd, 0, os.SEEK_CUR) == 3
     finally:
         os.close(fd)
+
+
+def test_directory_metadata_matches_path_and_handle_after_writes(tmp_path):
+    directory = tmp_path / 'metadata'
+    directory.mkdir()
+    (directory / 'child').write_bytes(b'content')
+    fd = os.open(directory, os.O_RDONLY | getattr(os, 'O_DIRECTORY', 0))
+    try:
+        opened = os.fstat(fd)
+        named = os.stat(directory, follow_symlinks=False)
+        assert tuple(getattr(opened, field) for field in ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns')) == tuple(getattr(named, field) for field in ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns', 'st_ctime_ns'))
+    finally:
+        os.close(fd)
