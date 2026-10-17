@@ -1,3 +1,4 @@
+import sys
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 from pathlib import Path
@@ -383,6 +384,14 @@ def test_update_remains_bound_after_lock_when_run_path_is_swapped(
 
     monkeypatch.setattr(run_records, "_read_record_at", swap_after_lock)
     cancelled = status(state="cancelled", revision=1)
-    store.update_status("zeeman", "run-1", cancelled)
-    assert read_record(displaced / "status.json", "status") == cancelled
-    assert (directory / "status.json").read_bytes() == replacement_status
+    if sys.platform == "win32":
+        # Windows prevents renaming a directory containing an actively locked
+        # file. The attempted swap must fail closed without updating status.
+        with pytest.raises(RunRecordError, match="lock"):
+            store.update_status("zeeman", "run-1", cancelled)
+        assert (directory / "status.json").read_bytes() == replacement_status
+        assert not displaced.exists()
+    else:
+        store.update_status("zeeman", "run-1", cancelled)
+        assert read_record(displaced / "status.json", "status") == cancelled
+        assert (directory / "status.json").read_bytes() == replacement_status

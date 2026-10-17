@@ -232,6 +232,9 @@ else:
                 if not result and c.get_last_error() != 158:
                     raise c.WinError(c.get_last_error())
             elif not kernel.LockFileEx(handle(fd), 2 | (1 if operation & 4 else 0), 0, 1, 0, c.byref(overlapped)):
-                raise c.WinError(c.get_last_error())
+                error = c.get_last_error()
+                if error == 33:
+                    raise BlockingIOError(errno.EAGAIN, 'File is already locked')
+                raise c.WinError(error)
 
     locking = WindowsLocking()
