@@ -109,7 +109,7 @@ else:
             return getattr(_os, name)
 
         def open(self, path, flags, mode=0o777, *, dir_fd=None):
-            access = 0x100000  # SYNCHRONIZE
+            access = 0x100080  # SYNCHRONIZE | FILE_READ_ATTRIBUTES
             access |= 0xC0000000 if flags & _os.O_RDWR else (0x40000000 if flags & _os.O_WRONLY else 0x80000000)
             disposition = 1
             if flags & _os.O_CREAT:
@@ -203,10 +203,15 @@ else:
         def link(self, src, dst, *, src_dir_fd=None, dst_dir_fd=None, follow_symlinks=True):
             return self._move(src, dst, src_dir_fd, dst_dir_fd, False, link=True)
 
+        def rmdir(self, path, *, dir_fd=None):
+            if dir_fd is None:
+                return _os.rmdir(path)
+            return self.unlink(path, dir_fd=dir_fd)
+
         def unlink(self, path, *, dir_fd=None):
             if dir_fd is None:
                 return _os.unlink(path)
-            raw = native_open(path, parent=dir_fd, access=0x10000 | 0x100000, options=0x20 | 0x200000)
+            raw = native_open(path, parent=dir_fd, access=0x10000 | 0x100000, options=0x20 | 0x4000 | 0x200000)
             try:
                 ios, delete = IoStatus(), w.BOOLEAN(True)
                 check(nt.NtSetInformationFile(raw, c.byref(ios), c.byref(delete), c.sizeof(delete), 13))
