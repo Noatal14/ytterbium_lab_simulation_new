@@ -269,7 +269,8 @@ describe("IndividualMot2DRun", () => {
       },
       provenance: { git_revision: "reviewed-commit" },
     });
-    render(<IndividualMot2DRun api={service} onBack={vi.fn()} />);
+    const onBack = vi.fn();
+    render(<IndividualMot2DRun api={service} onBack={onBack} />);
     await screen.findByRole("option", { name: /October ensembles/ });
     await user.click(
       screen.getByRole("button", { name: "Validate and review" }),
@@ -284,5 +285,9 @@ describe("IndividualMot2DRun", () => {
     expect(await screen.findByText("25.000%")).toBeVisible();
     await user.click(screen.getByText("Technical provenance"));
     expect(screen.getByText(/reviewed-commit/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem("ytterbium.individual-run.mot_2d.v1")).toBeNull();
+
   });
 });

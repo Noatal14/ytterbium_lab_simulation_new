@@ -126,4 +126,19 @@ describe("individual Zeeman wizard", () => {
     await user.click(screen.getByRole("button", { name: /confirm and submit one Zeus job/i }));
     await waitFor(() => expect(api.confirmZeus).toHaveBeenCalledTimes(1));
   });
+  it("lets an operator configure another simulation after recovering verified results", async () => {
+    const api = fake(), user = userEvent.setup(), onBack = vi.fn();
+    const completed = { id: `individual-run-${"a".repeat(24)}`, display_name: "zeeman-test",
+      lifecycle: "results_ready", record_state: "succeeded", execution: { mode: "local" },
+      retention: { status: "retained" }, metrics: { n_initial: 30, n_survivors: 20 } } as unknown as Awaited<ReturnType<IndividualZeemanApi["run"]>>;
+    window.localStorage.setItem("ytterbium.individual-run.zeeman.v1", JSON.stringify({version: 1, family: "zeeman", display_name: "zeeman-test", execution_mode: "local"}));
+    vi.mocked(api.runs).mockResolvedValue([completed]); vi.mocked(api.run).mockResolvedValue(completed);
+    render(<IndividualZeemanRun api={api} onBack={onBack} />);
+    await screen.findByRole("heading", { name: "Verified results are ready" });
+    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem("ytterbium.individual-run.zeeman.v1")).toBeNull();
+    expect(api.startLocal).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+  });
+
 });

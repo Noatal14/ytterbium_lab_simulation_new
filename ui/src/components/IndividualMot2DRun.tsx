@@ -15,7 +15,7 @@ import type {
   Mot2DSource,
 } from "../api/clients/individualMot2D";
 import { RunProgressPanel } from "./RunProgressPanel";
-import { confirmRememberedZeusRun, readRememberedIndividualRun, recoveredRunStep, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
+import { confirmRememberedZeusRun, forgetIndividualRun, readRememberedIndividualRun, recoveredRunStep, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
 
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const labels: [Step, string][] = [
@@ -677,6 +677,7 @@ export function IndividualMot2DRun({
             <CheckCircle2 />
             <h2>Verified results are ready</h2>
           </div>
+          <button className="secondary-button" type="button" onClick={() => { forgetIndividualRun("mot_2d"); onBack(); }}>Configure another simulation</button>
           <div className="scientific-role-note">
             <strong>Scientific role: individual only</strong>
             <p>

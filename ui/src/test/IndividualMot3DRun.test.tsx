@@ -194,7 +194,8 @@ describe("IndividualMot3DRun", () => {
     } as unknown as Mot3DRun;
     vi.mocked(api.runs).mockResolvedValue([completed]);
     vi.mocked(api.run).mockResolvedValue(completed);
-    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    const onBack = vi.fn();
+    render(<IndividualMot3DRun api={api} onBack={onBack} />);
     await waitForSource();
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
     await user.click(await screen.findByRole("button", { name: "Create run record" }));
@@ -206,6 +207,10 @@ describe("IndividualMot3DRun", () => {
     expect(screen.getByText("retained")).toBeVisible();
     await user.click(screen.getByText("Technical provenance"));
     expect(screen.getByText(/geometry_family/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem("ytterbium.individual-run.mot_3d.v1")).toBeNull();
+
   });
 
   it("shows exact backend-derived single-pass values in review", async () => {
