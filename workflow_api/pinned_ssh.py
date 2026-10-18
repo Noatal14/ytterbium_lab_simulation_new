@@ -20,6 +20,15 @@ _GENERIC_STDOUT_LIMIT = 8 * 1024 * 1024
 _GENERIC_STDERR_LIMIT = 256 * 1024
 
 
+def _windows_ssh_environment() -> dict[str, str]:
+    """Retain native OpenSSH configuration, DNS and user-profile paths."""
+    if os.name != "nt":
+        return {}
+    return {name: os.environ[name] for name in
+            ("SystemRoot", "WINDIR", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "PROGRAMDATA")
+            if name in os.environ}
+
+
 def _bounded_run(
     argv: list[str], **kwargs: object
 ) -> subprocess.CompletedProcess[bytes]:
@@ -1621,6 +1630,7 @@ class PinnedSshRunner:
                 "PATH": str(self._policy.ssh_executable.parent),
                 "HOME": str(Path.home()),
                 "LC_ALL": "C",
+                **_windows_ssh_environment(),
             }
             if os.environ.get("SSH_AUTH_SOCK"):
                 environment["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
@@ -1764,6 +1774,7 @@ class PinnedSshRunner:
             "PATH": str(self._policy.ssh_executable.parent),
             "HOME": str(Path.home()),
             "LC_ALL": "C",
+            **_windows_ssh_environment(),
         }
         agent_socket = os.environ.get("SSH_AUTH_SOCK")
         if agent_socket:
@@ -1896,6 +1907,7 @@ class PinnedSshRunner:
             "PATH": str(self._policy.ssh_executable.parent),
             "HOME": str(Path.home()),
             "LC_ALL": "C",
+            **_windows_ssh_environment(),
         }
         if os.environ.get("SSH_AUTH_SOCK"):
             environment["SSH_AUTH_SOCK"] = os.environ["SSH_AUTH_SOCK"]
