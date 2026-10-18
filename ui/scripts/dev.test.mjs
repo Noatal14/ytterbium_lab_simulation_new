@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
-import { isCompatibleHealth, superviseChildren, terminateChildren } from "./dev-lib.mjs";
+import { isCompatibleHealth, superviseChildren, terminateChildren, waitForWorkflowApi } from "./dev-lib.mjs";
 
 test("accepts only the exact workflow health response", () => {
   assert.equal(isCompatibleHealth(200, "application/json; charset=utf-8", '{"api_version":1,"status":"ok"}'), true);
@@ -42,4 +42,25 @@ test("a startup failure tears down its sibling and leaves no managed child alive
   assert.equal(await stopped, 1);
   assert.deepEqual(sibling.signals, ["SIGTERM", "SIGKILL"]);
   assert.notEqual(sibling.signalCode, null);
+});
+
+test("startup waits through refused connections before exposing the UI", async () => {
+  const states = ["absent", "absent", "compatible"];
+  await waitForWorkflowApi({ probe: async () => states.shift(), intervalMs: 1 });
+  assert.equal(states.length, 0);
+});
+
+test("startup rejects an incompatible service, a timeout, and a stopped backend", async () => {
+  await assert.rejects(waitForWorkflowApi({ probe: async () => "occupied" }), /expected workflow API/);
+  await assert.rejects(waitForWorkflowApi({ probe: async () => "absent", timeoutMs: 5, intervalMs: 1 }), /startup time limit/);
+  await assert.rejects(waitForWorkflowApi({ isStopped: () => true }), /stopped during startup/);
+});
+
+test("a Vite child added after backend readiness is supervised and stopped", async () => {
+  const api = new FakeChild(), vite = new FakeChild();
+  const supervisor = superviseChildren([api], { graceMs: 5 });
+  supervisor.add(vite);
+  await supervisor.stop();
+  assert.deepEqual(api.signals, ["SIGTERM"]);
+  assert.deepEqual(vite.signals, ["SIGTERM"]);
 });
