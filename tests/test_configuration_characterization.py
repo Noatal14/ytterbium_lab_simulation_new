@@ -57,6 +57,7 @@ EXPECTED_CONFIG_CONSUMERS = {
     "workflow_api/mot_3d_run_specification.py",
 }
 EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
+    "ui/integration/campaign_fixture.py",  # Synthetic browser fixture uses the canonical file closure.
     "studies/mot_2d_s0_campaign.py", "workflow_api/mot_2d_plan.py",
     "workflow_api/repository_snapshot.py",
 }
