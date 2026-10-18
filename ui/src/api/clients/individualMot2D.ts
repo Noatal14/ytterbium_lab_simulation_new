@@ -1,3 +1,4 @@
+import { isIndividualZeusResources, type IndividualZeusResources } from "./individualZeusResources";
 import { zeusProjectDirectory } from "../zeusEnvironment";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { isRunProgress, type RunProgress } from "./individualZeeman";
@@ -382,10 +383,10 @@ function parseZeusPreview(v: unknown) {
     !hex64(v.package_sha256) ||
     !hex64(v.submission_key) ||
     !isRecord(v.job) ||
-    !exactKeys(v.job, ["kind", "array", "pbs_sha256"]) ||
+    !exactKeys(v.job, ["kind", "array", "pbs_sha256", "resources"]) ||
     v.job.kind !== "scalar" ||
     v.job.array !== false ||
-    !hex64(v.job.pbs_sha256) ||
+    !hex64(v.job.pbs_sha256) || !isIndividualZeusResources(v.job.resources) ||
     !isRecord(v.effects) ||
     !exactKeys(v.effects, [
       "submit_one_job",
@@ -398,7 +399,7 @@ function parseZeusPreview(v: unknown) {
     v.effects.cancel_job !== false
   )
     invalid("Zeus review");
-  return v as { preview_token: string; run_id: string; submission_key: string };
+  return v as { preview_token: string; run_id: string; submission_key: string; job: { resources: IndividualZeusResources } };
 }
 function parseZeusResult(v: unknown) {
   if (

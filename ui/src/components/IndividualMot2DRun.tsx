@@ -1,3 +1,4 @@
+import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -149,6 +150,8 @@ export function IndividualMot2DRun({
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Mot2DRun | null>(null);
+  const [zeusResources, setZeusResources] = useState<IndividualZeusResources | null>(null);
+  const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
     api
@@ -259,10 +262,13 @@ export function IndividualMot2DRun({
     if (!runId) return;
     await act(async () => {
       if (mode === "local") { await api.startLocal(runId); rememberIndividualRun("mot_2d", runId, "local"); }
-      else if (!zeusToken)
-        setZeusToken((await api.previewZeus(runId, username)).preview_token);
+      else if (!zeusToken) {
+        const reviewed = await api.previewZeus(runId, username);
+        setZeusResources(reviewed.job.resources);
+        setZeusToken(reviewed.preview_token);
+      }
       else {
-        await confirmRememberedZeusRun("mot_2d", runId, username, () => api.confirmZeus(zeusToken));
+        await confirmRememberedZeusRun("mot_2d", runId, username, async () => { const result = await api.confirmZeus(zeusToken); setSubmittedJobId(result.job_id); return result; });
       }
       if (mode === "local" || zeusToken) setStep("monitor");
     });
@@ -387,10 +393,13 @@ export function IndividualMot2DRun({
                 value={particles}
                 onChange={(e) => setParticles(e.currentTarget.valueAsNumber)}
                 aria-describedby="mot2d-particle-guidance"
+                aria-invalid={!!selected && (!Number.isInteger(particles) || particles < 1 || particles > max)}
               />
-              <small id="mot2d-particle-guidance" className={particles > max ? "field-error" : undefined}>
+              <small id="mot2d-particle-guidance" className={particles > max || !Number.isInteger(particles) || particles < 1 ? "field-error" : undefined}>
                 {selected
-                  ? particles > max
+                  ? !Number.isInteger(particles) || particles < 1
+                    ? "Choose a whole number of particles, starting at 1."
+                    : particles > max
                     ? `This source contains only ${max.toLocaleString()} available particles. Choose ${max.toLocaleString()} or fewer.`
                     : `Up to ${max.toLocaleString()} particles are available for this execution mode.`
                   : "Select a Zeeman survivor source first."}
@@ -534,6 +543,8 @@ export function IndividualMot2DRun({
                     {s0} / {detuning} Γ / {radiusMm} mm
                   </dd>
                 </div>
+                <div><dt>Selection seed</dt><dd>{preview.plan.selection.seed}</dd></div>
+                <div><dt>MOT seed</dt><dd>{preview.plan.execution.mot_seed}</dd></div>
                 <div>
                   <dt>Execution</dt>
                   <dd>{mode === "local" ? "This computer" : "Zeus"}</dd>
@@ -607,10 +618,16 @@ export function IndividualMot2DRun({
                     The connection profile is frozen for this reviewed
                     submission. Confirm to submit exactly one job.
                   </p>
+                  {zeusResources && <dl aria-label="Reviewed Zeus reservation">
+                    <div><dt>Queue</dt><dd>{zeusResources.queue}</dd></div>
+                    <div><dt>CPU cores</dt><dd>{zeusResources.cores}</dd></div>
+                    <div><dt>Memory</dt><dd>{zeusResources.memory_bytes / 1024 ** 3} GiB</dd></div>
+                    <div><dt>Time limit</dt><dd>{zeusResources.walltime_seconds / 3600} hours</dd></div>
+                  </dl>}
                   <button
                     className="text-button"
                     type="button"
-                    onClick={() => setZeusToken(null)}
+                    onClick={() => { setZeusToken(null); setZeusResources(null); }}
                   >
                     Change connection
                   </button>
@@ -657,6 +674,7 @@ export function IndividualMot2DRun({
               </div>
             );
           })()}
+          {mode === "zeus" && <p role="status"><strong>Zeus Job ID:</strong> {run?.execution.zeus_job_id ?? submittedJobId ?? "Awaiting verified job identity"}</p>}
           {mode === "local" && <RunProgressPanel progress={run?.execution.progress ?? null} />}
           <div className="form-actions">
             <button

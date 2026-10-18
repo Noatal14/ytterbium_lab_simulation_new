@@ -607,6 +607,13 @@
     },
     {
       "domain": "creation",
+      "case": "invalid_request#laboratory_provenance",
+      "code": "invalid_request",
+      "status": 412,
+      "message": "This source cannot create a new campaign without explicit laboratory provenance. Select a source with verified laboratory provenance; existing campaigns can still use this source."
+    },
+    {
+      "domain": "creation",
       "case": "invalid_request#preview_fields",
       "code": "invalid_request",
       "status": 400,

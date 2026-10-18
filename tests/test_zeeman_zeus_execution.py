@@ -165,6 +165,7 @@ def test_preview_is_immutable_scalar_and_has_no_submission_side_effect(tmp_path)
         "kind": "scalar",
         "array": False,
         "pbs_sha256": preview["job"]["pbs_sha256"],
+        "resources": {"queue": "zeus_combined_q", "cores": 200, "memory_bytes": 68719476736, "walltime_seconds": 28800},
     }
     assert preview["effects"] == {
         "submit_one_job": True,
@@ -1002,3 +1003,11 @@ def test_read_only_recovery_rejects_wrong_family_path(tmp_path):
             session="fresh-browser-session",
         )
     assert len(transport.calls) == before
+
+
+def test_reservation_review_reads_the_exact_pbs_instead_of_ui_defaults():
+    from workflow_api.zeeman_zeus_execution import _reviewed_pbs_resources
+    pbs = b'#PBS -q test_q\n#PBS -l select=1:ncpus=3:mem=7gb\n#PBS -l walltime=01:02:03\n'
+    assert _reviewed_pbs_resources(pbs) == dict(queue='test_q', cores=3, memory_bytes=7*1024**3, walltime_seconds=3723)
+    with pytest.raises(ZeemanZeusError, match='run_evidence_invalid'):
+        _reviewed_pbs_resources(b'not a scalar reservation')

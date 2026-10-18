@@ -155,7 +155,7 @@ describe("individual 3D-MOT frontend contract", () => {
   it("binds Zeus review, confirmation, and refresh to one profile and job", async () => {
     const reviewed = {
       preview_token: "zeus-token", expires_in_seconds: 300, run_id: "mot3d-test",
-      job: { kind: "scalar", array: false, pbs_sha256: "8".repeat(64) },
+      job: { kind: "scalar", array: false, pbs_sha256: "8".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
       package_sha256: "9".repeat(64), submission_key: "a".repeat(64),
       effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false },
     };
@@ -176,7 +176,7 @@ describe("individual 3D-MOT frontend contract", () => {
   it("does not retry an ambiguous Zeus confirmation and requires refresh identity", async () => {
     const reviewed = {
       preview_token: "zeus-token", expires_in_seconds: 300, run_id: "mot3d-test",
-      job: { kind: "scalar", array: false, pbs_sha256: "8".repeat(64) },
+      job: { kind: "scalar", array: false, pbs_sha256: "8".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
       package_sha256: "9".repeat(64), submission_key: "a".repeat(64),
       effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false },
     };

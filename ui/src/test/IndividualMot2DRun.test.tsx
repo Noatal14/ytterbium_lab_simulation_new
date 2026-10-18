@@ -99,6 +99,19 @@ describe("IndividualMot2DRun", () => {
     await user.click(screen.getByLabelText("Zeus"));
     expect(particles.max).toBe("10000");
   });
+  it("explains zero and fractional particle counts beside the invalid input", async () => {
+    const user = userEvent.setup(), service = api();
+    render(<IndividualMot2DRun api={service} onBack={vi.fn()} />);
+    await screen.findByRole("option", { name: /October ensembles/ });
+    const input = screen.getByRole("spinbutton", { name: /Particle count/ });
+    for (const value of ["0", "1.5"]) {
+      await user.clear(input); await user.type(input, value);
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(input).toHaveAccessibleDescription(/whole number.*starting at 1/);
+      expect(screen.getByRole("button", { name: "Validate and review" })).toBeDisabled();
+    }
+    expect(service.preview).not.toHaveBeenCalled();
+  });
   it("uses truthful state-specific monitor copy", () => {
     expect(mot2dMonitorCopy(undefined).title).toMatch(/not been checked/);
     expect(mot2dMonitorCopy("running").body).toMatch(/No action/);
@@ -173,6 +186,7 @@ describe("IndividualMot2DRun", () => {
     });
     vi.mocked(service.previewZeus).mockResolvedValue({
       preview_token: "zeus-review",
+      job: { resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
       run_id: "mot2d-ui",
       submission_key: "d".repeat(64),
     });
@@ -182,6 +196,8 @@ describe("IndividualMot2DRun", () => {
     await user.click(
       screen.getByRole("button", { name: "Validate and review" }),
     );
+    expect(await screen.findByText("Selection seed")).toBeVisible();
+    expect(screen.getByText("MOT seed")).toBeVisible();
     await user.click(
       await screen.findByRole("button", { name: "Create reviewed run" }),
     );
@@ -191,9 +207,19 @@ describe("IndividualMot2DRun", () => {
       screen.getByRole("button", { name: "Review Zeus submission" }),
     );
     expect(await screen.findByText("Zeus submission reviewed")).toBeVisible();
+    expect(screen.getByText("64 GiB")).toBeVisible();
+    expect(screen.getByText("8 hours")).toBeVisible();
+    expect(screen.getByText("zeus_combined_q")).toBeVisible();
+
     expect(username).toBeDisabled();
     await user.click(screen.getByRole("button", { name: "Change connection" }));
     expect(username).toBeEnabled();
+    expect(screen.queryByText("64 GiB")).not.toBeInTheDocument();
+    vi.mocked(service.confirmZeus).mockResolvedValue({ status: "submitted", run_id: "mot2d-ui", job_id: "987.zeus-master", submission_key: "d".repeat(64) });
+    await user.click(screen.getByRole("button", { name: "Review Zeus submission" }));
+    await user.click(await screen.findByRole("button", { name: "Confirm and submit one Zeus job" }));
+    expect(await screen.findByText(/987.zeus-master/)).toBeVisible();
+    expect(service.confirmZeus).toHaveBeenCalledOnce();
   });
   it("shows validated provenance with explicit result metrics", async () => {
     const user = userEvent.setup(),
