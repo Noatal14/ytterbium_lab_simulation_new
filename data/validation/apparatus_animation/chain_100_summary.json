@@ -1,0 +1,90 @@
+{
+  "n": 100,
+  "seed": 713,
+  "report_settings_sha256": "28e63768d6b4d5598892e27a2056eedc2261944aa420bc86f0e2726a55d1b25e",
+  "zeeman_dt": 4e-05,
+  "mot2d_dt": 6.25e-07,
+  "mot3d_dt": 1e-05,
+  "mot3d_tmax": 0.1,
+  "source_angular_cutoff_deg": 1.5,
+  "method": "production stochastic stage engines; continuous particle identities",
+  "script_sha256": "a5b2e842915f05be7b5996c0ff9457e3cd90dd8fe472ed0cb391a0aa4d4e5ed8",
+  "zeeman_survivors": 67,
+  "mot2d_survivors": 1,
+  "usable_at_3d_end": 1,
+  "usable_ids": [
+    92
+  ],
+  "elapsed_seconds_this_invocation": 349.6571798750083,
+  "interpretation": "Illustrative angular-truncated source sample, not oven capture efficiency",
+  "settings": {
+    "2d_parameters": {
+      "s0": 1.3,
+      "detuning_gamma": -0.9196610026631429,
+      "magnet_radius": 0.04676406447474441
+    },
+    "3d_profile": {
+      "description": "Two xz axes with a 62-degree full included angle plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell, and the common chamber hole clips both colors at 5 mm radius.",
+      "beam_layout": "angled_xz_y",
+      "xz_angle_from_z_deg": 31.0,
+      "magnetic_strong_axis": "y",
+      "magnetic_gradient_G_cm": 25.83531679690036,
+      "center_position_m": [
+        0.0,
+        0.0,
+        0.413
+      ],
+      "blue_green_center_separation_m": 0.0,
+      "399": {
+        "enabled": true,
+        "s0": 1.2942027005835732,
+        "detuning_gamma": -3.120575392133525,
+        "waist_m": 0.018145079659869626,
+        "profile": "donut",
+        "polarization_by_axis": {
+          "+XZ_1": "right",
+          "-XZ_1": "right",
+          "+XZ_2": "right",
+          "-XZ_2": "right",
+          "+Y": "left",
+          "-Y": "left"
+        },
+        "inner_cutoff_radius_m": 0.0008219179673853373,
+        "outer_cutoff_radius_m": 0.005
+      },
+      "556": {
+        "enabled": true,
+        "s0": 137.85811874889103,
+        "detuning_gamma": -5.932550002692984,
+        "waist_m": 0.008563583550927088,
+        "profile": "outer_clipped_gaussian",
+        "polarization_by_axis": {
+          "+XZ_1": "right",
+          "-XZ_1": "right",
+          "+XZ_2": "right",
+          "-XZ_2": "right",
+          "+Y": "left",
+          "-Y": "left"
+        },
+        "outer_cutoff_radius_m": 0.0008219179673853373
+      }
+    },
+    "initial_speeds_tested_m_s": [
+      280.0,
+      250.0,
+      200.0,
+      150.0,
+      100.0,
+      80.0,
+      60.0,
+      40.0
+    ],
+    "gravity": true,
+    "method": "Actual full 3D deterministic mean-force trajectory; no particle stitching"
+  },
+  "stage_cache_sha256": {
+    "chain_100_zeeman.npz": "878bd74c0ca353a3c0e25f56b238f4c472f77fef127fba9fc9cf8febcc3b15b4",
+    "chain_100_mot2d.npz": "6a4c93228bc77decafe9bb8dfa20e2692aef9aa551ff09049d331de3ecbeb390",
+    "chain_100_mot3d.npz": "734dd50ff8fd22628fb60772c6053d15943f72cad44689188a841774b7582811"
+  }
+}
