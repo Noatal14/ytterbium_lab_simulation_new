@@ -184,7 +184,15 @@ def _canonical_sha256(value):
 
 def _direct_imports(module_name):
     consumers, imported_names = set(), {}
-    for path in ROOT.rglob("*.py"):
+    # The supported quick start creates .venv inside the checkout. Dependency
+    # imports are not application consumers and must not enter this ledger.
+    import os
+    paths = []
+    for directory, children, files in os.walk(ROOT):
+        children[:] = [name for name in children if name not in
+                       {".git", ".venv", "venv", "node_modules", "__pycache__"}]
+        paths.extend(Path(directory) / name for name in files if name.endswith(".py"))
+    for path in paths:
         relative = path.relative_to(ROOT).as_posix()
         if relative.startswith(("tests/", "atomsmltr/tests/")):
             continue
