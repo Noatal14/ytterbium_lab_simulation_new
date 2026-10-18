@@ -154,7 +154,7 @@ def validate_identity(value, username, project):
         "project_directory": str(project)})).hexdigest()
     if (package_hash, pbs_hash, key, manifest["selected_states_sha256"]) != (value["package_sha256"], value["pbs_sha256"], value["submission_key"], value["selected_states_sha256"]):
         fail("remote_package_invalid")
-    reconstructed = _render_pbs(run, package_hash)
+    reconstructed = _render_pbs(run, package_hash, str(project))
     if pbs != reconstructed or hashlib.sha256(reconstructed).hexdigest() != value["pbs_sha256"]:
         fail("remote_package_invalid")
     return reconstructed
@@ -163,12 +163,12 @@ def validate_identity(value, username, project):
 operation, username, requested, encoded = sys.argv[1:5]
 try:
     project = Path(requested).resolve(strict=True)
-    expected = (Path("/home") / username / "ytterbium_lab_simulation_new").resolve(strict=True)
+    allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}
     request_raw = (
         sys.stdin.buffer.read(MAX_REQUEST + 1)
         if encoded == "-" else base64.urlsafe_b64decode(encoded)
     )
-    if project != expected or not project.is_dir() or len(request_raw) > MAX_REQUEST: raise ValueError
+    if Path(requested) not in allowed or project != Path(requested) or not project.is_dir() or len(request_raw) > MAX_REQUEST: raise ValueError
     request = json.loads(request_raw)
 except Exception: fail("remote_project_missing")
 

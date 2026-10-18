@@ -1577,11 +1577,10 @@ class PinnedSshRunner:
             )
         interpreter = "python3"
         prefix = ""
-        if self._policy.receiver is ReceiverKind.MOT_2D_INDIVIDUAL:
-            expected_project = f"/home/{profile.username}/ytterbium_lab_simulation_new"
-            if profile.project_directory != expected_project:
-                raise ValueError("Invalid individual 2D-MOT project identity.")
-            interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
+        if self._policy.receiver in {ReceiverKind.MOT_2D_INDIVIDUAL, ReceiverKind.MOT_3D_INDIVIDUAL}:
+            expected_project = profile.project_directory
+            environment = "atomsmltr-ui-test" if expected_project.endswith("/ytterbium_lab_simulation_ui_test") else "atomsmltr"
+            interpreter = f"/home/{profile.username}/venvs/{environment}/bin/python"
             prefix = f"cd -- {shlex.quote(expected_project)} && exec "
         remote = prefix + shlex.join(
             (

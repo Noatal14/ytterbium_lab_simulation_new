@@ -194,8 +194,8 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     source = Path(__file__).parents[1].joinpath("workflow_api/mot_2d_zeus_remote.py").read_text()
     repository_code = Path(__file__).parents[1]
     source = source.replace(
-        'expected = (Path("/home") / username / "ytterbium_lab_simulation_new").resolve(strict=True)',
-        "expected = project",
+        'allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}',
+        "allowed = {project}",
     ).replace(
         'sys.path.insert(0, str(project))', f'sys.path.insert(0, {str(repository_code)!r})'
     ).replace(
@@ -214,6 +214,7 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     ).replace('"/usr/local/bin/qsub"', repr(str(qsub))).replace(
         '"/usr/local/bin/qstat"', repr(str(qstat))
     )
+    source = source.replace("_render_pbs(run, package_hash, str(project))", "_render_pbs(run, package_hash)")
     script = tmp_path / "receiver.py"; script.write_text(source)
     def invoke(operation, identity=None, request=None):
         request = request or {"identity": identity or _package_payload(package), "nonce": "1" * 32}

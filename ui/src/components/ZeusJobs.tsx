@@ -1,3 +1,4 @@
+import { zeusProjectDirectory } from "../api/zeusEnvironment";
 import { AlertTriangle, CheckCircle2, CircleHelp, Clock3, CloudOff, LoaderCircle, PlayCircle, Server, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { Campaign } from "../api/clients/campaign";
@@ -36,7 +37,7 @@ export function ZeusJobs({ campaigns, api, loading, error, onInspect, savedSnaps
   const cleanUsername = username.trim();
   const usernameValid = /^[A-Za-z][A-Za-z0-9._-]{0,31}$/.test(cleanUsername);
   const usernameInvalid = cleanUsername.length > 0 && !usernameValid;
-  const projectDirectory = usernameValid ? `/home/${cleanUsername}/ytterbium_lab_simulation_new` : "";
+  const projectDirectory = usernameValid ? zeusProjectDirectory(cleanUsername) : "";
   useEffect(() => { title.current?.focus(); }, []);
   useEffect(() => () => { requestGeneration.current += 1; }, []);
 

@@ -106,8 +106,8 @@ def verify_commit(expected):
 operation, username, requested, encoded = sys.argv[1:5]
 try:
     project = Path(requested).resolve(strict=True)
-    expected_project = (Path("/home") / username / "ytterbium_lab_simulation_new").resolve(strict=True)
-    if project != expected_project or not project.is_dir(): raise ValueError
+    allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}
+    if Path(requested) not in allowed or project != Path(requested) or not project.is_dir(): raise ValueError
     request_raw = base64.urlsafe_b64decode(encoded)
     if len(request_raw) > MAX_REQUEST: raise ValueError
     request = json.loads(request_raw)

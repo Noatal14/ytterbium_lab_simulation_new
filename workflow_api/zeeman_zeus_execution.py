@@ -262,7 +262,19 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _render_pbs(run: Mapping[str, Any], package_sha256: str) -> bytes:
+def _target_pbs(text: str, project_directory: str | None) -> bytes:
+    if project_directory is not None:
+        path = Path(project_directory)
+        ZeusProfile.parse({"username": path.parent.name, "project_directory": project_directory})
+        if path.name == "ytterbium_lab_simulation_ui_test":
+            text = text.replace("/ytterbium_lab_simulation_new", "/ytterbium_lab_simulation_ui_test")
+            text = text.replace("/venvs/atomsmltr/", "/venvs/atomsmltr-ui-test/")
+            if "source " not in text:
+                text = text.replace("python -m ", 'module load SPACK/apps\nmodule load gcc/14.1.0\nmodule load python/3.14.2\nsource "${HOME}/venvs/atomsmltr-ui-test/bin/activate"\npython -m ')
+    return text.encode("utf-8")
+
+
+def _render_pbs(run: Mapping[str, Any], package_sha256: str, project_directory: str | None = None) -> bytes:
     workers = ZEEMAN_RUN_SPECIFICATION["worker_policy"]["zeus"]["fixed"]
     # Scalar by construction: no #PBS -J and no user-controlled command text.
     text = f"""#!/bin/bash
@@ -275,7 +287,7 @@ cd /home/${{USER}}/ytterbium_lab_simulation_new
 test "$(git rev-parse HEAD)" = "{run['git_revision']}"
 python -m workflow_api.zeeman_zeus_worker --package ".workflow/individual-zeeman/{package_sha256}/package.json" --package-sha256 "{package_sha256}"
 """
-    return text.encode("utf-8")
+    return _target_pbs(text, project_directory)
 
 
 def build_frozen_package(
@@ -324,7 +336,7 @@ def build_frozen_package(
         },
     }
     package_hash = hashlib.sha256(_canonical(manifest)).hexdigest()
-    pbs = _render_pbs(run, package_hash)
+    pbs = _render_pbs(run, package_hash, profile.project_directory)
     pbs_hash = hashlib.sha256(pbs).hexdigest()
     key = hashlib.sha256(
         _canonical(

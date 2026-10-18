@@ -1,3 +1,4 @@
+import { zeusProjectDirectory } from "../zeusEnvironment";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../../generated/mot3dIndividualSpec.v1";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { isRunProgress, type RunProgress } from "./individualZeeman";
@@ -159,7 +160,7 @@ const privateRunId = (value: unknown): value is string => typeof value === "stri
 const publicRunId = (value: unknown): value is string => typeof value === "string" && /^individual-run-[0-9a-f]{24}$/.test(value);
 const jobId = (value: unknown): value is string => typeof value === "string" && /^\d+\.zeus-master$/.test(value);
 const invalid = (part: string): never => { throw new Error(`Invalid individual 3D-MOT ${part} response.`); };
-const makeProfile = (username: string): Profile => ({ username, project_directory: `/home/${username}/ytterbium_lab_simulation_new` });
+const makeProfile = (username: string): Profile => ({ username, project_directory: zeusProjectDirectory(username) });
 const sameProfile = (left: Profile, right: Profile) => left.username === right.username && left.project_directory === right.project_directory;
 
 function parseSources(value: unknown): Mot3DSource[] {

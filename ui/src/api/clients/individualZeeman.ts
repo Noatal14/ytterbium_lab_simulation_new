@@ -1,3 +1,4 @@
+import { zeusProjectDirectory } from "../zeusEnvironment";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { ZEEMAN_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../../generated/zeemanIndividualSpec.v1";
 import { individualZeusApiError, parseIndividualZeusRecovery } from "./individualZeusRecovery";
@@ -25,7 +26,7 @@ const canonicalJob = (value: unknown): value is string => typeof value === "stri
 const runId = (value: unknown): value is string => typeof value === "string" && /^zeeman-[a-z0-9-]{1,120}$/.test(value);
 const publicRunId = (value: unknown): value is string => typeof value === "string" && /^individual-run-[0-9a-f]{24}$/.test(value);
 const sameProfile = (left: Profile, right: Profile) => left.username === right.username && left.project_directory === right.project_directory;
-const makeProfile = (username: string): Profile => ({ username, project_directory: `/home/${username}/ytterbium_lab_simulation_new` });
+const makeProfile = (username: string): Profile => ({ username, project_directory: zeusProjectDirectory(username) });
 function invalid(label: string): never { throw new Error(`Invalid individual Zeeman ${label} response.`); }
 
 function parsePreview(value: Record<string, unknown>): ZeemanPreview {

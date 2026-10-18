@@ -1,3 +1,4 @@
+import { zeusProjectDirectory } from "../zeusEnvironment";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { isRunProgress, type RunProgress } from "./individualZeeman";
 import { individualZeusApiError, parseIndividualZeusRecovery } from "./individualZeusRecovery";
@@ -118,7 +119,7 @@ const invalid = (part: string): never => {
 };
 const makeProfile = (username: string): Profile => ({
   username,
-  project_directory: `/home/${username}/ytterbium_lab_simulation_new`,
+  project_directory: zeusProjectDirectory(username),
 });
 
 function parseSources(v: unknown): Mot2DSource[] {

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.zeeman_zeus_execution import _target_pbs
+
 import base64
 from dataclasses import dataclass
 from io import BytesIO
@@ -49,9 +51,9 @@ class FrozenMot3DZeusPackage:
     family: str = "mot_3d"
 
 
-def _render_pbs(run: Mapping[str, Any], package_sha256: str) -> bytes:
+def _render_pbs(run: Mapping[str, Any], package_sha256: str, project_directory: str | None = None) -> bytes:
     workers = MOT_3D_RUN_SPECIFICATION["workers_by_execution_mode"]["zeus"]
-    return f"""#!/bin/bash
+    text = f"""#!/bin/bash
 #PBS -N i3_{run['run_id'][:24]}
 #PBS -q zeus_combined_q
 #PBS -l select=1:ncpus={workers}:mem=64gb
@@ -64,7 +66,8 @@ module load gcc/14.1.0
 module load python/3.14.2
 source "${{HOME}}/venvs/atomsmltr/bin/activate"
 python -m workflow_api.mot_3d_zeus_worker --package ".workflow/individual-mot-3d/{package_sha256}/package.json" --package-sha256 "{package_sha256}"
-""".encode()
+"""
+    return _target_pbs(text, project_directory)
 
 
 def build_frozen_mot_3d_package(
@@ -111,7 +114,7 @@ def build_frozen_mot_3d_package(
         "selection_sha256": selection_hash,
     }
     package_hash = hashlib.sha256(_canonical(manifest)).hexdigest()
-    pbs = _render_pbs(run, package_hash); pbs_hash = hashlib.sha256(pbs).hexdigest()
+    pbs = _render_pbs(run, package_hash, profile.project_directory); pbs_hash = hashlib.sha256(pbs).hexdigest()
     key = hashlib.sha256(_canonical({
         "package_sha256": package_hash, "pbs_sha256": pbs_hash,
         "run_id": run["run_id"], "commit": run["git_revision"],

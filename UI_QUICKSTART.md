@@ -66,6 +66,15 @@ private key, or key passphrase.
 
 ## 4. Follow a run or campaign
 
+For isolated Zeus UI validation, launch `npm run dev:zeus-test` from `ui`
+and open `http://localhost:5174`. The test-mode banner identifies this session.
+It permits individual simulations only and derives the separate remote checkout
+`/home/<username>/ytterbium_lab_simulation_ui_test`. Jobs activate
+`/home/<username>/venvs/atomsmltr-ui-test`; neither path may alias the production
+checkout. Provision these independent copies at the same Git revision as the
+local application before reviewing a submission. The usual `npm run dev`
+continues to use the production target on port 5173.
+
 - **Queued** or **Running** means no action is required.
 - **Check status** requests a fresh status; the page does not update silently.
 - **Action needed** explains what must be fixed before continuing.

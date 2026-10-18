@@ -17,7 +17,7 @@ if (apiState === "compatible") {
   console.error("Port 8765 is occupied by a service that is not the expected workflow API. Nothing was started.");
   process.exit(1);
 }
-children.push(spawn(process.execPath, [vite, "--strictPort"], { cwd: uiRoot, stdio: "inherit", env: process.env }));
+children.push(spawn(process.execPath, [vite, "--strictPort", ...(process.argv.includes("--zeus-test") ? ["--mode", "zeus-test", "--port", "5174"] : [])], { cwd: uiRoot, stdio: "inherit", env: process.env }));
 
 const supervisor = superviseChildren(children, {
   onFailure: (message) => console.error(message),

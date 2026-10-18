@@ -56,8 +56,8 @@ class ZeusProfile:
         if not isinstance(project, str) or len(project) > 192 or any(ord(char) < 32 for char in project):
             raise ValueError("Remote project directory is invalid.")
         candidate = PurePosixPath(project)
-        expected = PurePosixPath("/home") / username / "ytterbium_lab_simulation_new"
-        if candidate != expected:
+        expected = {PurePosixPath("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}
+        if candidate not in expected or str(candidate) != project:
             raise ValueError("Remote project directory does not match the supported Zeus checkout.")
         return cls(username=username, project_directory=str(candidate))
 
