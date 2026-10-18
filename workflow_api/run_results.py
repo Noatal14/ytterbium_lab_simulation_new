@@ -493,7 +493,10 @@ def _validate_publication_plan_at(
     status_updated = _parsed_timestamp(status["updated_utc"])
     if created > completed:
         raise RunRecordError("Run timestamps are inconsistent.")
-    if status["state"] == "running" and completed < status_updated:
+    # Zeus running timestamps record when a poll observes execution, which
+    # can occur after the remote worker has already completed.
+    if (status["state"] == "running" and run["execution_mode"] == "local"
+            and completed < status_updated):
         raise RunRecordError("Results predate the running status.")
     if status["state"] == "succeeded" and completed > status_updated:
         raise RunRecordError("Succeeded status predates durable results.")

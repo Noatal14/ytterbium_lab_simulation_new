@@ -192,7 +192,10 @@ elif operation in {"status", "retrieve"}:
     verify_commit(receipt.get("commit"))
     if operation == "status":
         try:
-            result = subprocess.run(["/usr/local/bin/qstat", "-x", "-t", "-f", request["job_id"]],
+            qstat_argv = ["/usr/local/bin/qstat", "-x", "-t", "-f", request["job_id"]]
+            if not Path(qstat_argv[0]).is_file():
+                qstat_argv[0] = "/opt/pbs/bin/qstat"
+            result = subprocess.run(qstat_argv,
                 cwd=project, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 env={"PATH": "/opt/pbs/bin:/usr/local/bin:/usr/bin:/bin", "HOME": str(Path("/home") / username), "LC_ALL": "C"},
                 shell=False, close_fds=True, timeout=20, check=False)

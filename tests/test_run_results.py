@@ -573,3 +573,28 @@ def test_typed_inspection_rejects_noncanonical_identity(tmp_path):
     for run_id in ("../run-1", "run-1/child", ".hidden", "UPPER"):
         with pytest.raises(RunRecordError, match="Run id"):
             inspect_run(root, "zeeman", run_id)
+
+
+@pytest.mark.parametrize("mode", ["local", "zeus"])
+def test_remote_completion_can_precede_first_running_observation(tmp_path, mode):
+    _root, directory = make_run(tmp_path, retained=True)
+    path = directory / "results/states.npy"
+    np.save(path, np.arange(18, dtype=np.float64).reshape(3, 6))
+    raw = path.read_bytes()
+    artifact = {"kind": "particle_states", "path": "results/states.npy",
+                "sha256": hashlib.sha256(raw).hexdigest(), "size_bytes": len(raw)}
+    import json
+    run = json.loads((directory / "run.json").read_text())
+    run["execution_mode"] = mode
+    (directory / "run.json").write_bytes(encode_record("run", run))
+    status = json.loads((directory / "status.json").read_text())
+    status["updated_utc"] = "2026-10-11T10:01:00+00:00"
+    status["execution"]["mode"] = mode
+    status["execution"]["local_pid"] = None if mode == "zeus" else 123
+    status["execution"]["zeus_job_id"] = "123.zeus-master" if mode == "zeus" else None
+    (directory / "status.json").write_bytes(encode_record("status", status))
+    if mode == "local":
+        with pytest.raises(RunRecordError, match="predate"):
+            validate_publication_plan(directory, result(artifact, retained=True, captured=3))
+    else:
+        assert validate_publication_plan(directory, result(artifact, retained=True, captured=3)).state_array.survivor_count == 3
