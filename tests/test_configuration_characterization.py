@@ -216,6 +216,18 @@ def _walk_numbers(value):
 def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
+    # The portability runtime is now an attested campaign dependency. This
+    # changes the provenance ledger, not the physical or numerical settings.
+    assert _canonical_sha256(payload) == (
+        "9beea0f7e4ec294cd35ee8106067ecb4c125a95be130e1a12834e2d3e4e6e610"
+    )
+
+
+def test_portability_dependency_is_the_only_change_to_historical_baseline():
+    payload = _resolved_baseline_payload()
+    relevant_files = payload["mot_2d_executable_campaign"]["relevant_files"]
+    assert relevant_files.count("workflow_api/platform_io.py") == 1
+    relevant_files.remove("workflow_api/platform_io.py")
     assert _canonical_sha256(payload) == (
         "8de38dc91305491665540304f6ae6eb4cc7321ac9d9479797431ba24aab97750"
     )
