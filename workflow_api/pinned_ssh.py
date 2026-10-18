@@ -824,6 +824,9 @@ _RECEIVERS = {
         True,
         True,
         True,
+        False,
+        False,
+        True,
     ),
     ReceiverKind.REFINEMENT_TRANSITION: _ReceiverDefinition(
         "zeus_refinement_remote.py",
@@ -1584,6 +1587,15 @@ class PinnedSshRunner:
                 + definition.compile_name
                 + "','exec'),{'__name__':'__main__'})"
             )
+            if definition.payload_stdin:
+                # Keep receiver source off argv too: Windows CreateProcess has
+                # a 32,767-character command-line limit. Consume one framing
+                # line, leaving the existing JSON payload for the receiver.
+                wrapper = wrapper.replace(
+                    "base64.urlsafe_b64decode(sys.argv[1])",
+                    "base64.urlsafe_b64decode(sys.stdin.buffer.readline())",
+                )
+                script = definition.compile_name
         interpreter = "python3"
         prefix = ""
         if self._policy.receiver in {ReceiverKind.MOT_2D_INDIVIDUAL, ReceiverKind.MOT_3D_INDIVIDUAL} or (
@@ -1620,7 +1632,7 @@ class PinnedSshRunner:
             "check": False,
         }
         if definition.payload_stdin:
-            kwargs["input"] = json.dumps(
+            kwargs["input"] = base64.urlsafe_b64encode(receiver) + b"\n" + json.dumps(
                 payload, sort_keys=True, separators=(",", ":")
             ).encode()
         else:

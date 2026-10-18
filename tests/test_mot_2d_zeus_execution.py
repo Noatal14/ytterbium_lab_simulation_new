@@ -328,7 +328,9 @@ def test_pinned_transport_streams_bounded_package_over_stdin_not_argv(tmp_path, 
     )
     assert "python3" not in remote
     assert kwargs.get("stdin") is None
-    request = json.loads(kwargs["input"])
+    receiver_line, request_bytes = kwargs["input"].split(b"\n", 1)
+    assert base64.urlsafe_b64decode(receiver_line) == (Path(__file__).parents[1] / "workflow_api/mot_2d_zeus_remote.py").read_bytes()
+    request = json.loads(request_bytes)
     assert request["identity"]["package_sha256"] == package.package_sha256
 
 

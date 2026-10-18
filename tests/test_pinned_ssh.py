@@ -8,10 +8,39 @@ import io
 import json
 import shlex
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
 import pytest
+
+
+@pytest.mark.parametrize("factory", ["zeeman_individual", "mot_2d_individual", "mot_3d_individual"])
+def test_large_receiver_and_payload_execute_with_short_command_line(tmp_path, monkeypatch, factory):
+    # Exercise the actual bootstrap in a new Python process, including argv
+    # identity and unread JSON bytes after the receiver framing line.
+    receiver = (b"#" + b"x" * 40000 + b"\nimport sys,json\n"
+                b"print(json.dumps({'argv':sys.argv[1:],'payload':json.loads(sys.stdin.buffer.read())}))\n")
+    original = Path.read_bytes
+    def read(path):
+        if path.name in {"zeeman_zeus_remote.py", "mot_2d_zeus_remote.py", "mot_3d_zeus_remote.py"}:
+            return receiver
+        return original(path)
+    monkeypatch.setattr(Path, "read_bytes", read)
+    observed = {}
+    def execute(argv, **kwargs):
+        observed['length'] = len(subprocess.list2cmdline(argv))
+        parts = shlex.split(argv[-1])
+        python_index = parts.index('-c') - 1
+        return subprocess.run([sys.executable, *parts[python_index + 1:]],
+                              input=kwargs['input'], capture_output=True, check=True)
+    monkeypatch.setattr('workflow_api.pinned_ssh._bounded_run', execute)
+    policy = getattr(PinnedSshPolicy, factory)(tmp_path, Path(sys.executable), timeout=10)
+    payload = {'unicode': '\u05d1\u05d3\u05d9\u05e7\u05d4', 'large': 'p' * 40000}
+    profile = _profile()
+    result = PinnedSshRunner(policy).run(ReceiverOperation.INSPECT, profile, payload)
+    assert observed['length'] < 4000
+    assert json.loads(result.stdout) == {'argv': ['inspect', profile.username, profile.project_directory, '-'], 'payload': payload}
 
 def _expected_windows_ssh_paths():
     if os.name != "nt":
