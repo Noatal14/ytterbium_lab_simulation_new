@@ -29,6 +29,9 @@ from workflow_api.mot_2d_specification import MOT_2D_SPECIFICATION
 ROOT = Path(__file__).resolve().parents[1]
 
 EXPECTED_CONFIG_CONSUMERS = {
+    "graphs_scripts/run_3d_velocity_trajectories.py",
+    "graphs_scripts/plot_apparatus_and_zeeman.py",
+    "graphs_scripts/plot_3d_force_phase_portraits.py",
     "graphs_scripts/mot_3d_velocity_style.py", "graphs_scripts/plot_3d_mot_configurations.py",
     "lab_setup/_3d_mot_mag_field.py", "lab_setup/atom_species.py", "lab_setup/config_builder.py",
     "lab_setup/laser_setup_2d_mot.py", "lab_setup/laser_setup_3d.py",
