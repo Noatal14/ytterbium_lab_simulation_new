@@ -920,6 +920,10 @@ class IndividualZeemanZeusCoordinator:
                     updated_utc=self.utc_clock(),
                     lease=lease,
                 )
+            except ZeemanZeusError:
+                # A read-only transport failure happened before artifact
+                # publication. Keep the bound job retryable; never resubmit it.
+                raise
             except WorkerProductError:
                 final = store.transition(
                     self.authority,

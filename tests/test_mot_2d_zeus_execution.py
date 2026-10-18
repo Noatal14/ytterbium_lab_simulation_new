@@ -497,3 +497,28 @@ def test_local_and_zeus_adapters_have_identical_science_for_same_frozen_states(t
     zeus_kwargs = {key: value for key, value in zeus_engine.calls[0][1].items() if key != "npools"}
     assert local_kwargs == zeus_kwargs
     assert local_product.results["metrics"]["conditional_efficiency"] == zeus_product.results["metrics"]["conditional_efficiency"]
+
+
+def test_read_only_retrieval_failure_can_be_retried_without_resubmission(tmp_path):
+    from workflow_api.zeeman_zeus_execution import ZeemanZeusError
+    root = tmp_path / "repo"; root.mkdir(); records = _create(root)
+    transport = Transport(); coordinator = _coordinator(root, transport)
+    token = coordinator.preview(run_id="mot2d-zeus-001", profile=PROFILE, session="owner")["preview_token"]
+    package = transport.calls[0][1]["package"]
+    selected = np.load(BytesIO(package.selected_states), allow_pickle=False)
+    transport.product = Mot2DLocalWorker(root, engine=Engine(), monotonic=iter((1.0, 2.0)).__next__, clock=lambda: NOW).run_materialized(
+        WorkerRequest(records["run"], records["configuration"], records["inputs"]), selected)
+    coordinator.confirm(preview_token=token, session="owner")
+    transport.remote_status = RemoteJobStatus("12345.zeus-master", "succeeded", 0)
+    original = transport.retrieve
+    attempts = iter((True, False))
+    def retrieve(**kwargs):
+        if next(attempts):
+            raise ZeemanZeusError("result_unavailable")
+        return original(**kwargs)
+    transport.retrieve = retrieve
+    with pytest.raises(ZeemanZeusError, match="result_unavailable"):
+        coordinator.refresh(run_id="mot2d-zeus-001", profile=PROFILE)
+    assert inspect_run(root, "mot_2d", "mot2d-zeus-001").status["state"] == "running"
+    assert coordinator.refresh(run_id="mot2d-zeus-001", profile=PROFILE)["state"] == "succeeded"
+    assert [name for name, _ in transport.calls].count("submit") == 1

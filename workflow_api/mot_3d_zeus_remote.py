@@ -273,9 +273,10 @@ elif operation in {"status", "retrieve"}:
             if retained:
                 if product["receipt"] is not None or set(registry) != {"results/states.npy"}:
                     raise ValueError
+                import numpy as np
                 states = np.load(BytesIO(decoded_artifacts["results/states.npy"]), allow_pickle=False)
                 if (states.dtype != np.float64 or states.ndim != 2 or states.shape[1] != 6
-                    or len(states) != results["metrics"].get("n_survivors")
+                    or len(states) != results["metrics"].get("usable_at_end_count")
                     or not np.all(np.isfinite(states))):
                     raise ValueError
             else:
