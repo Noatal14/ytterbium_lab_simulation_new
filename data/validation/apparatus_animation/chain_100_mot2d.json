@@ -1,0 +1,15 @@
+{
+  "signature": {
+    "n": 100,
+    "seed": 713,
+    "report_settings_sha256": "28e63768d6b4d5598892e27a2056eedc2261944aa420bc86f0e2726a55d1b25e",
+    "zeeman_dt": 4e-05,
+    "mot2d_dt": 6.25e-07,
+    "mot3d_dt": 1e-05,
+    "mot3d_tmax": 0.1,
+    "source_angular_cutoff_deg": 1.5,
+    "method": "production stochastic stage engines; continuous particle identities",
+    "script_sha256": "a5b2e842915f05be7b5996c0ff9457e3cd90dd8fe472ed0cb391a0aa4d4e5ed8"
+  },
+  "sha256": "6a4c93228bc77decafe9bb8dfa20e2692aef9aa551ff09049d331de3ecbeb390"
+}
