@@ -1562,9 +1562,16 @@ class PinnedSshRunner:
                 "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
             )
         else:
+            # Individual receivers parse four arguments after argv[0]. Keep the
+            # encoded receiver as argv[0] when entering their Python bootstrap.
+            argument_start = 1 if self._policy.receiver in {
+                ReceiverKind.ZEEMAN_INDIVIDUAL,
+                ReceiverKind.MOT_2D_INDIVIDUAL,
+                ReceiverKind.MOT_3D_INDIVIDUAL,
+            } else 2
             wrapper = (
                 "import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);"
-                "sys.argv=sys.argv[2:];exec(compile(code,'"
+                f"sys.argv=sys.argv[{argument_start}:];exec(compile(code,'"
                 + definition.compile_name
                 + "','exec'),{'__name__':'__main__'})"
             )
