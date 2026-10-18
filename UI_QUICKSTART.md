@@ -1,24 +1,43 @@
 # UI quick start
 
-This is the shortest supported path for running simulations and optimization
-campaigns. Normal users should use the application instead of running campaign
-commands in a terminal.
+Use the application to run simulations and optimization campaigns. The terminal
+is needed only to install and start it; run controls are in the browser.
 
-## 1. Start the application
+## 1. Get the project — both Mac and Windows
 
-The first time you use a new checkout, install its Python and UI dependencies:
+Install **Python 3.12**, **Node.js 24 LTS** (includes npm), and **Git**.
+On Windows, enable “Add Python to PATH” during installation and use a folder
+on the local Windows drive, not a shared Mac folder or network drive.
+
+If you do not already have the project, open **Terminal on Mac** or
+**PowerShell on Windows**, then run:
+
+```text
+git clone https://github.com/Noatal14/ytterbium_lab_simulation_new.git
+cd ytterbium_lab_simulation_new
+```
+
+GitHub may ask you to sign in if the repository is private. If you already have
+the project, open a terminal in its main folder instead: the folder containing
+`config.py`, `requirements-dev.txt`, and `ui`.
+
+## 2. Install and start — choose your operating system
+
+### Mac — Terminal
+
+**First time only**, from the main project folder:
 
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
 python -m pip install -r requirements-dev.txt
 python -m pip install -e ./atomsmltr
 cd ui
 npm ci
+npm run dev
 ```
 
-After that, start the application from the repository whenever you need it:
+**Next time**, open a new terminal in the main project folder:
 
 ```bash
 source .venv/bin/activate
@@ -26,86 +45,12 @@ cd ui
 npm run dev
 ```
 
-Open the local address printed in the terminal, normally
-`http://localhost:5173`. Keep that terminal open while using the application.
-Stop it with `Control-C` when you are finished.
+### Windows — PowerShell
 
-## 2. Choose what to run
-
-The Home page offers two kinds of work:
-
-- **Run one simulation** for one Zeeman, 2D-MOT, or 3D-MOT run.
-- **Start a campaign** for a complete 2D-MOT or 3D-MOT optimization.
-
-Choose the input ensemble and settings, then follow the numbered steps shown by
-the application. It may perform a read-only Zeus status check when you request
-one, but it never submits a job or starts a simulation until it shows the exact
-action and you confirm it.
-
-Saved Zeeman states can be used by later 2D-MOT work. Saved 2D-MOT states can
-be used by later 3D-MOT work. The application only lists sources it can verify
-inside the current repository checkout.
-
-## 3. Run on this computer or Zeus
-
-Use **This computer** for small individual simulations. Local runs are limited
-to 1,000 particles so they do not overwhelm a personal computer.
-
-Use **Zeus** for campaigns and larger simulations. Before connecting:
-
-1. Obtain an active Zeus account through the lab and Technion HPC process, and
-   follow the current official account instructions.
-2. Connect this computer to the Technion VPN.
-3. Make sure your Zeus SSH key is installed and loaded on this computer.
-4. Open **Zeus jobs**, enter your Technion username, and select
-   **Connect and check status**.
-
-For first-time SSH setup, expand **First time connecting? View setup guide** on
-the Zeus jobs page. The application never requests or stores a Zeus password,
-private key, or key passphrase.
-
-## 4. Follow a run or campaign
-
-For isolated Zeus UI validation, launch `npm run dev:zeus-test` from `ui`
-and open `http://localhost:5174`. The test-mode banner identifies this session.
-It permits individual simulations only and derives the separate remote checkout
-`/home/<username>/ytterbium_lab_simulation_ui_test`. Jobs activate
-`/home/<username>/venvs/atomsmltr-ui-test`; neither path may alias the production
-checkout. Provision these independent copies at the same Git revision as the
-local application before reviewing a submission. The usual `npm run dev`
-continues to use the production target on port 5173.
-
-- **Queued** or **Running** means no action is required.
-- **Check status** requests a fresh status; the page does not update silently.
-- **Action needed** explains what must be fixed before continuing.
-- A successful scheduler result is not yet a scientific result. Continue only
-  after the application validates the expected output files.
-- If a submission result is uncertain, **do not submit again**. Check Zeus jobs
-  first to avoid running the same work twice.
-
-The application preserves completed campaign stages. Do not delete results or
-restart a campaign because one stage failed; inspect the campaign and follow
-the displayed recovery action.
-
-## 5. When finished
-
-Open **Results** to inspect the summary and any retained particle states. Keep
-particle states only when they will be inspected or reused; a saved individual
-run does not automatically become an approved campaign input.
-
-If the application reports a problem that its guidance does not resolve, save
-the exact message and the relevant campaign or run name. Do not manually edit
-campaign manifests or generated job files.
-
-
-## Windows (PowerShell)
-
-Use Python 3.12 and Node.js 24 LTS with Git installed and available on PATH.
-Windows ARM64 and x64 use the same source tree. Keep the checkout on a local
-NTFS volume, rather than a shared Mac folder, for native locking and hard links.
+**First time only**, from the main project folder:
 
 ```powershell
-python -m venv .venv
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pip install -e .\atomsmltr
 $env:PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
@@ -114,29 +59,72 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-Open the localhost URL printed by Vite. The PYTHON setting selects the venv
-without changing PowerShell execution policy or requiring activation scripts.
-For backend tests, return to the repository root and run:
+If `py` is unavailable, use `python -m venv .venv` instead, after checking that
+`python --version` reports Python 3.12.
+
+**Next time**, open a new PowerShell window in the main project folder:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts/check_host_compatibility.py
+$env:PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
 cd ui
-npm.cmd test
-npm.cmd run build
-npx.cmd playwright install chromium
-npx.cmd playwright test --project=desktop --workers=2
-npx.cmd playwright test --config=playwright.real-backend.config.ts
+npm.cmd run dev
 ```
 
-The native filesystem adapter retains handle-relative reads, exclusive locks,
-no-overwrite publication and rejection of reparse points. Windows prevents some
-POSIX directory-swap attacks while a publication lock is held; dedicated Windows
-tests check that rejection. File contents are flushed before publication, but
-Windows does not provide the POSIX directory-fsync durability guarantee. Atomic
-visibility is retained; a power loss has weaker metadata durability.
+No PowerShell activation script or execution-policy change is needed.
 
-Tests needing POSIX FIFOs or unavailable symlink privileges are reported as
-skipped; junction rejection is tested without enabling Developer Mode. The
-complete Python suite also tests POSIX receiver programs that execute on Zeus;
-run that full suite on Linux/macOS. Remote submission still requires the usual
-VPN, SSH keys and verified server host key on the Windows account.
+### Open the application — both systems
+
+Open the address printed in the terminal, normally **http://localhost:5173**.
+Keep the terminal open. To stop the application, press **Ctrl+C** there.
+Do not close it while a local simulation is running.
+
+## 3. Choose a simulation or campaign — both systems
+
+- **Run one simulation:** Zeeman, 2D MOT, or 3D MOT. Choose **This computer**
+  for a small local run (up to 1,000 atoms), or **Zeus** for remote work.
+- **Start a campaign:** a 2D-MOT or 3D-MOT optimization on Zeus. Campaigns can
+  take days; use an individual simulation for a quick trial.
+
+Choose the source and settings, review them, and confirm the action. Selecting
+a page or reviewing settings does not start a simulation or submit a job.
+
+2D MOT needs a verified Zeeman source; 3D MOT needs a verified 2D-MOT source.
+To reuse an individual run's output, enable particle-state retention before
+running it. Only verified sources in this checkout are listed, and saved
+individual states are not automatically approved campaign inputs. If the list
+is empty, ask the project maintainer for the required source data.
+
+## 4. Connect to Zeus — both systems
+
+Local runs do not need Zeus. For remote runs:
+
+1. Obtain an active Zeus account and connect to the **Technion VPN**.
+2. In the application, open **Zeus jobs**. For a new computer, expand
+   **First time connecting? View setup guide** and follow the SSH-key setup.
+   Windows and Mac each need their own working SSH setup.
+3. Enter your Technion username, check the remote project directory, and select
+   **Connect and check status**.
+4. Before the first submission, ask the project maintainer to verify that the
+   remote checkout, Python environment, source data, and code revision are ready.
+   A successful connection alone does not install or configure them.
+
+SSH setup is a one-time prerequisite, not completed by clicking Connect. Follow
+the official Technion instructions; verify the server fingerprint before
+trusting a first connection. Load your key into the SSH agent before opening
+the application. Never paste a password, private key, or passphrase into it.
+
+## 5. Follow the work and view results — both systems
+
+- **Queued / Running:** wait; use **Check status** for a fresh remote status.
+- **Action needed:** read the message near the relevant action.
+- **Results:** open the verified summary and any retained particle states.
+  A finished Zeus job is not a verified result until its output is checked.
+- **Uncertain submission:** do not submit again. Inspect **Zeus jobs** first
+  to avoid duplicate work.
+
+If something fails, keep the exact message and run/campaign name and send them
+to the project maintainer. Do not delete results, edit campaign files, or
+restart an entire campaign to recover one failed stage.
+
+For maintainers: [release tests and isolated Zeus test mode](docs/UI_RELEASE_ACCEPTANCE_CHECKLIST.md)
+and [Windows validation details](docs/windows-validation.md).
