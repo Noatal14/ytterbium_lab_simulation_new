@@ -1,0 +1,630 @@
+{
+  "angled_donut": [
+    {
+      "candidate_id": "angled_donut_closure_09",
+      "closure_role": "blue_waist_m_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.017245079659869624,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9973333333333333,
+      "bootstrap_95_ci": [
+        0.9952222222222222,
+        0.9991111111111111
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_02",
+      "closure_role": "green_s0_up",
+      "parameters": {
+        "green_s0": 137.85811874889103,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9967777777777778,
+      "bootstrap_95_ci": [
+        0.9945555555555555,
+        0.9986666666666667
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_08",
+      "closure_role": "blue_s0_up",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.3667027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9964444444444445,
+      "bootstrap_95_ci": [
+        0.9943333333333333,
+        0.9982222222222222
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_04",
+      "closure_role": "green_detuning_gamma_up",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.0,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9964444444444445,
+      "bootstrap_95_ci": [
+        0.9943333333333333,
+        0.9982222222222222
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_06",
+      "closure_role": "green_waist_m_up",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.009463583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.997,
+      "bootstrap_95_ci": [
+        0.9944444444444445,
+        0.999
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_01",
+      "closure_role": "green_s0_down",
+      "parameters": {
+        "green_s0": 122.90811874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9968888888888889,
+      "bootstrap_95_ci": [
+        0.9941111111111111,
+        0.9988888888888889
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_00",
+      "closure_role": "focused_refinement_leader",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9965555555555555,
+      "bootstrap_95_ci": [
+        0.994,
+        0.9987777777777778
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_11",
+      "closure_role": "magnetic_gradient_G_cm_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 20.86031679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9962222222222222,
+      "bootstrap_95_ci": [
+        0.9936666666666667,
+        0.9984444444444445
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_07",
+      "closure_role": "blue_s0_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2217027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9952222222222222,
+      "bootstrap_95_ci": [
+        0.9927777777777778,
+        0.9973333333333333
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_10",
+      "closure_role": "blue_waist_m_up",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.019045079659869627,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9957777777777778,
+      "bootstrap_95_ci": [
+        0.993,
+        0.9983333333333333
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_05",
+      "closure_role": "green_waist_m_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.0076635835509270885,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9955555555555555,
+      "bootstrap_95_ci": [
+        0.9923333333333333,
+        0.9984444444444445
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_12",
+      "closure_role": "magnetic_gradient_G_cm_up",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 30.810316796900363,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9944444444444445,
+      "bootstrap_95_ci": [
+        0.9916666666666667,
+        0.997
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_14",
+      "closure_role": "blue_detuning_gamma_up",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -2.845575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9932222222222222,
+      "bootstrap_95_ci": [
+        0.9901111111111112,
+        0.9958888888888889
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_03",
+      "closure_role": "green_detuning_gamma_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -7.432550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.9925555555555555,
+      "bootstrap_95_ci": [
+        0.9893333333333333,
+        0.9952222222222222
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_13",
+      "closure_role": "blue_detuning_gamma_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.3955753921335248,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "mean_usable_fraction": 0.991,
+      "bootstrap_95_ci": [
+        0.9876666666666667,
+        0.994
+      ]
+    },
+    {
+      "candidate_id": "angled_donut_closure_15",
+      "closure_role": "core_shell_split_radius_m_down",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.2942027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0006019179673853374
+      },
+      "mean_usable_fraction": 0.9903333333333333,
+      "bootstrap_95_ci": [
+        0.9853333333333333,
+        0.9943333333333333
+      ]
+    }
+  ],
+  "single_pass": [
+    {
+      "candidate_id": "single_pass_closure_15",
+      "closure_role": "blue_crossing_angle_deg_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 57.027282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.2713333333333333,
+      "bootstrap_95_ci": [
+        0.25133333333333335,
+        0.29233333333333333
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_03",
+      "closure_role": "green_detuning_gamma_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -24.26165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.2753333333333333,
+      "bootstrap_95_ci": [
+        0.251,
+        0.299
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_02",
+      "closure_role": "green_s0_up",
+      "parameters": {
+        "green_s0": 150.0,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.2682222222222222,
+      "bootstrap_95_ci": [
+        0.24533055555555555,
+        0.29
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_06",
+      "closure_role": "green_waist_m_up",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.01270122566216362,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.267,
+      "bootstrap_95_ci": [
+        0.243,
+        0.2892222222222222
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_00",
+      "closure_role": "focused_refinement_leader",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.26366666666666666,
+      "bootstrap_95_ci": [
+        0.24022222222222223,
+        0.2853333333333333
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_01",
+      "closure_role": "green_s0_down",
+      "parameters": {
+        "green_s0": 137.91667642788136,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.25933333333333336,
+      "bootstrap_95_ci": [
+        0.2376638888888889,
+        0.2797777777777778
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_05",
+      "closure_role": "green_waist_m_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.010901225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.26166666666666666,
+      "bootstrap_95_ci": [
+        0.2381111111111111,
+        0.28355555555555556
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_10",
+      "closure_role": "blue_waist_m_up",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.017645646876613578,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.2521111111111111,
+      "bootstrap_95_ci": [
+        0.23477777777777778,
+        0.26944722222222217
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_04",
+      "closure_role": "green_detuning_gamma_up",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -21.26165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.249,
+      "bootstrap_95_ci": [
+        0.226,
+        0.27066666666666667
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_09",
+      "closure_role": "blue_waist_m_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.015845646876613575,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.198,
+      "bootstrap_95_ci": [
+        0.17433333333333334,
+        0.222
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_14",
+      "closure_role": "blue_detuning_anchor_gamma_up",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.3869271129440017,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.09344444444444444,
+      "bootstrap_95_ci": [
+        0.08133333333333333,
+        0.106
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_13",
+      "closure_role": "blue_detuning_anchor_gamma_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.586927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.036444444444444446,
+      "bootstrap_95_ci": [
+        0.028333333333333332,
+        0.04478055555555552
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_08",
+      "closure_role": "blue_s0_up",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.20889731945918044,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.007555555555555556,
+      "bootstrap_95_ci": [
+        0.004,
+        0.011777777777777778
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_11",
+      "closure_role": "magnetic_gradient_G_cm_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 0.5,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.0,
+      "bootstrap_95_ci": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_12",
+      "closure_role": "magnetic_gradient_G_cm_up",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 8.97678911151593,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.00011111111111111112,
+      "bootstrap_95_ci": [
+        0.0,
+        0.0006666666666666666
+      ]
+    },
+    {
+      "candidate_id": "single_pass_closure_07",
+      "closure_role": "blue_s0_down",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.06389731945918044,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 58.277282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "mean_usable_fraction": 0.0008888888888888889,
+      "bootstrap_95_ci": [
+        0.0,
+        0.0022222222222222222
+      ]
+    }
+  ]
+}

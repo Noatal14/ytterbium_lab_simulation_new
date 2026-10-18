@@ -1,0 +1,19 @@
+{
+  "method": "Central 2D-MOT mean-force phase portrait, not a full apparatus simulation.\n\nThe idealized slice fixes x=z=vx=vz=0, excludes Zeeman fields and gravity,\nand uses only the winning 2D-MOT configuration. Deterministic trajectories\nsolve dy/dt=vy and dvy/dt=Fy(y,vy)/m using the actual force evaluator, not\nan interpolated background. Initial y=-25 mm; vy=10,12,...,80 m/s.\nRun from the repository root with PYTHONPATH=atomsmltr/src:.\n",
+  "winning_parameters": {
+    "s0": 1.3,
+    "detuning_gamma": -0.9196610026631429,
+    "magnet_radius": 0.04676406447474441
+  },
+  "mass_kg": 2.8384645677851857e-25,
+  "winning_record_sha256": "9e0351660962f93e7d7c34bb48c3607b74191746b5e3b819b8919c71b071c523",
+  "script_sha256": "2d52210c9f8b33b79731f707adc6b60a3c2ddbc1d47000224987791eb2b7ac4d",
+  "solver": "RK4StHybridCustom._iterate, central-slice projection",
+  "stochastic": true,
+  "seed": 55001,
+  "dt_s": 6.25e-07,
+  "rtol": null,
+  "t_max_s": 0.005,
+  "n_trajectories": 36,
+  "force_limit_N": 1.213728048299847e-19
+}

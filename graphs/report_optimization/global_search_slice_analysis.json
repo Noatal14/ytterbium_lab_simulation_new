@@ -1,0 +1,1325 @@
+{
+  "method": "Find exact near-constant nuisance-parameter groups in global-search data.\n\nDistance uses each parameter's frozen search bounds, not observed sample range.\nEvery nuisance parameter must have total group spread <= tolerance. Maximal\ncliques enumerate all such groups; no transitive chaining or bin-edge artifacts.\nThis analyzes geometric coverage, without selecting by capture performance.\n",
+  "families": {
+    "angled_donut": {
+      "registered_trials": 350,
+      "distinct_configurations": 350,
+      "frozen_bounds": {
+        "green_s0": [
+          0.5,
+          150.0
+        ],
+        "green_detuning_gamma": [
+          -35.0,
+          -5.0
+        ],
+        "green_waist_m": [
+          0.002,
+          0.02
+        ],
+        "blue_s0": [
+          0.05,
+          1.5
+        ],
+        "blue_waist_m": [
+          0.002,
+          0.02
+        ],
+        "magnetic_gradient_G_cm": [
+          0.5,
+          100.0
+        ],
+        "blue_detuning_gamma": [
+          -6.0,
+          -0.5
+        ],
+        "core_shell_split_radius_m": [
+          0.0005,
+          0.0049
+        ]
+      },
+      "results": [
+        {
+          "tolerance_fraction": 0.05,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "green_detuning_gamma",
+              "magnetic_gradient_G_cm"
+            ],
+            "count": 2,
+            "axis_span_fraction": [
+              0.5116607568410912,
+              0.4119392428006349
+            ],
+            "normalized_hull_area": 0.0,
+            "parameter_ranges": {
+              "green_s0": [
+                142.70139804044413,
+                144.7908870581078
+              ],
+              "green_detuning_gamma": [
+                -33.47040720688429,
+                -18.120584501651553
+              ],
+              "green_waist_m": [
+                0.0034254579103458306,
+                0.0038029487890625232
+              ],
+              "blue_s0": [
+                0.2750973106841184,
+                0.2823038457082661
+              ],
+              "blue_waist_m": [
+                0.006627356444240753,
+                0.0072772471096399435
+              ],
+              "magnetic_gradient_G_cm": [
+                57.36300815533575,
+                98.35096281399892
+              ],
+              "blue_detuning_gamma": [
+                -2.1772741784262704,
+                -2.0748508257385225
+              ],
+              "core_shell_split_radius_m": [
+                0.0009195959036640941,
+                0.0009962298188405715
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              19.666666666666664
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_1/trials/trial_0022.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_1/trials/trial_0094.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.05,
+          "criterion": "largest_with_2d_coverage",
+          "result": null
+        },
+        {
+          "tolerance_fraction": 0.05,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": null
+        },
+        {
+          "tolerance_fraction": 0.1,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "blue_s0",
+              "blue_detuning_gamma"
+            ],
+            "count": 4,
+            "axis_span_fraction": [
+              0.42063733280101123,
+              0.45923877521491674
+            ],
+            "normalized_hull_area": 0.08371704339737011,
+            "parameter_ranges": {
+              "green_s0": [
+                120.6269576276308,
+                132.63200551385205
+              ],
+              "green_detuning_gamma": [
+                -7.775445031017995,
+                -5.456240515113956
+              ],
+              "green_waist_m": [
+                0.007423335832121555,
+                0.008655660696744184
+              ],
+              "blue_s0": [
+                0.8301954770839401,
+                1.4401196096454063
+              ],
+              "blue_waist_m": [
+                0.01763042113772386,
+                0.019277707551889397
+              ],
+              "magnetic_gradient_G_cm": [
+                30.054259054970828,
+                38.920324204559385
+              ],
+              "blue_detuning_gamma": [
+                -5.23510453752049,
+                -2.7092912738384483
+              ],
+              "core_shell_split_radius_m": [
+                0.001157976204191801,
+                0.001517527421965355
+              ]
+            },
+            "capture_percent_range": [
+              0.33333333333333337,
+              96.83333333333334
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0065.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0067.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0044.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.1,
+          "criterion": "largest_with_2d_coverage",
+          "result": {
+            "axes": [
+              "blue_s0",
+              "blue_detuning_gamma"
+            ],
+            "count": 4,
+            "axis_span_fraction": [
+              0.42063733280101123,
+              0.45923877521491674
+            ],
+            "normalized_hull_area": 0.08371704339737011,
+            "parameter_ranges": {
+              "green_s0": [
+                120.6269576276308,
+                132.63200551385205
+              ],
+              "green_detuning_gamma": [
+                -7.775445031017995,
+                -5.456240515113956
+              ],
+              "green_waist_m": [
+                0.007423335832121555,
+                0.008655660696744184
+              ],
+              "blue_s0": [
+                0.8301954770839401,
+                1.4401196096454063
+              ],
+              "blue_waist_m": [
+                0.01763042113772386,
+                0.019277707551889397
+              ],
+              "magnetic_gradient_G_cm": [
+                30.054259054970828,
+                38.920324204559385
+              ],
+              "blue_detuning_gamma": [
+                -5.23510453752049,
+                -2.7092912738384483
+              ],
+              "core_shell_split_radius_m": [
+                0.001157976204191801,
+                0.001517527421965355
+              ]
+            },
+            "capture_percent_range": [
+              0.33333333333333337,
+              96.83333333333334
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0065.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0067.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0044.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.1,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": {
+            "axes": [
+              "blue_s0",
+              "blue_detuning_gamma"
+            ],
+            "count": 4,
+            "axis_span_fraction": [
+              0.42063733280101123,
+              0.45923877521491674
+            ],
+            "normalized_hull_area": 0.08371704339737011,
+            "parameter_ranges": {
+              "green_s0": [
+                120.6269576276308,
+                132.63200551385205
+              ],
+              "green_detuning_gamma": [
+                -7.775445031017995,
+                -5.456240515113956
+              ],
+              "green_waist_m": [
+                0.007423335832121555,
+                0.008655660696744184
+              ],
+              "blue_s0": [
+                0.8301954770839401,
+                1.4401196096454063
+              ],
+              "blue_waist_m": [
+                0.01763042113772386,
+                0.019277707551889397
+              ],
+              "magnetic_gradient_G_cm": [
+                30.054259054970828,
+                38.920324204559385
+              ],
+              "blue_detuning_gamma": [
+                -5.23510453752049,
+                -2.7092912738384483
+              ],
+              "core_shell_split_radius_m": [
+                0.001157976204191801,
+                0.001517527421965355
+              ]
+            },
+            "capture_percent_range": [
+              0.33333333333333337,
+              96.83333333333334
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0065.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0067.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0044.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.15,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "green_s0",
+              "magnetic_gradient_G_cm"
+            ],
+            "count": 6,
+            "axis_span_fraction": [
+              0.4980481362913349,
+              0.5772904232525307
+            ],
+            "normalized_hull_area": 0.10835850609395603,
+            "parameter_ranges": {
+              "green_s0": [
+                72.25224644194711,
+                146.71044281750167
+              ],
+              "green_detuning_gamma": [
+                -8.937290824995507,
+                -5.593534795058738
+              ],
+              "green_waist_m": [
+                0.0069502128980326655,
+                0.009103501591247187
+              ],
+              "blue_s0": [
+                1.0812802536679988,
+                1.2942027005835732
+              ],
+              "blue_waist_m": [
+                0.016150254220751958,
+                0.018464651326408954
+              ],
+              "magnetic_gradient_G_cm": [
+                9.05546196312714,
+                66.49585907675394
+              ],
+              "blue_detuning_gamma": [
+                -3.660916416475745,
+                -3.0139128312597467
+              ],
+              "core_shell_split_radius_m": [
+                0.0005761433567016622,
+                0.0012076545343863913
+              ]
+            },
+            "capture_percent_range": [
+              27.833333333333332,
+              99.83333333333333
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0055.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0061.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0040.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0042.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0063.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.15,
+          "criterion": "largest_with_2d_coverage",
+          "result": {
+            "axes": [
+              "green_s0",
+              "magnetic_gradient_G_cm"
+            ],
+            "count": 6,
+            "axis_span_fraction": [
+              0.4980481362913349,
+              0.5772904232525307
+            ],
+            "normalized_hull_area": 0.10835850609395603,
+            "parameter_ranges": {
+              "green_s0": [
+                72.25224644194711,
+                146.71044281750167
+              ],
+              "green_detuning_gamma": [
+                -8.937290824995507,
+                -5.593534795058738
+              ],
+              "green_waist_m": [
+                0.0069502128980326655,
+                0.009103501591247187
+              ],
+              "blue_s0": [
+                1.0812802536679988,
+                1.2942027005835732
+              ],
+              "blue_waist_m": [
+                0.016150254220751958,
+                0.018464651326408954
+              ],
+              "magnetic_gradient_G_cm": [
+                9.05546196312714,
+                66.49585907675394
+              ],
+              "blue_detuning_gamma": [
+                -3.660916416475745,
+                -3.0139128312597467
+              ],
+              "core_shell_split_radius_m": [
+                0.0005761433567016622,
+                0.0012076545343863913
+              ]
+            },
+            "capture_percent_range": [
+              27.833333333333332,
+              99.83333333333333
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0055.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0061.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0040.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0042.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0063.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.15,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": {
+            "axes": [
+              "green_s0",
+              "magnetic_gradient_G_cm"
+            ],
+            "count": 6,
+            "axis_span_fraction": [
+              0.4980481362913349,
+              0.5772904232525307
+            ],
+            "normalized_hull_area": 0.10835850609395603,
+            "parameter_ranges": {
+              "green_s0": [
+                72.25224644194711,
+                146.71044281750167
+              ],
+              "green_detuning_gamma": [
+                -8.937290824995507,
+                -5.593534795058738
+              ],
+              "green_waist_m": [
+                0.0069502128980326655,
+                0.009103501591247187
+              ],
+              "blue_s0": [
+                1.0812802536679988,
+                1.2942027005835732
+              ],
+              "blue_waist_m": [
+                0.016150254220751958,
+                0.018464651326408954
+              ],
+              "magnetic_gradient_G_cm": [
+                9.05546196312714,
+                66.49585907675394
+              ],
+              "blue_detuning_gamma": [
+                -3.660916416475745,
+                -3.0139128312597467
+              ],
+              "core_shell_split_radius_m": [
+                0.0005761433567016622,
+                0.0012076545343863913
+              ]
+            },
+            "capture_percent_range": [
+              27.833333333333332,
+              99.83333333333333
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0055.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0061.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0040.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0042.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0063.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.2,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "green_waist_m",
+              "blue_waist_m"
+            ],
+            "count": 9,
+            "axis_span_fraction": [
+              0.6582181868778599,
+              0.9320780719925066
+            ],
+            "normalized_hull_area": 0.3126594513015257,
+            "parameter_ranges": {
+              "green_s0": [
+                117.82068756574938,
+                139.52183568358544
+              ],
+              "green_detuning_gamma": [
+                -9.974081576260861,
+                -5.468944172870217
+              ],
+              "green_waist_m": [
+                0.007245250781285941,
+                0.019093178145087424
+              ],
+              "blue_s0": [
+                0.8814195348162894,
+                1.1505190223303625
+              ],
+              "blue_waist_m": [
+                0.0030295120325281224,
+                0.019806917328393243
+              ],
+              "magnetic_gradient_G_cm": [
+                23.932009966965094,
+                43.19647248522412
+              ],
+              "blue_detuning_gamma": [
+                -3.6819435713804864,
+                -2.607534376397663
+              ],
+              "core_shell_split_radius_m": [
+                0.000546171163270712,
+                0.0012762854200808293
+              ]
+            },
+            "capture_percent_range": [
+              5.333333333333334,
+              98.83333333333333
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0077.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0087.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0106.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0114.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0115.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0058.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0064.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.2,
+          "criterion": "largest_with_2d_coverage",
+          "result": {
+            "axes": [
+              "green_waist_m",
+              "blue_waist_m"
+            ],
+            "count": 9,
+            "axis_span_fraction": [
+              0.6582181868778599,
+              0.9320780719925066
+            ],
+            "normalized_hull_area": 0.3126594513015257,
+            "parameter_ranges": {
+              "green_s0": [
+                117.82068756574938,
+                139.52183568358544
+              ],
+              "green_detuning_gamma": [
+                -9.974081576260861,
+                -5.468944172870217
+              ],
+              "green_waist_m": [
+                0.007245250781285941,
+                0.019093178145087424
+              ],
+              "blue_s0": [
+                0.8814195348162894,
+                1.1505190223303625
+              ],
+              "blue_waist_m": [
+                0.0030295120325281224,
+                0.019806917328393243
+              ],
+              "magnetic_gradient_G_cm": [
+                23.932009966965094,
+                43.19647248522412
+              ],
+              "blue_detuning_gamma": [
+                -3.6819435713804864,
+                -2.607534376397663
+              ],
+              "core_shell_split_radius_m": [
+                0.000546171163270712,
+                0.0012762854200808293
+              ]
+            },
+            "capture_percent_range": [
+              5.333333333333334,
+              98.83333333333333
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0077.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0087.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0106.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0114.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0115.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0058.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0064.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.2,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": {
+            "axes": [
+              "green_waist_m",
+              "blue_waist_m"
+            ],
+            "count": 9,
+            "axis_span_fraction": [
+              0.6582181868778599,
+              0.9320780719925066
+            ],
+            "normalized_hull_area": 0.3126594513015257,
+            "parameter_ranges": {
+              "green_s0": [
+                117.82068756574938,
+                139.52183568358544
+              ],
+              "green_detuning_gamma": [
+                -9.974081576260861,
+                -5.468944172870217
+              ],
+              "green_waist_m": [
+                0.007245250781285941,
+                0.019093178145087424
+              ],
+              "blue_s0": [
+                0.8814195348162894,
+                1.1505190223303625
+              ],
+              "blue_waist_m": [
+                0.0030295120325281224,
+                0.019806917328393243
+              ],
+              "magnetic_gradient_G_cm": [
+                23.932009966965094,
+                43.19647248522412
+              ],
+              "blue_detuning_gamma": [
+                -3.6819435713804864,
+                -2.607534376397663
+              ],
+              "core_shell_split_radius_m": [
+                0.000546171163270712,
+                0.0012762854200808293
+              ]
+            },
+            "capture_percent_range": [
+              5.333333333333334,
+              98.83333333333333
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0064.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0077.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0087.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0106.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0114.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_0/trials/trial_0115.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0058.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/angled_donut/worker_2/trials/trial_0064.json"
+            ]
+          }
+        }
+      ]
+    },
+    "single_pass": {
+      "registered_trials": 600,
+      "distinct_configurations": 600,
+      "frozen_bounds": {
+        "green_s0": [
+          0.5,
+          150.0
+        ],
+        "green_detuning_gamma": [
+          -35.0,
+          -5.0
+        ],
+        "green_waist_m": [
+          0.002,
+          0.02
+        ],
+        "blue_s0": [
+          0.05,
+          1.5
+        ],
+        "blue_waist_m": [
+          0.002,
+          0.02
+        ],
+        "magnetic_gradient_G_cm": [
+          0.5,
+          100.0
+        ],
+        "blue_detuning_anchor_gamma": [
+          -3.75,
+          -1.75
+        ],
+        "blue_crossing_angle_deg": [
+          45.0,
+          70.0
+        ],
+        "blue_crossing_z_offset_m": [
+          -0.05,
+          -0.04
+        ]
+      },
+      "results": [
+        {
+          "tolerance_fraction": 0.05,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "blue_crossing_angle_deg",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 3,
+            "axis_span_fraction": [
+              0.2,
+              0.5000000000000003
+            ],
+            "normalized_hull_area": 0.05000000000000003,
+            "parameter_ranges": {
+              "green_s0": [
+                30.0,
+                30.0
+              ],
+              "green_detuning_gamma": [
+                -25.0,
+                -25.0
+              ],
+              "green_waist_m": [
+                0.0075,
+                0.0075
+              ],
+              "blue_s0": [
+                0.25,
+                0.25
+              ],
+              "blue_waist_m": [
+                0.0075,
+                0.0075
+              ],
+              "magnetic_gradient_G_cm": [
+                2.5,
+                2.5
+              ],
+              "blue_detuning_anchor_gamma": [
+                -2.75,
+                -2.75
+              ],
+              "blue_crossing_angle_deg": [
+                45.0,
+                50.0
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.05,
+                -0.045
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              0.5
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_2/trials/trial_0000.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.05,
+          "criterion": "largest_with_2d_coverage",
+          "result": null
+        },
+        {
+          "tolerance_fraction": 0.05,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": null
+        },
+        {
+          "tolerance_fraction": 0.1,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "green_s0",
+              "blue_crossing_angle_deg"
+            ],
+            "count": 3,
+            "axis_span_fraction": [
+              0.36092202452052935,
+              0.35059695372628513
+            ],
+            "normalized_hull_area": 0.017781244696185347,
+            "parameter_ranges": {
+              "green_s0": [
+                95.4743312637494,
+                149.43217392956853
+              ],
+              "green_detuning_gamma": [
+                -34.59716639309729,
+                -31.9384419528265
+              ],
+              "green_waist_m": [
+                0.012998626797955676,
+                0.014490867340492614
+              ],
+              "blue_s0": [
+                0.21801044775356812,
+                0.35172918630313016
+              ],
+              "blue_waist_m": [
+                0.010502809667012643,
+                0.010813624930513684
+              ],
+              "magnetic_gradient_G_cm": [
+                2.602263066010808,
+                7.3853752331832005
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.5678374091692526,
+                -3.462317928558518
+              ],
+              "blue_crossing_angle_deg": [
+                48.541795352443934,
+                57.30671919560106
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.04763203074658699,
+                -0.04714917929026293
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              1.1666666666666667
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0103.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0115.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0155.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.1,
+          "criterion": "largest_with_2d_coverage",
+          "result": {
+            "axes": [
+              "blue_s0",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 3,
+            "axis_span_fraction": [
+              0.3220783117085394,
+              0.5000000000000003
+            ],
+            "normalized_hull_area": 0.08051957792713488,
+            "parameter_ranges": {
+              "green_s0": [
+                22.6816790246848,
+                30.0
+              ],
+              "green_detuning_gamma": [
+                -25.0,
+                -24.90264186560398
+              ],
+              "green_waist_m": [
+                0.0075,
+                0.008546971811193623
+              ],
+              "blue_s0": [
+                0.25,
+                0.7170135519773821
+              ],
+              "blue_waist_m": [
+                0.006815769536157155,
+                0.0075
+              ],
+              "magnetic_gradient_G_cm": [
+                2.5,
+                5.076646049490426
+              ],
+              "blue_detuning_anchor_gamma": [
+                -2.8144698071083587,
+                -2.75
+              ],
+              "blue_crossing_angle_deg": [
+                45.0,
+                45.92671443620354
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.05,
+                -0.045
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              0.5
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0024.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0000.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.1,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": null
+        },
+        {
+          "tolerance_fraction": 0.15,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "blue_detuning_anchor_gamma",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 5,
+            "axis_span_fraction": [
+              0.7166941184051285,
+              0.7092430471181492
+            ],
+            "normalized_hull_area": 0.21078878246722507,
+            "parameter_ranges": {
+              "green_s0": [
+                13.74102979617933,
+                30.0
+              ],
+              "green_detuning_gamma": [
+                -25.0,
+                -21.563597557184565
+              ],
+              "green_waist_m": [
+                0.007326881014294169,
+                0.008690023464487207
+              ],
+              "blue_s0": [
+                0.25,
+                0.3884776892994686
+              ],
+              "blue_waist_m": [
+                0.007336049441500828,
+                0.008846773108286713
+              ],
+              "magnetic_gradient_G_cm": [
+                2.5,
+                15.985721734546365
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.546293144733999,
+                -2.112904907923742
+              ],
+              "blue_crossing_angle_deg": [
+                45.0,
+                46.30981429988473
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.05,
+                -0.04290756952881851
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              0.5
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0035.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0083.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.15,
+          "criterion": "largest_with_2d_coverage",
+          "result": {
+            "axes": [
+              "blue_detuning_anchor_gamma",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 5,
+            "axis_span_fraction": [
+              0.7166941184051285,
+              0.7092430471181492
+            ],
+            "normalized_hull_area": 0.21078878246722507,
+            "parameter_ranges": {
+              "green_s0": [
+                13.74102979617933,
+                30.0
+              ],
+              "green_detuning_gamma": [
+                -25.0,
+                -21.563597557184565
+              ],
+              "green_waist_m": [
+                0.007326881014294169,
+                0.008690023464487207
+              ],
+              "blue_s0": [
+                0.25,
+                0.3884776892994686
+              ],
+              "blue_waist_m": [
+                0.007336049441500828,
+                0.008846773108286713
+              ],
+              "magnetic_gradient_G_cm": [
+                2.5,
+                15.985721734546365
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.546293144733999,
+                -2.112904907923742
+              ],
+              "blue_crossing_angle_deg": [
+                45.0,
+                46.30981429988473
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.05,
+                -0.04290756952881851
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              0.5
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0035.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0083.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.15,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": {
+            "axes": [
+              "blue_detuning_anchor_gamma",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 4,
+            "axis_span_fraction": [
+              0.4686202648432827,
+              0.38878611201159985
+            ],
+            "normalized_hull_area": 0.08500750765066674,
+            "parameter_ranges": {
+              "green_s0": [
+                131.2750031419974,
+                146.37459082215605
+              ],
+              "green_detuning_gamma": [
+                -34.79668812363745,
+                -30.504090488927282
+              ],
+              "green_waist_m": [
+                0.012998626797955676,
+                0.015603503928274788
+              ],
+              "blue_s0": [
+                0.1320659476071828,
+                0.3102933627919785
+              ],
+              "blue_waist_m": [
+                0.010805374620531463,
+                0.012796906482615335
+              ],
+              "magnetic_gradient_G_cm": [
+                0.8695811087628696,
+                8.246551060184078
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.462317928558518,
+                -2.525077398871953
+              ],
+              "blue_crossing_angle_deg": [
+                53.821478833075474,
+                57.473318825058406
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.048420520492189104,
+                -0.044532659372073104
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              17.333333333333336
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0097.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0100.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0143.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0155.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.2,
+          "criterion": "largest_group",
+          "result": {
+            "axes": [
+              "blue_detuning_anchor_gamma",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 10,
+            "axis_span_fraction": [
+              0.7166941184051285,
+              0.7092430471181492
+            ],
+            "normalized_hull_area": 0.26989035077149487,
+            "parameter_ranges": {
+              "green_s0": [
+                21.40414519987336,
+                49.320375253072214
+              ],
+              "green_detuning_gamma": [
+                -25.52797540377378,
+                -20.10261316090527
+              ],
+              "green_waist_m": [
+                0.007326881014294169,
+                0.010146533837043194
+              ],
+              "blue_s0": [
+                0.22653698193414812,
+                0.4902257146701146
+              ],
+              "blue_waist_m": [
+                0.004858472306598962,
+                0.008213892724753745
+              ],
+              "magnetic_gradient_G_cm": [
+                0.7165785384464534,
+                16.345462655261976
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.546293144733999,
+                -2.112904907923742
+              ],
+              "blue_crossing_angle_deg": [
+                45.0,
+                50.0
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.05,
+                -0.04290756952881851
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              0.5
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0094.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0152.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0153.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0199.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0035.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_2/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_2/trials/trial_0026.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.2,
+          "criterion": "largest_with_2d_coverage",
+          "result": {
+            "axes": [
+              "blue_detuning_anchor_gamma",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 10,
+            "axis_span_fraction": [
+              0.7166941184051285,
+              0.7092430471181492
+            ],
+            "normalized_hull_area": 0.26989035077149487,
+            "parameter_ranges": {
+              "green_s0": [
+                21.40414519987336,
+                49.320375253072214
+              ],
+              "green_detuning_gamma": [
+                -25.52797540377378,
+                -20.10261316090527
+              ],
+              "green_waist_m": [
+                0.007326881014294169,
+                0.010146533837043194
+              ],
+              "blue_s0": [
+                0.22653698193414812,
+                0.4902257146701146
+              ],
+              "blue_waist_m": [
+                0.004858472306598962,
+                0.008213892724753745
+              ],
+              "magnetic_gradient_G_cm": [
+                0.7165785384464534,
+                16.345462655261976
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.546293144733999,
+                -2.112904907923742
+              ],
+              "blue_crossing_angle_deg": [
+                45.0,
+                50.0
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.05,
+                -0.04290756952881851
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              0.5
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0085.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0094.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0152.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0153.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_0/trials/trial_0199.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0035.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_2/trials/trial_0000.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_2/trials/trial_0026.json"
+            ]
+          }
+        },
+        {
+          "tolerance_fraction": 0.2,
+          "criterion": "largest_with_2d_coverage_and_5pp_capture_range",
+          "result": {
+            "axes": [
+              "blue_detuning_anchor_gamma",
+              "blue_crossing_z_offset_m"
+            ],
+            "count": 9,
+            "axis_span_fraction": [
+              0.5130238590408427,
+              0.45232326026808156
+            ],
+            "normalized_hull_area": 0.1517051337045302,
+            "parameter_ranges": {
+              "green_s0": [
+                124.81540216327639,
+                149.76005756858254
+              ],
+              "green_detuning_gamma": [
+                -34.79668812363745,
+                -29.51372426075142
+              ],
+              "green_waist_m": [
+                0.012417999433028997,
+                0.015603503928274788
+              ],
+              "blue_s0": [
+                0.1320659476071828,
+                0.35172918630313016
+              ],
+              "blue_waist_m": [
+                0.009344512042814494,
+                0.012796906482615335
+              ],
+              "magnetic_gradient_G_cm": [
+                0.8695811087628696,
+                12.542698578920549
+              ],
+              "blue_detuning_anchor_gamma": [
+                -3.551125116953638,
+                -2.525077398871953
+              ],
+              "blue_crossing_angle_deg": [
+                53.821478833075474,
+                58.62018029351604
+              ],
+              "blue_crossing_z_offset_m": [
+                -0.04905589197475392,
+                -0.044532659372073104
+              ]
+            },
+            "capture_percent_range": [
+              0.0,
+              17.333333333333336
+            ],
+            "source_trials": [
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0097.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0098.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0100.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0102.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0103.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0106.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0128.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0143.json",
+              "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/discovery/single_pass/worker_1/trials/trial_0155.json"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

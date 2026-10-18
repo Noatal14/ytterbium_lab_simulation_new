@@ -1,0 +1,15 @@
+#!/bin/bash
+#PBS -N m3d_report_traj
+#PBS -q zeus_combined_q
+#PBS -l select=1:ncpus=200:mem=64gb
+#PBS -l walltime=12:00:00
+
+set -euo pipefail
+cd /home/tal.noa/ytterbium_lab_simulation_new
+source /home/tal.noa/venvs/atomsmltr/bin/activate
+export MPLBACKEND=Agg
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+python -u -m graphs_scripts.run_3d_velocity_trajectories \
+  --campaign data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1 \
+  --output "data/validation/mot_3d/report_trajectories_${PBS_JOBID}" \
+  --graphs graphs/report_optimization --atoms 600 --npools 200

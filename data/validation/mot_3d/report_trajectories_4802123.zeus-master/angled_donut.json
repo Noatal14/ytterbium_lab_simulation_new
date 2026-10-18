@@ -1,0 +1,247 @@
+{
+  "family": "angled_donut",
+  "candidate_id": "angled_donut_finalist_02",
+  "candidate": {
+    "candidate_id": "angled_donut_finalist_02",
+    "finalist_rank_from_closure": 2,
+    "source_candidate_id": "angled_donut_closure_02",
+    "source_closure_role": "green_s0_up",
+    "source_closure_fraction": 0.9967777777777778,
+    "source_closure_ci": [
+      0.9935004743885256,
+      1.00005508116703
+    ],
+    "parameters": {
+      "green_s0": 137.85811874889103,
+      "green_detuning_gamma": -5.932550002692984,
+      "green_waist_m": 0.008563583550927088,
+      "blue_s0": 1.2942027005835732,
+      "blue_waist_m": 0.018145079659869626,
+      "magnetic_gradient_G_cm": 25.83531679690036,
+      "blue_detuning_gamma": -3.120575392133525,
+      "core_shell_split_radius_m": 0.0008219179673853373
+    },
+    "derived_parameters": {},
+    "resolved_profile": {
+      "description": "Two xz axes with a 62-degree full included angle plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell, and the common chamber hole clips both colors at 5 mm radius.",
+      "beam_layout": "angled_xz_y",
+      "xz_angle_from_z_deg": 31.0,
+      "magnetic_strong_axis": "y",
+      "magnetic_gradient_G_cm": 25.83531679690036,
+      "center_position_m": [
+        0.0,
+        0.0,
+        0.413
+      ],
+      "blue_green_center_separation_m": 0.0,
+      "399": {
+        "enabled": true,
+        "s0": 1.2942027005835732,
+        "detuning_gamma": -3.120575392133525,
+        "waist_m": 0.018145079659869626,
+        "profile": "donut",
+        "polarization_by_axis": {
+          "+XZ_1": "right",
+          "-XZ_1": "right",
+          "+XZ_2": "right",
+          "-XZ_2": "right",
+          "+Y": "left",
+          "-Y": "left"
+        },
+        "inner_cutoff_radius_m": 0.0008219179673853373,
+        "outer_cutoff_radius_m": 0.005
+      },
+      "556": {
+        "enabled": true,
+        "s0": 137.85811874889103,
+        "detuning_gamma": -5.932550002692984,
+        "waist_m": 0.008563583550927088,
+        "profile": "outer_clipped_gaussian",
+        "polarization_by_axis": {
+          "+XZ_1": "right",
+          "-XZ_1": "right",
+          "+XZ_2": "right",
+          "-XZ_2": "right",
+          "+Y": "left",
+          "-Y": "left"
+        },
+        "outer_cutoff_radius_m": 0.0008219179673853373
+      }
+    }
+  },
+  "input_manifest_sha256": "d76beb7238fc251b695369fe92855c87140464fd5362b5d6be9cb9505261f3a5",
+  "selection_sha256": "65565221b902e5f0bc6dbede40c87bdd043e04e241c390e5d72605149b765308",
+  "script_sha256": "bd88b935fa003b5857576f7a4c4f3ac6e3c32c9142b6b30a98e75c331ae6218f",
+  "source_provenance": [
+    {
+      "ensemble_id": 0,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy",
+      "array_sha256": "78465dcd8f2c7475fe0576236ea6a18de52eb83cfd8a269a8f81cb75ab84773a",
+      "zeeman_seed": 3015,
+      "mot_seed": 43015,
+      "particle_count": 813
+    },
+    {
+      "ensemble_id": 1,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.npy",
+      "array_sha256": "bd6bae15954dcf3ebacd35704c744b9bba53f88fc2298ff45064a9cff6a1b947",
+      "zeeman_seed": 3016,
+      "mot_seed": 43016,
+      "particle_count": 820
+    },
+    {
+      "ensemble_id": 2,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.npy",
+      "array_sha256": "ad6ce20394e1ee8e038c2fb66da34ab74281dee6c9e14a104ac9bce6c29565dd",
+      "zeeman_seed": 3017,
+      "mot_seed": 43017,
+      "particle_count": 842
+    },
+    {
+      "ensemble_id": 3,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.npy",
+      "array_sha256": "93e2c1daff71443f9f260f1224969cbd4c640ce3dccf079f2c594c549a03558c",
+      "zeeman_seed": 3018,
+      "mot_seed": 43018,
+      "particle_count": 879
+    },
+    {
+      "ensemble_id": 4,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.npy",
+      "array_sha256": "cead1d6fd3401da028819db6fcdca181d51e6047dd22cdea65a0461d720ad08c",
+      "zeeman_seed": 3019,
+      "mot_seed": 43019,
+      "particle_count": 843
+    },
+    {
+      "ensemble_id": 5,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.npy",
+      "array_sha256": "facc6c35038bc9229220eabc5fe22eaaf2fefd24c84297b1980f2046b56712f8",
+      "zeeman_seed": 3020,
+      "mot_seed": 43020,
+      "particle_count": 840
+    },
+    {
+      "ensemble_id": 6,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.npy",
+      "array_sha256": "94cbac84e40ca5bdb326e3b872a61f738180e53cc5eac04271856fa9884bb051",
+      "zeeman_seed": 3021,
+      "mot_seed": 43021,
+      "particle_count": 879
+    },
+    {
+      "ensemble_id": 7,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.npy",
+      "array_sha256": "9a386c4cdbfdc899096f1094e2a11521f4b2d0abfb1168c97074789a2044a339",
+      "zeeman_seed": 3022,
+      "mot_seed": 43022,
+      "particle_count": 908
+    },
+    {
+      "ensemble_id": 8,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.npy",
+      "array_sha256": "73a8e4f7ba9809afaa605217316f7bda95af5f40b821bbd329eebd1ed21df345",
+      "zeeman_seed": 3023,
+      "mot_seed": 43023,
+      "particle_count": 844
+    },
+    {
+      "ensemble_id": 9,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.npy",
+      "array_sha256": "55ca69ba7181d1f066326326078d740a94da2e4e4a5a3d827e68daafafdf6d5a",
+      "zeeman_seed": 3024,
+      "mot_seed": 43024,
+      "particle_count": 832
+    },
+    {
+      "ensemble_id": 10,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.npy",
+      "array_sha256": "0c0b5dee91aa0ea345a03c153778b37d5522bdadf025641efc7dc8c123dbc5b8",
+      "zeeman_seed": 3025,
+      "mot_seed": 43025,
+      "particle_count": 827
+    },
+    {
+      "ensemble_id": 11,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.npy",
+      "array_sha256": "83f52ab53a442c2ad5af889e88e1d67d64fedba6f88cd1fd93ad4ba9ce431ad0",
+      "zeeman_seed": 3026,
+      "mot_seed": 43026,
+      "particle_count": 839
+    },
+    {
+      "ensemble_id": 12,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.npy",
+      "array_sha256": "03e15553b2b5763ffb6bd4981bf3905932063f73c411953f478b8af34a66d87c",
+      "zeeman_seed": 3027,
+      "mot_seed": 43027,
+      "particle_count": 828
+    },
+    {
+      "ensemble_id": 13,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.npy",
+      "array_sha256": "ec0ab550a70e4248a2bbcc00fa7e61d7ceccd4de4f971d6e8fa77fd20eb7121a",
+      "zeeman_seed": 3028,
+      "mot_seed": 43028,
+      "particle_count": 823
+    },
+    {
+      "ensemble_id": 14,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.npy",
+      "array_sha256": "02a6eb82961074d041fa15a15b0d16ee598150c1cdeae4c40481f5d0cec10dcb",
+      "zeeman_seed": 3029,
+      "mot_seed": 43029,
+      "particle_count": 819
+    },
+    {
+      "ensemble_id": 15,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.npy",
+      "array_sha256": "09dbc270e2f18b43a619febbe698fe5223913e178518b9ac099fc61814903d66",
+      "zeeman_seed": 3030,
+      "mot_seed": 43030,
+      "particle_count": 884
+    },
+    {
+      "ensemble_id": 16,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.npy",
+      "array_sha256": "a123854931e168366d1d32729f1cc6df0f5ff6284a318eeb3bb5ae395d7b8b57",
+      "zeeman_seed": 3031,
+      "mot_seed": 43031,
+      "particle_count": 857
+    },
+    {
+      "ensemble_id": 17,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.npy",
+      "array_sha256": "0b895fbd73af3a6dc79f272e7aafa0ad9c226d284a8114622f47e560b73ed573",
+      "zeeman_seed": 3032,
+      "mot_seed": 43032,
+      "particle_count": 817
+    },
+    {
+      "ensemble_id": 18,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.npy",
+      "array_sha256": "3da4b0d077114f1831320618cd8b315c719f293d0c2c82eac080e65a8992ac62",
+      "zeeman_seed": 3033,
+      "mot_seed": 43033,
+      "particle_count": 833
+    },
+    {
+      "ensemble_id": 19,
+      "file": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.npy",
+      "array_sha256": "758a30edd8f4314f9ef1f9f0cd671b109206013271c4bbfb468d78a298f63c34",
+      "zeeman_seed": 3034,
+      "mot_seed": 43034,
+      "particle_count": 856
+    }
+  ],
+  "selection_seed": 54001,
+  "recoil_seed": 54002,
+  "dt_s": 1e-05,
+  "t_max_s": 0.1,
+  "npools": 200,
+  "atom_count": 600,
+  "maximum_speed_m_s": 1.0,
+  "capture_definition": "Campaign analyze_results eligible_masks; ever means eligible at least once",
+  "selection_reason": "Best available mean among three-seed-complete finalists at submission; provisional",
+  "outcomes_sha256": "4a9aac618d3fd8b50fcf12926e9043f8fa8e0056198480a12f988ae6f62075c9"
+}

@@ -1,0 +1,155 @@
+{
+  "candidate": {
+    "candidate_id": "single_pass_finalist_01",
+    "finalist_rank_from_closure": 1,
+    "source_candidate_id": "single_pass_closure_15",
+    "source_closure_role": "blue_crossing_angle_deg_down",
+    "source_closure_fraction": 0.2713333333333333,
+    "source_closure_ci": [
+      0.24043150231892912,
+      0.3022351643477375
+    ],
+    "parameters": {
+      "green_s0": 145.39167642788135,
+      "green_detuning_gamma": -22.76165952007537,
+      "green_waist_m": 0.011801225662163621,
+      "blue_s0": 0.13639731945918043,
+      "blue_waist_m": 0.016745646876613576,
+      "magnetic_gradient_G_cm": 4.001789111515931,
+      "blue_detuning_anchor_gamma": -2.486927112944002,
+      "blue_crossing_angle_deg": 57.027282093322945,
+      "blue_crossing_z_offset_m": -0.04278783047732904
+    },
+    "derived_parameters": {
+      "blue_detuning_gamma": -1.9934225490090594,
+      "effective_slowing_z_offset_m": -0.061208042041603974,
+      "effective_slowing_field_G": 24.494167617930014,
+      "reference_slowing_field_G": 14.5625
+    },
+    "resolved_profile": {
+      "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+      "beam_layout": "angled_green_yz_single_pass",
+      "gravity_axis": "x",
+      "transport_axis": "z",
+      "magnetic_strong_axis": "y",
+      "magnetic_gradient_G_cm": 4.001789111515931,
+      "blue_crossing_angle_deg": 57.027282093322945,
+      "blue_crossing_z_offset_m": -0.04278783047732904,
+      "maximum_blue_center_relative_intensity": 0.001,
+      "xz_angle_from_z_deg": 31.0,
+      "center_position_m": [
+        0.0,
+        0.0,
+        0.413
+      ],
+      "beam_components": {
+        "+XZ_1": {
+          "399_enabled": false,
+          "556_enabled": true
+        },
+        "-XZ_1": {
+          "399_enabled": false,
+          "556_enabled": true
+        },
+        "+XZ_2": {
+          "399_enabled": false,
+          "556_enabled": true
+        },
+        "-XZ_2": {
+          "399_enabled": false,
+          "556_enabled": true
+        },
+        "+Y": {
+          "399_enabled": false,
+          "556_enabled": true
+        },
+        "-Y": {
+          "399_enabled": false,
+          "556_enabled": true
+        },
+        "SP_FROM_NEG_Y": {
+          "399_enabled": true,
+          "556_enabled": false
+        },
+        "SP_FROM_POS_Y": {
+          "399_enabled": true,
+          "556_enabled": false
+        }
+      },
+      "399": {
+        "enabled": true,
+        "s0": 0.13639731945918043,
+        "detuning_gamma": -1.9934225490090594,
+        "waist_m": 0.016745646876613576,
+        "profile": "outer_clipped_gaussian",
+        "outer_cutoff_radius_m": 0.0075,
+        "polarization_by_axis": {
+          "SP_FROM_NEG_Y": "right",
+          "SP_FROM_POS_Y": "right"
+        }
+      },
+      "556": {
+        "enabled": true,
+        "s0": 145.39167642788135,
+        "detuning_gamma": -22.76165952007537,
+        "waist_m": 0.011801225662163621,
+        "profile": "outer_clipped_gaussian",
+        "outer_cutoff_radius_m": 0.005,
+        "polarization_by_axis": {
+          "+XZ_1": "right",
+          "-XZ_1": "right",
+          "+XZ_2": "right",
+          "-XZ_2": "right",
+          "+Y": "left",
+          "-Y": "left"
+        }
+      }
+    }
+  },
+  "selection_sha256": "0c6274ed88efe65a0ae158a13245e9fa4b24b32640929a1524ab8dac138af240",
+  "method": "Longitudinal phase portraits for the two provisional finalists.\n\nIsolated 3D-MOT components; x=y=vx=vy=0 enforced after every stochastic step.\nPositions are absolute lab coordinates in the solver and signed z-z_MOT in\nthe figure. The force background is a mean-force central slice, not random\nforce realizations or a full-apparatus capture-efficiency measurement.\n",
+  "dt_s": 1e-05,
+  "t_max_s": 0.1,
+  "seed": null,
+  "stochastic": false,
+  "solver": "RK4 mean force",
+  "initial_position_offset_m": -0.08,
+  "initial_vz_m_s": [
+    2,
+    4,
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18,
+    20,
+    22,
+    24,
+    26,
+    28,
+    30,
+    32,
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46,
+    48,
+    50,
+    52,
+    54,
+    56,
+    58,
+    60,
+    62,
+    64,
+    66,
+    68,
+    70
+  ],
+  "outcomes_sha256": "705bebef71c839288350ada43398ecc4a4bb3f443eb2e3f7cf81a0aabde6cccb"
+}
