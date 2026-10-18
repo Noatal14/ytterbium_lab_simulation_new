@@ -1577,7 +1577,10 @@ class PinnedSshRunner:
             )
         interpreter = "python3"
         prefix = ""
-        if self._policy.receiver in {ReceiverKind.MOT_2D_INDIVIDUAL, ReceiverKind.MOT_3D_INDIVIDUAL}:
+        if self._policy.receiver in {ReceiverKind.MOT_2D_INDIVIDUAL, ReceiverKind.MOT_3D_INDIVIDUAL} or (
+            self._policy.receiver is ReceiverKind.ZEEMAN_INDIVIDUAL
+            and profile.project_directory.endswith("/ytterbium_lab_simulation_ui_test")
+        ):
             expected_project = profile.project_directory
             environment = "atomsmltr-ui-test" if expected_project.endswith("/ytterbium_lab_simulation_ui_test") else "atomsmltr"
             interpreter = f"/home/{profile.username}/venvs/{environment}/bin/python"
