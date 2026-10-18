@@ -2423,3 +2423,28 @@ def test_server_main_closes_both_bounded_local_execution_pools():
     source = inspect.getsource(server_module.main)
     assert "mot_2d_local.close(wait=False)" in source
     assert "zeeman_local.close(wait=False)" in source
+
+
+def test_second_tab_reuses_active_session_without_invalidating_review_csrf(tmp_path):
+    root = tmp_path / "repo"
+    service = _creation_service(root)
+    with running_server(request_count=5, repository_root=root, creation_service=service) as base_url:
+        status, headers, payload = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"})
+        assert status == 200
+        cookie = headers["Set-Cookie"].split(";", 1)[0]
+        csrf = payload["data"]["csrf_token"]
+        status, second_headers, second = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin", "Cookie": cookie})
+        assert status == 200
+        assert second_headers["Set-Cookie"].split(";", 1)[0] == cookie
+        assert second["data"]["csrf_token"] == csrf
+        body = json.dumps({"name": "Two tabs", "slug": "two-tabs", "source_id": list_sources(root)["sources"][0]["id"], "s0_values": [1.3]})
+        trusted = _session_headers(base_url, cookie, csrf)
+        status, _, _ = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers=trusted, body=body)
+        assert status == 200
+        status, _, rejected = request_json(f"{base_url}/api/v1/campaigns/2d/preview", method="POST", headers={**trusted, "X-CSRF-Token": "wrong"}, body=body)
+        assert status == 403
+        assert rejected["error"]["code"] == "invalid_csrf"
+        status, unrelated_headers, unrelated = request_json(f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin", "Cookie": "mot_ui_session=unknown"})
+        assert status == 200
+        assert unrelated_headers["Set-Cookie"].split(";", 1)[0] != cookie
+        assert unrelated["data"]["csrf_token"] != csrf
