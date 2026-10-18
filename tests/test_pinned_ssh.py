@@ -2,6 +2,7 @@ from __future__ import annotations
 from workflow_api.platform_io import executable
 
 import base64
+import os
 import inspect
 import io
 import json
@@ -11,6 +12,14 @@ import threading
 from pathlib import Path
 
 import pytest
+
+def _expected_windows_ssh_paths():
+    if os.name != "nt":
+        return {}
+    return {name: os.environ[name] for name in
+            ("SystemRoot", "WINDIR", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "PROGRAMDATA")
+            if name in os.environ}
+
 
 from workflow_api.pinned_ssh import (
     PinnedSshPolicy,
@@ -680,7 +689,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         "env": {
             "PATH": str(executable("ssh").parent),
             "HOME": str(Path.home()),
-            "LC_ALL": "C",
+            "LC_ALL": "C", **_expected_windows_ssh_paths(),
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -703,7 +712,7 @@ def test_screening_runner_omits_absent_ssh_agent_from_pinned_environment(
         tmp_path, executable("ssh"), _profile(),
     ).inspect(example=True)
     assert observed["env"] == {
-        "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C", **_expected_windows_ssh_paths(),
     }
     assert observed["timeout"] == 45
 
@@ -922,7 +931,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         "env": {
             "PATH": str(executable("ssh").parent),
             "HOME": str(Path.home()),
-            "LC_ALL": "C",
+            "LC_ALL": "C", **_expected_windows_ssh_paths(),
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1136,7 +1145,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
         "timeout": 45,
         "check": False,
         "env": {
-            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C", **_expected_windows_ssh_paths(),
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1313,7 +1322,7 @@ def test_snapshot_runner_preserves_exact_bounded_popen_contract(
     assert observed["kwargs"] == {
         "cwd": tmp_path,
         "env": {
-            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C", **_expected_windows_ssh_paths(),
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,
@@ -1536,7 +1545,7 @@ def test_snapshot_runner_omits_absent_agent_socket(tmp_path, monkeypatch):
         tmp_path, executable("ssh"), timeout=25,
     )).snapshot(_profile())
     assert observed["env"] == {
-        "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C", **_expected_windows_ssh_paths(),
     }
 
 
@@ -1607,7 +1616,7 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
         "stderr": subprocess.PIPE,
         "cwd": tmp_path,
         "env": {
-            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C",
+            "PATH": str(executable("ssh").parent), "HOME": str(Path.home()), "LC_ALL": "C", **_expected_windows_ssh_paths(),
             "SSH_AUTH_SOCK": "/tmp/test-agent.sock",
         },
         "shell": False,

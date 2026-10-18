@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -290,4 +291,18 @@ describe("IndividualMot2DRun", () => {
     expect(window.localStorage.getItem("ytterbium.individual-run.mot_2d.v1")).toBeNull();
 
   });
+  it("restores a completed run under the development StrictMode lifecycle without restarting it", async () => {
+    const service = api();
+    const completed = { id: `individual-run-${"a".repeat(24)}`, display_name: "mot2d-ui",
+      lifecycle: "results_ready", record_state: "succeeded", execution: { mode: "local", zeus_job_id: null },
+      retention: { status: "retained", particle_states_requested: true },
+      results: { availability: "verified", completed_at: "2026-10-18T17:40:00Z" },
+      metrics: { n_input: 20, n_survivors: 1, conditional_efficiency: 0.05, elapsed_s: 1 }, provenance: {} } as unknown as Awaited<ReturnType<IndividualMot2DApi["run"]>>;
+    window.localStorage.setItem("ytterbium.individual-run.mot_2d.v1", JSON.stringify({version: 1, family: "mot_2d", display_name: "mot2d-ui", execution_mode: "local"}));
+    vi.mocked(service.runs).mockResolvedValue([completed]); vi.mocked(service.run).mockResolvedValue(completed);
+    render(<StrictMode><IndividualMot2DRun api={service} onBack={vi.fn()} /></StrictMode>);
+    expect(await screen.findByRole("heading", { name: "Verified results are ready" })).toBeVisible();
+    expect(service.confirm).not.toHaveBeenCalled(); expect(service.startLocal).not.toHaveBeenCalled();
+  });
+
 });
