@@ -267,6 +267,7 @@ def _target_pbs(text: str, project_directory: str | None) -> bytes:
         path = Path(project_directory)
         ZeusProfile.parse({"username": path.parent.name, "project_directory": project_directory})
         if path.name == "ytterbium_lab_simulation_ui_test":
+            text = text.replace("set -euo pipefail\n", "set -euo pipefail\nexport OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1\n")
             text = text.replace("/ytterbium_lab_simulation_new", "/ytterbium_lab_simulation_ui_test")
             text = text.replace("/venvs/atomsmltr/", "/venvs/atomsmltr-ui-test/")
             if "source " not in text:

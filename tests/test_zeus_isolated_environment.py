@@ -23,6 +23,7 @@ def test_isolated_jobs_use_only_the_test_checkout_and_python(render):
     assert '/venvs/atomsmltr/' not in pbs
     assert '#PBS -l select=1:ncpus=200:mem=64gb' in pbs
     assert 'git rev-parse HEAD' in pbs
+    assert 'OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1' in pbs
 
 @pytest.mark.parametrize('path', ['/home/tal.noa/other','/home/other/ytterbium_lab_simulation_ui_test','/home/tal.noa/ytterbium_lab_simulation_ui_test/../ytterbium_lab_simulation_new','/home//tal.noa/ytterbium_lab_simulation_ui_test'])
 def test_profile_rejects_other_or_noncanonical_paths(path):
