@@ -34,6 +34,14 @@ wait for completion, and open Results.
 
 ## C. Zeus connection and individual canaries
 
+For isolated individual-run tests, launch `npm run dev:zeus-test` from `ui`
+(`npm.cmd run dev:zeus-test` on Windows) and open `http://localhost:5174`.
+Verify the test-mode banner. This mode permits individual simulations only,
+not campaign tests. It uses `/home/<username>/ytterbium_lab_simulation_ui_test`
+and `/home/<username>/venvs/atomsmltr-ui-test`. Provision these independent
+copies at the tested local Git revision; neither may alias production.
+The normal `npm run dev` uses the production target on port 5173.
+
 - [ ] First-time connection guidance clearly identifies the official Technion
       account prerequisite and explains the in-application SSH setup.
 - [ ] A valid SSH-key connection returns a read-only job snapshot.
