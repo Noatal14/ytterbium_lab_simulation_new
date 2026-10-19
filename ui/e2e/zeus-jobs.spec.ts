@@ -59,9 +59,9 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
   await expect(page.getByText("Running", { exact: true })).toBeVisible();
   await expect(page.getByText(/No action needed while this job is running/)).toBeVisible();
   await expect(page.getByText(/Raw PBS state H/)).toBeVisible();
-  await expect(page.getByText("Held — attention needed")).toBeVisible();
-  await expect(page.getByText(/Recorded dependencies: 4756504\[0\] \(context only\)/)).toBeVisible();
-  await expect(page.getByText(/A hold always needs attention/)).toBeVisible();
+  await expect(page.getByText("Hold", { exact: true })).toBeVisible();
+  await expect(page.getByText(/Dependencies: 4756504\[0\]/)).toBeVisible();
+  await expect(page.getByText(/This job is on hold|On hold. PBS has recorded dependencies/)).toBeVisible();
   expect(snapshotRequests).toBe(1);
   await page.getByRole("button", { name: "Refresh status" }).click();
   await expect.poll(() => snapshotRequests).toBe(2);
