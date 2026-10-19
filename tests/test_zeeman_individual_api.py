@@ -170,3 +170,16 @@ def test_server_exposes_only_the_six_reviewed_session_bound_operations(api):
         )["session"]
         == "bound-session"
     )
+
+
+def test_real_creation_boundary_previews_chosen_laser_settings(tmp_path):
+    from tests.test_zeeman_run_creation import service, REQUEST
+    api = IndividualZeemanApi(service(tmp_path), Local(), Zeus())
+    request = {**REQUEST, "zeeman_s0": 1.7, "zeeman_detuning_gamma": -10.5}
+    preview = api.preview(request, session_id="laser-ui-session")
+    assert preview["plan"]["zeeman_s0"] == 1.7
+    assert preview["plan"]["zeeman_detuning_gamma"] == -10.5
+    laser = preview["plan"]["resolved_configuration"]["zeeman"]["laser"]
+    assert laser["s0"] == 1.7 and laser["detuning_gamma"] == -10.5
+    with pytest.raises(ValueError):
+        api.preview({**REQUEST, "zeeman_s0": 1.7}, session_id="laser-ui-session")

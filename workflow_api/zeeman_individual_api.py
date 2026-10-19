@@ -52,9 +52,10 @@ class IndividualZeemanApi:
         self.zeus = zeus
 
     def preview(self, payload: Mapping[str, Any], *, session_id: str) -> dict[str, Any]:
+        laser_fields = {"zeeman_s0", "zeeman_detuning_gamma"}
         _exact(
             payload,
-            {
+            (laser_fields if laser_fields & set(payload) else set()) | {
                 "particle_count",
                 "seed",
                 "mot_2d_s0",
