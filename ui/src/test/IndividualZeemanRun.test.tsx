@@ -95,7 +95,7 @@ describe("individual Zeeman wizard", () => {
     expect(screen.getByText(/no files have been created/i)).toBeInTheDocument();
     expect(screen.getByText(/Scientific role: individual only/i)).toBeInTheDocument();
     expect(screen.getByText(/not validated campaign inputs/i)).toBeInTheDocument();
-    await user.click(screen.getByText(/view all locked settings/i));
+    await user.click(screen.getByText(/view complete reviewed configuration/i));
     expect(screen.getByText(/RK4StCustom/)).toBeInTheDocument();
     expect(api.confirm).not.toHaveBeenCalled();
   });
