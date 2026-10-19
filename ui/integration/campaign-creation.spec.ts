@@ -70,7 +70,7 @@ test("real individual review shows both seeds and the reservation from frozen PB
   await page.getByRole("textbox", { name: "Technion username", exact: true }).fill("fixture.user");
   await page.getByRole("button", { name: "Review Zeus submission", exact: true }).click();
   await expect(page.getByText("64 GiB", { exact: true })).toBeVisible();
-  await expect(page.getByText("8 hours", { exact: true })).toBeVisible();
+  await expect(page.getByText("24 hours", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Confirm and submit one Zeus job", exact: true })).toBeVisible();
   await page.screenshot({ path: "test-results/real-reviewed-resources.png", fullPage: true });
   const forbidden = await page.request.post("/api/v1/individual-runs/mot-2d/zeus/confirm", { data: {} });

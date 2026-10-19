@@ -295,7 +295,7 @@ def _render_pbs(run: Mapping[str, Any], package_sha256: str, project_directory: 
 #PBS -N iz_{run['run_id'][:24]}
 #PBS -q zeus_combined_q
 #PBS -l select=1:ncpus={workers}:mem=64gb
-#PBS -l walltime=08:00:00
+#PBS -l walltime=24:00:00
 set -euo pipefail
 cd /home/${{USER}}/ytterbium_lab_simulation_new
 test "$(git rev-parse HEAD)" = "{run['git_revision']}"
