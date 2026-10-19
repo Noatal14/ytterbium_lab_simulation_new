@@ -210,3 +210,20 @@ def fixed_cpu_budget(monkeypatch):
     # CPU-limit tests override this again to exercise smaller hosts.
     import workflow_api.zeeman_run_specification as specification
     monkeypatch.setattr(specification.os, "cpu_count", lambda: 16)
+
+
+@pytest.mark.parametrize("s0,detuning", [(0.0, 0.0), (1.7, -10.5), (4.2, 2.0)])
+def test_individual_laser_choices_are_frozen_and_change_the_plan(s0, detuning):
+    custom = build_zeeman_run_plan({**REQUEST, "zeeman_s0": s0, "zeeman_detuning_gamma": detuning}, **CONTEXT)
+    laser = custom.configuration["resolved"]["zeeman"]["laser"]
+    assert laser["s0"] == custom.review.zeeman_s0 == s0
+    assert laser["detuning_gamma"] == custom.review.zeeman_detuning_gamma == detuning
+    assert laser["detuning_rad_s"] == detuning * laser["gamma_rad_s"]
+    assert "laser_s0" not in custom.review.locked_settings
+    assert custom.plan_sha256 != build_zeeman_run_plan(REQUEST, **CONTEXT).plan_sha256
+
+
+@pytest.mark.parametrize("s0,detuning", [(-1, -10), (True, -10), (1, False), (float("nan"), -10), (1, float("inf")), ("3", -10), (1e308, -10)])
+def test_invalid_individual_laser_choices_are_rejected(s0, detuning):
+    with pytest.raises(ValueError):
+        validate_zeeman_run_request({**REQUEST, "zeeman_s0": s0, "zeeman_detuning_gamma": detuning})

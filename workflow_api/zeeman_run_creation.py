@@ -86,6 +86,8 @@ def _preview_dto(plan: ZeemanRunPlan) -> dict[str, Any]:
         "execution_mode": plan.review.execution_mode,
         "particle_count": plan.review.particle_count,
         "seed": plan.review.seed,
+        "zeeman_s0": plan.review.zeeman_s0,
+        "zeeman_detuning_gamma": plan.review.zeeman_detuning_gamma,
         "mot_2d_s0": plan.review.mot_2d_s0,
         "mot_2d_detuning_gamma": plan.review.mot_2d_detuning_gamma,
         "mot_2d_magnet_radius_m": plan.review.mot_2d_magnet_radius_m,

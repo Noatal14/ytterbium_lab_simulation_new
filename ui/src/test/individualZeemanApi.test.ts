@@ -4,7 +4,7 @@ const request: ZeemanRequest = { particle_count: 200, seed: 42, mot_2d_s0: 1.3, 
 const review = (overrides: Record<string, unknown> = {}) => ({
   preview_token: "review-token", expires_in_seconds: 300,
   plan: {
-    run_id: "zeeman-one", family: "zeeman", execution_mode: "local", particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8,
+    zeeman_s0: 3, zeeman_detuning_gamma: -13.75, run_id: "zeeman-one", family: "zeeman", execution_mode: "local", particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8,
     retain_particle_states: true, suitability: "individual_only", output_disposition: "retain_survivor_states",
     locked_settings: { policy: "canonical" }, resolved_configuration: { solver: "RK4StCustom" }, lifecycle_state: "configured",
     laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64),
@@ -25,6 +25,10 @@ describe("individual Zeeman API trust boundary", () => {
     ["malformed digest", review({ plan_sha256: "not-a-digest" })],
     ["wrong mode", review({ execution_mode: "zeus" })],
     ["wrong run request", review({ particle_count: 201 })],
+    ["mismatched saturation", review({ zeeman_s0: 2 })],
+    ["mismatched detuning", review({ zeeman_detuning_gamma: -10 })],
+    ["invalid saturation", review({ zeeman_s0: -1 })],
+    ["nonfinite detuning", review({ zeeman_detuning_gamma: Infinity })],
   ])("rejects a %s in a creation review", async (_label, data) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope(data)));
     await expect(createIndividualZeemanApi(async () => "csrf").preview(request)).rejects.toThrow();

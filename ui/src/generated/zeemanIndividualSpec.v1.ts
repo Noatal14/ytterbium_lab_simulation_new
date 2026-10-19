@@ -5,6 +5,15 @@ export const ZEEMAN_INDIVIDUAL_SPECIFICATION_V1 = {
     "solver_policy": "bundled_numerical_policy",
     "suitability": "individual_only"
   },
+  "laser_controls": {
+    "detuning_gamma": {
+      "default": -13.75
+    },
+    "s0": {
+      "default": 3.0,
+      "minimum": 0.0
+    }
+  },
   "mot_2d_controls": {
     "detuning_gamma": {
       "default": -0.9196610026631429,
@@ -41,7 +50,9 @@ export const ZEEMAN_INDIVIDUAL_SPECIFICATION_V1 = {
     "mot_2d_magnet_radius_m",
     "npools",
     "retain_particle_states",
-    "execution_mode"
+    "execution_mode",
+    "zeeman_s0",
+    "zeeman_detuning_gamma"
   ],
   "seed": {
     "default": 42,

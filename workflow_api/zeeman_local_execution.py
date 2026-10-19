@@ -114,7 +114,12 @@ class ZeemanLocalWorker:
         field = _plain(resolved["zeeman"]["field"])
         laser = _plain(resolved["zeeman"]["laser"])
         downstream = _plain(resolved["downstream_boundary"])
-        expected_laser = resolved_zeeman_laser_parameters(**ZEEMAN_LASER_CONFIG)
+        from workflow_api.zeeman_run_plan import validate_zeeman_laser_controls
+        try:
+            s0, detuning = validate_zeeman_laser_controls(laser["s0"], laser["detuning_gamma"])
+        except (ValueError, KeyError, TypeError, OverflowError) as exc:
+            raise WorkerProductError("Reviewed Zeeman laser controls are invalid.") from exc
+        expected_laser = resolved_zeeman_laser_parameters(**{**ZEEMAN_LASER_CONFIG, "s0": s0, "detuning_gamma": detuning})
         expected_field = resolved_zeeman_field_construction(
             radii_m=field["radii_m"],
             positions_m=field["positions_m"],

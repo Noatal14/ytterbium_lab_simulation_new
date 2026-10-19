@@ -8,7 +8,9 @@
     "mot_2d_magnet_radius_m",
     "npools",
     "retain_particle_states",
-    "execution_mode"
+    "execution_mode",
+    "zeeman_s0",
+    "zeeman_detuning_gamma"
   ],
   "particle_count": {
     "minimum": 1,
@@ -27,17 +29,44 @@
     "default": 42
   },
   "mot_2d_controls": {
-    "s0": {"minimum": 0.1, "maximum": 3.0, "default": 1.3},
-    "detuning_gamma": {"minimum": -1.55, "maximum": -0.85, "default": -0.9196610026631429},
-    "magnet_radius_m": {"minimum": 0.045, "maximum": 0.051, "default": 0.04676406447474441}
+    "s0": {
+      "minimum": 0.1,
+      "maximum": 3.0,
+      "default": 1.3
+    },
+    "detuning_gamma": {
+      "minimum": -1.55,
+      "maximum": -0.85,
+      "default": -0.9196610026631429
+    },
+    "magnet_radius_m": {
+      "minimum": 0.045,
+      "maximum": 0.051,
+      "default": 0.04676406447474441
+    }
   },
   "worker_policy": {
-    "local": {"minimum": 1, "maximum": 64, "default": 8},
-    "zeus": {"fixed": 200}
+    "local": {
+      "minimum": 1,
+      "maximum": 64,
+      "default": 8
+    },
+    "zeus": {
+      "fixed": 200
+    }
   },
   "fixed_classification": {
     "suitability": "individual_only",
     "magnet_profile_policy": "canonical_only",
     "solver_policy": "bundled_numerical_policy"
+  },
+  "laser_controls": {
+    "s0": {
+      "minimum": 0.0,
+      "default": 3.0
+    },
+    "detuning_gamma": {
+      "default": -13.75
+    }
   }
 }
