@@ -246,11 +246,33 @@ describe("onboarding home", () => {
     expect(await screen.findByText("Connected — read-only snapshot received")).toBeInTheDocument();
     expect(screen.getByText(/No action needed while this job is running/)).toBeInTheDocument();
     expect(screen.getByText(/Raw PBS state H/)).toBeInTheDocument();
-    expect(screen.getByText(/Recorded dependencies: 14 \(context only\)/)).toBeInTheDocument();
-    expect(screen.getByText(/A hold always needs attention/)).toBeInTheDocument();
+    expect(screen.getByText(/Dependencies: 14/)).toBeInTheDocument();
+    expect(screen.getByText(/This job is on hold/)).toBeInTheDocument();
+    expect(screen.getByText("Scheduler note: held")).toBeInTheDocument();
+    expect(screen.getByText("Hold").closest("article")).toHaveClass("job-card--queued");
+    expect(screen.queryByText(/Held — attention needed/)).not.toBeInTheDocument();
     expect(screen.getByText(/Raw PBS state X · Exit -29/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /submit/i })).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/password/i)).not.toBeInTheDocument();
+  });
+
+  it("distinguishes array summaries and tasks, and explains a dependency hold neutrally", async () => {
+    const user = userEvent.setup();
+    const job = zeusSnapshot.scheduler.jobs[3];
+    const snapshot = { ...zeusSnapshot, scheduler: { ...zeusSnapshot.scheduler, jobs: [
+      { ...job, id: "20[].zeus-master", comment: "Job Array Held, too many failed attempts" },
+      { ...job, id: "20[14].zeus-master", raw_state: "R" as const, state: "running" as const, comment: null },
+      { ...job, id: "21.zeus-master", comment: null },
+    ] } };
+    render(<App api={fixtureApi} creation={creationFixture} zeus={{ snapshot: async () => snapshot }} />);
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
+    await user.type(screen.getByLabelText("Technion username"), "tal.noa");
+    await user.click(screen.getByRole("button", { name: "Connect and check status" }));
+    expect(await screen.findByText("Array summary")).toBeVisible();
+    expect(screen.getByText("Array task")).toBeVisible();
+    expect(screen.getByText(/On hold. PBS has recorded dependencies/)).toBeVisible();
+    expect(screen.getByText(/Scheduler note: Job Array Held, too many failed attempts/)).toBeVisible();
+    for (const label of screen.getAllByText("Hold")) expect(label.closest("article")).toHaveClass("job-card--queued");
   });
 
   it("previews and explicitly confirms Zeus preparation without submitting a job", async () => {
