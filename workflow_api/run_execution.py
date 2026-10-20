@@ -215,6 +215,7 @@ class ExecutorLifecycleStore(RunRecordStore):
         lease: ExecutionLease | None = None,
         *,
         allow_run_metadata_change: bool = False,
+        allow_ancestor_metadata_change: bool = False,
     ):
         # Reuse D2's identifier checks before entering D3's descriptor chain.
         self._run_directory(family, run_id, require=False)
@@ -232,14 +233,25 @@ class ExecutorLifecycleStore(RunRecordStore):
                 for metadata in map(os.fstat, directory_descriptors)
             )
             if lease is not None:
-                same_directories = (
-                    lease.directory_identities == identities
-                    if not allow_run_metadata_change
-                    else (
-                        lease.directory_identities[:-1] == identities[:-1]
-                        and lease.directory_identities[-1][:2] == identities[-1][:2]
+                if allow_ancestor_metadata_change:
+                    # Only the explicit post-worker snapshot may renew ancestor
+                    # metadata: creating a sibling run changes parent ctimes.
+                    # The original run itself must retain its full identity.
+                    same_directories = (
+                        len(lease.directory_identities) == len(identities)
+                        and all(previous[:2] == current[:2] for previous, current in
+                                zip(lease.directory_identities[:-1], identities[:-1]))
+                        and lease.directory_identities[-1] == identities[-1]
                     )
-                )
+                else:
+                    same_directories = (
+                        lease.directory_identities == identities
+                        if not allow_run_metadata_change
+                        else (
+                            lease.directory_identities[:-1] == identities[:-1]
+                            and lease.directory_identities[-1][:2] == identities[-1][:2]
+                        )
+                    )
                 if (
                     lease.family != family
                     or lease.run_id != run_id
@@ -304,6 +316,7 @@ class ExecutorLifecycleStore(RunRecordStore):
         *,
         prior_lease: ExecutionLease | None = None,
         allow_run_metadata_change: bool = False,
+        allow_ancestor_metadata_change: bool = False,
     ) -> tuple[dict[str, dict[str, Any]], ExecutionLease]:
         """Read one digest-bound evidence snapshot from a pinned canonical run."""
         _require_authority(authority)
@@ -312,6 +325,7 @@ class ExecutorLifecycleStore(RunRecordStore):
             run_id,
             prior_lease,
             allow_run_metadata_change=allow_run_metadata_change,
+            allow_ancestor_metadata_change=allow_ancestor_metadata_change,
         ) as (directory, verify, lease):
             with self._execution_locked_at(directory):
                 records = {
@@ -821,36 +835,40 @@ class IndividualRunExecutionCoordinator:
                 configuration=_freeze(_plain(evidence["configuration"])),
                 inputs=_freeze(_plain(evidence["inputs"])),
             )
+            worker_failure = None
             try:
                 setter = getattr(self.worker, "set_progress_callback", None)
                 if setter is not None:
                     setter(self.progress_callback)
                 product = self.worker.run(request)
             except WorkerFailed:
-                status = store.transition(
-                    self.authority, family, run_id,
-                    expected_revision=current["revision"], target_state="failed",
-                    updated_utc=self.clock(),
-                    error={"code": "worker_failed", "message": "The worker reported a failure."},
-                    lease=lease,
-                )
-                return {"state": status["state"], "recovered": False, "worker_started": True}
+                worker_failure = ("failed", "worker_failed", "The worker reported a failure.")
             except Exception:
+                worker_failure = ("outcome_unknown", "worker_outcome_unknown", "The worker outcome is unknown.")
+
+            # Renew only across the physical-worker interval, for every outcome.
+            # All materialized input identities and original records must match;
+            # the original run ctime remains strict. Publication uses the fresh
+            # full-ctime lease, never this narrowly scoped renewal permission.
+            refreshed, publication_lease = store.evidence_snapshot(
+                self.authority, family, run_id, prior_lease=lease,
+                allow_ancestor_metadata_change=True,
+            )
+            if refreshed != evidence:
+                raise RunRecordError("Canonical execution evidence changed during the worker.")
+            lease = publication_lease
+            if worker_failure is not None:
+                target, code, message = worker_failure
                 status = store.transition(
                     self.authority, family, run_id,
-                    expected_revision=current["revision"], target_state="outcome_unknown",
-                    updated_utc=self.clock(),
-                    error={"code": "worker_outcome_unknown", "message": "The worker outcome is unknown."},
+                    expected_revision=current["revision"], target_state=target,
+                    updated_utc=self.clock(), error={"code": code, "message": message},
                     lease=lease,
                 )
                 return {"state": status["state"], "recovered": False, "worker_started": True}
-            if not isinstance(product, WorkerProduct):
-                product_error = WorkerProductError("Worker returned an invalid product.")
-            else:
-                product_error = None
             try:
-                if product_error is not None:
-                    raise product_error
+                if not isinstance(product, WorkerProduct):
+                    raise WorkerProductError("Worker returned an invalid product.")
                 store.publish_worker_artifacts(
                     self.authority, family, run_id,
                     expected_revision=current["revision"], product=product, lease=lease,
@@ -865,6 +883,21 @@ class IndividualRunExecutionCoordinator:
                     expected_revision=current["revision"], target_state="failed",
                     updated_utc=self.clock(),
                     error={"code": "invalid_worker_output", "message": "Worker output failed validation."},
+                    lease=lease,
+                )
+            except Exception:
+                # A complete D3 registry published before a status-write crash
+                # remains available for explicit recovery without worker replay.
+                if inspect_run(self.root, family, run_id).integrity == "incomplete_publication":
+                    raise
+                # A publication error is not evidence of physical failure or
+                # success. Only the original lease/revision may record ambiguity;
+                # if reattestation fails, propagate without touching a replacement.
+                status = store.transition(
+                    self.authority, family, run_id,
+                    expected_revision=current["revision"], target_state="outcome_unknown",
+                    updated_utc=self.clock(),
+                    error={"code": "publication_outcome_unknown", "message": "Result publication could not be verified."},
                     lease=lease,
                 )
             return {"state": status["state"], "recovered": False, "worker_started": True}

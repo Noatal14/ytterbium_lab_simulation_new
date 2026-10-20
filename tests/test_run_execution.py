@@ -427,22 +427,28 @@ def test_execution_lease_rejects_canonical_tree_replacement_by_worker(
 
 
 @pytest.mark.parametrize("target", ["root", "data", "runs", "family", "run"])
-def test_execution_lease_detects_aba_during_worker_without_mutating_run(
-    tmp_path, target
-):
+def test_worker_ancestor_aba_restoration_preserves_original_publication_authority(tmp_path, target):
     root = make_run(tmp_path)
     path = execution_target(root, target)
-    worker = MutatingWorker(discarded_product(), lambda: aba_restore(path))
+    foreign = tmp_path / "foreign-copy"
+    def restore_with_foreign_copy():
+        # Ancestor metadata may legitimately change during physics. This boundary
+        # authenticates the restored original object, not its past namespace events.
+        shutil.copytree(root, foreign)
+        aba_restore(path)
+    worker = MutatingWorker(discarded_product(), restore_with_foreign_copy)
     coordinator = IndividualRunExecutionCoordinator(
         root, worker, issue_execution_authority(), clock=lambda: NOW
     )
-
-    with pytest.raises(RunRecordError, match="lease"):
-        coordinator.execute("zeeman", "zeeman-run-001")
-
-    inspected = inspect_run(root, "zeeman", "zeeman-run-001")
-    assert inspected.state == "running"
-    assert inspected.results is None
+    if target == "run":
+        with pytest.raises(RunRecordError, match="lease"):
+            coordinator.execute("zeeman", "zeeman-run-001")
+        assert inspect_run(root, "zeeman", "zeeman-run-001").state == "running"
+    else:
+        assert coordinator.execute("zeeman", "zeeman-run-001")["state"] == "succeeded"
+        assert inspect_run(root, "zeeman", "zeeman-run-001").integrity == "complete_verified"
+    untouched = inspect_run(foreign, "zeeman", "zeeman-run-001")
+    assert untouched.state == "running" and untouched.results is None
     assert worker.calls == 1
 
 

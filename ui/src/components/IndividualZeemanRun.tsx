@@ -27,7 +27,11 @@ import {
   rememberIndividualRun,
 } from "../features/individual/individualRunRecovery";
 
-type Props = { api: IndividualZeemanApi; onBack: () => void; onViewZeusJobs?: () => void };
+type Props = {
+  api: IndividualZeemanApi;
+  onBack: () => void;
+  onViewZeusJobs?: () => void;
+};
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const steps: { id: Step; label: string }[] = [
   { id: "configure", label: "Configure" },
@@ -90,7 +94,21 @@ export function particleCountAfterModeChange(
     ? defaults[to]
     : current;
 }
-export function monitorCopy(state: string | undefined) {
+export function monitorCopy(
+  state: string | undefined,
+  executionMode?: string,
+  hasLiveProgress = true,
+) {
+  if (
+    executionMode === "local" &&
+    (state === "outcome_unknown" || (state === "running" && !hasLiveProgress))
+  )
+    return {
+      title: "Local execution needs inspection",
+      message:
+        "The saved run has no verified active local worker. Do not resubmit. Inspect the original run and its saved results before continuing.",
+      attention: true,
+    };
   if (state === "held")
     return {
       title: "Zeus job is held",
@@ -269,7 +287,9 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as IndividualRun);
-      setRecoveryPending(found.execution.mode === "zeus" && found.lifecycle !== "results_ready");
+      setRecoveryPending(
+        found.execution.mode === "zeus" && found.lifecycle !== "results_ready",
+      );
       setStep(
         found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
           ? "monitor"
@@ -504,15 +524,21 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       : npools === spec.worker_policy.zeus.fixed);
   function changeParticles(next: number) {
     setParticles(next);
-    if (mode === "local" && Number.isInteger(next) && next >= spec.particle_count.minimum) {
+    if (
+      mode === "local" &&
+      Number.isInteger(next) &&
+      next >= spec.particle_count.minimum
+    ) {
       setNpools((current) => Math.min(current, next));
     }
   }
   function changeMode(next: ZeemanMode) {
     const nextParticles = particleCountAfterModeChange(particles, mode, next);
-    const particleWorkerLimit = Number.isInteger(nextParticles) && nextParticles >= spec.particle_count.minimum
-      ? nextParticles
-      : spec.worker_policy.local.maximum;
+    const particleWorkerLimit =
+      Number.isInteger(nextParticles) &&
+      nextParticles >= spec.particle_count.minimum
+        ? nextParticles
+        : spec.worker_policy.local.maximum;
     setParticles(nextParticles);
     setNpools(
       next === "local"
@@ -1041,7 +1067,11 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       {step === "monitor" && (
         <section className="run-stage">
           {(() => {
-            const copy = monitorCopy(zeusHeld ? "held" : run?.record_state);
+            const copy = monitorCopy(
+              zeusHeld ? "held" : run?.record_state,
+              run?.execution.mode ?? mode,
+              Boolean(run?.execution.progress),
+            );
             return (
               <div
                 className={`action-banner${copy.attention ? " action-banner--attention" : " action-banner--running"}`}

@@ -113,7 +113,20 @@ const format = (value: number, digits = 6) =>
     maximumFractionDigits: 8,
   });
 
-export function mot3dMonitorCopy(state: string | undefined) {
+export function mot3dMonitorCopy(
+  state: string | undefined,
+  executionMode?: string,
+  hasLiveProgress = true,
+) {
+  if (
+    executionMode === "local" &&
+    (state === "outcome_unknown" || (state === "running" && !hasLiveProgress))
+  )
+    return {
+      title: "Local execution needs inspection",
+      body: "The saved run has no verified active local worker. Do not resubmit. Inspect the original run and its saved results before continuing.",
+      attention: true,
+    };
   if (state === "held")
     return {
       title: "Zeus job is held",
@@ -289,7 +302,9 @@ export function IndividualMot3DRun({
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot3DRun);
-      setRecoveryPending(found.execution.mode === "zeus" && found.lifecycle !== "results_ready");
+      setRecoveryPending(
+        found.execution.mode === "zeus" && found.lifecycle !== "results_ready",
+      );
       setStep(
         found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
           ? "monitor"
@@ -1241,6 +1256,8 @@ export function IndividualMot3DRun({
           {(() => {
             const copy = mot3dMonitorCopy(
               zeusHeld ? "held" : run?.record_state,
+              run?.execution.mode ?? mode,
+              Boolean(run?.execution.progress),
             );
             return (
               <div

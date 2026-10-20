@@ -363,3 +363,26 @@ def test_detail_never_exposes_stored_executor_error_text(tmp_path):
     }
     assert "secret" not in repr(detail)
     assert "/absolute/path" not in repr(detail)
+
+
+def test_failed_local_future_is_visible_without_mutating_saved_execution(tmp_path):
+    from workflow_api.run_progress import IndividualRunProgressRegistry
+
+    root, directory, _ = _running_registry(tmp_path)
+    progress = IndividualRunProgressRegistry()
+    progress.start("zeeman", "run-1", 100)
+    progress.update("zeeman", "run-1", 100, 100)
+    progress.fail("zeeman", "run-1", "RunRecordError")
+    registry = CanonicalIndividualRunRegistry(root, progress_registry=progress)
+    before = (directory / "status.json").read_bytes()
+    row = registry.list_runs()["runs"][0]
+    assert row["record_state"] == "running"
+    assert row["execution"]["progress"] is None
+    assert row["results"]["availability"] == "not_ready"
+    assert row["warnings"] == [
+        "Local execution stopped before its outcome was verified. Do not resubmit; inspect the original run."
+    ]
+    detail = registry.get_run(row["id"])
+    assert detail["execution"]["progress"] is None
+    assert "RunRecordError" not in json.dumps(detail)
+    assert (directory / "status.json").read_bytes() == before

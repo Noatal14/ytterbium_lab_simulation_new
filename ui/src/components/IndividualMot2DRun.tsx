@@ -52,7 +52,20 @@ const ActionError = ({ error }: { error: string | null }) =>
       {error}
     </p>
   ) : null;
-export function mot2dMonitorCopy(state: string | undefined) {
+export function mot2dMonitorCopy(
+  state: string | undefined,
+  executionMode?: string,
+  hasLiveProgress = true,
+) {
+  if (
+    executionMode === "local" &&
+    (state === "outcome_unknown" || (state === "running" && !hasLiveProgress))
+  )
+    return {
+      title: "Local execution needs inspection",
+      body: "The saved run has no verified active local worker. Do not resubmit. Inspect the original run and its saved results before continuing.",
+      attention: true,
+    };
   if (state === "held")
     return {
       title: "Zeus job is held",
@@ -218,7 +231,9 @@ export function IndividualMot2DRun({
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot2DRun);
-      setRecoveryPending(found.execution.mode === "zeus" && found.lifecycle !== "results_ready");
+      setRecoveryPending(
+        found.execution.mode === "zeus" && found.lifecycle !== "results_ready",
+      );
       setStep(
         found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
           ? "monitor"
@@ -908,6 +923,8 @@ export function IndividualMot2DRun({
           {(() => {
             const copy = mot2dMonitorCopy(
               zeusHeld ? "held" : run?.record_state,
+              run?.execution.mode ?? mode,
+              Boolean(run?.execution.progress),
             );
             return (
               <div

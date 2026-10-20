@@ -29,7 +29,7 @@ def deterministic_individual_worker_budget(monkeypatch, request):
     # Individual-run fixtures request eight workers. CPU-limit regression
     # tests explicitly override this deterministic unit-test host again.
     if request.module.__name__.split('.')[-1] in {
-        'test_run_execution', 'test_individual_run_api',
+        'test_run_execution', 'test_local_execution_lease_concurrency', 'test_individual_run_api',
         'test_zeeman_individual_api', 'test_zeeman_individual_http',
         'test_workflow_api_contracts', 'test_workflow_api_server',
     }:

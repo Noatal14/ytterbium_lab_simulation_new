@@ -200,6 +200,12 @@ class CanonicalIndividualRunRegistry:
                 else []
             ),
         }
+        if (self.progress_registry is not None
+                and status["execution"]["mode"] == "local"
+                and self.progress_registry.failure(inspected.family, inspected.run_id) is not None):
+            item["warnings"].append(
+                "Local execution stopped before its outcome was verified. Do not resubmit; inspect the original run."
+            )
         return {
             **item,
             "provenance": {

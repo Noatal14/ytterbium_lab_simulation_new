@@ -306,6 +306,8 @@ class BoundedLocalExecutionPool:
         self._handles: dict[tuple[str, str], LocalExecutionHandle] = {}
         self._cancelling: set[tuple[str, str]] = set()
         self._closed = False
+        self._failures: dict[tuple[str, str], str] = {}
+        self._failure_limit = max_pending
         self._progress_registry = progress_registry
 
     def submit(self, family: str, run_id: str) -> LocalExecutionHandle:
@@ -315,10 +317,12 @@ class BoundedLocalExecutionPool:
             if self._closed:
                 raise RuntimeError("Local execution pool is closed.")
             key = (family, run_id)
+            if key in self._failures:
+                raise RuntimeError("Local execution failed; explicit recovery is required.")
             if key in self._cancelling:
                 raise RuntimeError("This run is already scheduled locally.")
             existing = self._handles.get(key)
-            if existing is not None and not existing.future.done():
+            if existing is not None:
                 raise RuntimeError("This run is already scheduled locally.")
             if not self._slots.acquire(blocking=False):
                 raise RuntimeError("Local execution queue is full.")
@@ -360,6 +364,21 @@ class BoundedLocalExecutionPool:
                 and current.future is future
             ):
                 self._handles.pop(key, None)
+                if not future.cancelled():
+                    error = future.exception()
+                    if error is not None:
+                        # Keep bounded, traceback-free diagnostics after removing
+                        # the Future, and never silently resubmit this failed key.
+                        self._failures[key] = type(error).__name__[:128]
+                        if self._progress_registry is not None:
+                            self._progress_registry.fail(*key, "background_execution_failed")
+                        if len(self._failures) >= self._failure_limit:
+                            self._closed = True
+
+    def failure(self, family: str, run_id: str) -> str | None:
+        """Return non-authoritative background failure diagnostics."""
+        with self._lock:
+            return self._failures.get((family, run_id))
 
     def cancel_queued(self, family: str, run_id: str, *, updated_utc: str) -> bool:
         """Cancel only work proven not to have started; never guess about running work."""

@@ -232,3 +232,23 @@ Campaign workers pass frozen magnet radii through `--magnet-radius-m` to
 preserve their exact SI value. The manual `--magnet-radius-mm` interface remains
 available with its previous conversion behavior; the two options are mutually
 exclusive. This avoids changing a frozen value during an m→mm→m round trip.
+
+### Local worker publication and interruption checks
+
+Creating another run while a local simulation is computing must not invalidate
+its output. At the worker/publication boundary, the coordinator reattests the
+original canonical directory identities, strict run-directory freshness and all
+four original records before obtaining a fresh strict publication lease.
+Publication and recovery still reject replacement, symlinks and directory
+changes during their own guarded operations. A completely restored ancestor
+rename during computation is not detected retrospectively; inputs have already
+been hash-checked and copied into owned memory, and output is published only
+through the reattested canonical directory handles.
+
+An unexpected background failure clears live progress, retains a bounded
+process-local diagnostic and blocks repeating that submission. Durable outputs
+are never described as verified until publication succeeds. After a restart,
+a saved running record with no live telemetry is shown as requiring inspection,
+not as proof of an active worker. The UI does not offer local resume or retry
+for this uncertain outcome. Inspect the original record and any saved artifacts;
+explicit maintainer reconciliation must not rerun the physical calculation.
