@@ -15,7 +15,7 @@ import os
 import shlex
 import subprocess
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 
@@ -662,6 +662,12 @@ def _cumulative_targets(final_targets, round_index, round_count):
     )
 
 
+def _pbs_path(value):
+    """Represent a logical PBS path with POSIX separators on every host."""
+    spelling = value.as_posix() if hasattr(value, "as_posix") else str(value)
+    return PurePosixPath(spelling.replace("\\", "/"))
+
+
 def render_discovery_jobs(
     root,
     revision,
@@ -673,7 +679,7 @@ def render_discovery_jobs(
 ):
     """Render the canonical Discovery job bundle without filesystem effects."""
     root = Path(root)
-    command_root = Path(command_campaign) if command_campaign is not None else root
+    command_root = _pbs_path(command_campaign if command_campaign is not None else root)
     manifest_path = command_root / "campaign.json"
     input_path = (
         Path(command_input)
@@ -881,7 +887,7 @@ def render_selection_stage_jobs(
 ):
     """Render canonical selection-stage PBS bytes without writing them."""
 
-    root = Path(root)
+    root = _pbs_path(root)
     manifest_path = root / "campaign.json"
     dt = manifest["design"]["screening_dt_s"]
     runner_module = (
@@ -898,7 +904,7 @@ def render_selection_stage_jobs(
     for family in FAMILIES:
         short = "don" if family == "angled_donut" else "sp"
         stage_root = root / stage / family
-        selection = selection_paths[family]
+        selection = _pbs_path(selection_paths[family])
         worker = (
             _header(f"m3d2_{short}_{stage[:3]}", manifest["provenance"]["git_commit"])
             + f"python -u -m {runner_module} --family {family} "
@@ -1109,7 +1115,7 @@ def prepare_refinement(root, manifest):
 
 
 def _canonical_campaign_logical_root(root):
-    path = Path(root)
+    path = _pbs_path(root)
     parts = path.parts
     marker = ("data", "optimization", "mot_3d")
     matches = [
@@ -1120,7 +1126,7 @@ def _canonical_campaign_logical_root(root):
         or (len(parts) == matches[0] + 5 and parts[matches[0] + 3] == "ui_acceptance")
     ):
         raise ValueError("Campaign root must end in data/optimization/mot_3d/<name>.")
-    logical = Path(*parts[matches[0] :])
+    logical = PurePosixPath(*parts[matches[0] :])
     if any(part in {"", ".", ".."} for part in logical.parts):
         raise ValueError("Campaign root is not canonical.")
     return logical
@@ -1446,7 +1452,7 @@ def render_final_validation_input_transition(
     """Render finalist winners and input-generation jobs without filesystem I/O."""
     from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
-    root = Path(logical_campaign_root)
+    root = _pbs_path(logical_campaign_root)
     acceptance = workload.policy(manifest)
     expected_parts = (
         "data",
@@ -1850,7 +1856,7 @@ def validate_final_validation_inputs(root, manifest):
 
 def render_final_validation_transition(logical_root, manifest):
     """Purely render the four final-validation PBS files and advanced manifest."""
-    root = Path(logical_root)
+    root = _pbs_path(logical_root)
     if (
         root.is_absolute()
         or root.parts[:3] != ("data", "optimization", "mot_3d")
@@ -1861,8 +1867,8 @@ def render_final_validation_transition(logical_root, manifest):
     ):
         raise ValueError("Invalid portable final-validation campaign root.")
     stage = manifest["stages"]["final_validation_input_generation"]
-    input_manifest = Path(stage["input_manifest"])
-    locked = Path(stage["locked_nominals"])
+    input_manifest = _pbs_path(stage["input_manifest"])
+    locked = _pbs_path(stage["locked_nominals"])
     jobs = root / "jobs" / "final_validation"
     expected_locked = root / "selection" / "locked_nominals.json"
     expected_input_manifest = root / "final_validation_inputs" / "input_manifest.json"

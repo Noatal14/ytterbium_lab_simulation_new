@@ -121,7 +121,7 @@ export function SmokeFlow({
         onResetSubmission={onResetSubmission}
         onViewJobs={onViewJobs}
       />
-      <SmokeLifecycleSection
+      {(Boolean(lifecycle) || ["submitted", "unknown", "terminal"].includes(submissionState)) && <SmokeLifecycleSection
         lifecycle={lifecycle}
         lifecycleCheck={lifecycleCheck}
         lifecycleError={lifecycleError}
@@ -129,7 +129,7 @@ export function SmokeFlow({
         lifecycleErrorPanel={lifecycleErrorPanel}
         onRefreshLifecycle={onRefreshLifecycle}
         onViewJobs={onViewJobs}
-      />
+      />}
       <ScreeningPreparationSection
         lifecycle={lifecycle}
         screeningState={screeningState}
