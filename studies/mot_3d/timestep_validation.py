@@ -102,8 +102,9 @@ def _atomic_npz(path, **arrays):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{os.getpid()}.npz")
-    np.savez_compressed(temporary, **arrays)
-    with temporary.open("rb") as stream:
+    with temporary.open("wb") as stream:
+        np.savez_compressed(stream, **arrays)
+        stream.flush()
         os.fsync(stream.fileno())
     os.replace(temporary, path)
 

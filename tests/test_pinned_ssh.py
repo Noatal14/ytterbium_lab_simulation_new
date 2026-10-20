@@ -1626,18 +1626,17 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
         operation, _profile(), paths, "a" * 40, payload,
     ) == (0, b'{"ok":true}', b"")
     remote = shlex.split(observed["argv"][-1])
-    assert remote[:3] == [
-        "python3", "-c",
-        "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
-        "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))",
-    ]
-    assert base64.urlsafe_b64decode(remote[3]).decode() == _REMOTE_TRANSFER_SCRIPT
-    assert remote[4:7] == [
-        operation.value, "tal.noa",
-        "/home/tal.noa/ytterbium_lab_simulation_new",
-    ]
-    assert json.loads(base64.urlsafe_b64decode(remote[7])) == list(paths)
-    assert remote[8] == "a" * 40
+    assert remote[:2] == ["python3", "-c"]
+    assert len(remote) == 3
+    assert "sys.stdin.buffer.readline(262145)" in remote[2]
+    header_line, remaining = bytes(process.stdin.value).split(b"\n", 1)
+    source, receiver_argv = json.loads(header_line)
+    assert base64.urlsafe_b64decode(source).decode() == _REMOTE_TRANSFER_SCRIPT
+    assert receiver_argv[:4] == ["<transfer-receiver>", operation.value, "tal.noa",
+                                "/home/tal.noa/ytterbium_lab_simulation_new"]
+    assert json.loads(base64.urlsafe_b64decode(receiver_argv[4])) == list(paths)
+    assert receiver_argv[5] == "a" * 40
+    assert remaining == payload
     assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
     assert observed["kwargs"] == {
         "stdin": subprocess.PIPE,
@@ -1652,7 +1651,6 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
         "close_fds": True,
     }
     assert observed["wait"] == 120
-    assert bytes(process.stdin.value) == payload
     assert process.stdin.closed
 
 
@@ -1743,11 +1741,15 @@ def test_transfer_runner_writes_exact_max_payload_and_closes(
 ):
     class Sink:
         def __init__(self):
+            self.header = None
             self.length = 0
             self.digest = __import__("hashlib").sha256()
             self.closed = False
 
         def write(self, value):
+            if self.header is None:
+                self.header = json.loads(value)
+                return
             self.length += len(value)
             self.digest.update(value)
 
@@ -1875,8 +1877,10 @@ def test_transfer_empty_payload_still_attempts_and_swallows_close(
         def __init__(self):
             self.close_attempted = False
 
-        def write(self, _value):
-            raise AssertionError("empty payload must not be written")
+        def write(self, value):
+            # Empty binary payloads still carry the transport-owned header.
+            assert value.endswith(b"\n")
+            assert json.loads(value)[1][1] == "inspect"
 
         def close(self):
             self.close_attempted = True
@@ -2046,3 +2050,60 @@ def test_transfer_unknown_remote_error_falls_back_unchanged(tmp_path, monkeypatc
     with pytest.raises(ZeusPreparationError) as caught:
         transport.inspect(())
     assert caught.value.code == "zeus_transfer_failed"
+
+
+@pytest.mark.parametrize("operation", list(TransferOperation))
+@pytest.mark.parametrize("acceptance", [False, True])
+def test_transfer_maximum_valid_paths_use_short_command_and_preserve_binary_stream(
+    tmp_path, monkeypatch, operation, acceptance
+):
+    """Execute the real framing bootstrap, never SSH or a campaign operation."""
+    import hashlib
+    from workflow_api import zeus_transfer
+    namespace = "n" * 128
+    prefix = f"data/particle_states/after_zeeman/{'ui_acceptance/' if acceptance else ''}{namespace}/{'d' * 128}/"
+    paths = tuple(prefix + "f" * (512 - len(prefix) - 8) + f"{index:04}.npy" for index in range(72))
+    assert len(set(paths)) == 72
+    assert all(len(value.encode()) == 512 for value in paths)
+    encoded_paths = base64.urlsafe_b64encode(json.dumps(paths, separators=(",", ":")).encode()).decode()
+    # Demonstrate the old command exceeded Windows' maximum with valid inputs.
+    old_remote = shlex.join(("python3", "-c", "fixed-wrapper", base64.urlsafe_b64encode(zeus_transfer._REMOTE_TRANSFER_SCRIPT.encode()).decode(), operation.value, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance", encoded_paths, "a" * 40))
+    old_length = len(subprocess.list2cmdline([str(executable("ssh")), "tal.noa@zeus.technion.ac.il", old_remote]))
+    assert old_length > 32767
+    receiver = "#" + "x" * 40000 + "\nimport sys,json,hashlib\ndata=sys.stdin.buffer.read()\nprint(json.dumps({'argv':sys.argv[1:],'length':len(data),'sha256':hashlib.sha256(data).hexdigest()}))\n"
+    monkeypatch.setattr(zeus_transfer, "_REMOTE_TRANSFER_SCRIPT", receiver)
+    original_popen = subprocess.Popen
+    observed = {}
+    def execute_bootstrap(argv, **kwargs):
+        observed["length"] = len(subprocess.list2cmdline(argv))
+        observed["remote"] = shlex.split(argv[-1])
+        parts = observed["remote"]
+        wrapper = parts[parts.index("-c") + 1]
+        # The observer receiver is test-only; the bootstrap and stdin stream are real.
+        return original_popen([sys.executable, "-c", wrapper], **kwargs)
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", execute_bootstrap)
+    profile = ZeusProfile.parse({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_" + ("ui_acceptance" if acceptance else "new")})
+    payload = (b'\n["untrusted-payload-header",["campaign","attacker"]]\n' + b"\x00\n\xffBINARY\r\n" * 1000) if operation is not TransferOperation.INSPECT else b""
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(tmp_path, executable("ssh"), timeout=10))
+    status, raw, stderr = runner.transfer(operation, profile, paths, "a" * 40, payload)
+    assert status == 0, stderr.decode(errors="replace")
+    result = json.loads(raw)
+    assert result == {"argv": [operation.value, profile.username, profile.project_directory, encoded_paths, "a" * 40], "length": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
+    assert observed["length"] < 4000
+    parts = observed["remote"]
+    assert parts[parts.index("-c") - 1] == ("/home/tal.noa/venvs/atomsmltr-ui-test/bin/python" if acceptance else "python3")
+    if acceptance:
+        assert parts[:4] == ["cd", "--", profile.project_directory, "&&"]
+    else:
+        assert parts[:2] == ["python3", "-c"]
+
+
+def test_transfer_rejects_oversized_framing_before_process_creation(tmp_path, monkeypatch):
+    from workflow_api import zeus_transfer
+    monkeypatch.setattr(zeus_transfer, "_REMOTE_TRANSFER_SCRIPT", "#" * (256 * 1024))
+    calls = []
+    monkeypatch.setattr("workflow_api.pinned_ssh.subprocess.Popen", lambda *args, **kwargs: calls.append((args, kwargs)))
+    runner = PinnedSshRunner(PinnedSshPolicy.transfer(tmp_path, executable("ssh"), timeout=10))
+    with pytest.raises(ValueError, match="framing exceeds its bound"):
+        runner.transfer(TransferOperation.INSPECT, _profile(), (), "a" * 40, b"")
+    assert calls == []

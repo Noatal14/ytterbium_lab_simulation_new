@@ -1894,26 +1894,36 @@ class PinnedSshRunner:
         encoded = base64.urlsafe_b64encode(
             json.dumps(paths, separators=(",", ":")).encode()
         ).decode("ascii")
-        script = base64.urlsafe_b64encode(_REMOTE_TRANSFER_SCRIPT.encode()).decode(
-            "ascii"
-        )
+        # The framing line is transport-owned. The receiver consumes exactly the
+        # same binary payload after this line, including embedded newlines/NULs.
+        # Keep source and path inventory off argv: Windows limits CreateProcess
+        # command lines to 32,767 characters even for valid 72 x 512-byte paths.
+        header = json.dumps(
+            [
+                base64.urlsafe_b64encode(_REMOTE_TRANSFER_SCRIPT.encode()).decode("ascii"),
+                [
+                    "<transfer-receiver>", operation.value, profile.username,
+                    profile.project_directory, encoded, expected_commit,
+                ],
+            ],
+            separators=(",", ":"),
+        ).encode("ascii") + b"\n"
+        if len(header) > 256 * 1024:
+            raise ValueError("Pinned SSH transfer framing exceeds its bound.")
         wrapper = (
-            "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
-            "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
+            "import base64,json,sys;line=sys.stdin.buffer.readline(262145);"
+            "(line.endswith(b'\\n') and len(line)<=262144) or sys.exit(21);"
+            "header=json.loads(line);sys.argv=header[1];"
+            "exec(compile(base64.urlsafe_b64decode(header[0]),'<transfer-receiver>','exec'))"
         )
-        command = shlex.join(
-            (
-                "python3",
-                "-c",
-                wrapper,
-                script,
-                operation.value,
-                profile.username,
-                profile.project_directory,
-                encoded,
-                expected_commit,
-            )
-        )
+        interpreter = "python3"
+        prefix = ""
+        if profile.project_directory == (
+            f"/home/{profile.username}/ytterbium_lab_simulation_ui_acceptance"
+        ):
+            interpreter = f"/home/{profile.username}/venvs/atomsmltr-ui-test/bin/python"
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
+        command = prefix + shlex.join((interpreter, "-c", wrapper))
         arguments = [
             str(self._policy.ssh_executable),
             *definition.ssh_arguments,
@@ -1958,6 +1968,7 @@ class PinnedSshRunner:
 
         def feed() -> None:
             try:
+                process.stdin.write(header)
                 if payload:
                     process.stdin.write(payload)
                 process.stdin.close()

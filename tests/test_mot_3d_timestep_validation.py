@@ -31,6 +31,28 @@ def test_atomic_npz_uses_requested_filename(tmp_path):
     assert np.array_equal(np.load(path)["captured"], [True, False])
 
 
+def test_atomic_npz_flushes_a_writable_descriptor_before_publication(tmp_path, monkeypatch):
+    import os
+    path = tmp_path / "outcomes.npz"
+    path.write_bytes(b"previous complete artifact")
+    real_fsync = os.fsync
+    synchronized = []
+    def windows_compatible_fsync(descriptor):
+        # Windows refuses fsync on a read-only descriptor. A zero-byte write
+        # exercises that requirement on every host without modifying the NPZ.
+        assert os.write(descriptor, b"") == 0
+        assert path.read_bytes() == b"previous complete artifact"
+        synchronized.append(descriptor)
+        real_fsync(descriptor)
+    monkeypatch.setattr(validation.os, "fsync", windows_compatible_fsync)
+    validation._atomic_npz(path, captured=np.array([True, False]), velocity=np.array([1.5, 2.0]))
+    assert len(synchronized) == 1
+    with np.load(path) as stored:
+        assert np.array_equal(stored["captured"], [True, False])
+        assert np.array_equal(stored["velocity"], [1.5, 2.0])
+    assert list(tmp_path.iterdir()) == [path]
+
+
 def test_crossed_interval_is_reproducible_and_contains_constant():
     interval = validation._crossed_interval(
         np.full((5, 20), 0.01), 0.05, np.random.default_rng(123)

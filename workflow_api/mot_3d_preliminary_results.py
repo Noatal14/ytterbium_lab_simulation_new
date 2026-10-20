@@ -389,13 +389,13 @@ def _validate_materialized_preliminary_results(
                 or (
                     source_campaign_path is not None
                     and current.get("campaign_manifest_path")
-                    != str(Path(source_campaign_path) / "campaign.json")
+                    != str(PurePosixPath(source_campaign_path) / "campaign.json")
                 )
                 or (
                     source_campaign_path is not None
                     and current.get("selection_path")
                     != str(
-                        Path(source_campaign_path)
+                        PurePosixPath(source_campaign_path)
                         / "selection"
                         / "discovery"
                         / f"{family}.json"
@@ -678,7 +678,7 @@ def expected_selection_particle_provenance(
     from workflow_api.mot_3d_workload import policy
 
     acceptance = policy(manifest)
-    project = Path(project_directory)
+    project = PurePosixPath(project_directory)
     if (
         not project.is_absolute()
         or str(project) != project_directory
@@ -735,13 +735,13 @@ def expected_selection_particle_provenance(
             or mot_seed in seen_mot_seeds
             or not isinstance(path, str)
             or not isinstance(metadata_path, str)
-            or Path(path).parent != Path(metadata_path).parent
-            or Path(path).suffix != ".npy"
-            or Path(metadata_path) != Path(path).with_suffix(".json")
-            or not Path(path).is_absolute()
-            or project not in Path(path).parents
-            or str(Path(path)) != path
-            or str(Path(metadata_path)) != metadata_path
+            or PurePosixPath(path).parent != PurePosixPath(metadata_path).parent
+            or PurePosixPath(path).suffix != ".npy"
+            or PurePosixPath(metadata_path) != PurePosixPath(path).with_suffix(".json")
+            or not PurePosixPath(path).is_absolute()
+            or project not in PurePosixPath(path).parents
+            or str(PurePosixPath(path)) != path
+            or str(PurePosixPath(metadata_path)) != metadata_path
             or not isinstance(digest, str)
             or HEX64.fullmatch(digest) is None
             or not isinstance(record["metadata_sha256"], str)
@@ -854,8 +854,8 @@ def validate_preliminary_result_bytes(
     from workflow_api.mot_3d_workload import policy
 
     acceptance = policy(manifest)
-    expected_root = Path(project_directory)
-    campaign_path = Path(campaign_absolute_path)
+    expected_root = PurePosixPath(project_directory)
+    campaign_path = PurePosixPath(campaign_absolute_path)
     if (
         not expected_root.is_absolute()
         or str(expected_root) != project_directory
@@ -913,8 +913,10 @@ def validate_preliminary_result_bytes(
             ):
                 try:
                     record = _strict_json_bytes(raw)
-                    suffix = Path(name).with_suffix(".npz").as_posix()
-                    expected_outcome_path = str(Path(campaign_absolute_path) / suffix)
+                    suffix = PurePosixPath(name).with_suffix(".npz").as_posix()
+                    expected_outcome_path = str(
+                        PurePosixPath(campaign_absolute_path) / suffix
+                    )
                     if record.get("outcomes_path") != expected_outcome_path:
                         raise PreliminaryResultError("result_metadata_mismatch")
                     record["outcomes_path"] = str(campaign / suffix)

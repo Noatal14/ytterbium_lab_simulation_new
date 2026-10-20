@@ -3,7 +3,7 @@ import io
 import json
 import zipfile
 from argparse import Namespace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 import pytest
@@ -228,7 +228,7 @@ def _closed_fixture(tmp_path, *, acceptance=False):
             ):
                 record = json.loads(raw)
                 record["outcomes_path"] = str(
-                    Path(remote) / Path(relative).with_suffix(".npz")
+                    PurePosixPath(remote) / PurePosixPath(relative).with_suffix(".npz")
                 )
                 raw = json.dumps(record, indent=2).encode() + b"\n"
             result_files[relative] = raw
@@ -586,7 +586,7 @@ def test_pure_particle_provenance_matches_legacy_sampler(monkeypatch, tmp_path):
             "preliminary_check": [
                 {
                     "path": row["file"],
-                    "metadata_path": str(Path(row["file"]).with_suffix(".json")),
+                    "metadata_path": str(PurePosixPath(row["file"]).with_suffix(".json")),
                     "metadata_sha256": str(index + 5) * 64,
                     "sha256": row["array_sha256"],
                     "shape": [row["available_count"], 6],
@@ -786,3 +786,36 @@ def test_acceptance_preliminary_uses_same_exact_byte_validators_and_normal_merge
         summary = validated.summaries[family]
         assert summary["particle_count"] == 4
         assert summary["design"]["acceptance"]["suitability"] == "acceptance_only"
+
+
+@pytest.mark.parametrize("acceptance", [False, True])
+def test_remote_preliminary_contract_ignores_windows_host_path_flavour(
+    monkeypatch, tmp_path, acceptance
+):
+    """Remote identities stay POSIX while captured bytes use the native temp FS."""
+    from pathlib import PureWindowsPath
+    import workflow_api.mot_3d_preliminary_results as contract
+
+    fixture = _closed_fixture(tmp_path, acceptance=acceptance)
+    native_path = contract.Path
+
+    def windows_host_path(value):
+        if isinstance(value, str) and value.startswith("/home/"):
+            return PureWindowsPath(value)
+        return native_path(value)
+
+    monkeypatch.setattr(contract, "Path", windows_host_path)
+    manifest, selections, results, particle_selection, remote = fixture
+    project = remote.split("/data/", 1)[0]
+    assert contract.expected_preliminary_particle_selection(
+        json.loads(manifest), project_directory=project
+    ) == particle_selection
+    validated = contract.validate_preliminary_result_bytes(
+        manifest_bytes=manifest,
+        selection_bytes=selections,
+        result_files=results,
+        expected_particle_selection=particle_selection,
+        campaign_absolute_path=remote,
+        project_directory=project,
+    )
+    assert set(validated.sha256) == set(results)
