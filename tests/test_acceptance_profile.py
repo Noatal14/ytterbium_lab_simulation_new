@@ -192,7 +192,7 @@ def test_measured_runtime_resource_revision_preserves_entire_physics_and_workloa
 def test_profile_resources_fit_measured_physical_workload_without_changing_budgets():
     profile = load_acceptance_profile()
     for name, stage in profile.family('mot_2d')['stages'].items():
-        expected = (1, 4) if name == 'smoke' else (100, 64) if name == 'production' else (10, 8)
+        expected = (1, 4) if name == 'smoke' else (24, 16) if name == 'production' else (10, 8)
         assert (stage['npools'], stage['ncpus'], stage['memory_gb'], stage['walltime_seconds']) == (expected[0], expected[0], expected[1], 3600)
     for name, stage in profile.family('mot_3d')['stages'].items():
         heavy = name in ('finalist_selection', 'final_validation')

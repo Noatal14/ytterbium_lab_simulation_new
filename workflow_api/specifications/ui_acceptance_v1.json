@@ -144,9 +144,9 @@
         "trials_per_worker": 0,
         "candidates": 1,
         "workers": 1,
-        "npools": 100,
-        "ncpus": 100,
-        "memory_gb": 64,
+        "npools": 24,
+        "ncpus": 24,
+        "memory_gb": 16,
         "walltime_seconds": 3600,
         "bootstrap_replicates": 10000
       }

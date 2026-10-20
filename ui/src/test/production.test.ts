@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import success from "../../../tests/contracts/v1/workflow_api_success.json";
 import {
   parseFinalizationPreview,
@@ -113,4 +113,23 @@ describe("Production and finalization strict contracts", () => {
       ).toThrow();
     }
   });
+});
+
+
+afterEach(() => vi.unstubAllEnvs());
+it.each([
+  ["development", "eligible_as_3d_campaign_input", "acceptance_only"],
+  ["ui-acceptance", "acceptance_only", "eligible_as_3d_campaign_input"],
+])("keeps finalized %s results on their exact suitability boundary", (mode, expected, forbidden) => {
+  vi.stubEnv("MODE",mode);
+  for (const [id,parse] of [["finalization-preview",parseFinalizationPreview],["finalization-confirm",parseFinalizationResult]] as const) {
+    const value = structuredClone(data(id));
+    const results = value.results as Record<string,unknown>[];
+    results[0].output_suitability = expected;
+    expect(parse(value).results[0].output_suitability).toBe(expected);
+    results[0].output_suitability = forbidden;
+    expect(() => parse(value)).toThrow();
+    delete results[0].output_suitability;
+    expect(() => parse(value)).toThrow();
+  }
 });

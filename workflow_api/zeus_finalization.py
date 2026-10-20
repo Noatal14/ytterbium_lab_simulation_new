@@ -24,6 +24,7 @@ from workflow_api.preview_registry import PreviewRegistry
 from workflow_api.discovery import build_registry
 from workflow_api.manifest_codec import read_manifest
 from workflow_api.zeus_snapshot import ZeusProfile
+from workflow_api.mot_2d_spec import validate_campaign_policy
 
 TOKEN_LIFETIME_SECONDS = 300
 MAX_PENDING_PREVIEWS = 32
@@ -178,6 +179,11 @@ class ZeusFinalizationCoordinator:
     def _validate_state(
         state: RemoteProductionState, manifest: Mapping[str, Any]
     ) -> None:
+        try:
+            acceptance = validate_campaign_policy(dict(manifest))
+        except ValueError as error:
+            raise ZeusFinalizationError("remote_response_invalid") from error
+        expected_suitability = "acceptance_only" if acceptance else "eligible_as_3d_campaign_input"
         allowed = {
             "queued",
             "running",
@@ -330,7 +336,7 @@ class ZeusFinalizationCoordinator:
                     set(result) != required
                     or result["n_ensembles"] != 20
                     or result["retention"] != "retained"
-                    or result["output_suitability"] != "eligible_as_3d_campaign_input"
+                    or result["output_suitability"] != expected_suitability
                 ):
                     raise ZeusFinalizationError("remote_response_invalid")
         elif state.evidence_digest or state.files or state.results:

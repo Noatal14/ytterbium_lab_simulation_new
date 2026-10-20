@@ -68,7 +68,7 @@ sampled particles (2D: two; 3D: one), 2D screen trials to one per worker and
 refinement checkpoints to 1/2/3/4, and 3D discovery to four trials per worker.
 Physics, simulation endpoints, classification, and control neighborhoods remain
 canonical. Smoke uses one CPU/pool and 4 GiB. The 2D production stage uses
-100 CPUs/pools and 64 GiB; other 2D stages use ten CPUs/pools and 8 GiB. Fresh
+24 CPUs/pools and 16 GiB; other 2D stages use ten CPUs/pools and 8 GiB. Fresh
 2D input-generation jobs use ten CPUs/pools and 8 GiB. 3D finalist selection and final validation use 100 CPUs/pools and 64 GiB,
 with each family array limited to one running task (at most 200 CPUs across
 both families). Other 3D stages retain four CPUs/pools and 4 GiB; merges retain
@@ -152,15 +152,17 @@ never delete a directory just because its name resembles a test artifact.
 ### Measured compute-only resource revision
 
 The successful real two-particle smoke job `4808390` used 389 wall seconds
-and 371 CPU seconds at the frozen working timestep of 1.25 µs. Production
-retains all 20 sealed ensembles and all 32 available input atoms per ensemble,
-with the frozen 0.625 µs final timestep. A ten-pool production reservation
-would therefore be approximately eight hours and could not fit its one-hour
-cap. The revised profile reserves 100 CPUs/pools and 64 GiB for that stage.
-Linear scaling from the measured smoke gives about 42 minutes, or roughly
-42–46 minutes allowing modest overhead; this is a scheduling estimate, not a
-measured production result or guaranteed completion time. Ten-worker stages
-reserve 8 GiB to accommodate approximately 0.5 GiB per worker plus overhead.
+and 371 CPU seconds at the frozen working timestep of 1.25 µs. Each Production
+array task processes **one** sealed ensemble, containing at most 32 actual input
+atoms, at the frozen 0.625 µs final timestep. The 20 ensembles are 20 separate
+array tasks, rather than one combined 640-atom task. Production reserves 24
+CPUs/pools and 16 GiB per task. The existing four-task array throttle permits
+96 CPUs and 64 GiB per campaign, or 192 CPUs and 128 GiB for two operating
+systems running this stage together. The solver distributes individual atom
+trajectories through `Pool.imap` with its default chunk size of one; 32 atoms
+need at most two trajectory waves across 24 workers. A 6–10 minute per-task
+estimate is provisional; the one-hour limit and ordinary validation remain
+binding. Ten-worker stages reserve 8 GiB for worker and coordinator overhead.
 
 This revision changes compute resources only. Every force, canonical physical-policy hash,
 timestep, horizon, role seed, ensemble population, particle budget, candidate
@@ -168,7 +170,7 @@ count, trial count, and validation criterion remains identical. The full
 non-resource policy SHA-256 is
 `700293772dc54b4419d6776873b4c44326d720585a61fc256e4a527a76a17746`.
 The new content identity is
-`a01d692170b437368e5dfb0904e366e8119f9e08912f0eb409ba1565e55bd0d9`.
+`f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148`.
 The profile/content and code-closure hashes change to record this operational
 revision; the canonical laboratory and numerical identities do not change.
 Earlier evidence remains tied to its original profile hash. New campaigns
@@ -182,3 +184,33 @@ Final validation uses one recoil seed per task at the finer unchanged timestep,
 about 25 minutes at the same upper bound. These estimates do not guarantee
 completion; the one-hour limit and ordinary validation still apply. Family
 arrays retain all three tasks and run one task at a time.
+
+### Actual task units and concurrency
+
+These are allocation bounds for one campaign with one fixed 2D `s0` value.
+Repeated trials and recoil seeds run sequentially inside their task. Every
+physical solver receives the original frozen timestep and endpoint.
+
+| Stage | One array task | Tasks and concurrency | CPUs per task / maximum per campaign |
+| --- | --- | --- | --- |
+| 2D smoke | One trial, one ensemble, two atoms | One task | 1 / 1 |
+| 2D screen | One trial, five ensembles × two atoms, flattened | Three workers, throttle 3 | 10 / 30 |
+| 2D refinement | Up to four cumulative trials, each five × two atoms | Three workers per checkpoint, throttle 3 | 10 / 30 |
+| 2D confirmation | One candidate, five × two atoms | Five tasks, throttle 3 | 10 / 30 |
+| 2D sensitivity | One control point, five × two atoms | 17 tasks, throttle 3 | 10 / 30 |
+| 2D production | One sealed ensemble, at most 32 atoms | 20 tasks, throttle 4 | 24 / 96 |
+| 3D discovery | One worker, four cumulative trials of 12 atoms | Three workers per family; dependent rounds | 4 / 24 across two families |
+| 3D preliminary | Up to four candidates × three recoil seeds; four atoms per call | Three workers per family | 4 / 24 across two families |
+| 3D refinement / closure | Up to six candidates × three recoil seeds; four atoms per call | Three workers per family | 4 / 24 across two families |
+| 3D finalist selection | One candidate, up to 640 flattened atoms, three recoil calls | Three tasks per family, throttle 1 per family | 100 / 200 across two families |
+| Fresh Zeeman generation | One seed, 32 initial atoms | 20 tasks, no array throttle | 1 / 20 |
+| Fresh 2D generation | One seed, at most 32 atoms | 20 tasks, no array throttle | 10 / 200 |
+| Fresh input freeze | Validate and seal the 20 ensembles | One scalar job | 1 / 1 |
+| 3D final validation | One recoil seed, up to 640 flattened atoms | Three tasks per family, throttle 1 per family | 100 / 200 across two families |
+
+Selection merges reserve one CPU and 4 GiB per family. The acceptance run
+schedule serializes **entire 3D campaigns** between operating systems, including
+fresh input generation, to keep the combined physical-worker allocation within
+200 CPUs. This is an operator scheduling requirement; the scheduler does not
+provide a cross-campaign global cap. Independent unrelated jobs are outside
+these per-campaign bounds.

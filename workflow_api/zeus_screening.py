@@ -136,18 +136,34 @@ class ZeusScreeningCoordinator:
         state=self.transport_factory(profile).inspect(campaign=relative,commit=commit,prepared_files=prepared,submission_key=submission_key,transition_files=files)
         return campaign_id,campaign,manifest,commit,submission_key,files,profile,state
 
+    @staticmethod
+    def _public_points(state: RemoteSmokeState) -> list[dict[str, Any]]:
+        # Artifact attestations stay in the private state/digest. Public clients
+        # consume the established four-field point contract.
+        fields = ("s0", "captured", "input", "efficiency")
+        try:
+            result = []
+            for row in state.points:
+                if not isinstance(row, Mapping) or set(row) not in (set(fields), set(fields) | {"artifacts"}):
+                    raise ValueError()
+                result.append({key: row[key] for key in fields})
+            return result
+        except (KeyError, TypeError, ValueError):
+            raise ZeusScreeningError("remote_response_invalid") from None
+
     def status(self,request:Mapping[str,object],*,session_id:str) -> dict[str,object]:
         campaign_id,_,manifest,_,_,_,_,state=self._inspect(request)
         validation="valid" if state.lifecycle in {"ready_to_prepare_screen","screen_prepared"} else "invalid" if state.lifecycle=="outputs_invalid" else "not_ready"
         action={"queued":"wait","running":"wait","awaiting_outputs":"wait","held_attention":"inspect_on_zeus","failed":"inspect_on_zeus","outputs_invalid":"inspect_on_zeus","unknown":"inspect_on_zeus","ready_to_prepare_screen":"review_screening_preparation","screen_prepared":"none"}[state.lifecycle]
         scheduler_state=state.lifecycle if state.lifecycle in {"queued","running","held_attention"} else "completed_success" if state.lifecycle in {"awaiting_outputs","ready_to_prepare_screen","screen_prepared","outputs_invalid"} else "completed_failed" if state.lifecycle=="failed" else "unknown"
-        return {"source":"zeus","queried_at":datetime.now(timezone.utc).isoformat(),"campaign":{"id":campaign_id,"name":manifest["name"],"stage":"screen" if state.lifecycle=="screen_prepared" else "smoke"},"submission":{"job_id":state.job_id},"scheduler":{"state":scheduler_state,"raw_state":state.raw_state,"exit_status":state.exit_status},"validation":{"status":validation,"points":[dict(row) for row in state.points],"artifact_count":state.artifact_count},"lifecycle":state.lifecycle,"next_action":action}
+        return {"source":"zeus","queried_at":datetime.now(timezone.utc).isoformat(),"campaign":{"id":campaign_id,"name":manifest["name"],"stage":"screen" if state.lifecycle=="screen_prepared" else "smoke"},"submission":{"job_id":state.job_id},"scheduler":{"state":scheduler_state,"raw_state":state.raw_state,"exit_status":state.exit_status},"validation":{"status":validation,"points":self._public_points(state),"artifact_count":state.artifact_count},"lifecycle":state.lifecycle,"next_action":action}
 
     def preview(self,request:Mapping[str,object],*,session_id:str)->dict[str,object]:
         campaign_id,campaign,manifest,commit,submission_key,files,profile,state=self._inspect(request)
         if state.lifecycle=="screen_prepared": raise ZeusScreeningError("screening_already_prepared")
         mapping={"queued":"smoke_running","running":"smoke_running","awaiting_outputs":"smoke_outputs_pending","held_attention":"smoke_held","failed":"smoke_failed","outputs_invalid":"smoke_outputs_invalid","unknown":"smoke_status_unknown"}
         if state.lifecycle!="ready_to_prepare_screen": raise ZeusScreeningError(mapping.get(state.lifecycle,"smoke_status_unknown"))
+        public_points=self._public_points(state)
         smoke_digest=hashlib.sha256(json.dumps([dict(row) for row in state.points],sort_keys=True).encode()).hexdigest()
         _,_,_,prepared,_,_=self._unpack_plan(self._plan(campaign_id))
         expires_at = self.clock() + TOKEN_LIFETIME_SECONDS
@@ -160,7 +176,7 @@ class ZeusScreeningCoordinator:
             )
         except OverflowError as error:
             raise ZeusScreeningError("too_many_pending_previews") from error
-        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit},"from_stage":"smoke","to_stage":"screen","smoke":{"job_id":state.job_id,"points":[dict(row) for row in state.points],"artifact_count":state.artifact_count},"artifacts":{"create":["screen/tasks.json","jobs/02_screen.pbs"],"update":["campaign.json"]},"effects":{"prepare_screening":True,"submit_screening":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
+        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit},"from_stage":"smoke","to_stage":"screen","smoke":{"job_id":state.job_id,"points":public_points,"artifact_count":state.artifact_count},"artifacts":{"create":["screen/tasks.json","jobs/02_screen.pbs"],"update":["campaign.json"]},"effects":{"prepare_screening":True,"submit_screening":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
 
     def confirm(self,request:Mapping[str,object],*,session_id:str)->dict[str,object]:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str): raise ZeusScreeningError("request_invalid")

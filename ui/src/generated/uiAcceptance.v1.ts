@@ -7,7 +7,7 @@ export const UI_ACCEPTANCE_IDENTITY = {
     "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
   },
   "profile_id": "ui_acceptance_v1",
-  "profile_sha256": "a01d692170b437368e5dfb0904e366e8119f9e08912f0eb409ba1565e55bd0d9",
+  "profile_sha256": "f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148",
   "suitability": "acceptance_only"
 } as const;
 export const UI_ACCEPTANCE_POLICY = {
@@ -129,9 +129,9 @@ export const UI_ACCEPTANCE_POLICY = {
         "bootstrap_replicates": 10000,
         "candidates": 1,
         "input_role": "sealed_validation",
-        "memory_gb": 64,
-        "ncpus": 100,
-        "npools": 100,
+        "memory_gb": 16,
+        "ncpus": 24,
+        "npools": 24,
         "particles_per_ensemble": "all_available",
         "trials_per_worker": 0,
         "walltime_seconds": 3600,
@@ -492,10 +492,10 @@ export const MOT_2D_ACCEPTANCE_SPECIFICATION = {
         "jobs/06_production.pbs",
         "campaign.json"
       ],
-      "cores_per_task": 100,
+      "cores_per_task": 24,
       "job_file": "jobs/06_production.pbs",
       "label": "Production",
-      "memory_per_task_bytes": 68719476736,
+      "memory_per_task_bytes": 17179869184,
       "walltime_seconds": 3600
     },
     "refine": {

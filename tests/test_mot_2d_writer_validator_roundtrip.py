@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from studies.mot_2d import optimization
-from workflow_api.mot_2d_spec import build_manifest, ROLE_SEEDS
+from workflow_api.mot_2d_spec import build_manifest, ROLE_SEEDS, stage_npools
 from workflow_api.mot_2d_smoke import validate_smoke_outputs, SmokeValidationError
 from workflow_api.mot_2d_screen import validate_screen_outputs, validate_refine_outputs, ScreenValidationError
 from workflow_api.mot_2d_plan import render_refine_transition
@@ -177,7 +177,7 @@ def test_final_production_writer_roundtrips_exact_marker_without_relabeling(tmp_
     monkeypatch.setattr(production, 'load_production_ensembles', optimization.load_production_ensembles)
     output = root / 'production/s0_1p300000'
     arguments = ['--zeeman-seeds', '3015', '--mot-seeds', '43015', '--s0', '1.3', '--detuning-gamma', '-1.0',
-                 '--magnet-radius-mm', '50', '--npools', '100' if acceptance else '150',
+                 '--magnet-radius-mm', '50', '--npools', str(stage_npools(manifest, 'production', 150)),
                  '--ensemble-dir', manifest['ensemble_source']['directory'],
                  '--ensemble-identity', manifest['ensemble_source']['directory'],
                  '--expected-zeeman-profile', manifest['ensemble_source']['zeeman_profile'],
@@ -208,3 +208,89 @@ def test_final_production_writer_roundtrips_exact_marker_without_relabeling(tmp_
         with pytest.raises(ValueError):
             _validated_production_replicate(path, manifest, task, root)
     path.write_bytes(original)
+
+
+@pytest.mark.parametrize('acceptance', [False, True], ids=['scientific', 'TEST-ONLY'])
+def test_real_screen_writer_status_reports_frozen_trial_count(tmp_path, monkeypatch, acceptance):
+    from workflow_api.zeus_refinement import ZeusRefinementCoordinator, RemoteScreenState
+    root, manifest = _fixture(tmp_path, monkeypatch, acceptance)
+    _run(root, manifest, 'screen')
+    rows = validate_screen_outputs(root, manifest)
+    state = RemoteScreenState('ready_to_prepare_refinement', '123[].zeus-master', 'F', 0, 3,
+                              {'queued': 0, 'running': 0, 'held': 0, 'succeeded': 3, 'failed': 0}, tuple(rows), 'test')
+    coordinator = object.__new__(ZeusRefinementCoordinator)
+    plan = (root, manifest, manifest, 'a' * 40, None, None, None, 'b' * 64)
+    monkeypatch.setattr(coordinator, '_inspect', lambda request: ('campaign-id', None, plan, state))
+    response = coordinator.status({})
+    assert response['validation'] == {'status': 'valid', 'completed_trials': len(rows),
+                                       'expected_trials': len(rows), 'candidate_count': 3}
+    assert len(rows) == (3 if acceptance else 51)
+
+
+@pytest.mark.parametrize('acceptance', [False, True], ids=['scientific', 'TEST-ONLY'])
+def test_real_finalization_writer_public_results_match_coordinator_policy(tmp_path, monkeypatch, acceptance):
+    from copy import deepcopy
+    from dataclasses import replace
+    from studies.mot_2d import production
+    from workflow_api import mot_2d_validation
+    from workflow_api.mot_2d_plan import render_finalization
+    from workflow_api.zeus_finalization import ZeusFinalizationCoordinator, ZeusFinalizationError
+    from test_finalization import _Transport
+
+    root, manifest = _fixture(tmp_path, monkeypatch, acceptance)
+    manifest['stage'] = 'production'
+    _write(root / 'campaign.json', manifest)
+    monkeypatch.setattr(production, 'load_production_ensembles', optimization.load_production_ensembles)
+    seeds = manifest['seed_roles']['sealed_validation']
+    mot_seeds = manifest['mot_seeds']['sealed_validation']
+    output = root / 'production/s0_1p300000'
+    arguments = ['--zeeman-seeds', *map(str, seeds), '--mot-seeds', *map(str, mot_seeds),
+                 '--s0', '1.3', '--detuning-gamma', '-1.0', '--magnet-radius-mm', '50',
+                 '--npools', str(stage_npools(manifest, 'production', 150)),
+                 '--ensemble-dir', manifest['ensemble_source']['directory'],
+                 '--ensemble-identity', manifest['ensemble_source']['directory'],
+                 '--expected-zeeman-profile', manifest['ensemble_source']['zeeman_profile'],
+                 '--expected-git-commit', 'a' * 40, '--output-dir', str(output),
+                 '--states-dir', str(root / 'survivor_states/s0_1.3')]
+    if acceptance:
+        arguments += ['--acceptance-profile', 'ui_acceptance_v1', '--input-manifest', str(root / 'campaign.json')]
+    production.run_seeds(production.parse_args(arguments))
+    parameters = {'s0': 1.3, 'detuning_gamma': -1.0, 'magnet_radius': 0.05}
+    rows = [mot_2d_validation._validated_production_replicate(
+        output / f'replicates/zeeman_seed{seed}.json', manifest,
+        {'zeeman_seed': seed, 'mot_seed': mot_seed, 'parameters': parameters}, root)
+        for seed, mot_seed in zip(seeds, mot_seeds)]
+    sensitivity = {'s0_1p300000': {'production_selection': {'parameters': parameters},
+                    'robustness_status': 'not_established_pending_adaptive_challenger_validation',
+                    'near_optimality_status': 'not_established_pending_domain_challenger_elimination'}}
+    # Source/state hash validation has separate integration coverage. Feed the
+    # real strictly validated production replicates into the real report writer.
+    monkeypatch.setattr(mot_2d_validation, 'validated_sealed_production_outputs',
+                        lambda *args: (sensitivity, {1.3: rows}))
+    files, results = render_finalization(manifest, root, tmp_path)
+    report = json.loads(files['final_report.json'])
+    expected = 'acceptance_only' if acceptance else 'eligible_as_3d_campaign_input'
+    assert results[0]['output_suitability'] == expected
+    assert ('acceptance' in report) is acceptance
+    if acceptance:
+        assert report['acceptance'] == manifest['acceptance']
+        assert report['suitability'] == 'acceptance_only'
+    state = replace(_Transport().inspect(), results=tuple(results))
+    ZeusFinalizationCoordinator._validate_state(state, manifest)
+    wrong = deepcopy(results)
+    wrong[0]['output_suitability'] = 'eligible_as_3d_campaign_input' if acceptance else 'acceptance_only'
+    with pytest.raises(ZeusFinalizationError, match='remote_response_invalid'):
+        ZeusFinalizationCoordinator._validate_state(replace(state, results=tuple(wrong)), manifest)
+    if acceptance:
+        for attack in ('missing_marker', 'wrong_hash', 'scientific_kind', 'wrong_family'):
+            changed = deepcopy(manifest)
+            if attack == 'missing_marker':
+                changed.pop('acceptance')
+            elif attack == 'wrong_hash':
+                changed['acceptance']['profile_sha256'] = '0' * 64
+            elif attack == 'scientific_kind':
+                changed['kind'] = 'mot_2d_s0_campaign'
+            else:
+                changed['kind'] = 'mot_3d_ui_acceptance_v1'
+            with pytest.raises(ZeusFinalizationError, match='remote_response_invalid'):
+                ZeusFinalizationCoordinator._validate_state(state, changed)
