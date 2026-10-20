@@ -7,6 +7,7 @@ import subprocess
 import io
 import json
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -43,6 +44,11 @@ class _Transport:
                                      nonce=str(payload["nonce"]), submitted_unix_s=100)
 
 
+# Pinned host executables; remote receiver fixtures remain isolated below.
+SSH_EXECUTABLE = Path(shutil.which("ssh")).resolve()
+GIT_EXECUTABLE = Path(shutil.which("git")).resolve()
+
+
 def _coordinator(
     tmp_path,
     transport,
@@ -57,7 +63,7 @@ def _coordinator(
     transition = {"screen/tasks.json": "1" * 64, "jobs/02_screen.pbs": "2" * 64,
                   "campaign.json": "3" * 64}
     coordinator = ZeusScreenSubmissionCoordinator(
-        tmp_path, Path("/usr/bin/ssh"), Path("/usr/bin/git"), clock=clock,
+        tmp_path, SSH_EXECUTABLE, GIT_EXECUTABLE, clock=clock,
         token_factory=token_factory,
         transport_factory=lambda profile: transport,
     )
@@ -174,15 +180,15 @@ def test_receiver_has_only_fixed_qsub_and_no_git_or_scheduler_admin_mutation():
 
 
 def test_untracked_importable_code_blocks_preview(tmp_path):
-    subprocess.run(["/usr/bin/git", "init", "-q"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "config", "user.name", "Test"], cwd=tmp_path, check=True)
     marker = tmp_path / "tracked.txt"
     marker.write_text("frozen\n", encoding="utf-8")
-    subprocess.run(["/usr/bin/git", "add", "tracked.txt"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "add", "tracked.txt"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
     commit = subprocess.run(
-        ["/usr/bin/git", "rev-parse", "HEAD"], cwd=tmp_path, check=True,
+        [str(GIT_EXECUTABLE), "rev-parse", "HEAD"], cwd=tmp_path, check=True,
         text=True, capture_output=True,
     ).stdout.strip()
     transport = _Transport()
@@ -208,7 +214,7 @@ def test_public_revision_service_uses_exact_read_only_git_contract(tmp_path, mon
         return subprocess.CompletedProcess(argv, 0, stdout=responses.pop(0), stderr=b"")
 
     monkeypatch.setattr("workflow_api.zeus_submission.subprocess.run", run)
-    revision = RepositoryRevisionService(tmp_path, Path("/usr/bin/git")).inspect()
+    revision = RepositoryRevisionService(tmp_path, GIT_EXECUTABLE).inspect()
 
     assert revision.commit == "a" * 40 and revision.clean is True
     assert [call[0][1:] for call in calls] == [
@@ -225,26 +231,26 @@ def test_public_revision_service_uses_exact_read_only_git_contract(tmp_path, mon
 
 
 def test_public_revision_service_rejects_symlinked_generated_artifact(tmp_path):
-    subprocess.run(["/usr/bin/git", "init", "-q"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "config", "user.name", "Test"], cwd=tmp_path, check=True)
     tracked = tmp_path / "tracked.txt"; tracked.write_text("x", encoding="utf-8")
-    subprocess.run(["/usr/bin/git", "add", "tracked.txt"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "add", "tracked.txt"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
     (tmp_path / "data").mkdir(); (tmp_path / "data/result.json").symlink_to(tracked)
 
-    assert RepositoryRevisionService(tmp_path, Path("/usr/bin/git")).inspect().clean is False
+    assert RepositoryRevisionService(tmp_path, GIT_EXECUTABLE).inspect().clean is False
 
 
 def test_screen_submission_revision_wrapper_matches_public_service(tmp_path):
-    subprocess.run(["/usr/bin/git", "init", "-q"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "config", "user.name", "Test"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "config", "user.email", "test@example.invalid"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "config", "user.name", "Test"], cwd=tmp_path, check=True)
     tracked = tmp_path / "tracked.txt"; tracked.write_text("x", encoding="utf-8")
-    subprocess.run(["/usr/bin/git", "add", "tracked.txt"], cwd=tmp_path, check=True)
-    subprocess.run(["/usr/bin/git", "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
-    public = RepositoryRevisionService(tmp_path, Path("/usr/bin/git")).inspect()
-    coordinator = ZeusScreenSubmissionCoordinator(tmp_path, Path("/usr/bin/ssh"), Path("/usr/bin/git"))
+    subprocess.run([str(GIT_EXECUTABLE), "add", "tracked.txt"], cwd=tmp_path, check=True)
+    subprocess.run([str(GIT_EXECUTABLE), "commit", "-qm", "fixture"], cwd=tmp_path, check=True)
+    public = RepositoryRevisionService(tmp_path, GIT_EXECUTABLE).inspect()
+    coordinator = ZeusScreenSubmissionCoordinator(tmp_path, SSH_EXECUTABLE, GIT_EXECUTABLE)
 
     assert coordinator._revision() == (public.commit, public.clean)
 
@@ -409,7 +415,7 @@ def test_transport_rejects_extra_fields_and_loose_types(tmp_path, monkeypatch):
         "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
     })
     transport = PinnedSshScreenSubmissionTransport(
-        tmp_path, Path("/usr/bin/ssh"), profile,
+        tmp_path, SSH_EXECUTABLE, profile,
     )
     valid = {
         "status": "submitted", "version": 1, "submission_key": "a" * 64,

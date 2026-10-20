@@ -1,4 +1,5 @@
 import json
+import shlex
 
 import numpy as np
 import pytest
@@ -84,7 +85,7 @@ def test_prepare_writes_full_portable_array_and_merge_jobs(tmp_path, monkeypatch
     merge_job = (root / "dt_validation/merge.pbs").read_text()
     assert "#PBS -J 0-179%3" in run_job
     project_root = validation.Path(validation.__file__).resolve().parents[2]
-    assert f"cd {project_root}" in run_job
+    assert f"cd {shlex.quote(str(project_root))}\n" in run_job
     assert "RUN_TMP=" in run_job and "trap 'rm -rf" in run_job
     assert "timestep_validation merge" in merge_job
 

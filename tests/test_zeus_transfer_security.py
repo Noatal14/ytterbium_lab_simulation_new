@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 import io
 import base64
 import json
@@ -398,8 +399,8 @@ def test_transfer_coordinator_outer_registry_capacity_expiry_and_collision(
     monkeypatch.setattr("workflow_api.zeus_transfer.ZeusPreparationService", FakeService)
     coordinator = ZeusPreparationCoordinator(
         root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        Path(shutil.which("ssh")).resolve(),
+        Path(shutil.which("git")).resolve(),
         clock=lambda: now[0],
         token_factory=lambda: next(tokens),
     )
@@ -427,8 +428,8 @@ def test_transfer_coordinator_outer_registry_capacity_expiry_and_collision(
 
     collision = ZeusPreparationCoordinator(
         root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        Path(shutil.which("ssh")).resolve(),
+        Path(shutil.which("git")).resolve(),
         clock=lambda: 100.0,
         token_factory=lambda: "same-token",
     )
@@ -789,3 +790,95 @@ def test_remote_receiver_rechecks_head_after_receiving_before_campaign_publish(t
     assert json.loads(process.stdout.read()) == {"error": "remote_checkout_mismatch"}
     assert not (campaign_parent / "campaign").exists()
     assert not list(campaign_parent.glob(".zeus-campaign-*"))
+
+
+@pytest.mark.parametrize('rename_capability', ['missing', 'EINVAL', 'EIO'])
+@pytest.mark.parametrize('failure_step', [None, 'reserved', 'job', 'before_manifest', 'identity_swap', 'checkout_change', 'stage_swap'])
+@pytest.mark.parametrize('namespace', ['canonical', 'acceptance'])
+def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, failure_step, namespace, rename_capability):
+    project = tmp_path / 'home' / 'tester' / 'project'
+    project.mkdir(parents=True)
+    commit = initialize_git_repository(project)
+    # Synthetic home and namespace only: execute the exact real publication
+    # implementation, forcing the documented unsupported-filesystem capability.
+    script = _REMOTE_TRANSFER_SCRIPT.replace("home = pathlib.Path('/home') / username", "home = project.resolve().parent")
+    script = script.replace("renameat2=getattr(libc,'renameat2',None)", "renameat2=None")
+    if rename_capability != 'missing':
+        script = script.replace('renameat2=None', "class UnsupportedRename:\n                def __call__(self,*args): ctypes.set_errno(errno." + rename_capability + "); return -1\n            renameat2=UnsupportedRename()")
+    prefix = 'data/optimization/mot_2d/campaign'
+    if namespace == 'acceptance':
+        # Isolate logical prefix handling from the separately tested authentic
+        # acceptance-manifest validator and its exact /home target policy.
+        script = script.replace("count=5 if project.name=='ytterbium_lab_simulation_ui_acceptance' else 4", 'count=5')
+        script = script.replace("elif 'ui_acceptance' in pure.parts: raise ValueError()", "elif 'ui_acceptance' in pure.parts: pass")
+        prefix = 'data/optimization/mot_2d/ui_acceptance/campaign'
+    if failure_step == 'reserved':
+        script = script.replace('reservation=os.fstat(final_fd)', "raise ValueError('injected after reservation')\n                reservation=os.fstat(final_fd)")
+    elif failure_step == 'job':
+        script = script.replace('os.fsync(destination_parent)', "os.fsync(destination_parent)\n                            raise ValueError('injected after job')")
+    elif failure_step == 'identity_swap':
+        script = script.replace('parent_identity=os.fstat(parent_fd)', "parent_identity=os.fstat(parent_fd)\n                os.rename(final_name, final_name+'-reserved', src_dir_fd=parent_fd, dst_dir_fd=parent_fd)\n                os.mkdir(final_name, 0o700, dir_fd=parent_fd)")
+    elif failure_step == 'stage_swap':
+        script = script.replace('parent_identity=os.fstat(parent_fd)', "parent_identity=os.fstat(parent_fd)\n                os.rename(stage_name,stage_name+'-owned',src_dir_fd=parent_fd,dst_dir_fd=parent_fd)\n                os.mkdir(stage_name,0o700,dir_fd=parent_fd)\n                replacement_fd=os.open(stage_name,os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=parent_fd)\n                sentinel=os.open('foreign',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600,dir_fd=replacement_fd)\n                os.write(sentinel,b'protected'); os.close(sentinel); os.close(replacement_fd)")
+    elif failure_step == 'checkout_change':
+        script = script.replace('parent_identity=os.fstat(parent_fd)', "parent_identity=os.fstat(parent_fd)\n                subprocess.run(['git','commit','--allow-empty','-qm','changed'],check=True)")
+    elif failure_step == 'before_manifest':
+        script = script.replace("if relative==('campaign.json',):", "if relative==('campaign.json',):\n                            raise ValueError('injected before manifest')")
+    paths = (prefix + '/campaign.json', prefix + '/jobs/01_smoke.pbs')
+    contents = (b'{"kind":"mot_2d_s0_campaign"}', b'#!/bin/bash\ntrue\n')
+    payload = b''.join(struct.pack('!Q', len(content)) + hashlib.sha256(content).hexdigest().encode() + content for content in contents)
+    encoded = base64.urlsafe_b64encode(json.dumps(paths).encode()).decode()
+    argv = [sys.executable, '-c', script, 'campaign', 'tester', str(project), encoded, commit]
+    first = subprocess.run(argv, input=payload, capture_output=True)
+    final = project / prefix
+    if rename_capability == 'EIO':
+        assert first.returncode == 24
+        assert not final.exists()
+        assert not list(final.parent.glob('.zeus-campaign-*'))
+        return
+    assert final.is_dir()
+    if failure_step and failure_step != 'stage_swap':
+        assert first.returncode == (25 if failure_step == 'checkout_change' else 24), first.stderr.decode()
+        assert (final / 'campaign.json').exists() == (failure_step == 'stage_swap')
+    else:
+        assert first.returncode == 0, first.stderr.decode()
+        assert (final / 'campaign.json').read_bytes() == contents[0]
+        assert (final / 'jobs/01_smoke.pbs').read_bytes() == contents[1]
+    if failure_step == 'stage_swap':
+        assert any((item / 'foreign').is_file() for item in final.parent.glob('.zeus-campaign-*'))
+    else:
+        assert list(final.parent.glob('.zeus-campaign-*'))
+    # No failure can remove the exclusive reservation or silently retry it.
+    second = subprocess.run(argv, input=payload, capture_output=True)
+    assert second.returncode == (25 if failure_step == 'checkout_change' else 23)
+    assert json.loads(second.stdout) == {'error': 'remote_checkout_mismatch' if failure_step == 'checkout_change' else 'target_exists'}
+
+
+@pytest.mark.parametrize('existing_kind', ['directory', 'file', 'symlink'])
+def test_campaign_fallback_never_replaces_existing_target(tmp_path, existing_kind):
+    project = tmp_path / 'home/tester/project'
+    project.mkdir(parents=True)
+    commit = initialize_git_repository(project)
+    final = project / 'data/optimization/mot_2d/campaign'
+    final.parent.mkdir(parents=True)
+    outside = tmp_path / 'outside'
+    outside.mkdir()
+    if existing_kind == 'directory':
+        final.mkdir()
+        (final / 'sentinel').write_bytes(b'protected')
+    elif existing_kind == 'file':
+        final.write_bytes(b'protected')
+    else:
+        final.symlink_to(outside, target_is_directory=True)
+    original = final.lstat()
+    script = _REMOTE_TRANSFER_SCRIPT.replace("home = pathlib.Path('/home') / username", 'home = project.resolve().parent')
+    script = script.replace("renameat2=getattr(libc,'renameat2',None)", 'renameat2=None')
+    paths = ['data/optimization/mot_2d/campaign/campaign.json']
+    encoded = base64.urlsafe_b64encode(json.dumps(paths).encode()).decode()
+    result = subprocess.run([sys.executable, '-c', script, 'campaign', 'tester', str(project), encoded, commit], input=b'', capture_output=True)
+    # Symlinks are rejected during the initial closed path validation; regular
+    # files/directories produce the stable no-overwrite conflict classification.
+    assert result.returncode == (21 if existing_kind == 'symlink' else 23)
+    assert final.lstat().st_ino == original.st_ino
+    assert not list(outside.iterdir())
+    assert not list(final.parent.glob('.zeus-campaign-*'))

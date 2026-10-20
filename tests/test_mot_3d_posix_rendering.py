@@ -126,3 +126,18 @@ def test_discovery_command_flags_are_posix_with_native_windows_storage_paths(
     assert all(
         isinstance(path, PureWindowsPath) for paths in rounds.values() for path in paths
     )
+
+
+def test_cli_artifact_writer_explicitly_preserves_canonical_lf(monkeypatch, tmp_path):
+    native_write = campaign.Path.write_text
+    newlines = []
+
+    def capture_write(path, text, **kwargs):
+        newlines.append(kwargs.get("newline"))
+        return native_write(path, text, **kwargs)
+
+    monkeypatch.setattr(campaign.Path, "write_text", capture_write)
+    target = tmp_path / "spaced directory" / "job.pbs"
+    campaign._write(target, "#!/bin/bash\ncd ~/test\n")
+    assert newlines == ["\n"]
+    assert target.read_bytes() == b"#!/bin/bash\ncd ~/test\n"

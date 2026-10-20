@@ -3,6 +3,7 @@ import json
 import os
 import shlex
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -29,7 +30,7 @@ def test_remote_wrapper_passes_username_and_project_at_expected_argv_positions(m
     monkeypatch.setattr(zeus_snapshot, "_REMOTE_SCRIPT", probe)
     profile = ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")
     completed = subprocess.run(
-        shlex.split(zeus_snapshot._remote_command(profile)),
+        [sys.executable, *shlex.split(zeus_snapshot._remote_command(profile))[1:]],
         check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -110,12 +111,31 @@ def test_remote_scheduler_reports_qstat_failure(tmp_path):
     assert "qstat -f -t 10.zeus-master" in calls
 
 
-def _fake_ssh(tmp_path: Path, *, stdout: str = "", stderr: str = "", code: int = 0):
+_FAKE_SSH_SCRIPTS = set()
+
+
+@pytest.fixture(autouse=True)
+def _native_fake_ssh_child(monkeypatch):
+    """Run only registered fake SSH scripts with this host's trusted Python."""
+    native_popen = subprocess.Popen
+
+    def start(argv, **kwargs):
+        if isinstance(argv, (list, tuple)) and str(argv[0]) in _FAKE_SSH_SCRIPTS:
+            argv = [sys.executable, *argv]
+        return native_popen(argv, **kwargs)
+
+    monkeypatch.setattr(subprocess, "Popen", start)
+    yield
+    _FAKE_SSH_SCRIPTS.clear()
+
+
+def _fake_ssh(tmp_path: Path, *, stdout: str = "", stderr: str = "", code: int = 0, delay: float = 0):
     executable = tmp_path / "ssh"
     arguments = tmp_path / "arguments.json"
     executable.write_text(
         "#!/usr/bin/python3\n"
-        "import json, os, sys\n"
+        "import json, os, sys, time\n"
+        f"time.sleep({delay!r})\n"
         "assert 'AWS_SECRET_ACCESS_KEY' not in os.environ\n"
         f"open({str(arguments)!r}, 'w').write(json.dumps(sys.argv[1:]))\n"
         f"sys.stdout.write({stdout!r})\n"
@@ -123,6 +143,7 @@ def _fake_ssh(tmp_path: Path, *, stdout: str = "", stderr: str = "", code: int =
         f"raise SystemExit({code})\n"
     )
     executable.chmod(0o700)
+    _FAKE_SSH_SCRIPTS.add(str(executable.resolve()))
     return executable, arguments
 
 
@@ -263,9 +284,7 @@ def test_provider_rejects_oversized_and_malformed_output(tmp_path):
 
 
 def test_provider_kills_a_timed_out_fake_ssh(tmp_path):
-    executable = tmp_path / "ssh"
-    executable.write_text("#!/usr/bin/python3\nimport time\ntime.sleep(30)\n")
-    executable.chmod(0o700)
+    executable, _ = _fake_ssh(tmp_path, delay=30)
     repository = tmp_path / "repo"; repository.mkdir()
     provider = ZeusSnapshotProvider(repository, executable, timeout=0.05)
     with pytest.raises(ZeusSnapshotError, match="zeus_timeout"):

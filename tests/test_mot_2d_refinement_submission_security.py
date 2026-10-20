@@ -1,4 +1,5 @@
 import json
+import shutil
 import base64
 import hashlib
 import sys
@@ -17,6 +18,9 @@ from workflow_api.zeus_refinement_submission import (
 )
 from workflow_api.zeus_refinement import RefinementInspection, RemoteScreenState
 from workflow_api.zeus_snapshot import ZeusProfile
+
+# These paths are pinned but subprocess execution is intercepted in host tests.
+SSH_EXECUTABLE = Path(shutil.which("ssh")).resolve()
 
 
 class _CoordinatorTransport:
@@ -79,7 +83,7 @@ def _error_code(call):
 
 def _transport(tmp_path: Path) -> PinnedSshRefinementSubmissionTransport:
     return PinnedSshRefinementSubmissionTransport(
-        tmp_path, Path("/usr/bin/true"),
+        tmp_path, SSH_EXECUTABLE,
         ZeusProfile.parse({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"}),
     )
 

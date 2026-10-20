@@ -140,6 +140,7 @@ def test_3d_status_cli_resolves_codec_before_dispatch(tmp_path):
         b'{"kind":"mot_2d_s0_campaign","kind":"mot_2d_s0_campaign"}',
         b"{" + b" " * MAX_MANIFEST_BYTES,
     ],
+    ids=["duplicate-key", "oversized"],
 )
 def test_2d_status_uses_the_same_strict_manifest_failures(tmp_path, raw):
     root = tmp_path / "campaign"
@@ -155,6 +156,7 @@ def test_2d_status_uses_the_same_strict_manifest_failures(tmp_path, raw):
         b'{"kind":"mot_3d_campaign_v2","kind":"mot_3d_campaign_v2"}',
         b"{" + b" " * MAX_MANIFEST_BYTES,
     ],
+    ids=["duplicate-key", "oversized"],
 )
 def test_3d_status_uses_the_same_strict_manifest_failures(tmp_path, raw):
     root = tmp_path / "campaign"
@@ -184,6 +186,7 @@ def test_3d_status_uses_the_same_strict_manifest_failures(tmp_path, raw):
         b"{" + b" " * MAX_MANIFEST_BYTES,
         b'{"kind":"mot_2d_s0_campaign","stage":"discovery"}',
     ],
+    ids=["duplicate-key", "oversized", "wrong-family"],
 )
 def test_every_public_3d_campaign_reader_uses_the_strict_codec(
     tmp_path, operation, raw

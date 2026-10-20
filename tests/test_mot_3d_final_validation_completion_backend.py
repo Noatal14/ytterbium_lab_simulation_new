@@ -8,6 +8,7 @@ import json
 import os
 import sys
 from pathlib import Path
+import shutil
 
 import numpy as np
 import pytest
@@ -35,6 +36,11 @@ from workflow_api import mot_3d_final_validation_completion_remote as completion
 from workflow_api.verified_artifact_bundle import build_artifact_bundle
 from workflow_api.zeus_discovery_submission import canonical_digest
 from workflow_api.zeus_snapshot import ZeusProfile
+
+
+# Pinned host executables; remote receiver fixtures remain isolated below.
+SSH_EXECUTABLE = Path(shutil.which("ssh")).resolve()
+GIT_EXECUTABLE = Path(shutil.which("git")).resolve()
 
 
 def _state(lifecycle="complete", *, receipt=None):
@@ -956,8 +962,8 @@ def test_real_coordinator_preview_confirm_session_and_local_synchronization(
 
     coordinator = Mot3DFinalValidationCompletionCoordinator(
         tmp_path,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        SSH_EXECUTABLE,
+        GIT_EXECUTABLE,
         clock=lambda: 1_800_000_000,
         token_factory=lambda: "preview-token",
         transport_factory=lambda _profile: Transport(),

@@ -8,6 +8,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 import threading
@@ -33,6 +34,10 @@ from workflow_api.zeus_submission import (
     _REMOTE_SCRIPT,
 )
 from workflow_api.zeus_snapshot import ZeusProfile
+
+# These paths are pinned but subprocess execution is intercepted in host tests.
+SSH_EXECUTABLE = Path(shutil.which("ssh")).resolve()
+GIT_EXECUTABLE = Path(shutil.which("git")).resolve()
 
 
 def _digest(path: Path) -> str:
@@ -131,8 +136,8 @@ def _coordinator(
 ):
     return ZeusSmokeSubmissionCoordinator(
         root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        SSH_EXECUTABLE,
+        GIT_EXECUTABLE,
         clock=clock,
         token_factory=token_factory,
         transport_factory=lambda _profile: transport,
@@ -473,7 +478,7 @@ def test_pinned_transport_uses_fixed_ssh_argv_and_no_shell(tmp_path, monkeypatch
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", run)
     transport = PinnedSshSmokeSubmissionTransport(
         root,
-        Path("/usr/bin/ssh"),
+        SSH_EXECUTABLE,
         ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"),
     )
     state = transport.inspect(
@@ -487,7 +492,7 @@ def test_pinned_transport_uses_fixed_ssh_argv_and_no_shell(tmp_path, monkeypatch
     assert state.status == "eligible"
     argv = observed["argv"]
     kwargs = observed["kwargs"]
-    assert argv[0] == "/usr/bin/ssh"
+    assert argv[0] == str(SSH_EXECUTABLE)
     assert argv[-2] == "tal.noa@zeus.technion.ac.il"
     assert kwargs["shell"] is False
     assert kwargs["stdin"] is subprocess.DEVNULL
@@ -517,7 +522,7 @@ def test_submit_rejects_noncanonical_qsub_job_ids(tmp_path, monkeypatch, job_id)
     )
     transport = PinnedSshSmokeSubmissionTransport(
         root,
-        Path("/usr/bin/ssh"),
+        SSH_EXECUTABLE,
         ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"),
     )
     assert _code(lambda: transport.submit(
@@ -540,7 +545,7 @@ def test_submit_timeout_or_malformed_output_is_ambiguous_and_never_retried(tmp_p
     monkeypatch.setattr("workflow_api.pinned_ssh._bounded_run", timeout)
     transport = PinnedSshSmokeSubmissionTransport(
         root,
-        Path("/usr/bin/ssh"),
+        SSH_EXECUTABLE,
         ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"),
     )
     arguments = dict(
@@ -559,7 +564,7 @@ def test_transport_rejects_extra_or_inconsistent_remote_response_fields(tmp_path
     root = tmp_path / "repo"
     root.mkdir()
     profile = ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")
-    transport = PinnedSshSmokeSubmissionTransport(root, Path("/usr/bin/ssh"), profile)
+    transport = PinnedSshSmokeSubmissionTransport(root, SSH_EXECUTABLE, profile)
     base = dict(
         files={f"data/f{i}": "a" * 64 for i in range(72)},
         campaign="data/optimization/mot_2d/campaign",
@@ -599,7 +604,7 @@ def test_transport_rejects_unrepresentable_submission_timestamps(tmp_path, monke
     )
     transport = PinnedSshSmokeSubmissionTransport(
         root,
-        Path("/usr/bin/ssh"),
+        SSH_EXECUTABLE,
         ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"),
     )
     assert _code(lambda: transport.submit(
@@ -790,7 +795,7 @@ def test_transport_rejects_success_json_with_failed_or_noisy_ssh(
     )
     transport = PinnedSshSmokeSubmissionTransport(
         root,
-        Path("/usr/bin/ssh"),
+        SSH_EXECUTABLE,
         ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"),
     )
     assert _code(

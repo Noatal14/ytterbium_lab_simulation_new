@@ -3,6 +3,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -40,6 +41,11 @@ class FakeTransport:
         return self.state
 
 
+# Pinned host executables; remote receiver fixtures remain isolated below.
+SSH_EXECUTABLE = Path(shutil.which("ssh")).resolve()
+GIT_EXECUTABLE = Path(shutil.which("git")).resolve()
+
+
 def coordinator(tmp_path, state):
     root = tmp_path / "repo"
     campaign = root / "data/optimization/mot_3d/campaign"
@@ -54,8 +60,8 @@ def coordinator(tmp_path, state):
     transport = FakeTransport(state)
     service = Mot3DDiscoveryTransitionCoordinator(
         root,
-        Path("/usr/bin/ssh"),
-        Path("/usr/bin/git"),
+        SSH_EXECUTABLE,
+        GIT_EXECUTABLE,
         clock=lambda: 100.0,
         token_factory=lambda: "token",
         transport_factory=lambda _profile: transport,

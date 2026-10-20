@@ -8,6 +8,7 @@ import os
 import sqlite3
 import threading
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -18,6 +19,11 @@ from workflow_api.zeus_screening import (
     ZeusScreeningCoordinator,
     ZeusScreeningError,
 )
+
+
+# Pinned host executables; remote receiver fixtures remain isolated below.
+SSH_EXECUTABLE = Path(shutil.which("ssh")).resolve()
+GIT_EXECUTABLE = Path(shutil.which("git")).resolve()
 
 
 def _manifest(*, values=(1.3,)):
@@ -260,7 +266,7 @@ def _screening_coordinator(
     transition = {"screen/tasks.json": "1" * 64, "jobs/02_screen.pbs": "2" * 64,
                   "campaign.json": "3" * 64}
     coordinator = ZeusScreeningCoordinator(
-        tmp_path, Path("/usr/bin/ssh"), Path("/usr/bin/git"), clock=clock,
+        tmp_path, SSH_EXECUTABLE, GIT_EXECUTABLE, clock=clock,
         token_factory=token_factory,
         transport_factory=lambda profile: transport,
     )

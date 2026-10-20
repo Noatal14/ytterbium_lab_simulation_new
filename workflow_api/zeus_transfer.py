@@ -73,7 +73,13 @@ class ZeusPreparationTransport(Protocol):
         """Upload only absent inputs, atomically; fail if any target now exists."""
 
     def publish_campaign_atomic(self, files: Mapping[str, tuple[Path, str, int]], expected_commit: str) -> None:
-        """Publish the complete campaign directory last; never replace a target."""
+        """Commit a complete campaign without replacing an existing target.
+
+        Prefer atomic no-replace directory rename. On unsupported filesystems,
+        reserve exclusively and publish the manifest last; consumers verify all
+        referenced bytes before allowing submission. Partial reservations block
+        retries and require explicit reconciliation.
+        """
 
 
 _REMOTE_TRANSFER_SCRIPT = r'''import hashlib,json,os,pathlib,secrets,stat,struct,subprocess,sys
@@ -166,16 +172,25 @@ def temporary_fd(parent_fd):
         try: return os.open(name,os.O_WRONLY|os.O_CREAT|os.O_EXCL|NOFOLLOW,0o600,dir_fd=parent_fd),name
         except FileExistsError: continue
     raise RuntimeError()
-def remove_tree(parent_fd,name):
+def remove_tree(parent_fd,name,expected=None):
     try: child_fd=os.open(name,os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=parent_fd)
     except FileNotFoundError: return
+    identity=os.fstat(child_fd)
+    def same_entry(parent,entry,known):
+        current=os.stat(entry,dir_fd=parent,follow_symlinks=False)
+        if (current.st_dev,current.st_ino)!=(known.st_dev,known.st_ino): raise ValueError()
     try:
+        if expected is not None and (identity.st_dev,identity.st_ino)!=(expected.st_dev,expected.st_ino): raise ValueError()
         for entry in os.listdir(child_fd):
+            same_entry(parent_fd,name,identity)
             metadata=os.stat(entry,dir_fd=child_fd,follow_symlinks=False)
-            if stat.S_ISDIR(metadata.st_mode): remove_tree(child_fd,entry)
-            else: os.unlink(entry,dir_fd=child_fd)
+            if stat.S_ISDIR(metadata.st_mode): remove_tree(child_fd,entry,metadata)
+            else:
+                same_entry(child_fd,entry,metadata)
+                os.unlink(entry,dir_fd=child_fd)
+        same_entry(parent_fd,name,identity)
+        os.rmdir(name,dir_fd=parent_fd)
     finally: os.close(child_fd)
-    os.rmdir(name,dir_fd=parent_fd)
 def receive(expected, staging_fd=None, campaign_prefix=None):
     result={}
     for pure,target in expected:
@@ -233,6 +248,12 @@ try:
         except FileNotFoundError: pass
         stage_name='.zeus-campaign-'+secrets.token_hex(16); os.mkdir(stage_name,0o700,dir_fd=parent_fd)
         stage_fd=os.open(stage_name,os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=parent_fd)
+        stage_identity=os.fstat(stage_fd)
+        retain_stage=False
+        def cleanup_stage():
+            current=os.stat(stage_name,dir_fd=parent_fd,follow_symlinks=False)
+            if not stat.S_ISDIR(current.st_mode) or (current.st_dev,current.st_ino)!=(stage_identity.st_dev,stage_identity.st_ino): raise ValueError()
+            remove_tree(parent_fd,stage_name,stage_identity)
         try:
             received=receive(resolved,stage_fd,campaign_parts)
             for pure,(file_parent_fd,temporary,target_name,digest) in received.items():
@@ -247,16 +268,82 @@ try:
             import ctypes,errno
             libc=ctypes.CDLL(None,use_errno=True)
             renameat2=getattr(libc,'renameat2',None)
-            if renameat2 is None: raise RuntimeError('atomic no-replace rename unavailable')
-            renameat2.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]
-            renameat2.restype=ctypes.c_int
-            if renameat2(parent_fd,os.fsencode(stage_name),parent_fd,os.fsencode(final_name),1)!=0:
-                failure=ctypes.get_errno()
-                if failure==errno.EEXIST: raise FileExistsError()
-                raise OSError(failure,'renameat2 failed')
+            failure=errno.ENOSYS
+            if renameat2 is not None:
+                renameat2.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]
+                renameat2.restype=ctypes.c_int
+                if renameat2(parent_fd,os.fsencode(stage_name),parent_fd,os.fsencode(final_name),1)==0:
+                    failure=0
+                else: failure=ctypes.get_errno()
+            if failure==errno.EEXIST: raise FileExistsError()
+            if failure:
+                unsupported={errno.ENOSYS,errno.EINVAL,errno.ENOTSUP,getattr(errno,'EOPNOTSUPP',errno.ENOTSUP)}
+                if failure not in unsupported: raise OSError(failure,'renameat2 failed')
+                retain_stage=True
+                # Directory rename without NOREPLACE is unsafe. Reserve exclusively,
+                # then publish campaign.json LAST as the consumer commit marker.
+                # A failed reservation is deliberately retained, never auto-retried.
+                if not checkout_matches(): raise CheckoutMismatch()
+                ordered=sorted(received, key=lambda pure: pure.parts[count:]==('campaign.json',))
+                if sum(pure.parts[count:]==('campaign.json',) for pure in ordered)!=1: raise ValueError()
+                os.mkdir(final_name,0o700,dir_fd=parent_fd)
+                final_fd=os.open(final_name,os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=parent_fd)
+                reservation=os.fstat(final_fd)
+                parent_identity=os.fstat(parent_fd)
+                def publication_guard():
+                    if not checkout_matches(): raise CheckoutMismatch()
+                    current_parent=directory_fd(campaign_parts[:-1])
+                    try: current=os.fstat(current_parent)
+                    finally: os.close(current_parent)
+                    current_final=os.stat(final_name,dir_fd=parent_fd,follow_symlinks=False)
+                    if (current.st_dev,current.st_ino)!=(parent_identity.st_dev,parent_identity.st_ino) or (current_final.st_dev,current_final.st_ino)!=(reservation.st_dev,reservation.st_ino) or not stat.S_ISDIR(current_final.st_mode): raise ValueError()
+                def checked_file(parent,name,digest):
+                    fd=os.open(name,os.O_RDONLY|NOFOLLOW,dir_fd=parent)
+                    with os.fdopen(fd,'rb') as source:
+                        identity=os.fstat(source.fileno())
+                        if not stat.S_ISREG(identity.st_mode): raise ValueError()
+                        observed=hashlib.sha256()
+                        while True:
+                            chunk=source.read(1048576)
+                            if not chunk: break
+                            observed.update(chunk)
+                        if observed.hexdigest()!=digest: raise ValueError()
+                    return identity
+                try:
+                    for pure in ordered:
+                        publication_guard()
+                        relative=pure.parts[count:]
+                        if relative==('campaign.json',):
+                            # Revalidate all prior published bytes before committing.
+                            for prior in ordered:
+                                prior_relative=prior.parts[count:]
+                                if prior_relative==('campaign.json',): continue
+                                prior_parent=directory_fd(prior_relative[:-1],start_fd=final_fd)
+                                try: checked_file(prior_parent,prior_relative[-1],received[prior][3])
+                                finally: os.close(prior_parent)
+                            publication_guard()
+                            os.fsync(final_fd); os.fsync(parent_fd)
+                        source_parent=directory_fd(relative[:-1],start_fd=stage_fd)
+                        destination_parent=directory_fd(relative[:-1],create=True,start_fd=final_fd)
+                        try:
+                            digest=received[pure][3]
+                            identity=checked_file(source_parent,relative[-1],digest)
+                            os.link(relative[-1],relative[-1],src_dir_fd=source_parent,dst_dir_fd=destination_parent,follow_symlinks=False)
+                            linked=os.stat(relative[-1],dir_fd=destination_parent,follow_symlinks=False)
+                            if (linked.st_dev,linked.st_ino)!=(identity.st_dev,identity.st_ino): raise ValueError()
+                            checked_file(destination_parent,relative[-1],digest)
+                            os.fsync(destination_parent)
+                        finally:
+                            os.close(source_parent); os.close(destination_parent)
+                    publication_guard()
+                    os.fsync(final_fd); os.fsync(parent_fd)
+                finally: os.close(final_fd)
+                # Retain private staging: pathname-based recursive removal cannot
+                # atomically exclude same-account rename/replacement races.
         except Exception:
-            try: remove_tree(parent_fd,stage_name)
-            except OSError: pass
+            if not retain_stage:
+                try: cleanup_stage()
+                except (OSError,ValueError): pass
             raise
         finally:
             os.close(stage_fd); os.close(parent_fd)
