@@ -194,11 +194,12 @@ def validate_static(payload: dict, root: Path):
             "rows_digest", "sensitivity_files", "transition_key", "nonce"}:
         fail("invalid_request")
     relative = PurePosixPath(str(payload.get("campaign", "")))
-    if (relative.is_absolute() or len(relative.parts) != 4
+    if (relative.is_absolute() or (len(relative.parts) != 4 and not (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance"))
             or relative.parts[:3] != ("data", "optimization", "mot_2d")
             or any(part in {"", ".", ".."} for part in relative.parts)):
         fail("invalid_request")
     campaign = root.joinpath(*relative.parts)
+    _authorize_acceptance_campaign(campaign, root)
     no_links(root, campaign)
     if not campaign.is_dir(): fail("campaign_not_found")
     commit = payload.get("commit")
@@ -499,5 +500,29 @@ def main() -> None:
         fcntl.flock(lock_fd, fcntl.LOCK_UN); os.close(lock_fd)
     response("sensitivity_prepared", scheduler, rows, branch, receipt)
 
+
+
+def _authorize_acceptance_campaign(campaign, root):
+    """Authenticate acceptance before locks, publication, or scheduler mutation."""
+    try:
+        from workflow_api.acceptance_profile import assert_scientific_source, is_acceptance_manifest
+        current = root
+        for part in campaign.relative_to(root).parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError('Unsafe campaign path.')
+        manifest_path = campaign / 'campaign.json'
+        if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
+            raise ValueError('Unsafe campaign manifest.')
+        value = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+            from workflow_api.acceptance_remote import assert_campaign_target
+            from workflow_api.mot_2d_spec import validate_campaign_policy
+            validate_campaign_policy(value)
+            assert_campaign_target(value, root.parent.name, root, campaign)
+        else:
+            assert_scientific_source(value)
+    except (OSError, ValueError, TypeError, KeyError):
+        fail('remote_preparation_invalid')
 
 if __name__ == "__main__": main()

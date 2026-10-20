@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from workflow_api.safe_json import read_json
+from workflow_api.mot_2d_spec import campaign_kind_matches, validate_campaign_policy
 
 MAX_DATABASE_BYTES = 64 * 1024 * 1024
 DEFAULT_SAMPLER_SEED = 42
@@ -79,7 +80,7 @@ def _require_finite_numeric_leaves(value: Any, label: str) -> None:
 
 def _expected_design(manifest: dict[str, Any], s0: float) -> dict[str, Any]:
     fixed = manifest["fixed_design"]
-    return {
+    design = {
         "fixed_s0": float(s0),
         "dt_s": float(fixed["working_dt_s"]),
         "solver": str(fixed["solver"]),
@@ -96,6 +97,10 @@ def _expected_design(manifest: dict[str, Any], s0: float) -> dict[str, Any]:
         "git_commit": manifest["provenance"]["git_commit"],
         "campaign_design_id": manifest["provenance"]["physical_model_sha256"],
     }
+
+    if validate_campaign_policy(manifest):
+        design["acceptance"] = manifest["acceptance"]
+    return design
 
 
 def _validate_sqlite(path: Path, expected_design: dict[str, Any]) -> None:
@@ -133,7 +138,7 @@ def _validate_sqlite(path: Path, expected_design: dict[str, Any]) -> None:
 
 def validate_smoke_outputs(root: Path, manifest: dict[str, Any]) -> list[dict[str, Any]]:
     """Validate every frozen s0 smoke output and return a compact report."""
-    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "smoke":
+    if not campaign_kind_matches(manifest) or manifest.get("stage") != "smoke":
         raise SmokeValidationError("Campaign is not awaiting canonical smoke validation.")
     s0_values = manifest.get("s0_values")
     if not isinstance(s0_values, list) or not s0_values:

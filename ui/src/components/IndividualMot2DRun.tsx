@@ -218,6 +218,7 @@ export function IndividualMot2DRun({
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot2DRun);
+      setRecoveryPending(found.execution.mode === "zeus" && found.lifecycle !== "results_ready");
       setStep(
         found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
           ? "monitor"
@@ -364,7 +365,7 @@ export function IndividualMot2DRun({
     });
   }
   async function refresh() {
-    if (!runId) return;
+    if (!runId || busy || recoveryPending) return;
     const requestId = ++refreshRequest.current;
     setBusy(true);
     setError(null);
@@ -946,7 +947,7 @@ export function IndividualMot2DRun({
           <div className="form-actions">
             <button
               className="secondary-button"
-              disabled={busy}
+              disabled={busy || recoveryPending}
               onClick={() => void refresh()}
             >
               {busy ? "Checking…" : "Check status"}

@@ -34,6 +34,8 @@ const preview = {
     tasks_per_array: 3,
     dependency: "afterok within each family",
   },
+  resources: {"array": {"ncpus_per_task": 200, "memory_gb_per_task": 64, "walltime": "24:00:00"}},
+  science: {"classification": "candidate_selection_not_final_validation", "input_role": "discovery", "input_ensembles": 12, "particles_per_ensemble": 50, "total_particles_per_trial": 600, "npools": 200, "dt_s": 1e-05, "t_max_s": 0.05, "solver": "RK4StHybridCustom", "final_trial_targets": {"angled_donut": [117, 117, 116], "single_pass": [200, 200, 200]}, "total_trials": 950},
   remote: {
     host: profile.host,
     project_directory: profile.project_directory,

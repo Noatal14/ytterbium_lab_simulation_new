@@ -11,6 +11,7 @@ import re
 from typing import Mapping
 
 import numpy as np
+from config import MOT_2D_SIM_CONFIG
 
 ZEEMAN_SEEDS = tuple(range(3035, 3055))
 MOT_SEEDS = tuple(range(43035, 43055))
@@ -75,10 +76,18 @@ def _strict(raw: bytes):
         _raise("malformed_json", exc)
 
 
-def expected_paths() -> tuple[str, ...]:
+def expected_paths(manifest=None) -> tuple[str, ...]:
+    from workflow_api.mot_3d_workload import policy
+
+    profile = None if manifest is None else policy(manifest)
+    initial_particles = (
+        50000
+        if profile is None
+        else profile.policy["generation"]["zeeman_initial_particles"]
+    )
     paths = set()
     for zseed, mseed in zip(ZEEMAN_SEEDS, MOT_SEEDS):
-        zstem = f"final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed{zseed}"
+        zstem = f"final_validation_inputs/after_zeeman/production_zeeman_n{initial_particles}_dt40us_seed{zseed}"
         mstem = f"final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed{zseed}_mot_seed{mseed}"
         paths.update({f"{zstem}.npy", f"{zstem}.json", f"{mstem}.npy", f"{mstem}.json"})
         paths.add(
@@ -121,7 +130,19 @@ def validate_final_input_result_bytes(
     project_directory: str,
     campaign_absolute_path: str,
 ) -> ValidatedFinalInputResults:
-    paths = expected_paths()
+    from workflow_api.mot_3d_workload import policy
+
+    profile = policy(_strict(manifest_bytes)) if type(manifest_bytes) is bytes else None
+    initial_particles = (
+        50000
+        if profile is None
+        else profile.policy["generation"]["zeeman_initial_particles"]
+    )
+    paths = (
+        expected_paths(_strict(manifest_bytes))
+        if type(manifest_bytes) is bytes
+        else expected_paths()
+    )
     if (
         type(manifest_bytes) is not bytes
         or type(locked_nominals_bytes) is not bytes
@@ -149,8 +170,9 @@ def validate_final_input_result_bytes(
         _strict, (manifest_bytes, locked_nominals_bytes, submission_bytes)
     )
     name = manifest.get("name") if isinstance(manifest, dict) else None
-    expected_root = f"{project_directory}/data/optimization/mot_3d/{name}"
-    logical_root = f"data/optimization/mot_3d/{name}"
+    segment = "ui_acceptance/" if profile else ""
+    expected_root = f"{project_directory}/data/optimization/mot_3d/{segment}{name}"
+    logical_root = f"data/optimization/mot_3d/{segment}{name}"
     stage = manifest.get("stages", {}).get("final_validation_input_generation", {})
     if (
         type(name) is not str
@@ -192,7 +214,15 @@ def validate_final_input_result_bytes(
             "classification",
             "campaign_manifest_sha256_before_stage",
             "families",
+            *({"acceptance", "suitability"} if profile else set()),
         }
+        or (
+            profile is not None
+            and (
+                locked.get("acceptance") != profile.provenance()
+                or locked.get("suitability") != "acceptance_only"
+            )
+        )
         or locked.get("kind") != "mot_3d_locked_nominals"
         or locked.get("classification") != "locked_before_new_validation_inputs"
         or type(locked.get("campaign_manifest_sha256_before_stage")) is not str
@@ -273,7 +303,7 @@ def validate_final_input_result_bytes(
     }
     rows = []
     for zseed, mseed in zip(ZEEMAN_SEEDS, MOT_SEEDS):
-        zbase = f"final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed{zseed}"
+        zbase = f"final_validation_inputs/after_zeeman/production_zeeman_n{initial_particles}_dt40us_seed{zseed}"
         mbase = f"final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed{zseed}_mot_seed{mseed}"
         rpath = (
             f"final_validation_inputs/mot_2d_records/replicates/zeeman_seed{zseed}.json"
@@ -315,6 +345,15 @@ def validate_final_input_result_bytes(
             "output_sha256",
         }
         replicate_keys = {"kind", "parameters", "design", "replicate"}
+        if profile:
+            if any(
+                item.get("acceptance") != profile.provenance()
+                for item in (zm, mm, replicate)
+            ):
+                _raise("input_metadata_mismatch")
+            zeeman_keys.add("acceptance")
+            survivor_keys.add("acceptance")
+            replicate_keys.add("acceptance")
         expected_profile = (
             expected_design.get("zeeman_profile")
             if isinstance(expected_design, dict)
@@ -357,7 +396,12 @@ def validate_final_input_result_bytes(
                 "laboratory_spec_version",
                 "laboratory_spec_sha256",
                 "zeeman_profile_sha256",
+                *({"acceptance"} if profile else set()),
             }
+            or (
+                profile is not None
+                and mm["design"].get("acceptance") != profile.provenance()
+            )
             or mm["design"].get("stochastic_solver")
             != expected_design.get("stochastic_solver")
             or mm["design"].get("zeeman_profile") != expected_profile
@@ -369,9 +413,15 @@ def validate_final_input_result_bytes(
             != zm.get("zeeman_profile_sha256")
             or mm["design"].get("ensemble_dir")
             != f"{expected_root}/final_validation_inputs/after_zeeman"
-            or mm["design"].get("dt_s") != 4e-5
+            or mm["design"].get("dt_s")
+            != (MOT_2D_SIM_CONFIG["dt_s"] if profile else 4e-5)
             or mm["design"].get("uses_all_available_particles") is not True
-            or mm["design"].get("npools") != 200
+            or mm["design"].get("npools")
+            != (
+                profile.policy["generation"]["jobs"]["mot_2d"]["npools"]
+                if profile
+                else 200
+            )
             or mm.get("shape") != list(ma.shape)
             or mm.get("output_sha256") != hashes[f"{mbase}.npy"]
             or not _canonical_path(
@@ -428,7 +478,15 @@ def validate_final_input_result_bytes(
             "generation_jobs",
             "ensembles",
             "total_survivors",
+            *({"acceptance", "suitability"} if profile else set()),
         }
+        or (
+            profile is not None
+            and (
+                inputs.get("acceptance") != profile.provenance()
+                or inputs.get("suitability") != "acceptance_only"
+            )
+        )
         or inputs.get("kind") != "mot_3d_final_validation_inputs"
         or inputs.get("classification") != "newly_generated_sealed_after_nominal_lock"
         or inputs.get("locked_nominals_sha256")

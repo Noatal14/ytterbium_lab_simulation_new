@@ -162,7 +162,8 @@ describe("individual Zeeman wizard", () => {
     expect(onBack).toHaveBeenCalledOnce();
     expect(window.localStorage.getItem("ytterbium.individual-run.zeeman.v1")).toBeNull();
     expect(api.recoverZeus).not.toHaveBeenCalled();
-    expect(api.startLocal).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+    expect(api.startLocal).not.toHaveBeenCalled();
+    expect(screen.queryByText("Existing Zeus run needs verification")).not.toBeInTheDocument(); expect(api.confirm).not.toHaveBeenCalled();
   });
 
 });

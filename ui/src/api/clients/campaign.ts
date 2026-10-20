@@ -1,7 +1,7 @@
 import { getData, postData } from "../http/envelope";
 import { parseCampaign, parsePreview, type Campaign, type CreationPreview, type CreationResult, type ZeemanSource } from "../schema/domain";
 import { finiteNonnegative, text } from "../schema/common";
-import { MOT_2D_SPECIFICATION_V1 } from "../../generated/mot2dSpec.v1";
+import { MOT_2D_SPECIFICATION_V1 } from "../campaignPolicy";
 export type { Campaign, CreationPreview, CreationResult, ZeemanSource } from "../schema/domain";
 export const campaignApi={async list(){const data=await getData("/api/v1/campaigns") as Record<string,unknown>;if(!data||!Array.isArray(data.campaigns)||!finiteNonnegative(data.invalid_count)||!finiteNonnegative(data.total)||data.total!==data.campaigns.length)throw new Error("Invalid campaign list response.");return{...data,campaigns:data.campaigns.map(parseCampaign)} as {campaigns:Campaign[];invalid_count:number;total:number};},async get(id:string){return parseCampaign(await getData(`/api/v1/campaigns/${encodeURIComponent(id)}`));}};
 export type CampaignApi=typeof campaignApi;

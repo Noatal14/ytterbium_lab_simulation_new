@@ -25,13 +25,25 @@ def load_production_ensembles(
     zeeman_seeds=None,
     expected_profile=None,
     verify_sha256=True,
+    acceptance_profile_id=None,
 ):
     """Load the same deterministic particle subsets for every parameter point."""
+    from workflow_api.acceptance_profile import assert_acceptance_path, assert_scientific_source, load_acceptance_profile
+    acceptance = load_acceptance_profile(acceptance_profile_id) if acceptance_profile_id is not None else None
+    if acceptance is not None:
+        if directory is None:
+            raise ValueError("Acceptance ensembles require an explicit isolated directory.")
+        assert_acceptance_path(directory, Path.cwd())
+    elif directory is not None and "ui_acceptance" in Path(directory).parts:
+        raise ValueError("TEST ONLY ensembles require an explicit acceptance profile.")
     paths = (
         production_zeeman_ensemble_files()
         if directory is None
         else production_zeeman_ensemble_files(directory)
     )
+    if acceptance is not None:
+        count = acceptance.policy['generation']['zeeman_initial_particles']
+        paths = sorted(Path(directory).glob(f'production_zeeman_n{count}_dt40us_seed*.npy'))
     if zeeman_seeds is not None:
         requested = [int(seed) for seed in zeeman_seeds]
         by_seed = {}
@@ -58,6 +70,10 @@ def load_production_ensembles(
         if not metadata_path.exists():
             raise FileNotFoundError(f"Missing adjacent metadata: {metadata_path}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if acceptance is None:
+            assert_scientific_source(metadata)
+        elif metadata.get("acceptance") != acceptance.provenance():
+            raise ValueError("Acceptance ensemble profile mismatch.")
         parameters = metadata.get("parameters", {})
         zeeman_seed = int(parameters["seed"])
         if expected_profile is not None:

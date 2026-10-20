@@ -1,5 +1,6 @@
 """Guarded Refinement completion and Confirmation preparation."""
 from __future__ import annotations
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 import hashlib,json,math,re,secrets,subprocess,threading,time
 from dataclasses import dataclass,replace
 from datetime import datetime,timezone
@@ -43,15 +44,15 @@ class ZeusConfirmationCoordinator:
         round_states=[row["scheduler"]["state"] for row in state.rounds]
         lifecycle_coherent=(valid or state.lifecycle in {"awaiting_outputs","outputs_invalid"}) and all(value=="completed_success" for value in round_states) or state.lifecycle=="running" and "running" in round_states or state.lifecycle=="queued" and "queued" in round_states or state.lifecycle=="held" and "held" in round_states or state.lifecycle=="failed" and "completed_failed" in round_states or state.lifecycle=="status_unknown" and "unknown" in round_states
         if not lifecycle_coherent:raise ZeusConfirmationError("remote_response_invalid")
-        if valid and len(state.rows)!=len(plan[3]["s0_values"])*30 or not valid and state.rows:raise ZeusConfirmationError("remote_response_invalid")
+        if valid and len(state.rows)!=len(plan[3]["s0_values"])*3*trial_budget(plan[3], "refine") or not valid and state.rows:raise ZeusConfirmationError("remote_response_invalid")
         seen=set();per_s0={float(value):0 for value in plan[3]["s0_values"]}
         for row in state.rows:
             if not isinstance(row,dict) or set(row)!={"s0","detuning_gamma","magnet_radius","mean_conditional_efficiency","source"} or any(isinstance(row[key],bool) or not isinstance(row[key],(int,float)) or not math.isfinite(row[key]) for key in ("s0","detuning_gamma","magnet_radius","mean_conditional_efficiency")) or not isinstance(row["source"],str) or not re.fullmatch(r"refine/s0_[0-9]+p[0-9]{6}/worker[0-2]/trials/trial_[0-9]{4}\.json",row["source"]) or row["source"] in seen or float(row["s0"]) not in per_s0:raise ZeusConfirmationError("remote_response_invalid")
             seen.add(row["source"]);per_s0[float(row["s0"])]+=1
-        if valid and any(count!=30 for count in per_s0.values()):raise ZeusConfirmationError("remote_response_invalid")
+        if valid and any(count!=3*trial_budget(plan[3], "refine") for count in per_s0.values()):raise ZeusConfirmationError("remote_response_invalid")
         return plan,state
     def status(self,request):
-        plan,state=self._inspect(request);campaign_id,_,_,manifest,*_=plan;expected=len(manifest["s0_values"])*30;valid=state.lifecycle in {"ready_to_prepare_confirmation","confirmation_prepared"};invalid=state.lifecycle=="outputs_invalid"
+        plan,state=self._inspect(request);campaign_id,_,_,manifest,*_=plan;expected=len(manifest["s0_values"])*3*trial_budget(manifest, "refine");valid=state.lifecycle in {"ready_to_prepare_confirmation","confirmation_prepared"};invalid=state.lifecycle=="outputs_invalid"
         return {"source":"zeus","queried_at":datetime.now(timezone.utc).isoformat(),"campaign":{"id":campaign_id,"name":manifest["name"],"stage":"confirmation" if state.lifecycle=="confirmation_prepared" else "refine"},"chain":{"status":state.lifecycle,"rounds":[dict(row) for row in state.rounds]},"validation":{"status":"valid" if valid else "invalid" if invalid else "not_ready","completed_trials":expected if valid else 0,"expected_trials":expected,"candidate_count":len(manifest["s0_values"])*5 if valid else 0},"next_action":"review_confirmation_preparation" if state.lifecycle=="ready_to_prepare_confirmation" else "none" if state.lifecycle=="confirmation_prepared" else "inspect_zeus" if state.lifecycle in {"failed","held","status_unknown","outputs_invalid"} else "wait","local_sync":{"status":"not_synchronized"}}
     def preview(self,request,*,session_id):
         plan,state=self._inspect(request);campaign_id,profile,campaign,manifest,commit,_,key,_,_=plan
@@ -63,11 +64,11 @@ class ZeusConfirmationCoordinator:
         for group in selected.values():
             for rank,row in enumerate(group,1):candidates.append({"s0":row["s0"],"rank":rank,"detuning_gamma":row["detuning_gamma"],"magnet_radius_m":row["magnet_radius"],"mean_conditional_efficiency":row["mean_conditional_efficiency"],"source":row["source"]})
         fixed=manifest["fixed_design"];ids=[row["job_id"] for row in state.rounds]
-        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"from_stage":"refine","to_stage":"confirmation","bounds":{"detuning_gamma":{"low":fixed["detuning_bounds_gamma"][0],"high":fixed["detuning_bounds_gamma"][1]},"magnet_radius_m":{"low":fixed["magnet_radius_bounds_m"][0],"high":fixed["magnet_radius_bounds_m"][1]}},"refinement":{"round_job_ids":ids,"completed_trials":len(rows),"expected_trials":len(manifest["s0_values"])*30,"candidates":candidates},"artifacts":{"create":["refined_candidates.json","confirmation/tasks.json","jobs/04_confirmation.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/04_confirmation.pbs","kind":"array","task_count":len(manifest["s0_values"])*5,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":36000},"effects":{"prepare_confirmation":True,"submit_confirmation":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
+        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"from_stage":"refine","to_stage":"confirmation","bounds":{"detuning_gamma":{"low":fixed["detuning_bounds_gamma"][0],"high":fixed["detuning_bounds_gamma"][1]},"magnet_radius_m":{"low":fixed["magnet_radius_bounds_m"][0],"high":fixed["magnet_radius_bounds_m"][1]}},"refinement":{"round_job_ids":ids,"completed_trials":len(rows),"expected_trials":len(manifest["s0_values"])*3*trial_budget(manifest, "refine"),"candidates":candidates},"artifacts":{"create":["refined_candidates.json","confirmation/tasks.json","jobs/04_confirmation.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/04_confirmation.pbs","kind":"array","task_count":len(manifest["s0_values"])*5,"array_throttle":3,"queue":"zeus_combined_q",**reviewed_job_resources(manifest, 'confirmation', {"cores_per_task":200, "memory_per_task_bytes":68719476736, "walltime_seconds":36000})},"effects":{"prepare_confirmation":True,"submit_confirmation":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
     @staticmethod
     def _remote_manifest(manifest,campaign,root):
         value=json.loads(json.dumps(manifest));value["stage"]="refine";argument=campaign.relative_to(root).as_posix();count=len(value["s0_values"])*3
-        value.setdefault("stages",{})["refine"]={"tasks":count,"cumulative_trial_targets":[3,6,9,10],"round_job_files":[f"{argument}/jobs/03_refine_round_{index:02d}.pbs" for index in range(1,5)],"submit_chain":f"{argument}/jobs/03_submit_refinement_chain.sh","dependency":"afterok"}
+        value.setdefault("stages",{})["refine"]={"tasks":count,"cumulative_trial_targets":list(refinement_targets(manifest)),"round_job_files":[f"{argument}/jobs/03_refine_round_{index:02d}.pbs" for index in range(1,5)],"submit_chain":f"{argument}/jobs/03_submit_refinement_chain.sh","dependency":"afterok"}
         return value
     def confirm(self,request,*,session_id):
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusConfirmationError("request_invalid")

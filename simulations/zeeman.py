@@ -60,8 +60,9 @@ def zeeman_simulation(
     start_distance_m=ZEEMAN_SIM_CONFIG["start_distance_m"],
     cutoff_distance_m=ZEEMAN_SIM_CONFIG["cutoff_distance_m"],
     progress_callback=None,
+    initial_states=None,
 ):
-    """Generate a thermal beam and return the states that survive Zeeman."""
+    """Propagate the thermal beam, or explicit controlled inputs, through Zeeman."""
     _resolved_run_parameters({"zeeman_field_config": zeeman_field_config})
     atom, simulation_config = build_base_config(
         atom_species="Yb171",
@@ -77,19 +78,26 @@ def zeeman_simulation(
             cutoff_distance=cutoff_distance_m
         ),
     )
-    r0_arr, v0_arr, _ = generate_thermal_beam_state(
-        N=N_particles,
-        collimation_angle_deg=collimation_angle_deg,
-        angular_broadening_factor=angular_broadening_factor,
-        m=atom.mass,
-        distance_m=start_distance_m,
-        seed=seed,
-    )
-    time_points, _ = generate_timepoints(t_max_s, dt)
-    initial_states = [
-        np.concatenate((position, velocity))
-        for position, velocity in zip(r0_arr, v0_arr)
-    ]
+    if initial_states is None:
+        r0_arr, v0_arr, _ = generate_thermal_beam_state(
+            N=N_particles,
+            collimation_angle_deg=collimation_angle_deg,
+            angular_broadening_factor=angular_broadening_factor,
+            m=atom.mass,
+            distance_m=start_distance_m,
+            seed=seed,
+        )
+        time_points, _ = generate_timepoints(t_max_s, dt)
+        initial_states = [
+            np.concatenate((position, velocity))
+            for position, velocity in zip(r0_arr, v0_arr)
+        ]
+    else:
+        supplied = np.asarray(initial_states, dtype=np.float64)
+        if supplied.shape != (N_particles, 6) or not np.all(np.isfinite(supplied)):
+            raise ValueError("Explicit Zeeman initial states must be finite with shape (N_particles, 6).")
+        initial_states = [row.copy() for row in supplied]
+        time_points, _ = generate_timepoints(t_max_s, dt)
     simulation_function = RK4StCustom if stochastic else ScipyIVP_3DCustom
     results, _ = run_multiple_atoms_simulation(
         config=simulation_config,
@@ -221,6 +229,18 @@ def write_zeeman_metadata(output_path, survivors, simulation_kwargs, elapsed_sec
             "host": platform.node(),
         },
     }
+    if simulation_kwargs.get("initial_states") is not None:
+        supplied = np.asarray(simulation_kwargs["initial_states"], dtype="<f8")
+        if supplied.shape != (n_initial, 6) or not np.all(np.isfinite(supplied)):
+            raise ValueError("Explicit Zeeman input provenance has invalid states.")
+        metadata["suitability"] = "acceptance_only"
+        metadata["input_origin"] = {
+            "kind": "explicit_initial_states",
+            "suitability": "acceptance_only",
+            "thermal_sampler_used": False,
+            "initial_state_sha256": hashlib.sha256(supplied.tobytes(order="C")).hexdigest(),
+            "particle_count": n_initial,
+        }
     metadata_path = output_path.with_suffix(".json")
     save_file_json(metadata_path, metadata)
     return metadata_path

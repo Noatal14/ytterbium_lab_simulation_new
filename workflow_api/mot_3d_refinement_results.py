@@ -125,8 +125,9 @@ def expected_paths(
     return tuple(sorted(paths))
 
 
-def _canonical_campaign_path(value: str, project_directory: str, name: str) -> str:
-    expected = f"{project_directory}/data/optimization/mot_3d/{name}"
+def _canonical_campaign_path(value: str, project_directory: str, name: str, *, acceptance=False) -> str:
+    segment = "ui_acceptance/" if acceptance else ""
+    expected = f"{project_directory}/data/optimization/mot_3d/{segment}{name}"
     if value != expected or str(PurePosixPath(value)) != value:
         _raise("design_mismatch")
     return expected
@@ -172,11 +173,15 @@ def validate_refinement_result_bytes(
     paths = expected_paths(selections, policy)
     if not isinstance(result_files, Mapping) or set(result_files) != set(paths):
         _raise("artifact_registry_mismatch")
+    from workflow_api import mot_3d_workload as workload
+    per_ensemble = workload.particles_per_ensemble(manifest, policy.stage, 750)
+    expected_count = 4 * per_ensemble
+    frozen_keys = FROZEN_DESIGN_KEYS | set(workload.artifact_identity(manifest))
     name = manifest.get("name")
     if type(name) is not str:
         _raise("design_mismatch")
     source_root = _canonical_campaign_path(
-        campaign_absolute_path, project_directory, name
+        campaign_absolute_path, project_directory, name, acceptance=workload.policy(manifest) is not None
     )
     stage = manifest.get("stages", {}).get(policy.stage, {})
     design = manifest.get("design", {})
@@ -194,7 +199,7 @@ def validate_refinement_result_bytes(
             project_directory=project_directory,
             input_role="refinement",
             input_ensembles=4,
-            particles_per_ensemble=750,
+            particles_per_ensemble=per_ensemble,
             selection_seed=policy.selection_seed,
             expected_zeeman_seeds=tuple(range(3027, 3031)),
         )
@@ -292,7 +297,7 @@ def validate_refinement_result_bytes(
                         "outcomes_sha256",
                         "design",
                     }
-                    or record.get("input_particle_count") != EXPECTED_PARTICLES
+                    or record.get("input_particle_count") != expected_count
                     or type(record.get("worker_index")) is not int
                     or identifiers.index(record.get("candidate_id")) % 3
                     != record["worker_index"]
@@ -312,7 +317,7 @@ def validate_refinement_result_bytes(
                 ]
                 if (
                     any(
-                        type(value) is not int or not 0 <= value <= EXPECTED_PARTICLES
+                        type(value) is not int or not 0 <= value <= expected_count
                         for value in counts
                     )
                     or counts[2] < counts[0]
@@ -326,7 +331,8 @@ def validate_refinement_result_bytes(
                 selection_path = f"{source_root}/selection/{policy.stage}/{family}.json"
                 if (
                     not isinstance(current, dict)
-                    or set(current) != FROZEN_DESIGN_KEYS
+                    or set(current) != frozen_keys
+                    or any(current.get(key) != value for key, value in workload.artifact_identity(manifest).items())
                     or current.get("campaign_manifest_path")
                     != f"{source_root}/campaign.json"
                     or current.get("selection_path") != selection_path
@@ -348,7 +354,7 @@ def validate_refinement_result_bytes(
                     or current.get("dt_s") != MOT_3D_TIMESTEP_POLICY["search_dt_s"]
                     or current.get("t_max_s") != MOT_3D_TIMESTEP_POLICY["t_max_s"]
                     or current.get("solver") != MOT_3D_TIMESTEP_POLICY["solver"]
-                    or current.get("particles_per_ensemble") != 750
+                    or current.get("particles_per_ensemble") != per_ensemble
                     or current.get("selection_seed") != policy.selection_seed
                 ):
                     _raise("design_mismatch")
@@ -361,14 +367,14 @@ def validate_refinement_result_bytes(
                         archive["ensemble_ids"],
                     )
                     if (
-                        usable.shape != (3000,)
-                        or ever.shape != (3000,)
-                        or groups.shape != (3000,)
+                        usable.shape != (expected_count,)
+                        or ever.shape != (expected_count,)
+                        or groups.shape != (expected_count,)
                         or usable.dtype != np.bool_
                         or ever.dtype != np.bool_
                         or not np.issubdtype(groups.dtype, np.integer)
                         or [int(np.sum(groups == index)) for index in range(4)]
-                        != [750] * 4
+                        != [per_ensemble] * 4
                         or int(usable.sum()) != record["usable_at_end_count"]
                         or int(ever.sum()) != record["usable_ever_count"]
                         or np.any(usable & ~ever)
@@ -382,7 +388,7 @@ def validate_refinement_result_bytes(
                 summary.get("kind") != "merged_mot_3d_focused_refinement"
                 or summary.get("family") != family
                 or summary.get("candidate_count") != 16
-                or summary.get("particle_count") != 3000
+                or summary.get("particle_count") != expected_count
                 or summary.get("ensemble_file_indices") != [12, 13, 14, 15]
                 or summary.get("recoil_seed_count") != 3
                 or summary.get("bootstrap_replicates") != 10_000

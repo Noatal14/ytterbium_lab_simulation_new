@@ -7,6 +7,7 @@ a remote lock before invoking the fixed qsub executable once.
 """
 
 from __future__ import annotations
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 
 import hashlib
 import json
@@ -136,7 +137,7 @@ def rel(text,prefix):
     return pure
 try:
     campaign_pure=rel(campaign,('data','optimization','mot_2d'))
-    if len(campaign_pure.parts)!=4: raise ValueError()
+    if len(campaign_pure.parts)!=4 and not (len(campaign_pure.parts)==5 and campaign_pure.parts[3]=="ui_acceptance"): raise ValueError()
     job_pure=rel(job_file,campaign_pure.parts)
     if job_pure.parts[len(campaign_pure.parts):] != ('jobs','01_smoke.pbs'): raise ValueError()
     if not isinstance(files,dict) or len(files)!=72 or any(not isinstance(k,str) or not isinstance(v,str) or not hex64.fullmatch(v) for k,v in files.items()): raise ValueError()
@@ -190,6 +191,20 @@ def validate_all():
             with target.open('rb') as stream:
                 for chunk in iter(lambda:stream.read(1048576),b''): observed.update(chunk)
             if observed.hexdigest()!=digest: return None
+        manifest=json.loads((campaign_path/'campaign.json').read_text(encoding='utf-8'))
+        def acceptance_marked(value):
+            if isinstance(value,dict):
+                return ('acceptance' in value or value.get('suitability')=='acceptance_only'
+                        or value.get('profile_id')=='ui_acceptance_v1'
+                        or value.get('kind') in ('mot_2d_ui_acceptance_v1','mot_3d_ui_acceptance_v1')
+                        or any(acceptance_marked(item) for item in value.values()))
+            return isinstance(value,list) and any(acceptance_marked(item) for item in value)
+        if acceptance_marked(manifest) or project.name=='ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign_pure.parts:
+            sys.path.insert(0,str(project))
+            from workflow_api.acceptance_remote import assert_campaign_target
+            from workflow_api.mot_2d_spec import validate_campaign_policy
+            validate_campaign_policy(manifest)
+            assert_campaign_target(manifest,username,project,campaign_path)
         return branch_text
     except Exception: return None
 def open_child_directory(parent_fd,name,create=False):
@@ -454,6 +469,9 @@ class ZeusSmokeSubmissionCoordinator:
         try: profile=ZeusProfile.parse({"username":request.get("username"),"project_directory":request.get("project_directory")})
         except ValueError as error: raise ZeusSubmissionError("profile_invalid") from error
         campaign_id=str(request["campaign_id"]); campaign,manifest,commit,files,job,key=self._plan(campaign_id)
+        from workflow_api.acceptance_remote import assert_campaign_target
+        try: assert_campaign_target(manifest,profile.username,profile.project_directory,campaign.relative_to(self.root).as_posix())
+        except ValueError as error: raise ZeusSubmissionError("profile_invalid") from error
         local_commit,clean=self._revision()
         if not clean or local_commit!=commit: raise ZeusSubmissionError("local_checkout_mismatch")
         transport=self.transport_factory(profile); state=transport.inspect(files=files,campaign=campaign.relative_to(self.root).as_posix(),job_file=job,commit=commit,submission_key=key)
@@ -473,7 +491,7 @@ class ZeusSmokeSubmissionCoordinator:
         name=manifest.get("name") if isinstance(manifest.get("name"),str) else campaign.name
         s0_values=manifest.get("s0_values")
         if not isinstance(s0_values,list) or not s0_values: raise ZeusSubmissionError("campaign_not_canonical")
-        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":name,"path":campaign.relative_to(self.root).as_posix(),"git_commit":commit,"s0_values":s0_values},"stage":{"id":"smoke","label":"Smoke check","purpose":"Validate the prepared 2D-MOT campaign before longer optimization stages."},"job":{"file":"jobs/01_smoke.pbs","kind":"job" if len(s0_values)==1 else "array","task_count":len(s0_values),"queue":"zeus_combined_q","cores_per_task":1,"memory_per_task_bytes":68719476736,"walltime_seconds":1200},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"inputs":{"verified_count":72,"status":"ready"},"effects":{"submit_smoke":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
+        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":name,"path":campaign.relative_to(self.root).as_posix(),"git_commit":commit,"s0_values":s0_values},"stage":{"id":"smoke","label":"Smoke check","purpose":"Validate the prepared 2D-MOT campaign before longer optimization stages."},"job":{"file":"jobs/01_smoke.pbs","kind":"job" if len(s0_values)==1 else "array","task_count":len(s0_values),"queue":"zeus_combined_q",**reviewed_job_resources(manifest, 'smoke', {"cores_per_task":1, "memory_per_task_bytes":68719476736, "walltime_seconds":1200})},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"inputs":{"verified_count":72,"status":"ready"},"effects":{"submit_smoke":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
 
     def confirm(self, request: Mapping[str, object], *, session_id: str) -> dict[str, object]:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str): raise ZeusSubmissionError("request_invalid")

@@ -6,6 +6,7 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 from utils.mot_2d_study import summarize_replicates
+from workflow_api.mot_2d_spec import campaign_kind_matches, validate_campaign_policy
 
 SCREEN_TRIALS = 17
 MAX_DB_BYTES = 128 * 1024 * 1024
@@ -39,7 +40,11 @@ def _all_finite(value: Any) -> None:
 def _design(manifest:dict[str,Any],s0:float,worker:int,*,role="discovery",particles=None,sampler_base=137,bounds=None)->dict[str,Any]:
     fixed=manifest["fixed_design"]
     selected_bounds=bounds or {"detuning":list(fixed["detuning_bounds_gamma"]),"radius":list(fixed["magnet_radius_bounds_m"])}
-    return {"fixed_s0":s0,"dt_s":fixed["working_dt_s"],"solver":"RK4StHybridCustom","ensemble_dir":manifest["ensemble_source"]["directory"],"zeeman_seeds":manifest["seed_roles"][role],"mot_seeds":manifest["mot_seeds"][role],"particles_per_ensemble":particles or fixed["particle_counts"]["screen"],"sampler_seed":sampler_base+worker,"bounds":{"s0":[s0,s0],"detuning_gamma":list(selected_bounds["detuning"]),"magnet_radius_m":list(selected_bounds["radius"])},"git_commit":manifest["provenance"]["git_commit"],"campaign_design_id":manifest["provenance"]["physical_model_sha256"]}
+    design = {"fixed_s0":s0,"dt_s":fixed["working_dt_s"],"solver":"RK4StHybridCustom","ensemble_dir":manifest["ensemble_source"]["directory"],"zeeman_seeds":manifest["seed_roles"][role],"mot_seeds":manifest["mot_seeds"][role],"particles_per_ensemble":particles or fixed["particle_counts"]["screen"],"sampler_seed":sampler_base+worker,"bounds":{"s0":[s0,s0],"detuning_gamma":list(selected_bounds["detuning"]),"magnet_radius_m":list(selected_bounds["radius"])},"git_commit":manifest["provenance"]["git_commit"],"campaign_design_id":manifest["provenance"]["physical_model_sha256"]}
+
+    if validate_campaign_policy(manifest):
+        design["acceptance"] = manifest["acceptance"]
+    return design
 
 def _db(path:Path,expected:dict[str,Any],trials:list[dict[str,Any]],study_name:str,root:Path,trial_count:int)->None:
     _safe(root,path)
@@ -70,7 +75,7 @@ def _db(path:Path,expected:dict[str,Any],trials:list[dict[str,Any]],study_name:s
 
 def _validate_outputs(root:Path,manifest:dict[str,Any],*,stage:str,trial_count:int,role:str,particles:int,sampler_base:int,tasks:list[dict[str,Any]])->list[dict[str,Any]]:
     """Return every validated trial as a compact canonical ranking row."""
-    if manifest.get("kind")!="mot_2d_s0_campaign" or manifest.get("stage")!=stage: raise ScreenValidationError("Campaign is not awaiting output validation.")
+    if not campaign_kind_matches(manifest) or manifest.get("stage")!=stage: raise ScreenValidationError("Campaign is not awaiting output validation.")
     values=manifest.get("s0_values")
     if not isinstance(values,list) or not values or len({float(value) for value in values})!=len(values) or any(isinstance(value,bool) or not isinstance(value,(int,float)) or not math.isfinite(value) or value<=0 for value in values):raise ScreenValidationError("Invalid frozen s0 values.")
     observed_tasks=_json(root/stage/"tasks.json",root=root)
@@ -110,6 +115,7 @@ def _validate_outputs(root:Path,manifest:dict[str,Any],*,stage:str,trial_count:i
         summary=_json(directory/"summary.json",root=root);_all_finite(summary)
         ranked=summary.get("ranked_trials") if isinstance(summary,dict) else None
         expected_summary_design={"dt_s":expected["dt_s"],"n_ensembles":len(expected["zeeman_seeds"]),"particles_per_ensemble":expected["particles_per_ensemble"],"mot_seed_start":24000,"stochastic_solver":expected["solver"],"ensemble_dir":expected["ensemble_dir"],"zeeman_seeds":expected["zeeman_seeds"],"sampler_seed":expected["sampler_seed"],"bounds":expected["bounds"]}
+        if validate_campaign_policy(manifest): expected_summary_design["acceptance"] = manifest["acceptance"]
         study_name=f"{manifest['name']}_{stage}_{f's0_{s0:.6f}'.replace('.', 'p')}_w{worker}"
         if set(summary)!={"kind","study_name","objectives","fixed_s0","n_registered_trials","n_finished_trials","ranked_trials","pareto_front","design"} or summary.get("kind")!="mot_2d_joint_optimization_summary" or summary.get("study_name")!=study_name or summary.get("objectives")!=["maximize_mean_conditional_efficiency"] or summary.get("design")!=expected_summary_design or summary.get("fixed_s0")!=s0 or summary.get("n_registered_trials")!=trial_count or summary.get("n_finished_trials")!=trial_count or not isinstance(ranked,list) or len(ranked)!=trial_count or summary.get("pareto_front")!=[]: raise ScreenValidationError("Invalid summary.")
         by_number={number:item for number,item in enumerate(compact)}
@@ -122,7 +128,7 @@ def _validate_outputs(root:Path,manifest:dict[str,Any],*,stage:str,trial_count:i
 
 def validate_screen_outputs(root:Path,manifest:dict[str,Any])->list[dict[str,Any]]:
     tasks=[{"s0":float(s0),"worker":worker} for s0 in manifest.get("s0_values",[]) for worker in range(3)]
-    return _validate_outputs(root,manifest,stage="screen",trial_count=SCREEN_TRIALS,role="discovery",particles=manifest.get("fixed_design",{}).get("particle_counts",{}).get("screen",2000),sampler_base=137,tasks=tasks)
+    return _validate_outputs(root,manifest,stage="screen",trial_count=(manifest["fixed_design"]["trial_budgets"]["screen_per_worker"] if validate_campaign_policy(manifest) else SCREEN_TRIALS),role="discovery",particles=manifest.get("fixed_design",{}).get("particle_counts",{}).get("screen",2000),sampler_base=137,tasks=tasks)
 
 def validate_refine_outputs(root:Path,manifest:dict[str,Any])->list[dict[str,Any]]:
     tasks=_json(root/"refine/tasks.json",root=root)
@@ -145,4 +151,4 @@ def validate_refine_outputs(root:Path,manifest:dict[str,Any])->list[dict[str,Any
             bounds={"detuning":[max(fixed["detuning_bounds_gamma"][0],detuning-0.08),min(fixed["detuning_bounds_gamma"][1],detuning+0.08)],"radius":[max(fixed["magnet_radius_bounds_m"][0],radius-0.5e-3),min(fixed["magnet_radius_bounds_m"][1],radius+0.5e-3)]}
             expected_tasks.append({"s0":s0,"worker":worker,"center":center,"bounds":bounds})
     if selected!=expected_selected or tasks!=expected_tasks:raise ScreenValidationError("Refinement task registry is not canonical.")
-    return _validate_outputs(root,manifest,stage="refine",trial_count=10,role="refinement",particles=10000,sampler_base=701,tasks=tasks)
+    return _validate_outputs(root,manifest,stage="refine",trial_count=(manifest["fixed_design"]["trial_budgets"]["refine_per_worker"] if validate_campaign_policy(manifest) else 10),role="refinement",particles=(manifest["fixed_design"]["particle_counts"]["refine"] if validate_campaign_policy(manifest) else 10000),sampler_base=701,tasks=tasks)

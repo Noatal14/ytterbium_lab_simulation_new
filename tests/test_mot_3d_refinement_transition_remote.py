@@ -139,7 +139,7 @@ def _fixture(tmp_path, monkeypatch, receiver=remote):
         core, "_capture", lambda *a, **k: (manifest, results, validated)
     )
     monkeypatch.setattr(core, "_render_transition", lambda *a, **k: (generated, {}))
-    monkeypatch.setattr(core, "_result_paths", lambda parsed: result_paths)
+    monkeypatch.setattr(core, "_result_paths", lambda parsed, manifest=None: result_paths)
     return root, campaign, payload
 
 

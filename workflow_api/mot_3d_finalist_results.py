@@ -83,6 +83,9 @@ def _candidate_ids(selection, family):
 
 
 def _all_particle_provenance(manifest, project_directory):
+    from workflow_api.mot_3d_workload import policy
+
+    acceptance = policy(manifest)
     roles = manifest.get("input_roles")
     names = ("discovery", "refinement", "preliminary_check")
     if not isinstance(roles, Mapping) or set(roles) != set(names):
@@ -96,6 +99,9 @@ def _all_particle_provenance(manifest, project_directory):
                 project_directory=project_directory,
                 expected_zeeman_seeds=ROLE_SEEDS[role],
                 source_git_commit=commit,
+                acceptance_provenance=(
+                    None if acceptance is None else acceptance.provenance()
+                ),
             )
         except PreliminaryResultError as exc:
             _raise("particle_selection_mismatch", exc)
@@ -167,6 +173,9 @@ def validate_finalist_result_bytes(
         _raise("artifact_registry_mismatch")
     try:
         manifest = _strict_json_bytes(manifest_bytes)
+        from workflow_api.mot_3d_workload import artifact_identity
+
+        frozen_keys = FROZEN_DESIGN_KEYS | set(artifact_identity(manifest))
         selections = {
             family: _strict_json_bytes(selection_bytes[family]) for family in FAMILIES
         }
@@ -176,7 +185,8 @@ def validate_finalist_result_bytes(
     if set(result_files) != set(paths):
         _raise("artifact_registry_mismatch")
     name = manifest.get("name")
-    expected_root = f"{project_directory}/data/optimization/mot_3d/{name}"
+    segment = "ui_acceptance/" if artifact_identity(manifest) else ""
+    expected_root = f"{project_directory}/data/optimization/mot_3d/{segment}{name}"
     stage = manifest.get("stages", {}).get("finalist_selection", {})
     if (
         type(name) is not str
@@ -391,7 +401,11 @@ def validate_finalist_result_bytes(
                     ):
                         _raise("result_archive_invalid")
             if (
-                set(design) != FROZEN_DESIGN_KEYS
+                set(design) != frozen_keys
+                or any(
+                    design.get(key) != value
+                    for key, value in artifact_identity(manifest).items()
+                )
                 or design.get("campaign_manifest_path")
                 != f"{expected_root}/campaign.json"
                 or design.get("selection_path")

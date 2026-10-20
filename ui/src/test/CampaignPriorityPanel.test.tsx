@@ -229,3 +229,17 @@ describe("CampaignPriorityPanel", () => {
     expect(screen.getByText(/Screening array/)).toHaveTextContent("2[].zeus-master");
   });
 });
+
+
+it("qualifies miniature Discovery and completed reports as TEST ONLY evidence", () => {
+  vi.stubEnv("MODE", "ui-acceptance");
+  try {
+    const campaign = {...campaignFixture,family:"mot_3d",stage:"discovery"} as Campaign;
+    const view = render(<CampaignPriorityPanel {...base} campaign={campaign} mot3DTransitionState="ready"/>);
+    expect(screen.getByText(/TEST ONLY: all 24 Discovery trials passed physical evidence validation/)).toBeVisible();
+    expect(screen.queryByText(/950 Discovery trials/)).not.toBeInTheDocument();
+    view.rerender(<CampaignPriorityPanel {...base} campaign={{...campaign,stage:"complete"}}/>);
+    expect(screen.getByRole("heading",{name:"TEST ONLY report is ready"})).toBeVisible();
+    expect(screen.getByText(/not eligible for scientific promotion/)).toBeVisible();
+  } finally { vi.unstubAllEnvs(); }
+});

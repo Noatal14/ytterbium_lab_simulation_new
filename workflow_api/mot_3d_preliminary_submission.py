@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api import mot_3d_workload as workload
+
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
 
 import hashlib
@@ -274,6 +276,15 @@ class Mot3DPreliminarySubmissionCoordinator:
             files = {name: _sha(_read_at(campaign_fd, name)) for name in FILES}
             if files["campaign.json"] != _sha(manifest_raw):
                 raise ValueError
+            from workflow_api.acceptance_remote import assert_campaign_target
+
+            if "kind" in manifest:
+                assert_campaign_target(
+                    manifest,
+                    profile.username,
+                    profile.project_directory,
+                    campaign.relative_to(self.root),
+                )
             design = manifest.get("design", {})
             science = {
                 "classification": stage["classification"],
@@ -297,6 +308,9 @@ class Mot3DPreliminarySubmissionCoordinator:
                 or not science["solver"]
             ):
                 raise ValueError
+            science = workload.submission_science(
+                manifest, "preliminary_check", science
+            )
             identity = {
                 "campaign_sha256": files["campaign.json"],
                 "local_transition_receipt_sha256": _sha(local_receipt_raw),
@@ -488,7 +502,7 @@ class Mot3DPreliminarySubmissionCoordinator:
             token = self._previews.add(pending, expires_at=expires, capacity=CAPACITY)
         except OverflowError as exc:
             raise Mot3DPreliminarySubmissionError("too_many_pending_previews") from exc
-        t = self.topology
+        t = workload.topology(plan[3], self.stage_id)
         result = {
             "preview_token": token,
             "expires_in_seconds": TTL,
@@ -530,6 +544,12 @@ class Mot3DPreliminarySubmissionCoordinator:
                 "record_submission_receipt": True,
             },
         }
+        acceptance = workload.policy(plan[3])
+        if acceptance is not None:
+            vnode = acceptance.policy.get("scheduler", {}).get("vnode")
+            if vnode is not None:
+                result["resources"]["array"]["vnode"] = vnode
+                result["resources"]["merge"]["vnode"] = vnode
         local_sync = self._preview_local_sync(pending)
         if local_sync is not None:
             result["local_sync"] = local_sync

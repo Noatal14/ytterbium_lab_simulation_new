@@ -5,6 +5,7 @@ from __future__ import annotations
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
 
 import base64, hashlib, json, os, re, stat, subprocess, sys, tempfile, time
+
 try:
     import fcntl
 except ImportError:
@@ -723,10 +724,12 @@ def main(*, trusted_root_override=None):
     if len(sys.argv) != 5 or sys.argv[1] not in {"inspect", "submit", "status"}:
         fail("invalid_request")
     operation, username, project, encoded = sys.argv[1:]
-    if (
-        re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}", username) is None
-        or project != f"/home/{username}/ytterbium_lab_simulation_new"
-    ):
+    if re.fullmatch(
+        r"[A-Za-z][A-Za-z0-9._-]{0,31}", username
+    ) is None or project not in {
+        f"/home/{username}/ytterbium_lab_simulation_new",
+        f"/home/{username}/ytterbium_lab_simulation_ui_acceptance",
+    }:
         fail("invalid_request")
     try:
         if encoded == "-":
@@ -753,7 +756,10 @@ def main(*, trusted_root_override=None):
         or set(payload) != expected
         or (trusted_root_override is None and root != requested)
         or relative.is_absolute()
-        or len(relative.parts) != 4
+        or not (
+            len(relative.parts) == 4
+            or (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")
+        )
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or any(x in {"", ".", ".."} for x in relative.parts)
         or not exact_match(HEX40, payload.get("commit"))
@@ -830,6 +836,26 @@ def main(*, trusted_root_override=None):
         fail("remote_checkout_mismatch")
     manifest_raw = read_relative_at(campaign_fd, "campaign.json")
     manifest = json_bytes(manifest_raw)
+    from workflow_api.acceptance_remote import assert_campaign_target
+
+    try:
+        from workflow_api.mot_3d_workload import assert_receiver_target
+
+        assert_receiver_target(
+            manifest,
+            username,
+            project,
+            relative,
+            trusted_root_override=trusted_root_override,
+        )
+    except ValueError:
+        fail(_config().preparation_error)
+    from workflow_api import mot_3d_workload as workload
+
+    try:
+        workload.validate_location(manifest, relative)
+    except ValueError:
+        fail(_config().preparation_error)
     evidence = manifest.get("design", {}).get("timestep_evidence", {})
     upstream = manifest.get("upstream_2d_campaign", {})
     if (
@@ -850,6 +876,9 @@ def main(*, trusted_root_override=None):
     expected_science["recoil_seeds"] = list(expected_science["recoil_seeds"])
     expected_science["dt_s"] = design.get(_config().dt_design_key)
     expected_science["solver"] = design.get("solver")
+    expected_science = workload.submission_science(
+        manifest, _config().stage, expected_science
+    )
     if (
         identity["science"] != expected_science
         or stage.get("classification") != expected_science["classification"]

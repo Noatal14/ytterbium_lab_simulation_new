@@ -158,6 +158,8 @@ def _bounded_json(path: Path, root: Path) -> dict[str, Any]:
     value = json.loads(raw.decode("utf-8"), object_pairs_hook=reject_duplicates)
     if not isinstance(value, dict):
         raise ValueError("Invalid 2D campaign record.")
+    from workflow_api.acceptance_profile import assert_scientific_source
+    assert_scientific_source(value)
     return value
 
 

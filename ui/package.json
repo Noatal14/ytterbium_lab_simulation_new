@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test": "vitest run && node --test scripts/dev.test.mjs",
     "test:a11y": "vitest run src/test/accessibility.test.tsx",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "dev:acceptance": "node scripts/dev.mjs --ui-acceptance"
   },
   "dependencies": {
     "lucide-react": "0.468.0",

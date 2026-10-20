@@ -48,6 +48,8 @@ from workflow_api.mot_3d_stage_topology import (
 )
 
 
+from workflow_api import mot_3d_workload as workload
+
 FAMILIES = ("angled_donut", "single_pass")
 
 
@@ -57,6 +59,7 @@ def _read_campaign_manifest(path):
 
 
 CAMPAIGN_FILES = (
+    "workflow_api/acceptance_inputs.py",
     "config.py",
     "lab_setup/physical_specification.py",
     "lab_setup/specifications/laboratory_physical_v1.json",
@@ -75,6 +78,9 @@ CAMPAIGN_FILES = (
     "lab_setup/laser_setup_3d.py",
     "simulations/mot_3d.py",
     "studies/mot_3d_campaign.py",
+    "workflow_api/mot_3d_workload.py",
+    "workflow_api/acceptance_profile.py",
+    "workflow_api/specifications/ui_acceptance_v1.json",
     "studies/mot_3d/discovery/optimize.py",
     "studies/mot_3d/analysis/retention.py",
     "studies/mot_3d/discovery/merge.py",
@@ -148,7 +154,9 @@ def _dirty_relevant_files():
     return tuple(line[3:] for line in result.stdout.splitlines() if line.strip())
 
 
-def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
+def validate_upstream_2d_campaign(
+    campaign_directory, survivor_directory, *, acceptance_profile_id=None
+):
     root = Path(campaign_directory).resolve()
     manifest_path = root / "campaign.json"
     report_path = root / "final_report.json"
@@ -158,12 +166,41 @@ def validate_upstream_2d_campaign(campaign_directory, survivor_directory):
         )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    from workflow_api.acceptance_profile import (
+        policy_for_manifest,
+        assert_scientific_source,
+        assert_acceptance_path,
+    )
+
+    upstream_profile = policy_for_manifest(manifest)
+    if acceptance_profile_id is not None:
+        if (
+            upstream_profile is None
+            or upstream_profile.profile_id != acceptance_profile_id
+            or manifest["kind"] != "mot_2d_ui_acceptance_v1"
+            or report.get("acceptance") != manifest["acceptance"]
+        ):
+            raise ValueError(
+                "3D acceptance requires a completed upstream acceptance campaign of the same profile."
+            )
+        for path in (root, survivor_directory):
+            assert_acceptance_path(path, Path(__file__).resolve().parents[1])
+    else:
+        assert_scientific_source(manifest)
+        assert_scientific_source(report)
     if (
-        manifest.get("kind") != "mot_2d_s0_campaign"
+        manifest.get("kind")
+        != (
+            "mot_2d_ui_acceptance_v1" if acceptance_profile_id else "mot_2d_s0_campaign"
+        )
         or manifest.get("stage") != "complete"
     ):
         raise ValueError("Upstream 2D campaign is not complete and canonical.")
-    if report.get("kind") != "mot_2d_s0_campaign_final_report":
+    if report.get("kind") != (
+        "mot_2d_ui_acceptance_final_report_v1"
+        if acceptance_profile_id
+        else "mot_2d_s0_campaign_final_report"
+    ):
         raise ValueError("Unexpected upstream 2D final-report kind.")
     registered_report = manifest.get("stages", {}).get("final_report")
     if not registered_report or Path(registered_report).resolve() != report_path:
@@ -332,6 +369,7 @@ def freeze_inputs(
     expected_seed_pairs=None,
     expected_design=None,
     expected_parameters=None,
+    acceptance_profile_id=None,
 ):
     directory = Path(directory).resolve()
     records = {}
@@ -349,7 +387,32 @@ def freeze_inputs(
         if not metadata_path.exists():
             raise FileNotFoundError(f"Missing survivor metadata: {metadata_path}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        from workflow_api.acceptance_profile import (
+            load_acceptance_profile,
+            assert_scientific_source,
+        )
+
+        if acceptance_profile_id is not None:
+            from workflow_api.acceptance_profile import assert_acceptance_path
+
+            for source_path in (path, metadata_path):
+                assert_acceptance_path(source_path, Path(__file__).resolve().parents[1])
+                if source_path.is_symlink():
+                    raise ValueError(
+                        "Acceptance input files cannot alias another source."
+                    )
+            if (
+                metadata.get("acceptance")
+                != load_acceptance_profile(acceptance_profile_id).provenance()
+            ):
+                raise ValueError(
+                    "Acceptance survivor lineage differs from the reviewed profile."
+                )
+        else:
+            assert_scientific_source(metadata)
         states = np.load(path, mmap_mode="r")
+        if acceptance_profile_id and len(states) < 1:
+            raise ValueError("Acceptance survivor ensemble is empty.")
         if metadata.get("kind") != "mot_2d_final_survivor_ensemble":
             raise ValueError(f"Unexpected metadata kind in {metadata_path}.")
         if int(metadata.get("zeeman_seed", -1)) != seed:
@@ -413,6 +476,11 @@ def validate_frozen_inputs(manifest_path, role, *, verify_design=True):
     """Revalidate frozen campaign inputs immediately before simulation."""
     manifest_path = Path(manifest_path)
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    profile = workload.policy(payload)
+    if profile is not None:
+        from workflow_api.acceptance_profile import assert_acceptance_path
+
+        assert_acceptance_path(manifest_path, Path(__file__).resolve().parents[1])
     records = payload.get("input_roles", {}).get(role)
     if not isinstance(records, list) or not records:
         raise ValueError(f"Campaign has no non-empty input role {role!r}.")
@@ -451,6 +519,21 @@ def validate_frozen_inputs(manifest_path, role, *, verify_design=True):
         if _sha256(metadata_path) != record["metadata_sha256"]:
             raise ValueError(f"Frozen metadata SHA-256 mismatch: {metadata_path}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        if profile is not None:
+            from workflow_api.acceptance_profile import assert_acceptance_path
+
+            for source_path in (path, metadata_path):
+                assert_acceptance_path(source_path, Path(__file__).resolve().parents[1])
+                if source_path.is_symlink():
+                    raise ValueError(
+                        "Frozen acceptance files cannot alias another source."
+                    )
+            if metadata.get("acceptance") != payload["acceptance"]:
+                raise ValueError("Frozen acceptance input lineage mismatch.")
+        if profile is None:
+            from workflow_api.acceptance_profile import assert_scientific_source
+
+            assert_scientific_source(metadata)
         states = np.load(path, mmap_mode="r")
         pair = (int(record["zeeman_seed"]), int(record["mot_seed"]))
         if upstream_pairs.get(pair[0]) != pair[1]:
@@ -586,6 +669,7 @@ def render_discovery_jobs(
     *,
     command_campaign=None,
     command_input=None,
+    manifest=None,
 ):
     """Render the canonical Discovery job bundle without filesystem effects."""
     root = Path(root)
@@ -618,8 +702,12 @@ def render_discovery_jobs(
 
     round_paths = {}
     for family in FAMILIES:
-        total = MOT_3D_OPTIMIZATION_CONFIG[family]["total_discovery_trials"]
-        targets = _targets(total)
+        targets = (
+            workload.discovery_targets(manifest, family)
+            if manifest is not None
+            else _targets(MOT_3D_OPTIMIZATION_CONFIG[family]["total_discovery_trials"])
+        )
+        total = sum(targets)
         family_paths = []
         round_count = DISCOVERY_ROUNDS[family]
         short = "don" if family == "angled_donut" else "sp"
@@ -658,6 +746,17 @@ def render_discovery_jobs(
         f'--campaign "{command_root.as_posix()}"',
     ]
     rendered["jobs/02_submit_discovery_chain.sh"] = "\n".join(lines) + "\n"
+    if manifest is not None:
+        rendered = {
+            name: (
+                workload.rendered_job(
+                    text, manifest, "smoke" if "01_smoke_" in name else "discovery"
+                )
+                if name.endswith(".pbs")
+                else text
+            )
+            for name, text in rendered.items()
+        }
     return rendered, smoke_paths, round_paths, submitter
 
 
@@ -827,7 +926,10 @@ def render_selection_stage_jobs(
             f"--bootstrap-seed {recoil_seed}\n"
             + f'test -s "{stage_root}/merged/{summary_name}"\n'
         )
-        rendered[family] = {"array": worker, "merge": merge}
+        rendered[family] = {
+            "array": workload.rendered_job(worker, manifest, stage),
+            "merge": workload.rendered_job(merge, manifest, stage, merge=True),
+        }
     return rendered
 
 
@@ -838,8 +940,8 @@ def validate_discovery_complete(root, manifest, family):
     root = Path(root)
     family_root = root / "discovery" / family
     all_paths = sorted(family_root.glob("worker_*/trials/trial_*.json"))
-    total = MOT_3D_OPTIMIZATION_CONFIG[family]["total_discovery_trials"]
-    targets = _targets(total)
+    targets = workload.discovery_targets(manifest, family)
+    total = sum(targets)
     if len(all_paths) != total:
         raise RuntimeError(
             f"Discovery {family} has {len(all_paths)}/{total} registered trials."
@@ -851,7 +953,7 @@ def validate_discovery_complete(root, manifest, family):
     _, expected_selection = load_balanced_discovery_particles(
         input_files[0],
         ensemble_count=len(input_files),
-        per_ensemble=50,
+        per_ensemble=workload.particles_per_ensemble(manifest, "discovery", 50),
         seed=DEFAULT_RANDOM_SEED,
         input_files=input_files,
     )
@@ -861,7 +963,9 @@ def validate_discovery_complete(root, manifest, family):
         "startup_trials": 24,
         "selection_seed": DEFAULT_RANDOM_SEED,
         "simulation_seed": DEFAULT_RANDOM_SEED,
-        "particles_per_ensemble": 50,
+        "particles_per_ensemble": workload.particles_per_ensemble(
+            manifest, "discovery", 50
+        ),
         "dt_s": manifest["design"]["screening_dt_s"],
         "t_max_s": MOT_3D_TIMESTEP_POLICY["t_max_s"],
         "solver": manifest["design"]["solver"],
@@ -874,6 +978,7 @@ def validate_discovery_complete(root, manifest, family):
         "upstream_campaign_sha256": upstream["campaign_sha256"],
         "upstream_final_report_sha256": upstream["final_report_sha256"],
     }
+    expected_common.update(workload.artifact_identity(manifest))
     for worker, target in enumerate(targets):
         trials_dir = family_root / f"worker_{worker}" / "trials"
         paths = sorted(trials_dir.glob("trial_*.json"))
@@ -923,7 +1028,7 @@ def prepare_preliminary_check(root, manifest):
         discovery_root = root / "discovery" / family
         validate_discovery_complete(root, manifest, family)
         merged = discovery_root / "merged"
-        total = MOT_3D_OPTIMIZATION_CONFIG[family]["total_discovery_trials"]
+        total = sum(workload.discovery_targets(manifest, family))
         summary_path, _ = merge(
             discovery_root,
             merged,
@@ -1010,7 +1115,10 @@ def _canonical_campaign_logical_root(root):
     matches = [
         index for index in range(len(parts) - 2) if parts[index : index + 3] == marker
     ]
-    if len(matches) != 1 or len(parts) != matches[0] + 4:
+    if len(matches) != 1 or not (
+        len(parts) == matches[0] + 4
+        or (len(parts) == matches[0] + 5 and parts[matches[0] + 3] == "ui_acceptance")
+    ):
         raise ValueError("Campaign root must end in data/optimization/mot_3d/<name>.")
     logical = Path(*parts[matches[0] :])
     if any(part in {"", ".", ".."} for part in logical.parts):
@@ -1037,6 +1145,7 @@ def render_refinement_transition(
     selections = {}
     for family in FAMILIES:
         payload = select_from_summary(family, preliminary_summaries[family])
+        payload.update(workload.artifact_identity(manifest))
         relative = Path("selection") / "refinement" / f"{family}.json"
         artifacts[relative.as_posix()] = json.dumps(
             payload, indent=2, allow_nan=False
@@ -1138,6 +1247,7 @@ def render_closure_transition(logical_campaign_root, manifest, refinement_summar
     selections = {}
     for family in FAMILIES:
         payload = select_from_summary(family, refinement_summaries[family])
+        payload.update(workload.artifact_identity(manifest))
         relative = Path("selection") / "closure" / f"{family}.json"
         artifacts[relative.as_posix()] = json.dumps(
             payload, indent=2, allow_nan=False
@@ -1290,6 +1400,19 @@ def render_finalist_selection_transition(
     artifacts["campaign.json"] = json.dumps(updated, indent=2, allow_nan=False).encode(
         "utf-8"
     )
+    artifacts = {
+        name: (
+            workload.rendered_job(
+                raw.decode(),
+                manifest,
+                "finalist_selection",
+                merge=name.endswith("_merge.pbs"),
+            ).encode()
+            if name.endswith(".pbs")
+            else raw
+        )
+        for name, raw in artifacts.items()
+    }
     return artifacts, updated
 
 
@@ -1324,7 +1447,14 @@ def render_final_validation_input_transition(
     from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
     root = Path(logical_campaign_root)
-    expected_parts = ("data", "optimization", "mot_3d", manifest.get("name"))
+    acceptance = workload.policy(manifest)
+    expected_parts = (
+        "data",
+        "optimization",
+        "mot_3d",
+        *(("ui_acceptance",) if acceptance else ()),
+        manifest.get("name"),
+    )
     if (
         root.is_absolute()
         or tuple(root.parts) != expected_parts
@@ -1435,6 +1565,30 @@ def render_final_validation_input_transition(
         "jobs/final_validation_inputs/03_freeze_inputs.pbs": freeze_raw.encode(),
         "campaign.json": json.dumps(updated, indent=2, allow_nan=False).encode(),
     }
+    if acceptance:
+        for name, raw in list(artifacts.items()):
+            if name.endswith(".pbs"):
+                job_kind = {
+                    "01_generate_zeeman.pbs": "zeeman",
+                    "02_generate_2d_survivors.pbs": "mot_2d",
+                    "03_freeze_inputs.pbs": "freeze",
+                }[Path(name).name]
+                text = workload.rendered_generation_job(
+                    raw.decode(), manifest, job_kind
+                )
+                flag = f" --acceptance-profile {acceptance.profile_id} --input-manifest {root / 'campaign.json'}"
+                text = text.replace(
+                    f"--output-dir {zeeman_dir}",
+                    f"{flag} --output-dir {zeeman_dir}",
+                )
+                text = text.replace(
+                    f"--output-dir {output_2d}", f"{flag} --output-dir {output_2d}"
+                )
+                artifacts[name] = text.encode()
+        locked.update(workload.artifact_identity(manifest))
+        artifacts["selection/locked_nominals.json"] = json.dumps(
+            locked, indent=2, allow_nan=False
+        ).encode()
     return artifacts, updated
 
 
@@ -1475,12 +1629,18 @@ def _matches_generated_zeeman_reference(reference, expected_path):
 
 
 def _collect_final_validation_inputs(root, manifest):
+    profile = workload.policy(manifest)
+    initial_particles = (
+        50000
+        if profile is None
+        else profile.policy["generation"]["zeeman_initial_particles"]
+    )
     stage = manifest["stages"]["final_validation_input_generation"]
     states_dir = root / "final_validation_inputs" / "after_2d_mot"
     zeeman_dir = root / "final_validation_inputs" / "after_zeeman"
     replicate_dir = root / "final_validation_inputs" / "mot_2d_records" / "replicates"
     expected_zeeman_names = {
-        f"production_zeeman_n50000_dt40us_seed{seed}{suffix}"
+        f"production_zeeman_n{initial_particles}_dt40us_seed{seed}{suffix}"
         for seed in FINAL_VALIDATION_ZEEMAN_SEEDS
         for suffix in (".npy", ".json")
     }
@@ -1512,7 +1672,7 @@ def _collect_final_validation_inputs(root, manifest):
             root
             / "final_validation_inputs"
             / "after_zeeman"
-            / (f"production_zeeman_n50000_dt40us_seed{zseed}.npy")
+            / (f"production_zeeman_n{initial_particles}_dt40us_seed{zseed}.npy")
         )
         zeeman_metadata_path = zeeman_path.with_suffix(".json")
         if not zeeman_path.is_file() or not zeeman_metadata_path.is_file():
@@ -1548,7 +1708,11 @@ def _collect_final_validation_inputs(root, manifest):
                 "expected_survivor_design"
             ]["stochastic_solver"],
             "uses_all_available_particles": True,
-            "npools": 200,
+            "npools": (
+                200
+                if profile is None
+                else workload.generation_job(manifest, "mot_2d")["npools"]
+            ),
             "ensemble_dir": str(zeeman_dir),
             "zeeman_profile": manifest["upstream_2d_campaign"][
                 "expected_survivor_design"
@@ -1558,6 +1722,13 @@ def _collect_final_validation_inputs(root, manifest):
             "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
             "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
         }
+        if profile is not None:
+            expected_design["acceptance"] = manifest["acceptance"]
+        if profile is not None and any(
+            item.get("acceptance") != manifest["acceptance"]
+            for item in (metadata, replicate, zeeman_metadata)
+        ):
+            raise ValueError("Fresh validation input acceptance lineage mismatch.")
         if (
             metadata.get("kind") != "mot_2d_final_survivor_ensemble"
             or metadata.get("zeeman_seed") != zseed
@@ -1617,6 +1788,7 @@ def freeze_final_validation_inputs(campaign):
     ensembles = _collect_final_validation_inputs(root, manifest)
     submission = root / "final_validation_input_generation_submission.json"
     payload = {
+        **workload.artifact_identity(manifest),
         "kind": "mot_3d_final_validation_inputs",
         "classification": "newly_generated_sealed_after_nominal_lock",
         "locked_nominals_sha256": _sha256(stage["locked_nominals"]),
@@ -1639,6 +1811,9 @@ def validate_final_validation_inputs(root, manifest):
     if not path.is_file():
         raise FileNotFoundError("Final-validation input manifest has not been frozen.")
     payload = json.loads(path.read_text(encoding="utf-8"))
+    identity = workload.artifact_identity(manifest)
+    if any(payload.get(key) != value for key, value in identity.items()):
+        raise ValueError("Sealed input acceptance lineage mismatch.")
     if (
         payload.get("kind") != "mot_3d_final_validation_inputs"
         or payload.get("locked_nominals_sha256") != _sha256(stage["locked_nominals"])
@@ -1679,7 +1854,7 @@ def render_final_validation_transition(logical_root, manifest):
     if (
         root.is_absolute()
         or root.parts[:3] != ("data", "optimization", "mot_3d")
-        or len(root.parts) != 4
+        or len(root.parts) != (5 if workload.policy(manifest) else 4)
         or any(part in {"", ".", ".."} for part in root.parts)
         or manifest.get("stage") != "final_validation_input_generation"
         or manifest.get("name") != root.name
@@ -1735,6 +1910,19 @@ def render_final_validation_transition(logical_root, manifest):
     artifacts["campaign.json"] = json.dumps(updated, indent=2, allow_nan=False).encode(
         "utf-8"
     )
+    artifacts = {
+        name: (
+            workload.rendered_job(
+                raw.decode(),
+                manifest,
+                "final_validation",
+                merge=name.endswith("_merge.pbs"),
+            ).encode()
+            if name.endswith(".pbs")
+            else raw
+        )
+        for name, raw in artifacts.items()
+    }
     return artifacts, updated
 
 
@@ -1906,9 +2094,19 @@ FINAL_REPORT_PROVENANCE_KEYS = frozenset(
 
 def _validate_final_report_schema(report):
     provenance = report.get("provenance") if isinstance(report, dict) else None
+    acceptance_keys = set()
+    if isinstance(report, dict) and "acceptance" in report:
+        from workflow_api.acceptance_profile import load_acceptance_profile
+
+        if (
+            report["acceptance"] != load_acceptance_profile().provenance()
+            or report.get("suitability") != "acceptance_only"
+        ):
+            raise ValueError("Invalid TEST ONLY final report provenance.")
+        acceptance_keys = {"acceptance", "suitability"}
     if (
         not isinstance(report, dict)
-        or set(report) != FINAL_REPORT_KEYS
+        or set(report) != FINAL_REPORT_KEYS | acceptance_keys
         or not isinstance(provenance, dict)
         or set(provenance) != FINAL_REPORT_PROVENANCE_KEYS
         or not isinstance(report.get("precision_target_met_for_both_families"), bool)
@@ -1978,6 +2176,7 @@ def complete_final_validation(root, manifest):
             interval, half_width, summary.get("precision_target_met")
         )
         expected_design = {
+            **workload.artifact_identity(manifest),
             "campaign_manifest_sha256": _sha256(root / "campaign.json"),
             "locked_nominals_sha256": _sha256(stage["locked_nominals"]),
             "input_manifest_sha256": _sha256(stage["input_manifest"]),
@@ -2041,6 +2240,7 @@ def complete_final_validation(root, manifest):
         precision_met
     )
     report = {
+        **workload.artifact_identity(manifest),
         "kind": kind,
         "classification": classification,
         "conditional_efficiency_denominator": "survivors leaving the selected 2D MOT",
@@ -2363,6 +2563,7 @@ def build_campaign_manifest(
     stage="discovery",
     timestep_status="pragmatic_user_approved_not_converged",
     timestep_evidence=None,
+    acceptance_profile_id=None,
 ):
     """Build the canonical manifest model shared by CLI and UI preparation."""
     design = {
@@ -2392,13 +2593,21 @@ def build_campaign_manifest(
             "multiplicity": "paired max-T simultaneous confidence bounds",
             "ranking_rule": "largest lower endpoint of the simultaneous two-sided 95% interval",
         },
-        "optimization_bounds": MOT_3D_OPTIMIZATION_CONFIG,
+        "optimization_bounds": copy.deepcopy(MOT_3D_OPTIMIZATION_CONFIG),
         "final_validation_inputs": "newly generated and sealed after finalist selection",
     }
     if timestep_evidence is not None:
         design["timestep_evidence"] = timestep_evidence
+    marker = {}
+    if acceptance_profile_id is not None:
+        from workflow_api.acceptance_profile import load_acceptance_profile
+
+        marker = {
+            "acceptance": load_acceptance_profile(acceptance_profile_id).provenance()
+        }
     return {
-        "kind": "mot_3d_campaign_v2",
+        **marker,
+        "kind": "mot_3d_ui_acceptance_v1" if marker else "mot_3d_campaign_v2",
         "name": name,
         "stage": stage,
         "provenance": {

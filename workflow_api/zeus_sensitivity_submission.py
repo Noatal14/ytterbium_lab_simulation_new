@@ -1,5 +1,6 @@
 """Explicit at-most-once submission of the prepared Sensitivity array."""
 from __future__ import annotations
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 
 import hashlib
 import json
@@ -181,8 +182,7 @@ class ZeusSensitivitySubmissionCoordinator:
             "stage": {"id": "sensitivity", "label": "Sensitivity"},
             "job": {"file": JOB_FILE, "kind": "array", "task_count": tasks,
                     "array_throttle": 3, "queue": "zeus_combined_q",
-                    "cores_per_task": 200, "memory_per_task_bytes": 68719476736,
-                    "walltime_seconds": 36000},
+                    **reviewed_job_resources(manifest, 'sensitivity', {"cores_per_task":200, "memory_per_task_bytes":68719476736, "walltime_seconds":36000})},
             "remote": {"host": ZEUS_HOST, "project_directory": profile.project_directory,
                        "commit": commit, "branch": state.branch, "dirty": False},
             "effects": {"submit_sensitivity": True, "start_simulation": True,

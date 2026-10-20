@@ -1,6 +1,7 @@
 """Validated, explicit Sensitivity-to-Production preparation on Zeus."""
 
 from __future__ import annotations
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 
 import hashlib
 import json
@@ -462,9 +463,7 @@ class ZeusProductionCoordinator:
                 "task_count": len(tasks),
                 "array_throttle": 4,
                 "queue": "zeus_combined_q",
-                "cores_per_task": 150,
-                "memory_per_task_bytes": 68719476736,
-                "walltime_seconds": 43200,
+                **reviewed_job_resources(plan[3], 'production', {"cores_per_task":150, "memory_per_task_bytes":68719476736, "walltime_seconds":43200}),
             },
             "effects": {
                 "prepare_production": True,

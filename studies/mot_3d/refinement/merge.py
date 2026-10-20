@@ -17,7 +17,11 @@ def merge(args):
     selection = json.loads(Path(args.selection).read_text())
     candidates = selection["candidates"]
     input_root = Path(args.input_root)
-    json_paths = [path for path in input_root.glob("worker_*/*.json") if path.name != "particle_selection.json"]
+    json_paths = [
+        path
+        for path in input_root.glob("worker_*/*.json")
+        if path.name != "particle_selection.json"
+    ]
     npz_paths = list(input_root.glob("worker_*/*.npz"))
     records = validate_artifact_registry(
         json_paths,
@@ -28,16 +32,24 @@ def merge(args):
         family=selection["family"],
     )
     designs = [row.get("design") for row in records]
-    if not designs or not designs[0] or any(value != designs[0] for value in designs[1:]):
+    if (
+        not designs
+        or not designs[0]
+        or any(value != designs[0] for value in designs[1:])
+    ):
         raise ValueError("Refinement results contain mixed scientific designs.")
     outcome_rows = []
     ensemble_ids = None
     for candidate in candidates:
         arrays = []
         for seed in (42001, 42002, 42003):
-            matches = list(input_root.glob(f"worker_*/{candidate['candidate_id']}_seed_{seed}.npz"))
+            matches = list(
+                input_root.glob(f"worker_*/{candidate['candidate_id']}_seed_{seed}.npz")
+            )
             if len(matches) != 1:
-                raise ValueError(f"Expected one outcome for {candidate['candidate_id']} seed {seed}; found {len(matches)}.")
+                raise ValueError(
+                    f"Expected one outcome for {candidate['candidate_id']} seed {seed}; found {len(matches)}."
+                )
             with np.load(matches[0]) as data:
                 arrays.append(np.asarray(data["usable_at_end"], dtype=bool))
                 current_ids = np.asarray(data["ensemble_ids"], dtype=int)
@@ -54,37 +66,55 @@ def merge(args):
     for replicate in range(args.bootstrap_replicates):
         sampled_seeds = rng.integers(0, 3, size=3)
         sampled_groups = rng.integers(0, 4, size=4)
-        particle_indices = np.concatenate([
-            rng.choice(groups[group], size=len(groups[group]), replace=True)
-            for group in sampled_groups
-        ])
-        bootstrap[replicate] = outcomes[:, sampled_seeds][:, :, particle_indices].mean(axis=(1, 2))
+        particle_indices = np.concatenate(
+            [
+                rng.choice(groups[group], size=len(groups[group]), replace=True)
+                for group in sampled_groups
+            ]
+        )
+        bootstrap[replicate] = outcomes[:, sampled_seeds][:, :, particle_indices].mean(
+            axis=(1, 2)
+        )
 
     means = outcomes.mean(axis=(1, 2))
     lower = np.quantile(bootstrap, 0.025, axis=0)
     upper = np.quantile(bootstrap, 0.975, axis=0)
     sim_lower, sim_upper, sim_critical = simultaneous_intervals(bootstrap, means)
     leader_index = int(np.argmax(sim_lower))
-    diff_lower, diff_upper, diff_critical = simultaneous_paired_differences(bootstrap, means, leader_index)
+    diff_lower, diff_upper, diff_critical = simultaneous_paired_differences(
+        bootstrap, means, leader_index
+    )
     records = []
     for index, candidate in enumerate(candidates):
         records.append(
             {
-                **{key: value for key, value in candidate.items() if key != "resolved_profile"},
+                **{
+                    key: value
+                    for key, value in candidate.items()
+                    if key != "resolved_profile"
+                },
                 "mean_usable_fraction": float(means[index]),
                 "mean_usable_count_per_3000": float(3000 * means[index]),
                 "bootstrap_95_ci": [float(lower[index]), float(upper[index])],
-                "simultaneous_95_ci": [float(sim_lower[index]), float(sim_upper[index])],
-                "paired_difference_simultaneous_95_ci": [float(diff_lower[index]), float(diff_upper[index])],
+                "simultaneous_95_ci": [
+                    float(sim_lower[index]),
+                    float(sim_upper[index]),
+                ],
+                "paired_difference_simultaneous_95_ci": [
+                    float(diff_lower[index]),
+                    float(diff_upper[index]),
+                ],
                 "seed_counts": [int(value) for value in outcomes[index].sum(axis=1)],
             }
         )
-    records.sort(key=lambda row: (-row["simultaneous_95_ci"][0], -row["mean_usable_fraction"]))
+    records.sort(
+        key=lambda row: (-row["simultaneous_95_ci"][0], -row["mean_usable_fraction"])
+    )
     summary = {
         "kind": "merged_mot_3d_focused_refinement",
         "family": selection["family"],
         "candidate_count": len(candidates),
-        "particle_count": 3000,
+        "particle_count": int(outcomes.shape[-1]),
         "ensemble_file_indices": [12, 13, 14, 15],
         "recoil_seed_count": 3,
         "bootstrap_method": (
@@ -107,7 +137,9 @@ def merge(args):
     save_file_json(destination, summary)
     for rank, row in enumerate(records, 1):
         lo, hi = row["bootstrap_95_ci"]
-        print(f"{rank:2d}. {row['candidate_id']}: mean={100 * row['mean_usable_fraction']:.2f}% CI=[{100 * lo:.2f}, {100 * hi:.2f}]% seeds={row['seed_counts']}")
+        print(
+            f"{rank:2d}. {row['candidate_id']}: mean={100 * row['mean_usable_fraction']:.2f}% CI=[{100 * lo:.2f}, {100 * hi:.2f}]% seeds={row['seed_counts']}"
+        )
     print(f"Saved: {destination}")
 
 

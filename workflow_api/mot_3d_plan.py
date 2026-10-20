@@ -148,6 +148,7 @@ def render_discovery_bootstrap(
     revision: str,
     physical_model_sha256: str,
     approval_path: Path | None = None,
+    acceptance_profile_id: str | None = None,
 ) -> tuple[dict[str, bytes], dict[str, Any]]:
     """Validate the 2D handoff and render a Discovery-ready campaign."""
     repository_root = Path(repository_root).resolve()
@@ -156,13 +157,19 @@ def render_discovery_bootstrap(
     survivor_directory = Path(survivor_directory).resolve()
     allowed_destination_root = (repository_root / "data/optimization/mot_3d").resolve()
     allowed_upstream_root = (repository_root / "data/optimization/mot_2d").resolve()
+    if acceptance_profile_id is not None:
+        from workflow_api.acceptance_profile import load_acceptance_profile, assert_acceptance_path
+        load_acceptance_profile(acceptance_profile_id)
+        for path in (destination, upstream_campaign, survivor_directory):
+            assert_acceptance_path(path, repository_root)
     allowed_survivor_root = (
         repository_root / "data/particle_states/after_2d_mot"
     ).resolve()
     try:
         destination.relative_to(allowed_destination_root)
         upstream_campaign.relative_to(allowed_upstream_root)
-        survivor_directory.relative_to(allowed_survivor_root)
+        if acceptance_profile_id is None:
+            survivor_directory.relative_to(allowed_survivor_root)
     except ValueError as error:
         raise ValueError(
             "3D bootstrap paths must use canonical repository roots."
@@ -185,7 +192,7 @@ def render_discovery_bootstrap(
         or not re.fullmatch(r"[0-9a-f]{64}", physical_model_sha256)
     ):
         raise ValueError("Invalid 3D campaign identity or provenance.")
-    upstream = validate_upstream_2d_campaign(upstream_campaign, survivor_directory)
+    upstream = validate_upstream_2d_campaign(upstream_campaign, survivor_directory, acceptance_profile_id=acceptance_profile_id)
     expected_pairs = {
         row["zeeman_seed"]: row["mot_seed"] for row in upstream["sealed_seed_pairs"]
     }
@@ -194,6 +201,7 @@ def render_discovery_bootstrap(
         expected_seed_pairs=expected_pairs,
         expected_design=upstream["expected_survivor_design"],
         expected_parameters=upstream["expected_survivor_parameters"],
+        acceptance_profile_id=acceptance_profile_id,
     )
     if approval_path is not None:
         raise ValueError("External 3D timestep approval files are no longer accepted.")
@@ -246,6 +254,7 @@ def render_discovery_bootstrap(
         stage="discovery",
         timestep_status="pragmatic_user_approved_not_converged",
         timestep_evidence=evidence_identity,
+        acceptance_profile_id=acceptance_profile_id,
     )
     manifest["input_directory"] = portable_survivors.as_posix()
     portable_destination = destination.relative_to(repository_root)
@@ -255,6 +264,7 @@ def render_discovery_bootstrap(
         survivor_directory,
         command_campaign=portable_destination,
         command_input=portable_survivors,
+        manifest=manifest,
     )
     manifest["jobs"] = {
         "smoke": {

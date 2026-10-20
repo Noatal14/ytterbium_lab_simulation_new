@@ -1311,6 +1311,7 @@ class WorkflowHandler(BaseHTTPRequestHandler):
 
     server_version = "WorkflowAPI/1"
     repository_root = Path(__file__).resolve().parents[1]
+    acceptance_profile_id: str | None = None
     creation_service: CreationService | None = None
     zeus_service: ZeusSnapshotService | None = None
     transfer_service: ZeusPreparationCoordinator | None = None
@@ -1458,6 +1459,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         if path == "/api/v1/campaigns":
             try:
                 data = list_campaigns(self.repository_root)
+                from workflow_api.campaign_mode import campaign_visible
+                visible = [row for row in data['campaigns'] if campaign_visible(row, self.acceptance_profile_id)]
+                data = {**data, 'campaigns': visible, 'total': len(visible)}
             except Exception:
                 self._catalog_error("protocol", "inspection_failed")
                 return
@@ -1465,7 +1469,8 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         if path == "/api/v1/campaigns/2d/sources":
             try:
-                data = list_sources(self.repository_root)
+                profile_id = getattr(self.creation_service, "acceptance_profile_id", None)
+                data = list_sources(self.repository_root, acceptance_profile_id=profile_id) if profile_id is not None else list_sources(self.repository_root)
             except Exception:
                 self._catalog_error("protocol", "source_inspection_failed")
                 return
@@ -1580,6 +1585,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                 return
             try:
                 campaign = get_campaign(self.repository_root, encoded_id)
+                from workflow_api.campaign_mode import campaign_visible
+                if not campaign_visible(campaign, self.acceptance_profile_id):
+                    self._catalog_error("protocol", "not_found")
+                    return
             except DiscoveryError as error:
                 resolved = resolve_wire_error("local_read", error.code, error.message)
                 self._error(resolved.code, resolved.message, resolved.status)
@@ -1612,6 +1621,10 @@ class WorkflowHandler(BaseHTTPRequestHandler):
         try:
             payload = self._read_json_body()
             session = self._session_id()
+            from workflow_api.campaign_mode import authorize_campaign_request
+            if self.acceptance_profile_id is not None and target.path.startswith('/api/v1/individual-runs/'):
+                raise ValueError('Individual runs use the separate individual test environment.')
+            authorize_campaign_request(self.repository_root, payload, self.acceptance_profile_id)
             data = _invoke_post_route(route, service, payload, session)
         except PermissionError:
             self._catalog_error("protocol", "invalid_preview")
@@ -1914,6 +1927,11 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 
 
 def main() -> None:
+    import argparse
+    parser = argparse.ArgumentParser(description="Local simulation workflow API")
+    parser.add_argument("--acceptance-profile", choices=["ui_acceptance_v1"])
+    arguments = parser.parse_args()
+    WorkflowHandler.acceptance_profile_id = arguments.acceptance_profile
     # Keep scientific simulation/study modules behind process startup.  Merely
     # importing the HTTP contract layer must not initialize physics modules.
     from workflow_api.mot_3d_local_execution import Mot3DBoundedLocalExecutionPool
@@ -2024,9 +2042,10 @@ def main() -> None:
         RepositorySnapshotProvider(
             WorkflowHandler.repository_root, executable("git")
         ),
+        acceptance_profile_id=arguments.acceptance_profile,
     )
     WorkflowHandler.mot_3d_bootstrap_service = Mot3DDiscoveryBootstrapService(
-        WorkflowHandler.repository_root
+        WorkflowHandler.repository_root, acceptance_profile_id=arguments.acceptance_profile
     )
     WorkflowHandler.mot_3d_discovery_submission_service = (
         ZeusMot3DDiscoverySubmissionCoordinator(

@@ -105,13 +105,19 @@ export function Mot3DDiscoveryStage({
               apply only within each family.
             </p>
             <dl className="transfer-facts">
+              <div><dt>Reservation per task</dt><dd>{flow.preview.resources.array.ncpus_per_task} CPU cores · {flow.preview.resources.array.memory_gb_per_task} GB · {flow.preview.resources.array.walltime}</dd></div>
+              {flow.preview.resources.array.vnode && <div><dt>Test compute node</dt><dd>{flow.preview.resources.array.vnode}</dd></div>}
+              <div><dt>Search workload</dt><dd>{flow.preview.science.total_trials} trials · {flow.preview.science.input_ensembles} discovery ensembles · {flow.preview.science.particles_per_ensemble} atoms per ensemble</dd></div>
+              <div><dt>Particles per trial</dt><dd>{flow.preview.science.total_particles_per_trial} atoms · {flow.preview.science.npools} worker pools</dd></div>
+              <div><dt>Physical protocol</dt><dd>{flow.preview.science.dt_s * 1e6} µs · {flow.preview.science.t_max_s * 1000} ms · {flow.preview.science.solver}</dd></div>
+
               <div>
                 <dt>Angled donut</dt>
-                <dd>2 arrays × 3 tasks</dd>
+                <dd>2 arrays × 3 tasks · final trial targets per worker: {flow.preview.science.final_trial_targets.angled_donut.join(" / ")}</dd>
               </div>
               <div>
                 <dt>Single pass</dt>
-                <dd>3 arrays × 3 tasks</dd>
+                <dd>3 arrays × 3 tasks · final trial targets per worker: {flow.preview.science.final_trial_targets.single_pass.join(" / ")}</dd>
               </div>
               <div>
                 <dt>Smoke jobs</dt>

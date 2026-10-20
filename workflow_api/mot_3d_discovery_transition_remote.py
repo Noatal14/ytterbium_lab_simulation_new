@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from workflow_api import mot_3d_workload as workload
+
 import base64, gzip, hashlib, json, os, re, stat, subprocess, sys, time
+
 try:
     import fcntl
 except ImportError:
@@ -127,10 +130,14 @@ def atomic_json(path, value):
     publish(path, canonical(value) + b"\n")
 
 
-def expected_paths():
+def expected_paths(manifest=None):
     paths = []
     for family in FAMILIES:
-        for worker, target in enumerate(TARGETS[family]):
+        for worker, target in enumerate(
+            TARGETS[family]
+            if manifest is None
+            else workload.discovery_targets(manifest, family)
+        ):
             paths += [
                 f"discovery/{family}/worker_{worker}/trials/trial_{number:04d}.json"
                 for number in range(target)
@@ -143,7 +150,7 @@ def expected_paths():
             f"jobs/preliminary_check/{family}_merge.pbs",
         ]
     paths.append("campaign.json")
-    assert len(paths) == MAX_FILES
+    assert manifest is not None or len(paths) == MAX_FILES
     return tuple(sorted(paths))
 
 
@@ -245,10 +252,10 @@ def validate_outputs(campaign, manifest):
     return "ready_to_advance"
 
 
-def build_bundle(campaign, commit):
+def build_bundle(campaign, commit, *, manifest=None):
     files = []
     total = 0
-    for name in expected_paths():
+    for name in expected_paths(manifest):
         path = campaign.joinpath(*PurePosixPath(name).parts)
         no_links(campaign, path)
         data = bounded(path)
@@ -359,7 +366,10 @@ def main():
         or root != Path(f"/home/{username}/ytterbium_lab_simulation_new")
         or relative.is_absolute()
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
-        or len(relative.parts) != 4
+        or not (
+            len(relative.parts) == 4
+            or (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")
+        )
         or any(x in {"", ".", ".."} for x in relative.parts)
         or not HEX40.fullmatch(str(payload["commit"]))
         or any(
@@ -397,6 +407,18 @@ def main():
     ):
         fail("remote_checkout_mismatch")
     manifest = read_json(campaign / "campaign.json")
+    from workflow_api.acceptance_remote import assert_campaign_target
+
+    try:
+        assert_campaign_target(manifest, username, requested, relative)
+    except ValueError:
+        fail("discovery_preparation_invalid")
+    from workflow_api.mot_3d_workload import validate_location
+
+    try:
+        validate_location(manifest, relative)
+    except ValueError:
+        fail("transition_preparation_invalid")
     _, submission, chain = discovery_receipts(campaign, payload)
     transitions, final, pending, bundle_path = transition_paths(campaign, operation)
     transition_key = digest(
@@ -502,7 +524,7 @@ def main():
         manifest = read_json(campaign / "campaign.json")
         if manifest.get("stage") != "preliminary_check":
             fail("transition_outcome_unknown")
-        bundle, packed, _ = build_bundle(campaign, payload["commit"])
+        bundle, packed, _ = build_bundle(campaign, payload["commit"], manifest=manifest)
         publish(bundle_path, packed)
         receipt = {
             "status": "preliminary_check_prepared",

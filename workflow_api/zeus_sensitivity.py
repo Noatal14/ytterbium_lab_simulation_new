@@ -1,5 +1,6 @@
 """Guarded Confirmation completion and no-submit Sensitivity preparation."""
 from __future__ import annotations
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 
 import hashlib
 import json
@@ -302,8 +303,7 @@ class ZeusSensitivityCoordinator:
                           "update": ["campaign.json"]},
             "job": {"file": JOB_FILE, "kind": "array", "task_count": len(tasks),
                     "array_throttle": 3, "queue": "zeus_combined_q",
-                    "cores_per_task": 200, "memory_per_task_bytes": 68719476736,
-                    "walltime_seconds": 36000},
+                    **reviewed_job_resources(plan[3], 'sensitivity', {"cores_per_task":200, "memory_per_task_bytes":68719476736, "walltime_seconds":36000})},
             "effects": {"prepare_sensitivity": True, "submit_sensitivity": False,
                         "start_simulation": False, "overwrite_existing": False},
             "local_sync": {"status": "not_synchronized"},

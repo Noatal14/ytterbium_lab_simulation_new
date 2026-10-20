@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -405,6 +405,31 @@ describe("IndividualMot2DRun", () => {
       expect(service.recoverZeus).not.toHaveBeenCalled();
       expect(service.confirm).not.toHaveBeenCalled();
       expect(service.startLocal).not.toHaveBeenCalled();
+    expect(screen.queryByText("Existing Zeus run needs verification")).not.toBeInTheDocument();
     },
   );
+});
+
+
+it("waits for fresh Zeus recovery before enabling status after reload", async () => {
+  const service = api(), user = userEvent.setup();
+  let resolveRecovery!: (value: unknown) => void;
+  const recovery = new Promise((resolve) => { resolveRecovery = resolve; });
+  window.localStorage.setItem("ytterbium.individual-run.mot_2d.v1", JSON.stringify({version: 1, family: "mot_2d", display_name: "mot2d-reloaded", execution_mode: "zeus", username: "tal.noa"}));
+  const queued = {id: "individual-run-test", display_name: "mot2d-reloaded", record_state: "queued", lifecycle: "queued", execution: {mode: "zeus", zeus_job_id: "4807729.zeus-master"}} as unknown as Mot2DRun;
+  vi.mocked(service.runs).mockResolvedValue([queued]);
+  service.recoverZeus = vi.fn().mockReturnValue(recovery);
+  vi.mocked(service.refreshZeus).mockResolvedValue({state: "queued", job_id: "4807729.zeus-master"});
+  render(<IndividualMot2DRun api={service} onBack={vi.fn()} />);
+  const check = await screen.findByRole("button", {name: "Check status"});
+  expect(check).toBeDisabled();
+  await user.click(check);
+  expect(service.refreshZeus).not.toHaveBeenCalled();
+  await waitFor(() => expect(service.recoverZeus).toHaveBeenCalledOnce());
+  resolveRecovery({scheduler_state: "queued"});
+  await waitFor(() => expect(check).toBeEnabled());
+  await user.click(check);
+  await waitFor(() => expect(service.refreshZeus).toHaveBeenCalledWith("mot2d-reloaded", "tal.noa"));
+  expect(service.confirmZeus).not.toHaveBeenCalled();
+  expect(service.startLocal).not.toHaveBeenCalled();
 });

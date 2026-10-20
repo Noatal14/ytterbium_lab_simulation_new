@@ -8,6 +8,8 @@ manifest never advertises artifacts that are not durable yet.
 
 from __future__ import annotations
 
+from workflow_api import mot_3d_workload as workload
+
 import base64
 import errno
 from workflow_api.platform_io import locking as fcntl
@@ -57,10 +59,14 @@ FAMILIES = ("angled_donut", "single_pass")
 TARGETS = {"angled_donut": (117, 117, 116), "single_pass": (200, 200, 200)}
 
 
-def _expected_bundle_paths() -> frozenset[str]:
+def _expected_bundle_paths(manifest=None) -> frozenset[str]:
     paths: set[str] = {"campaign.json"}
     for family in FAMILIES:
-        for worker, target in enumerate(TARGETS[family]):
+        for worker, target in enumerate(
+            TARGETS[family]
+            if manifest is None
+            else workload.discovery_targets(manifest, family)
+        ):
             paths.update(
                 f"discovery/{family}/worker_{worker}/trials/trial_{number:04d}.json"
                 for number in range(target)
@@ -74,7 +80,7 @@ def _expected_bundle_paths() -> frozenset[str]:
                 f"jobs/preliminary_check/{family}_merge.pbs",
             }
         )
-    if len(paths) != EXPECTED_FILES:
+    if manifest is None and len(paths) != EXPECTED_FILES:
         raise RuntimeError("closed Discovery artifact allowlist is inconsistent")
     return frozenset(paths)
 
@@ -414,7 +420,7 @@ class Mot3DDiscoveryTransitionCoordinator:
         return plan, transport, state, transition_key
 
     @staticmethod
-    def _validate_bundle(bundle: Mapping[str, Any]) -> None:
+    def _validate_bundle(bundle: Mapping[str, Any], expected_files=None) -> None:
         if (
             not isinstance(bundle, Mapping)
             or set(bundle)
@@ -426,7 +432,10 @@ class Mot3DDiscoveryTransitionCoordinator:
                 "chunks",
             }
             or bundle.get("version") != 1
-            or bundle.get("file_count") != EXPECTED_FILES
+            or bundle.get("file_count")
+            not in (
+                {expected_files} if expected_files is not None else {EXPECTED_FILES, 35}
+            )
             or not isinstance(bundle.get("uncompressed_bytes"), int)
             or isinstance(bundle.get("uncompressed_bytes"), bool)
             or not 0 <= bundle["uncompressed_bytes"] <= MAX_TOTAL_BYTES
@@ -449,7 +458,7 @@ class Mot3DDiscoveryTransitionCoordinator:
 
     @classmethod
     def _validate_prepared(cls, state, plan, transition_key):
-        cls._validate_bundle(state.bundle)
+        cls._validate_bundle(state.bundle, len(_expected_bundle_paths(plan[3])))
         receipt = state.receipt
         exact = {
             "status",
@@ -507,8 +516,10 @@ class Mot3DDiscoveryTransitionCoordinator:
             },
             "validation": {
                 "status": "valid" if valid else "invalid" if invalid else "not_ready",
-                "completed_trials": EXPECTED_TRIALS if valid else 0,
-                "expected_trials": EXPECTED_TRIALS,
+                "completed_trials": (
+                    len(_expected_bundle_paths(plan[3])) - 11 if valid else 0
+                ),
+                "expected_trials": len(_expected_bundle_paths(plan[3])) - 11,
             },
             "next_action": (
                 "none"
@@ -577,13 +588,16 @@ class Mot3DDiscoveryTransitionCoordinator:
             "from_stage": "discovery",
             "to_stage": "preliminary_check",
             "discovery": {
-                "completed_trials": EXPECTED_TRIALS,
-                "expected_trials": EXPECTED_TRIALS,
+                "completed_trials": len(_expected_bundle_paths(plan[3])) - 11,
+                "expected_trials": len(_expected_bundle_paths(plan[3])) - 11,
                 "families": list(FAMILIES),
                 "evidence_sha256": evidence,
             },
             "artifacts": {
-                "synchronize": {"trial_registries": 950, "merged_files": 4},
+                "synchronize": {
+                    "trial_registries": len(_expected_bundle_paths(plan[3])) - 11,
+                    "merged_files": 4,
+                },
                 "create": {"selection_files": 2, "job_files": 4},
                 "update": ["campaign.json"],
             },
@@ -682,7 +696,7 @@ class Mot3DDiscoveryTransitionCoordinator:
                 "campaign_id": pending.campaign_id,
                 "stage": "preliminary_check",
                 "artifacts": {
-                    "synchronized": 954,
+                    "synchronized": len(_expected_bundle_paths(plan[3])) - 7,
                     "created": 6,
                     "updated": 1,
                     "bundle_sha256": prepared.bundle["bundle_sha256"],
@@ -940,7 +954,12 @@ class Mot3DDiscoveryTransitionCoordinator:
                 or isinstance(receipt.get("completed_unix_s"), bool)
                 or not 0 <= receipt["completed_unix_s"] <= 253402300799
                 or not isinstance(receipt.get("files"), dict)
-                or set(receipt["files"]) != EXPECTED_BUNDLE_PATHS
+                or set(receipt["files"])
+                != _expected_bundle_paths(
+                    _strict_json(
+                        _bounded_read_at(campaign_fd, "campaign.json", MAX_FILE_BYTES)
+                    )
+                )
                 or any(
                     not HEX64.fullmatch(str(value))
                     for value in receipt["files"].values()
@@ -991,7 +1010,7 @@ class Mot3DDiscoveryTransitionCoordinator:
             or value.get("to_stage") != "preliminary_check"
             or value.get("uncompressed_bytes") != manifest["uncompressed_bytes"]
             or not isinstance(value.get("files"), list)
-            or len(value["files"]) != EXPECTED_FILES
+            or len(value["files"]) != len(_expected_bundle_paths(plan[3]))
         ):
             raise Mot3DDiscoveryTransitionError("remote_response_invalid")
         result = {}
@@ -1027,10 +1046,9 @@ class Mot3DDiscoveryTransitionCoordinator:
             result[name] = data
             prior = name
             total += len(data)
-        if (
-            total != manifest["uncompressed_bytes"]
-            or set(result) != EXPECTED_BUNDLE_PATHS
-        ):
+        if total != manifest["uncompressed_bytes"] or set(
+            result
+        ) != _expected_bundle_paths(plan[3]):
             raise Mot3DDiscoveryTransitionError("remote_response_invalid")
         return result
 

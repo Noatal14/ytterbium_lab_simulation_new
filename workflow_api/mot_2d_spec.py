@@ -19,10 +19,13 @@ ROLE_SEEDS = {
 }
 
 RELEVANT_FILES = (
+    "workflow_api/acceptance_inputs.py",
     "config.py", "simulations/mot_2d.py", "studies/mot_2d_s0_campaign.py",
     "studies/mot_2d/optimization.py", "studies/mot_2d/production.py",
     "utils/mot_2d_study.py", "utils/file_helpers.py", "utils/RK4StHybridCustom.py",
     "workflow_api/mot_2d_spec.py", "workflow_api/mot_2d_plan.py",
+    "workflow_api/acceptance_profile.py",
+    "workflow_api/specifications/ui_acceptance_v1.json",
     "workflow_api/platform_io.py",
     "workflow_api/mot_2d_sources.py",
     "workflow_api/mot_2d_late_stage.py",
@@ -61,9 +64,10 @@ def build_manifest(
     *, name: str, s0_values: list[float], ensemble_directory: str,
     zeeman_profile: str, frozen_inputs: dict[str, list[dict[str, Any]]],
     git_commit: str, physical_model_sha256: str, hashed_files: list[str],
+    acceptance_profile_id: str | None = None,
 ) -> dict[str, Any]:
     roles = deepcopy(ROLE_SEEDS)
-    return {
+    manifest = {
         "kind": "mot_2d_s0_campaign", "name": name, "stage": "smoke",
         "s0_values": list(s0_values), "stages": {},
         "ensemble_source": {
@@ -83,3 +87,110 @@ def build_manifest(
         },
         "fixed_design": deepcopy(FIXED_DESIGN),
     }
+    if acceptance_profile_id is not None:
+        from workflow_api.acceptance_profile import load_acceptance_profile
+        profile = load_acceptance_profile(acceptance_profile_id)
+        manifest['kind'] = 'mot_2d_ui_acceptance_v1'
+        manifest['acceptance'] = profile.provenance()
+        manifest['fixed_design'] = acceptance_fixed_design()
+        validate_campaign_policy(manifest)
+    return manifest
+
+
+def acceptance_fixed_design() -> dict[str, Any]:
+    """Frozen physical design with only reviewed miniature workloads changed."""
+    from workflow_api.acceptance_profile import load_acceptance_profile
+    profile = load_acceptance_profile().family('mot_2d')
+    design = deepcopy(FIXED_DESIGN)
+    design['particle_counts'] = {
+        stage: profile['stages'][stage]['particles_per_ensemble']
+        for stage in FIXED_DESIGN['particle_counts']
+    }
+    design['trial_budgets'] = {
+        f'{stage}_per_worker': profile['stages'][stage]['trials_per_worker']
+        for stage in ('screen', 'refine')
+    }
+    return design
+
+
+def validate_campaign_policy(manifest: dict[str, Any]):
+    """Authenticate acceptance workloads; retain canonical historical behavior."""
+    from workflow_api.acceptance_profile import policy_for_manifest
+    if "kind" not in manifest and "acceptance" not in manifest:
+        return None  # Internal historical projections can omit the kind.
+    profile = policy_for_manifest(manifest)
+    if profile is not None:
+        if manifest['kind'] != 'mot_2d_ui_acceptance_v1':
+            raise ValueError('Expected a 2D acceptance campaign.')
+        if manifest.get('fixed_design') != acceptance_fixed_design():
+            raise ValueError('Acceptance frozen design differs from its reviewed policy.')
+        if manifest.get('seed_roles') != ROLE_SEEDS:
+            raise ValueError('Acceptance seed roles differ from the reviewed registry.')
+        if manifest.get('s0_values') != list(profile.family('mot_2d')['s0_values']):
+            raise ValueError('Acceptance s0 differs from its reviewed policy.')
+    return profile
+
+
+def campaign_kind_matches(manifest: dict[str, Any]) -> bool:
+    if manifest.get('kind') == 'mot_2d_s0_campaign':
+        from workflow_api.acceptance_profile import policy_for_manifest
+        policy_for_manifest(manifest)
+        return True
+    if manifest.get('kind') == 'mot_2d_ui_acceptance_v1':
+        validate_campaign_policy(manifest)
+        return True
+    return False
+
+
+def stage_npools(manifest: dict[str, Any], stage: str, canonical: int) -> int:
+    profile = validate_campaign_policy(manifest)
+    return profile.stage('mot_2d', stage)['npools'] if profile else canonical
+
+
+def refinement_targets(manifest: dict[str, Any]) -> tuple[int, ...]:
+    profile = validate_campaign_policy(manifest)
+    return tuple(profile.family('mot_2d')['refinement_cumulative_targets']) if profile else (3, 6, 9, 10)
+
+
+def survivor_states_directory(manifest: dict[str, Any], campaign_root, value: float):
+    from pathlib import Path
+    profile = validate_campaign_policy(manifest)
+    label = f'{float(value):.6f}'.rstrip('0').rstrip('.')
+    if profile:
+        return Path(campaign_root) / 'survivor_states' / f's0_{label}'
+    return Path('data/particle_states/after_2d_mot') / f'final_ensemble_s0_{label}'
+
+
+def reviewed_job_resources(manifest: dict[str, Any], stage: str, canonical: dict[str, Any]) -> dict[str, Any]:
+    """One explicit hook for review DTOs and remote submission validators."""
+    profile = validate_campaign_policy(manifest)
+    result = dict(canonical)
+    if profile:
+        policy = profile.stage('mot_2d', stage)
+        result.update(cores_per_task=policy['ncpus'], memory_per_task_bytes=policy['memory_gb'] * 1024**3,
+                      walltime_seconds=policy['walltime_seconds'])
+        vnode = profile.policy.get('scheduler', {}).get('vnode')
+        if vnode is not None:
+            result['vnode'] = vnode
+    return result
+
+
+def trial_budget(manifest: dict[str, Any], stage: str) -> int:
+    profile = validate_campaign_policy(manifest)
+    return profile.stage('mot_2d', stage)['trials_per_worker'] if profile else {'screen': 17, 'refine': 10}[stage]
+
+
+def authorize_review_target(manifest, profile, campaign, repository_root, error_type):
+    """Match the frozen workload to its remote checkout before any stage review."""
+    from workflow_api.acceptance_remote import assert_campaign_target
+    try:
+        # Internal reviewed projections historically omit the discriminator.
+        # Public registry reads authenticate it before producing these projections.
+        if "kind" not in manifest:
+            from workflow_api.acceptance_profile import assert_scientific_source
+            assert_scientific_source(manifest)
+            manifest = {"kind": "mot_2d_s0_campaign", **manifest}
+        assert_campaign_target(manifest, profile.username, profile.project_directory,
+                               campaign.relative_to(repository_root).as_posix())
+    except ValueError as error:
+        raise error_type('profile_invalid') from error

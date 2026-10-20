@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import hashlib
 from workflow_api.platform_io import os
 from typing import Mapping
@@ -133,7 +135,11 @@ class Mot3DFinalValidationTransitionCoordinator(Mot3DPreliminaryTransitionCoordi
                 }
             )
             transfer = (
-                frozenset(expected_paths())
+                frozenset(
+                    expected_paths(
+                        json.loads(_read_relative(campaign_fd, "campaign.json"))
+                    )
+                )
                 | {"final_validation_input_generation_submission.json"}
                 | GENERATED_PATHS
             )
@@ -160,7 +166,9 @@ class Mot3DFinalValidationTransitionCoordinator(Mot3DPreliminaryTransitionCoordi
 
     def _expected_paths(self, campaign_fd):
         return (
-            frozenset(expected_paths())
+            frozenset(
+                expected_paths(json.loads(_read_relative(campaign_fd, "campaign.json")))
+            )
             | {"final_validation_input_generation_submission.json"}
             | GENERATED_PATHS
         )

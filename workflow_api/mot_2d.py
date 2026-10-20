@@ -238,7 +238,8 @@ def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -
     manifest_path = _manifest_path(path)
     manifest = _read_json(manifest_path) if manifest is None else manifest
     classify_manifest(manifest, expected_family="mot_2d")
-    if manifest.get("kind") != SUPPORTED_KIND:
+    from workflow_api.mot_2d_spec import campaign_kind_matches
+    if not campaign_kind_matches(manifest):
         raise ValueError(
             f"Unsupported campaign kind {manifest.get('kind')!r}; expected {SUPPORTED_KIND!r}."
         )

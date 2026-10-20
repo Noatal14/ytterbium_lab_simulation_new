@@ -72,6 +72,8 @@ def load_sealed_inputs(input_manifest, campaign_manifest, locked_nominals):
 
 
 def run(args):
+    from workflow_api import mot_3d_workload as workload
+    workload.validate_worker(args, args.campaign_manifest, "final_validation")
     locked = json.loads(Path(args.locked_nominals).read_text(encoding="utf-8"))
     campaign = json.loads(Path(args.campaign_manifest).read_text(encoding="utf-8"))
     if (args.dt != campaign["design"]["production_dt_s"]
@@ -83,7 +85,9 @@ def run(args):
     states, ensemble_ids, inputs = load_sealed_inputs(
         args.input_manifest, args.campaign_manifest, args.locked_nominals
     )
+    from workflow_api.mot_3d_workload import artifact_identity
     design = {
+        **artifact_identity(campaign),
         "campaign_manifest_sha256": sha256(args.campaign_manifest),
         "locked_nominals_sha256": sha256(args.locked_nominals),
         "input_manifest_sha256": sha256(args.input_manifest),
@@ -224,7 +228,9 @@ def merge(args):
     expected_candidate = locked["families"][args.family]["candidate_id"]
     input_manifest = json.loads(Path(args.input_manifest).read_text(encoding="utf-8"))
     expected_particles = input_manifest["total_survivors"]
+    from workflow_api.mot_3d_workload import artifact_identity
     expected_design = {
+        **artifact_identity(campaign),
         "campaign_manifest_sha256": sha256(args.campaign_manifest),
         "locked_nominals_sha256": sha256(args.locked_nominals),
         "input_manifest_sha256": sha256(args.input_manifest),

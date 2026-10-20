@@ -78,7 +78,7 @@ def validate_static(payload: dict, root: Path):
     relative = PurePosixPath(str(payload.get("campaign", "")))
     if (
         relative.is_absolute()
-        or len(relative.parts) != 4
+        or (len(relative.parts) != 4 and not (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance"))
         or relative.parts[:3] != ("data", "optimization", "mot_2d")
         or any(part in {"", ".", ".."} for part in relative.parts)
     ):
@@ -87,6 +87,7 @@ def validate_static(payload: dict, root: Path):
     if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
         fail("invalid_request")
     campaign = root.joinpath(*relative.parts)
+    _authorize_acceptance_campaign(campaign, root)
     no_links(root, campaign)
     if not campaign.is_dir():
         fail("campaign_not_found")
@@ -329,9 +330,10 @@ def raw_evidence_paths(campaign: Path, manifest: dict, root: Path):
         key = f"s0_{float(value):.6f}".replace(".", "p")
         label = f"{float(value):.6f}".rstrip("0").rstrip(".")
         replicate = campaign / "production" / key / "replicates"
-        states = (
-            root / "data/particle_states/after_2d_mot" / f"final_ensemble_s0_{label}"
-        )
+        from workflow_api.mot_2d_spec import survivor_states_directory
+        states = survivor_states_directory(manifest, campaign, float(value))
+        if not states.is_absolute():
+            states = root / states
         for seed, mot_seed in zip(
             manifest["seed_roles"]["sealed_validation"],
             manifest["mot_seeds"]["sealed_validation"],
@@ -752,6 +754,30 @@ def main():
         receipt,
     )
 
+
+
+def _authorize_acceptance_campaign(campaign, root):
+    """Authenticate acceptance before locks, publication, or scheduler mutation."""
+    try:
+        from workflow_api.acceptance_profile import assert_scientific_source, is_acceptance_manifest
+        current = root
+        for part in campaign.relative_to(root).parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError('Unsafe campaign path.')
+        manifest_path = campaign / 'campaign.json'
+        if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
+            raise ValueError('Unsafe campaign manifest.')
+        value = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+            from workflow_api.acceptance_remote import assert_campaign_target
+            from workflow_api.mot_2d_spec import validate_campaign_policy
+            validate_campaign_policy(value)
+            assert_campaign_target(value, root.parent.name, root, campaign)
+        else:
+            assert_scientific_source(value)
+    except (OSError, ValueError, TypeError, KeyError):
+        fail('remote_preparation_invalid')
 
 if __name__ == "__main__":
     main()

@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from workflow_api.mot_2d_sources import inspect_source
+from workflow_api.mot_2d_spec import campaign_kind_matches, validate_campaign_policy, refinement_targets, survivor_states_directory
 from workflow_api.repository_snapshot import RepositorySnapshot
 from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS, build_manifest
 
@@ -58,6 +59,11 @@ def render_campaign_files(
     manifest: dict[str, Any], destination: Path, repository_root: Path
 ) -> dict[str, bytes]:
     """Render the canonical initial files without touching the filesystem."""
+    _validate_acceptance_destination(manifest, destination, repository_root)
+    profile = validate_campaign_policy(manifest)
+    if profile:
+        from workflow_api.acceptance_profile import assert_acceptance_path
+        assert_acceptance_path(destination, repository_root)
     values = manifest["s0_values"]
     try:
         campaign_argument = destination.relative_to(repository_root).as_posix()
@@ -95,7 +101,7 @@ python -m studies.mot_2d_s0_campaign smoke --campaign {shlex.quote(campaign_argu
 """.encode()
     return {
         "campaign.json": (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode(),
-        "jobs/01_smoke.pbs": pbs,
+        "jobs/01_smoke.pbs": _acceptance_pbs(manifest, "smoke", pbs),
     }
 
 
@@ -103,7 +109,8 @@ def render_screen_transition(
     manifest: dict[str, Any], destination: Path, repository_root: Path
 ) -> dict[str, bytes]:
     """Purely render the canonical smoke-to-screen transition artifacts."""
-    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "smoke":
+    _validate_acceptance_destination(manifest, destination, repository_root)
+    if not campaign_kind_matches(manifest) or manifest.get("stage") != "smoke":
         raise ValueError("Campaign is not awaiting screening preparation.")
     try:
         campaign_argument = destination.relative_to(repository_root).as_posix()
@@ -149,7 +156,7 @@ python -m studies.mot_2d_s0_campaign screen-task --campaign {shlex.quote(campaig
     updated.setdefault("stages", {})["screen"] = {"tasks": len(tasks), "job_file": job_path}
     return {
         "screen/tasks.json": (json.dumps(tasks, indent=2, sort_keys=True) + "\n").encode(),
-        "jobs/02_screen.pbs": pbs,
+        "jobs/02_screen.pbs": _acceptance_pbs(manifest, "screen", pbs),
         "campaign.json": (json.dumps(updated, indent=2, sort_keys=True) + "\n").encode(),
     }
 
@@ -159,7 +166,8 @@ def render_refine_transition(
     validated_rows: list[dict[str, Any]],
 ) -> dict[str, bytes]:
     """Purely render the canonical Screening-to-Refinement transition."""
-    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "screen":
+    _validate_acceptance_destination(manifest, destination, repository_root)
+    if not campaign_kind_matches(manifest) or manifest.get("stage") != "screen":
         raise ValueError("Campaign is not awaiting Refinement preparation.")
     campaign_argument = destination.relative_to(repository_root).as_posix()
     if not campaign_argument.startswith("data/optimization/mot_2d/"):
@@ -212,20 +220,21 @@ export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
 trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
 {command}
 '''.encode()
-    for index,target in enumerate((3,6,9,10),start=1):
-        name=f"jobs/03_refine_round_{index:02d}.pbs";files[name]=pbs(f"mot2d_ref{index}",target);round_paths.append(f"{campaign_argument}/{name}")
+    for index,target in enumerate(refinement_targets(manifest),start=1):
+        name=f"jobs/03_refine_round_{index:02d}.pbs";files[name]=_acceptance_pbs(manifest,"refine",pbs(f"mot2d_ref{index}",target));round_paths.append(f"{campaign_argument}/{name}")
     lines=["#!/bin/bash","set -euo pipefail"]
     for index,path in enumerate(round_paths):
         lines.append(f'previous=$(qsub "{path}")' if index==0 else f'previous=$(qsub -W depend=afterok:"${{previous}}" "{path}")')
         lines.append(f'echo "submitted refinement round {index+1}: ${{previous}}"')
     files["jobs/03_submit_refinement_chain.sh"]=("\n".join(lines)+"\n").encode()
-    updated=deepcopy(manifest);updated["stage"]="refine";updated.setdefault("stages",{})["refine"]={"tasks":len(specs),"cumulative_trial_targets":[3,6,9,10],"round_job_files":round_paths,"submit_chain":f"{campaign_argument}/jobs/03_submit_refinement_chain.sh","dependency":"afterok"}
+    updated=deepcopy(manifest);updated["stage"]="refine";updated.setdefault("stages",{})["refine"]={"tasks":len(specs),"cumulative_trial_targets":list(refinement_targets(manifest)),"round_job_files":round_paths,"submit_chain":f"{campaign_argument}/jobs/03_submit_refinement_chain.sh","dependency":"afterok"}
     files["campaign.json"]=(json.dumps(updated,indent=2,sort_keys=True)+"\n").encode()
     return files
 
 
 def render_confirmation_transition(manifest:dict[str,Any],destination:Path,repository_root:Path,validated_rows:list[dict[str,Any]])->dict[str,bytes]:
     """Render the deterministic Refinement-to-Confirmation transition."""
+    _validate_acceptance_destination(manifest, destination, repository_root)
     selected={};specs=[]
     for value in manifest["s0_values"]:
         rows=sorted((row for row in validated_rows if float(row["s0"])==float(value)),key=lambda row:(-row["mean_conditional_efficiency"],row["detuning_gamma"],row["magnet_radius"]));chosen=[];cells=set()
@@ -265,7 +274,7 @@ trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
 {command}
 '''.encode()
     updated=deepcopy(manifest);updated["stage"]="confirmation";updated.setdefault("stages",{})["confirmation"]={"tasks":len(specs),"job_file":f"{argument}/jobs/04_confirmation.pbs"}
-    return {"refined_candidates.json":(json.dumps(selected,indent=2,sort_keys=True)+"\n").encode(),"confirmation/tasks.json":(json.dumps(specs,indent=2,sort_keys=True)+"\n").encode(),"jobs/04_confirmation.pbs":pbs,"campaign.json":(json.dumps(updated,indent=2,sort_keys=True)+"\n").encode()}
+    return {"refined_candidates.json":(json.dumps(selected,indent=2,sort_keys=True)+"\n").encode(),"confirmation/tasks.json":(json.dumps(specs,indent=2,sort_keys=True)+"\n").encode(),"jobs/04_confirmation.pbs":_acceptance_pbs(manifest,"confirmation",pbs),"campaign.json":(json.dumps(updated,indent=2,sort_keys=True)+"\n").encode()}
 
 
 def render_sensitivity_transition(
@@ -273,10 +282,11 @@ def render_sensitivity_transition(
     confirmation_rows: list[dict[str, Any]],
 ) -> dict[str, bytes]:
     """Render the validated Confirmation-to-Sensitivity transition exactly."""
+    _validate_acceptance_destination(manifest, destination, repository_root)
     from workflow_api.mot_2d_late_stage import paired_comparison
     from workflow_api.mot_2d_validation import expected_sensitivity_tasks
 
-    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "confirmation":
+    if not campaign_kind_matches(manifest) or manifest.get("stage") != "confirmation":
         raise ValueError("Campaign is not awaiting Sensitivity preparation.")
     argument = destination.relative_to(repository_root).as_posix()
     if not argument.startswith("data/optimization/mot_2d/"):
@@ -352,7 +362,7 @@ trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
     return {
         "winners.json": (json.dumps(winners, indent=2, sort_keys=True) + "\n").encode(),
         "sensitivity/tasks.json": (json.dumps(tasks, indent=2, sort_keys=True) + "\n").encode(),
-        "jobs/05_sensitivity.pbs": pbs,
+        "jobs/05_sensitivity.pbs": _acceptance_pbs(manifest, "sensitivity", pbs),
         "campaign.json": (json.dumps(updated, indent=2, sort_keys=True) + "\n").encode(),
     }
 
@@ -368,9 +378,10 @@ def render_production_transition(
     bytes, so preparation cannot silently choose a different sealed point,
     seed registry, or Production job design.
     """
+    _validate_acceptance_destination(manifest, destination, repository_root)
     from workflow_api.mot_2d_late_stage import derive_production_transition
 
-    if manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "sensitivity":
+    if not campaign_kind_matches(manifest) or manifest.get("stage") != "sensitivity":
         raise ValueError("Campaign is not awaiting Production preparation.")
     try:
         argument = destination.relative_to(repository_root).as_posix()
@@ -426,7 +437,7 @@ trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
     return {
         "sensitivity_summary.json": encode(sensitivity),
         "production/tasks.json": encode(tasks),
-        "jobs/06_production.pbs": pbs,
+        "jobs/06_production.pbs": _acceptance_pbs(manifest, "production", pbs),
         "campaign.json": encode(updated),
     }
 
@@ -435,6 +446,7 @@ def render_finalization(
     manifest: dict[str, Any], destination: Path, repository_root: Path,
 ) -> tuple[dict[str, bytes], list[dict[str, Any]]]:
     """Validate sealed evidence and render canonical final artifacts."""
+    _validate_acceptance_destination(manifest, destination, repository_root)
     from studies.mot_2d.production import build_summary
     from workflow_api.mot_2d_validation import (
         _expected_production_design,
@@ -485,10 +497,8 @@ def render_finalization(
         if sensitivity[key]["near_optimality_status"] != "established":
             warnings.append("epsilon_near_optimality_not_established")
         value_label = f"{value:.6f}".rstrip("0").rstrip(".")
-        states = (
-            "data/particle_states/after_2d_mot/"
-            f"final_ensemble_s0_{value_label}"
-        )
+        states_path = survivor_states_directory(manifest, destination, value)
+        states = states_path.relative_to(repository_root).as_posix() if states_path.is_absolute() else states_path.as_posix()
         result = {
             "s0": raw, "recommended_parameters": parameters,
             "warnings": warnings, "sensitivity": sensitivity[key],
@@ -508,13 +518,17 @@ def render_finalization(
             "near_optimality_status": sensitivity[key]["near_optimality_status"],
             "warnings": warnings,
             "retention": "retained",
-            "output_suitability": "eligible_as_3d_campaign_input",
+            "output_suitability": "acceptance_only" if validate_campaign_policy(manifest) else "eligible_as_3d_campaign_input",
         })
     report = {
-        "kind": "mot_2d_s0_campaign_final_report",
+        "kind": "mot_2d_ui_acceptance_final_report_v1" if validate_campaign_policy(manifest) else "mot_2d_s0_campaign_final_report",
         "always_returns_best_tested_result": True,
         "results": results,
     }
+    if validate_campaign_policy(manifest):
+        report["acceptance"] = deepcopy(manifest["acceptance"])
+        report["suitability"] = "acceptance_only"
+        report["banner"] = "TEST ONLY — UI acceptance; no scientific promotion"
     files["final_report.json"] = encode(report)
     updated = deepcopy(manifest)
     updated["stage"] = "complete"
@@ -551,15 +565,15 @@ def plan_from_frozen_manifest(
     )
 
 
-def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[Any], source: dict[str, Any], snapshot: RepositorySnapshot) -> CampaignPlan:
+def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[Any], source: dict[str, Any], snapshot: RepositorySnapshot, acceptance_profile_id: str | None = None) -> CampaignPlan:
     repository_root = repository_root.resolve(); name = name.strip()
     if not name or len(name) > 120: raise ValueError("Campaign name is required and must be at most 120 characters.")
     if not SLUG.fullmatch(slug): raise ValueError("Campaign folder is invalid.")
     values = normalize_s0(s0_values)
-    destination = repository_root / "data/optimization/mot_2d" / slug
+    destination = repository_root / "data/optimization/mot_2d" / ("ui_acceptance" if acceptance_profile_id else "") / slug
     if destination.exists() or destination.is_symlink(): raise FileExistsError("Campaign destination already exists.")
     source_path = repository_root / source["path"]
-    frozen = inspect_source(source_path, repository_root, include_records=True)
+    frozen = inspect_source(source_path, repository_root, include_records=True, **({"acceptance_profile_id": acceptance_profile_id} if acceptance_profile_id else {}))
     if frozen["id"] != source["id"] or frozen["fingerprint"] != source["fingerprint"]:
         raise ValueError("Zeeman source changed after selection.")
     records = frozen.pop("records")
@@ -574,7 +588,7 @@ def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[A
         zeeman_profile=frozen["profile"],
         frozen_inputs={role: [by_seed[seed] for seed in seeds] for role, seeds in ROLE_SEEDS.items()},
         git_commit=snapshot.commit, physical_model_sha256=model_hash,
-        hashed_files=hashed_files,
+        hashed_files=hashed_files, acceptance_profile_id=acceptance_profile_id,
     )
     files = render_campaign_files(manifest, destination, repository_root)
     plan_digest = hashlib.sha256(b"".join(name.encode() + b"\0" + data for name, data in sorted(files.items()))).hexdigest()
@@ -645,3 +659,31 @@ def _rename_no_replace(source: Path, destination: Path) -> None:
         if error in {17, 39, 66}:  # EEXIST / ENOTEMPTY platform variants
             raise FileExistsError("Campaign destination already exists.")
         raise OSError(error, os.strerror(error), str(destination))
+
+
+def _acceptance_pbs(manifest: dict[str, Any], stage: str, rendered: bytes) -> bytes:
+    """Apply authenticated resources to the normal stage renderer's PBS header."""
+    profile = validate_campaign_policy(manifest)
+    if profile is None:
+        return rendered
+    policy = profile.stage('mot_2d', stage)
+    seconds = policy['walltime_seconds']
+    walltime = f'{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}'
+    text = rendered.decode('utf-8')
+    vnode = profile.policy.get('scheduler', {}).get('vnode')
+    placement = f':vnode={vnode}' if vnode else ''
+    text = re.sub(r'^#PBS -l select=1:ncpus=\d+:mem=\d+gb$',
+                  f"#PBS -l select=1:ncpus={policy['ncpus']}:mem={policy['memory_gb']}gb{placement}", text, flags=re.M)
+    text = re.sub(r'^#PBS -l walltime=\S+$', f'#PBS -l walltime={walltime}', text, flags=re.M)
+    # A dedicated checkout is mandatory; submission still owns the configured target.
+    text = text.replace('${HOME}/ytterbium_lab_simulation_new', '${HOME}/ytterbium_lab_simulation_ui_acceptance')
+    text = text.replace('${HOME}/venvs/atomsmltr/bin/activate', '${HOME}/venvs/atomsmltr-ui-test/bin/activate')
+    return text.encode('utf-8')
+
+
+def _validate_acceptance_destination(manifest, destination, repository_root):
+    profile = validate_campaign_policy(manifest)
+    if profile:
+        from workflow_api.acceptance_profile import assert_acceptance_path
+        assert_acceptance_path(destination, repository_root)
+        assert_acceptance_path(manifest['ensemble_source']['directory'], repository_root)

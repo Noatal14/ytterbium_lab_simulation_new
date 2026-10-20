@@ -11,6 +11,7 @@ import base64
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
+
 try:
     import fcntl
 except ImportError:  # Only imported on Windows; remote execution remains POSIX.
@@ -244,7 +245,7 @@ def _completion_terminals(campaign_fd: int) -> dict[str, bytes]:
     return found
 
 
-def _result_paths(selections):
+def _result_paths(selections, manifest=None):
     if _descriptor().workflow_kind == "final_validation_completion":
         from workflow_api.mot_3d_final_validation_results import (
             expected_paths as final_validation_paths,
@@ -256,7 +257,7 @@ def _result_paths(selections):
             expected_paths as input_paths,
         )
 
-        return input_paths()
+        return input_paths(manifest)
     if _descriptor().from_stage == "preliminary_check":
         return expected_paths(selections)
     if _descriptor().from_stage == "closure":
@@ -1398,7 +1399,13 @@ def _capture(
         }
     results = {
         name: read_relative_at(campaign_fd, name, _descriptor().artifact_max_file_bytes)
-        for name in _result_paths(parsed)
+        for name in _result_paths(
+            parsed,
+            json_bytes(
+                read_relative_at(campaign_fd, "campaign.json"),
+                error=_descriptor().error("conflict"),
+            ),
+        )
     }
     manifest, validated = _validate_results(
         manifest_raw, selections, results, project_directory, campaign_absolute_path
@@ -1455,11 +1462,27 @@ def _verify_success(campaign_fd: int, transitions_fd: int, payload, receipt):
     )
     generated = (
         set(receipt["files"])
-        - set(_result_paths(selections))
+        - set(
+            _result_paths(
+                selections,
+                json_bytes(
+                    read_relative_at(campaign_fd, "campaign.json"),
+                    error=_descriptor().error("conflict"),
+                ),
+            )
+        )
         - {_descriptor().source_submission_receipt}
     )
     exact_paths = (
-        set(_result_paths(selections))
+        set(
+            _result_paths(
+                selections,
+                json_bytes(
+                    read_relative_at(campaign_fd, "campaign.json"),
+                    error=_descriptor().error("conflict"),
+                ),
+            )
+        )
         | {_descriptor().source_submission_receipt}
         | generated
     )
@@ -1535,10 +1558,12 @@ def main(*, trusted_root_override=None):
     }:
         fail("invalid_request")
     operation, username, requested, encoded = sys.argv[1:]
-    if (
-        re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}", username) is None
-        or requested != f"/home/{username}/ytterbium_lab_simulation_new"
-    ):
+    if re.fullmatch(
+        r"[A-Za-z][A-Za-z0-9._-]{0,31}", username
+    ) is None or requested not in {
+        f"/home/{username}/ytterbium_lab_simulation_new",
+        f"/home/{username}/ytterbium_lab_simulation_ui_acceptance",
+    }:
         fail("invalid_request")
     try:
         payload = json.loads(
@@ -1564,7 +1589,10 @@ def main(*, trusted_root_override=None):
         or set(payload) != required
         or (trusted_root_override is None and root != requested_root)
         or relative.is_absolute()
-        or len(relative.parts) != 4
+        or not (
+            len(relative.parts) == 4
+            or (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")
+        )
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or any(part in {"", ".", ".."} for part in relative.parts)
         or type(payload.get("commit")) is not str
@@ -1613,6 +1641,24 @@ def main(*, trusted_root_override=None):
             or out3
         ):
             fail("remote_checkout_mismatch")
+        from workflow_api.acceptance_remote import assert_campaign_target
+
+        authenticated_manifest = json_bytes(
+            read_relative_at(campaign_fd, "campaign.json"),
+            error=_descriptor().error("conflict"),
+        )
+        try:
+            from workflow_api.mot_3d_workload import assert_receiver_target
+
+            assert_receiver_target(
+                authenticated_manifest,
+                username,
+                requested,
+                relative,
+                trusted_root_override=trusted_root_override,
+            )
+        except ValueError:
+            fail(_descriptor().error("conflict"))
         mot_ui_fd = open_dir_at(campaign_fd, ".mot_ui")
         opened.append(mot_ui_fd)
         if operation == "prepare":
@@ -1965,7 +2011,15 @@ def main(*, trusted_root_override=None):
                 }
             )
             expected_transfer = (
-                frozenset(_result_paths(parsed))
+                frozenset(
+                    _result_paths(
+                        parsed,
+                        json_bytes(
+                            read_relative_at(campaign_fd, "campaign.json"),
+                            error=_descriptor().error("conflict"),
+                        ),
+                    )
+                )
                 | {_descriptor().source_submission_receipt}
                 | frozenset(generated)
             )

@@ -28,10 +28,6 @@ def _receiver_fixture(tmp_path, monkeypatch):
     source = (
         Path(__file__).parents[1] / "workflow_api/zeus_discovery_submission_remote.py"
     ).read_text()
-    source = source.replace(
-        '        or project != f"/home/{username}/ytterbium_lab_simulation_new"\n',
-        "",
-    )
     namespace = {"__name__": "discovery_receiver_test"}
     exec(compile(source, "<receiver>", "exec"), namespace)
     root = tmp_path / "repo"
@@ -134,9 +130,17 @@ def _receiver_fixture(tmp_path, monkeypatch):
 def _invoke(namespace, root, payload, operation, monkeypatch, capsys):
     encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
     monkeypatch.setattr(
-        sys, "argv", ["receiver", operation, "tal.noa", str(root), encoded]
+        sys,
+        "argv",
+        [
+            "receiver",
+            operation,
+            "tal.noa",
+            "/home/tal.noa/ytterbium_lab_simulation_new",
+            encoded,
+        ],
     )
-    namespace["main"]()
+    namespace["main"](trusted_root_override=root)
     return json.loads(capsys.readouterr().out)
 
 

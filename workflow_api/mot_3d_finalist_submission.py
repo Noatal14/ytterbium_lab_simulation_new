@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api import mot_3d_workload as workload
+
 from workflow_api.mot_3d_closure_submission import (
     Mot3DClosureSubmissionCoordinator,
     Mot3DClosureSubmissionError,
@@ -85,7 +87,7 @@ class Mot3DFinalistSubmissionCoordinator(Mot3DClosureSubmissionCoordinator):
     def _science(self, manifest):
         design = manifest.get("design", {})
         policy = FINALIST_SELECTION_SCIENTIFIC_DESIGN
-        return {
+        return workload.submission_science(manifest, "finalist_selection", {
             "classification": "final_candidate_selection_not_unbiased_validation",
             "candidates_per_family": FINALIST_SELECTION_TOPOLOGY.candidates_per_family,
             "input_ensembles": policy.input_ensembles,
@@ -96,7 +98,7 @@ class Mot3DFinalistSubmissionCoordinator(Mot3DClosureSubmissionCoordinator):
             "npools": 200,
             "bootstrap_replicates": policy.bootstrap_replicates,
             "bootstrap_seed": policy.bootstrap_seed,
-        }
+        })
 
     def status(self, request):
         try:

@@ -1,3 +1,4 @@
+import { campaignDiscoveryTrials } from "../campaignPolicy";
 import { postData } from "../http/envelope";
 import { boundedPrintable, exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -15,7 +16,7 @@ export type Mot3DDiscoveryTransitionStatus = {
   queried_at: string;
   campaign: { id: string; name: string; stage: "discovery" | "preliminary_check" };
   discovery: { status: Mot3DDiscoveryTransitionLifecycle; chain: Chain };
-  validation: { status: "not_ready" | "invalid" | "valid"; completed_trials: number; expected_trials: 950 };
+  validation: { status: "not_ready" | "invalid" | "valid"; completed_trials: number; expected_trials: number };
   next_action: "wait" | "inspect_zeus" | "review_transition" | "none";
   local_sync: { status: "not_synchronized" | "synchronized"; receipt_sha256: string | null };
 };
@@ -25,8 +26,8 @@ export type Mot3DDiscoveryTransitionPreview = {
   campaign: { id: string; name: string; git_commit: string };
   from_stage: "discovery";
   to_stage: "preliminary_check";
-  discovery: { completed_trials: 950; expected_trials: 950; families: ["angled_donut", "single_pass"]; evidence_sha256: string };
-  artifacts: { synchronize: { trial_registries: 950; merged_files: 4 }; create: { selection_files: 2; job_files: 4 }; update: ["campaign.json"] };
+  discovery: { completed_trials: number; expected_trials: number; families: ["angled_donut", "single_pass"]; evidence_sha256: string };
+  artifacts: { synchronize: { trial_registries: number; merged_files: 4 }; create: { selection_files: 2; job_files: 4 }; update: ["campaign.json"] };
   effects: { synchronize_discovery: true; prepare_preliminary_check: true; submit_preliminary_check: false; start_simulation: false; overwrite_existing: false };
 };
 export type Mot3DDiscoveryTransitionResult = {
@@ -79,8 +80,8 @@ export function parseMot3DDiscoveryTransitionStatus(value: unknown): Mot3DDiscov
           : ["not_ready", "wait", "not_synchronized", "discovery"]];
   const observed = [validation.status, row.next_action, sync.status, campaign.stage];
   const matrixMatches = expected.some((candidate) => candidate.every((entry, index) => entry === observed[index]));
-  const trialCountMatches = validation.status === "valid" ? validation.completed_trials === 950 : validation.completed_trials === 0;
-  if (row.source !== "zeus" || !text(row.queried_at) || Number.isNaN(Date.parse(row.queried_at)) || !text(campaign.id, 512) || !text(campaign.name, 128) || !allowed.includes(lifecycle) || !integer(validation.completed_trials) || validation.expected_trials !== 950 || !trialCountMatches || !matrixMatches) throw new Error("Invalid 3D Discovery transition status.");
+  const trialCountMatches = validation.status === "valid" ? validation.completed_trials === campaignDiscoveryTrials() : validation.completed_trials === 0;
+  if (row.source !== "zeus" || !text(row.queried_at) || Number.isNaN(Date.parse(row.queried_at)) || !text(campaign.id, 512) || !text(campaign.name, 128) || !allowed.includes(lifecycle) || !integer(validation.completed_trials) || validation.expected_trials !== campaignDiscoveryTrials() || !trialCountMatches || !matrixMatches) throw new Error("Invalid 3D Discovery transition status.");
   return { source: "zeus", queried_at: row.queried_at as string, campaign: campaign as Mot3DDiscoveryTransitionStatus["campaign"], discovery: { status: lifecycle, chain: parseChain(discovery.chain) }, validation: validation as Mot3DDiscoveryTransitionStatus["validation"], next_action: row.next_action as Mot3DDiscoveryTransitionStatus["next_action"], local_sync: sync };
 }
 
@@ -92,7 +93,7 @@ export function parseMot3DDiscoveryTransitionPreview(value: unknown, expected: {
   const synchronize = object(artifacts.synchronize, ["trial_registries", "merged_files"], "Invalid 3D Discovery transition review.");
   const create = object(artifacts.create, ["selection_files", "job_files"], "Invalid 3D Discovery transition review.");
   const effects = object(row.effects, ["synchronize_discovery", "prepare_preliminary_check", "submit_preliminary_check", "start_simulation", "overwrite_existing"], "Invalid 3D Discovery transition review.");
-  if (!text(row.preview_token, 512) || row.expires_in_seconds !== 300 || campaign.id !== expected.campaignId || !text(campaign.name, 128) || typeof campaign.git_commit !== "string" || !SHA40.test(campaign.git_commit) || row.from_stage !== "discovery" || row.to_stage !== "preliminary_check" || discovery.completed_trials !== 950 || discovery.expected_trials !== 950 || JSON.stringify(discovery.families) !== JSON.stringify(["angled_donut", "single_pass"]) || typeof discovery.evidence_sha256 !== "string" || !SHA256.test(discovery.evidence_sha256) || synchronize.trial_registries !== 950 || synchronize.merged_files !== 4 || create.selection_files !== 2 || create.job_files !== 4 || JSON.stringify(artifacts.update) !== JSON.stringify(["campaign.json"]) || effects.synchronize_discovery !== true || effects.prepare_preliminary_check !== true || effects.submit_preliminary_check !== false || effects.start_simulation !== false || effects.overwrite_existing !== false) throw new Error("Invalid 3D Discovery transition review.");
+  if (!text(row.preview_token, 512) || row.expires_in_seconds !== 300 || campaign.id !== expected.campaignId || !text(campaign.name, 128) || typeof campaign.git_commit !== "string" || !SHA40.test(campaign.git_commit) || row.from_stage !== "discovery" || row.to_stage !== "preliminary_check" || discovery.completed_trials !== campaignDiscoveryTrials() || discovery.expected_trials !== campaignDiscoveryTrials() || JSON.stringify(discovery.families) !== JSON.stringify(["angled_donut", "single_pass"]) || typeof discovery.evidence_sha256 !== "string" || !SHA256.test(discovery.evidence_sha256) || synchronize.trial_registries !== campaignDiscoveryTrials() || synchronize.merged_files !== 4 || create.selection_files !== 2 || create.job_files !== 4 || JSON.stringify(artifacts.update) !== JSON.stringify(["campaign.json"]) || effects.synchronize_discovery !== true || effects.prepare_preliminary_check !== true || effects.submit_preliminary_check !== false || effects.start_simulation !== false || effects.overwrite_existing !== false) throw new Error("Invalid 3D Discovery transition review.");
   return row as unknown as Mot3DDiscoveryTransitionPreview;
 }
 

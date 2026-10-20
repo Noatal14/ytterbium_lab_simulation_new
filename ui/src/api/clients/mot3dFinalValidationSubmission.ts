@@ -1,3 +1,4 @@
+import { reviewedCampaignResource, campaignMemory, campaignParticles, campaignPools, campaignTotalParticles, campaignWalltime } from "../campaignPolicy";
 import {
   isKnownServerError,
   requiresManualVerification,
@@ -131,7 +132,7 @@ export function parseMot3DFinalValidationSubmissionPreview(
       "submit_final_validation",
     ]),
     resources = object(original.resources, ["array", "merge"]),
-    merge = object(resources.merge, ["ncpus", "memory_gb", "walltime"]);
+    merge = reviewedCampaignResource(resources.merge, ["ncpus", "memory_gb", "walltime"]);
   if (
     stage.id !== "final_validation" ||
     stage.label !== "Final Validation" ||
@@ -143,12 +144,12 @@ export function parseMot3DFinalValidationSubmissionPreview(
     science.dt_s !== MOT_3D_TIMESTEP_POLICY_V2.sealed_final_validation_dt_s ||
     science.t_max_s !== MOT_3D_TIMESTEP_POLICY_V2.t_max_s ||
     science.solver !== MOT_3D_TIMESTEP_POLICY_V2.solver ||
-    science.npools !== 200 ||
+    science.npools !== campaignPools() ||
     science.bootstrap_replicates !== 20000 ||
     science.bootstrap_seed !== 92001 ||
     merge.ncpus !== 1 ||
-    merge.memory_gb !== 8 ||
-    merge.walltime !== "02:00:00" ||
+    merge.memory_gb !== campaignMemory(8) ||
+    merge.walltime !== campaignWalltime("02:00:00") ||
     effects.start_simulation !== true ||
     effects.submit_later_stages !== false ||
     effects.modify_campaign_files !== false ||
@@ -161,8 +162,8 @@ export function parseMot3DFinalValidationSubmissionPreview(
     classification: "candidate_selection_not_final_validation",
     candidates_per_family: 16,
     input_ensembles: 4,
-    particles_per_ensemble: 750,
-    total_particles: 3000,
+    particles_per_ensemble: campaignParticles(750),
+    total_particles: campaignTotalParticles(3000),
     recoil_seeds: [42001, 42002, 42003],
     dt_s: MOT_3D_TIMESTEP_POLICY_V2.search_dt_s,
     t_max_s: 0.05,
@@ -179,6 +180,7 @@ export function parseMot3DFinalValidationSubmissionPreview(
     submit_closure: true,
   };
   (normalized.resources as any).merge = {
+    ...(merge.vnode ? {vnode:merge.vnode} : {}),
     ncpus: 1,
     memory_gb: 4,
     walltime: "01:00:00",

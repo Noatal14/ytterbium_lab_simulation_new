@@ -184,6 +184,11 @@ class Mot3DFinalInputSubmissionCoordinator:
                     "freeze": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"},
                 },
             }
+            from workflow_api.mot_3d_workload import generation_science
+            from workflow_api.acceptance_remote import assert_campaign_target
+            science = generation_science(manifest, science)
+            if "kind" in manifest:
+                assert_campaign_target(manifest, profile.username, profile.project_directory, logical)
             root_fd = os.open(self.root, _DIRECTORY_FLAGS)
             try:
                 code_files = {

@@ -1,4 +1,5 @@
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+
 """Evaluate 3D-MOT refinement candidates on 3,000 particles and three seeds."""
 
 import argparse
@@ -14,7 +15,9 @@ from studies.mot_3d.analysis.retention import analyze_results
 from studies.mot_3d_campaign import load_role_particles
 from utils.file_helpers import save_file_json
 from studies.mot_3d.integrity import (
-    frozen_stage_design, sha256, validate_completed_result,
+    frozen_stage_design,
+    sha256,
+    validate_completed_result,
 )
 
 
@@ -26,6 +29,11 @@ def _atomic_json(path, payload):
 
 
 def run(args):
+    from workflow_api import mot_3d_workload as workload
+
+    selected_stage = json.loads(Path(args.input_manifest).read_text()).get("stage")
+    stage = "closure" if selected_stage == "closure" else "refinement"
+    manifest = workload.validate_worker(args, args.input_manifest, stage)
     selection = json.loads(Path(args.selection).read_text())
     if selection["family"] != args.family:
         raise ValueError("Selection family and requested family disagree.")
@@ -37,14 +45,18 @@ def run(args):
         args.particles_per_ensemble,
         args.selection_seed,
     )
-    if len(states) != 3000:
+    if len(states) != 4 * workload.particles_per_ensemble(manifest, "refinement", 750):
         raise AssertionError("Refinement design must contain exactly 3,000 particles.")
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     _atomic_json(output_dir / "particle_selection.json", provenance)
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     design = frozen_stage_design(
-        args.input_manifest, args.selection, "refinement", args.dt, args.t_max,
+        args.input_manifest,
+        args.selection,
+        "refinement",
+        args.dt,
+        args.t_max,
         particle_selection=provenance,
         particles_per_ensemble=args.particles_per_ensemble,
         selection_seed=args.selection_seed,
@@ -57,10 +69,13 @@ def run(args):
             json_path = output_dir / f"{stem}.json"
             npz_path = output_dir / f"{stem}.npz"
             if validate_completed_result(
-                json_path, npz_path,
+                json_path,
+                npz_path,
                 kind="mot_3d_focused_refinement_seed_result",
-                family=args.family, candidate_id=candidate_id,
-                recoil_seed=recoil_seed, design=design,
+                family=args.family,
+                candidate_id=candidate_id,
+                recoil_seed=recoil_seed,
+                design=design,
             ):
                 print(f"Skipping completed {stem}", flush=True)
                 continue
@@ -96,29 +111,40 @@ def run(args):
                 "usable_at_end_count": int(usable_at_end.sum()),
                 "usable_ever_count": int(usable_ever.sum()),
                 "peak_usable_count": int(analysis["peak_count"]),
-                "entered_capture_region_count": int(diagnostics["entered_capture_region_count"]),
+                "entered_capture_region_count": int(
+                    diagnostics["entered_capture_region_count"]
+                ),
                 "slow_inside_count": int(diagnostics["slow_inside_count"]),
                 "outcomes_path": str(npz_path),
                 "outcomes_sha256": sha256(npz_path),
                 "design": design,
             }
             _atomic_json(json_path, result)
-            print(f"REFINEMENT_RESULT {stem} usable={result['usable_at_end_count']}/3000", flush=True)
+            print(
+                f"REFINEMENT_RESULT {stem} usable={result['usable_at_end_count']}/{len(states)}",
+                flush=True,
+            )
 
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--family", choices=("angled_donut", "single_pass"), required=True)
+    parser.add_argument(
+        "--family", choices=("angled_donut", "single_pass"), required=True
+    )
     parser.add_argument("--selection", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--input-manifest", required=True)
     parser.add_argument("--worker-index", type=int, required=True)
     parser.add_argument("--num-workers", type=int, default=3)
     parser.add_argument("--particles-per-ensemble", type=int, default=750)
-    parser.add_argument("--selection-seed", type=int, default=DEFAULT_RANDOM_SEED + 6000)
+    parser.add_argument(
+        "--selection-seed", type=int, default=DEFAULT_RANDOM_SEED + 6000
+    )
     parser.add_argument("--npools", type=int, default=200)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
-    parser.add_argument("--t-max", type=float, default=MOT_3D_TIMESTEP_POLICY["t_max_s"])
+    parser.add_argument(
+        "--t-max", type=float, default=MOT_3D_TIMESTEP_POLICY["t_max_s"]
+    )
     return parser.parse_args(argv)
 
 

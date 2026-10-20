@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import shlex
 import stat
@@ -137,7 +138,9 @@ def build_registry(repository_root: Path) -> dict[str, RegistryEntry]:
         if not _within(discovery_root, repository_root) or not discovery_root.is_dir():
             continue
         count = 0
-        for directory in discovery_root.iterdir():
+        acceptance_root = discovery_root / "ui_acceptance"
+        acceptance_directories = acceptance_root.iterdir() if acceptance_root.is_dir() and not acceptance_root.is_symlink() else ()
+        for directory in itertools.chain(discovery_root.iterdir(), acceptance_directories):
             if count >= MAX_CAMPAIGNS_PER_KIND:
                 break
             if directory.is_symlink() or not directory.is_dir():
@@ -310,6 +313,8 @@ def _modern_3d_contract(
 
 
 def _role(kind: str, stage: str, sealed_final: bool, trusted: bool) -> str:
+    if kind in {"mot_2d_ui_acceptance_v1", "mot_3d_ui_acceptance_v1"}:
+        return "acceptance-only"
     if not trusted:
         return "historical-evidence"
     if kind == "mot_2d_s0_campaign":
@@ -352,7 +357,7 @@ def _progress_aware_plan(
     if row and row.get("status") == "in-progress":
         return None
     if row and row.get("status") == "complete":
-        if summary.get("kind") == "mot_3d_campaign_v2":
+        if summary.get("kind") in {"mot_3d_campaign_v2", "mot_3d_ui_acceptance_v1"}:
             return None
         relative = root.relative_to(repository_root).as_posix()
         command = ["python", "-m", "studies.mot_2d_s0_campaign", "advance", "--campaign", relative]
@@ -372,8 +377,13 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
     repository_root = repository_root.resolve()
     payload = _read_manifest(entry.manifest)
     expected_kind = SUPPORTED_KINDS[entry.family]
-    if payload.get("kind") != expected_kind:
+    from workflow_api.acceptance_profile import ACCEPTANCE_KINDS, policy_for_manifest, assert_acceptance_path
+    if payload.get("kind") not in {expected_kind, ACCEPTANCE_KINDS[entry.family]}:
         raise DiscoveryError("unsupported_campaign", "Campaign record has an unsupported workflow kind.")
+    if policy_for_manifest(payload) is not None:
+        assert_acceptance_path(entry.manifest, repository_root)
+    elif "ui_acceptance" in entry.relative_root.parts:
+        raise DiscoveryError("unsupported_campaign", "Scientific campaigns cannot use TEST ONLY paths.")
     try:
         reader = read_2d_campaign if entry.family == "mot_2d" else read_3d_campaign
         summary = reader(entry.manifest, manifest=payload).to_dict()
@@ -383,7 +393,7 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
     contract_errors: tuple[str, ...] = ()
     remote_preparation = {"status": "unavailable", "reason_code": "incomplete-portability-record"}
     sealed_final = False
-    if summary["kind"] == "mot_2d_s0_campaign":
+    if entry.family == "mot_2d":
         contract_ok, contract_errors = modern_contract(payload, repository_root)
         portability = payload.get("provenance", {}).get("path_contract") if isinstance(payload.get("provenance"), dict) else None
         remote_preparation = (
@@ -423,6 +433,8 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
     trust = "trusted-current" if contract_ok and not inconsistent else "legacy-incomplete"
     raw_warnings.extend(f"Modern campaign contract check failed: {error}." for error in contract_errors)
     warnings = [_warning(item) for item in raw_warnings]
+    if payload.get("kind") in ACCEPTANCE_KINDS.values():
+        warnings.insert(0, _warning("TEST ONLY — UI acceptance; these results have no scientific validation or promotion status.", "info"))
     current_progress = next((row for row in progress if row.get("stage") == summary.get("stage")), None)
     if trust == "trusted-current" and current_progress and current_progress.get("status") == "in-progress":
         warnings.append(_warning(

@@ -269,6 +269,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as IndividualRun);
+      setRecoveryPending(found.execution.mode === "zeus" && found.lifecycle !== "results_ready");
       setStep(
         found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
           ? "monitor"
@@ -409,7 +410,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
     }
   }
   async function refresh() {
-    if (!runId) return;
+    if (!runId || busy || recoveryPending) return;
     const id = ++request.current;
     setBusy(true);
     setError(null);
@@ -1087,7 +1088,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
           <div className="form-actions">
             <button
               className="secondary-button"
-              disabled={busy}
+              disabled={busy || recoveryPending}
               onClick={() => void refresh()}
             >
               {busy ? "Checking…" : "Check status"}

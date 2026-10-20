@@ -35,8 +35,13 @@ class CreationService:
         *,
         clock=time.monotonic,
         token_factory=None,
+        acceptance_profile_id: str | None = None,
     ):
         self.root = repository_root.resolve(); self.snapshots = snapshot_provider
+        self.acceptance_profile_id = acceptance_profile_id
+        if acceptance_profile_id is not None:
+            from workflow_api.acceptance_profile import load_acceptance_profile
+            load_acceptance_profile(acceptance_profile_id)
         self.clock = clock
         self._previews = PreviewRegistry[Pending](
             clock=clock,
@@ -57,6 +62,8 @@ class CreationService:
     def _duplicate(self, plan: CampaignPlan) -> dict[str, Any] | None:
         expected_ensembles = MOT_2D_SPECIFICATION["design"]["ensemble_count"]
         root = self.root / "data/optimization/mot_2d"
+        if self.acceptance_profile_id is not None:
+            root = root / "ui_acceptance"
         for directory in root.iterdir() if root.is_dir() else ():
             if directory.name.startswith("."):
                 continue
@@ -99,11 +106,11 @@ class CreationService:
             raise ValueError("Preview fields are invalid.")
         if not isinstance(request["name"], str) or not isinstance(request["slug"], str) or not isinstance(request["source_id"], str) or not isinstance(request["s0_values"], list):
             raise ValueError("Preview fields are invalid.")
-        sources = {row["id"]: row for row in list_sources(self.root)["sources"]}
+        sources = {row["id"]: row for row in list_sources(self.root, acceptance_profile_id=self.acceptance_profile_id)["sources"]}
         source = sources.get(request["source_id"])
         if source is None: raise ValueError("The selected Zeeman source is unavailable.")
         before = self.snapshots.capture()
-        plan = build_plan(self.root, name=request["name"], slug=request["slug"], s0_values=request["s0_values"], source=source, snapshot=before)
+        plan = build_plan(self.root, name=request["name"], slug=request["slug"], s0_values=request["s0_values"], source=source, snapshot=before, acceptance_profile_id=self.acceptance_profile_id)
         after = self.snapshots.capture()
         if before != after: raise RuntimeError("Repository changed during preview.")
         duplicate = self._duplicate(plan)
@@ -143,11 +150,11 @@ class CreationService:
                 if pending.result is not None: return pending.result
                 raise RuntimeError("Preview token can no longer be used.")
             pending.consumed = True
-            sources = {row["id"]: row for row in list_sources(self.root)["sources"]}
+            sources = {row["id"]: row for row in list_sources(self.root, acceptance_profile_id=self.acceptance_profile_id)["sources"]}
             source = sources.get(pending.request["source_id"])
             if source is None: raise RuntimeError("Zeeman source changed after preview.")
             snapshot = self.snapshots.capture()
-            refreshed = build_plan(self.root, name=pending.request["name"], slug=pending.request["slug"], s0_values=pending.request["s0_values"], source=source, snapshot=snapshot)
+            refreshed = build_plan(self.root, name=pending.request["name"], slug=pending.request["slug"], s0_values=pending.request["s0_values"], source=source, snapshot=snapshot, acceptance_profile_id=self.acceptance_profile_id)
             if refreshed.plan_digest != pending.plan.plan_digest or refreshed.source_fingerprint != pending.plan.source_fingerprint or refreshed.snapshot != pending.plan.snapshot:
                 raise RuntimeError("Preview is stale; review the campaign again.")
             if self.snapshots.capture() != snapshot: raise RuntimeError("Repository changed before creation.")

@@ -60,12 +60,52 @@ def parameters_from_args(args):
 
 
 def run_seeds(args):
+    profile = None
+    acceptance_profile_id = getattr(args, "acceptance_profile", None)
+    input_manifest = getattr(args, "input_manifest", None)
+    if acceptance_profile_id is not None:
+        from workflow_api.acceptance_profile import (
+            assert_acceptance_path, load_acceptance_profile, policy_for_manifest,
+        )
+        profile = load_acceptance_profile(acceptance_profile_id)
+        if input_manifest is None:
+            raise ValueError("Acceptance production requires its frozen campaign manifest.")
+        manifest = json.loads(Path(input_manifest).read_text(encoding="utf-8"))
+        if policy_for_manifest(manifest) != profile:
+            raise ValueError("Acceptance production profile differs from the campaign.")
+        for target in (input_manifest, args.ensemble_dir, args.output_dir, args.states_dir):
+            assert_acceptance_path(target, Path.cwd())
+        if manifest['kind'] == 'mot_2d_ui_acceptance_v1':
+            from workflow_api.mot_2d_spec import validate_campaign_policy
+            validate_campaign_policy(manifest)
+            expected_pools = profile.stage('mot_2d', 'production')['npools']
+            reviewed_mot_seeds = {
+                role: [40_000 + seed for seed in seeds]
+                for role, seeds in manifest['seed_roles'].items()
+            }
+            if manifest.get('mot_seeds') != reviewed_mot_seeds:
+                raise ValueError("Acceptance MOT seed registry differs from the reviewed roles.")
+            valid_pairs = dict(zip(manifest['seed_roles']['sealed_validation'], reviewed_mot_seeds['sealed_validation']))
+        else:
+            from workflow_api.mot_3d_workload import generation_job
+            expected_pools = generation_job(manifest, 'mot_2d')['npools']
+            family = profile.family('mot_3d')
+            valid_pairs = dict(zip(family['final_validation_zeeman_seeds'], family['final_validation_mot_seeds']))
+        if args.npools != expected_pools:
+            raise ValueError("Acceptance production workers differ from the frozen job resources.")
+        if not args.zeeman_seeds or len(args.zeeman_seeds) != len(args.mot_seeds) or len(args.zeeman_seeds) != len(set(args.zeeman_seeds)) or any(
+            valid_pairs.get(seed) != mot_seed for seed, mot_seed in zip(args.zeeman_seeds, args.mot_seeds)
+        ):
+            raise ValueError("Acceptance production seed pairs are outside the sealed registry.")
+    elif input_manifest is not None:
+        raise ValueError("Acceptance input manifests require an explicit reviewed profile.")
     parameters = parameters_from_args(args)
     ensembles = load_production_ensembles(
         particles_per_ensemble=None,
         zeeman_seeds=args.zeeman_seeds,
         directory=args.ensemble_dir,
         expected_profile=args.expected_zeeman_profile,
+        acceptance_profile_id=acceptance_profile_id,
     )
     current_commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     if args.expected_git_commit and current_commit != args.expected_git_commit:
@@ -106,6 +146,9 @@ def run_seeds(args):
             },
             "replicate": row,
         }
+        if profile is not None:
+            payload['acceptance'] = profile.provenance()
+            payload['design']['acceptance'] = profile.provenance()
         path = output_dir / f"zeeman_seed{row['zeeman_seed']}.json"
         save_file_json(path, payload)
         if survivor_state_ensembles is not None:
@@ -120,6 +163,7 @@ def run_seeds(args):
                 states_path.with_suffix(".json"),
                 {
                     "kind": "mot_2d_final_survivor_ensemble",
+                    **({"acceptance": profile.provenance()} if profile is not None else {}),
                     "source_zeeman_ensemble": (
                         f"{args.ensemble_identity}/{Path(row['ensemble_file']).name}"
                         if getattr(args, "ensemble_identity", None) else row["ensemble_file"]
@@ -286,6 +330,8 @@ def parse_args(argv=None):
     )
     parser.add_argument("--expected-zeeman-profile")
     parser.add_argument("--expected-git-commit")
+    parser.add_argument("--acceptance-profile")
+    parser.add_argument("--input-manifest")
     parser.add_argument("--s0", type=float)
     parser.add_argument("--detuning-gamma", type=float)
     parser.add_argument("--magnet-radius-mm", type=float)

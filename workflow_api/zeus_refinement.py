@@ -1,5 +1,7 @@
 """Guarded Screening completion and Refinement preparation coordinator."""
 from __future__ import annotations
+from workflow_api.mot_2d_spec import authorize_review_target
+from workflow_api.mot_2d_spec import trial_budget
 import hashlib,json,re,secrets,subprocess,threading,time
 from dataclasses import dataclass,replace
 from datetime import datetime,timezone
@@ -60,9 +62,10 @@ class ZeusRefinementCoordinator:
     def inspect_evidence(self,request)->RefinementInspection:
         if set(request)!={"campaign_id","username","project_directory"} or not isinstance(request.get("campaign_id"),str):raise ZeusRefinementError("request_invalid")
         profile=self._profile(request);plan=self._plan(str(request["campaign_id"]));campaign,_,_,commit,prepared,screen,screen_digest,key=plan;local,clean=self._revision()
+        authorize_review_target(plan[1], profile, campaign, self.root, ZeusRefinementError)
         if not clean or local!=commit:raise ZeusRefinementError("local_checkout_mismatch")
         state=self.transport_factory(profile).inspect(campaign=campaign.relative_to(self.root).as_posix(),commit=commit,prepared_files=prepared,screen_files=screen,screen_digest=screen_digest,screening_submission_key=key)
-        expected_tasks=len(plan[1]["s0_values"])*3;expected_trials=expected_tasks*17;count_keys={"queued","running","held","succeeded","failed"};valid_lifecycles={"ready_to_prepare_refinement","refinement_prepared"};terminal_lifecycles=valid_lifecycles|{"awaiting_outputs","outputs_invalid"}
+        expected_tasks=len(plan[1]["s0_values"])*3;expected_trials=expected_tasks*trial_budget(plan[1], "screen");count_keys={"queued","running","held","succeeded","failed"};valid_lifecycles={"ready_to_prepare_refinement","refinement_prepared"};terminal_lifecycles=valid_lifecycles|{"awaiting_outputs","outputs_invalid"}
         if state.task_count!=expected_tasks or set(state.counts)!=count_keys or any(not isinstance(value,int) or isinstance(value,bool) or value<0 for value in state.counts.values()):raise ZeusRefinementError("remote_response_invalid")
         coherent=sum(state.counts.values())==expected_tasks and (state.lifecycle not in terminal_lifecycles or state.counts["succeeded"]==expected_tasks and state.exit_status==0 and state.raw_state in {"F","X"}) and (state.lifecycle!="screen_running" or state.counts["running"]>0) and (state.lifecycle!="screen_queued" or state.counts["queued"]>0) and (state.lifecycle!="screen_held" or state.counts["held"]>0) and (state.lifecycle!="screen_failed" or state.counts["failed"]>0)
         if not coherent or state.lifecycle in valid_lifecycles and len(state.rows)!=expected_trials or state.lifecycle not in {"screen_queued","screen_running","screen_held","screen_failed","screen_status_unknown",*terminal_lifecycles}:raise ZeusRefinementError("remote_response_invalid")
@@ -90,7 +93,7 @@ class ZeusRefinementCoordinator:
         for s0_rows in selected.values():
             for rank,row in enumerate(s0_rows,1):candidates.append({"s0":row["s0"],"rank":rank,"detuning_gamma":row["detuning_gamma"],"magnet_radius_m":row["magnet_radius"],"mean_conditional_efficiency":row["mean_conditional_efficiency"],"source":row["source"]})
         create=["screening_candidates.json","refine/tasks.json",*[f"jobs/03_refine_round_{index:02d}.pbs" for index in range(1,5)],"jobs/03_submit_refinement_chain.sh"]
-        fixed=manifest["fixed_design"];return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"from_stage":"screen","to_stage":"refine","bounds":{"detuning_gamma":{"low":fixed["detuning_bounds_gamma"][0],"high":fixed["detuning_bounds_gamma"][1]},"magnet_radius_m":{"low":fixed["magnet_radius_bounds_m"][0],"high":fixed["magnet_radius_bounds_m"][1]}},"screening":{"job_id":state.job_id,"completed_trials":len(rows),"expected_trials":len(manifest["s0_values"])*51,"candidates":candidates},"artifacts":{"create":create,"update":["campaign.json"]},"effects":{"prepare_refinement":True,"submit_refinement":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
+        fixed=manifest["fixed_design"];return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"from_stage":"screen","to_stage":"refine","bounds":{"detuning_gamma":{"low":fixed["detuning_bounds_gamma"][0],"high":fixed["detuning_bounds_gamma"][1]},"magnet_radius_m":{"low":fixed["magnet_radius_bounds_m"][0],"high":fixed["magnet_radius_bounds_m"][1]}},"screening":{"job_id":state.job_id,"completed_trials":len(rows),"expected_trials":len(manifest["s0_values"])*3*trial_budget(manifest, "screen"),"candidates":candidates},"artifacts":{"create":create,"update":["campaign.json"]},"effects":{"prepare_refinement":True,"submit_refinement":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
     def confirm(self,request,*,session_id:str):
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusRefinementError("request_invalid")
         token=str(request["preview_token"])

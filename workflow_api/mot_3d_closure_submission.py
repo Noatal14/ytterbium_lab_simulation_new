@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api import mot_3d_workload as workload
+
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
 
 import hashlib
@@ -167,7 +169,7 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
 
     def _science(self, manifest):
         design = manifest.get("design", {})
-        return {
+        return workload.submission_science(manifest, "closure", {
             "classification": "candidate_selection_not_final_validation",
             "candidates_per_family": CLOSURE_TOPOLOGY.candidates_per_family,
             "input_ensembles": 4,
@@ -180,7 +182,7 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
             "selection_seed": CLOSURE_SCIENTIFIC_DESIGN.selection_seed,
             "bootstrap_replicates": 10_000,
             "bootstrap_seed": CLOSURE_SCIENTIFIC_DESIGN.bootstrap_seed,
-        }
+        })
 
     @staticmethod
     def _validate(state, operation: str):
@@ -223,6 +225,9 @@ class Mot3DClosureSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator):
                 }
             finally:
                 os.close(campaign_fd)
+            from workflow_api.acceptance_remote import assert_campaign_target
+            if "kind" in manifest:
+                assert_campaign_target(manifest, profile.username, profile.project_directory, campaign.relative_to(self.root))
             science = self._science(manifest)
             if (
                 science["dt_s"] != self.expected_dt_s

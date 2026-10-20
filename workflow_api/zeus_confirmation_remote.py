@@ -88,12 +88,14 @@ def main():
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}",username):fail("invalid_request")
     try:root=Path(requested).resolve(strict=True);payload=json.loads(base64.urlsafe_b64decode(encoded))
     except Exception:fail("invalid_request")
-    if root!=Path("/home")/username/"ytterbium_lab_simulation_new" or not isinstance(payload,dict):fail("remote_project_missing")
+    if root not in {Path("/home")/username/"ytterbium_lab_simulation_new", Path("/home")/username/"ytterbium_lab_simulation_ui_acceptance"} or not isinstance(payload,dict):fail("remote_project_missing")
     inspect_keys={"campaign","commit","refine_files","chain_key","screen_digest","screening_submission_key"};prepare_keys=inspect_keys|{"rows_digest","confirmation_files","nonce"}
     if set(payload)!=(inspect_keys if operation=="inspect" else prepare_keys):fail("invalid_request")
     pure=PurePosixPath(payload["campaign"]);commit=payload["commit"]
-    if pure.is_absolute() or pure.parts[:3]!=("data","optimization","mot_2d") or len(pure.parts)!=4 or any(part in {"",".",".."} for part in pure.parts) or not re.fullmatch(r"[0-9a-f]{40}",str(commit)) or not re.fullmatch(r"[0-9a-f]{64}",str(payload["chain_key"])):fail("invalid_request")
-    campaign=root.joinpath(*pure.parts);no_links(root,campaign)
+    if pure.is_absolute() or pure.parts[:3]!=("data","optimization","mot_2d") or ((len(pure.parts) != 4 and not (len(pure.parts) == 5 and pure.parts[3] == "ui_acceptance")) and not (len(pure.parts) == 5 and pure.parts[3] == "ui_acceptance")) or any(part in {"",".",".."} for part in pure.parts) or not re.fullmatch(r"[0-9a-f]{40}",str(commit)) or not re.fullmatch(r"[0-9a-f]{64}",str(payload["chain_key"])):fail("invalid_request")
+    campaign=root.joinpath(*pure.parts)
+    _authorize_acceptance_campaign(campaign, root)
+    no_links(root,campaign)
     try:
         head=subprocess.run(["/usr/bin/git","rev-parse","HEAD"],cwd=root,text=True,capture_output=True,timeout=10,check=True).stdout.strip();dirty=subprocess.run(["/usr/bin/git","status","--porcelain=v1","-z","--untracked-files=all"],cwd=root,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=10,check=True).stdout;branch=subprocess.run(["/usr/bin/git","branch","--show-current"],cwd=root,text=True,capture_output=True,timeout=10,check=True).stdout.strip()
     except Exception:fail("remote_checkout_mismatch")
@@ -220,4 +222,28 @@ def main():
     finally:
         fcntl.flock(lock_fd,fcntl.LOCK_UN);os.close(lock_fd)
     print(json.dumps({"lifecycle":"confirmation_prepared","rounds":rounds,"rows":rows,"branch":branch,"receipt":record}))
+
+def _authorize_acceptance_campaign(campaign, root):
+    """Authenticate acceptance before locks, publication, or scheduler mutation."""
+    try:
+        from workflow_api.acceptance_profile import assert_scientific_source, is_acceptance_manifest
+        current = root
+        for part in campaign.relative_to(root).parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError('Unsafe campaign path.')
+        manifest_path = campaign / 'campaign.json'
+        if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
+            raise ValueError('Unsafe campaign manifest.')
+        value = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+            from workflow_api.acceptance_remote import assert_campaign_target
+            from workflow_api.mot_2d_spec import validate_campaign_policy
+            validate_campaign_policy(value)
+            assert_campaign_target(value, root.parent.name, root, campaign)
+        else:
+            assert_scientific_source(value)
+    except (OSError, ValueError, TypeError, KeyError):
+        fail('remote_preparation_invalid')
+
 if __name__=="__main__":main()

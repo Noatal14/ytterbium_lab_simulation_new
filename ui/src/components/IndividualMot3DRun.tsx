@@ -289,6 +289,7 @@ export function IndividualMot3DRun({
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot3DRun);
+      setRecoveryPending(found.execution.mode === "zeus" && found.lifecycle !== "results_ready");
       setStep(
         found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
           ? "monitor"
@@ -501,7 +502,7 @@ export function IndividualMot3DRun({
     }
   }
   async function refresh() {
-    if (!runId) return;
+    if (!runId || busy || recoveryPending) return;
     const sequence = ++requestSequence.current;
     setBusy(true);
     setError(null);
@@ -1275,7 +1276,7 @@ export function IndividualMot3DRun({
             <button
               className="secondary-button"
               type="button"
-              disabled={busy}
+              disabled={busy || recoveryPending}
               onClick={() => void refresh()}
             >
               {busy ? "Checking…" : "Check status"}

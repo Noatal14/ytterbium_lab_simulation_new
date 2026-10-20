@@ -129,11 +129,13 @@ def optimize_mot(args):
     if args.fixed_s0 is not None and args.fixed_s0 <= 0:
         raise ValueError("--fixed-s0 must be positive.")
 
+    acceptance = _acceptance_request(args)
     ensembles = load_production_ensembles(
         max_ensembles=args.n_ensembles,
         particles_per_ensemble=args.particles_per_ensemble,
         directory=args.ensemble_dir,
         zeeman_seeds=args.zeeman_seeds,
+        **({"acceptance_profile_id": args.acceptance_profile} if acceptance else {}),
     )
     output_dir = Path(args.output_dir)
     trials_dir = output_dir / "trials"
@@ -160,6 +162,8 @@ def optimize_mot(args):
         "git_commit": git_commit,
         "campaign_design_id": args.campaign_design_id,
     }
+    if acceptance:
+        design["acceptance"] = acceptance
     design_id = hashlib.sha256(json.dumps(design, sort_keys=True).encode()).hexdigest()
 
     def objective(trial):
@@ -319,15 +323,57 @@ def optimize_mot(args):
             },
         },
     }
+    if acceptance:
+        summary["design"]["acceptance"] = acceptance
     save_file_json(output_dir / "summary.json", summary)
     print(json.dumps(summary, indent=2))
     return study
 
 
+
+def _acceptance_request(args):
+    profile_id = getattr(args, 'acceptance_profile', None)
+    input_manifest = getattr(args, 'input_manifest', None)
+    if not profile_id and not input_manifest:
+        return None
+    if not profile_id or not input_manifest:
+        raise ValueError('Acceptance optimization requires both profile and input manifest.')
+    from workflow_api.acceptance_profile import assert_acceptance_path
+    from workflow_api.mot_2d_spec import validate_campaign_policy, refinement_targets
+    manifest_path = Path(input_manifest).resolve()
+    manifest = json.loads(manifest_path.read_text())
+    profile = validate_campaign_policy(manifest)
+    if profile is None or profile.profile_id != profile_id:
+        raise ValueError('Acceptance optimization profile mismatch.')
+    repository = Path(__file__).resolve().parents[2]
+    assert_acceptance_path(manifest_path, repository)
+    assert_acceptance_path(args.output_dir, repository)
+    stage = 'smoke' if 'smoke' in Path(args.output_dir).parts else manifest['stage']
+    if stage not in ('smoke', 'screen', 'refine'):
+        raise ValueError('Invalid acceptance optimization stage.')
+    policy = profile.stage('mot_2d', stage)
+    valid_trials = refinement_targets(manifest) if stage == 'refine' else (policy['trials_per_worker'],)
+    role = policy['input_role']
+    seeds = manifest['seed_roles'][role][:1] if stage == 'smoke' else manifest['seed_roles'][role]
+    mot_seeds = manifest['mot_seeds'][role][:1] if stage == 'smoke' else manifest['mot_seeds'][role]
+    expected_commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    if (args.n_trials not in valid_trials or args.particles_per_ensemble != policy['particles_per_ensemble']
+            or args.npools != policy['npools'] or args.dt != manifest['fixed_design']['working_dt_s']
+            or args.stochastic_solver != 'hybrid' or args.zeeman_seeds != seeds
+            or args.mot_seeds != mot_seeds or args.n_ensembles != len(seeds)
+            or args.fixed_s0 not in manifest['s0_values']
+            or args.campaign_design_id != manifest['provenance']['physical_model_sha256']
+            or expected_commit != manifest['provenance']['git_commit']
+            or args.ensemble_identity != manifest['ensemble_source']['directory']):
+        raise ValueError('Acceptance optimization arguments differ from frozen policy.')
+    return manifest['acceptance']
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n-trials", type=int, default=50)
     parser.add_argument("--campaign-design-id")
+    parser.add_argument("--acceptance-profile")
+    parser.add_argument("--input-manifest")
     parser.add_argument(
         "--fixed-s0",
         type=float,

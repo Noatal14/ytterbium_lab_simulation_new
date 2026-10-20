@@ -44,3 +44,22 @@ describe("preliminary-check controller and view", () => {
   it("reviews explicitly, submits once, and does not claim validation", async () => { const api = { status: vi.fn(async () => status), preview: vi.fn(async () => preview), confirm: vi.fn(async () => result), reset: vi.fn() } as unknown as ReturnType<typeof createPreliminaryCheckApi>; function Harness() { const preliminary = useMot3DPreliminaryCheckController({ campaignId, snapshot, enabled: true, api }); return <Mot3DCampaignFlow stage="preliminary_check" connected discovery={discovery} transition={transition} preliminary={preliminary} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>; } render(<Harness/>); const user = userEvent.setup(); await user.click(screen.getByRole("button", { name: "Check Zeus status" })); await user.click(await screen.findByRole("button", { name: "Review preliminary-check jobs" })); expect(await screen.findByRole("heading", { name: "Submit the preliminary check" })).toHaveFocus(); expect(screen.getByText("4 jobs total")).toBeInTheDocument(); await user.click(screen.getByRole("button", { name: "Submit preliminary check to Zeus" })); expect(await screen.findByText("Preliminary check is running on Zeus")).toBeInTheDocument(); expect(api.confirm).toHaveBeenCalledTimes(1); });
   it("blocks partial submission and labels scheduler success unvalidated", () => { const base = { state: "terminal", preview: null, result: null, error: "", refresh: vi.fn(), review: vi.fn(), confirm: vi.fn(), reset: vi.fn() }; const partialChain = { ...emptyChain, families: [{ ...emptyChain.families[0], array_job_id: "100[].zeus-master" }, emptyChain.families[1]] }; const partial = { ...base, status: { ...status, submission: { status: "partial", chain: partialChain }, next_action: "inspect_zeus" } } as any; const { rerender } = render(<Mot3DCampaignFlow stage="preliminary_check" connected discovery={discovery} transition={transition} preliminary={partial} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>); expect(screen.getByRole("alert")).toHaveTextContent("Do not submit again"); const complete = { ...base, state: "tracked", status: { ...status, submission: { status: "completed_success_unvalidated", chain: fullChain }, scheduler: { ...status.scheduler, completed_array_tasks: 6, completed_merge_jobs: 2 }, next_action: "validate_outputs" } } as any; rerender(<Mot3DCampaignFlow stage="preliminary_check" connected discovery={discovery} transition={transition} preliminary={complete} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>); expect(screen.getByText("Preliminary-check jobs finished on Zeus")).toBeInTheDocument(); expect(screen.getByText(/not yet been validated or synchronized locally/)).toBeInTheDocument(); });
 });
+
+
+it("shows TEST ONLY preliminary workloads and actual reviewed reservations", () => {
+  vi.stubEnv("MODE", "ui-acceptance");
+  try {
+    const reviewed = structuredClone(preview) as any;
+    reviewed.science.particles_per_ensemble = 1;
+    reviewed.science.total_particles = 4;
+    reviewed.resources.array = {ncpus_per_task:4,memory_gb_per_task:4,walltime:"01:00:00",vnode:"gd002"};
+    reviewed.resources.merge = {ncpus:1,memory_gb:4,walltime:"01:00:00",vnode:"gd002"};
+    const flow = {state:"review",preview:reviewed,status, result:null,error:"",refresh:vi.fn(),review:vi.fn(),confirm:vi.fn(),reset:vi.fn()} as any;
+    render(<Mot3DCampaignFlow stage="preliminary_check" connected discovery={discovery} transition={transition} preliminary={flow} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
+    expect(screen.getByText("TEST ONLY: physical UI acceptance evidence")).toBeVisible();
+    expect(screen.getByText("4 ensembles · 4 particles")).toBeVisible();
+    expect(screen.getByText("4 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+    expect(screen.getByText("1 CPU · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+    expect(screen.queryByText(/600 particles/)).not.toBeInTheDocument();
+  } finally { vi.unstubAllEnvs(); }
+});

@@ -20,6 +20,7 @@ from lab_setup.physical_specification import (
 from workflow_api.repository_paths import resolve_repo_relative
 
 from workflow_api.models import StageProgress
+from workflow_api.mot_2d_spec import validate_campaign_policy, stage_npools, survivor_states_directory
 from utils.mot_2d_study import summarize_replicates
 from workflow_api.mot_2d_late_stage import derive_production_transition
 from workflow_api.mot_2d_prediction import final_prediction
@@ -104,6 +105,10 @@ def modern_contract(
     manifest: dict[str, Any], repository_root: Path
 ) -> tuple[bool, tuple[str, ...]]:
     errors: list[str] = []
+    try:
+        validate_campaign_policy(manifest)
+    except ValueError as error:
+        errors.append(str(error))
     provenance = _mapping(manifest.get("provenance"))
     if provenance.get("path_contract") != "repository-relative-v1":
         errors.append("campaign uses a legacy non-portable path contract")
@@ -279,6 +284,8 @@ def _optimization_design_id(
         "git_commit": manifest["provenance"]["git_commit"],
         "campaign_design_id": manifest["provenance"]["physical_model_sha256"],
     }
+    if validate_campaign_policy(manifest):
+        design["acceptance"] = manifest["acceptance"]
     return hashlib.sha256(json.dumps(design, sort_keys=True).encode()).hexdigest()
 
 
@@ -375,6 +382,8 @@ def _validated_evaluation(
         and design.get("ensemble_source") == manifest["ensemble_source"]
     ):
         raise ValueError(f"Invalid {stage} result identity or frozen design.")
+    if validate_campaign_policy(manifest) and design.get("acceptance") != manifest["acceptance"]:
+        raise ValueError("Acceptance result lost its frozen provenance.")
     if stage == "sensitivity" and (
         row.get("offsets") != task.get("offsets")
         or row.get("requested_offsets") != task.get("requested_offsets")
@@ -540,7 +549,7 @@ def _expected_production_design(manifest: dict[str, Any]) -> dict[str, Any]:
         "dt_s": manifest["fixed_design"]["final_dt_s"],
         "stochastic_solver": "RK4StHybridCustom",
         "uses_all_available_particles": True,
-        "npools": 150,
+        "npools": stage_npools(manifest, "production", 150),
         "ensemble_dir": source["directory"],
         "zeeman_profile": source["zeeman_profile"],
         "git_commit": manifest["provenance"]["git_commit"],
@@ -554,6 +563,8 @@ def _expected_production_design(manifest: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Incomplete laboratory provenance in ensemble source.")
     if all(present):
         design.update({key: source[key] for key in provenance_keys})
+    if validate_campaign_policy(manifest):
+        design["acceptance"] = manifest["acceptance"]
     return design
 
 
@@ -885,7 +896,7 @@ def sealed_final_is_valid(
 
         payload = _mapping(_json(report, root=root)); results = _list(payload.get("results"))
         if (
-            payload.get("kind") != "mot_2d_s0_campaign_final_report"
+            payload.get("kind") != ("mot_2d_ui_acceptance_final_report_v1" if validate_campaign_policy(manifest) else "mot_2d_s0_campaign_final_report")
             or payload.get("always_returns_best_tested_result") is not True
             or len(results) != len(values)
         ):
@@ -1017,7 +1028,7 @@ def sealed_final_is_valid(
             states = resolve_repo_relative(
                 repository_root,
                 result["survivor_states_directory"],
-                allowed_root="data/particle_states/after_2d_mot",
+                allowed_root=(root.relative_to(repository_root).as_posix() if validate_campaign_policy(manifest) else "data/particle_states/after_2d_mot"),
                 require="dir",
             )
             if not states.is_dir():
@@ -1102,10 +1113,11 @@ def validated_sealed_production_outputs(
             raise ValueError("Production task identities are incomplete.")
         rows: list[dict[str, Any]] = []
         value_label = f"{value:.6f}".rstrip("0").rstrip(".")
+        state_directory = survivor_states_directory(manifest, root, value)
+        state_identity = state_directory.relative_to(repository_root).as_posix() if state_directory.is_absolute() else state_directory.as_posix()
         states = resolve_repo_relative(
-            repository_root,
-            f"data/particle_states/after_2d_mot/final_ensemble_s0_{value_label}",
-            allowed_root="data/particle_states/after_2d_mot", require="dir",
+            repository_root, state_identity,
+            allowed_root=(root.relative_to(repository_root).as_posix() if validate_campaign_policy(manifest) else "data/particle_states/after_2d_mot"), require="dir",
         )
         expected_state_names = {
             f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{expected_pairs[seed]}.npy"

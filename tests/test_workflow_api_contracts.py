@@ -404,7 +404,7 @@ def _captured(case, status, headers, body):
 
 
 def _load(name):
-    return json.loads((CONTRACT_ROOT / name).read_text())
+    return json.loads((CONTRACT_ROOT / name).read_text(encoding="utf-8"))
 
 
 def collect_success(monkeypatch):

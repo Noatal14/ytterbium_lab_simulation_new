@@ -157,6 +157,7 @@ class Mot3DDiscoveryBootstrapService:
         self,
         repository_root: Path,
         *,
+        acceptance_profile_id: str | None = None,
         clock: Callable[[], float] = time.monotonic,
         token_factory: Callable[[], str] | None = None,
         revision_provider: Callable[[], str] = mot_3d_campaign._revision,
@@ -166,6 +167,10 @@ class Mot3DDiscoveryBootstrapService:
         ] = mot_3d_campaign._dirty_relevant_files,
     ) -> None:
         self.root = Path(repository_root).resolve(strict=True)
+        self.acceptance_profile_id = acceptance_profile_id
+        if acceptance_profile_id is not None:
+            from workflow_api.acceptance_profile import load_acceptance_profile
+            load_acceptance_profile(acceptance_profile_id)
         self.clock = clock
         self.revision_provider = revision_provider
         self.physical_hash_provider = physical_hash_provider
@@ -177,6 +182,8 @@ class Mot3DDiscoveryBootstrapService:
 
     def _sources(self) -> list[tuple[dict[str, Any], Path, Path]]:
         root = self.root / "data/optimization/mot_2d"
+        if self.acceptance_profile_id is not None:
+            root = root / "ui_acceptance"
         rows: list[tuple[dict[str, Any], Path, Path]] = []
         if not root.is_dir() or root.is_symlink():
             return rows
@@ -189,7 +196,7 @@ class Mot3DDiscoveryBootstrapService:
             except (OSError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
                 continue
             if (
-                manifest.get("kind") != "mot_2d_s0_campaign"
+                manifest.get("kind") != ("mot_2d_ui_acceptance_v1" if self.acceptance_profile_id else "mot_2d_s0_campaign")
                 or manifest.get("stage") != "complete"
             ):
                 continue
@@ -215,7 +222,7 @@ class Mot3DDiscoveryBootstrapService:
                     else self.root / survivor_value
                 ).resolve()
                 survivor_root = (
-                    self.root / "data/particle_states/after_2d_mot"
+                    campaign if self.acceptance_profile_id else self.root / "data/particle_states/after_2d_mot"
                 ).resolve()
                 try:
                     survivor.relative_to(survivor_root)
@@ -231,7 +238,7 @@ class Mot3DDiscoveryBootstrapService:
                     continue
                 try:
                     upstream = mot_3d_campaign.validate_upstream_2d_campaign(
-                        campaign, survivor
+                        campaign, survivor, acceptance_profile_id=self.acceptance_profile_id
                     )
                     pairs = {
                         row["zeeman_seed"]: row["mot_seed"]
@@ -242,6 +249,7 @@ class Mot3DDiscoveryBootstrapService:
                         expected_seed_pairs=pairs,
                         expected_design=upstream["expected_survivor_design"],
                         expected_parameters=upstream["expected_survivor_parameters"],
+                        acceptance_profile_id=self.acceptance_profile_id,
                     )
                 except (OSError, ValueError, KeyError):
                     continue
@@ -314,7 +322,10 @@ class Mot3DDiscoveryBootstrapService:
             )
         source, upstream, survivor = matches[0]
         name = request["campaign_name"]
-        destination = self.root / "data/optimization/mot_3d" / str(name)
+        destination = self.root / "data/optimization/mot_3d"
+        if self.acceptance_profile_id is not None:
+            destination = destination / "ui_acceptance"
+        destination = destination / str(name)
         dirty = self.dirty_provider()
         if dirty:
             raise Mot3DBootstrapError(
@@ -328,6 +339,7 @@ class Mot3DDiscoveryBootstrapService:
             survivor_directory=survivor,
             revision=self.revision_provider(),
             physical_model_sha256=self.physical_hash_provider(),
+            acceptance_profile_id=self.acceptance_profile_id,
         )
         return files, manifest, source
 

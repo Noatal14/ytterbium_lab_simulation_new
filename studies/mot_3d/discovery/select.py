@@ -26,21 +26,15 @@ def parameter_bounds(family):
     if family == "angled_donut":
         bounds.update(
             blue_detuning_gamma=family_config["blue_detuning_gamma_bounds"],
-            core_shell_split_radius_m=family_config[
-                "core_shell_split_radius_m_bounds"
-            ],
+            core_shell_split_radius_m=family_config["core_shell_split_radius_m_bounds"],
         )
     else:
         bounds.update(
             blue_detuning_anchor_gamma=family_config[
                 "blue_detuning_anchor_gamma_bounds"
             ],
-            blue_crossing_angle_deg=family_config[
-                "blue_crossing_angle_deg_bounds"
-            ],
-            blue_crossing_z_offset_m=family_config[
-                "blue_crossing_z_offset_m_bounds"
-            ],
+            blue_crossing_angle_deg=family_config["blue_crossing_angle_deg_bounds"],
+            blue_crossing_z_offset_m=family_config["blue_crossing_z_offset_m_bounds"],
         )
     return bounds
 
@@ -101,9 +95,7 @@ def select_candidates(summary, family, count=12):
         add(interior[0], "best_interior")
 
     competitive = [
-        row
-        for row in pool
-        if row["usable_at_end_fraction"] >= best_fraction - 0.10
+        row for row in pool if row["usable_at_end_fraction"] >= best_fraction - 0.10
     ]
     if competitive:
         add(min(competitive, key=lambda row: _power_proxy(row, family)), "lower_power")
@@ -135,7 +127,11 @@ def select_candidates(summary, family, count=12):
                 )
             else:
                 diversity = 1.0
-            quality = float(row["usable_at_end_fraction"]) / best_fraction
+            quality = (
+                float(row["usable_at_end_fraction"]) / best_fraction
+                if best_fraction > 0.0
+                else 0.0
+            )
             interior_score = max(0.0, _boundary_distance(row, bounds))
             return 0.60 * diversity + 0.30 * quality + 0.10 * interior_score
 
@@ -149,9 +145,7 @@ def select_candidates(summary, family, count=12):
                 "candidate_id": f"{family}_{index:02d}",
                 "selection_roles": roles[key],
                 "discovery_rank": rows.index(row) + 1,
-                "discovery_usable_at_end_fraction": row[
-                    "usable_at_end_fraction"
-                ],
+                "discovery_usable_at_end_fraction": row["usable_at_end_fraction"],
                 "discovery_usable_at_end_count": row["usable_at_end_count"],
                 "worker_index": row["worker_index"],
                 "trial_number": row["trial_number"],

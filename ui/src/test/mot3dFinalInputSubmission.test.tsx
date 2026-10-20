@@ -68,3 +68,21 @@ describe("3D final-validation input generation submission", () => {
     expect(screen.getByText("Input generation is running on Zeus").closest("div[tabindex='-1']")).toHaveFocus();
   });
 });
+
+
+it("renders TEST ONLY final-input reservations separately for all three jobs", () => {
+  // Controlled review fixture only: this test never queries or submits to Zeus.
+  const reviewed = preview();
+  reviewed.science.npools = 10;
+  const cores = [1, 10, 1];
+  reviewed.chain.steps.forEach((step, index) => {
+    step.resources = {ncpus: cores[index], memory_gb: 4, walltime: "01:00:00", vnode: "gd002"};
+  });
+  render(<Mot3DCampaignFlow {...base} finalInputSubmission={flow({phase: "review", status: status(), preview: reviewed})} />);
+  expect(screen.getByText("20 new ensembles, seeds 3035–3054 · 1 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("20 corresponding jobs, seeds 43035–43054 · 10 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("One manifest job · 1 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("10", {selector: "dd"})).toBeVisible();
+  expect(screen.queryByText(/200 CPUs/)).not.toBeInTheDocument();
+  expect(screen.getAllByText("Not submitted")).toHaveLength(2);
+});

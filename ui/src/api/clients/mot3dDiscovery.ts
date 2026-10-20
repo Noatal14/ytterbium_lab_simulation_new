@@ -1,3 +1,5 @@
+import { reviewedCampaignResource, campaignCores, campaignMemory, campaignWalltime, campaignParticles, campaignPools, campaignDiscoveryTargets, campaignDiscoveryTrials } from "../campaignPolicy";
+import { MOT_3D_TIMESTEP_POLICY_V2 } from "../../generated/mot3dTimestepPolicy.v2";
 import { postData } from "../http/envelope";
 import { boundedPrintable, exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -45,6 +47,8 @@ export type Mot3DDiscoveryPreview = {
     branch: string;
     dirty: false;
   };
+  resources: {array:{ncpus_per_task:number;memory_gb_per_task:number;walltime:string;vnode?:"gd002"}};
+  science: {classification:"candidate_selection_not_final_validation";input_role:"discovery";input_ensembles:12;particles_per_ensemble:number;total_particles_per_trial:number;npools:number;dt_s:number;t_max_s:number;solver:string;final_trial_targets:{angled_donut:number[];single_pass:number[]};total_trials:number};
   effects: {
     submit_discovery_chain: true;
     submit_smoke: false;
@@ -194,6 +198,8 @@ export function parseMot3DDiscoveryPreview(
       "campaign",
       "stage",
       "chain",
+      "resources",
+      "science",
       "remote",
       "effects",
     ],
@@ -226,6 +232,15 @@ export function parseMot3DDiscoveryPreview(
     ],
     "Invalid 3D Discovery review.",
   );
+  const resources = object(row.resources, ["array"], "Invalid Discovery resource review.");
+  const array = reviewedCampaignResource(resources.array, ["ncpus_per_task","memory_gb_per_task","walltime"], "Invalid Discovery resource review.");
+  const science = object(row.science, ["classification","input_role","input_ensembles","particles_per_ensemble","total_particles_per_trial","npools","dt_s","t_max_s","solver","final_trial_targets","total_trials"], "Invalid Discovery workload review.");
+  if (array.ncpus_per_task !== campaignCores() || array.memory_gb_per_task !== campaignMemory() || array.walltime !== campaignWalltime()
+      || science.classification !== "candidate_selection_not_final_validation" || science.input_role !== "discovery" || science.input_ensembles !== 12
+      || science.particles_per_ensemble !== campaignParticles(50) || science.total_particles_per_trial !== 12 * campaignParticles(50)
+      || science.npools !== campaignPools() || science.dt_s !== MOT_3D_TIMESTEP_POLICY_V2.search_dt_s || science.t_max_s !== MOT_3D_TIMESTEP_POLICY_V2.t_max_s
+      || science.solver !== MOT_3D_TIMESTEP_POLICY_V2.solver || science.total_trials !== campaignDiscoveryTrials()
+      || JSON.stringify(science.final_trial_targets) !== JSON.stringify(campaignDiscoveryTargets())) throw new Error("Discovery resources or physical workload do not match the reviewed policy.");
   const families = chain.families;
   if (
     !text(row.preview_token, 512) ||

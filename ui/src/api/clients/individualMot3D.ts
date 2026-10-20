@@ -199,11 +199,11 @@ type ZeusContext = {
   csrf: string;
   generation: number;
 };
-// eslint-disable-next-line no-control-regex
 const printable = (value: unknown, maximum = 512): value is string =>
   typeof value === "string" &&
   value.length > 0 &&
   value.length <= maximum &&
+  // eslint-disable-next-line no-control-regex
   !/[\u0000-\u001f\u007f]/.test(value);
 const integer = (value: unknown): value is number => Number.isInteger(value);
 const finite = (value: unknown): value is number =>

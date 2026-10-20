@@ -89,20 +89,25 @@ def _safe_identity(value: object) -> bool:
 
 
 def _expected_science(manifest: dict) -> dict:
-    return {
-        "classification": "new_unopened_inputs_after_nominal_lock",
-        "zeeman_seeds": list(range(3035, 3055)),
-        "mot_seeds": list(range(43035, 43055)),
-        "zeeman_tasks": 20,
-        "mot_tasks": 20,
-        "npools": 200,
-        "dependency": "afterok linear chain",
-        "resources": {
-            "zeeman": {"ncpus": 200, "memory_gb": 64, "walltime": "08:00:00"},
-            "mot_2d": {"ncpus": 200, "memory_gb": 64, "walltime": "12:00:00"},
-            "freeze": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"},
+    from workflow_api.mot_3d_workload import generation_science
+
+    return generation_science(
+        manifest,
+        {
+            "classification": "new_unopened_inputs_after_nominal_lock",
+            "zeeman_seeds": list(range(3035, 3055)),
+            "mot_seeds": list(range(43035, 43055)),
+            "zeeman_tasks": 20,
+            "mot_tasks": 20,
+            "npools": 200,
+            "dependency": "afterok linear chain",
+            "resources": {
+                "zeeman": {"ncpus": 200, "memory_gb": 64, "walltime": "08:00:00"},
+                "mot_2d": {"ncpus": 200, "memory_gb": 64, "walltime": "12:00:00"},
+                "freeze": {"ncpus": 1, "memory_gb": 8, "walltime": "00:30:00"},
+            },
         },
-    }
+    )
 
 
 def _response(state: linear.LinearState) -> None:
@@ -127,10 +132,12 @@ def main(*, trusted_root_override=None):
     if len(sys.argv) != 5 or sys.argv[1] not in {"inspect", "submit", "status"}:
         fail("invalid_request")
     operation, username, project, encoded = sys.argv[1:]
-    if (
-        re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}", username) is None
-        or project != f"/home/{username}/ytterbium_lab_simulation_new"
-    ):
+    if re.fullmatch(
+        r"[A-Za-z][A-Za-z0-9._-]{0,31}", username
+    ) is None or project not in {
+        f"/home/{username}/ytterbium_lab_simulation_new",
+        f"/home/{username}/ytterbium_lab_simulation_ui_acceptance",
+    }:
         fail("invalid_request")
     try:
         raw = (
@@ -158,7 +165,10 @@ def main(*, trusted_root_override=None):
         or set(payload) != keys
         or (trusted_root_override is None and root != requested)
         or relative.is_absolute()
-        or len(relative.parts) != 4
+        or not (
+            len(relative.parts) == 4
+            or (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")
+        )
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or any(part in {"", ".", ".."} for part in relative.parts)
         or not exact_match(HEX40, payload.get("commit"))
@@ -211,6 +221,20 @@ def main(*, trusted_root_override=None):
             fail("remote_checkout_mismatch")
         manifest_raw = read_relative_at(campaign_fd, "campaign.json")
         manifest = json_bytes(manifest_raw, error="final_input_preparation_invalid")
+        from workflow_api.acceptance_remote import assert_campaign_target
+
+        try:
+            from workflow_api.mot_3d_workload import assert_receiver_target
+
+            assert_receiver_target(
+                manifest,
+                username,
+                project,
+                relative,
+                trusted_root_override=trusted_root_override,
+            )
+        except ValueError:
+            fail("final_input_preparation_invalid")
         upstream = manifest.get("upstream_2d_campaign", {})
         stage = manifest.get("stages", {}).get(STAGE, {})
         logical = relative.as_posix()

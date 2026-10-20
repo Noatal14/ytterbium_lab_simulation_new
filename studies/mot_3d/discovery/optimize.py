@@ -66,6 +66,9 @@ def _design_identity(args, provenance, manifest_payload):
         "upstream_campaign_sha256": upstream.get("campaign_sha256"),
         "upstream_final_report_sha256": upstream.get("final_report_sha256"),
     }
+    if manifest_payload:
+        from workflow_api.mot_3d_workload import artifact_identity
+        design.update(artifact_identity(manifest_payload))
     encoded = json.dumps(design, sort_keys=True, separators=(",", ":"))
     # Optuna persists user attributes as JSON.  Return that same canonical
     # representation so a newly constructed design (whose config bounds may
@@ -391,6 +394,9 @@ def optimize(args):
         json.loads(Path(args.input_manifest).read_text(encoding="utf-8"))
         if args.input_manifest else {}
     )
+    if args.input_manifest:
+        from workflow_api.mot_3d_workload import validate_worker
+        validate_worker(args, args.input_manifest, "smoke" if args.target_completed_trials == 1 else "discovery")
     input_files = (
         _manifest_input_files(args.input_manifest, args.input_role)
         if args.input_manifest

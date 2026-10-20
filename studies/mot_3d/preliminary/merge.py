@@ -18,7 +18,8 @@ def merge(args):
     candidates = selection["candidates"]
     root = Path(args.input_root)
     json_paths = sorted(
-        path for path in root.glob("worker_*/*.json")
+        path
+        for path in root.glob("worker_*/*.json")
         if path.name != "particle_selection.json"
     )
     npz_paths = sorted(root.glob("worker_*/*.npz"))
@@ -38,11 +39,17 @@ def merge(args):
     ensemble_ids = None
     for candidate in candidates:
         records = sorted(
-            [row for row in seed_records if row["candidate_id"] == candidate["candidate_id"]],
+            [
+                row
+                for row in seed_records
+                if row["candidate_id"] == candidate["candidate_id"]
+            ],
             key=lambda row: row["recoil_seed"],
         )
         if len(records) != 3:
-            raise RuntimeError(f"{candidate['candidate_id']} has {len(records)}/3 seeds.")
+            raise RuntimeError(
+                f"{candidate['candidate_id']} has {len(records)}/3 seeds."
+            )
         arrays = []
         for record in records:
             with np.load(record["outcomes_path"]) as data:
@@ -61,10 +68,12 @@ def merge(args):
     for replicate in range(args.bootstrap_replicates):
         sampled_seeds = rng.integers(0, 3, size=3)
         sampled_groups = rng.integers(0, 4, size=4)
-        particle_indices = np.concatenate([
-            rng.choice(groups[group], size=len(groups[group]), replace=True)
-            for group in sampled_groups
-        ])
+        particle_indices = np.concatenate(
+            [
+                rng.choice(groups[group], size=len(groups[group]), replace=True)
+                for group in sampled_groups
+            ]
+        )
         bootstrap[replicate] = outcomes[:, sampled_seeds][:, :, particle_indices].mean(
             axis=(1, 2)
         )
@@ -74,26 +83,40 @@ def merge(args):
     upper = np.quantile(bootstrap, 0.975, axis=0)
     sim_lower, sim_upper, sim_critical = simultaneous_intervals(bootstrap, means)
     leader_index = int(np.argmax(sim_lower))
-    diff_lower, diff_upper, diff_critical = simultaneous_paired_differences(bootstrap, means, leader_index)
+    diff_lower, diff_upper, diff_critical = simultaneous_paired_differences(
+        bootstrap, means, leader_index
+    )
     records = []
     for index, candidate in enumerate(candidates):
         records.append(
             {
-                **{key: value for key, value in candidate.items() if key != "resolved_profile"},
+                **{
+                    key: value
+                    for key, value in candidate.items()
+                    if key != "resolved_profile"
+                },
                 "mean_usable_fraction": float(means[index]),
                 "mean_usable_count_per_600": float(600 * means[index]),
                 "bootstrap_95_ci": [float(lower[index]), float(upper[index])],
-                "simultaneous_95_ci": [float(sim_lower[index]), float(sim_upper[index])],
-                "paired_difference_simultaneous_95_ci": [float(diff_lower[index]), float(diff_upper[index])],
+                "simultaneous_95_ci": [
+                    float(sim_lower[index]),
+                    float(sim_upper[index]),
+                ],
+                "paired_difference_simultaneous_95_ci": [
+                    float(diff_lower[index]),
+                    float(diff_upper[index]),
+                ],
                 "seed_counts": [int(value) for value in outcomes[index].sum(axis=1)],
             }
         )
-    records.sort(key=lambda row: (-row["simultaneous_95_ci"][0], -row["mean_usable_fraction"]))
+    records.sort(
+        key=lambda row: (-row["simultaneous_95_ci"][0], -row["mean_usable_fraction"])
+    )
     summary = {
         "kind": "merged_mot_3d_early_independent_check",
         "family": selection["family"],
         "candidate_count": len(candidates),
-        "particle_count": 600,
+        "particle_count": int(outcomes.shape[-1]),
         "ensemble_file_indices": [16, 17, 18, 19],
         "recoil_seed_count": 3,
         "bootstrap_method": (

@@ -111,7 +111,7 @@ def validate_final_validation_result_bytes(
             for kind in ("array", "merge")
         }
         or not isinstance(input_files, Mapping)
-        or set(input_files) != set(input_paths())
+        or set(input_files) != set(input_paths(_strict_json_bytes(manifest_bytes)))
     ):
         _raise("artifact_registry_mismatch")
     for name, raw in {**job_files, **input_files, **result_files}.items():
@@ -145,6 +145,9 @@ def validate_final_validation_result_bytes(
             _raise("result_registry_invalid")
     try:
         manifest = _strict_json_bytes(manifest_bytes)
+        from workflow_api import mot_3d_workload as workload
+
+        acceptance = workload.policy(manifest)
         _strict_json_bytes(locked_nominals_bytes)
         _strict_json_bytes(input_manifest_bytes)
         _strict_json_bytes(generation_submission_bytes)
@@ -159,7 +162,7 @@ def validate_final_validation_result_bytes(
         manifest.get("stage") != "final_validation"
         or logical.is_absolute()
         or logical.parts[:3] != ("data", "optimization", "mot_3d")
-        or len(logical.parts) != 4
+        or len(logical.parts) != (5 if acceptance else 4)
         or logical.name != manifest.get("name")
         or not project.is_absolute()
         or absolute_campaign != project / logical
@@ -247,13 +250,22 @@ def validate_final_validation_result_bytes(
         metadata = _strict_json_bytes(input_files[metadata_relative])
         replicate = _strict_json_bytes(input_files[replicate_relative])
         zeeman_metadata = _strict_json_bytes(input_files[zeeman_metadata_relative])
+        if acceptance is not None and any(
+            item.get("acceptance") != manifest["acceptance"]
+            for item in (metadata, replicate, zeeman_metadata)
+        ):
+            _raise("manifest_mismatch")
         expected_design = {
             "dt_s": campaign_module.MOT_2D_SIM_CONFIG["dt_s"],
             "stochastic_solver": manifest["upstream_2d_campaign"][
                 "expected_survivor_design"
             ]["stochastic_solver"],
             "uses_all_available_particles": True,
-            "npools": 200,
+            "npools": (
+                200
+                if acceptance is None
+                else acceptance.policy["generation"]["jobs"]["mot_2d"]["npools"]
+            ),
             "ensemble_dir": f"{campaign_absolute_path}/final_validation_inputs/after_zeeman",
             "zeeman_profile": manifest["upstream_2d_campaign"][
                 "expected_survivor_design"
@@ -263,6 +275,8 @@ def validate_final_validation_result_bytes(
             "laboratory_spec_sha256": LABORATORY_SPEC_SHA256,
             "zeeman_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
         }
+        if acceptance is not None:
+            expected_design["acceptance"] = manifest["acceptance"]
         if (
             not isinstance(metadata, dict)
             or metadata.get("design") != expected_design

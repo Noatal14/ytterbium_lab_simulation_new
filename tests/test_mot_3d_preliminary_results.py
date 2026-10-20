@@ -25,8 +25,7 @@ def _selection(family):
         "family": family,
         "candidate_count": 12,
         "candidates": [
-            {"candidate_id": f"{family}_candidate_{index:02d}"}
-            for index in range(12)
+            {"candidate_id": f"{family}_candidate_{index:02d}"} for index in range(12)
         ],
     }
 
@@ -62,17 +61,27 @@ def _canonical(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":")).encode()
 
 
-def _closed_fixture(tmp_path):
+def _closed_fixture(tmp_path, *, acceptance=False):
+    project = (
+        "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"
+        if acceptance
+        else "/home/tal.noa/ytterbium_lab_simulation_new"
+    )
+    per_ensemble = 1 if acceptance else 150
+    count = 4 * per_ensemble
+    from workflow_api.acceptance_profile import load_acceptance_profile
+
+    marker = load_acceptance_profile().provenance() if acceptance else None
     campaign_name = "campaign"
-    remote = f"/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/{campaign_name}"
+    remote = f"{project}/data/optimization/mot_3d/{'ui_acceptance/' if acceptance else ''}{campaign_name}"
     campaign = tmp_path / campaign_name
     campaign.mkdir()
     roles = []
     for index, seed in enumerate(range(3031, 3035)):
         roles.append(
             {
-                "path": f"/home/tal.noa/ytterbium_lab_simulation_new/data/input_{seed}.npy",
-                "metadata_path": f"/home/tal.noa/ytterbium_lab_simulation_new/data/input_{seed}.json",
+                "path": f"{project}/data/{'acceptance/source/' if acceptance else ''}input_{seed}.npy",
+                "metadata_path": f"{project}/data/{'acceptance/source/' if acceptance else ''}input_{seed}.json",
                 "sha256": f"{index + 1}" * 64,
                 "metadata_sha256": f"{index + 5}" * 64,
                 "zeeman_seed": seed,
@@ -81,7 +90,7 @@ def _closed_fixture(tmp_path):
                 "shape": [200, 6],
                 "dtype": "float64",
                 "source_git_commit": "a" * 40,
-                "source_design": {},
+                "source_design": {"acceptance": marker} if acceptance else {},
                 "source_parameters": {},
             }
         )
@@ -98,10 +107,28 @@ def _closed_fixture(tmp_path):
             }
         },
     }
+    if acceptance:
+        from studies.mot_3d_campaign import build_campaign_manifest
+
+        manifest.update(
+            {
+                key: value
+                for key, value in build_campaign_manifest(
+                    name=campaign_name,
+                    input_directory=".",
+                    upstream={},
+                    roles={},
+                    revision="a" * 40,
+                    physical_model_sha256="b" * 64,
+                    acceptance_profile_id="ui_acceptance_v1",
+                ).items()
+                if key in {"kind", "acceptance", "design"}
+            }
+        )
     manifest_bytes = json.dumps(manifest, indent=2).encode() + b"\n"
     (campaign / "campaign.json").write_bytes(manifest_bytes)
     particle_selection = expected_preliminary_particle_selection(
-        manifest, project_directory="/home/tal.noa/ytterbium_lab_simulation_new"
+        manifest, project_directory=project
     )
     selections = {}
     result_files = {}
@@ -127,12 +154,14 @@ def _closed_fixture(tmp_path):
             "dt_s": 1e-5,
             "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
-            "particles_per_ensemble": 150,
+            "particles_per_ensemble": per_ensemble,
             "selection_seed": 51001,
             "particle_selection_sha256": hashlib.sha256(
                 _canonical(particle_selection)
             ).hexdigest(),
         }
+        if acceptance:
+            design.update({"acceptance": marker, "suitability": "acceptance_only"})
         for worker in range(3):
             worker_root = campaign / "preliminary_check" / family / f"worker_{worker}"
             worker_root.mkdir(parents=True)
@@ -144,10 +173,10 @@ def _closed_fixture(tmp_path):
             for candidate in selection["candidates"][worker::3]:
                 for seed in (41001, 41002, 41003):
                     stem = f"{candidate['candidate_id']}_seed_{seed}"
-                    usable = np.zeros(600, dtype=bool)
+                    usable = np.zeros(count, dtype=bool)
                     usable[: (seed + worker) % 17] = True
                     ever = usable.copy()
-                    groups = np.repeat(np.arange(4), 150)
+                    groups = np.repeat(np.arange(4), per_ensemble)
                     archive_buffer = io.BytesIO()
                     np.savez_compressed(
                         archive_buffer,
@@ -164,7 +193,7 @@ def _closed_fixture(tmp_path):
                         "candidate_id": candidate["candidate_id"],
                         "worker_index": worker,
                         "recoil_seed": seed,
-                        "input_particle_count": 600,
+                        "input_particle_count": count,
                         "usable_at_end_count": int(usable.sum()),
                         "usable_ever_count": int(ever.sum()),
                         "peak_usable_count": int(usable.sum()),
@@ -192,8 +221,10 @@ def _closed_fixture(tmp_path):
                 continue
             relative = path.relative_to(campaign).as_posix()
             raw = path.read_bytes()
-            if relative.endswith(".json") and "worker_" in relative and not relative.endswith(
-                "particle_selection.json"
+            if (
+                relative.endswith(".json")
+                and "worker_" in relative
+                and not relative.endswith("particle_selection.json")
             ):
                 record = json.loads(raw)
                 record["outcomes_path"] = str(
@@ -211,9 +242,16 @@ def closed_fixture(tmp_path_factory):
     return _closed_fixture(tmp_path_factory.mktemp("preliminary-closed"))
 
 
-def _validate_fixture(fixture, *, manifest=None, selections=None, results=None,
-                      particle_selection=None):
-    original_manifest, original_selections, original_results, original_particle, remote = fixture
+def _validate_fixture(
+    fixture, *, manifest=None, selections=None, results=None, particle_selection=None
+):
+    (
+        original_manifest,
+        original_selections,
+        original_results,
+        original_particle,
+        remote,
+    ) = fixture
     return validate_preliminary_result_bytes(
         manifest_bytes=original_manifest if manifest is None else manifest,
         selection_bytes=original_selections if selections is None else selections,
@@ -240,7 +278,9 @@ def _replace_npz(results, name, **arrays):
 
 
 def test_full_captured_registry_validates_and_preserves_original_hashes(tmp_path):
-    manifest, selections, results, particle_selection, remote = _closed_fixture(tmp_path)
+    manifest, selections, results, particle_selection, remote = _closed_fixture(
+        tmp_path
+    )
     validated = validate_preliminary_result_bytes(
         manifest_bytes=manifest,
         selection_bytes=selections,
@@ -276,7 +316,9 @@ def test_full_captured_registry_validates_and_preserves_original_hashes(tmp_path
         ("json_duplicate_key", "malformed_json"),
     ],
 )
-def test_scientific_trust_boundary_mutations_fail_closed(closed_fixture, mutation, code):
+def test_scientific_trust_boundary_mutations_fail_closed(
+    closed_fixture, mutation, code
+):
     manifest, selections, original_results, particle_selection, _ = closed_fixture
     results = dict(original_results)
     selections = dict(selections)
@@ -290,8 +332,10 @@ def test_scientific_trust_boundary_mutations_fail_closed(closed_fixture, mutatio
         selections["angled_donut"] = json.dumps(value).encode()
     elif mutation.startswith("design_"):
         name = next(
-            name for name in results
-            if name.endswith(".json") and "worker_" in name
+            name
+            for name in results
+            if name.endswith(".json")
+            and "worker_" in name
             and not name.endswith("particle_selection.json")
         )
         value = json.loads(results[name])
@@ -302,8 +346,10 @@ def test_scientific_trust_boundary_mutations_fail_closed(closed_fixture, mutatio
         results[name] = json.dumps(value).encode()
     elif mutation.startswith("record_"):
         name = next(
-            name for name in results
-            if name.endswith(".json") and "worker_" in name
+            name
+            for name in results
+            if name.endswith(".json")
+            and "worker_" in name
             and not name.endswith("particle_selection.json")
         )
         value = json.loads(results[name])
@@ -336,7 +382,9 @@ def test_scientific_trust_boundary_mutations_fail_closed(closed_fixture, mutatio
             results, name, usable_at_end=usable, usable_ever=ever, ensemble_ids=groups
         )
     elif mutation.startswith("summary_"):
-        name = next(name for name in results if name.endswith("early_check_summary.json"))
+        name = next(
+            name for name in results if name.endswith("early_check_summary.json")
+        )
         value = json.loads(results[name])
         if mutation == "summary_ranking":
             value["ranked_candidates"][0]["candidate_id"] = "foreign"
@@ -345,11 +393,15 @@ def test_scientific_trust_boundary_mutations_fail_closed(closed_fixture, mutatio
             results[name] = json.dumps(value).replace("{", '{"bad":NaN,', 1).encode()
     else:
         name = next(
-            name for name in results
-            if name.endswith(".json") and "worker_" in name
+            name
+            for name in results
+            if name.endswith(".json")
+            and "worker_" in name
             and not name.endswith("particle_selection.json")
         )
-        results[name] = results[name].replace(b'{\n  "kind"', b'{\n  "kind":"x",\n  "kind"', 1)
+        results[name] = results[name].replace(
+            b'{\n  "kind"', b'{\n  "kind":"x",\n  "kind"', 1
+        )
     with pytest.raises(PreliminaryResultError) as error:
         _validate_fixture(
             closed_fixture,
@@ -371,15 +423,21 @@ def test_scientific_trust_boundary_mutations_fail_closed(closed_fixture, mutatio
     ],
 )
 def test_captured_registry_mutations_fail_closed(tmp_path, mutation, code):
-    manifest, selections, results, particle_selection, remote = _closed_fixture(tmp_path)
+    manifest, selections, results, particle_selection, remote = _closed_fixture(
+        tmp_path
+    )
     results = dict(results)
     if mutation == "extra":
         results["preliminary_check/extra"] = b"x"
     elif mutation == "particle":
-        name = next(name for name in results if name.endswith("particle_selection.json"))
+        name = next(
+            name for name in results if name.endswith("particle_selection.json")
+        )
         results[name] = b"[]\n"
     elif mutation == "summary":
-        name = next(name for name in results if name.endswith("early_check_summary.json"))
+        name = next(
+            name for name in results if name.endswith("early_check_summary.json")
+        )
         row = json.loads(results[name])
         row["bootstrap_seed"] = 1
         results[name] = json.dumps(row).encode()
@@ -392,7 +450,9 @@ def test_captured_registry_mutations_fail_closed(tmp_path, mutation, code):
         usable[0] = True
         ever[0] = False
         buffer = io.BytesIO()
-        np.savez_compressed(buffer, usable_at_end=usable, usable_ever=ever, ensemble_ids=groups)
+        np.savez_compressed(
+            buffer, usable_at_end=usable, usable_ever=ever, ensemble_ids=groups
+        )
         results[npz_name] = buffer.getvalue()
         json_name = npz_name[:-4] + ".json"
         record = json.loads(results[json_name])
@@ -459,7 +519,10 @@ def test_npz_container_rejects_duplicate_members():
         ("dtype", "float32"),
         ("source_git_commit", "0" * 39),
         ("path", "/home/tal.noa/ytterbium_lab_simulation_new/../escape.npy"),
-        ("metadata_path", "/home/tal.noa/ytterbium_lab_simulation_new/data/not-a-sibling.json"),
+        (
+            "metadata_path",
+            "/home/tal.noa/ytterbium_lab_simulation_new/data/not-a-sibling.json",
+        ),
     ],
 )
 def test_particle_selection_rejects_permissive_frozen_role_values(
@@ -556,9 +619,12 @@ def test_pure_particle_provenance_matches_legacy_sampler(monkeypatch, tmp_path):
     _, _, legacy = mot_3d_campaign.load_role_particles(
         manifest_path, "preliminary_check", 150, 51001
     )
-    assert expected_preliminary_particle_selection(
-        manifest, project_directory="/home/tal.noa/ytterbium_lab_simulation_new"
-    ) == legacy
+    assert (
+        expected_preliminary_particle_selection(
+            manifest, project_directory="/home/tal.noa/ytterbium_lab_simulation_new"
+        )
+        == legacy
+    )
 
 
 @pytest.mark.parametrize(
@@ -616,9 +682,13 @@ def test_json_schema_and_count_math_mutations_fail_closed(
     selections = dict(original_selections)
     results = dict(original_results)
     if mutation == "manifest_duplicate":
-        manifest = manifest.replace(b'{\n  "name"', b'{\n  "name":"other",\n  "name"', 1)
+        manifest = manifest.replace(
+            b'{\n  "name"', b'{\n  "name":"other",\n  "name"', 1
+        )
     elif mutation == "manifest_nonfinite":
-        manifest = manifest.replace(b'{\n  "name"', b'{\n  "unreviewed":NaN,\n  "name"', 1)
+        manifest = manifest.replace(
+            b'{\n  "name"', b'{\n  "unreviewed":NaN,\n  "name"', 1
+        )
     elif mutation == "selection_duplicate_key":
         selections["angled_donut"] = selections["angled_donut"].replace(
             b'{\n  "family"', b'{\n  "family":"other",\n  "family"', 1
@@ -694,3 +764,25 @@ def test_npz_scientific_array_contract_is_exact(closed_fixture, mutation):
     with pytest.raises(PreliminaryResultError) as error:
         _validate_fixture(closed_fixture, results=results)
     assert error.value.code in {"result_archive_invalid", "result_registry_invalid"}
+
+
+def test_acceptance_preliminary_uses_same_exact_byte_validators_and_normal_merger(
+    tmp_path,
+):
+    # Synthetic contract data stay temporary; this does not claim physical acceptance.
+    manifest, selections, results, particles, remote = _closed_fixture(
+        tmp_path, acceptance=True
+    )
+    validated = validate_preliminary_result_bytes(
+        manifest_bytes=manifest,
+        selection_bytes=selections,
+        result_files=results,
+        expected_particle_selection=particles,
+        campaign_absolute_path=remote,
+        project_directory="/home/tal.noa/ytterbium_lab_simulation_ui_acceptance",
+    )
+    assert len(validated.paths) == 152
+    for family in ("angled_donut", "single_pass"):
+        summary = validated.summaries[family]
+        assert summary["particle_count"] == 4
+        assert summary["design"]["acceptance"]["suitability"] == "acceptance_only"

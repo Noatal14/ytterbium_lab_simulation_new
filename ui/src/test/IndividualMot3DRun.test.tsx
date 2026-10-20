@@ -390,6 +390,7 @@ describe("IndividualMot3DRun", () => {
       }),
     ).toBeVisible();
     expect(api.recoverZeus).not.toHaveBeenCalled();
+    expect(screen.queryByText("Existing Zeus run needs verification")).not.toBeInTheDocument();
     expect(api.startLocal).not.toHaveBeenCalled();
   });
 

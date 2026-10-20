@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+
 try:
     import fcntl
 except ImportError:  # Only imported on Windows; remote execution remains POSIX.
@@ -255,20 +256,26 @@ def scheduler_state(raw: bytes, job_id: str) -> str:
     return "completed_success"
 
 
-def main() -> None:
+def main(*, trusted_root_override=None) -> None:
     if len(sys.argv) != 5 or sys.argv[1] not in {"inspect", "submit", "status"}:
         fail("invalid_request")
     operation, username, project, encoded = sys.argv[1:]
-    if (
-        re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}", username) is None
-        or project != f"/home/{username}/ytterbium_lab_simulation_new"
-    ):
+    if re.fullmatch(
+        r"[A-Za-z][A-Za-z0-9._-]{0,31}", username
+    ) is None or project not in {
+        f"/home/{username}/ytterbium_lab_simulation_new",
+        f"/home/{username}/ytterbium_lab_simulation_ui_acceptance",
+    }:
         fail("invalid_request")
     try:
         payload = json.loads(base64.urlsafe_b64decode(encoded))
         requested_root = Path(project)
-        root = requested_root.resolve(strict=True)
-        if root != requested_root:
+        root = (
+            Path(trusted_root_override).resolve(strict=True)
+            if trusted_root_override is not None
+            else requested_root.resolve(strict=True)
+        )
+        if trusted_root_override is None and root != requested_root:
             fail("invalid_request")
         relative = PurePosixPath(payload["campaign"])
     except Exception:
@@ -288,7 +295,10 @@ def main() -> None:
         fail("invalid_request")
     if (
         relative.is_absolute()
-        or len(relative.parts) != 4
+        or not (
+            len(relative.parts) == 4
+            or (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")
+        )
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or any(part in {"", ".", ".."} for part in relative.parts)
         or HEX40.fullmatch(str(payload["commit"])) is None
@@ -398,9 +408,22 @@ def main() -> None:
             "input_roles",
             "design",
             "jobs",
+            *({"acceptance"} if "ui_acceptance" in relative.parts else set()),
         },
         8 * 1024 * 1024,
     )
+    from workflow_api.acceptance_remote import assert_campaign_target
+
+    try:
+        assert_campaign_target(manifest, username, project, relative)
+    except ValueError:
+        fail("discovery_preparation_invalid")
+    from workflow_api.mot_3d_workload import validate_location
+
+    try:
+        validate_location(manifest, relative)
+    except ValueError:
+        fail("discovery_preparation_invalid")
     if (
         manifest.get("stage") != "discovery"
         or manifest.get("name") != relative.name

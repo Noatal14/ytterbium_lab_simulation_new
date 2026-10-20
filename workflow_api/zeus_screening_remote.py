@@ -50,7 +50,7 @@ def main() -> None:
     expected_root = Path("/home") / username / "ytterbium_lab_simulation_new"
     try: root = Path(requested).resolve(strict=True)
     except OSError: fail("remote_project_missing")
-    if root != expected_root or not root.is_dir(): fail("remote_project_missing")
+    if root not in {expected_root, expected_root.with_name("ytterbium_lab_simulation_ui_acceptance")} or not root.is_dir(): fail("remote_project_missing")
     try: payload = json.loads(base64.urlsafe_b64decode(encoded).decode("utf-8"))
     except Exception: fail("invalid_request")
     if not isinstance(payload, dict): fail("invalid_request")
@@ -59,8 +59,9 @@ def main() -> None:
     commit = payload.get("commit"); relative = payload.get("campaign")
     if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit) or not isinstance(relative, str): fail("invalid_request")
     pure = PurePosixPath(relative)
-    if pure.is_absolute() or len(pure.parts) < 4 or pure.parts[:3] != ("data", "optimization", "mot_2d") or any(part in {"", ".", ".."} for part in pure.parts): fail("invalid_request")
+    if pure.is_absolute() or (len(pure.parts) != 4 and not (len(pure.parts) == 5 and pure.parts[3] == "ui_acceptance")) or pure.parts[:3] != ("data", "optimization", "mot_2d") or any(part in {"", ".", ".."} for part in pure.parts): fail("invalid_request")
     campaign = root.joinpath(*pure.parts)
+    _authorize_acceptance_campaign(campaign, root)
     try:
         if campaign.resolve(strict=True) != campaign or campaign.is_symlink(): fail("remote_preparation_invalid")
         head = subprocess.run(["/usr/bin/git","rev-parse","--verify","HEAD^{commit}"],cwd=root,text=True,capture_output=True,timeout=10,check=True).stdout.strip()
@@ -203,5 +204,29 @@ def main() -> None:
     if operation=="prepare": fail("smoke_status_unknown")
     print(json.dumps({"lifecycle":lifecycle,"job_id":job_id,"raw_state":raw,"exit_status":exit_status,"points":[],"artifact_count":0}))
 
+
+
+def _authorize_acceptance_campaign(campaign, root):
+    """Authenticate acceptance before locks, publication, or scheduler mutation."""
+    try:
+        from workflow_api.acceptance_profile import assert_scientific_source, is_acceptance_manifest
+        current = root
+        for part in campaign.relative_to(root).parts:
+            current = current / part
+            if current.is_symlink():
+                raise ValueError('Unsafe campaign path.')
+        manifest_path = campaign / 'campaign.json'
+        if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
+            raise ValueError('Unsafe campaign manifest.')
+        value = json.loads(manifest_path.read_text(encoding='utf-8'))
+        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+            from workflow_api.acceptance_remote import assert_campaign_target
+            from workflow_api.mot_2d_spec import validate_campaign_policy
+            validate_campaign_policy(value)
+            assert_campaign_target(value, root.parent.name, root, campaign)
+        else:
+            assert_scientific_source(value)
+    except (OSError, ValueError, TypeError, KeyError):
+        fail('remote_preparation_invalid')
 
 if __name__ == "__main__": main()

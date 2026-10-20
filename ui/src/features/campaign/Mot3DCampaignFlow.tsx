@@ -1,3 +1,5 @@
+import { campaignDiscoveryTrials } from "../../api/campaignPolicy";
+import { campaignAcceptanceMode } from "../../api/zeusEnvironment";
 import { AlertTriangle, LoaderCircle } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { useMot3DDiscoveryController } from "./controllers/useMot3DDiscoveryController";
@@ -79,6 +81,7 @@ export function Mot3DCampaignFlow({
     );
   return (
     <>
+      {campaignAcceptanceMode() && <div className="scientific-role-note" role="note"><strong>TEST ONLY: physical UI acceptance evidence</strong><p>All candidates, estimates and reports in this campaign are acceptance-only and cannot support scientific promotion.</p></div>}
       <Mot3DDiscoveryStage
         visible={stage === "discovery"}
         connected={connected}
@@ -283,7 +286,8 @@ function Mot3DFinalValidationCompletionStage({
         {connected && flow.phase === "idle" && !flow.status && !flow.error && <div className="prepare-card"><div><strong>Check Final Validation evidence</strong><p>Scheduler completion is not a scientific result.</p></div><button className="primary-button" onClick={() => void flow.refresh()}>Check sealed results</button></div>}
         {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "confirming" ? "Synchronizing sealed evidence" : "Checking sealed Final Validation evidence"} />}
         {flow.phase === "ready" && <div className="prepare-card"><div><strong>Sealed Final Validation evidence is ready for review</strong><p>Review both families and the precision decision before synchronizing one terminal outcome.</p></div><button className="primary-button" onClick={() => void flow.review()}>Review completion</button></div>}
-        {flow.phase === "review" && flow.preview && evidence && <div className="review-panel"><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Review the sealed Final Validation result</h3><p>These estimates use only the new sealed ensembles. The precision target is a 95% interval half-width of at most 0.0075 for both families.</p><div className="review-grid">{evidence.families.map((family) => <article className="review-card" key={family.family}><h4>{family.family === "angled_donut" ? "Angled donut" : "Single pass"}</h4><dl><div><dt>Locked finalist</dt><dd>{family.candidate_id}</dd></div><div><dt>Conditional efficiency</dt><dd>{family.conditional_efficiency.toFixed(6)}</dd></div><div><dt>95% interval</dt><dd>{family.bootstrap_95_ci[0].toFixed(6)}–{family.bootstrap_95_ci[1].toFixed(6)}</dd></div><div><dt>Half-width</dt><dd>{family.ci_half_width.toFixed(6)}</dd></div><div><dt>Precision target</dt><dd>{family.precision_target_met ? "Pass" : "Not met"}</dd></div></dl></article>)}</div><div className={extension ? "state-panel state-panel--error" : "state-panel state-panel--success"}><strong>{extension ? "Precision is not established for both families" : "Both families meet the precision target"}</strong><p>{extension ? `The reviewed outcome is extension required. Failing ${failing.length === 1 ? "family" : "families"}: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. No extension policy is defined, so this interface will not submit one or claim a winner.` : "Confirming will publish a final report derived only from the sealed new ensembles."}</p></div><dl className="transfer-facts"><div><dt>Verified result artifacts</dt><dd>14 of 14</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Simulation started</dt><dd>No</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{refreshLabel:"Refresh status",reviewLabel:"Review completion",confirmLabel:extension ? "Record extension required" : "Synchronize and publish final report",resetLabel:"Back"}} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+        {flow.phase === "review" && flow.preview && evidence && <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} /><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Review the sealed Final Validation result</h3><p>These estimates use only the new sealed ensembles. The precision target is a 95% interval half-width of at most 0.0075 for both families.</p><div className="review-grid">{evidence.families.map((family) => <article className="review-card" key={family.family}><h4>{family.family === "angled_donut" ? "Angled donut" : "Single pass"}</h4><dl><div><dt>Locked finalist</dt><dd>{family.candidate_id}</dd></div><div><dt>Conditional efficiency</dt><dd>{family.conditional_efficiency.toFixed(6)}</dd></div><div><dt>95% interval</dt><dd>{family.bootstrap_95_ci[0].toFixed(6)}–{family.bootstrap_95_ci[1].toFixed(6)}</dd></div><div><dt>Half-width</dt><dd>{family.ci_half_width.toFixed(6)}</dd></div><div><dt>Precision target</dt><dd>{family.precision_target_met ? "Pass" : "Not met"}</dd></div></dl></article>)}</div><div className={extension ? "state-panel state-panel--error" : "state-panel state-panel--success"}><strong>{extension ? "Precision is not established for both families" : "Both families meet the precision target"}</strong><p>{extension ? `The reviewed outcome is extension required. Failing ${failing.length === 1 ? "family" : "families"}: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. No extension policy is defined, so this interface will not submit one or claim a winner.` : "Confirming will publish a final report derived only from the sealed new ensembles."}</p></div><dl className="transfer-facts"><div><dt>Verified result artifacts</dt><dd>14 of 14</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Simulation started</dt><dd>No</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{refreshLabel:"Refresh status",reviewLabel:"Review completion",confirmLabel:extension ? "Record extension required" : "Synchronize and publish final report",resetLabel:"Back"}} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
         {flow.phase === "success" && !extension && <div className="state-panel state-panel--success" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. No additional job was submitted or simulation started.</p></div>}
         {flow.phase === "success" && extension && <div className="state-panel state-panel--error" role="status"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation extension is required</strong><p>{failing.length ? `Precision was not established for: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. ` : "The precision target was not met. "}No winner or final performance claim is available. No scientifically approved extension policy exists, so no extension action is offered.</p></div></div>}
         {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Manual verification required</strong><p>The remote completion outcome is uncertain. Do not retry; inspect the existing Zeus evidence.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
@@ -360,13 +364,13 @@ function Mot3DFinalValidationSubmissionStage({
       )}
       {flow.phase === "review" && flow.preview && (
         <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
           <h3 ref={heading} tabIndex={-1}>
             Submit Final Validation
           </h3>
           <p>
             Review four jobs: one three-task array and one merge per family.
-            Arrays use 200 CPUs and 64 GB for 24 hours; merges use 1 CPU and 8
-            GB for 2 hours.
+            The reservation for each array task and merge is shown below.
           </p>
           <dl className="transfer-facts">
             <div>
@@ -546,7 +550,7 @@ function Mot3DFinalValidationTransitionStage({
               <strong>
                 {recovery
                   ? "Final Validation is prepared remotely; local synchronization is incomplete"
-                  : "Generated inputs are scientifically valid"}
+                  : evidenceText("Generated inputs are scientifically valid")}
               </strong>
               <p>
                 Review the bounded verification and preparation. No Final
@@ -563,6 +567,7 @@ function Mot3DFinalValidationTransitionStage({
         )}
         {flow.phase === "review" && flow.preview && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Verify, synchronize, and prepare Final Validation
@@ -640,7 +645,7 @@ function Mot3DFinalValidationTransitionStage({
             <div>
               <strong>
                 {invalid
-                  ? "Generated inputs are scientifically invalid"
+                  ? evidenceText("Generated inputs are scientifically invalid")
                   : "Manual verification required"}
               </strong>
               <p>
@@ -791,6 +796,7 @@ function Mot3DFinalInputSubmissionStage({
         )}
         {flow.phase === "review" && flow.preview && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Submit final-validation input generation
@@ -800,33 +806,15 @@ function Mot3DFinalInputSubmissionStage({
               cannot start unless its upstream job succeeds.
             </p>
             <ol className="timeline">
-              <li className="timeline-item timeline-item--active">
-                <span className="timeline-marker" aria-hidden="true" />
-                <div>
-                  <strong>1. Generate Zeeman ensembles</strong>
-                  <p>
-                    20 new ensembles, seeds 3035–3054 · 200 CPUs · 64 GB ·
-                    08:00:00
-                  </p>
-                </div>
-              </li>
-              <li className="timeline-item timeline-item--empty">
-                <span className="timeline-marker" aria-hidden="true" />
-                <div>
-                  <strong>2. Run 2D-MOT survivors</strong>
-                  <p>
-                    20 corresponding jobs, seeds 43035–43054 · 200 CPUs · 64 GB
-                    · 12:00:00
-                  </p>
-                </div>
-              </li>
-              <li className="timeline-item timeline-item--empty">
-                <span className="timeline-marker" aria-hidden="true" />
-                <div>
-                  <strong>3. Freeze the inputs</strong>
-                  <p>One manifest job · 1 CPU · 8 GB · 00:30:00</p>
-                </div>
-              </li>
+              {flow.preview.chain.steps.map((step, index) => (
+                <li className="timeline-item timeline-item--empty" key={step.id}>
+                  <span className="timeline-marker" aria-hidden="true" />
+                  <div>
+                    <strong>{index + 1}. {({zeeman:"Generate Zeeman ensembles",mot_2d:"Run 2D-MOT survivors",freeze:"Freeze the inputs"})[step.id]}</strong>
+                    <p>{step.id === "zeeman" ? `${step.tasks} new ensembles, seeds ${flow.preview!.science.zeeman_seeds[0]}–${flow.preview!.science.zeeman_seeds.at(-1)}` : step.id === "mot_2d" ? `${step.tasks} corresponding jobs, seeds ${flow.preview!.science.mot_seeds[0]}–${flow.preview!.science.mot_seeds.at(-1)}` : "One manifest job"} · {step.resources.ncpus} CPUs · {step.resources.memory_gb} GB · {step.resources.walltime}{step.resources.vnode ? ` · Node ${step.resources.vnode}` : ""}</p>
+                  </div>
+                </li>
+              ))}
             </ol>
             <dl className="transfer-facts">
               <div>
@@ -835,7 +823,7 @@ function Mot3DFinalInputSubmissionStage({
               </div>
               <div>
                 <dt>Parallel pools</dt>
-                <dd>200</dd>
+                <dd>{flow.preview.science.npools}</dd>
               </div>
               <div>
                 <dt>Final Validation</dt>
@@ -1090,7 +1078,7 @@ function Mot3DFinalistTransitionStage({
                 <strong>
                   {recovery
                     ? "Inputs were prepared remotely; local synchronization is incomplete"
-                    : "Finalist Selection evidence is scientifically valid"}
+                    : evidenceText("Finalist Selection evidence is scientifically valid")}
                 </strong>
                 <p>
                   Review the exact winner lock and bounded synchronization. No
@@ -1107,6 +1095,7 @@ function Mot3DFinalistTransitionStage({
           )}
         {flow.phase === "review" && flow.preview && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Lock winners and prepare final-validation inputs
@@ -1181,7 +1170,7 @@ function Mot3DFinalistTransitionStage({
             <div>
               <strong>
                 {invalid
-                  ? "Finalist Selection evidence is scientifically invalid"
+                  ? evidenceText("Finalist Selection evidence is scientifically invalid")
                   : "Manual verification required"}
               </strong>
               <p>
@@ -1333,6 +1322,7 @@ function Mot3DFinalistSubmissionStage({
         )}
         {flow.phase === "review" && flow.preview && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Submit Finalist Selection
@@ -1592,7 +1582,7 @@ function Mot3DClosureTransitionStage({
                 <strong>
                   {recovery
                     ? "Finalist selection is prepared remotely; local synchronization is incomplete"
-                    : "All Closure artifacts are scientifically valid"}
+                    : evidenceText("All Closure artifacts are scientifically valid")}
                 </strong>
                 <p>
                   Review the exact synchronization. It creates preparation files
@@ -1609,6 +1599,7 @@ function Mot3DClosureTransitionStage({
           )}
         {flow.phase === "review" && flow.preview && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Synchronize Closure and prepare finalist selection
@@ -1665,7 +1656,7 @@ function Mot3DClosureTransitionStage({
             <div>
               <strong>
                 {invalid
-                  ? "Closure evidence is scientifically invalid"
+                  ? evidenceText("Closure evidence is scientifically invalid")
                   : "Manual verification required"}
               </strong>
               <p>
@@ -1818,6 +1809,7 @@ function Mot3DClosureSubmissionStage({
         )}
         {flow.phase === "review" && flow.preview && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Submit Closure
@@ -1841,7 +1833,7 @@ function Mot3DClosureSubmissionStage({
               </div>
               <div>
                 <dt>Input ensembles</dt>
-                <dd>4 · 3,000 particles total</dd>
+                <dd>{flow.preview.science.input_ensembles} · {flow.preview.science.total_particles.toLocaleString("en")} particles total</dd>
               </div>
               <div>
                 <dt>Candidate evaluations</dt>
@@ -2099,7 +2091,7 @@ function Mot3DRefinementTransitionStage({
                 <strong>
                   {recovery
                     ? "Closure is prepared on Zeus; local synchronization is incomplete"
-                    : "All 200 Refinement result artifacts are scientifically valid"}
+                    : evidenceText("All 200 Refinement result artifacts are scientifically valid")}
                 </strong>
                 <p>
                   Review the verified evidence before it is synchronized. No
@@ -2116,6 +2108,7 @@ function Mot3DRefinementTransitionStage({
           )}
         {flow.preview && flow.state === "review" && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={heading} tabIndex={-1}>
               Synchronize results and prepare Closure
@@ -2178,7 +2171,7 @@ function Mot3DRefinementTransitionStage({
             <div>
               <strong>
                 {invalid
-                  ? "Refinement evidence is scientifically invalid"
+                  ? evidenceText("Refinement evidence is scientifically invalid")
                   : "Manual verification required"}
               </strong>
               <p>
@@ -2321,6 +2314,7 @@ function Mot3DRefinementSubmissionStage({
         )}
         {flow.preview && flow.state === "review" && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={reviewHeading} tabIndex={-1}>
               Submit Refinement
@@ -2344,7 +2338,7 @@ function Mot3DRefinementSubmissionStage({
               </div>
               <div>
                 <dt>Input ensembles</dt>
-                <dd>4 · 3,000 particles total</dd>
+                <dd>{flow.preview.science.input_ensembles} · {flow.preview.science.total_particles.toLocaleString("en")} particles total</dd>
               </div>
               <div>
                 <dt>Candidate evaluations</dt>
@@ -2608,7 +2602,7 @@ function Mot3DPreliminaryTransitionStage({
                 <strong>
                   {recovery
                     ? "Refinement is prepared on Zeus; local synchronization is incomplete"
-                    : "All 152 preliminary-check results are scientifically valid"}
+                    : evidenceText("All 152 preliminary-check results are scientifically valid")}
                 </strong>
                 <p>
                   {recovery
@@ -2626,6 +2620,7 @@ function Mot3DPreliminaryTransitionStage({
           )}
         {flow.preview && flow.state === "review" && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={reviewHeading} tabIndex={-1}>
               {recovery
@@ -2697,7 +2692,7 @@ function Mot3DPreliminaryTransitionStage({
             <div>
               <strong>
                 {invalid
-                  ? "Preliminary-check evidence is scientifically invalid"
+                  ? evidenceText("Preliminary-check evidence is scientifically invalid")
                   : "Manual verification required"}
               </strong>
               <p>
@@ -2856,6 +2851,7 @@ function Mot3DPreliminaryCheckStage({
         )}
         {flow.preview && flow.state === "review" && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={reviewHeading} tabIndex={-1}>
               Submit the preliminary check
@@ -2879,7 +2875,7 @@ function Mot3DPreliminaryCheckStage({
               </div>
               <div>
                 <dt>Held-out inputs</dt>
-                <dd>4 ensembles · 600 particles</dd>
+                <dd>{flow.preview.science.input_ensembles} ensembles · {flow.preview.science.total_particles} particles</dd>
               </div>
               <div>
                 <dt>Candidate evaluations</dt>
@@ -3046,7 +3042,7 @@ function Mot3DDiscoveryTransitionStage({
         <p>
           Scheduler completion is not scientific validation. The application
           first retrieves a bounded, hash-verified Discovery result set,
-          validates all 950 trial records, and only then prepares the next stage
+          validates all {campaignDiscoveryTrials()} trial records, and only then prepares the next stage
           locally.
         </p>
       </div>
@@ -3121,7 +3117,7 @@ function Mot3DDiscoveryTransitionStage({
                 <strong>
                   {recoveryRequired
                     ? "Preliminary check is prepared on Zeus; local synchronization is incomplete"
-                    : "All 950 Discovery trials are scientifically valid"}
+                    : evidenceText(`All ${campaignDiscoveryTrials()} Discovery trials are scientifically valid`)}
                 </strong>
                 <p>
                   {recoveryRequired
@@ -3139,6 +3135,7 @@ function Mot3DDiscoveryTransitionStage({
           )}
         {flow.preview && flow.state === "review" && (
           <div className="review-panel">
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} />
             <p className="eyebrow">Explicit review</p>
             <h3 ref={reviewHeading} tabIndex={-1}>
               Synchronize verified Discovery evidence
@@ -3151,7 +3148,7 @@ function Mot3DDiscoveryTransitionStage({
             <dl className="transfer-facts">
               <div>
                 <dt>Validated trial records</dt>
-                <dd>950 of 950</dd>
+                <dd>{campaignDiscoveryTrials()} of {campaignDiscoveryTrials()}</dd>
               </div>
               <div>
                 <dt>Merged evidence files</dt>
@@ -3260,4 +3257,15 @@ function Busy({ title }: { title: string }) {
       </div>
     </div>
   );
+}
+
+
+function evidenceText(text: string): string {
+  return campaignAcceptanceMode() ? `TEST ONLY: ${text.replaceAll("scientifically", "physically").replaceAll("Scientific validation", "Physical evidence validation")} (acceptance evidence only)` : text;
+}
+
+function ReviewedResources({resources}: {resources: unknown}) {
+  if (!resources || typeof resources !== "object" || !("array" in resources) || !("merge" in resources)) return null;
+  const value = resources as {array: {ncpus_per_task: number; memory_gb_per_task: number; walltime: string; vnode?: string}; merge: {ncpus: number; memory_gb: number; walltime: string; vnode?: string}};
+  return <dl className="transfer-facts"><div><dt>Array reservation per task</dt><dd>{value.array.ncpus_per_task} CPUs · {value.array.memory_gb_per_task} GB · {value.array.walltime}{value.array.vnode ? ` · Node ${value.array.vnode}` : ""}</dd></div><div><dt>Merge reservation</dt><dd>{value.merge.ncpus} CPU · {value.merge.memory_gb} GB · {value.merge.walltime}{value.merge.vnode ? ` · Node ${value.merge.vnode}` : ""}</dd></div></dl>;
 }

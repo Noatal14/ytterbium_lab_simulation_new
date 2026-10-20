@@ -26,6 +26,8 @@ def _atomic_json(path, payload):
 
 
 def run(args):
+    from workflow_api import mot_3d_workload as workload
+    manifest = workload.validate_worker(args, args.input_manifest, "finalist_selection")
     selection = json.loads(Path(args.selection).read_text())
     if selection["family"] != args.family:
         raise ValueError("Selection family and requested family disagree.")

@@ -99,6 +99,9 @@ def relative(text):
     if pure.is_absolute() or pure.as_posix()!=text or any(x in ('','.','..') for x in pure.parts): raise ValueError()
     allowed=(('data','particle_states','after_zeeman'),('data','optimization','mot_2d'))
     if not any(pure.parts[:len(prefix)]==prefix for prefix in allowed): raise ValueError()
+    if project.name=='ytterbium_lab_simulation_ui_acceptance':
+        if len(pure.parts)<5 or pure.parts[3]!='ui_acceptance': raise ValueError()
+    elif 'ui_acceptance' in pure.parts: raise ValueError()
     target=project.joinpath(*pure.parts)
     current=project
     for part in pure.parts:
@@ -221,8 +224,9 @@ try:
             raise
     else:
         pure_paths=[pure for pure,_ in resolved]
-        campaign_parts=pure_paths[0].parts[:4]
-        if len(campaign_parts)!=4 or campaign_parts[:3]!=('data','optimization','mot_2d') or any(p.parts[:4]!=campaign_parts for p in pure_paths): raise ValueError()
+        count=5 if project.name=='ytterbium_lab_simulation_ui_acceptance' else 4
+        campaign_parts=pure_paths[0].parts[:count]
+        if len(campaign_parts)!=count or campaign_parts[:3]!=('data','optimization','mot_2d') or any(p.parts[:count]!=campaign_parts for p in pure_paths): raise ValueError()
         parent_fd=directory_fd(campaign_parts[:-1],create=True)
         final_name=campaign_parts[-1]
         try: os.stat(final_name,dir_fd=parent_fd,follow_symlinks=False); raise FileExistsError()
@@ -234,6 +238,12 @@ try:
             for pure,(file_parent_fd,temporary,target_name,digest) in received.items():
                 os.rename(temporary,target_name,src_dir_fd=file_parent_fd,dst_dir_fd=file_parent_fd); os.close(file_parent_fd)
             if not checkout_matches(): raise CheckoutMismatch()
+            if project.name=='ytterbium_lab_simulation_ui_acceptance':
+                sys.path.insert(0,str(project))
+                from workflow_api.acceptance_remote import assert_campaign_target
+                fd=os.open('campaign.json',os.O_RDONLY|NOFOLLOW,dir_fd=stage_fd)
+                with os.fdopen(fd,'r') as record: manifest=json.load(record)
+                assert_campaign_target(manifest,username,project_text,'/'.join(campaign_parts))
             import ctypes,errno
             libc=ctypes.CDLL(None,use_errno=True)
             renameat2=getattr(libc,'renameat2',None)
@@ -425,6 +435,12 @@ class ZeusPreparationCoordinator:
         if entry is None or entry.family != "mot_2d":
             raise ZeusPreparationError("campaign_not_found")
         manifest = _load_manifest(entry.manifest)
+        from workflow_api.acceptance_remote import assert_campaign_target
+        try:
+            assert_campaign_target(manifest, profile.username, profile.project_directory,
+                                   entry.manifest.parent.relative_to(self.root).as_posix())
+        except ValueError as error:
+            raise ZeusPreparationError("profile_invalid") from error
         provenance = manifest.get("provenance")
         expected_commit = provenance.get("git_commit") if isinstance(provenance, dict) else None
         local_commit, clean = self._local_revision()
@@ -596,8 +612,11 @@ class CampaignArtifactPlanner:
         smoke_path = campaign / "jobs" / "01_smoke.pbs"
         manifest = _load_manifest(manifest_path)
         trusted, _ = modern_contract(manifest, self.root)
-        if not trusted or manifest.get("kind") != "mot_2d_s0_campaign" or manifest.get("stage") != "smoke":
+        if not trusted or manifest.get("kind") not in {"mot_2d_s0_campaign", "mot_2d_ui_acceptance_v1"} or manifest.get("stage") != "smoke":
             raise ZeusPreparationError("campaign_not_portable_smoke")
+        from workflow_api.acceptance_profile import policy_for_manifest, assert_acceptance_path
+        if policy_for_manifest(manifest) is not None:
+            assert_acceptance_path(campaign, self.root)
         provenance = manifest.get("provenance")
         commit = provenance.get("git_commit") if isinstance(provenance, dict) else None
         if not isinstance(commit, str) or not COMMIT_RE.fullmatch(commit):

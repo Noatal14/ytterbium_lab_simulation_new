@@ -234,6 +234,15 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
                 campaign / ".mot_ui/transitions/discovery_bootstrap.json"
             )
             relative = campaign.relative_to(self.root).as_posix()
+            from workflow_api.mot_3d_workload import validate_location
+
+            validate_location(manifest, relative)
+            from workflow_api.acceptance_remote import assert_campaign_target
+
+            if "kind" in manifest:
+                assert_campaign_target(
+                    manifest, profile.username, profile.project_directory, relative
+                )
         except (ValueError, OSError) as exc:
             raise ZeusMot3DDiscoverySubmissionError(
                 "discovery_preparation_invalid"
@@ -293,6 +302,38 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
             raw = _bounded_bytes(path)
             if hashlib.sha256(raw).hexdigest() != digest:
                 raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+        # Review numbers are policy-derived only after exact frozen PBS parity.
+        from workflow_api.mot_3d_workload import (
+            discovery_review,
+            validate_discovery_job_bytes,
+        )
+
+        _, science = discovery_review(manifest)
+        design = manifest.get("design", {})
+        if any(
+            design.get(field) != science[value]
+            for field, value in (
+                ("screening_dt_s", "dt_s"),
+                ("t_max_s", "t_max_s"),
+                ("solver", "solver"),
+            )
+        ):
+            raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+        try:
+            validate_discovery_job_bytes(
+                manifest,
+                commit,
+                relative,
+                {
+                    name: _bounded_bytes(campaign / name)
+                    for name in files
+                    if name != "campaign.json"
+                },
+            )
+        except ValueError as error:
+            raise ZeusMot3DDiscoverySubmissionError(
+                "discovery_preparation_invalid"
+            ) from error
         receipt_digest = canonical_digest(receipt)
         key = canonical_digest(
             {
@@ -418,6 +459,9 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
             raise ZeusMot3DDiscoverySubmissionError(
                 "too_many_pending_previews"
             ) from exc
+        from workflow_api.mot_3d_workload import discovery_review
+
+        resources, science = discovery_review(plan[3])
         return {
             "preview_token": token,
             "expires_in_seconds": TTL,
@@ -432,6 +476,8 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
                 "tasks_per_array": 3,
                 "dependency": "afterok within each family",
             },
+            "resources": resources,
+            "science": science,
             "remote": {
                 "host": ZEUS_HOST,
                 "project_directory": plan[1].project_directory,

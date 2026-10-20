@@ -1,5 +1,7 @@
 """Explicit, at-most-once submission of the canonical refinement chain."""
 from __future__ import annotations
+from workflow_api.mot_2d_spec import authorize_review_target
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 import hashlib,json,re,secrets,subprocess,threading,time
 from dataclasses import dataclass,replace
 from datetime import datetime,timezone
@@ -48,6 +50,7 @@ class ZeusRefinementSubmissionCoordinator:
         except ZeusRefinementError as error:raise ZeusRefinementSubmissionError(error.code) from error
         if state.lifecycle!="refinement_prepared":raise ZeusRefinementSubmissionError("refinement_not_prepared")
         campaign,manifest,remote_manifest,commit,_,_,screen_digest,screening_key=plan;rows=[dict(x) for x in state.rows]
+        authorize_review_target(manifest, profile, campaign, self.root, ZeusRefinementSubmissionError)
         from workflow_api.mot_2d_plan import render_refine_transition
         rendered=render_refine_transition(remote_manifest,campaign,self.root,rows);files={name:hashlib.sha256(rendered[name]).hexdigest() for name in (*FILES,"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh")}
         key=hashlib.sha256(json.dumps({"campaign":campaign.relative_to(self.root).as_posix(),"commit":commit,"files":files,"screen_digest":screen_digest,"screening_key":screening_key},sort_keys=True,separators=(",",":")).encode()).hexdigest()
@@ -66,7 +69,7 @@ class ZeusRefinementSubmissionCoordinator:
         try:token=self._previews.add(pending,expires_at=expires,capacity=MAX_PENDING_PREVIEWS)
         except OverflowError as error:raise ZeusRefinementSubmissionError("too_many_pending_previews") from error
         tasks=len(manifest["s0_values"])*3;rounds=[]
-        for index,(target,file) in enumerate(zip(TARGETS,FILES),1):rounds.append({"round":index,"file":file,"cumulative_target":target,"kind":"array","task_count":tasks,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":72000,"depends_on":None if index==1 else index-1})
+        for index,(target,file) in enumerate(zip(refinement_targets(manifest),FILES),1):rounds.append({"round":index,"file":file,"cumulative_target":target,"kind":"array","task_count":tasks,"array_throttle":3,"queue":"zeus_combined_q",**reviewed_job_resources(manifest, 'refine', {"cores_per_task":200, "memory_per_task_bytes":68719476736, "walltime_seconds":72000}),"depends_on":None if index==1 else index-1})
         return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"stage":{"id":"refine","label":"Refinement"},"chain":{"dependency":"afterok","rounds":rounds},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"effects":{"submit_refinement_chain":True,"start_simulation":True,"submit_later_stages":False,"modify_files":False},"local_sync":{"status":"not_synchronized"}}
     def status(self,request):
         campaign_id,profile,campaign,manifest,commit,files,key,screen_digest,screening_key=self._plan(request);state=self.transport_factory(profile).inspect(campaign=campaign.relative_to(self.root).as_posix(),commit=commit,refine_files=files,chain_key=key,screen_digest=screen_digest,screening_submission_key=screening_key,nonce=None)

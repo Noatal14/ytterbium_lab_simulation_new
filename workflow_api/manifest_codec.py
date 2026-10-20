@@ -72,6 +72,8 @@ class NormalizedCampaignManifest:
 _KINDS: dict[str, tuple[ManifestFamily, str]] = {
     "mot_2d_s0_campaign": ("mot_2d", "mot-2d-manifest-v1"),
     "mot_3d_campaign_v2": ("mot_3d", "mot-3d-manifest-v1"),
+    "mot_2d_ui_acceptance_v1": ("mot_2d", "mot-2d-acceptance-manifest-v1"),
+    "mot_3d_ui_acceptance_v1": ("mot_3d", "mot-3d-acceptance-manifest-v1"),
 }
 _TWO_D_MARKERS = frozenset(("s0_values", "ensemble_source", "fixed_design", "seed_roles", "mot_seeds", "input_ensembles"))
 _THREE_D_MARKERS = frozenset(("upstream_2d_campaign", "input_roles", "jobs"))
@@ -105,6 +107,17 @@ def classify_manifest(
             f"Unsupported campaign kind {payload.get('kind')!r}.",
         )
     family, version = identity
+    # A separate discriminator is necessary but not sufficient: authenticate
+    # the versioned test policy before any workflow can inspect its contents.
+    if "acceptance" in payload or "acceptance" in version or payload.get("suitability") == "acceptance_only":
+        from workflow_api.acceptance_profile import policy_for_manifest
+
+        try:
+            policy_for_manifest(payload)
+        except ValueError as error:
+            raise ManifestCodecError(
+                ManifestFailure.MIXED_SCHEMA, str(error)
+            ) from error
     if expected_family is not None and family != expected_family:
         raise ManifestCodecError(
             ManifestFailure.FAMILY_MISMATCH,

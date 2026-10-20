@@ -632,3 +632,42 @@ def test_prepare_busy_lock_has_no_publication(tmp_path, monkeypatch):
         json.loads((campaign / "campaign.json").read_text())["stage"]
         == "preliminary_check"
     )
+
+
+@pytest.mark.parametrize(
+    "kind,project",
+    [
+        ("unknown_campaign", "/home/tal.noa/ytterbium_lab_simulation_new"),
+        (None, "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"),
+    ],
+)
+def test_untrusted_campaign_kind_is_rejected_before_transition_directory_creation(
+    tmp_path, monkeypatch, capsys, kind, project
+):
+    root, campaign, payload = _harness(tmp_path, monkeypatch)
+    path = campaign / "campaign.json"
+    manifest = json.loads(path.read_bytes())
+    if kind is not None:
+        manifest["kind"] = kind
+    path.write_text(json.dumps(manifest))
+    before = {
+        item.relative_to(root).as_posix(): item.read_bytes()
+        for item in root.rglob("*")
+        if item.is_file()
+    }
+    encoded = base64.urlsafe_b64encode(
+        json.dumps({**payload, "nonce": "f" * 32}).encode()
+    ).decode()
+    monkeypatch.setattr(
+        sys, "argv", ["receiver", "prepare", "tal.noa", project, encoded]
+    )
+    with pytest.raises(SystemExit):
+        remote.main(trusted_root_override=root)
+    assert "preliminary_transition_conflict" in capsys.readouterr().out
+    assert not (campaign / ".mot_ui/transitions").exists()
+    after = {
+        item.relative_to(root).as_posix(): item.read_bytes()
+        for item in root.rglob("*")
+        if item.is_file()
+    }
+    assert after == before

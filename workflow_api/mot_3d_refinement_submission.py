@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api import mot_3d_workload as workload
+
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
 
 import hashlib
@@ -193,6 +195,9 @@ class Mot3DRefinementSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator
                 }
             finally:
                 os.close(campaign_fd)
+            from workflow_api.acceptance_remote import assert_campaign_target
+            if "kind" in manifest:
+                assert_campaign_target(manifest, profile.username, profile.project_directory, campaign.relative_to(self.root))
             design = manifest.get("design", {})
             science = {
                 "classification": "candidate_selection_not_final_validation",
@@ -217,6 +222,7 @@ class Mot3DRefinementSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator
                 }
             finally:
                 os.close(root_fd)
+            science = workload.submission_science(manifest, "refinement", science)
             identity = {
                 "campaign_sha256": files["campaign.json"],
                 "local_transition_receipt_sha256": _sha(sync_raw),

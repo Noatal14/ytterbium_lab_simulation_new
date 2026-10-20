@@ -95,11 +95,20 @@ def inspect_source(
     include_records: bool = False,
     scan_limits: SourceScanLimits | None = None,
     expected_seeds: tuple[int, ...] = EXPECTED_SEEDS,
+    acceptance_profile_id: str | None = None,
 ) -> dict[str, Any]:
     repository_root = repository_root.resolve()
     source_root = (repository_root / SOURCE_ROOT).resolve()
     if directory.is_symlink() or not directory.is_dir() or not _within(directory.resolve(), source_root):
         raise ValueError("invalid source")
+    from workflow_api.acceptance_profile import (
+        assert_acceptance_path, assert_scientific_source, load_acceptance_profile,
+    )
+    profile = load_acceptance_profile(acceptance_profile_id) if acceptance_profile_id is not None else None
+    if profile is not None:
+        assert_acceptance_path(directory, repository_root)
+    elif "ui_acceptance" in directory.relative_to(source_root).parts:
+        raise ValueError("TEST ONLY sources cannot be used by scientific campaigns.")
     profiles: set[str] = set(); commits: set[str] = set(); survivor_counts: list[int] = []
     identities: list[str] = []; records: list[dict[str, Any]] = []
     total_bytes = 0
@@ -125,6 +134,10 @@ def inspect_source(
         ):
             raise ValueError("state source exceeds interactive byte limits")
         metadata = _metadata(metadata_path, source_root)
+        if profile is None:
+            assert_scientific_source(metadata)
+        elif metadata.get("acceptance") != profile.provenance():
+            raise ValueError("Acceptance source provenance does not match its profile.")
         metadata_bytes = metadata_path.stat().st_size
         parameters = metadata.get("parameters") if isinstance(metadata.get("parameters"), dict) else {}
         software = metadata.get("software") if isinstance(metadata.get("software"), dict) else {}
@@ -214,6 +227,7 @@ def list_sources(
     *,
     include_pool_counts: bool = False,
     scan_limits: SourceScanLimits | None = None,
+    acceptance_profile_id: str | None = None,
 ) -> dict[str, Any]:
     """List strictly attested campaign folders.
 
@@ -222,6 +236,10 @@ def list_sources(
     compatible and never gains a second, weaker validation path.
     """
     source_root = (repository_root.resolve() / SOURCE_ROOT).resolve()
+    if acceptance_profile_id is not None:
+        from workflow_api.acceptance_profile import load_acceptance_profile
+        load_acceptance_profile(acceptance_profile_id)
+        source_root = source_root / "ui_acceptance"
     if not source_root.is_dir():
         result = {"sources": [], "invalid_count": 0, "total": 0}
         if include_pool_counts:
@@ -232,11 +250,14 @@ def list_sources(
     def admit(directory: Path) -> None:
         nonlocal invalid
         try:
+            profile_options = ({"acceptance_profile_id": acceptance_profile_id}
+                               if acceptance_profile_id is not None else {})
             source = inspect_source(
                 directory,
                 repository_root,
                 include_records=include_pool_counts,
                 scan_limits=scan_limits,
+                **profile_options,
             )
             if include_pool_counts:
                 source["pooled_survivor_count"] = sum(

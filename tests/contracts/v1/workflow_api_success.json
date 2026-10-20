@@ -198,8 +198,8 @@
               "single_pass"
             ],
             "solver": "RK4StHybridCustom",
-            "screening_dt_s": 0.00001,
-            "production_dt_s": 0.000005,
+            "screening_dt_s": 1e-05,
+            "production_dt_s": 5e-06,
             "timestep_policy_status": "pragmatic_user_approved_after_inconclusive_study",
             "convergence_claim": "not_established",
             "input_role_counts": {
@@ -322,6 +322,37 @@
             "submit_later_stages": false,
             "modify_campaign_files": false,
             "record_submission_receipt": true
+          },
+          "resources": {
+            "array": {
+              "ncpus_per_task": 200,
+              "memory_gb_per_task": 64,
+              "walltime": "24:00:00"
+            }
+          },
+          "science": {
+            "classification": "candidate_selection_not_final_validation",
+            "input_role": "discovery",
+            "input_ensembles": 12,
+            "particles_per_ensemble": 50,
+            "total_particles_per_trial": 600,
+            "npools": 200,
+            "dt_s": 1e-05,
+            "t_max_s": 0.05,
+            "solver": "RK4StHybridCustom",
+            "final_trial_targets": {
+              "angled_donut": [
+                117,
+                117,
+                116
+              ],
+              "single_pass": [
+                200,
+                200,
+                200
+              ]
+            },
+            "total_trials": 950
           }
         }
       }
@@ -581,7 +612,7 @@
               41002,
               41003
             ],
-            "dt_s": 0.00001,
+            "dt_s": 1e-05,
             "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "selection_seed": 51001,
@@ -748,7 +779,7 @@
               42002,
               42003
             ],
-            "dt_s": 0.00001,
+            "dt_s": 1e-05,
             "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "selection_seed": 61001,
@@ -920,7 +951,7 @@
               42002,
               42003
             ],
-            "dt_s": 0.00001,
+            "dt_s": 1e-05,
             "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "selection_seed": 71001,
@@ -1090,7 +1121,7 @@
               43002,
               43003
             ],
-            "dt_s": 0.00001,
+            "dt_s": 1e-05,
             "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "npools": 200,
@@ -1260,7 +1291,7 @@
               44002,
               44003
             ],
-            "dt_s": 0.000005,
+            "dt_s": 5e-06,
             "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "npools": 200,
@@ -3430,7 +3461,7 @@
                 "selected_mean_variance": 0.0002,
                 "selected_mean_variance_source": "empirical_between_ensemble",
                 "critical_value": 2.093,
-                "future_counting_variance": 9e-9,
+                "future_counting_variance": 9e-09,
                 "uncertainty_method": "cluster-aware parametric bootstrap",
                 "bootstrap_replicates": 20000
               },
@@ -3509,7 +3540,7 @@
                 "selected_mean_variance": 0.0002,
                 "selected_mean_variance_source": "empirical_between_ensemble",
                 "critical_value": 2.093,
-                "future_counting_variance": 9e-9,
+                "future_counting_variance": 9e-09,
                 "uncertainty_method": "cluster-aware parametric bootstrap",
                 "bootstrap_replicates": 20000
               },
@@ -3624,7 +3655,7 @@
             "output_disposition": "discard_survivor_states_after_summary",
             "locked_settings": {
               "solver": "RK4StHybridCustom",
-              "timestep_s": 0.00001,
+              "timestep_s": 1e-05,
               "t_max_s": 0.1,
               "convergence_claim": "not_established",
               "capture": {

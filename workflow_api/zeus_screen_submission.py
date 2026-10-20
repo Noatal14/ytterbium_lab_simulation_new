@@ -1,6 +1,8 @@
 """Explicit at-most-once submission of the prepared 2D-MOT screening PBS."""
 
 from __future__ import annotations
+from workflow_api.mot_2d_spec import authorize_review_target
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
 
 import hashlib
 import json
@@ -103,6 +105,7 @@ class ZeusScreenSubmissionCoordinator:
     def preview(self,request:Mapping[str,object],*,session_id:str)->dict[str,object]:
         if set(request)!={"campaign_id","username","project_directory"} or not isinstance(request.get("campaign_id"),str):raise ZeusScreenSubmissionError("request_invalid")
         campaign_id=str(request["campaign_id"]);profile=self._profile(request);campaign,manifest,commit,prepared,transition,digest,key=self._plan(campaign_id)
+        authorize_review_target(manifest, profile, campaign, self.root, ZeusScreenSubmissionError)
         local,clean=self._revision()
         if not clean or local!=commit:raise ZeusScreenSubmissionError("local_checkout_mismatch")
         relative=campaign.relative_to(self.root).as_posix();state=self.transport_factory(profile).inspect(campaign=relative,commit=commit,prepared_files=prepared,transition_files=transition,transition_digest=digest,submission_key=key,nonce=None)
@@ -114,7 +117,7 @@ class ZeusScreenSubmissionCoordinator:
         try:token=self._previews.add(pending,expires_at=expires,capacity=MAX_PENDING_PREVIEWS)
         except OverflowError as error:raise ZeusScreenSubmissionError("too_many_pending_previews") from error
         tasks=len(manifest["s0_values"])*3
-        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"stage":{"id":"screen","label":"Screening","purpose":"Run the broad paired search for each fixed s₀ value."},"job":{"file":"jobs/02_screen.pbs","kind":"array","task_count":tasks,"array_throttle":3,"queue":"zeus_combined_q","cores_per_task":200,"memory_per_task_bytes":68719476736,"walltime_seconds":86400},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"inputs":{"verified_count":72,"status":"ready"},"smoke":{"status":"validated","job_id":state.validated_smoke_job_id,"point_count":len(manifest["s0_values"])},"effects":{"submit_screening":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
+        return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"stage":{"id":"screen","label":"Screening","purpose":"Run the broad paired search for each fixed s₀ value."},"job":{"file":"jobs/02_screen.pbs","kind":"array","task_count":tasks,"array_throttle":3,"queue":"zeus_combined_q",**reviewed_job_resources(manifest, 'screen', {"cores_per_task":200, "memory_per_task_bytes":68719476736, "walltime_seconds":86400})},"remote":{"host":ZEUS_HOST,"project_directory":profile.project_directory,"commit":commit,"branch":state.branch,"dirty":False},"inputs":{"verified_count":72,"status":"ready"},"smoke":{"status":"validated","job_id":state.validated_smoke_job_id,"point_count":len(manifest["s0_values"])},"effects":{"submit_screening":True,"submit_later_stages":False,"modify_files":False},"later_stages_locked":True}
 
     def confirm(self,request:Mapping[str,object],*,session_id:str)->dict[str,object]:
         if set(request)!={"preview_token"} or not isinstance(request.get("preview_token"),str):raise ZeusScreenSubmissionError("request_invalid")

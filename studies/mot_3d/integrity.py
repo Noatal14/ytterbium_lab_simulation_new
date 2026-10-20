@@ -106,7 +106,9 @@ def frozen_stage_design(
     selection_canonical = json.dumps(
         particle_selection, sort_keys=True, separators=(",", ":")
     )
+    from workflow_api.mot_3d_workload import artifact_identity
     return {
+        **artifact_identity(manifest),
         "campaign_manifest_path": str(manifest_path.resolve()),
         "campaign_manifest_sha256": sha256(manifest_path),
         "selection_path": str(selection_path.resolve()),

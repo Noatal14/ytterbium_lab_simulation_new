@@ -248,6 +248,13 @@ def _validate_materialized_preliminary_results(
     publication.  Scientific validation below never trusts summary-only state.
     """
 
+    from workflow_api import mot_3d_workload as workload
+
+    selected_design = workload.scientific_design(manifest, "preliminary_check")
+    expected_count = (
+        selected_design.input_ensembles * selected_design.particles_per_ensemble
+    )
+    frozen_keys = FROZEN_DESIGN_KEYS | set(workload.artifact_identity(manifest))
     campaign = Path(campaign)
     stage = manifest.get("stages", {}).get("preliminary_check", {})
     design = manifest.get("design", {})
@@ -255,8 +262,8 @@ def _validate_materialized_preliminary_results(
         manifest.get("stage") != "preliminary_check"
         or stage.get("classification") != "candidate_selection_not_final_validation"
         or stage.get("input_role") != "preliminary_check"
-        or design.get("screening_dt_s") != PRELIMINARY_SCIENTIFIC_DESIGN.dt_s
-        or design.get("solver") != PRELIMINARY_SCIENTIFIC_DESIGN.solver
+        or design.get("screening_dt_s") != selected_design.dt_s
+        or design.get("solver") != selected_design.solver
     ):
         raise PreliminaryResultError("design_mismatch")
     selections = {
@@ -348,13 +355,13 @@ def _validate_materialized_preliminary_results(
                 or record["recoil_seed"] not in RECOIL_SEEDS
                 or not isinstance(record["input_particle_count"], int)
                 or isinstance(record["input_particle_count"], bool)
-                or record["input_particle_count"] != EXPECTED_PARTICLES
+                or record["input_particle_count"] != expected_count
                 or identifiers.index(record["candidate_id"]) % 3
                 != record["worker_index"]
                 or any(
                     not isinstance(record[key], int)
                     or isinstance(record[key], bool)
-                    or not 0 <= record[key] <= EXPECTED_PARTICLES
+                    or not 0 <= record[key] <= expected_count
                     for key in (
                         "usable_at_end_count",
                         "usable_ever_count",
@@ -374,7 +381,11 @@ def _validate_materialized_preliminary_results(
                 raise PreliminaryResultError("design_mismatch")
             if (
                 not isinstance(current, dict)
-                or set(current) != FROZEN_DESIGN_KEYS
+                or set(current) != frozen_keys
+                or any(
+                    current.get(key) != value
+                    for key, value in workload.artifact_identity(manifest).items()
+                )
                 or (
                     source_campaign_path is not None
                     and current.get("campaign_manifest_path")
@@ -403,13 +414,12 @@ def _validate_materialized_preliminary_results(
                 ).hexdigest()
                 or current.get("particle_selection_sha256")
                 != hashlib.sha256(_canonical(particle_selections[0])).hexdigest()
-                or current.get("dt_s") != PRELIMINARY_SCIENTIFIC_DESIGN.dt_s
-                or current.get("t_max_s") != PRELIMINARY_SCIENTIFIC_DESIGN.t_max_s
-                or current.get("solver") != PRELIMINARY_SCIENTIFIC_DESIGN.solver
+                or current.get("dt_s") != selected_design.dt_s
+                or current.get("t_max_s") != selected_design.t_max_s
+                or current.get("solver") != selected_design.solver
                 or current.get("particles_per_ensemble")
-                != PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble
-                or current.get("selection_seed")
-                != PRELIMINARY_SCIENTIFIC_DESIGN.selection_seed
+                != selected_design.particles_per_ensemble
+                or current.get("selection_seed") != selected_design.selection_seed
                 or current.get("selection_sha256")
                 != _sha(campaign / "selection" / "discovery" / f"{family}.json")
             ):
@@ -430,19 +440,17 @@ def _validate_materialized_preliminary_results(
                 ever = np.asarray(archive["usable_ever"])
                 groups = np.asarray(archive["ensemble_ids"])
                 if (
-                    usable.shape != (EXPECTED_PARTICLES,)
-                    or ever.shape != (EXPECTED_PARTICLES,)
-                    or groups.shape != (EXPECTED_PARTICLES,)
+                    usable.shape != (expected_count,)
+                    or ever.shape != (expected_count,)
+                    or groups.shape != (expected_count,)
                     or usable.dtype != np.bool_
                     or ever.dtype != np.bool_
                     or not np.issubdtype(groups.dtype, np.integer)
                     or set(np.unique(groups).tolist()) != {0, 1, 2, 3}
                     or any(
                         int(np.sum(groups == index))
-                        != PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble
-                        for index in range(
-                            PRELIMINARY_SCIENTIFIC_DESIGN.input_ensembles
-                        )
+                        != selected_design.particles_per_ensemble
+                        for index in range(selected_design.input_ensembles)
                     )
                     or int(usable.sum()) != record["usable_at_end_count"]
                     or int(ever.sum()) != record["usable_ever_count"]
@@ -462,7 +470,7 @@ def _validate_materialized_preliminary_results(
             summary.get("kind") != "merged_mot_3d_early_independent_check"
             or summary.get("family") != family
             or summary.get("candidate_count") != EXPECTED_CANDIDATES_PER_FAMILY
-            or summary.get("particle_count") != EXPECTED_PARTICLES
+            or summary.get("particle_count") != expected_count
             or summary.get("ensemble_file_indices") != [16, 17, 18, 19]
             or summary.get("recoil_seed_count") != 3
             or summary.get("bootstrap_replicates") != EXPECTED_BOOTSTRAP_REPLICATES
@@ -517,9 +525,11 @@ def _validate_materialized_preliminary_results(
 def _validate_npz_container(raw: bytes, *, max_member_bytes: int = 128 * 1024) -> None:
     """Reject oversized/foreign members before NumPy sees the archive."""
 
-    if (type(max_member_bytes) is not int
-            or not 0 < max_member_bytes <= 2 * 1024 * 1024
-            or not 0 < len(raw) <= 2 * 1024 * 1024):
+    if (
+        type(max_member_bytes) is not int
+        or not 0 < max_member_bytes <= 2 * 1024 * 1024
+        or not 0 < len(raw) <= 2 * 1024 * 1024
+    ):
         raise PreliminaryResultError("result_archive_invalid")
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -548,7 +558,9 @@ def _validate_npz_container(raw: bytes, *, max_member_bytes: int = 128 * 1024) -
         raise PreliminaryResultError("result_archive_invalid") from exc
 
 
-def validate_npz_container_bytes(raw: bytes, *, max_member_bytes: int = 128 * 1024) -> None:
+def validate_npz_container_bytes(
+    raw: bytes, *, max_member_bytes: int = 128 * 1024
+) -> None:
     """Public shared preflight for the canonical three-member outcome archive."""
     _validate_npz_container(raw, max_member_bytes=max_member_bytes)
 
@@ -559,6 +571,7 @@ def validate_frozen_role_records(
     project_directory: str,
     expected_zeeman_seeds: tuple[int, ...],
     source_git_commit: str,
+    acceptance_provenance: Mapping[str, Any] | None = None,
 ) -> list[Mapping[str, Any]]:
     """Validate the immutable input-role ledger shared by later 3D stages."""
 
@@ -619,6 +632,24 @@ def validate_frozen_role_records(
             or not isinstance(record["source_parameters"], Mapping)
         ):
             raise PreliminaryResultError("particle_selection_mismatch")
+        from workflow_api.acceptance_profile import (
+            assert_acceptance_path,
+            assert_scientific_source,
+        )
+
+        if acceptance_provenance is not None:
+            if record["source_design"].get("acceptance") != acceptance_provenance:
+                raise PreliminaryResultError("particle_selection_mismatch")
+            try:
+                assert_acceptance_path(path, project_directory)
+                assert_acceptance_path(metadata_path, project_directory)
+            except ValueError as error:
+                raise PreliminaryResultError("particle_selection_mismatch") from error
+        else:
+            try:
+                assert_scientific_source(record)
+            except ValueError as error:
+                raise PreliminaryResultError("particle_selection_mismatch") from error
         seen_mot_seeds.add(mot_seed)
         validated.append(record)
     return validated
@@ -644,13 +675,21 @@ def expected_selection_particle_provenance(
     records = manifest.get("input_roles", {}).get(input_role)
     if not isinstance(records, list) or len(records) != input_ensembles:
         raise PreliminaryResultError("particle_selection_mismatch")
+    from workflow_api.mot_3d_workload import policy
+
+    acceptance = policy(manifest)
     project = Path(project_directory)
     if (
         not project.is_absolute()
         or str(project) != project_directory
         or len(project.parts) != 4
         or project.parts[1] != "home"
-        or project.parts[3] != "ytterbium_lab_simulation_new"
+        or project.parts[3]
+        != (
+            "ytterbium_lab_simulation_ui_acceptance"
+            if acceptance
+            else "ytterbium_lab_simulation_new"
+        )
     ):
         raise PreliminaryResultError("particle_selection_mismatch")
     provenance = []
@@ -716,6 +755,23 @@ def expected_selection_particle_provenance(
             or (upstream_pairs and upstream_pairs.get(zeeman_seed) != mot_seed)
         ):
             raise PreliminaryResultError("particle_selection_mismatch")
+        from workflow_api.acceptance_profile import (
+            assert_acceptance_path,
+            assert_scientific_source,
+        )
+
+        try:
+            if acceptance is not None:
+                if record["source_design"].get("acceptance") != acceptance.provenance():
+                    raise ValueError(
+                        "Acceptance frozen source design has different lineage."
+                    )
+                assert_acceptance_path(path, project_directory)
+                assert_acceptance_path(metadata_path, project_directory)
+            else:
+                assert_scientific_source(record)
+        except ValueError as error:
+            raise PreliminaryResultError("particle_selection_mismatch") from error
         seen_mot_seeds.add(mot_seed)
         rng = np.random.default_rng(
             np.random.SeedSequence([selection_seed, zeeman_seed])
@@ -744,13 +800,16 @@ def expected_selection_particle_provenance(
 def expected_preliminary_particle_selection(
     manifest: Mapping[str, Any], *, project_directory: str
 ) -> list[dict[str, Any]]:
+    from workflow_api.mot_3d_workload import scientific_design
+
+    selected_design = scientific_design(manifest, "preliminary_check")
     return expected_selection_particle_provenance(
         manifest,
         project_directory=project_directory,
         input_role="preliminary_check",
-        input_ensembles=PRELIMINARY_SCIENTIFIC_DESIGN.input_ensembles,
-        particles_per_ensemble=PRELIMINARY_SCIENTIFIC_DESIGN.particles_per_ensemble,
-        selection_seed=PRELIMINARY_SCIENTIFIC_DESIGN.selection_seed,
+        input_ensembles=selected_design.input_ensembles,
+        particles_per_ensemble=selected_design.particles_per_ensemble,
+        selection_seed=selected_design.selection_seed,
         expected_zeeman_seeds=tuple(range(3031, 3035)),
     )
 
@@ -792,6 +851,9 @@ def validate_preliminary_result_bytes(
         }
     except Exception as exc:
         raise PreliminaryResultError("malformed_json") from exc
+    from workflow_api.mot_3d_workload import policy
+
+    acceptance = policy(manifest)
     expected_root = Path(project_directory)
     campaign_path = Path(campaign_absolute_path)
     if (
@@ -799,10 +861,20 @@ def validate_preliminary_result_bytes(
         or str(expected_root) != project_directory
         or len(expected_root.parts) != 4
         or expected_root.parts[1] != "home"
-        or expected_root.parts[3] != "ytterbium_lab_simulation_new"
+        or expected_root.parts[3]
+        != (
+            "ytterbium_lab_simulation_ui_acceptance"
+            if acceptance
+            else "ytterbium_lab_simulation_new"
+        )
         or not campaign_path.is_absolute()
         or campaign_path
-        != expected_root / "data" / "optimization" / "mot_3d" / campaign_path.name
+        != expected_root
+        / "data"
+        / "optimization"
+        / "mot_3d"
+        / ("ui_acceptance" if acceptance else "")
+        / campaign_path.name
         or str(campaign_path) != campaign_absolute_path
         or campaign_path.name != manifest.get("name")
     ):

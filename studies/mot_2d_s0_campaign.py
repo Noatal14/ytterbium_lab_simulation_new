@@ -25,7 +25,7 @@ from workflow_api.mot_2d_late_stage import (
     paired_comparison as paired,
     select_production_point,
 )
-from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS
+from workflow_api.mot_2d_spec import RELEVANT_FILES, ROLE_SEEDS, validate_campaign_policy, stage_npools, refinement_targets, survivor_states_directory
 from workflow_api.mot_2d_smoke import validate_smoke_outputs
 from workflow_api.mot_2d_screen import validate_screen_outputs
 from workflow_api.mot_2d_validation import (
@@ -180,6 +180,7 @@ def _project_frozen_ensemble(row):
 
 
 def assert_design(manifest):
+    validate_campaign_policy(manifest)
     assert_relevant_worktree_clean()
     if git_commit() != manifest["provenance"]["git_commit"]:
         raise RuntimeError("Git revision differs from the immutable campaign revision.")
@@ -199,6 +200,7 @@ def stage_ensembles(manifest, stage, particles):
         directory=repository_path(manifest["ensemble_source"]["directory"]),
         zeeman_seeds=seeds,
         expected_profile=manifest["ensemble_source"]["zeeman_profile"],
+        **({"acceptance_profile_id": validate_campaign_policy(manifest).profile_id} if validate_campaign_policy(manifest) else {}),
     )
     frozen = {row["zeeman_seed"]: row for row in manifest["input_ensembles"][role]}
     for row in ensembles:
@@ -220,6 +222,14 @@ def label(value):
 def read(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
+
+
+def read_stage_manifest(root):
+    manifest = read(Path(root) / 'campaign.json')
+    if validate_campaign_policy(manifest):
+        from workflow_api.acceptance_profile import assert_acceptance_path
+        assert_acceptance_path(root, REPOSITORY_ROOT)
+    return manifest
 
 def read_campaign(path):
     """Read an authenticated historical manifest through its version adapter."""
@@ -310,9 +320,14 @@ def create(args):
     print(f"First job: qsub {jobs / '01_smoke.pbs'}")
 
 
+
+def acceptance_worker_arguments(manifest, root):
+    profile = validate_campaign_policy(manifest)
+    return ['--acceptance-profile', profile.profile_id, '--input-manifest', str(root / 'campaign.json')] if profile else []
+
 def smoke(args):
     root = Path(args.campaign)
-    manifest = read(root / "campaign.json")
+    manifest = read_stage_manifest(root)
     assert_design(manifest)
     stage_ensembles(manifest, "smoke", 2)
     value = manifest["s0_values"][args.s0_index]
@@ -328,7 +343,7 @@ def smoke(args):
         "--mot-seeds", str(manifest["mot_seeds"]["discovery"][0]),
         "--campaign-design-id", manifest["provenance"]["physical_model_sha256"],
         "--study-name", f"{manifest['name']}_{key(value)}_smoke", "--output-dir", str(output),
-    ], check=True)
+    ] + acceptance_worker_arguments(manifest, root), check=True)
     assert read(output / "summary.json")["n_finished_trials"] == 1
     print(f"SMOKE PASS s0={value}")
 
@@ -355,21 +370,31 @@ def prepare_screen(root, manifest):
     # complete or used the frozen scientific design.  Keep the CLI and UI on
     # one strict validation boundary.
     validate_smoke_outputs(root, manifest)
+    if validate_campaign_policy(manifest):
+        from workflow_api.mot_2d_plan import render_screen_transition
+        for name, content in render_screen_transition(manifest, root, REPOSITORY_ROOT).items():
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        return
     specs = [{"s0": value, "worker": worker}
              for value in manifest["s0_values"] for worker in range(3)]
     prepare(root, manifest, "screen", specs, "02", 200, SCREEN_WALLTIME)
 
 
 def optuna_task(root, stage, spec, trials, particles, sampler_seed, bounds=None):
-    manifest = read(root / "campaign.json")
+    manifest = read_stage_manifest(root)
     assert_design(manifest)
+    if validate_campaign_policy(manifest):
+        particles = manifest["fixed_design"]["particle_counts"][stage]
+        trials = manifest["fixed_design"]["trial_budgets"][f"{stage}_per_worker"] if stage == "screen" else trials
     stage_ensembles(manifest, stage, particles)
     role = STAGE_ROLE[stage]
     output = root / stage / key(spec["s0"]) / f"worker{spec['worker']}"
     command = [
         sys.executable, "-m", "studies.mot_2d.optimization", "--fixed-s0", str(spec["s0"]),
         "--n-trials", str(trials), "--n-ensembles", str(len(manifest["seed_roles"][role])),
-        "--particles-per-ensemble", str(particles), "--npools", "200",
+        "--particles-per-ensemble", str(particles), "--npools", str(stage_npools(manifest, stage, 200)),
         "--dt", str(WORKING_DT_S), "--stochastic-solver", "hybrid",
         "--sampler-seed", str(sampler_seed + spec["worker"]),
         "--ensemble-dir", str(repository_path(manifest["ensemble_source"]["directory"])),
@@ -386,7 +411,7 @@ def optuna_task(root, stage, spec, trials, particles, sampler_seed, bounds=None)
     if bounds:
         command += ["--detuning-bounds", *map(str, bounds["detuning"]),
                     "--magnet-radius-bounds-m", *map(str, bounds["radius"])]
-    subprocess.run(command, check=True)
+    subprocess.run(command + acceptance_worker_arguments(manifest, root), check=True)
 
 
 def screen_task(args):
@@ -397,7 +422,7 @@ def screen_task(args):
 
 def trial_rows(root, stage, value):
     rows = []
-    manifest = read(root / "campaign.json")
+    manifest = read_stage_manifest(root)
     role = STAGE_ROLE[stage]
     for path in (root / stage / key(value)).glob("worker*/trials/trial_*.json"):
         item = read(path)
@@ -447,7 +472,8 @@ def prepare_refine(root, manifest):
 def refine_task(args):
     root = Path(args.campaign)
     spec = read(root / "refine" / "tasks.json")[args.task_index]
-    if args.target_trials not in REFINEMENT_CUMULATIVE_TARGETS:
+    manifest = read_stage_manifest(root) if (root / "campaign.json").is_file() else {}
+    if args.target_trials not in refinement_targets(manifest):
         raise ValueError(
             f"Invalid refinement cumulative target: {args.target_trials}"
         )
@@ -466,7 +492,7 @@ def prepare_confirmation(root, manifest):
 
 
 def evaluate_task(root, stage, task_index):
-    manifest = read(root / "campaign.json")
+    manifest = read_stage_manifest(root)
     assert_design(manifest)
     spec = read(root / stage / "tasks.json")[task_index]
     point = spec.get("candidate_index", spec.get("point_index", 0))
@@ -474,17 +500,18 @@ def evaluate_task(root, stage, task_index):
     if output.exists():
         print(f"Already complete: {output}")
         return
-    ensembles = stage_ensembles(manifest, stage, 10000)
+    particles = manifest["fixed_design"]["particle_counts"][stage]
+    ensembles = stage_ensembles(manifest, stage, particles)
     role = STAGE_ROLE[stage]
     evaluation = evaluate_configuration(
         **spec["parameters"], ensembles=ensembles, mot_seed_start=manifest["mot_seeds"][role][0],
         mot_seeds=manifest["mot_seeds"][role],
-        npools=200, dt_s=FINAL_DT_S,
+        npools=stage_npools(manifest, stage, 200), dt_s=FINAL_DT_S,
         stochastic_sim_function=RK4StHybridCustom)
     save_file_json(output, {"kind": f"mot_2d_campaign_{stage}", **spec,
-                            "design": {"n_ensembles": len(ensembles), "particles_per_ensemble": 10000,
+                            "design": {**({"acceptance": manifest["acceptance"]} if validate_campaign_policy(manifest) else {}), "n_ensembles": len(ensembles), "particles_per_ensemble": particles,
                                        "zeeman_seeds": manifest["seed_roles"][role],
-                                       "mot_seeds": manifest["mot_seeds"][role], "npools": 200,
+                                       "mot_seeds": manifest["mot_seeds"][role], "npools": stage_npools(manifest, stage, 200),
                                        "dt_s": FINAL_DT_S,
                                        "solver": "RK4StHybridCustom",
                                        "ensemble_source": manifest["ensemble_source"],
@@ -511,6 +538,13 @@ def boundary(parameters):
 def prepare_sensitivity(root, manifest):
     winners, specs = {}, []
     validated_rows = validated_evaluation_outputs(root, manifest, "confirmation")
+    if validate_campaign_policy(manifest):
+        from workflow_api.mot_2d_plan import render_sensitivity_transition
+        for name, content in render_sensitivity_transition(manifest, root, REPOSITORY_ROOT, validated_rows).items():
+            target = root / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(content)
+        return
     canonical_specs = expected_sensitivity_tasks(manifest, validated_rows)
     for value in manifest["s0_values"]:
         rows = [row for row in validated_rows if row["s0"] == value]
@@ -552,12 +586,12 @@ def prepare_production(root, manifest):
 
 def production_task(args):
     root = Path(args.campaign)
-    manifest = read(root / "campaign.json")
+    manifest = read_stage_manifest(root)
     assert_design(manifest)
     stage_ensembles(manifest, "production", None)
     spec = read(root / "production" / "tasks.json")[args.task_index]
     output = root / "production" / key(spec["s0"])
-    states = Path("data/particle_states/after_2d_mot") / f"final_ensemble_s0_{label(spec['s0'])}"
+    states = survivor_states_directory(manifest, root, spec["s0"])
     result = output / "replicates" / f"zeeman_seed{spec['zeeman_seed']}.json"
     state = states / f"mot_2d_survivors_zeeman_seed{spec['zeeman_seed']}_mot_seed{spec['mot_seed']}.npy"
     if result.exists() and state.exists():
@@ -568,12 +602,12 @@ def production_task(args):
                     "--zeeman-seeds", str(spec["zeeman_seed"]), "--s0", str(spec["s0"]),
                     "--mot-seeds", str(spec["mot_seed"]),
                     "--detuning-gamma", str(p["detuning_gamma"]),
-                    "--magnet-radius-mm", str(1000*p["magnet_radius"]), "--npools", "150",
+                    "--magnet-radius-mm", str(1000*p["magnet_radius"]), "--npools", str(stage_npools(manifest, "production", 150)),
                     "--ensemble-dir", str(repository_path(manifest["ensemble_source"]["directory"])),
                     "--ensemble-identity", manifest["ensemble_source"]["directory"],
                     "--expected-zeeman-profile", manifest["ensemble_source"]["zeeman_profile"],
                     "--expected-git-commit", manifest["provenance"]["git_commit"],
-                    "--output-dir", str(output), "--save-survivor-states", "--states-dir", str(states)],
+                    "--output-dir", str(output), "--save-survivor-states", "--states-dir", str(states)] + acceptance_worker_arguments(manifest, root),
                    check=True)
 
 
