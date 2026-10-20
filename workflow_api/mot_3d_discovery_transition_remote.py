@@ -225,7 +225,7 @@ def scheduler_lifecycle(chain):
         for job in chain[family]:
             try:
                 code, out, err = run_captured(
-                    ["/usr/local/bin/qstat", "-x", "-t", "-f", job]
+                    ["/opt/pbs/bin/qstat", "-x", "-t", "-f", job]
                 )
             except Exception:
                 states.append("status_unknown")

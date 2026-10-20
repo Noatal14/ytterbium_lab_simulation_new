@@ -522,7 +522,7 @@ def main(*, trusted_root_override=None) -> None:
                 for job in chain[family]:
                     try:
                         code, stdout, stderr = run_captured(
-                            ["/usr/local/bin/qstat", "-x", "-t", "-f", job]
+                            ["/opt/pbs/bin/qstat", "-x", "-t", "-f", job]
                         )
                     except Exception:
                         states.append("status_unknown")

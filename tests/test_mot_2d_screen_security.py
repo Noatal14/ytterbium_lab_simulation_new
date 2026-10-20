@@ -260,7 +260,7 @@ def test_coordinator_rejects_forged_scheduler_coherence(tmp_path, monkeypatch, s
 def test_receiver_revalidates_under_lock_and_recovery_is_canonical():
     source = (Path(__file__).parents[1] / "workflow_api/zeus_refinement_remote.py").read_text()
     assert source.count("validate_screen_outputs(") >= 3
-    assert source.count("['/usr/local/bin/qstat','-x','-t','-f',job_id]") == 2
+    assert source.count("['/opt/pbs/bin/qstat','-x','-t','-f',job_id]") == 2
     assert "canonical_refine=render_refine_transition" in source
     assert "canonical_rows!=record['rows']" in source
 

@@ -102,7 +102,10 @@ def main():
     metadata=campaign/".mot_ui";transitions=metadata/"transitions";submissions=metadata/"submissions"
     for parent in (metadata,transitions,submissions):no_symlinks(campaign,parent)
     transition_receipt=read_json(transitions/"screen.json")
-    smoke_receipt=read_json(submissions/"smoke.json")
+    from workflow_api.smoke_receipt import resolve_smoke_receipt
+    try: smoke_path=resolve_smoke_receipt(campaign)
+    except (OSError,ValueError): fail("screening_not_prepared")
+    smoke_receipt=read_json(smoke_path)
     smoke_key=hashlib.sha256(json.dumps({"campaign":relative,"commit":commit,"manifest":prepared[f"{relative}/campaign.json"],"pbs":prepared[f"{relative}/jobs/01_smoke.pbs"]},sort_keys=True,separators=(",",":")).encode()).hexdigest()
     smoke_exact={"version","submission_key","nonce","job_file","commit","created_unix_s","status","job_id","completed_unix_s"}
     if set(smoke_receipt)!=smoke_exact or smoke_receipt.get("version")!=1 or smoke_receipt.get("status")!="submitted" or smoke_receipt.get("submission_key")!=smoke_key or smoke_receipt.get("commit")!=commit or smoke_receipt.get("job_file")!=f"{relative}/jobs/01_smoke.pbs" or not re.fullmatch(r"[0-9a-f]{32}",str(smoke_receipt.get("nonce",""))) or not re.fullmatch(r"\d+(?:\[\])?\.zeus-master",str(smoke_receipt.get("job_id",""))) or not timestamp(smoke_receipt.get("created_unix_s")) or not timestamp(smoke_receipt.get("completed_unix_s")) or smoke_receipt["completed_unix_s"]<smoke_receipt["created_unix_s"]:fail("screening_not_prepared")

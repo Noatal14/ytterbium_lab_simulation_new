@@ -100,6 +100,8 @@ def main() -> None:
         require_no_symlink(campaign,protected)
     def read_submission():
         try:
+            from workflow_api.smoke_receipt import resolve_smoke_receipt
+            submission = resolve_smoke_receipt(campaign)
             if submission.is_symlink() or submission.stat().st_size>16384: raise ValueError()
             row=json.loads(submission.read_text(encoding="utf-8")); identifier=row["job_id"]
             if set(row)!={"version","submission_key","nonce","job_file","commit","created_unix_s","status","job_id","completed_unix_s"} or row.get("version")!=1 or row.get("status")!="submitted" or row.get("submission_key")!=submission_key or row.get("commit")!=commit or row.get("job_file")!=f"{relative}/jobs/01_smoke.pbs" or not isinstance(identifier,str) or not re.fullmatch(r"\d+(?:\[\])?\.zeus-master",identifier) or not isinstance(row.get("nonce"),str) or not re.fullmatch(r"[0-9a-f]{32}",row["nonce"]): raise ValueError()
@@ -133,7 +135,7 @@ def main() -> None:
         if operation!="prepare" or resume_record.get("nonce")!=payload.get("nonce") or resume_record.get("smoke_digest")!=payload.get("smoke_digest"): fail("transition_outcome_unknown")
     submitted=read_submission();job_id=submitted["job_id"]
     try:
-        result=subprocess.run(["/usr/local/bin/qstat","-x","-t","-f",job_id],cwd=root,text=True,capture_output=True,timeout=20,check=False)
+        result=subprocess.run(["/opt/pbs/bin/qstat","-x","-t","-f",job_id],cwd=root,text=True,capture_output=True,timeout=20,check=False)
         if result.returncode or result.stderr: fail("scheduler_unavailable")
         jobs=_parse_qstat(result.stdout)
     except Exception: fail("scheduler_unavailable")

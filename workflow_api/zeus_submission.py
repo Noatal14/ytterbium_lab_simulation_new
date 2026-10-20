@@ -215,10 +215,10 @@ def open_child_directory(parent_fd,name,create=False):
         try: os.mkdir(name,0o700,dir_fd=parent_fd)
         except FileExistsError: pass
     return os.open(name,os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=parent_fd)
-def records_directory(create=False):
+def records_directory(create=False,namespace='.mot_ui'):
     campaign_fd=os.open(campaign_path,os.O_RDONLY|DIRECTORY|NOFOLLOW)
     try:
-        workflow_fd=open_child_directory(campaign_fd,'.workflow',create)
+        workflow_fd=open_child_directory(campaign_fd,namespace,create)
         try: return open_child_directory(workflow_fd,'submissions',create)
         finally: os.close(workflow_fd)
     finally: os.close(campaign_fd)
@@ -235,6 +235,20 @@ def read_record(records_fd,name):
     except Exception: raise ValueError()
 def state(records_fd):
     final=read_record(records_fd,'smoke.json'); unresolved=read_record(records_fd,'smoke.pending.json')
+    try: legacy_fd=records_directory(False,'.workflow')
+    except FileNotFoundError: legacy_fd=None
+    try:
+        legacy_final=read_record(legacy_fd,'smoke.json'); legacy_pending=read_record(legacy_fd,'smoke.pending.json')
+    finally:
+        if legacy_fd is not None: os.close(legacy_fd)
+    if final is not None and legacy_final is not None and final!=legacy_final: raise ValueError()
+    if unresolved is not None and legacy_pending is not None and unresolved!=legacy_pending: raise ValueError()
+    final=final if final is not None else legacy_final
+    pending_values=[item for item in (unresolved,legacy_pending) if item is not None]
+    if final is not None:
+        identity=('version','submission_key','nonce','job_file','commit','created_unix_s')
+        if any(any(row.get(field)!=final.get(field) for field in identity) for row in pending_values): raise ValueError()
+    unresolved=unresolved if unresolved is not None else legacy_pending
     if final is not None:
         jid=final.get('job_id'); saved_nonce=final.get('nonce')
         expected_id=r'^\d+\[\]\.zeus-master$' if b'#PBS -J ' in targets[job_pure].read_bytes() else r'^\d+\.zeus-master$'
@@ -256,9 +270,13 @@ if op=='inspect':
     try:
         try: records_fd=records_directory(False)
         except FileNotFoundError: records_fd=None
-        if records_fd is not None:
-            try: os.stat('smoke.lock',dir_fd=records_fd,follow_symlinks=False); print(json.dumps({'error':'submission_busy'})); raise SystemExit(24)
-            except FileNotFoundError: pass
+        for namespace in ('.mot_ui','.workflow'):
+            try: checked_fd=records_directory(False,namespace)
+            except FileNotFoundError: continue
+            try:
+                try: os.stat('smoke.lock',dir_fd=checked_fd,follow_symlinks=False); print(json.dumps({'error':'submission_busy'})); raise SystemExit(24)
+                except FileNotFoundError: pass
+            finally: os.close(checked_fd)
         current=state(records_fd)
         if current['status']!='submitted' and smoke_started(): print(json.dumps({'error':'smoke_already_started'})); raise SystemExit(26)
         current['branch']=branch; print(json.dumps(current,sort_keys=True))
@@ -266,14 +284,25 @@ if op=='inspect':
     except (OSError,ValueError): print(json.dumps({'error':'submission_record_invalid'})); raise SystemExit(23)
     raise SystemExit()
 if op!='submit': print(json.dumps({'error':'invalid_request'})); raise SystemExit(20)
+locked_records=[]
 try:
-    records_fd=records_directory(True)
-    os.mkdir('smoke.lock',0o700,dir_fd=records_fd)
-except FileExistsError: print(json.dumps({'error':'submission_busy'})); raise SystemExit(24)
-except OSError: print(json.dumps({'error':'submission_record_invalid'})); raise SystemExit(23)
+    # Acquire the legacy lock too, so an already running legacy receiver cannot
+    # race the new canonical writer across separate metadata namespaces.
+    for namespace in ('.workflow','.mot_ui'):
+        lock_fd=records_directory(True,namespace)
+        try: os.mkdir('smoke.lock',0o700,dir_fd=lock_fd)
+        except Exception: os.close(lock_fd); raise
+        locked_records.append(lock_fd)
+    records_fd=locked_records[-1]
+except OSError as error:
+    for held_fd in locked_records:
+        try: os.rmdir('smoke.lock',dir_fd=held_fd)
+        finally: os.close(held_fd)
+    print(json.dumps({'error':'submission_busy' if isinstance(error,FileExistsError) else 'submission_record_invalid'})); raise SystemExit(24 if isinstance(error,FileExistsError) else 23)
 try:
     if validate_all() is None: print(json.dumps({'error':'remote_preparation_invalid'})); raise SystemExit(22)
-    current=state(records_fd)
+    try: current=state(records_fd)
+    except (OSError,ValueError): print(json.dumps({'error':'submission_record_invalid'})); raise SystemExit(23)
     if current['status']=='submitted': print(json.dumps(current,sort_keys=True)); raise SystemExit()
     if current['status']=='ambiguous': print(json.dumps({'error':'submission_ambiguous'})); raise SystemExit(25)
     if smoke_started(): print(json.dumps({'error':'smoke_already_started'})); raise SystemExit(26)
@@ -310,10 +339,11 @@ try:
     os.unlink('smoke.pending.json',dir_fd=records_fd); os.fsync(records_fd)
     print(json.dumps({'status':'submitted','job_id':stdout,'nonce':nonce,'submitted_unix_s':receipt['completed_unix_s']},sort_keys=True))
 finally:
-    try: os.rmdir('smoke.lock',dir_fd=records_fd)
-    except OSError: pass
-    try: os.close(records_fd)
-    except OSError: pass
+    for held_fd in reversed(locked_records):
+        try: os.rmdir('smoke.lock',dir_fd=held_fd)
+        except OSError: pass
+        try: os.close(held_fd)
+        except OSError: pass
 '''
 
 

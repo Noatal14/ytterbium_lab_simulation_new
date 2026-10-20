@@ -176,7 +176,7 @@ def test_qstat_confirmation_array_accepts_documented_tab_continuation():
 def test_remote_receiver_contains_only_the_frozen_confirmation_array_qsub():
     source=(Path(__file__).parents[1]/"workflow_api/zeus_confirmation_submission_remote.py").read_text()
     assert source.count('run_captured(["/usr/local/bin/qsub"]') == 1
-    assert source.count('run_captured(["/usr/local/bin/qstat","-x","-t","-f",done["job_id"]]') == 1
+    assert source.count('run_captured(["/opt/pbs/bin/qstat","-x","-t","-f",done["job_id"]]') == 1
     assert 'if operation in {"inspect","status"}: respond("eligible",branch);return' in source
     assert source.index('submissions.mkdir(parents=True,exist_ok=True)') > source.index('if operation in {"inspect","status"}')
     assert "qdel" not in source and "afterok" not in source
@@ -247,7 +247,7 @@ def test_receiver_submit_ledger_and_targeted_status_are_at_most_once(tmp_path,mo
     assert len([call for call in calls if call[0].endswith("qsub")])==1
     status=_invoke_receiver(monkeypatch,payload,"status",capsys)
     assert status["status"]=="completed_success"
-    assert calls[-1]==["/usr/local/bin/qstat","-x","-t","-f","123[].zeus-master"]
+    assert calls[-1]==["/opt/pbs/bin/qstat","-x","-t","-f","123[].zeus-master"]
     done=json.loads((campaign/".mot_ui/submissions/confirmation.json").read_text())
     assert done["transition_digest"]==payload["transition_digest"]
 
@@ -265,7 +265,7 @@ def test_receiver_status_maps_non_grammar_qstat_to_unknown_with_targeted_query(t
     monkeypatch.setattr(receiver,"run_captured",captured)
     assert _invoke_receiver(monkeypatch,payload,"submit",capsys)["status"]=="submitted"
     assert _invoke_receiver(monkeypatch,payload,"status",capsys)["status"]=="status_unknown"
-    assert calls[-1]==["/usr/local/bin/qstat","-x","-t","-f","123[].zeus-master"]
+    assert calls[-1]==["/opt/pbs/bin/qstat","-x","-t","-f","123[].zeus-master"]
 
 
 def test_receiver_qsub_crash_leaves_ambiguous_durable_intent_and_blocks_retry(tmp_path,monkeypatch,capsys):

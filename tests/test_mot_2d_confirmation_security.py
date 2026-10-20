@@ -23,7 +23,7 @@ def test_confirmation_receiver_has_no_submission_capability():
     assert "/usr/local/bin/qsub" not in source
     assert "confirmation-task" not in source
     assert "validate_refine_outputs" in source
-    assert source.count("/usr/local/bin/qstat") >= 2
+    assert source.count("/opt/pbs/bin/qstat") >= 2
 
 
 @pytest.mark.parametrize("mutation",("bad_lifecycle","bad_count","nan_row","duplicate_source","wrong_dependency"))
@@ -185,7 +185,7 @@ def test_receiver_happy_path_publishes_canonical_confirmation_without_qsub(tmp_p
     campaign,calls,rendered=_receiver_fixture(tmp_path,monkeypatch)
     receiver.main();response=json.loads(capsys.readouterr().out)
     assert response["lifecycle"]=="confirmation_prepared"
-    assert [call[0] for call in calls].count("/usr/local/bin/qstat")==8
+    assert [call[0] for call in calls].count("/opt/pbs/bin/qstat")==8
     assert all("qsub" not in " ".join(call) for call in calls)
     assert (campaign/".mot_ui/transitions/confirmation.json").is_file()
     assert not (campaign/".mot_ui/transitions/confirmation.pending.json").exists()

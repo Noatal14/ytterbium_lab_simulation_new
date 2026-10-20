@@ -293,7 +293,7 @@ def scheduler(root: Path, manifest: dict, submission: dict):
     count = 20 * len(manifest["s0_values"])
     try:
         code, stdout, stderr = run_captured(
-            ["/usr/local/bin/qstat", "-x", "-t", "-f", submission["job_id"]],
+            ["/opt/pbs/bin/qstat", "-x", "-t", "-f", submission["job_id"]],
             cwd=root,
             limit=4 * 1024 * 1024,
             timeout=20,

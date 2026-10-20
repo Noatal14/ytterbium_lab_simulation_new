@@ -170,7 +170,7 @@ def main():
     task_count=len(manifest["s0_values"])*3;rounds=[];any_unknown=False
     from workflow_api.zeus_snapshot import _parse_qstat
     for index,job in enumerate(chain["job_ids"],1):
-        result=subprocess.run(["/usr/local/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
+        result=subprocess.run(["/opt/pbs/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
         if result.returncode or result.stderr:fail("scheduler_unavailable")
         try:round_row,unknown=parse_round(result.stdout,job,task_count,index,chain["job_ids"],_parse_qstat)
         except Exception:fail("scheduler_unavailable")
@@ -199,7 +199,7 @@ def main():
         locked_manifest=read_json(campaign/"campaign.json")
         if locked_manifest!=manifest:fail("transition_conflict")
         for round_index,job in enumerate(chain["job_ids"],1):
-            checked=subprocess.run(["/usr/local/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
+            checked=subprocess.run(["/opt/pbs/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
             try:checked_round,checked_unknown=parse_round(checked.stdout,job,task_count,round_index,chain["job_ids"],_parse_qstat)
             except Exception:fail("refine_status_unknown")
             if checked.returncode or checked.stderr or checked_unknown or checked_round["scheduler"]["state"]!="completed_success":fail("refine_status_unknown")

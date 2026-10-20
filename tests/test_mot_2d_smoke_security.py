@@ -479,7 +479,7 @@ def test_screening_confirmation_is_single_effect_under_barrier(tmp_path):
 def test_remote_transition_receiver_has_no_submission_or_git_mutation_capability():
     source = (Path(__file__).parents[1] / "workflow_api/zeus_screening_remote.py").read_text()
     lowered = source.lower()
-    assert "/usr/local/bin/qstat" in source
+    assert "/opt/pbs/bin/qstat" in source
     assert all(command not in lowered for command in (
         "/usr/local/bin/qsub", "qdel", "git pull", "git checkout",
         "git switch", "git reset", "git merge", "git commit", "git push",

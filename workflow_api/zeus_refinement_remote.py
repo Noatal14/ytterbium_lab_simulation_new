@@ -76,7 +76,11 @@ def main():
     if manifest.get('stage')=='screen' and sha(campaign/'campaign.json')!=screen_hashes['campaign.json']:fail('transition_conflict')
     metadata=campaign/'.mot_ui';transitions=metadata/'transitions';submissions=metadata/'submissions'
     for path in (metadata,transitions,submissions,campaign/'screen',campaign/'jobs'):no_links(campaign,path)
-    screen_transition=read_json(transitions/'screen.json');smoke_submission=read_json(submissions/'smoke.json');screen_submission=read_json(submissions/'screening.json')
+    from workflow_api.smoke_receipt import resolve_smoke_receipt
+    def smoke_record():
+        try: return read_json(resolve_smoke_receipt(campaign))
+        except (OSError,ValueError): fail('transition_conflict')
+    screen_transition=read_json(transitions/'screen.json');smoke_submission=smoke_record();screen_submission=read_json(submissions/'screening.json')
     smoke_key=hashlib.sha256(json.dumps({'campaign':relative,'commit':commit,'manifest':prepared[f'{relative}/campaign.json'],'pbs':prepared[f'{relative}/jobs/01_smoke.pbs']},sort_keys=True,separators=(',',':')).encode()).hexdigest()
     smoke_keys={'version','submission_key','nonce','job_file','commit','created_unix_s','status','job_id','completed_unix_s'}
     if set(smoke_submission)!=smoke_keys or smoke_submission.get('version')!=1 or smoke_submission.get('status')!='submitted' or smoke_submission.get('submission_key')!=smoke_key or smoke_submission.get('commit')!=commit or smoke_submission.get('job_file')!=f'{relative}/jobs/01_smoke.pbs' or not re.fullmatch(r'[0-9a-f]{32}',str(smoke_submission.get('nonce',''))) or not re.fullmatch(r'\d+(?:\[\])?\.zeus-master',str(smoke_submission.get('job_id',''))) or not timestamp(smoke_submission.get('created_unix_s')) or not timestamp(smoke_submission.get('completed_unix_s')) or smoke_submission['completed_unix_s']<smoke_submission['created_unix_s']:fail('submission_record_invalid')
@@ -107,7 +111,7 @@ def main():
     if manifest.get('stage')!='screen':fail('campaign_not_screen')
     job_id=screen_submission['job_id'];task_count=len(manifest['s0_values'])*3
     try:
-        result=subprocess.run(['/usr/local/bin/qstat','-x','-t','-f',job_id],cwd=root,text=True,capture_output=True,timeout=20,check=False)
+        result=subprocess.run(['/opt/pbs/bin/qstat','-x','-t','-f',job_id],cwd=root,text=True,capture_output=True,timeout=20,check=False)
         if result.returncode or result.stderr:fail('scheduler_unavailable')
         from workflow_api.zeus_snapshot import _parse_qstat
         jobs=_parse_qstat(result.stdout)
@@ -151,9 +155,9 @@ def main():
     try:
         if receipt.exists() or pending.exists():fail('transition_outcome_unknown')
         # Re-establish every mutable authorization fact while holding the lock.
-        latest_transition=read_json(transitions/'screen.json');latest_smoke=read_json(submissions/'smoke.json');latest_submission=read_json(submissions/'screening.json')
+        latest_transition=read_json(transitions/'screen.json');latest_smoke=smoke_record();latest_submission=read_json(submissions/'screening.json')
         if latest_transition!=screen_transition or latest_smoke!=smoke_submission or latest_submission!=screen_submission:fail('transition_conflict')
-        check=subprocess.run(['/usr/local/bin/qstat','-x','-t','-f',job_id],cwd=root,text=True,capture_output=True,timeout=20,check=False)
+        check=subprocess.run(['/opt/pbs/bin/qstat','-x','-t','-f',job_id],cwd=root,text=True,capture_output=True,timeout=20,check=False)
         if check.returncode or check.stderr:fail('scheduler_unavailable')
         from workflow_api.zeus_snapshot import _parse_qstat
         locked_list=_parse_qstat(check.stdout);locked_ids=[row.get('id') for row in locked_list];locked_jobs={row['id']:row for row in locked_list}

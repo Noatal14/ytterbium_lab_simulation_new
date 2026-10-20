@@ -7,7 +7,7 @@ Use three complementary layers:
 | --- | --- | --- | --- |
 | Browser/API contracts | Existing deterministic fixtures, all stage actions and failure states | Review/confirm, progress, resume, artifact validation, completion and duplicate prevention | Minutes |
 | Real local backend | Existing Playwright real-backend integration with disposable fixture sources | Browser-to-API contracts, actual files, reviewed resource display and recovery | Minutes |
-| Real scheduler acceptance | A separate, versioned miniature campaign profile, not yet implemented for the full lifecycle | Real submission, dependencies, state transfer, physical worker execution and merge | Target tens of compute minutes, plus queue time |
+| Real scheduler acceptance | A separate, versioned miniature campaign profile under actual lifecycle qualification | Real submission, dependencies, state transfer, physical worker execution and merge | Hours for the complete physical lifecycle, plus queue time |
 
 The existing browser suite already traverses the 3D stage controls using
 mocked scheduler/results contracts. Those tests are useful but do not prove
@@ -67,9 +67,11 @@ workers, three recoil seeds, and the original bootstrap draw counts. It reduces
 sampled particles (2D: two; 3D: one), 2D screen trials to one per worker and
 refinement checkpoints to 1/2/3/4, and 3D discovery to four trials per worker.
 Physics, simulation endpoints, classification, and control neighborhoods remain
-canonical. The smoke stage uses one CPU/pool; other 2D stages use ten and 3D
-stages use four. Merge jobs use one CPU. Each job requests 4 GiB and one hour;
-the acceptance scheduler placement is explicitly pinned to `gd002`.
+canonical. Smoke uses one CPU/pool and 4 GiB. The 2D production stage uses
+100 CPUs/pools and 64 GiB; other 2D stages use ten CPUs/pools and 8 GiB. Fresh
+2D input-generation jobs use ten CPUs/pools and 8 GiB. 3D stages retain four
+CPUs/pools and 4 GiB; merges retain one CPU and 4 GiB. Every job keeps its
+one-hour cap and explicit `gd002` placement.
 The 32-initial-particle Zeeman generation budget is a bounded test workload,
 not a guarantee of survivors: insufficient survivors must fail validation, and
 controlled acceptance input provenance must be explicit.
@@ -143,3 +145,30 @@ single hardlink, preserving the strict readers’ file checks.
 These directories are not campaign records and must not be submitted or used
 as inputs. Preserve them as evidence until the acceptance report is complete;
 never delete a directory just because its name resembles a test artifact.
+
+
+### Measured compute-only resource revision
+
+The successful real two-particle smoke job `4808390` used 389 wall seconds
+and 371 CPU seconds at the frozen working timestep of 1.25 µs. Production
+retains all 20 sealed ensembles and all 32 available input atoms per ensemble,
+with the frozen 0.625 µs final timestep. A ten-pool production reservation
+would therefore be approximately eight hours and could not fit its one-hour
+cap. The revised profile reserves 100 CPUs/pools and 64 GiB for that stage.
+Linear scaling from the measured smoke gives about 42 minutes, or roughly
+42–46 minutes allowing modest overhead; this is a scheduling estimate, not a
+measured production result or guaranteed completion time. Ten-worker stages
+reserve 8 GiB to accommodate approximately 0.5 GiB per worker plus overhead.
+
+This revision changes compute resources only. Every force, canonical physical-policy hash,
+timestep, horizon, role seed, ensemble population, particle budget, candidate
+count, trial count, and validation criterion remains identical. The full
+non-resource policy SHA-256 is
+`700293772dc54b4419d6776873b4c44326d720585a61fc256e4a527a76a17746`.
+The new content identity is
+`113961b1d5701d9674eea78516cbb9449381237f229769e407548e02be8a4abc`.
+The profile/content and code-closure hashes change to record this operational
+revision; the canonical laboratory and numerical identities do not change.
+Earlier evidence remains tied to its original profile hash. New campaigns
+require newly generated, honestly marked inputs under the new hash; old
+metadata must not be relabeled or edited to match it.

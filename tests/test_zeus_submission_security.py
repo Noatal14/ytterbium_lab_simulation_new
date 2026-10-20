@@ -1,6 +1,7 @@
 """Adversarial tests for explicitly confirmed 2D smoke submission.
 
-These tests use in-memory transports only.  They must never contact Zeus.
+Tests use in-memory transports or isolated receiver subprocesses with fake
+scheduler executables. They must never contact Zeus.
 """
 
 from __future__ import annotations
@@ -8,6 +9,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -636,12 +638,12 @@ def test_remote_receiver_contains_only_fixed_smoke_qsub_and_no_mutating_admin_co
         assert forbidden not in _REMOTE_SCRIPT
 
 
-def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_mutation=None):
+def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_mutation=None, acceptance=False):
     """Build a hermetic stand-in for the fixed Zeus receiver contract."""
 
     fake_home = tmp_path / "home" / "tal.noa"
-    project = fake_home / "ytterbium_lab_simulation_new"
-    campaign = Path("data/optimization/mot_2d/campaign")
+    project = fake_home / ("ytterbium_lab_simulation_ui_acceptance" if acceptance else "ytterbium_lab_simulation_new")
+    campaign = Path("data/optimization/mot_2d" + ("/ui_acceptance" if acceptance else "") + "/campaign")
     job_file = campaign / "jobs/01_smoke.pbs"
     files: dict[str, str] = {}
     for index in range(70):
@@ -652,7 +654,12 @@ def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_m
         files[relative.as_posix()] = _digest(target)
     manifest = project / campaign / "campaign.json"
     manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text('{"stage":"smoke"}\n', encoding="utf-8")
+    if acceptance:
+        from tests.test_acceptance_profile import two_d_manifest
+        manifest_value = two_d_manifest()
+    else:
+        manifest_value = {"kind":"mot_2d_s0_campaign","stage":"smoke","s0_values":[1.3],"provenance":{"git_commit":"a" * 40}}
+    manifest.write_text(json.dumps(manifest_value) + "\n", encoding="utf-8")
     job = project / job_file
     job.parent.mkdir(parents=True, exist_ok=True)
     job_bytes = b"#!/bin/bash\n#PBS -N mot2d_smoke\npython -m studies.mot_2d_s0_campaign smoke\n"
@@ -685,6 +692,10 @@ printf '12345.zeus-master\\n'
         "home=pathlib.Path('/home')/username",
         f"home=pathlib.Path({str(fake_home)!r})",
     )
+    if acceptance:
+        # Translate only the synthetic physical home to its exact logical target;
+        # the authentic profile/physics/path authorizer still runs unchanged.
+        script = script.replace("assert_campaign_target(manifest,username,project,campaign_path)", "assert_campaign_target(manifest,username,'/home/'+username+'/'+project.name,campaign_pure.as_posix())")
     base_request = {
         "files": files,
         "campaign": campaign.as_posix(),
@@ -702,6 +713,7 @@ printf '12345.zeus-master\\n'
         result = subprocess.run(
             [sys.executable, "-c", script, operation, "tal.noa", str(project), encoded],
             cwd=tmp_path,
+            env={**os.environ, "PYTHONPATH":str(Path(__file__).parents[1])},
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             check=False,
@@ -726,7 +738,7 @@ def test_embedded_receiver_submits_verified_bytes_once_and_replays_receipt(tmp_p
     }
     assert captured.read_bytes() == job_bytes
     assert calls.read_text(encoding="utf-8").splitlines() == ["call"]
-    receipt = json.loads((project / campaign / ".workflow/submissions/smoke.json").read_text())
+    receipt = json.loads((project / campaign / ".mot_ui/submissions/smoke.json").read_text())
     assert receipt["job_id"] == "12345.zeus-master" and receipt["nonce"] == "1" * 32
 
     replay, replay_state = invoke("submit", "2" * 32)
@@ -748,7 +760,7 @@ def test_embedded_receiver_qsub_failure_is_durably_ambiguous(tmp_path, qsub_body
     )
     submitted, state = invoke("submit", "3" * 32)
     assert submitted.returncode != 0 and state == {"error": "submission_ambiguous"}
-    pending = project / campaign / ".workflow/submissions/smoke.pending.json"
+    pending = project / campaign / ".mot_ui/submissions/smoke.pending.json"
     assert pending.is_file()
     repeated, repeated_state = invoke("submit", "4" * 32)
     assert repeated.returncode != 0 and repeated_state == {"error": "submission_ambiguous"}
@@ -761,7 +773,7 @@ def test_embedded_receiver_blocks_existing_smoke_and_corrupt_records(tmp_path):
     assert checked.returncode != 0 and state == {"error": "smoke_already_started"}
     (project / campaign / "smoke").rmdir()
 
-    records = project / campaign / ".workflow/submissions"
+    records = project / campaign / ".mot_ui/submissions"
     records.mkdir(parents=True)
     (records / "smoke.json").symlink_to(tmp_path / "outside-record")
     checked, state = invoke("inspect")
@@ -834,3 +846,107 @@ def test_embedded_receiver_requires_manifest_digest_and_recomputed_key_before_qs
     assert response == {'error': 'invalid_request'}
     assert not calls.exists()
     assert not captured.exists()
+
+
+@pytest.mark.parametrize('legacy_state', ['final', 'pending', 'final_conflict', 'pending_conflict', 'locked'])
+def test_embedded_smoke_recovers_legacy_namespace_without_resubmission(tmp_path, legacy_state):
+    project, campaign, _, calls, _, invoke = _receiver_fixture(tmp_path)
+    result, submitted = invoke('submit', '1' * 32)
+    assert result.returncode == 0
+    modern = project / campaign / '.mot_ui/submissions'
+    legacy = project / campaign / '.workflow/submissions'
+    receipt = json.loads((modern / 'smoke.json').read_text())
+    assert len(calls.read_text().splitlines()) == 1
+    if legacy_state == 'final':
+        (modern / 'smoke.json').rename(legacy / 'smoke.json')
+    elif legacy_state == 'pending':
+        (modern / 'smoke.json').unlink()
+        pending = {key:value for key,value in receipt.items() if key not in {'status','job_id','completed_unix_s'}}
+        (legacy / 'smoke.pending.json').write_text(json.dumps(pending))
+    elif legacy_state == 'final_conflict':
+        (legacy / 'smoke.json').write_text(json.dumps({**receipt,'job_id':'999.zeus-master'}))
+    elif legacy_state == 'pending_conflict':
+        pending = {key:value for key,value in receipt.items() if key not in {'status','job_id','completed_unix_s'}}
+        (legacy / 'smoke.pending.json').write_text(json.dumps({**pending,'nonce':'2' * 32}))
+    else:
+        (legacy / 'smoke.lock').mkdir()
+    inspected, response = invoke('inspect')
+    replay, replay_response = invoke('submit', '2' * 32)
+    if legacy_state == 'final':
+        assert inspected.returncode == replay.returncode == 0
+        assert response['job_id'] == replay_response['job_id'] == submitted['job_id']
+        assert not (modern / 'smoke.json').exists()
+    elif legacy_state == 'pending':
+        assert inspected.returncode == 0 and response['status'] == 'ambiguous'
+        assert replay.returncode == 25 and replay_response['error'] == 'submission_ambiguous'
+    elif legacy_state == 'locked':
+        assert inspected.returncode == replay.returncode == 24
+    else:
+        assert inspected.returncode == replay.returncode == 23
+        assert response['error'] == replay_response['error'] == 'submission_record_invalid'
+    assert len(calls.read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize('acceptance', [False, True])
+@pytest.mark.parametrize('receipt_namespace', ['modern','legacy','equaldual','conflict','pending','symlink'])
+def test_actual_embedded_submit_receipt_is_consumed_by_actual_screening_inspect(tmp_path, monkeypatch, capsys, acceptance, receipt_namespace):
+    from workflow_api import zeus_screening_remote as remote
+    from workflow_api import acceptance_remote
+    from workflow_api.mot_2d_plan import render_screen_transition
+    project, campaign, _, calls, _, invoke = _receiver_fixture(tmp_path, acceptance=acceptance)
+    submitted, response = invoke('submit', '1' * 32)
+    assert submitted.returncode == 0, submitted.stderr.decode()
+    receipt = json.loads((project / campaign / '.mot_ui/submissions/smoke.json').read_text())
+    assert not (project / campaign / '.workflow/submissions/smoke.json').exists()
+    if receipt_namespace == 'legacy':
+        (project / campaign / '.mot_ui/submissions/smoke.json').rename(project / campaign / '.workflow/submissions/smoke.json')
+    elif receipt_namespace in {'equaldual','conflict'}:
+        saved = receipt if receipt_namespace == 'equaldual' else {**receipt,'job_id':'999.zeus-master'}
+        (project / campaign / '.workflow/submissions/smoke.json').write_text(json.dumps(saved))
+    elif receipt_namespace == 'pending':
+        (project / campaign / '.workflow/submissions/smoke.pending.json').write_text('{}')
+    elif receipt_namespace == 'symlink':
+        (project / campaign / '.workflow/submissions').rmdir()
+        (project / campaign / '.workflow').rmdir()
+        outside = tmp_path / 'foreign'
+        outside.mkdir()
+        (project / campaign / '.workflow').symlink_to(outside, target_is_directory=True)
+    manifest = json.loads((project / campaign / 'campaign.json').read_text())
+    prepared = {path.relative_to(project).as_posix():_digest(path) for path in project.rglob('*') if path.is_file() and (path.suffix == '.bin' or path.relative_to(project).as_posix() in {(campaign/'campaign.json').as_posix(),(campaign/'jobs/01_smoke.pbs').as_posix()})}
+    assert len(prepared) == 72
+    commit = subprocess.check_output(['git','rev-parse','HEAD'],cwd=project,text=True).strip()
+    transition = render_screen_transition(manifest, project/campaign, project)
+    payload = {'campaign':campaign.as_posix(),'commit':commit,'prepared_files':prepared,'submission_key':receipt['submission_key'],'transition_files':{name:hashlib.sha256(raw).hexdigest() for name,raw in transition.items()}}
+    original_path = Path
+    monkeypatch.setattr(remote, 'Path', lambda value: project.parent.parent if value == '/home' else original_path(value))
+    original_authorize = acceptance_remote.assert_campaign_target
+    def authorize(value, username, project_arg, campaign_arg=None):
+        if Path(project_arg) == project:
+            return original_authorize(value, username, '/home/'+username+'/'+project.name, Path(campaign_arg).relative_to(project).as_posix())
+        return original_authorize(value, username, project_arg, campaign_arg)
+    monkeypatch.setattr(acceptance_remote, 'assert_campaign_target', authorize)
+    original_run = subprocess.run
+    observed = []
+    def run(argv, **kwargs):
+        observed.append(tuple(argv))
+        if argv[0] == '/opt/pbs/bin/qstat':
+            return subprocess.CompletedProcess(argv,0,'Job Id: 12345.zeus-master\n    job_state = Q\n','')
+        assert Path(argv[0]).name == 'git'
+        return original_run(argv, **kwargs)
+    monkeypatch.setattr(remote.subprocess, 'run', run)
+    monkeypatch.setattr(sys,'argv',['receiver','inspect','tal.noa',str(project),base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()])
+    if receipt_namespace in {'conflict','pending','symlink'}:
+        with pytest.raises(SystemExit) as blocked: remote.main()
+        assert blocked.value.code == 20
+        state = json.loads(capsys.readouterr().out)
+        assert state['error'] == 'submission_record_invalid'
+        assert len(calls.read_text().splitlines()) == 1
+        assert not any(Path(command[0]).name in {'qstat','qsub'} for command in observed)
+        return
+    remote.main()
+    state = json.loads(capsys.readouterr().out)
+    assert state['lifecycle'] == 'queued'
+    assert state['job_id'] == response['job_id'] == '12345.zeus-master'
+    assert len(calls.read_text().splitlines()) == 1
+    assert any(command[0] == '/opt/pbs/bin/qstat' for command in observed)
+    assert all(Path(command[0]).name != 'qsub' for command in observed)

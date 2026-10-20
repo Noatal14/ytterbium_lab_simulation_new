@@ -258,12 +258,13 @@ APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS = (
     "workflow_api/acceptance_inputs.py",
     "workflow_api/acceptance_profile.py",
     "workflow_api/specifications/ui_acceptance_v1.json",
+    "workflow_api/smoke_receipt.py",
 )
 
 
 def _without_approved_acceptance_code_closure(payload):
     # Compare the original complete physics payload while explicitly accounting
-    # for the three newly hashed acceptance-only code/policy dependencies.
+    # for the explicitly reviewed workflow code/policy dependencies.
     # Copy before projection: the raw payload references executable constants.
     projected = _normalize(payload)
     files = projected["mot_2d_executable_campaign"]["relevant_files"]
@@ -485,10 +486,10 @@ def test_approved_acceptance_closure_projection_is_exact_and_nonmutating():
 
 
 @pytest.mark.parametrize("count", [0, 2])
-def test_approved_acceptance_closure_projection_rejects_missing_or_duplicate(count):
+@pytest.mark.parametrize("name", APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS)
+def test_approved_acceptance_closure_projection_rejects_missing_or_duplicate(count, name):
     payload = _normalize(_resolved_baseline_payload())
     files = payload["mot_2d_executable_campaign"]["relevant_files"]
-    name = APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS[0]
     files[:] = [item for item in files if item != name] + [name] * count
     with pytest.raises(AssertionError, match="missing or duplicated"):
         _without_approved_acceptance_code_closure(payload)

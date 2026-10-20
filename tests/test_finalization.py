@@ -171,7 +171,7 @@ def _run_finalization_receiver(
             f"    if argv[:3]==['/usr/bin/git','rev-parse','HEAD']: return 0,b'{'a' * 40}\\n',b''",
             "    if argv[:3]==['/usr/bin/git','branch','--show-current']: return 0,b'main\\n',b''",
             "    if argv[:3]==['/usr/bin/git','status','--porcelain=v1']: return 0,b'',b''",
-            "    if argv[0]=='/usr/local/bin/qstat': return 0,qstat,b''",
+            "    if argv[0]=='/opt/pbs/bin/qstat': return 0,qstat,b''",
             "    raise AssertionError('unexpected process: '+repr(argv))",
             "remote.run_captured=captured",
             hook,
@@ -531,7 +531,7 @@ def test_finalization_receiver_rejects_unsafe_evidence(tmp_path, attack):
 
 def test_finalization_receiver_has_no_submission_or_scheduler_mutation():
     source = (REPOSITORY_ROOT / "workflow_api/zeus_finalization_remote.py").read_text()
-    assert '"/usr/local/bin/qstat"' in source
+    assert '"/opt/pbs/bin/qstat"' in source
     assert '"/usr/local/bin/qsub"' not in source
     assert '"/usr/local/bin/qdel"' not in source
     assert '"/usr/local/bin/qalter"' not in source

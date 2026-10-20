@@ -281,7 +281,7 @@ def inspect_scheduler(root: Path, submission: dict, manifest: dict) -> dict[str,
     count = len(manifest["s0_values"]) * 17
     try:
         returncode, stdout, stderr = run_captured(
-            ["/usr/local/bin/qstat", "-x", "-t", "-f", submission["job_id"]],
+            ["/opt/pbs/bin/qstat", "-x", "-t", "-f", submission["job_id"]],
             cwd=root, limit=4 * 1024 * 1024, timeout=20)
     except Exception:
         returncode, stdout, stderr = 1, b"", b""

@@ -14,7 +14,7 @@ from types import MappingProxyType
 from typing import Any
 
 PROFILE_ID = 'ui_acceptance_v1'
-PROFILE_SHA256 = '53b32b28070f698b4f7c973e7b211905f6844f7694181025ba11a7945b329415'
+PROFILE_SHA256 = '113961b1d5701d9674eea78516cbb9449381237f229769e407548e02be8a4abc'
 ACCEPTANCE_KINDS = MappingProxyType({'mot_2d': 'mot_2d_ui_acceptance_v1', 'mot_3d': 'mot_3d_ui_acceptance_v1'})
 SCIENTIFIC_KINDS = frozenset(('mot_2d_s0_campaign', 'mot_3d_campaign_v2'))
 

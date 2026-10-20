@@ -153,7 +153,7 @@ def main():
         if operation=="status":
             task_count=manifest.get("stages",{}).get("sensitivity",{}).get("tasks")
             if not isinstance(task_count,int) or isinstance(task_count,bool) or not 1<=task_count<=1000: fail("sensitivity_preparation_invalid")
-            try: returncode,stdout,stderr=run_captured(["/usr/local/bin/qstat","-x","-t","-f",done["job_id"]])
+            try: returncode,stdout,stderr=run_captured(["/opt/pbs/bin/qstat","-x","-t","-f",done["job_id"]])
             except Exception: status="status_unknown"
             else: status="status_unknown" if returncode or stderr else scheduler_state(stdout,done["job_id"],task_count)
             respond(status,branch,done["job_id"],done["nonce"],done["completed_unix_s"]);return

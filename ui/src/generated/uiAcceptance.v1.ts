@@ -7,7 +7,7 @@ export const UI_ACCEPTANCE_IDENTITY = {
     "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
   },
   "profile_id": "ui_acceptance_v1",
-  "profile_sha256": "53b32b28070f698b4f7c973e7b211905f6844f7694181025ba11a7945b329415",
+  "profile_sha256": "113961b1d5701d9674eea78516cbb9449381237f229769e407548e02be8a4abc",
   "suitability": "acceptance_only"
 } as const;
 export const UI_ACCEPTANCE_POLICY = {
@@ -35,7 +35,7 @@ export const UI_ACCEPTANCE_POLICY = {
         "walltime_seconds": 3600
       },
       "mot_2d": {
-        "memory_gb": 4,
+        "memory_gb": 8,
         "ncpus": 10,
         "npools": 10,
         "walltime_seconds": 3600
@@ -117,7 +117,7 @@ export const UI_ACCEPTANCE_POLICY = {
         "bootstrap_replicates": 10000,
         "candidates": 5,
         "input_role": "held_out_confirmation",
-        "memory_gb": 4,
+        "memory_gb": 8,
         "ncpus": 10,
         "npools": 10,
         "particles_per_ensemble": 2,
@@ -129,9 +129,9 @@ export const UI_ACCEPTANCE_POLICY = {
         "bootstrap_replicates": 10000,
         "candidates": 1,
         "input_role": "sealed_validation",
-        "memory_gb": 4,
-        "ncpus": 10,
-        "npools": 10,
+        "memory_gb": 64,
+        "ncpus": 100,
+        "npools": 100,
         "particles_per_ensemble": "all_available",
         "trials_per_worker": 0,
         "walltime_seconds": 3600,
@@ -141,7 +141,7 @@ export const UI_ACCEPTANCE_POLICY = {
         "bootstrap_replicates": 10000,
         "candidates": 5,
         "input_role": "refinement",
-        "memory_gb": 4,
+        "memory_gb": 8,
         "ncpus": 10,
         "npools": 10,
         "particles_per_ensemble": 2,
@@ -153,7 +153,7 @@ export const UI_ACCEPTANCE_POLICY = {
         "bootstrap_replicates": 10000,
         "candidates": 3,
         "input_role": "discovery",
-        "memory_gb": 4,
+        "memory_gb": 8,
         "ncpus": 10,
         "npools": 10,
         "particles_per_ensemble": 2,
@@ -165,7 +165,7 @@ export const UI_ACCEPTANCE_POLICY = {
         "bootstrap_replicates": 10000,
         "candidates": 17,
         "input_role": "held_out_confirmation",
-        "memory_gb": 4,
+        "memory_gb": 8,
         "ncpus": 10,
         "npools": 10,
         "particles_per_ensemble": 2,
@@ -479,7 +479,7 @@ export const MOT_2D_ACCEPTANCE_SPECIFICATION = {
       "cores_per_task": 10,
       "job_file": "jobs/04_confirmation.pbs",
       "label": "Confirmation",
-      "memory_per_task_bytes": 4294967296,
+      "memory_per_task_bytes": 8589934592,
       "walltime_seconds": 3600
     },
     "production": {
@@ -490,10 +490,10 @@ export const MOT_2D_ACCEPTANCE_SPECIFICATION = {
         "jobs/06_production.pbs",
         "campaign.json"
       ],
-      "cores_per_task": 10,
+      "cores_per_task": 100,
       "job_file": "jobs/06_production.pbs",
       "label": "Production",
-      "memory_per_task_bytes": 4294967296,
+      "memory_per_task_bytes": 68719476736,
       "walltime_seconds": 3600
     },
     "refine": {
@@ -517,7 +517,7 @@ export const MOT_2D_ACCEPTANCE_SPECIFICATION = {
       ],
       "dependency": "afterok",
       "label": "Refinement",
-      "memory_per_task_bytes": 4294967296,
+      "memory_per_task_bytes": 8589934592,
       "round_job_files": [
         "jobs/03_refine_round_01.pbs",
         "jobs/03_refine_round_02.pbs",
@@ -537,7 +537,7 @@ export const MOT_2D_ACCEPTANCE_SPECIFICATION = {
       "cores_per_task": 10,
       "job_file": "jobs/02_screen.pbs",
       "label": "Screening",
-      "memory_per_task_bytes": 4294967296,
+      "memory_per_task_bytes": 8589934592,
       "walltime_seconds": 3600
     },
     "sensitivity": {
@@ -551,7 +551,7 @@ export const MOT_2D_ACCEPTANCE_SPECIFICATION = {
       "cores_per_task": 10,
       "job_file": "jobs/05_sensitivity.pbs",
       "label": "Sensitivity",
-      "memory_per_task_bytes": 4294967296,
+      "memory_per_task_bytes": 8589934592,
       "walltime_seconds": 3600
     },
     "smoke": {

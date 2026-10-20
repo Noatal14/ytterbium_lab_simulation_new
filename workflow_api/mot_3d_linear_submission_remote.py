@@ -309,7 +309,7 @@ def scheduler_state(
         assert isinstance(job, str)
         try:
             code, raw, err = run(
-                ["/usr/local/bin/qstat", "-x", "-t", "-f", job],
+                ["/opt/pbs/bin/qstat", "-x", "-t", "-f", job],
                 limit=4 * 1024 * 1024,
             )
         except Exception:

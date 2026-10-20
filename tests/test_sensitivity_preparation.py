@@ -158,7 +158,7 @@ def test_remote_preparation_has_no_scheduler_submission_surface():
     source = (Path(__file__).parents[1]
               / "workflow_api/zeus_sensitivity_remote.py").read_text()
     assert 'sys.argv[1] not in {"inspect", "prepare"}' in source
-    assert '"/usr/local/bin/qstat"' in source
+    assert '"/opt/pbs/bin/qstat"' in source
     assert '"/usr/local/bin/qsub"' not in source
     assert "validated_evaluation_outputs(campaign, manifest, \"confirmation\")" in source
     assert "render_sensitivity_transition(manifest, campaign, root, locked_rows)" in source

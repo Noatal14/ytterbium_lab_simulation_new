@@ -132,7 +132,7 @@ def main():
         if done["version"]!=1 or done["status"]!="submitted" or done["submission_key"]!=payload["submission_key"] or done["transition_nonce"]!=payload["transition_nonce"] or done["transition_digest"]!=payload["transition_digest"] or done["pbs_sha256"]!=files[JOB_FILE] or done["job_file"]!=f"{relative.as_posix()}/{JOB_FILE}" or done["commit"]!=payload["commit"] or not re.fullmatch(r"[0-9a-f]{32}",str(done["nonce"])) or not JOB_RE.fullmatch(str(done["job_id"])) or not timestamp(done["created_unix_s"]) or not timestamp(done["completed_unix_s"]) or done["completed_unix_s"]<done["created_unix_s"]: fail("confirmation_submission_outcome_unknown")
         if operation=="status":
             task_count=len(manifest["s0_values"])*5
-            try: returncode,stdout,stderr=run_captured(["/usr/local/bin/qstat","-x","-t","-f",done["job_id"]])
+            try: returncode,stdout,stderr=run_captured(["/opt/pbs/bin/qstat","-x","-t","-f",done["job_id"]])
             except Exception: status="status_unknown"
             else: status="status_unknown" if returncode or stderr else scheduler_state(stdout,done["job_id"],task_count)
             respond(status,branch,done["job_id"],done["nonce"],done["completed_unix_s"]);return

@@ -214,6 +214,6 @@ def test_production_receiver_has_no_submission_or_cancellation_primitive():
     assert "/usr/local/bin/qsub" not in source
     assert "qdel" not in source
     assert (
-        source.count('["/usr/local/bin/qstat", "-x", "-t", "-f", submission["job_id"]]')
+        source.count('["/opt/pbs/bin/qstat", "-x", "-t", "-f", submission["job_id"]]')
         == 1
     )

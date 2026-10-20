@@ -488,7 +488,7 @@ def test_receiver_recovers_crash_after_final_receipt_without_resubmitting(
         if argv[0] == "/usr/local/bin/qsub":
             qsub_count += 1
             return 0, next(job_ids), b""
-        if argv[0] == "/usr/local/bin/qstat":
+        if argv[0] == "/opt/pbs/bin/qstat":
             job = argv[-1]
             if "[]" in job:
                 prefix = job.split("[]", 1)[0]

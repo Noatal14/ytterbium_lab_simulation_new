@@ -327,7 +327,7 @@ def test_closure_transition_accepts_only_exact_stage5_receipts_and_qstat(
             return 0, b"", b""
         if argv[0] == "/usr/local/bin/qsub":
             return 0, next(ids), b""
-        if argv[0] == "/usr/local/bin/qstat":
+        if argv[0] == "/opt/pbs/bin/qstat":
             job = argv[-1]
             if "[]" in job:
                 prefix = job.split("[]", 1)[0]

@@ -28,6 +28,7 @@ RELEVANT_FILES = (
     "workflow_api/specifications/ui_acceptance_v1.json",
     "workflow_api/platform_io.py",
     "workflow_api/mot_2d_sources.py",
+    "workflow_api/smoke_receipt.py",
     "workflow_api/mot_2d_late_stage.py",
     "workflow_api/mot_2d_prediction.py",
     "workflow_api/mot_2d_validation.py",

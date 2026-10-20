@@ -110,7 +110,7 @@ def _receiver_fixture(tmp_path, monkeypatch):
         elif argv[0] == "/usr/local/bin/qsub":
             count = sum(call[0][0] == "/usr/local/bin/qsub" for call in calls)
             stdout.write(f"{100 + count}[].zeus-master\n".encode())
-        elif argv[0] == "/usr/local/bin/qstat":
+        elif argv[0] == "/opt/pbs/bin/qstat":
             job = argv[-1]
             prefix = job.split("[]", 1)[0]
             stdout.write(
@@ -174,7 +174,7 @@ def test_inspect_is_zero_write_and_submit_runs_exact_five_round_arrays(
     before_status = len(calls)
     status = _invoke(namespace, root, base, "status", monkeypatch, capsys)
     qstat = [
-        call for call in calls[before_status:] if call[0][0] == "/usr/local/bin/qstat"
+        call for call in calls[before_status:] if call[0][0] == "/opt/pbs/bin/qstat"
     ]
     assert len(qstat) == 5
     assert all(call[0][1:4] == ["-x", "-t", "-f"] for call in qstat)

@@ -98,7 +98,7 @@
         "workers": 3,
         "npools": 10,
         "ncpus": 10,
-        "memory_gb": 4,
+        "memory_gb": 8,
         "walltime_seconds": 3600,
         "bootstrap_replicates": 10000
       },
@@ -110,7 +110,7 @@
         "workers": 3,
         "npools": 10,
         "ncpus": 10,
-        "memory_gb": 4,
+        "memory_gb": 8,
         "walltime_seconds": 3600,
         "bootstrap_replicates": 10000
       },
@@ -122,7 +122,7 @@
         "workers": 1,
         "npools": 10,
         "ncpus": 10,
-        "memory_gb": 4,
+        "memory_gb": 8,
         "walltime_seconds": 3600,
         "bootstrap_replicates": 10000
       },
@@ -134,7 +134,7 @@
         "workers": 1,
         "npools": 10,
         "ncpus": 10,
-        "memory_gb": 4,
+        "memory_gb": 8,
         "walltime_seconds": 3600,
         "bootstrap_replicates": 10000
       },
@@ -144,9 +144,9 @@
         "trials_per_worker": 0,
         "candidates": 1,
         "workers": 1,
-        "npools": 10,
-        "ncpus": 10,
-        "memory_gb": 4,
+        "npools": 100,
+        "ncpus": 100,
+        "memory_gb": 64,
         "walltime_seconds": 3600,
         "bootstrap_replicates": 10000
       }
@@ -405,7 +405,7 @@
       "mot_2d": {
         "npools": 10,
         "ncpus": 10,
-        "memory_gb": 4,
+        "memory_gb": 8,
         "walltime_seconds": 3600
       },
       "freeze": {

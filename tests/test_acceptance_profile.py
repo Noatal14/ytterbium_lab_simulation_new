@@ -111,7 +111,7 @@ def test_two_d_renderer_uses_profile_resources_and_four_checkpoint_boundaries(tm
     for index in range(1, 5):
         script = files[f'jobs/03_refine_round_{index:02d}.pbs']
         assert f'--target-trials {index}'.encode() in script
-        assert b'ncpus=10:mem=4gb:vnode=gd002' in script
+        assert b'ncpus=10:mem=8gb:vnode=gd002' in script
     updated = json.loads(files['campaign.json'])
     assert updated['stages']['refine']['cumulative_trial_targets'] == [1, 2, 3, 4]
     assert updated['acceptance'] == value['acceptance']
@@ -172,3 +172,30 @@ def test_review_resources_and_pbs_use_identical_optional_node(monkeypatch):
         'walltime_seconds': 3600, 'vnode': 'gd002'}
     script = mot_2d_plan._acceptance_pbs({}, 'screen', b'#PBS -l select=1:ncpus=200:mem=64gb\n')
     assert script == b'#PBS -l select=1:ncpus=10:mem=4gb:vnode=gd002\n'
+
+
+def test_measured_runtime_resource_revision_preserves_entire_physics_and_workload():
+    import hashlib
+    path = Path(__file__).resolve().parents[1] / 'workflow_api/specifications/ui_acceptance_v1.json'
+    policy = json.loads(path.read_text())
+    physics_hash = hashlib.sha256(json.dumps(policy['physics'], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    assert physics_hash == '03c156054adfc0896f69216473e49dff466e6810b10d3f0508defbd5510a81e4'
+    for family in ('mot_2d', 'mot_3d'):
+        for stage in policy[family]['stages'].values():
+            for field in ('npools', 'ncpus', 'memory_gb', 'walltime_seconds', 'merge_ncpus', 'merge_memory_gb', 'merge_walltime_seconds'):
+                stage.pop(field, None)
+    policy['generation'].pop('jobs')
+    invariant = hashlib.sha256(json.dumps(policy, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    assert invariant == '700293772dc54b4419d6776873b4c44326d720585a61fc256e4a527a76a17746'
+
+
+def test_profile_resources_fit_measured_physical_workload_without_changing_budgets():
+    profile = load_acceptance_profile()
+    for name, stage in profile.family('mot_2d')['stages'].items():
+        expected = (1, 4) if name == 'smoke' else (100, 64) if name == 'production' else (10, 8)
+        assert (stage['npools'], stage['ncpus'], stage['memory_gb'], stage['walltime_seconds']) == (expected[0], expected[0], expected[1], 3600)
+    for stage in profile.family('mot_3d')['stages'].values():
+        assert (stage['npools'], stage['ncpus'], stage['memory_gb'], stage['walltime_seconds']) == (4, 4, 4, 3600)
+        assert stage['merge_ncpus'] == 1
+    assert dict(profile.policy['generation']['jobs']['mot_2d']) == {
+        'npools': 10, 'ncpus': 10, 'memory_gb': 8, 'walltime_seconds': 3600}

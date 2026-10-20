@@ -677,7 +677,7 @@ def one_state(fields):
 def scheduler(job, kind):
     try:
         code, out, err = run(
-            ["/usr/local/bin/qstat", "-x", "-t", "-f", job], limit=4 * 1024 * 1024
+            ["/opt/pbs/bin/qstat", "-x", "-t", "-f", job], limit=4 * 1024 * 1024
         )
     except Exception:
         return "status_unknown", 0

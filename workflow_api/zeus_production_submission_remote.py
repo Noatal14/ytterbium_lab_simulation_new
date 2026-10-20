@@ -155,7 +155,7 @@ def main():
             task_count=manifest.get("stages",{}).get("production",{}).get("tasks")
             s0_values=manifest.get("s0_values")
             if not isinstance(s0_values,list) or not s0_values or not isinstance(task_count,int) or isinstance(task_count,bool) or task_count!=20*len(s0_values) or not 1<=task_count<=1000: fail("production_preparation_invalid")
-            try: returncode,stdout,stderr=run_captured(["/usr/local/bin/qstat","-x","-t","-f",done["job_id"]])
+            try: returncode,stdout,stderr=run_captured(["/opt/pbs/bin/qstat","-x","-t","-f",done["job_id"]])
             except Exception: status="status_unknown"
             else: status="status_unknown" if returncode or stderr else scheduler_state(stdout,done["job_id"],task_count)
             respond(status,branch,done["job_id"],done["nonce"],done["completed_unix_s"]);return
