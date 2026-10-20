@@ -18,13 +18,15 @@ export type RecoverableRun = {
   display_name: string;
   lifecycle: string;
   record_state: string;
-  execution: { mode: RecoverableExecutionMode };
+  execution: { mode: RecoverableExecutionMode; locally_scheduled?: boolean };
 };
 
 export function recoveredRunStep(
   run: RecoverableRun,
 ): "run" | "monitor" | "results" {
   if (run.lifecycle === "results_ready") return "results";
+  if (run.execution.mode === "local" && run.execution.locally_scheduled)
+    return "monitor";
   if (["configured", "validated", "reviewed"].includes(run.record_state))
     return "run";
   return "monitor";

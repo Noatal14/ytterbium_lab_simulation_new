@@ -24,6 +24,42 @@ describe("individual run recovery", () => {
       forgetIndividualRun(family);
   });
 
+  it.each([
+    ["zeeman" as const, "zeeman-recovery"],
+    ["mot_2d" as const, "mot2d-recovery"],
+    ["mot_3d" as const, "mot3d-recovery"],
+  ])(
+    "keeps an accepted queued %s run in monitoring after refresh",
+    async (family, displayName) => {
+      rememberIndividualRun(family, displayName, "local");
+      const summary = row({
+        display_name: displayName,
+        lifecycle: "configured",
+        record_state: "configured",
+        execution: { mode: "local", locally_scheduled: true },
+      });
+      const api = { runs: vi.fn(async () => [summary]), run: vi.fn() };
+      const found = await recoverIndividualRun(family, api);
+      expect(found).toEqual(summary);
+      expect(recoveredRunStep(found!)).toBe("monitor");
+      expect(api.run).not.toHaveBeenCalled();
+      expect(
+        recoveredRunStep({
+          ...summary,
+          execution: { mode: "local", locally_scheduled: false },
+        }),
+      ).toBe("run");
+      expect(
+        recoveredRunStep({
+          ...summary,
+          lifecycle: "results_ready",
+          record_state: "succeeded",
+          execution: { mode: "local", locally_scheduled: false },
+        }),
+      ).toBe("results");
+    },
+  );
+
   it.each(["running", "failed"])(
     "recovers a verified %s summary without starting or fetching detail",
     async (state) => {

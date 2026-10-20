@@ -252,3 +252,10 @@ a saved running record with no live telemetry is shown as requiring inspection,
 not as proof of an active worker. The UI does not offer local resume or retry
 for this uncertain outcome. Inspect the original record and any saved artifacts;
 explicit maintainer reconciliation must not rerun the physical calculation.
+
+While the backend remains running, an accepted local run waiting for a worker
+exposes a process-owned scheduling observation. Refreshing its page restores
+monitoring and keeps polling the same run; it must not offer another Start.
+This observation is cleared on completion, cancellation or enqueue failure.
+It is not a durable queue state and does not imply that a worker survived a
+backend restart. Progress bars require actual worker telemetry.

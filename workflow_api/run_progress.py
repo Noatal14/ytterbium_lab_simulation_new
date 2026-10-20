@@ -17,6 +17,7 @@ class IndividualRunProgressRegistry:
         self._rows: dict[tuple[str, str], dict[str, Any]] = {}
         self._failures: dict[tuple[str, str], str] = {}
         self._failure_limit = 4096
+        self._scheduled: set[tuple[str, str]] = set()
 
     def start(self, family: str, run_id: str, total: int) -> None:
         if isinstance(total, bool) or not isinstance(total, int) or total <= 0:
@@ -59,6 +60,7 @@ class IndividualRunProgressRegistry:
         with self._lock:
             key = (family, run_id)
             self._rows.pop(key, None)
+            self._scheduled.discard(key)
             if key not in self._failures and len(self._failures) >= self._failure_limit:
                 self._failures.pop(next(iter(self._failures)))
             self._failures[key] = code
@@ -67,3 +69,20 @@ class IndividualRunProgressRegistry:
         """Return observed background failure, without changing durable run truth."""
         with self._lock:
             return self._failures.get((family, run_id))
+
+    def schedule(self, family: str, run_id: str) -> None:
+        """Reserve process-owned queue observation before executor admission."""
+        with self._lock:
+            key = (family, run_id)
+            if key in self._scheduled:
+                raise ValueError("Local run is already observed as scheduled.")
+            self._scheduled.add(key)
+
+    def finish(self, family: str, run_id: str) -> None:
+        """Clear queue observation when its owning future finishes or rolls back."""
+        with self._lock:
+            self._scheduled.discard((family, run_id))
+
+    def is_scheduled(self, family: str, run_id: str) -> bool:
+        with self._lock:
+            return (family, run_id) in self._scheduled

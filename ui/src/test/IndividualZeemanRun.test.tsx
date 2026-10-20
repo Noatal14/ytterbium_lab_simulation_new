@@ -196,4 +196,22 @@ describe("individual Zeeman wizard", () => {
     expect(screen.queryByText("Existing Zeus run needs verification")).not.toBeInTheDocument(); expect(api.confirm).not.toHaveBeenCalled();
   });
 
+  it("recovers a queued local run and displays its results without starting again", async () => {
+    const api = fake();
+    const queued = { id: `individual-run-${"b".repeat(24)}`, display_name: "zeeman-queued", lifecycle: "configured", record_state: "configured", retention: { particle_states_requested: true, status: "pending" }, execution: { mode: "local", locally_scheduled: true, progress: null } } as unknown as Awaited<ReturnType<IndividualZeemanApi["run"]>>;
+    const completed = { ...queued, lifecycle: "results_ready", record_state: "succeeded", execution: { ...queued.execution, locally_scheduled: false }, retention: { particle_states_requested: true, status: "retained" }, metrics: { n_initial: 30, n_survivors: 20 } } as typeof queued;
+    window.localStorage.setItem("ytterbium.individual-run.zeeman.v1", JSON.stringify({ version: 1, family: "zeeman", display_name: queued.display_name, execution_mode: "local" }));
+    vi.mocked(api.runs).mockResolvedValue([queued]);
+    vi.mocked(api.run).mockResolvedValue(completed);
+    render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
+    await screen.findByText("Waiting for a local worker");
+    expect(screen.queryByRole("button", { name: "Start on this computer" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+    vi.mocked(api.runs).mockResolvedValue([completed]);
+    await screen.findByRole("heading", { name: "Verified results are ready" }, { timeout: 4000 });
+    expect(api.startLocal).not.toHaveBeenCalled();
+    expect(api.confirm).not.toHaveBeenCalled();
+    expect(api.confirmZeus).not.toHaveBeenCalled();
+  });
+
 });

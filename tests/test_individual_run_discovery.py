@@ -386,3 +386,78 @@ def test_failed_local_future_is_visible_without_mutating_saved_execution(tmp_pat
     assert detail["execution"]["progress"] is None
     assert "RunRecordError" not in json.dumps(detail)
     assert (directory / "status.json").read_bytes() == before
+
+
+@pytest.mark.parametrize('mode,state', [('zeus','configured'),('local','cancelled')])
+def test_queue_observer_never_claims_zeus_or_terminal_execution(tmp_path, mode, state):
+    from workflow_api.run_progress import IndividualRunProgressRegistry
+    root=tmp_path/'repo';root.mkdir()
+    run, configuration, inputs, status=_records()
+    run['execution_mode']=mode
+    status['execution']['mode']=mode
+    store=RunRecordStore(root)
+    try: directory=store.create(run,configuration,inputs,status)
+    finally:store.close()
+    if state != 'configured':
+        status['state']=state;status['revision'] += 1
+        (directory/'status.json').write_bytes(encode_record('status',status))
+    progress=IndividualRunProgressRegistry();progress.schedule('zeeman','run-1')
+    before=(directory/'status.json').read_bytes()
+    registry=CanonicalIndividualRunRegistry(root,progress_registry=progress)
+    row=registry.list_runs()['runs'][0]
+    assert row['execution']['locally_scheduled'] is False
+    assert row['next_action']=='none'
+    assert registry.get_run(row['id'])['execution']['locally_scheduled'] is False
+    assert (directory/'status.json').read_bytes()==before
+
+
+def test_queue_snapshot_precedes_canonical_read_when_future_finishes_during_get(tmp_path, monkeypatch):
+    import workflow_api.individual_run_discovery as discovery
+    from workflow_api.run_progress import IndividualRunProgressRegistry
+    root=tmp_path/'repo';root.mkdir()
+    records=_records();store=RunRecordStore(root)
+    try:directory=store.create(*records)
+    finally:store.close()
+    progress=IndividualRunProgressRegistry();progress.schedule('zeeman','run-1')
+    before={path.name:path.read_bytes() for path in directory.glob('*.json')}
+    original=discovery.inspect_run
+    def read_then_finish(*args, **kwargs):
+        inspected=original(*args, **kwargs)
+        progress.finish('zeeman','run-1')
+        return inspected
+    monkeypatch.setattr(discovery,'inspect_run',read_then_finish)
+    registry=CanonicalIndividualRunRegistry(root,progress_registry=progress)
+    row=registry.list_runs()['runs'][0]
+    assert row['record_state']=='configured'
+    assert row['execution']['locally_scheduled'] is True and row['next_action']=='wait'
+    assert not progress.is_scheduled('zeeman','run-1')
+    assert {path.name:path.read_bytes() for path in directory.glob('*.json')}==before
+    progress.schedule('zeeman','run-1')
+    detail=registry.get_run(row['id'])
+    assert detail['execution']['locally_scheduled'] is True and detail['next_action']=='wait'
+    assert {path.name:path.read_bytes() for path in directory.glob('*.json')}==before
+
+
+def test_terminal_completion_between_queue_observation_and_canonical_read_suppresses_mark(tmp_path, monkeypatch):
+    import workflow_api.individual_run_discovery as discovery
+    from workflow_api.run_progress import IndividualRunProgressRegistry
+    root=tmp_path/'repo';root.mkdir();records=_records();store=RunRecordStore(root)
+    try:directory=store.create(*records)
+    finally:store.close()
+    progress=IndividualRunProgressRegistry();progress.schedule('zeeman','run-1')
+    original=discovery.inspect_run;completed=False
+    def concurrent_completion_then_read(*args, **kwargs):
+        nonlocal completed
+        if not completed:
+            # Simulate the executor's terminal commit and subsequent done callback
+            # between the observer snapshot and the registry's canonical read.
+            status=copy.deepcopy(records[3]);status.update(state='cancelled',revision=1)
+            (directory/'status.json').write_bytes(encode_record('status',status))
+            progress.finish('zeeman','run-1');completed=True
+        return original(*args, **kwargs)
+    monkeypatch.setattr(discovery,'inspect_run',concurrent_completion_then_read)
+    registry=CanonicalIndividualRunRegistry(root,progress_registry=progress)
+    row=registry.list_runs()['runs'][0]
+    assert completed and row['record_state']=='cancelled'
+    assert row['execution']['locally_scheduled'] is False and row['next_action']=='none'
+    assert registry.get_run(row['id'])['execution']['locally_scheduled'] is False

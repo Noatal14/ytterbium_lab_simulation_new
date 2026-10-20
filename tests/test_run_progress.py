@@ -41,3 +41,23 @@ def test_failed_background_progress_is_not_stale_live_activity_and_diagnostics_a
     assert registry.failure("mot_2d", "first") is None
     registry.start("mot_2d", "third", 20)
     assert registry.failure("mot_2d", "third") is None
+
+
+def test_queue_observation_is_independent_of_progress_and_cleared_explicitly():
+    registry=IndividualRunProgressRegistry()
+    assert not registry.is_scheduled('zeeman','queued')
+    registry.schedule('zeeman','queued')
+    assert registry.snapshot('zeeman','queued') is None
+    registry.start('zeeman','queued',10)
+    assert registry.is_scheduled('zeeman','queued')
+    with pytest.raises(ValueError): registry.schedule('zeeman','queued')
+    registry.finish('zeeman','queued')
+    registry.finish('zeeman','queued')
+    assert not registry.is_scheduled('zeeman','queued')
+
+
+def test_failed_observation_clears_process_queue_ownership():
+    registry=IndividualRunProgressRegistry();registry.schedule('zeeman','failed')
+    registry.fail('zeeman','failed','background_execution_failed')
+    assert not registry.is_scheduled('zeeman','failed')
+    assert registry.failure('zeeman','failed')=='background_execution_failed'

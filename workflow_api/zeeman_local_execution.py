@@ -326,9 +326,15 @@ class BoundedLocalExecutionPool:
                 raise RuntimeError("This run is already scheduled locally.")
             if not self._slots.acquire(blocking=False):
                 raise RuntimeError("Local execution queue is full.")
+            observed = False
             try:
+                if self._progress_registry is not None:
+                    self._progress_registry.schedule(family, run_id)
+                    observed = True
                 future = self._executor.submit(self._execute, family, run_id)
             except BaseException:
+                if observed:
+                    self._progress_registry.finish(family, run_id)
                 self._slots.release()
                 raise
             handle = LocalExecutionHandle(family, run_id, future)
@@ -355,25 +361,24 @@ class BoundedLocalExecutionPool:
         return coordinator.execute(family, run_id)
 
     def _release(self, key: tuple[str, str], future: Future[dict[str, Any]]) -> None:
-        self._slots.release()
         with self._lock:
             current = self._handles.get(key)
-            if (
-                key not in self._cancelling
-                and current is not None
-                and current.future is future
-            ):
-                self._handles.pop(key, None)
-                if not future.cancelled():
-                    error = future.exception()
-                    if error is not None:
-                        # Keep bounded, traceback-free diagnostics after removing
-                        # the Future, and never silently resubmit this failed key.
-                        self._failures[key] = type(error).__name__[:128]
-                        if self._progress_registry is not None:
-                            self._progress_registry.fail(*key, "background_execution_failed")
-                        if len(self._failures) >= self._failure_limit:
-                            self._closed = True
+            if current is None or current.future is not future:
+                return
+            self._handles.pop(key, None)
+            self._slots.release()
+            if self._progress_registry is not None:
+                self._progress_registry.finish(*key)
+            if key not in self._cancelling and not future.cancelled():
+                error = future.exception()
+                if error is not None:
+                    # Keep bounded, traceback-free diagnostics after removing
+                    # the Future, and never silently resubmit this failed key.
+                    self._failures[key] = type(error).__name__[:128]
+                    if self._progress_registry is not None:
+                        self._progress_registry.fail(*key, "background_execution_failed")
+                    if len(self._failures) >= self._failure_limit:
+                        self._closed = True
 
     def failure(self, family: str, run_id: str) -> str | None:
         """Return non-authoritative background failure diagnostics."""

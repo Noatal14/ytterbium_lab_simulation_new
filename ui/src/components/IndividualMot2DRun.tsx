@@ -56,10 +56,23 @@ export function mot2dMonitorCopy(
   state: string | undefined,
   executionMode?: string,
   hasLiveProgress = true,
+  locallyScheduled = false,
 ) {
   if (
     executionMode === "local" &&
-    (state === "outcome_unknown" || (state === "running" && !hasLiveProgress))
+    locallyScheduled &&
+    ["configured", "validated", "reviewed"].includes(state ?? "")
+  )
+    return {
+      title: "Waiting for a local worker",
+      message:
+        "This run is queued on this computer and will start automatically. Do not submit it again.",
+      attention: false,
+    };
+  if (
+    executionMode === "local" &&
+    (state === "outcome_unknown" ||
+      (state === "running" && !hasLiveProgress && !locallyScheduled))
   )
     return {
       title: "Local execution needs inspection",
@@ -898,6 +911,7 @@ export function IndividualMot2DRun({
               className="primary-button"
               disabled={
                 busy ||
+                Boolean(run?.execution.locally_scheduled) ||
                 (mode === "zeus" &&
                   !/^[A-Za-z][A-Za-z0-9._-]{0,31}$/.test(username))
               }
@@ -925,6 +939,7 @@ export function IndividualMot2DRun({
               zeusHeld ? "held" : run?.record_state,
               run?.execution.mode ?? mode,
               Boolean(run?.execution.progress),
+              run?.execution.locally_scheduled ?? false,
             );
             return (
               <div
@@ -958,8 +973,8 @@ export function IndividualMot2DRun({
             ) : (
               <p>Open Zeus jobs from the navigation to inspect this hold.</p>
             ))}
-          {mode === "local" && (
-            <RunProgressPanel progress={run?.execution.progress ?? null} />
+          {mode === "local" && run?.execution.progress && (
+            <RunProgressPanel progress={run.execution.progress} />
           )}
           <div className="form-actions">
             <button

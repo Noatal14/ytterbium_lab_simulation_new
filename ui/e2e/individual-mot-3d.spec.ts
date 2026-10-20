@@ -4,7 +4,7 @@ import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../src/generated/mot
 
 const sourceId = `mot3d-source-${"a".repeat(32)}`;
 
-async function routes(page: Page) {
+async function routes(page: Page, localWorkerOwned = true) {
   let confirmed = 0;
   let runId = "mot3d-browser-angled-donut";
   let executionMode: "local" | "zeus" = "local";
@@ -108,7 +108,7 @@ async function routes(page: Page) {
       id: `individual-run-${"1".repeat(24)}`, record_kind: "individual_simulation_run", run_kind: "mot_3d", display_name: runId,
       stage_semantics: "single-run-lifecycle", source: "local", queried_at: "2026-10-12T12:00:00+00:00", trust: "verified-package",
       scientific_role: "individual-only", record_state: "running", integrity: "active", lifecycle: "running", next_action: "wait",
-      created_at: "2026-10-12T12:00:00+00:00", updated_at: "2026-10-12T12:00:00+00:00", execution: { mode: executionMode, zeus_job_id: executionMode === "zeus" ? "500.zeus-master" : null },
+      created_at: "2026-10-12T12:00:00+00:00", updated_at: "2026-10-12T12:00:00+00:00", execution: { mode: executionMode, zeus_job_id: executionMode === "zeus" ? "500.zeus-master" : null, locally_scheduled: executionMode === "local" && localWorkerOwned },
       retention: { particle_states_requested: true, status: "pending" }, results: { availability: "not_ready", completed_at: null }, warnings: [],
     }], invalid_count: 0, total: 1, truncated: false,
   } } }));
@@ -164,3 +164,18 @@ for (const family of ["angled_donut", "single_pass"] as const) {
     expect(confirmed()).toBe(1);
   });
 }
+
+
+test("a saved local running record without a worker requires inspection", async ({ page }) => {
+  await routes(page, false);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Configure 3D-MOT run" }).click();
+  await page.getByRole("button", { name: "Validate setup" }).click();
+  await page.getByRole("button", { name: "Create run record" }).click();
+  await page.getByRole("button", { name: "Start on this computer" }).click();
+  await page.getByRole("button", { name: "Check status" }).click();
+  await expect(page.getByText("Local execution needs inspection")).toBeVisible();
+  await expect(page.getByText(/Do not resubmit/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Start on this computer" })).toHaveCount(0);
+  await expect(page.getByRole("progressbar")).toHaveCount(0);
+});

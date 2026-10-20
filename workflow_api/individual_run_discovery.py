@@ -121,7 +121,8 @@ class CanonicalIndividualRunRegistry:
         return None
 
     def _map(
-        self, public_id: str, inspected: InspectedRun, queried_at: str
+        self, public_id: str, inspected: InspectedRun, queried_at: str,
+        *, locally_scheduled: bool = False,
     ) -> dict[str, Any]:
         run = inspected.run
         configuration = inspected.configuration
@@ -161,6 +162,13 @@ class CanonicalIndividualRunRegistry:
             "zeus_job_id": status["execution"]["zeus_job_id"],
         }
         if self.progress_registry is not None:
+            execution["locally_scheduled"] = (
+                status["execution"]["mode"] == "local"
+                and inspected.state in {"configured", "validated", "reviewed", "queued", "running"}
+                and locally_scheduled
+            )
+            if execution["locally_scheduled"]:
+                next_action = "wait"
             execution["progress"] = (
                 self.progress_registry.snapshot(inspected.family, inspected.run_id)
                 if status["execution"]["mode"] == "local"
@@ -246,10 +254,13 @@ class CanonicalIndividualRunRegistry:
         runs = []
         for public_id, record in entries.items():
             try:
+                # Observe queue ownership before the canonical read. A completed
+                # future must not turn an older configured snapshot into Start.
+                scheduled = self.progress_registry is not None and self.progress_registry.is_scheduled(record.family, record.run_id)
                 inspected = inspect_run(
                     self.repository_root, record.family, record.run_id
                 )
-                runs.append(self._list_item(self._map(public_id, inspected, queried_at)))
+                runs.append(self._list_item(self._map(public_id, inspected, queried_at, locally_scheduled=scheduled)))
             except (OSError, RunRecordError, ValueError, TypeError, KeyError):
                 invalid += 1
         runs.sort(key=lambda row: (row["created_at"], row["id"]), reverse=True)
@@ -269,10 +280,11 @@ class CanonicalIndividualRunRegistry:
                 "run_not_found", "Individual run was not found."
             )
         try:
+            scheduled = self.progress_registry is not None and self.progress_registry.is_scheduled(record.family, record.run_id)
             inspected = inspect_run(
                 self.repository_root, record.family, record.run_id
             )
-            return self._map(identifier, inspected, self.clock())
+            return self._map(identifier, inspected, self.clock(), locally_scheduled=scheduled)
         except (OSError, RunRecordError, ValueError, TypeError, KeyError) as error:
             raise IndividualRunDiscoveryError(
                 "run_inspection_failed", "Individual run could not be inspected safely."

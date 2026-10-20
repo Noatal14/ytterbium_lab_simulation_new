@@ -67,6 +67,7 @@ def test_unexpected_background_error_remains_observable_and_cannot_be_silently_r
         handle.future.add_done_callback(lambda _: completed.set())
         assert completed.wait(timeout=5)
         assert registry.snapshot('zeeman', 'zeeman-run-001') is None
+        assert not registry.is_scheduled('zeeman','zeeman-run-001')
         assert registry.failure('zeeman', 'zeeman-run-001') == 'background_execution_failed'
         assert pool.failure('zeeman','zeeman-run-001') == 'RunRecordError'
         with pytest.raises(RuntimeError, match='recovery'): pool.submit('zeeman','zeeman-run-001')
@@ -126,3 +127,136 @@ def test_real_mot2d_materialized_inputs_survive_restored_ancestor_namespace_with
     assert inspect_run(root, 'mot_2d', 'mot2d-local-1').integrity == 'complete_verified'
     foreign_run = inspect_run(foreign, 'mot_2d', 'mot2d-local-1')
     assert foreign_run.state == 'running' and foreign_run.results is None
+
+
+@pytest.mark.parametrize('cancel_second', [False, True])
+def test_queued_local_observation_survives_registry_reload_without_durable_queue_state(tmp_path, cancel_second):
+    import test_zeeman_local_execution as zeeman
+    from workflow_api.individual_run_discovery import CanonicalIndividualRunRegistry
+    root = fixture.make_run(tmp_path)
+    entered, release = threading.Event(), threading.Event()
+    progress = IndividualRunProgressRegistry()
+    class Worker(zeeman.ZeemanLocalWorker):
+        def run(self, request):
+            if request.run['run_id'] == 'zeeman-run-001':
+                entered.set()
+                assert release.wait(timeout=5)
+            return super().run(request)
+    pool = BoundedLocalExecutionPool(root, issue_execution_authority(), max_concurrent=1, max_pending=2,
+        worker_factory=lambda: Worker(engine=zeeman.Engine(), monotonic=iter((1.,2.)).__next__, clock=lambda:fixture.NOW),
+        coordinator_factory=lambda *args, **kwargs: IndividualRunExecutionCoordinator(*args, clock=lambda:fixture.NOW, **kwargs),
+        progress_registry=progress)
+    try:
+        first = pool.submit('zeeman', 'zeeman-run-001')
+        assert entered.wait(timeout=5)
+        records = build_zeeman_run_plan(fixture.REQUEST, run_id='second-queued', git_revision='a'*40, created_utc=fixture.NOW).storage_records()
+        store = RunRecordStore(root)
+        try: directory = store.create(*(records[key] for key in ('run','configuration','inputs','status')))
+        finally: store.close()
+        before = (directory / 'status.json').read_bytes()
+        second = pool.submit('zeeman', 'second-queued')
+        for registry in (CanonicalIndividualRunRegistry(root, progress_registry=progress),
+                         CanonicalIndividualRunRegistry(root, progress_registry=progress)):
+            row = next(row for row in registry.list_runs()['runs'] if row['display_name']=='second-queued')
+            assert row['record_state'] == row['lifecycle'] == 'configured'
+            assert row['execution']['locally_scheduled'] is True
+            assert row['next_action'] == 'wait'
+            assert registry.get_run(row['id'])['execution']['locally_scheduled'] is True
+        assert (directory / 'status.json').read_bytes() == before
+        restarted = CanonicalIndividualRunRegistry(root, progress_registry=IndividualRunProgressRegistry())
+        row = next(row for row in restarted.list_runs()['runs'] if row['display_name']=='second-queued')
+        assert row['execution']['locally_scheduled'] is False and row['next_action']=='none'
+        with pytest.raises(RuntimeError, match='scheduled'): pool.submit('zeeman','second-queued')
+        if cancel_second:
+            assert pool.cancel_queued('zeeman','second-queued',updated_utc=fixture.NOW)
+            assert not progress.is_scheduled('zeeman','second-queued')
+            assert second.future.cancelled()
+        release.set()
+        assert first.future.result(timeout=5)['state']=='succeeded'
+        if not cancel_second:
+            assert second.future.result(timeout=5)['state']=='succeeded'
+        pool.close()
+        assert not progress.is_scheduled('zeeman','zeeman-run-001')
+        assert not progress.is_scheduled('zeeman','second-queued')
+    finally:
+        release.set(); pool.close()
+
+
+def test_local_enqueue_failure_rolls_back_observation_and_capacity(tmp_path, monkeypatch):
+    root = fixture.make_run(tmp_path); progress=IndividualRunProgressRegistry()
+    pool=BoundedLocalExecutionPool(root,issue_execution_authority(),progress_registry=progress)
+    def reject(*args, **kwargs):
+        assert progress.is_scheduled('zeeman','zeeman-run-001')
+        raise RuntimeError('executor rejected enqueue')
+    monkeypatch.setattr(pool._executor,'submit',reject)
+    try:
+        with pytest.raises(RuntimeError,match='rejected'): pool.submit('zeeman','zeeman-run-001')
+        assert not progress.is_scheduled('zeeman','zeeman-run-001')
+        assert inspect_run(root,'zeeman','zeeman-run-001').state=='configured'
+        assert pool._slots.acquire(blocking=False)
+        pool._slots.release()
+    finally: pool.close()
+
+
+def test_immediately_completed_future_clears_queue_mark_after_handle_registration(tmp_path, monkeypatch):
+    from concurrent.futures import Future
+    root=fixture.make_run(tmp_path);progress=IndividualRunProgressRegistry()
+    pool=BoundedLocalExecutionPool(root,issue_execution_authority(),progress_registry=progress)
+    def immediate(*args, **kwargs):
+        assert progress.is_scheduled('zeeman','zeeman-run-001')
+        future=Future();future.set_result({'state':'succeeded'})
+        return future
+    monkeypatch.setattr(pool._executor,'submit',immediate)
+    try:
+        handle=pool.submit('zeeman','zeeman-run-001')
+        assert handle.future.done()
+        assert not progress.is_scheduled('zeeman','zeeman-run-001')
+        assert ('zeeman','zeeman-run-001') not in pool._handles
+    finally:pool.close()
+
+
+def test_stale_completed_callback_cannot_clear_new_future_observation_or_release_its_slot(tmp_path, monkeypatch):
+    from concurrent.futures import Future
+    root=fixture.make_run(tmp_path);progress=IndividualRunProgressRegistry()
+    pool=BoundedLocalExecutionPool(root,issue_execution_authority(),max_pending=1,progress_registry=progress)
+    futures=[]
+    def pending(*args, **kwargs):
+        future=Future();futures.append(future);return future
+    monkeypatch.setattr(pool._executor,'submit',pending)
+    try:
+        first=pool.submit('zeeman','zeeman-run-001')
+        first.future.set_result({'state':'succeeded'})
+        second=pool.submit('zeeman','zeeman-run-001')
+        pool._release(('zeeman','zeeman-run-001'),first.future)
+        assert progress.is_scheduled('zeeman','zeeman-run-001')
+        assert pool._handles[('zeeman','zeeman-run-001')].future is second.future
+        assert not pool._slots.acquire(blocking=False)
+        second.future.set_result({'state':'succeeded'})
+        assert not progress.is_scheduled('zeeman','zeeman-run-001')
+    finally:pool.close()
+
+
+def test_done_future_with_delayed_callback_cannot_be_overwritten_without_observer(tmp_path, monkeypatch):
+    from concurrent.futures import Future
+    root=fixture.make_run(tmp_path)
+    class DelayedFuture(Future):
+        def __init__(self): super().__init__();self.callbacks=[]
+        def add_done_callback(self, callback): self.callbacks.append(callback)
+        def deliver(self):
+            for callback in self.callbacks: callback(self)
+    pool=BoundedLocalExecutionPool(root,issue_execution_authority(),max_pending=1)
+    futures=[]
+    def enqueue(*args, **kwargs):
+        future=DelayedFuture();futures.append(future);return future
+    monkeypatch.setattr(pool._executor,'submit',enqueue)
+    try:
+        first=pool.submit('zeeman','zeeman-run-001');first.future.set_result({'state':'succeeded'})
+        with pytest.raises(RuntimeError,match='scheduled'):pool.submit('zeeman','zeeman-run-001')
+        assert len(futures)==1 and not pool._slots.acquire(blocking=False)
+        first.future.deliver()
+        second=pool.submit('zeeman','zeeman-run-001')
+        first.future.deliver()
+        assert not pool._slots.acquire(blocking=False)
+        second.future.set_result({'state':'succeeded'});second.future.deliver()
+        assert pool._slots.acquire(blocking=False);pool._slots.release()
+    finally:pool.close()

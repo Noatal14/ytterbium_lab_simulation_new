@@ -98,10 +98,23 @@ export function monitorCopy(
   state: string | undefined,
   executionMode?: string,
   hasLiveProgress = true,
+  locallyScheduled = false,
 ) {
   if (
     executionMode === "local" &&
-    (state === "outcome_unknown" || (state === "running" && !hasLiveProgress))
+    locallyScheduled &&
+    ["configured", "validated", "reviewed"].includes(state ?? "")
+  )
+    return {
+      title: "Waiting for a local worker",
+      message:
+        "This run is queued on this computer and will start automatically. Do not submit it again.",
+      attention: false,
+    };
+  if (
+    executionMode === "local" &&
+    (state === "outcome_unknown" ||
+      (state === "running" && !hasLiveProgress && !locallyScheduled))
   )
     return {
       title: "Local execution needs inspection",
@@ -1020,7 +1033,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
             {mode === "local" ? (
               <button
                 className="primary-button"
-                disabled={busy}
+                disabled={busy || Boolean(run?.execution.locally_scheduled)}
                 onClick={() => void startLocal()}
               >
                 <Play aria-hidden="true" />{" "}
@@ -1071,6 +1084,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
               zeusHeld ? "held" : run?.record_state,
               run?.execution.mode ?? mode,
               Boolean(run?.execution.progress),
+              run?.execution.locally_scheduled ?? false,
             );
             return (
               <div
@@ -1099,8 +1113,8 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
             ) : (
               <p>Open Zeus jobs from the navigation to inspect this hold.</p>
             ))}
-          {mode === "local" && (
-            <RunProgressPanel progress={run?.execution.progress ?? null} />
+          {mode === "local" && run?.execution.progress && (
+            <RunProgressPanel progress={run.execution.progress} />
           )}
           {run && (
             <dl className="monitor-facts">

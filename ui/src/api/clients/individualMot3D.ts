@@ -149,6 +149,7 @@ export type Mot3DRun = {
     mode: Mot3DMode;
     zeus_job_id: string | null;
     progress?: RunProgress | null;
+    locally_scheduled?: boolean;
   };
   retention: { particle_states_requested: boolean; status: string };
   results: { availability: string; completed_at: string | null };
@@ -857,6 +858,7 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     execution = row.execution as Record<string, unknown>,
     retention = row.retention as Record<string, unknown>,
     results = row.results as Record<string, unknown>;
+  if (execution.locally_scheduled === undefined) execution.locally_scheduled = false;
   const progress = execution.progress === undefined ? null : execution.progress;
   if (progress !== null && !isRunProgress(progress)) invalid("run progress");
   delete execution.progress;
@@ -877,7 +879,9 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     !printable(row.created_at) ||
     !printable(row.updated_at) ||
     !isRecord(execution) ||
-    !exactKeys(execution, ["mode", "zeus_job_id"]) ||
+    !exactKeys(execution, ["mode", "zeus_job_id", "locally_scheduled"]) ||
+    typeof execution.locally_scheduled !== "boolean" ||
+    (execution.locally_scheduled && (execution.mode !== "local" || !["configured", "validated", "reviewed", "queued", "running"].includes(String(row.record_state)))) ||
     !["local", "zeus"].includes(String(execution.mode)) ||
     (execution.zeus_job_id !== null && !jobId(execution.zeus_job_id)) ||
     !isRecord(retention) ||
@@ -897,7 +901,7 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     integrity = String(row.integrity);
   const active = ["configured", "validated", "reviewed", "queued", "running"],
     terminal = ["failed", "outcome_unknown", "cancelled"];
-  const expectedAction = ["queued", "running"].includes(state)
+  const expectedAction = execution.locally_scheduled || ["queued", "running"].includes(state)
     ? "wait"
     : state === "outcome_unknown"
       ? "inspect_execution"

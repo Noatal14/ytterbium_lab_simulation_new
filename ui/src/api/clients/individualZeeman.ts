@@ -101,6 +101,7 @@ export type IndividualRun = {
     mode: ZeemanMode;
     zeus_job_id: string | null;
     progress?: RunProgress | null;
+    locally_scheduled?: boolean;
   };
   retention: { particle_states_requested: boolean; status: string };
   results: { availability: string; completed_at: string | null };
@@ -423,6 +424,8 @@ function parseRun(value: unknown, detail = false): IndividualRun {
   const results = value.results;
   if (isRecord(execution) && execution.progress === undefined)
     execution.progress = null;
+  if (isRecord(execution) && execution.locally_scheduled === undefined)
+    execution.locally_scheduled = false;
   const progress = isRecord(execution) ? execution.progress : null;
   if (progress !== null && !isRunProgress(progress)) invalid("run progress");
   if (
@@ -442,7 +445,9 @@ function parseRun(value: unknown, detail = false): IndividualRun {
     !printable(value.created_at) ||
     !printable(value.updated_at) ||
     !isRecord(execution) ||
-    !exactKeys(execution, ["mode", "zeus_job_id", "progress"]) ||
+    !exactKeys(execution, ["mode", "zeus_job_id", "progress", "locally_scheduled"]) ||
+    typeof execution.locally_scheduled !== "boolean" ||
+    (execution.locally_scheduled && (execution.mode !== "local" || !["configured", "validated", "reviewed", "queued", "running"].includes(String(value.record_state)))) ||
     !["local", "zeus"].includes(String(execution.mode)) ||
     (execution.zeus_job_id !== null && !canonicalJob(execution.zeus_job_id)) ||
     !isRecord(retention) ||
@@ -462,7 +467,7 @@ function parseRun(value: unknown, detail = false): IndividualRun {
   const integrity = String(value.integrity);
   const active = ["configured", "validated", "reviewed", "queued", "running"];
   const terminal = ["failed", "outcome_unknown", "cancelled"];
-  const expectedAction = ["queued", "running"].includes(state)
+  const expectedAction = execution.locally_scheduled || ["queued", "running"].includes(state)
     ? "wait"
     : state === "outcome_unknown"
       ? "inspect_execution"
