@@ -176,6 +176,8 @@ def validate_smoke_outputs(root: Path, manifest: dict[str, Any]) -> list[dict[st
             "ensemble_dir": expected["ensemble_dir"], "zeeman_seeds": expected["zeeman_seeds"],
             "sampler_seed": expected["sampler_seed"], "bounds": expected["bounds"],
         }
+        if "acceptance" in expected:
+            expected_summary["acceptance"] = expected["acceptance"]
         if design != expected_summary:
             raise SmokeValidationError("Smoke summary design differs from the frozen campaign.")
         if not isinstance(trial, dict) or trial.get("kind") != "mot_2d_joint_optimization_trial" or trial.get("trial_number") != 0:
@@ -197,6 +199,8 @@ def validate_smoke_outputs(root: Path, manifest: dict[str, Any]) -> list[dict[st
             "ensemble_dir": expected["ensemble_dir"], "zeeman_seeds": expected["zeeman_seeds"],
             "mot_seeds": expected["mot_seeds"],
         }
+        if "acceptance" in expected:
+            expected_trial_design["acceptance"] = expected["acceptance"]
         if trial_design != expected_trial_design:
             raise SmokeValidationError("Smoke trial provenance differs from the frozen campaign.")
         replicates = trial.get("replicates")

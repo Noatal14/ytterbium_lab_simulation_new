@@ -2471,7 +2471,7 @@ def submit_selection_stage(campaign, qsub=None):
     save_file_json(destination, record)
     try:
         for family in FAMILIES:
-            array_id = runner(["qsub", "-J", "0-2:1", design["worker_jobs"][family]])
+            array_id = runner(["qsub", "-J", workload.array_range(manifest, stage), design["worker_jobs"][family]])
             record["families"][family] = {
                 "array_job_id": array_id,
                 "merge_job_id": None,

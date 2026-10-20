@@ -8,6 +8,7 @@ import { ReviewEffects } from "../features/shared/ReviewEffects";
 import { SmokePointsTable } from "../features/campaign/SmokeStage";
 import { ScreeningFacts } from "../features/campaign/ScreeningStage";
 import { ScreeningFlow } from "../features/campaign/ScreeningFlow";
+import { ReviewedResources } from "../features/campaign/Mot3DCampaignFlow";
 import { SmokeFlow } from "../features/campaign/SmokeFlow";
 import { RefinementFlow } from "../features/campaign/RefinementFlow";
 import { ConfirmationStage } from "../features/campaign/ConfirmationStage";
@@ -72,6 +73,8 @@ describe("shared workflow presentation", () => {
     render(<SmokeFlow visible canSubmit submissionState="error" submissionPreview={null} submissionResult={null} submissionError="Submission stopped." lifecycle={smokeLifecycle} lifecycleCheck="ready" lifecycleError="" screeningState="idle" screeningPreview={null} screeningResult={null} screeningError="" onPreviewSubmission={noop} onConfirmSubmission={noop} onResetSubmission={noop} onRefreshLifecycle={noop} onPreviewScreening={noop} onConfirmScreening={noop} onResetScreening={noop} onViewJobs={noop} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Submission stopped.");
     expect(screen.getByRole("table", { name: "Validated smoke points" })).toBeVisible();
+    expect(screen.getByText(/read-only check of the scheduler and validated smoke artifacts/)).toBeVisible();
+    expect(screen.queryByText(/scientifically validated smoke/)).not.toBeInTheDocument();
   });
 
   it("keeps the last validated Smoke evidence visible when a refresh fails", () => {
@@ -612,4 +615,11 @@ describe("stage action visibility matrix", () => {
     render(<ConfirmationStage visible lifecycle={lifecycle} lifecycleCheck="ready" state={status === "confirmation_prepared" ? "success" : "idle"} preview={null} result={null} error="" onRefresh={noop} onPreview={noop} onConfirm={noop} onReset={noop} onViewJobs={noop} />);
     expect(buttonNames()).toEqual([...expectedButtons].sort());
   });
+});
+
+
+it("shows the reviewed heavy-stage reservation and per-family concurrency cap", () => {
+  render(<ReviewedResources resources={{array:{ncpus_per_task:100,memory_gb_per_task:64,walltime:"01:00:00",vnode:"gd002",array_throttle:1},merge:{ncpus:1,memory_gb:4,walltime:"01:00:00",vnode:"gd002"}}} />);
+  expect(screen.getByText("100 CPUs · 64 GB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("Maximum concurrent array tasks per family").nextElementSibling).toHaveTextContent(/^1$/);
 });

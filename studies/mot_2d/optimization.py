@@ -203,6 +203,8 @@ def optimize_mot(args):
             },
             **evaluation,
         }
+        if acceptance:
+            payload["design"]["acceptance"] = acceptance
         save_file_json(trials_dir / f"trial_{trial.number:04d}.json", payload)
         value = evaluation["statistics"]["mean_conditional_efficiency"]
         print(

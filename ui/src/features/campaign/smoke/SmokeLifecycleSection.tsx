@@ -41,8 +41,8 @@ export function SmokeLifecycleSection({
       <div className="section-heading">
         <h2 id="remote-smoke-heading">Smoke check on Zeus</h2>
         <p>
-          Request a fresh, read-only check of the scheduler and scientifically
-          validated smoke outputs.
+          Request a fresh, read-only check of the scheduler and validated
+          smoke artifacts.
         </p>
       </div>
       <div className="remote-status-toolbar">

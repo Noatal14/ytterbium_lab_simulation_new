@@ -189,9 +189,14 @@ def _invoke(monkeypatch, root, operation, payload, run):
     receiver.main(trusted_root_override=root)
 
 
+@pytest.mark.parametrize("array_range", ["0-2:1", "0-2:1%1"])
 def test_real_receiver_submits_exact_chain_and_restart_is_idempotent(
-    tmp_path, monkeypatch, capsys
+    tmp_path, monkeypatch, capsys, array_range
 ):
+    from workflow_api import mot_3d_workload
+    # Policy authentication is covered by acceptance workload tests; exercise
+    # the actual receiver command boundary with both authorized task ranges.
+    monkeypatch.setattr(mot_3d_workload, "array_range", lambda manifest, stage: array_range)
     root, _campaign, payload, frozen = _repository(tmp_path)
     submitted = {**payload, "nonce": "8" * 32}
     calls = []
@@ -220,9 +225,9 @@ def test_real_receiver_submits_exact_chain_and_restart_is_idempotent(
     _invoke(monkeypatch, root, "submit", submitted, run)
     assert json.loads(capsys.readouterr().out)["lifecycle"] == "submitted"
     assert [row[0][1:] for row in calls] == [
-        ["-J", "0-2:1"],
+        ["-J", array_range],
         ["-W", "depend=afterok:910[].zeus-master"],
-        ["-J", "0-2:1"],
+        ["-J", array_range],
         ["-W", "depend=afterok:912[].zeus-master"],
     ]
     assert [row[1] for row in calls] == [

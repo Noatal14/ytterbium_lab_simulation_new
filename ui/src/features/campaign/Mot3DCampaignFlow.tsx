@@ -3264,8 +3264,8 @@ function evidenceText(text: string): string {
   return campaignAcceptanceMode() ? `TEST ONLY: ${text.replaceAll("scientifically", "physically").replaceAll("Scientific validation", "Physical evidence validation")} (acceptance evidence only)` : text;
 }
 
-function ReviewedResources({resources}: {resources: unknown}) {
+export function ReviewedResources({resources}: {resources: unknown}) {
   if (!resources || typeof resources !== "object" || !("array" in resources) || !("merge" in resources)) return null;
-  const value = resources as {array: {ncpus_per_task: number; memory_gb_per_task: number; walltime: string; vnode?: string}; merge: {ncpus: number; memory_gb: number; walltime: string; vnode?: string}};
-  return <dl className="transfer-facts"><div><dt>Array reservation per task</dt><dd>{value.array.ncpus_per_task} CPUs · {value.array.memory_gb_per_task} GB · {value.array.walltime}{value.array.vnode ? ` · Node ${value.array.vnode}` : ""}</dd></div><div><dt>Merge reservation</dt><dd>{value.merge.ncpus} CPU · {value.merge.memory_gb} GB · {value.merge.walltime}{value.merge.vnode ? ` · Node ${value.merge.vnode}` : ""}</dd></div></dl>;
+  const value = resources as {array: {ncpus_per_task: number; memory_gb_per_task: number; walltime: string; vnode?: string; array_throttle?: number}; merge: {ncpus: number; memory_gb: number; walltime: string; vnode?: string}};
+  return <dl className="transfer-facts"><div><dt>Array reservation per task</dt><dd>{value.array.ncpus_per_task} CPUs · {value.array.memory_gb_per_task} GB · {value.array.walltime}{value.array.vnode ? ` · Node ${value.array.vnode}` : ""}</dd></div>{value.array.array_throttle !== undefined && <div><dt>Maximum concurrent array tasks per family</dt><dd>{value.array.array_throttle}</dd></div>}<div><dt>Merge reservation</dt><dd>{value.merge.ncpus} CPU · {value.merge.memory_gb} GB · {value.merge.walltime}{value.merge.vnode ? ` · Node ${value.merge.vnode}` : ""}</dd></div></dl>;
 }

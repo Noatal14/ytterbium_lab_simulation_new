@@ -2449,3 +2449,18 @@ def test_second_tab_reuses_active_session_without_invalidating_review_csrf(tmp_p
         assert status == 200
         assert unrelated_headers["Set-Cookie"].split(";", 1)[0] != cookie
         assert unrelated["data"]["csrf_token"] != csrf
+
+
+def test_saved_campaign_inspection_scopes_scheduler_warning_to_saved_record(tmp_path):
+    root = tmp_path / "repo"
+    campaign = root / "data/optimization/mot_2d/modern"
+    (campaign / "jobs").mkdir(parents=True)
+    (campaign / "jobs/01_smoke.pbs").write_text("#!/bin/bash\n")
+    (campaign / "campaign.json").write_text(json.dumps(modern_2d_manifest(root)))
+
+    row = list_campaigns(root)["campaigns"][0]
+
+    assert row["next_plan"]["operation_scope"] == "remote-submission"
+    messages = [warning["message"] for warning in row["warnings"]]
+    assert any("This saved inspection does not query the scheduler" in text for text in messages)
+    assert not any(text.startswith("Scheduler state is not checked") for text in messages)

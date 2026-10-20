@@ -466,11 +466,12 @@ def test_frozen_final_input_jobs_and_review_match_generation_policy(monkeypatch)
     ]:
         job = workload.generation_job(value, name)
         text = files[f"jobs/final_validation_inputs/{filename}"].decode()
-        assert f"#PBS -l select=1:ncpus={job['ncpus']}:mem=4gb:vnode=gd002" in text
+        assert job['memory_gb'] == (8 if name == 'mot_2d' else 4)
+        assert f"#PBS -l select=1:ncpus={job['ncpus']}:mem={job['memory_gb']}gb:vnode=gd002" in text
         assert "#PBS -l walltime=01:00:00" in text
         assert review["resources"][name] == {
             "ncpus": job["ncpus"],
-            "memory_gb": 4,
+            "memory_gb": job["memory_gb"],
             "walltime": "01:00:00",
             "vnode": "gd002",
         }
@@ -482,3 +483,44 @@ def test_frozen_final_input_jobs_and_review_match_generation_policy(monkeypatch)
             )
     assert updated["acceptance"] == value["acceptance"]
     assert updated["stage"] == "final_validation_input_generation"
+
+
+@pytest.mark.parametrize('stage', ['finalist_selection', 'final_validation'])
+def test_heavy_array_resources_and_actual_submission_throttle_are_profile_exact(tmp_path, stage):
+    import json
+    from studies import mot_3d_campaign as campaign
+
+    value = manifest()
+    selected = workload.stage(value, stage)
+    base = '#PBS -l select=1:ncpus=200:mem=64gb\n#PBS -l walltime=24:00:00\nset -euo pipefail\npython worker --npools 200\n'
+    text = workload.rendered_job(base, value, stage)
+    assert '#PBS -J 0-2:1%1\n' in text
+    assert 'ncpus=100:mem=64gb:vnode=gd002' in text
+    assert '--npools 100' in text
+    assert 'walltime=01:00:00' in text
+    merge = workload.rendered_job(base, value, stage, merge=True)
+    assert '#PBS -J' not in merge
+    assert 'ncpus=1:mem=4gb:vnode=gd002' in merge
+    assert selected['workers'] == 3 and len(selected['recoil_seeds']) == 3
+    assert workload.array_range({}, stage) == '0-2:1'
+    assert workload.rendered_job(base, {}, stage) == base
+    assert workload.array_range(value, 'closure') == '0-2:1'
+
+    value['stage'] = stage
+    value.setdefault('stages', {})[stage] = {
+        'worker_jobs': {}, 'merge_jobs': {},
+    }
+    for family in campaign.FAMILIES:
+        for key in ('worker_jobs', 'merge_jobs'):
+            path = tmp_path / f'{family}_{key}.pbs'
+            path.write_text(text if key == 'worker_jobs' else merge)
+            value['stages'][stage][key][family] = str(path)
+    (tmp_path / 'campaign.json').write_text(json.dumps(value))
+    calls = []
+    def qsub(argv):
+        calls.append(argv)
+        return f'{len(calls)}' + ('[].zeus-master' if '-J' in argv else '.zeus-master')
+    campaign.submit_selection_stage(tmp_path, qsub=qsub)
+    arrays = [argv for argv in calls if '-J' in argv]
+    assert len(calls) == 4 and len(arrays) == 2
+    assert all(argv[1:3] == ['-J', '0-2:1%1'] for argv in arrays)

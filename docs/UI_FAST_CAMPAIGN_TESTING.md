@@ -69,8 +69,10 @@ refinement checkpoints to 1/2/3/4, and 3D discovery to four trials per worker.
 Physics, simulation endpoints, classification, and control neighborhoods remain
 canonical. Smoke uses one CPU/pool and 4 GiB. The 2D production stage uses
 100 CPUs/pools and 64 GiB; other 2D stages use ten CPUs/pools and 8 GiB. Fresh
-2D input-generation jobs use ten CPUs/pools and 8 GiB. 3D stages retain four
-CPUs/pools and 4 GiB; merges retain one CPU and 4 GiB. Every job keeps its
+2D input-generation jobs use ten CPUs/pools and 8 GiB. 3D finalist selection and final validation use 100 CPUs/pools and 64 GiB,
+with each family array limited to one running task (at most 200 CPUs across
+both families). Other 3D stages retain four CPUs/pools and 4 GiB; merges retain
+one CPU and 4 GiB. Every job keeps its
 one-hour cap and explicit `gd002` placement.
 The 32-initial-particle Zeeman generation budget is a bounded test workload,
 not a guarantee of survivors: insufficient survivors must fail validation, and
@@ -166,9 +168,17 @@ count, trial count, and validation criterion remains identical. The full
 non-resource policy SHA-256 is
 `700293772dc54b4419d6776873b4c44326d720585a61fc256e4a527a76a17746`.
 The new content identity is
-`113961b1d5701d9674eea78516cbb9449381237f229769e407548e02be8a4abc`.
+`a01d692170b437368e5dfb0904e366e8119f9e08912f0eb409ba1565e55bd0d9`.
 The profile/content and code-closure hashes change to record this operational
 revision; the canonical laboratory and numerical identities do not change.
 Earlier evidence remains tied to its original profile hash. New campaigns
 require newly generated, honestly marked inputs under the new hash; old
 metadata must not be relabeled or edited to match it.
+
+The 3D all-available workload includes up to 640 actual particles. Finalist
+selection evaluates all three recoil seeds sequentially per task; the measured
+117-second search trajectory estimates about 38 minutes per task with 100 pools.
+Final validation uses one recoil seed per task at the finer unchanged timestep,
+about 25 minutes at the same upper bound. These estimates do not guarantee
+completion; the one-hour limit and ordinary validation still apply. Family
+arrays retain all three tasks and run one task at a time.

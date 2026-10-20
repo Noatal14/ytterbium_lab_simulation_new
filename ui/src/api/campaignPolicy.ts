@@ -46,3 +46,21 @@ export function campaignGenerationPools(): number {
 export function campaignTestNode(): string | undefined {
   return campaignAcceptanceMode() ? (UI_ACCEPTANCE_POLICY as unknown as {scheduler?:{vnode?:string}}).scheduler?.vnode : undefined;
 }
+
+
+export type Campaign3DResourceStage = "closure" | "finalist_selection" | "final_validation";
+export function campaignStagePools(stage: Campaign3DResourceStage): number {
+  return campaignAcceptanceMode() ? UI_ACCEPTANCE_POLICY.mot_3d.stages[stage].npools : 200;
+}
+/** Validate the actual stage resources before the shared envelope parser runs. */
+export function reviewedCampaignStageArray(value: unknown, stage: Campaign3DResourceStage): Record<string, unknown> {
+  const policy = campaignAcceptanceMode() ? UI_ACCEPTANCE_POLICY.mot_3d.stages[stage] : undefined;
+  const throttle = policy && "array_throttle" in policy ? policy.array_throttle : undefined;
+  const keys = ["ncpus_per_task", "memory_gb_per_task", "walltime", ...(throttle === undefined ? [] : ["array_throttle"])];
+  const row = reviewedCampaignResource(value, keys);
+  if (row.ncpus_per_task !== (policy?.ncpus ?? 200)
+      || row.memory_gb_per_task !== (policy?.memory_gb ?? 64)
+      || row.walltime !== (policy ? campaignWalltime() : "24:00:00")
+      || (throttle !== undefined && row.array_throttle !== throttle)) throw new Error("Invalid stage-specific campaign resources.");
+  return row;
+}

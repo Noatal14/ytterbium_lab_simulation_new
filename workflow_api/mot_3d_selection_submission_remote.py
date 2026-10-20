@@ -1534,7 +1534,7 @@ def main(*, trusted_root_override=None):
                 publish_at(submissions_fd, step_pending, pending_row)
                 reattest()
                 argv = ["/usr/local/bin/qsub"] + (
-                    ["-J", "0-2:1"]
+                    ["-J", workload.array_range(manifest, _config().stage)]
                     if kind == "array"
                     else ["-W", f"depend=afterok:{previous}"]
                 )

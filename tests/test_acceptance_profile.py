@@ -182,7 +182,7 @@ def test_measured_runtime_resource_revision_preserves_entire_physics_and_workloa
     assert physics_hash == '03c156054adfc0896f69216473e49dff466e6810b10d3f0508defbd5510a81e4'
     for family in ('mot_2d', 'mot_3d'):
         for stage in policy[family]['stages'].values():
-            for field in ('npools', 'ncpus', 'memory_gb', 'walltime_seconds', 'merge_ncpus', 'merge_memory_gb', 'merge_walltime_seconds'):
+            for field in ('npools', 'ncpus', 'memory_gb', 'walltime_seconds', 'merge_ncpus', 'merge_memory_gb', 'merge_walltime_seconds', 'array_throttle'):
                 stage.pop(field, None)
     policy['generation'].pop('jobs')
     invariant = hashlib.sha256(json.dumps(policy, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
@@ -194,8 +194,10 @@ def test_profile_resources_fit_measured_physical_workload_without_changing_budge
     for name, stage in profile.family('mot_2d')['stages'].items():
         expected = (1, 4) if name == 'smoke' else (100, 64) if name == 'production' else (10, 8)
         assert (stage['npools'], stage['ncpus'], stage['memory_gb'], stage['walltime_seconds']) == (expected[0], expected[0], expected[1], 3600)
-    for stage in profile.family('mot_3d')['stages'].values():
-        assert (stage['npools'], stage['ncpus'], stage['memory_gb'], stage['walltime_seconds']) == (4, 4, 4, 3600)
+    for name, stage in profile.family('mot_3d')['stages'].items():
+        heavy = name in ('finalist_selection', 'final_validation')
+        assert (stage['npools'], stage['ncpus'], stage['memory_gb'], stage['walltime_seconds']) == ((100, 100, 64, 3600) if heavy else (4, 4, 4, 3600))
+        assert stage.get('array_throttle') == (1 if heavy else None)
         assert stage['merge_ncpus'] == 1
     assert dict(profile.policy['generation']['jobs']['mot_2d']) == {
         'npools': 10, 'ncpus': 10, 'memory_gb': 8, 'walltime_seconds': 3600}

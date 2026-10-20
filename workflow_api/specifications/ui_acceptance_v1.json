@@ -343,9 +343,9 @@
         "particles_per_ensemble": "all_available",
         "candidates_per_family": 3,
         "workers": 3,
-        "npools": 4,
-        "ncpus": 4,
-        "memory_gb": 4,
+        "npools": 100,
+        "ncpus": 100,
+        "memory_gb": 64,
         "walltime_seconds": 3600,
         "merge_ncpus": 1,
         "merge_memory_gb": 4,
@@ -355,16 +355,17 @@
           43002,
           43003
         ],
-        "bootstrap_replicates": 10000
+        "bootstrap_replicates": 10000,
+        "array_throttle": 1
       },
       "final_validation": {
         "input_role": "new_sealed_validation",
         "particles_per_ensemble": "all_available",
         "candidates_per_family": 1,
         "workers": 3,
-        "npools": 4,
-        "ncpus": 4,
-        "memory_gb": 4,
+        "npools": 100,
+        "ncpus": 100,
+        "memory_gb": 64,
         "walltime_seconds": 3600,
         "merge_ncpus": 1,
         "merge_memory_gb": 4,
@@ -374,7 +375,8 @@
           44002,
           44003
         ],
-        "bootstrap_replicates": 20000
+        "bootstrap_replicates": 20000,
+        "array_throttle": 1
       }
     }
   },

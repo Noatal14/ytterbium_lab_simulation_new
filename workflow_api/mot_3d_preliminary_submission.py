@@ -546,6 +546,9 @@ class Mot3DPreliminarySubmissionCoordinator:
         }
         acceptance = workload.policy(plan[3])
         if acceptance is not None:
+            selected = workload.stage(plan[3], self.stage_id)
+            if selected.get("array_throttle") is not None:
+                result["resources"]["array"]["array_throttle"] = selected["array_throttle"]
             vnode = acceptance.policy.get("scheduler", {}).get("vnode")
             if vnode is not None:
                 result["resources"]["array"]["vnode"] = vnode

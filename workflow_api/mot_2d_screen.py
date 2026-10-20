@@ -96,6 +96,7 @@ def _validate_outputs(root:Path,manifest:dict[str,Any],*,stage:str,trial_count:i
             detuning=_finite(parameters["detuning_gamma"]);radius=_finite(parameters["magnet_radius"]);bounds=expected["bounds"]
             if not bounds["detuning_gamma"][0]<=detuning<=bounds["detuning_gamma"][1] or not bounds["magnet_radius_m"][0]<=radius<=bounds["magnet_radius_m"][1]: raise ScreenValidationError("Screening parameters are outside frozen bounds.")
             expected_trial_design={"dt_s":expected["dt_s"],"n_ensembles":len(expected["zeeman_seeds"]),"particles_per_ensemble":expected["particles_per_ensemble"],"mot_seed_start":24000,"stochastic_solver":expected["solver"],"design_id":design_id,"git_commit":expected["git_commit"],"ensemble_dir":expected["ensemble_dir"],"zeeman_seeds":expected["zeeman_seeds"],"mot_seeds":expected["mot_seeds"]}
+            if "acceptance" in expected: expected_trial_design["acceptance"] = expected["acceptance"]
             if design!=expected_trial_design or not isinstance(replicates,list) or len(replicates)!=len(expected["zeeman_seeds"]): raise ScreenValidationError("Screening trial provenance is incompatible.")
             efficiencies=[]
             for index,replicate in enumerate(replicates):

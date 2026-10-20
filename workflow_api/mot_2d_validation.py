@@ -256,6 +256,7 @@ def _design_matches(
         and design.get("zeeman_seeds") == manifest["seed_roles"][role]
         and design.get("mot_seeds") == manifest["mot_seeds"][role]
         and design.get("ensemble_dir") == source["directory"]
+        and (not validate_campaign_policy(manifest) or design.get("acceptance") == manifest["acceptance"])
     )
 
 
@@ -347,6 +348,7 @@ def _valid_smoke_trial(path: Path, manifest: dict[str, Any], s0: float, root: Pa
             and design.get("stochastic_solver") == "RK4StHybridCustom"
             and design.get("dt_s") == manifest["fixed_design"]["working_dt_s"]
             and design.get("ensemble_dir") == source
+            and (not validate_campaign_policy(manifest) or design.get("acceptance") == manifest["acceptance"])
         )
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
         return False

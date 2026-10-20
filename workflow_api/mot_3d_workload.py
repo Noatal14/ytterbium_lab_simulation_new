@@ -113,12 +113,21 @@ def topology(manifest, name):
     )
 
 
+def array_range(manifest, name):
+    """Authenticate per-stage concurrency without changing the three task indices."""
+    selected = stage(manifest, name)
+    throttle = None if selected is None else selected.get("array_throttle")
+    return "0-2:1" if throttle is None else f"0-2:1%{throttle}"
+
+
 def rendered_job(text, manifest, name, *, merge=False):
     """Apply the authenticated workload to ordinary PBS rendering, never physics."""
     selected = stage(manifest, name)
     if selected is None:
         return text
     prefix = "merge_" if merge else ""
+    if not merge and selected.get("array_throttle") is not None:
+        text = text.replace("set -euo pipefail\n", f"#PBS -J {array_range(manifest, name)}\nset -euo pipefail\n")
     return _render_policy_job(
         text,
         manifest,

@@ -7,7 +7,7 @@ export const UI_ACCEPTANCE_IDENTITY = {
     "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
   },
   "profile_id": "ui_acceptance_v1",
-  "profile_sha256": "113961b1d5701d9674eea78516cbb9449381237f229769e407548e02be8a4abc",
+  "profile_sha256": "a01d692170b437368e5dfb0904e366e8119f9e08912f0eb409ba1565e55bd0d9",
   "suitability": "acceptance_only"
 } as const;
 export const UI_ACCEPTANCE_POLICY = {
@@ -321,15 +321,16 @@ export const UI_ACCEPTANCE_POLICY = {
         "workers": 3
       },
       "final_validation": {
+        "array_throttle": 1,
         "bootstrap_replicates": 20000,
         "candidates_per_family": 1,
         "input_role": "new_sealed_validation",
-        "memory_gb": 4,
+        "memory_gb": 64,
         "merge_memory_gb": 4,
         "merge_ncpus": 1,
         "merge_walltime_seconds": 3600,
-        "ncpus": 4,
-        "npools": 4,
+        "ncpus": 100,
+        "npools": 100,
         "particles_per_ensemble": "all_available",
         "recoil_seeds": [
           44001,
@@ -340,15 +341,16 @@ export const UI_ACCEPTANCE_POLICY = {
         "workers": 3
       },
       "finalist_selection": {
+        "array_throttle": 1,
         "bootstrap_replicates": 10000,
         "candidates_per_family": 3,
         "input_role": "all_existing_selection",
-        "memory_gb": 4,
+        "memory_gb": 64,
         "merge_memory_gb": 4,
         "merge_ncpus": 1,
         "merge_walltime_seconds": 3600,
-        "ncpus": 4,
-        "npools": 4,
+        "ncpus": 100,
+        "npools": 100,
         "particles_per_ensemble": "all_available",
         "recoil_seeds": [
           43001,

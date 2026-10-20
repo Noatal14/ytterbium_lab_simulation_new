@@ -438,7 +438,7 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
     current_progress = next((row for row in progress if row.get("stage") == summary.get("stage")), None)
     if trust == "trusted-current" and current_progress and current_progress.get("status") == "in-progress":
         warnings.append(_warning(
-            "Validated local outputs are partial. No submission command is shown because scheduler state is not checked; verify the existing job externally.",
+            "Saved local outputs are partial. This saved inspection does not query the scheduler; use a fresh Zeus status check to verify the existing job.",
             "info",
         ))
     if trust != "trusted-current":
@@ -446,7 +446,7 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
     safe_plan = _progress_aware_plan(summary, progress, entry.manifest.parent, repository_root) if trust == "trusted-current" and not raw_warnings else None
     if safe_plan:
         message = (
-            "Scheduler state is not checked. This command is shown for review and copying only."
+            "This saved inspection does not query the scheduler. Use a fresh Zeus status check; the displayed command is for review and copying only."
             if safe_plan["operation_scope"] == "remote-submission"
             else "This local state-changing command is shown for review and copying only; the application will not run it."
         )

@@ -1,4 +1,4 @@
-import { reviewedCampaignResource, campaignMemory, campaignParticles, campaignPools, campaignTotalParticles, campaignWalltime } from "../campaignPolicy";
+import { reviewedCampaignResource, campaignMemory, campaignParticles, campaignStagePools, campaignTotalParticles, campaignWalltime } from "../campaignPolicy";
 import {
   isKnownServerError,
   requiresManualVerification,
@@ -144,7 +144,7 @@ export function parseMot3DFinalValidationSubmissionPreview(
     science.dt_s !== MOT_3D_TIMESTEP_POLICY_V2.sealed_final_validation_dt_s ||
     science.t_max_s !== MOT_3D_TIMESTEP_POLICY_V2.t_max_s ||
     science.solver !== MOT_3D_TIMESTEP_POLICY_V2.solver ||
-    science.npools !== campaignPools() ||
+    science.npools !== campaignStagePools("final_validation") ||
     science.bootstrap_replicates !== 20000 ||
     science.bootstrap_seed !== 92001 ||
     merge.ncpus !== 1 ||
@@ -185,7 +185,7 @@ export function parseMot3DFinalValidationSubmissionPreview(
     memory_gb: 4,
     walltime: "01:00:00",
   };
-  parseMot3DClosureSubmissionPreview(normalized, expected);
+  parseMot3DClosureSubmissionPreview(normalized, expected, "final_validation");
   return original as any;
 }
 export function parseMot3DFinalValidationSubmissionResult(
