@@ -64,7 +64,7 @@ def _source(root, commit, acceptance):
 
 
 class _Protocol:
-    def __init__(self, tmp_path, monkeypatch, acceptance):
+    def __init__(self, tmp_path, monkeypatch, acceptance, *, s0_values=None, name=None):
         from workflow_api.mot_2d_plan import build_plan, materialize
         from workflow_api.repository_snapshot import RepositorySnapshot
         self.mp = monkeypatch
@@ -72,15 +72,15 @@ class _Protocol:
         self.local.mkdir()
         self.git = Path(shutil.which('git')).resolve()
         self.ssh = Path(shutil.which('ssh')).resolve()
-        for name in ('workflow_api', 'studies', 'simulations', 'utils', 'lab_setup', 'atomsmltr/src'):
-            shutil.copytree(CODE / name, self.local / name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+        for package_name in ('workflow_api', 'studies', 'simulations', 'utils', 'lab_setup', 'atomsmltr/src'):
+            shutil.copytree(CODE / package_name, self.local / package_name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
         shutil.copyfile(CODE / 'config.py', self.local / 'config.py')
         (self.local / '.gitignore').write_text('data/\n__pycache__/\n*.pyc\n')
         for args in (['init', '-q'], ['add', '.'], ['-c', 'user.name=Protocol test', '-c', 'user.email=protocol@example.invalid', 'commit', '-qm', 'Frozen protocol code']):
             subprocess.run([str(self.git), '-C', str(self.local), *args], check=True)
         self.commit = subprocess.check_output([str(self.git), '-C', str(self.local), 'rev-parse', 'HEAD'], text=True).strip()
         source = _source(self.local, self.commit, acceptance)
-        plan = build_plan(self.local, name='protocol-chain', slug='protocol-chain', s0_values=[1.3], source=source,
+        plan = build_plan(self.local, name='protocol-chain' if name is None else name, slug='protocol-chain', s0_values=[1.3] if s0_values is None else s0_values, source=source,
                           snapshot=RepositorySnapshot(self.commit), acceptance_profile_id='ui_acceptance_v1' if acceptance else None)
         materialize(plan)
         self.relative = 'data/optimization/mot_2d/' + ('ui_acceptance/' if acceptance else '') + 'protocol-chain'
@@ -97,7 +97,7 @@ class _Protocol:
         self.mode = 'acceptance' if acceptance else 'scientific'
         self.smoke_qsub = tmp_path / 'smoke-qsub'
         self.smoke_capture = tmp_path / 'smoke-qsub-input'
-        self.smoke_qsub.write_text('#!/bin/sh\ncat > ' + str(self.smoke_capture) + "\nprintf '70000.zeus-master\\n'\n")
+        self.smoke_qsub.write_text('#!/bin/sh\ncat > ' + str(self.smoke_capture) + "\nif grep -q '^#PBS -J ' " + str(self.smoke_capture) + "; then printf '70000[].zeus-master\\n'; else printf '70000.zeus-master\\n'; fi\n")
         self.smoke_qsub.chmod(0o700)
         self._real_run = subprocess.run
         self._install_scheduler()
@@ -213,9 +213,10 @@ class _Protocol:
                                     print('failure-site', trace.tb_lineno, {key: trace.tb_frame.f_locals.get(key) for key in ('hashes', 'payload')}, file=stdout)
                                 trace = trace.tb_next
                         else: code = 0
-            if self.smoke_capture.exists() and '70000.zeus-master' not in self.jobs:
+            if self.smoke_capture.exists() and not any(job.startswith('70000') for job in self.jobs):
                 content = self.smoke_capture.read_bytes()
-                self.jobs['70000.zeus-master'] = {'data': content, 'dependency': None}
+                smoke_job = '70000' + ('[]' if _scheduler_array([], content) else '') + '.zeus-master'
+                self.jobs[smoke_job] = {'data': content, 'dependency': None}
                 self.qsub_calls.append((('fake-embedded-qsub',), content))
             os.chdir(old_cwd)
             if code:
@@ -266,7 +267,10 @@ class _Protocol:
         from studies import mot_2d_s0_campaign as worker
         with self.mp.context() as child:
             child.chdir(self.remote)
-            if stage == 'smoke': worker.smoke(SimpleNamespace(campaign=str(self.campaign), s0_index=0))
+            if stage == 'smoke':
+                manifest = json.loads((self.campaign / 'campaign.json').read_text())
+                for index in range(len(manifest['s0_values'])):
+                    worker.smoke(SimpleNamespace(campaign=str(self.campaign), s0_index=index))
             elif stage in {'screen', 'refine'}:
                 tasks = json.loads((self.campaign / stage / 'tasks.json').read_text())
                 for index in range(len(tasks)):
@@ -286,7 +290,17 @@ class _Protocol:
 
 @pytest.mark.parametrize('acceptance', [False, True], ids=['scientific', 'TEST-ONLY'])
 def test_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance):
-    chain = _Protocol(tmp_path, monkeypatch, acceptance)
+    _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance)
+
+
+def test_full_scientific_two_s0_receiver_protocol_chain(tmp_path, monkeypatch):
+    # Normal policy supports several independent fixed-s0 groups. The reviewed
+    # TEST ONLY profile remains one group and is deliberately not expanded.
+    _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, False, [1.1, 1.3])
+
+
+def _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance, s0_values=None, *, name=None):
+    chain = _Protocol(tmp_path, monkeypatch, acceptance, s0_values=s0_values, name=name)
     smoke = chain.coordinator('zeus_submission', 'ZeusSmokeSubmissionCoordinator')
     chain.confirm(smoke)
     chain.work('smoke')
@@ -378,3 +392,4 @@ def test_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance)
     assert len(chain.qsub_calls) == 9
     from ui_campaign_contract_bridge import assert_campaign_client_contracts
     assert_campaign_client_contracts(chain.dto, acceptance=acceptance)
+    return chain

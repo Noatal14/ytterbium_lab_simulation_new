@@ -21,6 +21,7 @@ from typing import Any, Mapping, Protocol
 from workflow_api.discovery import build_registry
 from workflow_api.mot_3d_discovery_transition import (
     EXPECTED_BUNDLE_PATHS,
+    _expected_bundle_paths,
     _bounded_read_at,
     _open_directory_at,
     _strict_json,
@@ -254,7 +255,7 @@ class Mot3DPreliminarySubmissionCoordinator:
                 or set(local_receipt) != receipt_keys
                 or local_receipt.get("status") != "synchronized"
                 or not isinstance(local_receipt.get("files"), dict)
-                or set(local_receipt["files"]) != EXPECTED_BUNDLE_PATHS
+                or set(local_receipt["files"]) != _expected_bundle_paths(manifest)
                 or local_receipt["files"].get("campaign.json") != _sha(manifest_raw)
                 or any(
                     not HEX64.fullmatch(str(value))

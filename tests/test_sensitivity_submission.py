@@ -348,3 +348,16 @@ def test_pinned_transport_enforces_operation_specific_receiver_states(operation,
     with pytest.raises(ZeusSensitivitySubmissionError) as caught:
         transport._call(operation,{"nonce":None})
     assert caught.value.code=="remote_response_invalid"
+
+
+@pytest.mark.parametrize("states,expected", [
+    ([("R", None)] * 3 + [("Q", None)] * 2, "running"),
+    ([("F", "0")] * 5, "completed_success"),
+])
+def test_qstat_sensitivity_accepts_real_pbs_dotted_resource_fields(states, expected):
+    output = _qstat(states).replace(
+        b"    job_state = ",
+        b"    Resource_List.mem = 8gb\n    Resource_List.ncpus = 10\n    resources_used.walltime = 00:01:00\n    job_state = ",
+    )
+    assert scheduler_state(output, "123[].zeus-master", 5) == expected
+    assert scheduler_state(output.replace(b"[4]", b"[9]"), "123[].zeus-master", 5) == "status_unknown"

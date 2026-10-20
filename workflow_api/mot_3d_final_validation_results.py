@@ -73,6 +73,39 @@ def _safe_bytes(value, *, code):
         _raise(code)
 
 
+def _input_producer_references(metadata, replicate, *, zeeman_path, logical_root, campaign_absolute_path):
+    """Admit only identities emitted by the producer for this sealed row.
+
+    No path normalization or basename search: each spelling is derived from the
+    already hash-checked sealed Zeeman path and the authenticated campaign root.
+    """
+    if (not isinstance(metadata, dict) or not isinstance(metadata.get("design"), dict)
+        or not isinstance(replicate, dict) or not isinstance(replicate.get("replicate"), dict)
+        or type(zeeman_path) is not str):
+        _raise("manifest_mismatch")
+    absolute = PurePosixPath(zeeman_path)
+    prefix = campaign_absolute_path + "/"
+    if type(zeeman_path) is not str or not zeeman_path.startswith(prefix):
+        _raise("manifest_mismatch")
+    relative = zeeman_path[len(prefix):]
+    logical = f"{logical_root}/{relative}"
+    directory = metadata.get("design", {}).get("ensemble_dir")
+    if (
+        type(directory) is not str
+        or type(metadata.get("source_zeeman_ensemble")) is not str
+        or directory not in {
+            f"{campaign_absolute_path}/final_validation_inputs/after_zeeman",
+            f"{logical_root}/final_validation_inputs/after_zeeman",
+        }
+        or metadata.get("source_zeeman_ensemble") not in {
+            zeeman_path, logical, absolute.name,
+        }
+        or replicate.get("replicate", {}).get("ensemble_file") != absolute.name
+    ):
+        _raise("manifest_mismatch")
+    return directory
+
+
 def validate_final_validation_result_bytes(
     *,
     manifest_bytes: bytes,
@@ -255,6 +288,10 @@ def validate_final_validation_result_bytes(
             for item in (metadata, replicate, zeeman_metadata)
         ):
             _raise("manifest_mismatch")
+        producer_directory = _input_producer_references(
+            metadata, replicate, zeeman_path=row["zeeman_path"],
+            logical_root=logical_campaign_root, campaign_absolute_path=campaign_absolute_path,
+        )
         expected_design = {
             "dt_s": campaign_module.MOT_2D_SIM_CONFIG["dt_s"],
             "stochastic_solver": manifest["upstream_2d_campaign"][
@@ -266,7 +303,7 @@ def validate_final_validation_result_bytes(
                 if acceptance is None
                 else acceptance.policy["generation"]["jobs"]["mot_2d"]["npools"]
             ),
-            "ensemble_dir": f"{campaign_absolute_path}/final_validation_inputs/after_zeeman",
+            "ensemble_dir": producer_directory,
             "zeeman_profile": manifest["upstream_2d_campaign"][
                 "expected_survivor_design"
             ]["zeeman_profile"],
@@ -280,10 +317,8 @@ def validate_final_validation_result_bytes(
         if (
             not isinstance(metadata, dict)
             or metadata.get("design") != expected_design
-            or metadata.get("source_zeeman_ensemble") != row["zeeman_path"]
             or not isinstance(replicate, dict)
             or replicate.get("design") != expected_design
-            or replicate.get("replicate", {}).get("ensemble_file") != row["zeeman_path"]
             or zeeman_metadata.get("laboratory_spec_version") != LABORATORY_SPEC_VERSION
             or zeeman_metadata.get("laboratory_spec_sha256") != LABORATORY_SPEC_SHA256
             or zeeman_metadata.get("zeeman_profile_sha256")
@@ -350,7 +385,7 @@ def validate_final_validation_result_bytes(
                     input_files[survivor_metadata_name]
                 )
                 survivor_metadata["source_zeeman_ensemble"] = private_input_path(
-                    survivor_metadata["source_zeeman_ensemble"]
+                    row["zeeman_path"]
                 )
                 survivor_metadata["design"][
                     "laboratory_spec_version"
@@ -378,7 +413,7 @@ def validate_final_validation_result_bytes(
                 replicate_name = "final_validation_inputs/" + replicate_name
                 replicate = _strict_json_bytes(input_files[replicate_name])
                 replicate["replicate"]["ensemble_file"] = private_input_path(
-                    replicate["replicate"]["ensemble_file"]
+                    row["zeeman_path"]
                 )
                 replicate["design"] = json.loads(
                     json.dumps(survivor_metadata["design"])

@@ -118,7 +118,7 @@ class ZeusProductionCoordinator:
         )
         self._confirm = threading.Lock()
 
-    def _base_plan(self, request: Mapping[str, object]):
+    def _base_plan(self, request: Mapping[str, object], *, allow_incomplete: bool = False):
         try:
             coordinator = ZeusSensitivitySubmissionCoordinator(
                 self.root, self.ssh, self.git
@@ -148,7 +148,12 @@ class ZeusProductionCoordinator:
             state = transport.status(**payload)
         except ZeusSensitivitySubmissionError as error:
             raise ZeusProductionError(error.code) from error
-        if state.status != "completed_success" or not state.job_id or not state.nonce:
+        if (
+            state.status not in ({"submitted", "queued", "running", "held",
+                                  "completed_success", "completed_failed", "status_unknown"}
+                                 if allow_incomplete else {"completed_success"})
+            or not state.job_id or not state.nonce
+        ):
             raise ZeusProductionError("sensitivity_not_complete")
         return (*plan, state.nonce, state.job_id)
 
@@ -192,8 +197,9 @@ class ZeusProductionCoordinator:
             "sensitivity_job_id": job_id,
         }
 
-    def _inspect(self, request: Mapping[str, object]):
-        base = self._base_plan(request)
+    def _inspect(self, request: Mapping[str, object], *, allow_incomplete: bool = False):
+        base = (self._base_plan(request, allow_incomplete=True)
+                if allow_incomplete else self._base_plan(request))
         state = self.transport_factory(base[1]).inspect(**self._remote_payload(base))
         self._validate_state(state, base[3])
         rows = [dict(row) for row in state.rows]
@@ -357,7 +363,7 @@ class ZeusProductionCoordinator:
             raise ZeusProductionError("transition_outcome_unknown")
 
     def status(self, request):
-        plan, state = self._inspect(request)
+        plan, state = self._inspect(request, allow_incomplete=True)
         expected = sensitivity_task_count(plan[3])
         valid = state.lifecycle in {
             "ready_to_prepare_production",

@@ -511,7 +511,7 @@ def test_real_receiver_main_prepares_and_retrieves_exact17_for_both_outcomes(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(raw)
     identity = {
-        "source_files": {},
+        "source_files": {"campaign.json": hashlib.sha256(values["manifest_bytes"]).hexdigest()},
         "code_files": {},
         "stage1_receipt_sha256": "b" * 64,
         "stage1_bundle_sha256": "c" * 64,

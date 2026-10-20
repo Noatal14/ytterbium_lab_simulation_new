@@ -1076,7 +1076,7 @@ class PinnedSshMot3DDiscoveryTransitionTransport:
         if result.returncode or result.stderr:
             raise Mot3DDiscoveryTransitionError("remote_response_invalid")
         try:
-            data = _strict_json(result.stdout.encode())
+            data = _strict_json(result.stdout)
         except Exception:
             raise Mot3DDiscoveryTransitionError("remote_response_invalid") from None
         if not isinstance(data, dict) or set(data) != {

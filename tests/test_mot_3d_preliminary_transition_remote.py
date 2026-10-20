@@ -15,8 +15,12 @@ from tests.test_mot_3d_preliminary_results import _closed_fixture
 
 def _selection(family):
     return {
+        "kind": "mot_3d_discovery_candidate_selection",
         "family": family,
-        "candidate_count": 12,
+        "requested_candidate_count": 12,
+        "selected_candidate_count": 12,
+        "selection_pool_minimum_fraction": 0.55,
+        "parameter_bounds": {},
         "candidates": [
             {"candidate_id": f"{family}_candidate_{index:02d}"} for index in range(12)
         ],
@@ -241,13 +245,35 @@ def _trusted_status_harness(tmp_path, monkeypatch):
     stage1_bundle = b"x" * 961
     (transitions / "preliminary_check.bundle.gz").write_bytes(stage1_bundle)
     stage1_bundle_hash = hashlib.sha256(stage1_bundle).hexdigest()
+    from workflow_api.zeus_discovery_submission import FILES, canonical_digest
+    digest_fields = ("physical_model_sha256", "source_2d_campaign_sha256",
+                     "source_2d_final_report_sha256", "input_registry_sha256",
+                     "timestep_policy_sha256")
+    bootstrap = {
+        "status": "discovery_prepared", "commit": commit, "nonce": "5" * 32,
+        **{key: "6" * 64 for key in digest_fields},
+        "files": {name: "7" * 64 for name in FILES}, "completed_unix_s": 80.5,
+    }
+    bootstrap["bootstrap_key"] = canonical_digest({
+        "campaign_name": campaign.name, "commit": commit,
+        **{key: bootstrap[key] for key in digest_fields},
+        "files": bootstrap["files"], "nonce": bootstrap["nonce"],
+    })
+    (transitions / "discovery_bootstrap.json").write_text(json.dumps(bootstrap))
+    discovery_key = canonical_digest({
+        "campaign": campaign.relative_to(root).as_posix(), "commit": commit,
+        "bootstrap_digest": canonical_digest(bootstrap),
+        "bootstrap_key": bootstrap["bootstrap_key"], "bootstrap_nonce": bootstrap["nonce"],
+        "files": bootstrap["files"],
+    })
+    assert discovery_key != submission_key
     stage1 = {
         "status": "preliminary_check_prepared",
         "nonce": "1" * 32,
         "transition_key": "2" * 64,
         "commit": commit,
-        "bootstrap_digest": "3" * 64,
-        "submission_key": submission_key,
+        "bootstrap_digest": canonical_digest(bootstrap),
+        "submission_key": discovery_key,
         "chain": {
             "angled_donut": ["21[].zeus-master", "22[].zeus-master"],
             "single_pass": [
@@ -270,7 +296,7 @@ def _trusted_status_harness(tmp_path, monkeypatch):
     identity = {
         "source_files": source_hashes,
         "code_files": code_hashes,
-        "stage1_receipt_sha256": hashlib.sha256(stage1_raw).hexdigest(),
+        "stage1_receipt_sha256": remote.digest(stage1),
         "stage1_bundle_sha256": stage1_bundle_hash,
     }
     payload = {

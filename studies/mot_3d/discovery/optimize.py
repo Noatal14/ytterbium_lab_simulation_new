@@ -298,7 +298,8 @@ def build_profile_from_parameters(family, parameters):
     return profile, parameters, derived
 
 
-def build_trial_profile(family, trial):
+def suggest_trial_parameters(family, trial):
+    """The ordered public suggestion contract used by execution and replay."""
     parameters = _suggest_common(trial)
     settings = MOT_3D_OPTIMIZATION_CONFIG[family]
     if family == "angled_donut":
@@ -324,7 +325,11 @@ def build_trial_profile(family, trial):
         )
     else:
         raise ValueError(f"Unsupported family {family!r}.")
-    return build_profile_from_parameters(family, parameters)
+    return parameters
+
+
+def build_trial_profile(family, trial):
+    return build_profile_from_parameters(family, suggest_trial_parameters(family, trial))
 
 
 def _seed_parameters(family, worker_index):
@@ -348,6 +353,106 @@ def _seed_parameters(family, worker_index):
             dict(blue_s0=1.5, blue_detuning_gamma=-2.5, core_shell_split_radius_m=0.0040),
         )
     return {**common, **seeds[worker_index % len(seeds)]}
+
+
+def _resolved_trial_parameters(profile, parameters, derived):
+    return {**parameters, **derived,
+            "profile_blue_detuning_gamma": profile["399"]["detuning_gamma"]}
+
+
+def _validate_replayed_attributes(trial, *, family, particle_count, source, state, values):
+    diagnostic_keys = {"resolved_parameters", "usable_at_end_count", "usable_ever_count",
+                       "entered_capture_region_count", "slow_inside_count", "runtime_seconds"}
+    attributes = dict(trial.user_attrs)
+    actual_source = {key: value for key, value in attributes.items() if key == "source"}
+    if actual_source != source:
+        raise RuntimeError("Discovery sampler history has incompatible queued provenance.")
+    diagnostics = set(attributes) - set(source)
+    if state == optuna.trial.TrialState.FAIL and not diagnostics and values is None:
+        return
+    if diagnostics != diagnostic_keys:
+        raise RuntimeError("Discovery sampler history has unsupported diagnostic attributes.")
+    profile, parameters, derived = build_profile_from_parameters(family, trial.params)
+    if attributes["resolved_parameters"] != _resolved_trial_parameters(profile, parameters, derived):
+        raise RuntimeError("Discovery sampler history has incompatible resolved parameters.")
+    counts = [attributes[key] for key in ("usable_at_end_count", "usable_ever_count",
+                                         "entered_capture_region_count", "slow_inside_count")]
+    if (any(type(count) is not int or not 0 <= count <= particle_count for count in counts)
+            or counts[0] > counts[1]
+            or type(attributes["runtime_seconds"]) not in (int, float)
+            or not np.isfinite(attributes["runtime_seconds"])
+            or attributes["runtime_seconds"] < 0
+            or (state == optuna.trial.TrialState.COMPLETE and (
+                values is None or len(values) != 1 or values[0] != counts[0] / particle_count
+            ))
+            or (state == optuna.trial.TrialState.FAIL and values is not None)):
+        raise RuntimeError("Discovery sampler history has incompatible objective diagnostics.")
+
+
+def restore_discovery_sampler(study, *, family, worker_index, sampler_seed, startup_trials, particle_count):
+    """Restore the exact sequential multivariate TPE stream through public APIs.
+
+    Physics is never replayed. Unknown, partial, concurrent or incompatible
+    history fails closed instead of silently starting another random stream.
+    """
+    from studies.mot_2d.optimization import _ReplaySampler
+
+    saved_trials = study.get_trials(deepcopy=True)
+    if not saved_trials:
+        return
+    if type(particle_count) is not int or particle_count <= 0:
+        raise RuntimeError("Discovery sampler replay requires its frozen particle population.")
+    shadow = optuna.create_study(
+        directions=study.directions,
+        sampler=optuna.samplers.TPESampler(seed=sampler_seed, multivariate=True,
+                                           n_startup_trials=startup_trials),
+        pruner=optuna.pruners.NopPruner(),
+    )
+    shadow.enqueue_trial(_seed_parameters(family, worker_index),
+                         user_attrs={"source": "physics_seed"})
+    waiting = False
+    for number, saved in enumerate(saved_trials):
+        if (saved.number != number or saved.intermediate_values
+                or any(key != "fixed_params" and not key.startswith("tpe:relative_params:")
+                       for key in saved.system_attrs)):
+            raise RuntimeError("Discovery sampler history cannot be replayed exactly.")
+        if saved.state == optuna.trial.TrialState.WAITING:
+            waiting = True
+            queued = shadow.get_trials(deepcopy=True)
+            if (number >= len(queued) or queued[number].state != saved.state
+                    or queued[number].system_attrs != saved.system_attrs
+                    or queued[number].user_attrs != saved.user_attrs
+                    or saved.params or saved.distributions or saved.values is not None):
+                raise RuntimeError("Discovery queued sampler history cannot be replayed exactly.")
+            continue
+        if waiting or saved.state not in (optuna.trial.TrialState.COMPLETE, optuna.trial.TrialState.FAIL):
+            raise RuntimeError("Discovery interrupted sampler history cannot be replayed exactly.")
+        rebuilt = shadow.ask()
+        source = dict(rebuilt.user_attrs)
+        suggest_trial_parameters(family, rebuilt)
+        frozen = shadow.get_trials(deepcopy=True)[number]
+        if (frozen.params != saved.params or frozen.distributions != saved.distributions
+                or any(key not in frozen.system_attrs or frozen.system_attrs[key] != value
+                       for key, value in saved.system_attrs.items())
+                or frozen.system_attrs.get("fixed_params") != saved.system_attrs.get("fixed_params")):
+            raise RuntimeError("Discovery sampler history does not match its frozen seed and bounds.")
+        _validate_replayed_attributes(saved, family=family, particle_count=particle_count,
+                                      source=source, state=saved.state, values=saved.values)
+        for key, value in saved.user_attrs.items():
+            rebuilt.set_user_attr(key, value)
+        shadow.tell(rebuilt, values=saved.values, state=saved.state)
+
+    class DiscoveryReplaySampler(_ReplaySampler):
+        def after_trial(self, actual_study, trial, state, values):
+            source = {key: value for key, value in self.active.user_attrs.items() if key == "source"}
+            _validate_replayed_attributes(trial, family=family, particle_count=particle_count,
+                                          source=source, state=state, values=values)
+            for key, value in trial.user_attrs.items():
+                self.active.set_user_attr(key, value)
+            super().after_trial(actual_study, trial, state, values)
+
+    if any(trial.state != optuna.trial.TrialState.WAITING for trial in saved_trials):
+        study.sampler = DiscoveryReplaySampler(shadow, lambda trial: suggest_trial_parameters(family, trial))
 
 
 def _worker_summary(study, args, output_dir, provenance, revision):
@@ -442,6 +547,11 @@ def optimize(args):
         user_attrs={"source": "physics_seed"},
         skip_if_exists=True,
     )
+    restore_discovery_sampler(
+        study, family=args.family, worker_index=args.worker_index,
+        sampler_seed=args.sampler_seed, startup_trials=args.startup_trials,
+        particle_count=len(states),
+    )
     time_points = np.linspace(0.0, args.t_max, int(np.ceil(args.t_max / args.dt)) + 1)
     deadline = time.monotonic() + args.timeout_s
 
@@ -468,11 +578,7 @@ def optimize(args):
             usable_ever = np.any(analysis["eligible_masks"], axis=1)
             diagnostics = analysis["diagnostics"]
             runtime = time.monotonic() - started
-            resolved = {
-                **parameters,
-                **derived,
-                "profile_blue_detuning_gamma": profile["399"]["detuning_gamma"],
-            }
+            resolved = _resolved_trial_parameters(profile, parameters, derived)
             trial.set_user_attr("resolved_parameters", resolved)
             trial.set_user_attr("usable_at_end_count", int(usable_at_end.sum()))
             trial.set_user_attr("usable_ever_count", int(usable_ever.sum()))

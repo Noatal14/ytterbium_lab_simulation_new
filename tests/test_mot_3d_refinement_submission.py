@@ -675,3 +675,16 @@ def test_receiver_rejects_hash_lookalikes_with_wrong_json_types(
             lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError(args)),
         )
     capsys.readouterr()
+
+
+def test_status_exposes_refinement_validation_contract(monkeypatch):
+    from workflow_api.mot_3d_preliminary_submission import Mot3DPreliminarySubmissionCoordinator
+    from workflow_api.mot_3d_refinement_submission import Mot3DRefinementSubmissionCoordinator
+    original = {"validation": {"status": "not_started", "expected_candidates_per_family": 12}}
+    monkeypatch.setattr(Mot3DPreliminarySubmissionCoordinator, "status", lambda self, request: dict(original))
+    coordinator = object.__new__(Mot3DRefinementSubmissionCoordinator)
+    assert coordinator.status({})["validation"] == {
+        "status": "not_started",
+        "expected_candidates_per_family": 16,
+        "expected_recoil_seeds_per_candidate": 3,
+    }

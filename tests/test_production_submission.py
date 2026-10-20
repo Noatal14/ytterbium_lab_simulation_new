@@ -421,3 +421,16 @@ def test_production_stage_is_rechecked_under_submission_lock(tmp_path,monkeypatc
     capsys.readouterr()
     assert reads==2 and calls==[]
     assert not (campaign/'.mot_ui/submissions/production.pending.json').exists()
+
+
+@pytest.mark.parametrize("states,expected", [
+    ([("R", None)] * 4 + [("Q", None)] * 16, "running"),
+    ([("F", "0")] * 20, "completed_success"),
+])
+def test_qstat_production_accepts_real_pbs_dotted_resource_fields(states, expected):
+    output = _qstat(states).replace(
+        b"    job_state = ",
+        b"    Resource_List.mem = 16gb\n    Resource_List.ncpus = 24\n    resources_used.walltime = 00:01:00\n    job_state = ",
+    )
+    assert scheduler_state(output, "123[].zeus-master", 20) == expected
+    assert scheduler_state(output.replace(b"[19]", b"[99]"), "123[].zeus-master", 20) == "status_unknown"

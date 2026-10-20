@@ -22,8 +22,12 @@ from workflow_api.mot_3d_stage_topology import PRELIMINARY_CHECK_TOPOLOGY
 
 def _selection(family):
     return {
+        "kind": "mot_3d_discovery_candidate_selection",
         "family": family,
-        "candidate_count": 12,
+        "requested_candidate_count": 12,
+        "selected_candidate_count": 12,
+        "selection_pool_minimum_fraction": 0.55,
+        "parameter_bounds": {},
         "candidates": [
             {"candidate_id": f"{family}_candidate_{index:02d}"} for index in range(12)
         ],
@@ -691,7 +695,7 @@ def test_json_schema_and_count_math_mutations_fail_closed(
         )
     elif mutation == "selection_duplicate_key":
         selections["angled_donut"] = selections["angled_donut"].replace(
-            b'{\n  "family"', b'{\n  "family":"other",\n  "family"', 1
+            b'\n  "family"', b'\n  "family":"other",\n  "family"', 1
         )
     elif mutation == "selection_unsafe_candidate":
         selection = json.loads(selections["angled_donut"])

@@ -34,7 +34,7 @@ export type Mot3DDiscoveryTransitionResult = {
   status: "preliminary_check_prepared";
   campaign_id: string;
   stage: "preliminary_check";
-  artifacts: { synchronized: 954; created: 6; updated: 1; bundle_sha256: string };
+  artifacts: { synchronized: number; created: 6; updated: 1; bundle_sha256: string };
   submitted_to_zeus: false;
   simulation_started: false;
   local_sync: { status: "synchronized"; receipt_sha256: string };
@@ -101,7 +101,7 @@ export function parseMot3DDiscoveryTransitionResult(value: unknown, campaignId: 
   const row = object(value, ["status", "campaign_id", "stage", "artifacts", "submitted_to_zeus", "simulation_started", "local_sync"], "Invalid 3D Discovery transition result.");
   const artifacts = object(row.artifacts, ["synchronized", "created", "updated", "bundle_sha256"], "Invalid 3D Discovery transition result.");
   const sync = parseSync(row.local_sync);
-  if (row.status !== "preliminary_check_prepared" || row.campaign_id !== campaignId || row.stage !== "preliminary_check" || artifacts.synchronized !== 954 || artifacts.created !== 6 || artifacts.updated !== 1 || typeof artifacts.bundle_sha256 !== "string" || !SHA256.test(artifacts.bundle_sha256) || row.submitted_to_zeus !== false || row.simulation_started !== false || sync.status !== "synchronized") throw new Error("Invalid 3D Discovery transition result.");
+  if (row.status !== "preliminary_check_prepared" || row.campaign_id !== campaignId || row.stage !== "preliminary_check" || artifacts.synchronized !== campaignDiscoveryTrials() + 4 || artifacts.created !== 6 || artifacts.updated !== 1 || typeof artifacts.bundle_sha256 !== "string" || !SHA256.test(artifacts.bundle_sha256) || row.submitted_to_zeus !== false || row.simulation_started !== false || sync.status !== "synchronized") throw new Error("Invalid 3D Discovery transition result.");
   return row as unknown as Mot3DDiscoveryTransitionResult;
 }
 

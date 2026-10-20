@@ -188,7 +188,8 @@ class Mot3DDiscoveryBootstrapService:
         if not root.is_dir() or root.is_symlink():
             return rows
         for campaign in sorted(root.iterdir())[:250]:
-            if campaign.is_symlink() or not campaign.is_dir():
+            if (campaign.is_symlink() or not campaign.is_dir()
+                    or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", campaign.name) is None):
                 continue
             try:
                 manifest = _bounded_json(self.root, campaign / "campaign.json")
@@ -207,8 +208,9 @@ class Mot3DDiscoveryBootstrapService:
                 s0 = result.get("s0")
                 if (
                     not isinstance(campaign_name, str)
-                    or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", campaign_name)
-                    is None
+                    or not campaign_name.strip()
+                    or campaign_name != campaign_name.strip()
+                    or len(campaign_name) > 120
                     or isinstance(s0, bool)
                     or not isinstance(s0, (int, float))
                     or not math.isfinite(float(s0))
@@ -306,6 +308,15 @@ class Mot3DDiscoveryBootstrapService:
             },
         }
 
+    def _destination(self, name: str) -> Path:
+        """Single reviewed namespace authority for rendering and publication."""
+        if not isinstance(name, str) or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", name) is None:
+            raise Mot3DBootstrapError("3D campaign name is invalid.")
+        parent = self.root / "data/optimization/mot_3d"
+        if self.acceptance_profile_id is not None:
+            parent /= "ui_acceptance"
+        return parent / name
+
     def _render(
         self, request: Mapping[str, Any]
     ) -> tuple[dict[str, bytes], dict[str, Any], dict[str, str]]:
@@ -322,10 +333,7 @@ class Mot3DDiscoveryBootstrapService:
             )
         source, upstream, survivor = matches[0]
         name = request["campaign_name"]
-        destination = self.root / "data/optimization/mot_3d"
-        if self.acceptance_profile_id is not None:
-            destination = destination / "ui_acceptance"
-        destination = destination / str(name)
+        destination = self._destination(name)
         dirty = self.dirty_provider()
         if dirty:
             raise Mot3DBootstrapError(
@@ -461,7 +469,13 @@ class Mot3DDiscoveryBootstrapService:
                 raise Mot3DBootstrapError(
                     "3D bootstrap evidence changed after preview."
                 )
-            destination = self.root / "data/optimization/mot_3d" / manifest["name"]
+            destination = self._destination(manifest["name"])
+            from workflow_api.acceptance_profile import policy_for_manifest
+            profile = policy_for_manifest(manifest)
+            expected_kind = "mot_3d_ui_acceptance_v1" if self.acceptance_profile_id else "mot_3d_campaign_v2"
+            if ((profile.profile_id if profile else None) != self.acceptance_profile_id
+                    or manifest.get("kind") != expected_kind):
+                raise Mot3DBootstrapError("3D publication policy differs from its reviewed namespace.")
             receipt = {
                 "status": "discovery_prepared",
                 "nonce": pending.nonce,

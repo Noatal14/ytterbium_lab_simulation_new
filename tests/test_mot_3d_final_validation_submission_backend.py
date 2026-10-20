@@ -279,6 +279,37 @@ def test_real_receiver_submits_exact_chain_and_restart_is_idempotent(
     _invoke(monkeypatch, root, "inspect", payload, run)
     assert json.loads(capsys.readouterr().out)["lifecycle"] == "submitted"
     assert len(calls) == 4
+    # Feed the actual receiver's compatibility writer into the completion reader.
+    import os
+    from workflow_api import mot_3d_preliminary_transition_remote as proof
+    from workflow_api.mot_3d_final_validation_completion_remote import DESCRIPTOR as completion_descriptor
+    record = campaign / "final_validation_submission.json"
+    original = record.read_bytes()
+    source_sha = hashlib.sha256(frozen["campaign.json"]).hexdigest()
+    fd = os.open(campaign, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        with proof.descriptor_scope(completion_descriptor):
+            final, jobs = proof._exact_stage2(fd, payload["submission_key"], "a" * 40, source_sha)
+            assert final["jobs"] == jobs
+            for attack in ("missing", "extra", "manifest", "worker", "merge", "job", "legacy"):
+                changed = json.loads(original)
+                if attack == "missing": changed.pop("campaign_manifest_sha256")
+                elif attack == "extra": changed["unreviewed"] = True
+                elif attack == "manifest": changed["campaign_manifest_sha256"] = "0" * 64
+                elif attack == "worker": changed["worker_job_sha256"]["angled_donut"] = "0" * 64
+                elif attack == "merge": changed["merge_job_sha256"]["single_pass"] = "0" * 64
+                elif attack == "job": changed["families"]["angled_donut"]["array_job_id"] = "999[].zeus-master"
+                else: changed["submission_key"] = payload["submission_key"]
+                record.write_text(json.dumps(changed))
+                with pytest.raises(SystemExit):
+                    proof._exact_stage2(fd, payload["submission_key"], "a" * 40, source_sha)
+                record.write_bytes(original)
+            with pytest.raises(SystemExit):
+                proof._exact_stage2(fd, payload["submission_key"], "a" * 40, "0" * 64)
+    finally:
+        record.write_bytes(original)
+        os.close(fd)
+    assert len(calls) == 4
 
 
 @pytest.mark.parametrize("surface", ["science", "code", "locked", "pbs", "transition"])

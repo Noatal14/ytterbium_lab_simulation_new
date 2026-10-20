@@ -2,11 +2,21 @@ import copy
 import hashlib
 import io
 import json
+from contextlib import redirect_stdout
+from functools import lru_cache
+from pathlib import Path
+import tempfile
+from unittest.mock import patch
 
 import numpy as np
 import pytest
 
 from studies.mot_3d_campaign import render_final_validation_transition
+from studies.mot_2d.production import FINAL_DT_S
+from lab_setup.physical_specification import (
+    CANONICAL_ZEEMAN_PROFILE_NAME, CANONICAL_ZEEMAN_PROFILE_SHA256,
+    LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION,
+)
 from workflow_api.mot_3d_final_input_results import (
     FinalInputResultError,
     expected_paths,
@@ -19,8 +29,8 @@ ROOT = f"{PROJECT}/data/optimization/mot_3d/campaign"
 LOGICAL = "data/optimization/mot_3d/campaign"
 COMMIT = "a" * 40
 PHYSICAL = "1" * 64
-PROFILE_HASH = "2" * 64
-LAB_HASH = "3" * 64
+PROFILE_HASH = CANONICAL_ZEEMAN_PROFILE_SHA256
+LAB_HASH = LABORATORY_SPEC_SHA256
 
 
 def _json(value):
@@ -33,6 +43,28 @@ def _npy(value):
     stream = io.BytesIO()
     np.save(stream, np.asarray(value, dtype=np.float64), allow_pickle=False)
     return stream.getvalue()
+
+
+@lru_cache(maxsize=20)
+def _writer_zeeman_metadata(seed, raw):
+    """Real metadata writer around synthetic arrays; no solver is executed."""
+    from simulations.zeeman import write_zeeman_metadata
+    from studies.zeeman.generate_ensembles import corrected_field
+
+    with tempfile.TemporaryDirectory(prefix="final-input-writer-fixture-") as folder:
+        path = Path(folder) / f"production_zeeman_n50000_dt40us_seed{seed}.npy"
+        path.write_bytes(raw)
+        with patch("simulations.zeeman._git_commit", return_value=COMMIT), patch(
+            "simulations.zeeman._tracked_worktree_is_dirty", return_value=False
+        ), redirect_stdout(io.StringIO()):
+            metadata = write_zeeman_metadata(
+                path, np.load(io.BytesIO(raw), allow_pickle=False),
+                {"N_particles": 50000, "seed": seed, "dt": 4e-5, "npools": 200,
+                 "stochastic": True, "collimation_angle_deg": 1.5,
+                 "zeeman_field_config": corrected_field()},
+                elapsed_seconds=0.125,
+            )
+        return json.loads(metadata.read_text(encoding="utf-8"))
 
 
 def _fixture():
@@ -48,14 +80,14 @@ def _fixture():
     }
     parameters = {"s0": 1.3, "detuning_gamma": -1.0, "magnet_radius": 0.046}
     design = {
-        "dt_s": 4e-5,
+        "dt_s": FINAL_DT_S,
         "stochastic_solver": "RK4StHybridCustom",
         "uses_all_available_particles": True,
         "npools": 200,
         "ensemble_dir": f"{ROOT}/final_validation_inputs/after_zeeman",
-        "zeeman_profile": "corrected",
+        "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
         "git_commit": COMMIT,
-        "laboratory_spec_version": "laboratory_physical_v1",
+        "laboratory_spec_version": LABORATORY_SPEC_VERSION,
         "laboratory_spec_sha256": LAB_HASH,
         "zeeman_profile_sha256": PROFILE_HASH,
     }
@@ -73,7 +105,7 @@ def _fixture():
             "expected_survivor_parameters": parameters,
             "expected_survivor_design": {
                 "stochastic_solver": "RK4StHybridCustom",
-                "zeeman_profile": "corrected",
+                "zeeman_profile": CANONICAL_ZEEMAN_PROFILE_NAME,
             },
         },
         "stages": {"final_validation_input_generation": stage},
@@ -116,26 +148,16 @@ def _fixture():
         mraw = _npy([[index + 0.25] * 6])
         files[f"{zbase}.npy"] = zraw
         files[f"{mbase}.npy"] = mraw
-        files[f"{zbase}.json"] = _json(
-            {
-                "kind": "zeeman_ensemble",
-                "parameters": {
-                    "seed": zseed,
-                    "resolved_zeeman_magnet_profile": "corrected",
-                },
-                "shape": [2, 6],
-                "output_sha256": hashlib.sha256(zraw).hexdigest(),
-                "laboratory_spec_version": "laboratory_physical_v1",
-                "laboratory_spec_sha256": LAB_HASH,
-                "zeeman_profile_sha256": PROFILE_HASH,
-                "software": {"git_commit": COMMIT},
-            }
-        )
+        files[f"{zbase}.json"] = _json(_writer_zeeman_metadata(zseed, zraw))
         files[f"{mbase}.json"] = _json(
             {
                 "kind": "mot_2d_final_survivor_ensemble",
                 "zeeman_seed": zseed,
                 "mot_seed": mseed,
+                "n_input": 2,
+                "n_survivors": 1,
+                "state_layout": ["x_m", "y_m", "z_m", "vx_m_s", "vy_m_s", "vz_m_s"],
+                "dtype": "float64",
                 "parameters": parameters,
                 "design": design,
                 "source_zeeman_ensemble": f"{ROOT}/{zbase}.npy",
@@ -151,8 +173,15 @@ def _fixture():
                 "replicate": {
                     "zeeman_seed": zseed,
                     "mot_seed": mseed,
-                    "ensemble_file": f"{ROOT}/{zbase}.npy",
+                    "ensemble_file": f"production_zeeman_n50000_dt40us_seed{zseed}.npy",
+                    "n_available": 2,
+                    "selection_method": "all_particles",
+                    "subset_seed": 100000 + zseed,
+                    "n_input": 2,
                     "captured": 1,
+                    "conditional_efficiency": 0.5,
+                    "estimated_total_efficiency": 1 / 50000,
+                    "batch_elapsed_seconds": 0.125,
                 },
             }
         )
@@ -379,6 +408,17 @@ def test_exact_fixture_rejects_every_provenance_schema_and_array_mutation(mutati
         "survivor_design",
         "replicate_schema",
         "replicate_design",
+        "zeeman_seed_float",
+        "zeeman_metric_bool",
+        "zeeman_parameter_schema",
+        "survivor_seed_float",
+        "survivor_count_float",
+        "survivor_shape_bool",
+        "survivor_dtype",
+        "survivor_layout",
+        "survivor_dt",
+        "replicate_seed_float",
+        "replicate_input_float",
     ],
 )
 def test_coordinated_hash_updates_cannot_hide_semantic_mutation(mutation):
@@ -422,6 +462,28 @@ def test_coordinated_hash_updates_cannot_hide_semantic_mutation(mutation):
             value["extra"] = True
         elif mutation == "replicate_design":
             value["design"]["git_commit"] = "b" * 40
+        elif mutation == "zeeman_seed_float":
+            value["parameters"]["seed"] = float(value["parameters"]["seed"])
+        elif mutation == "zeeman_metric_bool":
+            value["survival_fraction"] = False
+        elif mutation == "zeeman_parameter_schema":
+            value["parameters"]["extra"] = True
+        elif mutation == "survivor_seed_float":
+            value["mot_seed"] = float(value["mot_seed"])
+        elif mutation == "survivor_count_float":
+            value["n_survivors"] = float(value["n_survivors"])
+        elif mutation == "survivor_shape_bool":
+            value["shape"][0] = True
+        elif mutation == "survivor_dtype":
+            value["dtype"] = "float32"
+        elif mutation == "survivor_layout":
+            value["state_layout"] = list(reversed(value["state_layout"]))
+        elif mutation == "survivor_dt":
+            value["design"]["dt_s"] = 4e-5
+        elif mutation == "replicate_seed_float":
+            value["replicate"]["mot_seed"] = float(value["replicate"]["mot_seed"])
+        elif mutation == "replicate_input_float":
+            value["replicate"]["n_input"] = float(value["replicate"]["n_input"])
         files[path] = _json(value)
     row = inputs["ensembles"][0]
     row["zeeman_metadata_sha256"] = hashlib.sha256(files[f"{zbase}.json"]).hexdigest()
@@ -433,6 +495,41 @@ def test_coordinated_hash_updates_cannot_hide_semantic_mutation(mutation):
     ).hexdigest()
     inputs["generation_jobs"] = submission
     files["final_validation_inputs/input_manifest.json"] = _json(inputs)
+    with pytest.raises(FinalInputResultError):
+        _validate((manifest, locked, submission, files))
+
+
+
+def test_full_capture_metric_stays_float_even_after_coordinated_rehash():
+    """True == 1.0 must not let a boolean masquerade as a producer metric."""
+    manifest, locked, submission, files = _fixture()
+    inputs = json.loads(files["final_validation_inputs/input_manifest.json"])
+    row = inputs["ensembles"][0]
+    relative = lambda value: value[len(ROOT) + 1:]
+    array_path = relative(row["path"])
+    metadata_path = relative(row["metadata_path"])
+    replicate_path = relative(row["replicate_path"])
+    files[array_path] = _npy([[0.25] * 6, [0.5] * 6])
+    metadata = json.loads(files[metadata_path])
+    metadata.update(shape=[2, 6], n_survivors=2,
+                    output_sha256=hashlib.sha256(files[array_path]).hexdigest())
+    replicate = json.loads(files[replicate_path])
+    replicate["replicate"].update(captured=2, conditional_efficiency=1.0,
+                                 estimated_total_efficiency=2 / 50000)
+
+    def rehash():
+        files[metadata_path] = _json(metadata)
+        files[replicate_path] = _json(replicate)
+        row.update(sha256=hashlib.sha256(files[array_path]).hexdigest(), shape=[2, 6],
+                   n_survivors=2, metadata_sha256=hashlib.sha256(files[metadata_path]).hexdigest(),
+                   replicate_sha256=hashlib.sha256(files[replicate_path]).hexdigest())
+        inputs["total_survivors"] = 21
+        files["final_validation_inputs/input_manifest.json"] = _json(inputs)
+
+    rehash()
+    assert _validate((manifest, locked, submission, files)).input_manifest["total_survivors"] == 21
+    replicate["replicate"]["conditional_efficiency"] = True
+    rehash()
     with pytest.raises(FinalInputResultError):
         _validate((manifest, locked, submission, files))
 

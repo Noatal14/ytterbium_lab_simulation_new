@@ -21,6 +21,7 @@ from workflow_api.mot_3d_preliminary_results import (
     PRELIMINARY_RESULT_REASON_CODES,
     PreliminaryResultError,
     _canonical,
+    _outcome_reference_matches,
     _finite_tree,
     _strict_json,
     _strict_json_bytes,
@@ -90,7 +91,21 @@ def _all_particle_provenance(manifest, project_directory):
     names = ("discovery", "refinement", "preliminary_check")
     if not isinstance(roles, Mapping) or set(roles) != set(names):
         _raise("particle_selection_mismatch")
-    commit = manifest.get("provenance", {}).get("git_commit")
+    # Frozen 2D ensembles retain their original authenticated source revision;
+    # the 3D worker revision is independently bound by its own design/receipts.
+    upstream = manifest.get("upstream_2d_campaign", {})
+    if not isinstance(upstream, Mapping):
+        _raise("particle_selection_mismatch")
+    source_design = upstream.get("expected_survivor_design")
+    commit = upstream.get("git_commit")
+    if (
+        not isinstance(source_design, Mapping)
+        or type(commit) is not str
+        or len(commit) != 40
+        or any(character not in "0123456789abcdef" for character in commit)
+        or source_design.get("git_commit") != commit
+    ):
+        _raise("particle_selection_mismatch")
     rows = []
     for role in names:
         try:
@@ -152,7 +167,13 @@ def validate_finalist_result_bytes(
     *,
     project_directory: str,
     campaign_absolute_path: str,
+    closure_summary_bytes: Mapping[str, bytes] | None = None,
 ):
+    """Validate against original Closure summaries from an authenticated bundle.
+
+    The caller must authenticate those bytes through the predecessor receipt;
+    omitted authority fails closed rather than accepting a weaker selection.
+    """
     if (
         not isinstance(manifest_bytes, bytes)
         or not 0 < len(manifest_bytes) <= 2 * 1024 * 1024
@@ -171,6 +192,11 @@ def validate_finalist_result_bytes(
         )
     ):
         _raise("artifact_registry_mismatch")
+    if (not isinstance(closure_summary_bytes, Mapping)
+            or set(closure_summary_bytes) != set(FAMILIES)
+            or any(not isinstance(raw, bytes) or not 0 < len(raw) <= 2 * 1024 * 1024
+                   for raw in closure_summary_bytes.values())):
+        _raise("selection_mismatch")
     try:
         manifest = _strict_json_bytes(manifest_bytes)
         from workflow_api.mot_3d_workload import artifact_identity
@@ -233,7 +259,10 @@ def validate_finalist_result_bytes(
                 except PreliminaryResultError as exc:
                     _raise("malformed_json", exc)
                 suffix = PurePosixPath(relative).with_suffix(".npz").as_posix()
-                if record.get("outcomes_path") != f"{expected_root}/{suffix}":
+                if not _outcome_reference_matches(
+                    record.get("outcomes_path"), campaign_absolute_path=str(expected_root),
+                    project_directory=project_directory, artifact=suffix,
+                ):
                     _raise("result_metadata_mismatch")
                 record["outcomes_path"] = str(
                     root.joinpath(*PurePosixPath(suffix).parts)
@@ -255,6 +284,17 @@ def validate_finalist_result_bytes(
             }:
                 _raise("selection_mismatch")
             if selection.get("selection_rule") != SELECTION_RULE:
+                _raise("selection_mismatch")
+            if not isinstance(closure_summary_bytes, Mapping) or set(closure_summary_bytes) != set(FAMILIES):
+                _raise("selection_mismatch")
+            try:
+                from studies.mot_3d.finalists.select import select_from_summary
+
+                source_summary = _strict_json_bytes(closure_summary_bytes[family])
+                expected_selection = select_from_summary(family, source_summary)
+            except Exception as exc:
+                _raise("selection_mismatch", exc)
+            if _canonical(selection) != _canonical(expected_selection):
                 _raise("selection_mismatch")
             for rank, candidate in enumerate(selection["candidates"], 1):
                 if not isinstance(candidate, Mapping):
@@ -284,9 +324,6 @@ def validate_finalist_result_bytes(
                     or _canonical(candidate.get("resolved_profile"))
                     != _canonical(profile)
                     or type(candidate.get("source_candidate_id")) is not str
-                    or candidate["source_candidate_id"]
-                    != f"{family}_closure_{rank:02d}"
-                    or candidate.get("source_closure_role") != f"rank_{rank}"
                     or type(candidate.get("source_closure_fraction"))
                     not in {int, float}
                     or isinstance(candidate.get("source_closure_fraction"), bool)

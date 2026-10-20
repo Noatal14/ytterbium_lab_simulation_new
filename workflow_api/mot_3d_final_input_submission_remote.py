@@ -19,6 +19,8 @@ from workflow_api.mot_3d_preliminary_transition_remote import FINAL_KEYS, _exact
 from workflow_api.mot_3d_selection_submission_remote import (
     DIR_FLAGS,
     bounded_at,
+    canonical,
+    digest,
     exact_match,
     json_bytes,
     open_dir_at,
@@ -276,8 +278,8 @@ def main(*, trusted_root_override=None):
         )
         if (
             set(transition) != FINAL_KEYS
-            or hashlib.sha256(transition_raw).hexdigest()
-            != identity["remote_transition_receipt_sha256"]
+            or transition_raw != canonical(transition) + b"\n"
+            or digest(transition) != identity["remote_transition_receipt_sha256"]
             or transition.get("status") != "final_validation_input_generation_prepared"
             or transition.get("transition_key") != identity["transition_key"]
             or transition.get("bundle", {}).get("bundle_sha256")

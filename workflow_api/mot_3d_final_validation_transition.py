@@ -103,9 +103,13 @@ class Mot3DFinalValidationTransitionCoordinator(Mot3DPreliminaryTransitionCoordi
             campaign_fd = os.open(campaign, _DIRECTORY_FLAGS)
             root_fd = os.open(self.root, _DIRECTORY_FLAGS)
             try:
+                source_bytes = {name: _read_relative(campaign_fd, name) for name in FILES}
+                frozen_manifest = json.loads(source_bytes["campaign.json"])
+                if frozen_manifest != manifest:
+                    raise ValueError("Frozen campaign changed during preparation review.")
                 source_files = {
-                    name: hashlib.sha256(_read_relative(campaign_fd, name)).hexdigest()
-                    for name in FILES
+                    name: hashlib.sha256(raw).hexdigest()
+                    for name, raw in source_bytes.items()
                 }
                 code_files = {
                     name: hashlib.sha256(_read_relative(root_fd, name)).hexdigest()
@@ -136,9 +140,7 @@ class Mot3DFinalValidationTransitionCoordinator(Mot3DPreliminaryTransitionCoordi
             )
             transfer = (
                 frozenset(
-                    expected_paths(
-                        json.loads(_read_relative(campaign_fd, "campaign.json"))
-                    )
+                    expected_paths(frozen_manifest)
                 )
                 | {"final_validation_input_generation_submission.json"}
                 | GENERATED_PATHS

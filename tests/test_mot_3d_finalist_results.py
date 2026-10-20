@@ -137,6 +137,8 @@ def _fixture(tmp_path, monkeypatch, *, acceptance=False):
         "provenance": {"git_commit": "a" * 40, "physical_model_sha256": "b" * 64},
         "design": {"screening_dt_s": 1e-5, "solver": "RK4StHybridCustom"},
         "input_roles": roles,
+        "upstream_2d_campaign": {"git_commit": "a" * 40,
+                                 "expected_survivor_design": {"git_commit": "a" * 40}},
         "stages": {
             "finalist_selection": {
                 "classification": "final_candidate_selection_not_unbiased_validation",
@@ -164,7 +166,7 @@ def _fixture(tmp_path, monkeypatch, *, acceptance=False):
     particle_digest = hashlib.sha256(
         json.dumps(provenance, sort_keys=True, separators=(",", ":")).encode()
     ).hexdigest()
-    selection_bytes, results = {}, {}
+    selection_bytes, results, closure_summaries = {}, {}, {}
     for family in ("angled_donut", "single_pass"):
         candidates = []
         for rank in range(1, 4):
@@ -193,6 +195,18 @@ def _fixture(tmp_path, monkeypatch, *, acceptance=False):
             "selection_rule": "top three closure candidates ranked by the lower endpoint of the simultaneous 95% confidence interval",
             "candidates": candidates,
         }
+        # Keep the original source summary independent of later selection mutations.
+        source_summary = {"family": family, "ranked_candidates": [
+            {"candidate_id": row["source_candidate_id"],
+             "closure_role": row["source_closure_role"],
+             "mean_usable_fraction": row["source_closure_fraction"],
+             "bootstrap_95_ci": row["source_closure_ci"],
+             "parameters": row["parameters"]}
+            for row in candidates
+        ]}
+        closure_summaries[family] = json.dumps(source_summary).encode()
+        from studies.mot_3d.finalists.select import select_from_summary
+        assert selection == select_from_summary(family, source_summary)
         selection_raw = json.dumps(selection, indent=2).encode() + b"\n"
         selection_bytes[family] = selection_raw
         selection_path = root / "selection/finalists" / f"{family}.json"
@@ -286,11 +300,11 @@ def _fixture(tmp_path, monkeypatch, *, acceptance=False):
                     row["outcomes_path"] = f"{remote}/{relative[:-5]}.npz"
                     raw = json.dumps(row).encode()
                 results[relative] = raw
-    return project, remote, manifest, manifest_raw, selection_bytes, results, provenance
+    return project, remote, manifest, manifest_raw, selection_bytes, results, provenance, closure_summaries
 
 
 def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path, monkeypatch):
-    project, remote, manifest, manifest_raw, selections_raw, results, provenance = (
+    project, remote, manifest, manifest_raw, selections_raw, results, provenance, closure_summary_bytes = (
         _fixture(tmp_path, monkeypatch)
     )
     from studies.mot_3d.finalists import merge as merge_module
@@ -308,6 +322,7 @@ def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path, monkey
         results,
         project_directory=project,
         campaign_absolute_path=remote,
+        closure_summary_bytes=closure_summary_bytes,
     )
     assert len(validated.paths) == len(validated.hashes) == 44
 
@@ -325,6 +340,7 @@ def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path, monkey
                 result_value,
                 project_directory=project,
                 campaign_absolute_path=remote,
+        closure_summary_bytes=closure_summary_bytes,
             )
 
     record_key = next(
@@ -469,6 +485,7 @@ def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path, monkey
         reformatted,
         project_directory=project,
         campaign_absolute_path=remote,
+        closure_summary_bytes=closure_summary_bytes,
     )
     assert other.hashes[record_key] != validated.hashes[record_key]
     assert other.evidence_sha256 != validated.evidence_sha256
@@ -479,7 +496,7 @@ def test_acceptance_captured_finalist_registry_recomputes_without_remote_path_re
 ):
     from studies.mot_3d.finalists import merge as merge_module
 
-    project, remote, _, manifest, selections_raw, results, _ = _fixture(
+    project, remote, _, manifest, selections_raw, results, _, closure_summary_bytes = _fixture(
         tmp_path, monkeypatch, acceptance=True
     )
     native_path = merge_module.Path
@@ -493,7 +510,41 @@ def test_acceptance_captured_finalist_registry_recomputes_without_remote_path_re
     validated = validate_finalist_result_bytes(
         manifest, selections_raw, results,
         project_directory=project, campaign_absolute_path=remote,
+        closure_summary_bytes=closure_summary_bytes,
     )
     assert validated.hashes == {
         name: hashlib.sha256(raw).hexdigest() for name, raw in results.items()
     }
+
+
+@pytest.mark.parametrize('acceptance', [False, True])
+def test_all_available_preserves_authenticated_upstream_revision(tmp_path, monkeypatch, acceptance):
+    from workflow_api.mot_3d_finalist_results import _all_particle_provenance, FinalistResultError
+    project, _, manifest, _, _, _, expected, _ = _fixture(tmp_path, monkeypatch, acceptance=acceptance)
+    # The current 3D code revision is independent of the already sealed 2D source.
+    manifest['provenance']['git_commit'] = 'b' * 40
+    rows, provenance = _all_particle_provenance(manifest, project)
+    assert len(rows) == 20
+    assert provenance == expected
+    assert {row['source_git_commit'] for row in rows} == {'a' * 40}
+    manifest['input_roles']['discovery'][0]['source_git_commit'] = 'b' * 40
+    with pytest.raises(FinalistResultError, match='particle_selection_mismatch'):
+        _all_particle_provenance(manifest, project)
+
+
+def test_original_closure_authority_is_required_and_not_rebuilt_from_selection(tmp_path, monkeypatch):
+    project, remote, _, manifest, selections, results, _, source = _fixture(tmp_path, monkeypatch)
+    for authority in (None, {}, {"angled_donut": source["single_pass"],
+                                 "single_pass": source["angled_donut"]}):
+        with pytest.raises(FinalistResultError, match='selection_mismatch'):
+            validate_finalist_result_bytes(manifest, selections, results,
+                project_directory=project, campaign_absolute_path=remote,
+                closure_summary_bytes=authority)
+    changed = dict(source)
+    summary = json.loads(changed['single_pass'])
+    summary['ranked_candidates'][0]['closure_role'] = 'forged_role'
+    changed['single_pass'] = json.dumps(summary).encode()
+    with pytest.raises(FinalistResultError, match='selection_mismatch'):
+        validate_finalist_result_bytes(manifest, selections, results,
+            project_directory=project, campaign_absolute_path=remote,
+            closure_summary_bytes=changed)

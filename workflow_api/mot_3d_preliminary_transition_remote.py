@@ -8,7 +8,7 @@ records success only after re-verifying the exact 160-file transfer registry.
 from __future__ import annotations
 
 import base64
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 from contextvars import ContextVar
 from dataclasses import dataclass
 
@@ -17,6 +17,7 @@ try:
 except ImportError:  # Only imported on Windows; remote execution remains POSIX.
     from workflow_api.platform_io import locking as fcntl
 import hashlib
+import io
 import json
 import os
 import re
@@ -61,6 +62,17 @@ HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 MAX_FILE = 2 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class AuthenticatedPriorBundle:
+    receipt: bytes
+    packed: bytes
+    paths: frozenset[str]
+
+
+class FrozenSourceFiles(dict):
+    authenticated_prior: AuthenticatedPriorBundle | None = None
 
 
 @dataclass(frozen=True)
@@ -277,16 +289,33 @@ def _result_paths(selections, manifest=None):
     return refinement_paths(selections)
 
 
+class _CompletionProgress(io.StringIO):
+    """Bound diagnostics from canonical sealed-result recomputation."""
+    def __init__(self):
+        super().__init__()
+        self.byte_count = 0
+
+    def write(self, text):
+        size = len(text.encode("utf-8", "strict"))
+        if self.byte_count + size > 64 * 1024:
+            raise ValueError("Completion diagnostics exceeded their bound.")
+        self.byte_count += size
+        return super().write(text)
+
+
+def _validate_completion_results(**kwargs):
+    from workflow_api.mot_3d_final_validation_results import validate_final_validation_result_bytes
+
+    with redirect_stdout(_CompletionProgress()):
+        return validate_final_validation_result_bytes(**kwargs)
+
+
 def _validate_results(
     manifest_raw, selections, results, project_directory, campaign_path
 ):
     manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
     if _descriptor().workflow_kind == "final_validation_completion":
-        from workflow_api.mot_3d_final_validation_results import (
-            validate_final_validation_result_bytes,
-        )
-
-        validated = validate_final_validation_result_bytes(
+        validated = _validate_completion_results(
             manifest_bytes=manifest_raw,
             locked_nominals_bytes=selections["locked_nominals"],
             input_manifest_bytes=selections["input_manifest"],
@@ -295,7 +324,9 @@ def _validate_results(
             job_files=selections["job_files"],
             input_files=selections["input_files"],
             result_files=results,
-            logical_campaign_root=f"data/optimization/mot_3d/{manifest.get('name')}",
+            logical_campaign_root=PurePosixPath(campaign_path).relative_to(
+                PurePosixPath(project_directory)
+            ).as_posix(),
             project_directory=str(project_directory),
             campaign_absolute_path=str(campaign_path),
         )
@@ -351,10 +382,11 @@ def _validate_results(
 
         validated = validate_finalist_result_bytes(
             manifest_bytes=manifest_raw,
-            selection_bytes=selections,
+            selection_bytes={family: selections[family] for family in FAMILIES},
             result_files=results,
             campaign_absolute_path=str(campaign_path),
             project_directory=str(project_directory),
+            closure_summary_bytes=selections.get("closure_summaries"),
         )
     return manifest, validated
 
@@ -646,7 +678,7 @@ def _open_submissions(campaign_fd: int):
     return submissions
 
 
-def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
+def _exact_stage2(campaign_fd: int, submission_key: str, commit: str, source_manifest_sha256=None):
     if _descriptor().submission_evidence == "linear_chain":
         return _exact_linear_submission(campaign_fd, submission_key, commit)
     submissions_fd = _open_submissions(campaign_fd)
@@ -742,43 +774,59 @@ def _exact_stage2(campaign_fd: int, submission_key: str, commit: str):
                 ):
                     fail(_descriptor().error("conflict"))
                 previous_completed = step["completed_unix_s"]
-        compatibility = json_bytes(
-            read_relative_at(
-                campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
-            ),
-            keys={
-                "kind",
-                "stage",
-                "status",
-                "dependency",
-                "submission_key",
-                "nonce",
-                "commit",
-                "created_unix_s",
-                "submitted_unix_s",
-                "families",
-            },
-            error=_descriptor().error("conflict"),
-        )
-        if compatibility != {
-            "kind": "mot_3d_selection_stage_submission",
-            "stage": _descriptor().from_stage,
-            "status": "submitted",
-            "dependency": "afterok",
-            "submission_key": submission_key,
-            "nonce": final["nonce"],
-            "commit": commit,
-            "created_unix_s": final["created_unix_s"],
-            "submitted_unix_s": final["submitted_unix_s"],
-            "families": {
-                family: {
-                    "array_job_id": jobs[family]["array"],
-                    "merge_job_id": jobs[family]["merge"],
-                }
-                for family in FAMILIES
-            },
-        }:
-            fail(_descriptor().error("conflict"))
+        if _descriptor().from_stage == "final_validation":
+            if type(source_manifest_sha256) is not str or HEX64.fullmatch(source_manifest_sha256) is None:
+                fail(_descriptor().error("conflict"))
+            expected_compatibility = {
+                "kind": "mot_3d_selection_stage_submission",
+                "stage": "final_validation", "status": "submitted", "dependency": "afterok",
+                "families": {family: {"array_job_id": jobs[family]["array"], "merge_job_id": jobs[family]["merge"]} for family in FAMILIES},
+                "campaign_manifest_sha256": source_manifest_sha256,
+                "worker_job_sha256": {family: _sha(read_relative_at(campaign_fd, f"jobs/final_validation/{family}_array.pbs", MAX_FILE)) for family in FAMILIES},
+                "merge_job_sha256": {family: _sha(read_relative_at(campaign_fd, f"jobs/final_validation/{family}_merge.pbs", MAX_FILE)) for family in FAMILIES},
+            }
+            compatibility = json_bytes(read_relative_at(campaign_fd, _descriptor().source_submission_receipt, MAX_FILE),
+                                       keys=set(expected_compatibility), error=_descriptor().error("conflict"))
+            if compatibility != expected_compatibility:
+                fail(_descriptor().error("conflict"))
+        else:
+            compatibility = json_bytes(
+                read_relative_at(
+                    campaign_fd, _descriptor().source_submission_receipt, MAX_FILE
+                ),
+                keys={
+                    "kind",
+                    "stage",
+                    "status",
+                    "dependency",
+                    "submission_key",
+                    "nonce",
+                    "commit",
+                    "created_unix_s",
+                    "submitted_unix_s",
+                    "families",
+                },
+                error=_descriptor().error("conflict"),
+            )
+            if compatibility != {
+                "kind": "mot_3d_selection_stage_submission",
+                "stage": _descriptor().from_stage,
+                "status": "submitted",
+                "dependency": "afterok",
+                "submission_key": submission_key,
+                "nonce": final["nonce"],
+                "commit": commit,
+                "created_unix_s": final["created_unix_s"],
+                "submitted_unix_s": final["submitted_unix_s"],
+                "families": {
+                    family: {
+                        "array_job_id": jobs[family]["array"],
+                        "merge_job_id": jobs[family]["merge"],
+                    }
+                    for family in FAMILIES
+                },
+            }:
+                fail(_descriptor().error("conflict"))
         return final, jobs
     finally:
         os.close(submissions_fd)
@@ -1097,6 +1145,106 @@ def _winner_selection_from_published(campaign_fd, evidence):
     }
 
 
+def _producer_receipt_digest(raw: bytes, receipt: dict) -> str:
+    """Keep exact ledger bytes separate from the synchronized semantic digest."""
+    encoded = canonical(receipt)
+    if raw != encoded + b"\n":
+        fail(_descriptor().error("conflict"))
+    return _sha(encoded)
+
+
+def _discovery_predecessor_key(campaign_fd: int, payload: dict, prior: dict) -> str:
+    """Prove Discovery authority independently of the current Preliminary key.
+
+    The caller pins the whole prior receipt and bundle; that receipt pins this
+    bootstrap digest, including the original manifest SHA in its exact file map.
+    """
+    from workflow_api.zeus_discovery_submission import FILES, RECEIPT_KEYS, canonical_digest
+
+    error = _descriptor().error("conflict")
+    bootstrap = json_bytes(
+        read_relative_at(campaign_fd, ".mot_ui/transitions/discovery_bootstrap.json", MAX_FILE),
+        keys=RECEIPT_KEYS, error=error,
+    )
+    digests = ("physical_model_sha256", "source_2d_campaign_sha256",
+               "source_2d_final_report_sha256", "input_registry_sha256",
+               "timestep_policy_sha256")
+    files = bootstrap["files"]
+    if (
+        bootstrap["status"] != "discovery_prepared"
+        or bootstrap["commit"] != payload["commit"]
+        or type(bootstrap["nonce"]) is not str
+        or HEX32.fullmatch(bootstrap["nonce"]) is None
+        or type(bootstrap["completed_unix_s"]) not in (int, float)
+        or not 0 <= bootstrap["completed_unix_s"] <= 253402300799
+        or type(files) is not dict or set(files) != FILES
+        or any(type(value) is not str or HEX64.fullmatch(value) is None
+               for value in files.values())
+        or any(type(bootstrap[key]) is not str or HEX64.fullmatch(bootstrap[key]) is None
+               for key in digests)
+        or canonical_digest(bootstrap) != prior["bootstrap_digest"]
+    ):
+        fail(error)
+    bootstrap_key = canonical_digest({
+        "campaign_name": PurePosixPath(payload["campaign"]).name,
+        "commit": payload["commit"], **{key: bootstrap[key] for key in digests},
+        "files": files, "nonce": bootstrap["nonce"],
+    })
+    if bootstrap["bootstrap_key"] != bootstrap_key:
+        fail(error)
+    return canonical_digest({
+        "campaign": payload["campaign"], "commit": payload["commit"],
+        "bootstrap_digest": canonical_digest(bootstrap),
+        "bootstrap_key": bootstrap_key, "bootstrap_nonce": bootstrap["nonce"], "files": files,
+    })
+
+
+def _prior_final_paths(campaign_fd: int, manifest_bytes: bytes) -> frozenset[str]:
+    """Derive the predecessor registry from its unchanged canonical contracts."""
+    import importlib
+
+    stage = _descriptor().from_stage
+    contracts = {
+        "refinement": ("preliminary", "discovery", "preliminary_check_submission.json", "preliminary"),
+        "closure": ("refinement", "refinement", "refinement_submission.json", "refinement"),
+        "finalist_selection": ("closure", "closure", "closure_submission.json", "closure"),
+        "final_validation_input_generation": ("finalist", "finalists", "finalist_selection_submission.json", "finalist"),
+        "final_validation": ("final_input", None, "final_validation_input_generation_submission.json", "final_validation"),
+    }
+    if stage not in contracts:
+        fail(_descriptor().error("conflict"))
+    result_name, selection_stage, submission, transition_name = contracts[stage]
+    result_module = importlib.import_module(f"workflow_api.mot_3d_{result_name}_results")
+    if selection_stage is None:
+        source_paths = result_module.expected_paths(json_bytes(
+            manifest_bytes, error=_descriptor().error("conflict")
+        ))
+    else:
+        selections = {
+            family: json_bytes(read_relative_at(
+                campaign_fd, f"selection/{selection_stage}/{family}.json", MAX_FILE
+            ), error=_descriptor().error("conflict"))
+            for family in FAMILIES
+        }
+        source_paths = result_module.expected_paths(selections)
+    if transition_name == "preliminary":
+        generated = PRELIMINARY_GENERATED_PATHS
+    else:
+        transition_module = importlib.import_module(
+            f"workflow_api.mot_3d_{transition_name}_transition_remote"
+        )
+        generated = transition_module.GENERATED_PATHS
+    return frozenset(source_paths) | {submission} | frozenset(generated)
+
+
+def _prior_bundle_count(manifest_bytes: bytes) -> int:
+    if _descriptor().from_stage != "preliminary_check":
+        return _descriptor().prior_transition_file_count
+    from workflow_api.mot_3d_discovery_transition import _expected_bundle_paths
+
+    return len(_expected_bundle_paths(json_bytes(manifest_bytes, error=_descriptor().error("conflict"))))
+
+
 def _identity(
     payload,
     campaign_fd: int,
@@ -1180,7 +1328,7 @@ def _identity(
         or not stage4_valid
     ):
         fail("invalid_request")
-    frozen = {}
+    frozen = FrozenSourceFiles()
     for name, expected in identity["source_files"].items():
         raw = read_relative_at(campaign_fd, name, MAX_FILE)
         accepted = {expected}
@@ -1197,7 +1345,7 @@ def _identity(
         f".mot_ui/transitions/{_descriptor().prior_transition_name}.json",
         MAX_FILE,
     )
-    if _descriptor().workflow_kind == "final_validation_completion":
+    if _descriptor().from_stage != "preliminary_check":
         transition_row = json_bytes(
             transition,
             keys=FINAL_KEYS,
@@ -1219,6 +1367,7 @@ def _identity(
             },
             error=_descriptor().error("conflict"),
         )
+    prior_receipt_digest = _producer_receipt_digest(transition, transition_row)
     stage1_bundle = read_relative_at(
         campaign_fd,
         f".mot_ui/transitions/{_descriptor().prior_transition_name}.bundle.gz",
@@ -1233,9 +1382,29 @@ def _identity(
         {"index": index, "size": len(chunk), "sha256": _sha(chunk)}
         for index, chunk in enumerate(chunks)
     ]
-    if _descriptor().workflow_kind == "final_validation_completion":
+    if _descriptor().from_stage != "preliminary_check":
+        prior_paths = _prior_final_paths(campaign_fd, frozen["campaign.json"])
         if (
-            _sha(transition) != identity["stage3_remote_receipt_sha256"]
+            len(prior_paths) != _descriptor().prior_transition_file_count
+            or prior_receipt_digest != identity["stage3_remote_receipt_sha256"]
+            or type(transition_row["version"]) is not int
+            or transition_row["version"] != 1
+            or any(
+                type(transition_row[key]) is not str
+                or HEX64.fullmatch(transition_row[key]) is None
+                for key in ("submission_key", "identity_sha256", "old_campaign_sha256",
+                            "new_campaign_sha256", "evidence_sha256")
+            )
+            or transition_row["new_campaign_sha256"]
+            != identity["source_files"]["campaign.json"]
+            or type(transition_row["files"]) is not dict
+            or set(transition_row["files"]) != prior_paths
+            or transition_row["files"].get("campaign.json") != transition_row["new_campaign_sha256"]
+            or any(
+                not _safe_relative(name) or type(value) is not str
+                or HEX64.fullmatch(value) is None
+                for name, value in transition_row["files"].items()
+            )
             or transition_row["status"] != _descriptor().prior_transition_status
             or transition_row["commit"] != payload["commit"]
             or type(transition_row["nonce"]) is not str
@@ -1254,7 +1423,7 @@ def _identity(
         ):
             fail(_descriptor().error("conflict"))
     elif (
-        _sha(transition)
+        prior_receipt_digest
         != identity[
             (
                 "stage1_receipt_sha256"
@@ -1266,7 +1435,8 @@ def _identity(
         or transition_row["commit"] != payload["commit"]
         or (
             _descriptor().from_stage == "preliminary_check"
-            and transition_row["submission_key"] != payload["submission_key"]
+            and transition_row["submission_key"]
+            != _discovery_predecessor_key(campaign_fd, payload, transition_row)
         )
         or type(transition_row["submission_key"]) is not str
         or HEX64.fullmatch(transition_row["submission_key"]) is None
@@ -1290,7 +1460,7 @@ def _identity(
             for family in FAMILIES
         )
         or not _exact_bundle(
-            bundle, file_count=_descriptor().prior_transition_file_count
+            bundle, file_count=_prior_bundle_count(frozen["campaign.json"])
         )
         or bundle["bundle_sha256"]
         != identity[
@@ -1311,6 +1481,8 @@ def _identity(
         or bundle["chunks"] != expected_chunks
     ):
         fail(_descriptor().error("conflict"))
+    if _descriptor().from_stage == "finalist_selection":
+        frozen.authenticated_prior = AuthenticatedPriorBundle(transition, stage1_bundle, prior_paths)
     expected_key = digest(
         {
             "campaign": payload["campaign"],
@@ -1341,6 +1513,7 @@ def _capture(
     project_directory: Path,
     campaign_absolute_path: Path,
     manifest_raw: bytes,
+    authenticated_prior: AuthenticatedPriorBundle | None = None,
 ):
     manifest = json_bytes(manifest_raw, error=_descriptor().error("conflict"))
     if _descriptor().workflow_kind == "final_validation_completion":
@@ -1374,7 +1547,7 @@ def _capture(
             },
             "input_files": {
                 name: read_relative_at(campaign_fd, name, MAX_REVIEWED_FILE_BYTES)
-                for name in final_input_paths()
+                for name in final_input_paths(manifest)
             },
         }
         parsed = None
@@ -1407,6 +1580,28 @@ def _capture(
             ),
         )
     }
+    if _descriptor().from_stage == "finalist_selection":
+        from workflow_api.verified_artifact_bundle import unpack_artifact_bundle
+
+        if not isinstance(authenticated_prior, AuthenticatedPriorBundle):
+            fail(_descriptor().error("conflict"))
+        prior = json_bytes(authenticated_prior.receipt, keys=FINAL_KEYS,
+                           error=_descriptor().error("conflict"))
+        captured = unpack_artifact_bundle(
+            authenticated_prior.packed, prior["bundle"], campaign=manifest["name"],
+            commit=manifest["provenance"]["git_commit"],
+            from_stage="closure", to_stage="finalist_selection",
+            expected_paths=authenticated_prior.paths,
+        )
+        if (set(captured) != set(prior["files"])
+                or any(_sha(raw) != prior["files"][name] for name, raw in captured.items())
+                or any(selections[family] != captured[f"selection/finalists/{family}.json"]
+                       for family in FAMILIES)):
+            fail(_descriptor().error("conflict"))
+        selections["closure_summaries"] = {
+            family: captured[f"closure/{family}/merged/refinement_summary.json"]
+            for family in FAMILIES
+        }
     manifest, validated = _validate_results(
         manifest_raw, selections, results, project_directory, campaign_absolute_path
     )
@@ -1778,8 +1973,13 @@ def main(*, trusted_root_override=None):
                 )
             ),
         )
+        source_manifest_sha256 = (
+            identity["source_files"]["campaign.json"]
+            if _descriptor().from_stage == "final_validation"
+            else None
+        )
         _, jobs = _exact_stage2(
-            campaign_fd, payload["submission_key"], payload["commit"]
+            campaign_fd, payload["submission_key"], payload["commit"], source_manifest_sha256
         )
         lifecycle, arrays, merges = _scheduler(jobs)
         if receipt is not None:
@@ -1926,6 +2126,7 @@ def main(*, trusted_root_override=None):
                 requested_root,
                 requested_root.joinpath(*relative.parts),
                 manifest_raw,
+                getattr(frozen, "authenticated_prior", None),
             )
         except SystemExit:
             raise
@@ -1970,8 +2171,10 @@ def main(*, trusted_root_override=None):
                 if read_relative_at(campaign_fd, name, MAX_FILE) != raw:
                     fail(_descriptor().error("conflict"))
             _identity(payload, campaign_fd, root_fd)
-            _exact_stage2(campaign_fd, payload["submission_key"], payload["commit"])
-            if _scheduler(jobs) != ("completed_success_unvalidated", 6, 2):
+            _exact_stage2(
+                campaign_fd, payload["submission_key"], payload["commit"], source_manifest_sha256
+            )
+            if _scheduler(jobs) != ("completed_success_unvalidated", *_terminal_counts()):
                 fail(_descriptor().error("conflict"))
             generated, _render_metadata = _render_transition(
                 relative, manifest, validated, frozen["campaign.json"]

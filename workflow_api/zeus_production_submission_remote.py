@@ -74,7 +74,7 @@ def scheduler_state(output,job_id,task_count):
         seen.add(identifier)
         for line in lines[1:]:
             if not line.strip():continue
-            match=re.match(r"\s*([A-Za-z_]+)\s*=\s*(.*?)\s*$",line)
+            match=re.match(r"\s*([A-Za-z_.]+)\s*=\s*(.*?)\s*$",line)
             if match:
                 key=match.group(1)
                 if key in {"job_state","Exit_status"} and key in values:return "status_unknown"

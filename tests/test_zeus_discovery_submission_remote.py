@@ -285,3 +285,84 @@ def test_receiver_cross_process_lock_prevents_duplicate_qsub(
     finally:
         holder.terminate()
         holder.wait(timeout=5)
+
+
+@pytest.mark.parametrize('when',['before_intent','after_first_qsub'])
+@pytest.mark.parametrize('mutation',['manifest','job','receipt','checkout','dirty_code'])
+def test_discovery_reattests_before_intent_and_each_qsub(tmp_path,monkeypatch,capsys,when,mutation):
+    namespace,root,base,calls=_receiver_fixture(tmp_path,monkeypatch)
+    campaign=root/base['campaign'];original=namespace['run_captured'];changed=False
+    frozen={p:p.read_bytes() for p in campaign.rglob('*') if p.is_file()}
+    def mutate():
+        nonlocal changed
+        changed=True
+        if mutation=='manifest':target=campaign/'campaign.json'
+        elif mutation=='job':target=campaign/'jobs/single_pass/round_03.pbs'
+        elif mutation=='receipt':target=campaign/'.mot_ui/transitions/discovery_bootstrap.json'
+        else:return
+        target.write_bytes(target.read_bytes()+b' ')
+    def captured(argv,**kwargs):
+        result=original(argv,**kwargs)
+        if argv[0].endswith('qsub') and when=='after_first_qsub' and not changed:mutate()
+        if changed and mutation=='checkout' and argv[-2:]==['rev-parse','HEAD']:
+            return 0,b'b'*40+b'\n',b''
+        if changed and mutation=='dirty_code' and 'status' in argv:
+            return 0,b' M studies/mot_3d_campaign.py\n',b''
+        return result
+    namespace['run_captured']=captured
+    flock=namespace['fcntl'].flock; lock_fds=[]
+    def locked(fd,op):
+        result=flock(fd,op)
+        if op & namespace['fcntl'].LOCK_EX:
+            lock_fds.append(fd)
+            if when=='before_intent' and not changed:mutate()
+        return result
+    monkeypatch.setattr(namespace['fcntl'],'flock',locked)
+    with pytest.raises(SystemExit):_invoke(namespace,root,{**base,'nonce':'d'*32},'submit',monkeypatch,capsys)
+    error=json.loads(capsys.readouterr().out)
+    assert error['error']=='discovery_submission_outcome_unknown'
+    assert sum(argv[0]=='/usr/local/bin/qsub' for argv,_ in calls)==(0 if when=='before_intent' else 1)
+    if when=='after_first_qsub':
+        # The real receiver process exits on failure; release its OS-held lock
+        # before emulating a separate retry in this in-process fixture.
+        for fd in lock_fds:
+            flock(fd,namespace['fcntl'].LOCK_UN);namespace['os'].close(fd)
+        lock_fds.clear()
+        for path,raw in frozen.items():path.write_bytes(raw)
+        namespace['run_captured']=original
+        retry=_invoke(namespace,root,{**base,'nonce':'e'*32},'submit',monkeypatch,capsys)
+        assert retry['lifecycle']=='outcome_unknown'
+        assert sum(argv[0]=='/usr/local/bin/qsub' for argv,_ in calls)==1
+
+
+@pytest.mark.parametrize('orphan',['discovery_angled_donut_1.json','discovery_single_pass_3.pending.json','discovery_unexpected_99.json'])
+def test_orphan_discovery_step_never_submits(tmp_path,monkeypatch,capsys,orphan):
+    namespace,root,base,calls=_receiver_fixture(tmp_path,monkeypatch)
+    directory=root/base['campaign']/'.mot_ui/submissions';directory.mkdir()
+    (directory/orphan).write_text('{}')
+    if 'unexpected' in orphan:
+        with pytest.raises(SystemExit):_invoke(namespace,root,{**base,'nonce':'d'*32},'submit',monkeypatch,capsys)
+        assert json.loads(capsys.readouterr().out)['error']=='discovery_submission_outcome_unknown'
+    else:
+        result=_invoke(namespace,root,{**base,'nonce':'d'*32},'submit',monkeypatch,capsys)
+        assert result['lifecycle']=='outcome_unknown'
+    assert not any(argv[0]=='/usr/local/bin/qsub' for argv,_ in calls)
+
+
+@pytest.mark.parametrize('remove_final',[False,True])
+def test_actual_discovery_step_writer_prevents_duplicate_after_aggregate_loss(tmp_path,monkeypatch,capsys,remove_final):
+    namespace,root,base,calls=_receiver_fixture(tmp_path,monkeypatch)
+    flock=namespace['fcntl'].flock;fds=[]
+    def locked(fd,op):
+        value=flock(fd,op)
+        if op & namespace['fcntl'].LOCK_EX:fds.append(fd)
+        return value
+    monkeypatch.setattr(namespace['fcntl'],'flock',locked)
+    assert _invoke(namespace,root,{**base,'nonce':'d'*32},'submit',monkeypatch,capsys)['lifecycle']=='submitted'
+    for fd in fds:flock(fd,namespace['fcntl'].LOCK_UN);namespace['os'].close(fd)
+    fds.clear()
+    directory=root/base['campaign']/'.mot_ui/submissions'
+    if remove_final:(directory/'discovery.json').unlink()
+    result=_invoke(namespace,root,{**base,'nonce':'e'*32},'submit',monkeypatch,capsys)
+    assert result['lifecycle']==('outcome_unknown' if remove_final else 'submitted')
+    assert sum(argv[0]=='/usr/local/bin/qsub' for argv,_ in calls)==5

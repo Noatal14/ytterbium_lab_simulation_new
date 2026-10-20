@@ -450,6 +450,34 @@ def main(*, trusted_root_override=None) -> None:
     )
     if expected_submission_key != payload["submission_key"]:
         fail("discovery_preparation_invalid")
+    transition_raw = bounded(transition, 8 * 1024 * 1024)
+    if canonical_digest(json.loads(transition_raw)) != payload["bootstrap_digest"]:
+        fail("discovery_preparation_invalid")
+    def reattest():
+        """Recheck the exact executable checkout and frozen artifacts under lock."""
+        try:
+            no_links(root, campaign)
+            no_links(campaign, transition)
+            if bounded(transition, 8 * 1024 * 1024) != transition_raw:
+                fail("discovery_submission_outcome_unknown")
+            for name, expected in frozen.items():
+                path = campaign.joinpath(*PurePosixPath(name).parts)
+                no_links(campaign, path)
+                if bounded(path) != expected:
+                    fail("discovery_submission_outcome_unknown")
+            code, stdout, stderr = run_captured(
+                ["/usr/bin/git", "-C", str(root), "rev-parse", "HEAD"], limit=4096)
+            if code or stderr or stdout.decode("ascii", "strict").strip() != payload["commit"]:
+                fail("discovery_submission_outcome_unknown")
+            code, stdout, stderr = run_captured(
+                ["/usr/bin/git", "-C", str(root), "status", "--porcelain=v1", "--untracked-files=all", "--",
+                 "workflow_api", "studies", "simulations", "utils", "config.py", "lab_setup", "atomsmltr"],
+                limit=4 * 1024 * 1024)
+            if code or stdout or stderr:
+                fail("discovery_submission_outcome_unknown")
+        except (OSError, UnicodeError):
+            fail("discovery_submission_outcome_unknown")
+
     submissions = campaign / ".mot_ui/submissions"
     no_links(campaign, submissions)
     lock_descriptor = -1
@@ -473,6 +501,17 @@ def main(*, trusted_root_override=None) -> None:
     final_path = submissions / "discovery.json"
     pending_path = submissions / "discovery.pending.json"
     chain = _empty_chain()
+    expected_steps = {
+        f"discovery_{family}_{index}{suffix}.json"
+        for family, paths in JOBS.items()
+        for index in range(1, len(paths) + 1)
+        for suffix in ("", ".pending")
+    }
+    if submissions.exists() and any(
+        path.name.startswith("discovery_") and path.name not in expected_steps
+        for path in submissions.iterdir()
+    ):
+        fail("discovery_submission_outcome_unknown")
     if final_path.exists():
         final = read_json(
             final_path,
@@ -549,6 +588,13 @@ def main(*, trusted_root_override=None) -> None:
             return
         response("submitted", branch, chain, final["nonce"], final["submitted_unix_s"])
         return
+    # A missing aggregate ledger never makes surviving step evidence fresh.
+    # Reconciliation requires explicit manual verification, never another qsub.
+    if submissions.exists() and any(
+        path.name.startswith("discovery_") for path in submissions.iterdir()
+    ):
+        response("outcome_unknown", branch, chain)
+        return
     if pending_path.exists():
         response("outcome_unknown", branch, chain)
         return
@@ -558,6 +604,7 @@ def main(*, trusted_root_override=None) -> None:
     nonce = payload.get("nonce")
     if not isinstance(nonce, str) or HEX32.fullmatch(nonce) is None:
         fail("invalid_request")
+    reattest()
     created = int(time.time())
     write_record(
         pending_path,
@@ -593,6 +640,7 @@ def main(*, trusted_root_override=None) -> None:
             argv = ["/usr/local/bin/qsub", "-J", "0-2:1"]
             if previous is not None:
                 argv += ["-W", f"depend=afterok:{previous}"]
+            reattest()
             try:
                 code, stdout, stderr = run_captured(
                     argv, input_data=frozen[job_file], limit=1024 * 1024

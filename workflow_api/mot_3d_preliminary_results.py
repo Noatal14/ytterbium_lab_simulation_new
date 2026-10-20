@@ -176,8 +176,16 @@ def _strict_json_bytes(raw: bytes, *, require_mapping: bool = True) -> Any:
 def _candidate_ids(selection: Mapping[str, Any], family: str) -> tuple[str, ...]:
     candidates = selection.get("candidates")
     if (
-        selection.get("family") != family
-        or selection.get("candidate_count") != EXPECTED_CANDIDATES_PER_FAMILY
+        set(selection) != {
+            "kind", "family", "requested_candidate_count", "selected_candidate_count",
+            "selection_pool_minimum_fraction", "parameter_bounds", "candidates",
+        }
+        or selection.get("kind") != "mot_3d_discovery_candidate_selection"
+        or selection.get("family") != family
+        or type(selection.get("requested_candidate_count")) is not int
+        or selection["requested_candidate_count"] != EXPECTED_CANDIDATES_PER_FAMILY
+        or type(selection.get("selected_candidate_count")) is not int
+        or selection["selected_candidate_count"] != EXPECTED_CANDIDATES_PER_FAMILY
         or not isinstance(candidates, list)
         or len(candidates) != EXPECTED_CANDIDATES_PER_FAMILY
     ):
@@ -565,6 +573,45 @@ def validate_npz_container_bytes(
     _validate_npz_container(raw, max_member_bytes=max_member_bytes)
 
 
+def _outcome_reference_matches(reference: object, *, campaign_absolute_path: str,
+                               project_directory: str, artifact: str) -> bool:
+    """Match only the two canonical renderer spellings of one frozen artifact."""
+    if any(type(value) is not str or not value or "\\" in value
+           for value in (campaign_absolute_path, project_directory, artifact)):
+        return False
+    campaign = PurePosixPath(campaign_absolute_path)
+    project = PurePosixPath(project_directory)
+    suffix = PurePosixPath(artifact)
+    if (not campaign.is_absolute() or not project.is_absolute()
+            or str(campaign) != campaign_absolute_path or str(project) != project_directory
+            or project not in campaign.parents or suffix.is_absolute()
+            or str(suffix) != artifact
+            or any(part in {".", ".."} for path in (campaign, project, suffix) for part in path.parts)):
+        return False
+    absolute = campaign / suffix
+    try:
+        relative = absolute.relative_to(project)
+    except ValueError:
+        return False
+    return type(reference) is str and reference in {str(absolute), str(relative)}
+
+
+def _frozen_input_absolute_path(value: object, project: PurePosixPath) -> PurePosixPath:
+    """Authenticate a frozen POSIX identity without changing its serialized form."""
+    if type(value) is not str or not value or "\\" in value or "\x00" in value:
+        raise PreliminaryResultError("particle_selection_mismatch")
+    path = PurePosixPath(value)
+    if str(path) != value or any(part in {"", ".", ".."} for part in path.parts):
+        raise PreliminaryResultError("particle_selection_mismatch")
+    if not path.is_absolute():
+        if not path.parts or path.parts[0] != "data":
+            raise PreliminaryResultError("particle_selection_mismatch")
+        path = project / path
+    if project not in path.parents:
+        raise PreliminaryResultError("particle_selection_mismatch")
+    return path
+
+
 def validate_frozen_role_records(
     records: object,
     *,
@@ -598,8 +645,8 @@ def validate_frozen_role_records(
         count = record["n_survivors"]
         path = record["path"]
         metadata_path = record["metadata_path"]
-        array_path = PurePosixPath(path) if type(path) is str else None
-        metadata = PurePosixPath(metadata_path) if type(metadata_path) is str else None
+        array_path = _frozen_input_absolute_path(path, project)
+        metadata = _frozen_input_absolute_path(metadata_path, project)
         mot_seed = record["mot_seed"]
         if (
             type(count) is not int
@@ -613,8 +660,6 @@ def validate_frozen_role_records(
             or metadata is None
             or not array_path.is_absolute()
             or not metadata.is_absolute()
-            or str(array_path) != path
-            or str(metadata) != metadata_path
             or any(part in {"", ".", ".."} for part in array_path.parts[1:])
             or any(part in {"", ".", ".."} for part in metadata.parts[1:])
             or array_path.parts[: len(project.parts)] != project.parts
@@ -641,8 +686,8 @@ def validate_frozen_role_records(
             if record["source_design"].get("acceptance") != acceptance_provenance:
                 raise PreliminaryResultError("particle_selection_mismatch")
             try:
-                assert_acceptance_path(path, project_directory)
-                assert_acceptance_path(metadata_path, project_directory)
+                assert_acceptance_path(str(array_path), project_directory)
+                assert_acceptance_path(str(metadata), project_directory)
             except ValueError as error:
                 raise PreliminaryResultError("particle_selection_mismatch") from error
         else:
@@ -721,6 +766,8 @@ def expected_selection_particle_provenance(
         path = record["path"]
         metadata_path = record["metadata_path"]
         digest = record["sha256"]
+        absolute_path = _frozen_input_absolute_path(path, project)
+        absolute_metadata = _frozen_input_absolute_path(metadata_path, project)
         if (
             not isinstance(count, int)
             or isinstance(count, bool)
@@ -738,8 +785,6 @@ def expected_selection_particle_provenance(
             or PurePosixPath(path).parent != PurePosixPath(metadata_path).parent
             or PurePosixPath(path).suffix != ".npy"
             or PurePosixPath(metadata_path) != PurePosixPath(path).with_suffix(".json")
-            or not PurePosixPath(path).is_absolute()
-            or project not in PurePosixPath(path).parents
             or str(PurePosixPath(path)) != path
             or str(PurePosixPath(metadata_path)) != metadata_path
             or not isinstance(digest, str)
@@ -766,8 +811,8 @@ def expected_selection_particle_provenance(
                     raise ValueError(
                         "Acceptance frozen source design has different lineage."
                     )
-                assert_acceptance_path(path, project_directory)
-                assert_acceptance_path(metadata_path, project_directory)
+                assert_acceptance_path(str(absolute_path), project_directory)
+                assert_acceptance_path(str(absolute_metadata), project_directory)
             else:
                 assert_scientific_source(record)
         except ValueError as error:
@@ -914,10 +959,10 @@ def validate_preliminary_result_bytes(
                 try:
                     record = _strict_json_bytes(raw)
                     suffix = PurePosixPath(name).with_suffix(".npz").as_posix()
-                    expected_outcome_path = str(
-                        PurePosixPath(campaign_absolute_path) / suffix
-                    )
-                    if record.get("outcomes_path") != expected_outcome_path:
+                    if not _outcome_reference_matches(
+                        record.get("outcomes_path"), campaign_absolute_path=campaign_absolute_path,
+                        project_directory=project_directory, artifact=suffix,
+                    ):
                         raise PreliminaryResultError("result_metadata_mismatch")
                     record["outcomes_path"] = str(campaign / suffix)
                     raw = json.dumps(record, indent=2, allow_nan=False).encode() + b"\n"

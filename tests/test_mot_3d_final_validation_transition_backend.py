@@ -296,3 +296,12 @@ def test_reviewed_bundle_caps_reject_per_file_total_and_gzip_bomb():
             max_total_bytes=MAX_REVIEWED_TOTAL_BYTES,
             max_file_bytes=MAX_REVIEWED_FILE_BYTES,
         )
+
+
+def test_locked_terminal_counts_follow_closed_submission_contract():
+    # Both modes retain the reviewed twenty-seed generation chain.
+    with core.descriptor_scope(wrapper.DESCRIPTOR):
+        assert core._terminal_counts() == (40, 1)
+    from workflow_api import mot_3d_refinement_transition_remote as family_wrapper
+    with core.descriptor_scope(family_wrapper.DESCRIPTOR):
+        assert core._terminal_counts() == (6, 2)

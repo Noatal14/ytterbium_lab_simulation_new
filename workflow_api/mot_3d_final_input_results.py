@@ -121,6 +121,54 @@ def _array(raw, *, allow_empty=False):
     return value
 
 
+def _shape_matches(value, array):
+    return type(value) is list and all(type(item) is int for item in value) and value == list(array.shape)
+
+
+def _validate_current_zeeman(metadata, array, *, seed, initial, npools, profile, basename, output_hash, commit):
+    """Attest the exact current producer schema and its physical run inputs."""
+    import math
+    from datetime import datetime
+    from simulations.zeeman import _resolved_run_parameters
+    from utils.file_helpers import _json_default
+    from lab_setup.physical_specification import attest_canonical_zeeman_metadata
+    keys={"kind","laboratory_spec_version","laboratory_spec_sha256","zeeman_profile_sha256",
+          "created_utc","output_file","output_sha256","state_layout","shape","dtype",
+          "n_survivors","survival_fraction","elapsed_seconds","parameters","software"}
+    controlled=profile is not None and "controlled_input_recipe" in profile.policy["generation"]
+    if profile is not None:keys.add("acceptance")
+    if controlled:keys.update({"suitability","input_origin","controlled_input_origin"})
+    try:
+        expected=json.loads(json.dumps(_resolved_run_parameters({"seed":seed,"N_particles":initial,
+                            "dt":4e-5,"npools":npools,"stochastic":True,"collimation_angle_deg":1.5}), default=_json_default))
+        software=metadata.get("software")
+        if (set(metadata)!=keys or metadata.get("kind")!="zeeman_survivor_ensemble"
+                or json.dumps(metadata.get("parameters"),sort_keys=True,allow_nan=False)!=json.dumps(expected,sort_keys=True,allow_nan=False) or metadata.get("output_file")!=basename
+                or metadata.get("output_sha256")!=output_hash or not _shape_matches(metadata.get("shape"),array)
+                or metadata.get("dtype")!="float64" or metadata.get("state_layout")!=["x_m","y_m","z_m","vx_m_s","vy_m_s","vz_m_s"]
+                or type(metadata.get("n_survivors")) is not int or metadata["n_survivors"]!=len(array)
+                or len(array)>initial or type(metadata.get("survival_fraction")) is not float or metadata.get("survival_fraction")!=len(array)/initial
+                or type(metadata.get("elapsed_seconds")) not in {int,float}
+                or not math.isfinite(metadata["elapsed_seconds"]) or metadata["elapsed_seconds"]<0
+                or not isinstance(software,dict) or set(software)!={"git_commit","tracked_worktree_was_dirty","python_version","atomsmltr_version","numpy_version","host"}
+                or software.get("git_commit")!=commit or software.get("tracked_worktree_was_dirty") is not False
+                or any(type(software[key]) is not str or len(software[key])>256 for key in ("python_version","numpy_version","host"))
+                or software["atomsmltr_version"] is not None and type(software["atomsmltr_version"]) is not str):
+            raise ValueError()
+        if datetime.fromisoformat(metadata["created_utc"]).utcoffset() is None:raise ValueError()
+        attest_canonical_zeeman_metadata(metadata,allow_legacy=False)
+        if profile is not None and metadata.get("acceptance")!=profile.provenance():raise ValueError()
+        if controlled:
+            from workflow_api.acceptance_inputs import controlled_initial_states
+            _,origin=controlled_initial_states(seed,profile)
+            explicit={"kind":"explicit_initial_states","suitability":"acceptance_only","thermal_sampler_used":False,
+                      "initial_state_sha256":origin["initial_state_sha256"],"particle_count":initial}
+            if (metadata.get("suitability")!="acceptance_only" or metadata.get("controlled_input_origin")!=origin
+                    or metadata.get("input_origin")!=explicit):raise ValueError()
+    except (ValueError,KeyError,TypeError,AttributeError) as error:
+        _raise("input_metadata_mismatch",error)
+
+
 def validate_final_input_result_bytes(
     manifest_bytes: bytes,
     locked_nominals_bytes: bytes,
@@ -324,16 +372,6 @@ def validate_final_input_result_bytes(
         expected_design = manifest.get("upstream_2d_campaign", {}).get(
             "expected_survivor_design"
         )
-        zeeman_keys = {
-            "kind",
-            "parameters",
-            "shape",
-            "output_sha256",
-            "laboratory_spec_version",
-            "laboratory_spec_sha256",
-            "zeeman_profile_sha256",
-            "software",
-        }
         survivor_keys = {
             "kind",
             "zeeman_seed",
@@ -343,15 +381,17 @@ def validate_final_input_result_bytes(
             "source_zeeman_ensemble",
             "shape",
             "output_sha256",
+            "n_input", "n_survivors", "state_layout", "dtype",
         }
         replicate_keys = {"kind", "parameters", "design", "replicate"}
+        if any(not isinstance(item,dict) for item in (zm,mm,replicate)):
+            _raise("input_metadata_mismatch")
         if profile:
             if any(
                 item.get("acceptance") != profile.provenance()
                 for item in (zm, mm, replicate)
             ):
                 _raise("input_metadata_mismatch")
-            zeeman_keys.add("acceptance")
             survivor_keys.add("acceptance")
             replicate_keys.add("acceptance")
         expected_profile = (
@@ -359,28 +399,18 @@ def validate_final_input_result_bytes(
             if isinstance(expected_design, dict)
             else None
         )
+        _validate_current_zeeman(zm,za,seed=zseed,initial=initial_particles,
+            npools=profile.policy["generation"]["jobs"]["zeeman"]["npools"] if profile else 200,
+            profile=profile,basename=PurePosixPath(zbase).name+".npy",output_hash=hashes[f"{zbase}.npy"],
+            commit=manifest.get("provenance",{}).get("git_commit"))
         if (
-            not isinstance(zm, dict)
-            or set(zm) != zeeman_keys
-            or zm.get("kind") != "zeeman_ensemble"
-            or not isinstance(zm.get("parameters"), dict)
-            or set(zm["parameters"]) != {"seed", "resolved_zeeman_magnet_profile"}
-            or zm.get("parameters", {}).get("seed") != zseed
-            or zm["parameters"].get("resolved_zeeman_magnet_profile")
-            != expected_profile
-            or zm.get("shape") != list(za.shape)
-            or zm.get("output_sha256") != hashes[f"{zbase}.npy"]
-            or zm.get("laboratory_spec_version") != "laboratory_physical_v1"
-            or type(zm.get("laboratory_spec_sha256")) is not str
-            or HEX64.fullmatch(zm["laboratory_spec_sha256"]) is None
-            or type(zm.get("zeeman_profile_sha256")) is not str
-            or HEX64.fullmatch(zm["zeeman_profile_sha256"]) is None
-            or zm.get("software")
-            != {"git_commit": manifest.get("provenance", {}).get("git_commit")}
+            expected_profile != zm["parameters"]["resolved_zeeman_magnet_profile"]
             or not isinstance(mm, dict)
             or set(mm) != survivor_keys
             or mm.get("kind") != "mot_2d_final_survivor_ensemble"
+            or type(mm.get("zeeman_seed")) is not int
             or mm.get("zeeman_seed") != zseed
+            or type(mm.get("mot_seed")) is not int
             or mm.get("mot_seed") != mseed
             or mm.get("parameters") != expected_parameters
             or not isinstance(mm.get("design"), dict)
@@ -411,22 +441,31 @@ def validate_final_input_result_bytes(
             != zm.get("laboratory_spec_sha256")
             or mm["design"].get("zeeman_profile_sha256")
             != zm.get("zeeman_profile_sha256")
-            or mm["design"].get("ensemble_dir")
-            != f"{expected_root}/final_validation_inputs/after_zeeman"
+            or type(mm["design"].get("ensemble_dir")) is not str
+            or mm["design"].get("ensemble_dir") not in {
+                f"{expected_root}/final_validation_inputs/after_zeeman",
+                f"{logical_root}/final_validation_inputs/after_zeeman",
+            }
             or mm["design"].get("dt_s")
-            != (MOT_2D_SIM_CONFIG["dt_s"] if profile else 4e-5)
+            != MOT_2D_SIM_CONFIG["dt_s"]
             or mm["design"].get("uses_all_available_particles") is not True
+            or type(mm["design"].get("npools")) is not int
             or mm["design"].get("npools")
             != (
                 profile.policy["generation"]["jobs"]["mot_2d"]["npools"]
                 if profile
                 else 200
             )
-            or mm.get("shape") != list(ma.shape)
+            or mm["design"].get("laboratory_spec_version") != zm["laboratory_spec_version"]
+            or type(mm.get("n_input")) is not int or mm["n_input"] != len(za)
+            or type(mm.get("n_survivors")) is not int or mm["n_survivors"] != len(ma)
+            or len(ma)>len(za)
+            or mm.get("state_layout") != ["x_m","y_m","z_m","vx_m_s","vy_m_s","vz_m_s"]
+            or mm.get("dtype") != "float64"
+            or not _shape_matches(mm.get("shape"),ma)
             or mm.get("output_sha256") != hashes[f"{mbase}.npy"]
-            or not _canonical_path(
-                mm.get("source_zeeman_ensemble"), f"{expected_root}/{zbase}.npy"
-            )
+            or not any(_canonical_path(mm.get("source_zeeman_ensemble"),value) for value in (
+                f"{expected_root}/{zbase}.npy",f"{logical_root}/{zbase}.npy",PurePosixPath(zbase).name+".npy"))
             or not isinstance(replicate, dict)
             or set(replicate) != replicate_keys
             or replicate.get("kind") != "mot_2d_final_production_replicate"
@@ -434,13 +473,30 @@ def validate_final_input_result_bytes(
             or replicate.get("design") != mm.get("design")
             or not isinstance(replicate.get("replicate"), dict)
             or set(replicate["replicate"])
-            != {"zeeman_seed", "mot_seed", "ensemble_file", "captured"}
+            != {"ensemble_file","zeeman_seed","mot_seed","n_available","selection_method","subset_seed","n_input","captured","conditional_efficiency","estimated_total_efficiency","batch_elapsed_seconds"}
+            or type(replicate["replicate"].get("zeeman_seed")) is not int
             or replicate.get("replicate", {}).get("zeeman_seed") != zseed
+            or type(replicate["replicate"].get("mot_seed")) is not int
             or replicate.get("replicate", {}).get("mot_seed") != mseed
-            or replicate.get("replicate", {}).get("captured") != len(ma)
+            or type(replicate["replicate"].get("captured")) is not int
+            or replicate["replicate"].get("captured") != len(ma)
+            or type(replicate["replicate"].get("n_input")) is not int
+            or replicate["replicate"].get("n_input") != len(za)
+            or type(replicate["replicate"].get("n_available")) is not int
+            or replicate["replicate"].get("n_available") != len(za)
+            or replicate["replicate"].get("selection_method") != "all_particles"
+            or type(replicate["replicate"].get("subset_seed")) is not int
+            or replicate["replicate"].get("subset_seed") != 100000+zseed
+            or type(replicate["replicate"].get("conditional_efficiency")) is not float
+            or replicate["replicate"].get("conditional_efficiency") != len(ma)/len(za)
+            or type(replicate["replicate"].get("estimated_total_efficiency")) is not float
+            or replicate["replicate"].get("estimated_total_efficiency") != (len(ma)/len(za))*(len(za)/initial_particles)
+            or type(replicate["replicate"].get("batch_elapsed_seconds")) not in {int,float}
+            or not np.isfinite(replicate["replicate"].get("batch_elapsed_seconds"))
+            or replicate["replicate"].get("batch_elapsed_seconds") < 0
             or not _canonical_path(
                 replicate.get("replicate", {}).get("ensemble_file"),
-                f"{expected_root}/{zbase}.npy",
+                PurePosixPath(zbase).name+".npy",
             )
         ):
             _raise("input_metadata_mismatch")

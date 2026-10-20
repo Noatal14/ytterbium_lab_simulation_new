@@ -20,6 +20,7 @@ from workflow_api.mot_3d_preliminary_results import (
     PRELIMINARY_RESULT_REASON_CODES,
     PreliminaryResultError,
     _canonical,
+    _outcome_reference_matches,
     _finite_tree,
     _strict_json,
     _strict_json_bytes,
@@ -236,7 +237,10 @@ def validate_refinement_result_bytes(
                 except PreliminaryResultError as exc:
                     _raise("malformed_json", exc)
                 suffix = PurePosixPath(relative).with_suffix(".npz").as_posix()
-                if record.get("outcomes_path") != f"{source_root}/{suffix}":
+                if not _outcome_reference_matches(
+                    record.get("outcomes_path"), campaign_absolute_path=str(source_root),
+                    project_directory=project_directory, artifact=suffix,
+                ):
                     _raise("result_metadata_mismatch")
                 record["outcomes_path"] = str(
                     root.joinpath(*PurePosixPath(suffix).parts)

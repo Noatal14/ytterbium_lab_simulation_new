@@ -16,6 +16,21 @@ const snapshot: ZeusSnapshot = { connection_status: "connected", profile, remote
 const preliminary = { state: "idle", status: null, preview: null, result: null, error: "", refresh: vi.fn(), review: vi.fn(), confirm: vi.fn(), reset: vi.fn() } as any;
 
 describe("3D Discovery transition contract", () => {
+  it("binds synchronized artifact count to the active workload policy", () => {
+    try {
+      vi.stubEnv("MODE", "ui-acceptance");
+      const miniature = { ...result, artifacts: { ...result.artifacts, synchronized: 28 } };
+      expect(parseMot3DDiscoveryTransitionResult(miniature, campaignId).artifacts.synchronized).toBe(28);
+      for (const count of [27, 29, 954]) {
+        expect(() => parseMot3DDiscoveryTransitionResult({ ...miniature, artifacts: { ...miniature.artifacts, synchronized: count } }, campaignId)).toThrow();
+      }
+      vi.stubEnv("MODE", "development");
+      expect(parseMot3DDiscoveryTransitionResult(result, campaignId).artifacts.synchronized).toBe(954);
+      expect(() => parseMot3DDiscoveryTransitionResult(miniature, campaignId)).toThrow();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
   it("accepts only the complete verified review and result", () => {
     expect(parseMot3DDiscoveryTransitionStatus(status).next_action).toBe("review_transition");
     expect(parseMot3DDiscoveryTransitionPreview(preview, { campaignId }).artifacts.synchronize.trial_registries).toBe(950);

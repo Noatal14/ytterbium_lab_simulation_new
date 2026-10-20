@@ -319,7 +319,7 @@ def _receiver_repository(tmp_path):
         "completed_unix_s": 1,
     }
     receipt_raw = json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode()
-    (transitions / receiver.TRANSITION).write_bytes(receipt_raw)
+    (transitions / receiver.TRANSITION).write_bytes(receipt_raw + b"\n")
     (
         transitions / "finalist_selection_to_final_validation_inputs.bundle.gz"
     ).write_bytes(bundle_raw)
@@ -446,7 +446,7 @@ def test_real_receiver_rejects_identity_mutations_before_qsub(
         else:
             receipt["bundle"]["chunks"][0]["sha256"] = "f" * 64
         raw = json.dumps(receipt, sort_keys=True, separators=(",", ":")).encode()
-        path.write_bytes(raw)
+        path.write_bytes(raw + b"\n")
         payload["identity"]["remote_transition_receipt_sha256"] = hashlib.sha256(
             raw
         ).hexdigest()

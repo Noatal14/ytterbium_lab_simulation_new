@@ -321,7 +321,11 @@ class Mot3DRefinementSubmissionCoordinator(Mot3DPreliminarySubmissionCoordinator
             value = super().status(request)
         except Mot3DPreliminarySubmissionError as exc:
             raise Mot3DRefinementSubmissionError(exc.code) from exc
-        value["validation"] = {"status": "not_started"}
+        value["validation"] = {
+            "status": "not_started",
+            "expected_candidates_per_family": REFINEMENT_TOPOLOGY.candidates_per_family,
+            "expected_recoil_seeds_per_candidate": 3,
+        }
         return value
 
     def preview(self, request, *, session_id: str):

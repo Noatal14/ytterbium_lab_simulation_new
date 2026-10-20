@@ -5,6 +5,8 @@ from __future__ import annotations
 from workflow_api import mot_3d_workload as workload
 
 import base64, gzip, hashlib, json, os, re, stat, subprocess, sys, time
+from contextlib import redirect_stdout
+import io
 
 try:
     import fcntl
@@ -23,6 +25,29 @@ MAX_CHUNK_BYTES = 4 * 1024 * 1024
 MAX_CHUNKS = 16
 FAMILIES = ("angled_donut", "single_pass")
 TARGETS = {"angled_donut": (117, 117, 116), "single_pass": (200, 200, 200)}
+
+
+class _BoundedProgress(io.StringIO):
+    """Keep canonical preparation diagnostics off the machine response channel."""
+    def __init__(self):
+        super().__init__()
+        self.byte_count = 0
+
+    def write(self, text):
+        size = len(text.encode("utf-8", "strict"))
+        if self.byte_count + size > 64 * 1024:
+            raise ValueError("Discovery preparation diagnostics exceeded their bound.")
+        self.byte_count += size
+        return super().write(text)
+
+
+def _prepare_preliminary(campaign, manifest):
+    from studies.mot_3d_campaign import prepare_preliminary_check
+
+    diagnostics = _BoundedProgress()
+    with redirect_stdout(diagnostics):
+        prepare_preliminary_check(campaign, manifest)
+    return diagnostics.getvalue()
 
 
 def fail(code, status=20):
@@ -363,7 +388,10 @@ def main():
         not isinstance(payload, dict)
         or set(payload) != expected
         or not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}", username)
-        or root != Path(f"/home/{username}/ytterbium_lab_simulation_new")
+        or root not in {
+            Path(f"/home/{username}/ytterbium_lab_simulation_new"),
+            Path(f"/home/{username}/ytterbium_lab_simulation_ui_acceptance"),
+        }
         or relative.is_absolute()
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or not (
@@ -493,6 +521,14 @@ def main():
     try:
         if final.exists():
             fail("transition_outcome_unknown")
+        locked_manifest = read_json(campaign / "campaign.json")
+        try:
+            assert_campaign_target(locked_manifest, username, requested, relative)
+            validate_location(locked_manifest, relative)
+        except ValueError:
+            fail("discovery_preparation_invalid")
+        if locked_manifest != manifest:
+            fail("transition_conflict")
         if pending.exists():
             old = read_json(pending)
             if (
@@ -517,13 +553,17 @@ def main():
                 or validate_outputs(campaign, manifest) != "ready_to_advance"
             ):
                 fail("transition_conflict")
-            from argparse import Namespace
-            from studies.mot_3d_campaign import advance_campaign
-
-            advance_campaign(Namespace(campaign=str(campaign)))
+            # This receiver has already authenticated the complete modern
+            # five-job ledger. The standalone CLI's legacy ledger is separate.
+            _prepare_preliminary(campaign, manifest)
         manifest = read_json(campaign / "campaign.json")
         if manifest.get("stage") != "preliminary_check":
             fail("transition_outcome_unknown")
+        try:
+            assert_campaign_target(manifest, username, requested, relative)
+            validate_location(manifest, relative)
+        except ValueError:
+            fail("discovery_preparation_invalid")
         bundle, packed, _ = build_bundle(campaign, payload["commit"], manifest=manifest)
         publish(bundle_path, packed)
         receipt = {

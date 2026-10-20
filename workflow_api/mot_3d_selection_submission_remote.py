@@ -300,6 +300,52 @@ def open_dir_at(parent, name, create=False):
     return fd
 
 
+def _authenticated_predecessor_names(campaign_fd, submissions_fd, names, transition, commit):
+    """Recognize only the completed, attested linear predecessor ledger."""
+    if _config().stage != "final_validation":
+        return set()
+    stage = "final_validation_input_generation"
+    known = {stage + ".json", stage + ".lock", *(stage + "_" + step + ".json" for step in ("zeeman", "mot_2d", "freeze"))}
+    present = set(names) & known
+    if not present:
+        return set()
+    required = known - {stage + ".lock"}
+    if not required <= present or not exact_match(HEX64, transition.get("submission_key")):
+        fail(_outcome_error())
+    compat_name = "final_validation_input_generation_submission.json"
+    if (not isinstance(transition.get("files"), dict)
+            or hashlib.sha256(read_relative_at(campaign_fd, compat_name)).hexdigest()
+            != transition["files"].get(compat_name)):
+        fail(_outcome_error())
+    for name in present:
+        if not regular_exists_at(submissions_fd, name):
+            fail(_outcome_error())
+    # Pending/unknown similarly prefixed files remain outside this exact set and
+    # are rejected by the caller's ordinary orphan-ledger guard.
+    from workflow_api import mot_3d_preliminary_transition_remote as proof
+    from workflow_api.mot_3d_final_validation_transition_remote import DESCRIPTOR
+    from contextlib import redirect_stdout
+    import io
+    lock_fd = -1
+    try:
+        if stage + ".lock" in present:
+            lock_fd = os.open(stage + ".lock", os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=submissions_fd)
+            row = os.fstat(lock_fd)
+            if not stat.S_ISREG(row.st_mode) or row.st_nlink != 1:
+                raise ValueError("Unsafe predecessor lock")
+            fcntl.flock(lock_fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        # The proof checks exact global+three step schemas, nonce/key/commit,
+        # PBS hashes, dependencies, causal timestamps and compatibility ledger.
+        with proof.descriptor_scope(DESCRIPTOR), redirect_stdout(io.StringIO()):
+            proof._exact_linear_submission(campaign_fd, transition["submission_key"], commit)
+    except (OSError, ValueError, SystemExit):
+        fail(_outcome_error())
+    finally:
+        if lock_fd >= 0:
+            os.close(lock_fd)
+    return present
+
+
 def regular_exists_at(parent, name):
     try:
         row = os.stat(name, dir_fd=parent, follow_symlinks=False)
@@ -924,7 +970,14 @@ def main(*, trusted_root_override=None):
         ):
             fail(_config().preparation_error)
 
+    predecessor_names = set()
+
     def reattest():
+        if _config().stage == "final_validation" and submissions_fd >= 0:
+            current_names = set(os.listdir(submissions_fd))
+            if (_authenticated_predecessor_names(campaign_fd, submissions_fd, current_names, transition, payload["commit"]) != predecessor_names
+                    or any(name.startswith("final_validation_input_generation") and name not in predecessor_names for name in current_names)):
+                fail(_outcome_error())
         if read_relative_at(campaign_fd, "campaign.json") != manifest_raw:
             fail(_outcome_error())
         for name, raw in frozen.items():
@@ -1112,6 +1165,10 @@ def main(*, trusted_root_override=None):
                 names = set(os.listdir(submissions_fd))
             except OSError:
                 fail(_outcome_error())
+            predecessor_names = _authenticated_predecessor_names(
+                campaign_fd, submissions_fd, names, transition, payload["commit"]
+            )
+            allowed_names |= predecessor_names
             if any(
                 name.startswith(_config().stage) and name not in allowed_names
                 for name in names
@@ -1268,6 +1325,10 @@ def main(*, trusted_root_override=None):
                 names = set(os.listdir(submissions_fd))
             except OSError:
                 fail(_outcome_error())
+            predecessor_names = _authenticated_predecessor_names(
+                campaign_fd, submissions_fd, names, transition, payload["commit"]
+            )
+            allowed_names |= predecessor_names
             if any(
                 name.startswith(_config().stage) and name not in allowed_names
                 for name in names
