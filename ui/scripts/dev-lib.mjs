@@ -23,6 +23,19 @@ export function probeWorkflowApi() {
   });
 }
 
+export async function waitForWorkflowApi({ probe = probeWorkflowApi, timeoutMs = 120000, intervalMs = 100, isStopped = () => false } = {}) {
+  const deadline = performance.now() + timeoutMs;
+  while (performance.now() < deadline) {
+    if (isStopped()) throw new Error("The workflow API stopped during startup.");
+    const state = await probe();
+    if (isStopped()) throw new Error("The workflow API stopped during startup.");
+    if (state === "compatible") return;
+    if (state !== "absent") throw new Error("Port 8765 does not provide the expected workflow API.");
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error("The workflow API did not become ready within the startup time limit.");
+}
+
 function waitForExit(child) {
   if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
   return new Promise((resolve) => child.once("exit", resolve));
@@ -53,7 +66,7 @@ export function superviseChildren(children, { graceMs = 2000, onFailure = () => 
     return stopPromise;
   };
 
-  for (const child of children) {
+  function watch(child) {
     child.on("error", (error) => {
       if (stopping) return;
       onFailure(error.message);
@@ -66,5 +79,6 @@ export function superviseChildren(children, { graceMs = 2000, onFailure = () => 
     });
   }
 
-  return { stop, isStopping: () => stopping };
+  for (const child of children) watch(child);
+  return { stop, isStopping: () => stopping, add(child) { children.push(child); watch(child); if (stopping) void terminateChildren([child], graceMs); } };
 }

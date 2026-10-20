@@ -165,6 +165,7 @@ def test_preview_is_immutable_scalar_and_has_no_submission_side_effect(tmp_path)
         "kind": "scalar",
         "array": False,
         "pbs_sha256": preview["job"]["pbs_sha256"],
+        "resources": {"queue": "zeus_combined_q", "cores": 200, "memory_bytes": 68719476736, "walltime_seconds": 86400},
     }
     assert preview["effects"] == {
         "submit_one_job": True,
@@ -1002,3 +1003,20 @@ def test_read_only_recovery_rejects_wrong_family_path(tmp_path):
             session="fresh-browser-session",
         )
     assert len(transport.calls) == before
+
+
+def test_reservation_review_reads_the_exact_pbs_instead_of_ui_defaults():
+    from workflow_api.zeeman_zeus_execution import _reviewed_pbs_resources
+    pbs = b'#PBS -q test_q\n#PBS -l select=1:ncpus=3:mem=7gb\n#PBS -l walltime=01:02:03\n'
+    assert _reviewed_pbs_resources(pbs) == dict(queue='test_q', cores=3, memory_bytes=7*1024**3, walltime_seconds=3723)
+    with pytest.raises(ZeemanZeusError, match='run_evidence_invalid'):
+        _reviewed_pbs_resources(b'not a scalar reservation')
+
+
+@pytest.mark.parametrize("family", ["zeeman", "mot_2d", "mot_3d"])
+def test_individual_jobs_reserve_24_hours_without_changing_cpu_or_memory(family):
+    import importlib
+    module = importlib.import_module(f"workflow_api.{family}_zeus_execution")
+    pbs = module._render_pbs({"run_id": "individual-walltime-check", "git_revision": "a" * 40}, "b" * 64)
+    assert b"#PBS -l walltime=24:00:00\n" in pbs
+    assert b"#PBS -l select=1:ncpus=200:mem=64gb\n" in pbs

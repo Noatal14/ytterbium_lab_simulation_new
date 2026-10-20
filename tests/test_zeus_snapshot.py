@@ -88,7 +88,7 @@ def test_remote_scheduler_skips_qstat_for_empty_selection(tmp_path):
 def test_remote_scheduler_passes_valid_ids_as_separate_qstat_arguments(tmp_path):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n11[].zeus-master\n")
     assert completed.returncode == 0
-    assert "qstat -f 10.zeus-master 11[].zeus-master" in calls
+    assert "qstat -f -t 10.zeus-master 11[].zeus-master" in calls
 
 
 @pytest.mark.parametrize("selected", [
@@ -107,7 +107,7 @@ def test_remote_scheduler_reports_qstat_failure(tmp_path):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n", qstat_code=1)
     assert completed.returncode == 22
     assert json.loads(completed.stdout) == {"error": "scheduler_unavailable"}
-    assert "qstat -f 10.zeus-master" in calls
+    assert "qstat -f -t 10.zeus-master" in calls
 
 
 def _fake_ssh(tmp_path: Path, *, stdout: str = "", stderr: str = "", code: int = 0):
@@ -232,7 +232,7 @@ def test_provider_uses_only_pinned_read_only_ssh_contract(tmp_path, monkeypatch)
     decoded = base64.urlsafe_b64decode(remote[3]).decode()
     assert decoded == _REMOTE_SCRIPT
     assert '["qselect", "-u", username]' in decoded
-    assert '["qstat", "-f"] + job_ids' in decoded
+    assert '["qstat", "-f", "-t"] + job_ids' in decoded
     assert 'qstat", "-x", "-f", "-u"' not in decoded
     assert all(forbidden not in decoded for forbidden in ("qsub", "qdel", "qalter"))
 
@@ -299,3 +299,27 @@ def test_import_and_profile_parsing_do_not_execute_ssh(monkeypatch):
     def forbidden(*_args, **_kwargs): raise AssertionError("SSH must not run")
     monkeypatch.setattr("subprocess.Popen", forbidden)
     ZeusProfile.parse({"username": "tal.noa", "project_directory": "/home/tal.noa/ytterbium_lab_simulation_new"})
+
+
+def test_array_parent_and_tasks_preserve_their_distinct_scheduler_states():
+    jobs = _parse_qstat("""Job Id: 4804172[].zeus-master
+    Job_Name = m3d2_val_2d
+    job_state = H
+    Exit_status = 2
+    comment = Job Array Held, too many failed attempts to run subjob 4804172[15].zeus-master
+Job Id: 4804172[14].zeus-master
+    Job_Name = m3d2_val_2d
+    job_state = R
+    resources_used.walltime = 00:48:39
+Job Id: 4804172[15].zeus-master
+    Job_Name = m3d2_val_2d
+    job_state = X
+    Exit_status = -10
+Job Id: 4804172[16].zeus-master
+    Job_Name = m3d2_val_2d
+    job_state = R
+""")
+    assert [job["raw_state"] for job in jobs] == ["H", "R", "X", "R"]
+    assert [job["state"] for job in jobs] == ["held_attention", "running", "completed_failed", "running"]
+    assert "failed attempts" in jobs[0]["comment"]
+    assert jobs[1]["walltime"] == "00:48:39"

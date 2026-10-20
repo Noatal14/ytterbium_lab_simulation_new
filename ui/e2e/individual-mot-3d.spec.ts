@@ -95,7 +95,7 @@ async function routes(page: Page) {
   });
   await page.route("**/api/v1/individual-runs/mot-3d/zeus/preview", async (route) => {
     const request = route.request().postDataJSON();
-    await route.fulfill({ json: { api_version: 1, data: { preview_token: "zeus-review", expires_in_seconds: 300, run_id: request.run_id, job: { kind: "scalar", array: false, pbs_sha256: "4".repeat(64) }, package_sha256: "5".repeat(64), submission_key: "6".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } } } });
+    await route.fulfill({ json: { api_version: 1, data: { preview_token: "zeus-review", expires_in_seconds: 300, run_id: request.run_id, job: { kind: "scalar", array: false, pbs_sha256: "4".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } }, package_sha256: "5".repeat(64), submission_key: "6".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } } } });
   });
   await page.route("**/api/v1/individual-runs/mot-3d/zeus/confirm", async (route) => {
     await route.fulfill({ status: 202, json: { api_version: 1, data: { status: "submitted", run_id: runId, job_id: "500.zeus-master", submission_key: "6".repeat(64) } } });

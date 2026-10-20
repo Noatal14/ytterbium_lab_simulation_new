@@ -565,8 +565,7 @@ def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[A
     records = frozen.pop("records")
     if any(row.get("legacy_attested_profile") for row in records):
         raise ValueError(
-            "This legacy-attested source can continue an existing campaign but "
-            "cannot create a new campaign without explicit laboratory provenance."
+            'This source cannot create a new campaign without explicit laboratory provenance. Select a source with verified laboratory provenance; existing campaigns can still use this source.'
         )
     by_seed = {row["zeeman_seed"]: row for row in records}
     model_hash, hashed_files = physical_model_hash(repository_root)

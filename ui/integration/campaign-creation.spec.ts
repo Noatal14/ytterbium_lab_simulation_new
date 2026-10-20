@@ -1,0 +1,92 @@
+import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+test("real 2D campaign creation validates synthetic inputs, survives reload and rejects duplicates", async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start 2D-MOT campaign", exact: true }).click();
+  await page.getByLabel(/^Campaign name/).fill("ui_acceptance_SYNTHETIC_2d");
+  await page.getByLabel(/^Campaign folder/).fill("ui_acceptance_synthetic_2d");
+  await page.getByRole("combobox").selectOption({ index: 1 });
+  await page.getByLabel(/^Fixed s₀ values/).fill("1.31");
+  await page.getByRole("button", { name: "Review campaign", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Review before creating" })).toBeFocused();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Create campaign", exact: true }).dblclick();
+  await expect(page.getByRole("heading", { name: "Campaign created and validated" })).toBeVisible();
+  await page.reload();
+  const response = await page.request.get("/api/v1/campaigns");
+  const rows = (await response.json()).data.campaigns;
+  const created = rows.filter((row: { name: string }) => row.name === "ui_acceptance_SYNTHETIC_2d");
+  expect(created).toHaveLength(1);
+  expect(created[0]).toMatchObject({ stage: "smoke", trust: "trusted-current" });
+  await page.getByRole("button", { name: "Start 2D-MOT campaign", exact: true }).click();
+  await page.getByLabel(/^Campaign name/).fill("ui_acceptance_SYNTHETIC_duplicate");
+  await page.getByLabel(/^Campaign folder/).fill("ui_acceptance_synthetic_duplicate");
+  await page.getByRole("combobox").selectOption({ index: 1 });
+  await page.getByLabel(/^Fixed s₀ values/).fill("1.31");
+  await page.getByRole("button", { name: "Review campaign", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Equivalent campaign already exists" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create campaign", exact: true })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  await page.screenshot({ path: "test-results/real-campaign-2d-duplicate.png", fullPage: true });
+});
+
+test("real 3D bootstrap validates all twenty synthetic sealed ensembles without scheduler access", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start 3D-MOT campaign", exact: true }).click();
+  await page.getByRole("combobox").selectOption({ index: 1 });
+  await page.getByLabel(/^3D campaign name/).fill("ui_acceptance_SYNTHETIC_3d");
+  await page.getByRole("button", { name: "Review campaign", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Review the Discovery bootstrap" })).toBeVisible();
+  await expect(page.locator("dl div").filter({ has: page.getByText("Sealed ensembles", { exact: true }) })).toContainText("20");
+  await expect(page.getByText("12 Discovery · 4 Refinement · 4 preliminary check", { exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.getByRole("button", { name: "Create Discovery campaign", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Discovery campaign prepared", exact: true })).toBeVisible();
+  await page.reload();
+  const rows = (await (await page.request.get("/api/v1/campaigns")).json()).data.campaigns;
+  expect(rows.filter((row: { name: string }) => row.name === "ui_acceptance_SYNTHETIC_3d")).toHaveLength(1);
+  await page.screenshot({ path: "test-results/real-campaign-3d-created.png", fullPage: true });
+  const forbidden = await page.request.post("/api/v1/zeus/submissions/smoke/confirm", { data: {} });
+  expect(forbidden.status()).toBe(503);
+  expect((await forbidden.json()).error.code).toBe("fixture_execution_disabled");
+});
+
+test("real individual review shows both seeds and the reservation from frozen PBS without submitting", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Configure 2D-MOT run", exact: true }).click();
+  await expect(page.getByRole("combobox").locator("option")).not.toHaveCount(1);
+  await page.getByRole("spinbutton", { name: /Particle count/ }).fill("0");
+  await expect(page.getByRole("spinbutton", { name: /Particle count/ })).toHaveAccessibleDescription(/whole number.*starting at 1/);
+  await page.getByRole("spinbutton", { name: /Particle count/ }).fill("20");
+  await page.getByRole("spinbutton", { name: /Selection seed/ }).fill("7");
+  await page.getByRole("spinbutton", { name: /MOT seed/ }).fill("9");
+  await page.getByRole("radio", { name: "Zeus", exact: true }).check();
+  await page.getByRole("button", { name: "Validate and review", exact: true }).click();
+  await expect(page.locator("dl div").filter({ has: page.getByText("Selection seed", { exact: true }) })).toContainText("7");
+  await expect(page.locator("dl div").filter({ has: page.getByText("MOT seed", { exact: true }) })).toContainText("9");
+  await page.getByRole("button", { name: "Create reviewed run", exact: true }).click();
+  await page.getByRole("textbox", { name: "Technion username", exact: true }).fill("fixture.user");
+  await page.getByRole("button", { name: "Review Zeus submission", exact: true }).click();
+  await expect(page.getByText("64 GiB", { exact: true })).toBeVisible();
+  await expect(page.getByText("24 hours", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Confirm and submit one Zeus job", exact: true })).toBeVisible();
+  await page.screenshot({ path: "test-results/real-reviewed-resources.png", fullPage: true });
+  const forbidden = await page.request.post("/api/v1/individual-runs/mot-2d/zeus/confirm", { data: {} });
+  expect(forbidden.status()).toBe(503);
+});
+
+test("legacy synthetic source explains the missing laboratory provenance without creating files", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Start 2D-MOT campaign", exact: true }).click();
+  await page.getByLabel(/^Campaign name/).fill("ui_acceptance_SYNTHETIC_blocked");
+  await page.getByLabel(/^Campaign folder/).fill("ui_acceptance_synthetic_blocked");
+  await page.getByRole("combobox").selectOption({ label: "data/particle_states/after_zeeman/zz_ui_SYNTHETIC_legacy" });
+  await page.getByLabel(/^Fixed s₀ values/).fill("1.32");
+  await page.getByRole("button", { name: "Review campaign", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("cannot create a new campaign without explicit laboratory provenance");
+  await expect(page.getByRole("button", { name: "Create campaign", exact: true })).toHaveCount(0);
+  const rows = (await (await page.request.get("/api/v1/campaigns")).json()).data.campaigns;
+  expect(rows.some((row: { name: string }) => row.name === "ui_acceptance_SYNTHETIC_blocked")).toBe(false);
+});

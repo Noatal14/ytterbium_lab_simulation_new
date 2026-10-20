@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import math
 from types import MappingProxyType
 from typing import Any, Mapping
 
@@ -55,12 +56,16 @@ class ZeemanRunRequest:
     npools: int
     retain_particle_states: bool
     execution_mode: str
+    zeeman_s0: float
+    zeeman_detuning_gamma: float
 
 
 @dataclass(frozen=True)
 class ZeemanRunReview:
     family: str
     execution_mode: str
+    zeeman_s0: float
+    zeeman_detuning_gamma: float
     particle_count: int
     seed: int
     mot_2d_s0: float
@@ -111,6 +116,18 @@ def _freeze(value: Any) -> Any:
     return value
 
 
+def validate_zeeman_laser_controls(s0: Any, detuning_gamma: Any) -> tuple[float, float]:
+    for name, value in (("s0", s0), ("detuning_gamma", detuning_gamma)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            raise ValueError(f"Zeeman laser {name} must be a finite number.")
+    if s0 < 0:
+        raise ValueError("Zeeman laser s0 must be nonnegative.")
+    laser = resolved_zeeman_laser_parameters(**{**ZEEMAN_LASER_CONFIG, "s0": s0, "detuning_gamma": detuning_gamma})
+    if not all(math.isfinite(laser[key]) for key in ("detuning_rad_s", "peak_intensity_W_m2", "power_W")):
+        raise ValueError("Zeeman laser controls exceed representable laser parameters.")
+    return float(s0), float(detuning_gamma)
+
+
 def validate_zeeman_run_request(value: Mapping[str, Any]) -> ZeemanRunRequest:
     legacy_fields = {
         "particle_count", "seed", "retain_particle_states", "execution_mode",
@@ -129,10 +146,14 @@ def validate_zeeman_run_request(value: Mapping[str, Any]) -> ZeemanRunRequest:
                 else ZEEMAN_RUN_SPECIFICATION["worker_policy"]["zeus"]["fixed"]
             ),
         }
+    previous_fields = set(ZEEMAN_RUN_SPECIFICATION["request_fields"]) - {"zeeman_s0", "zeeman_detuning_gamma"}
+    if isinstance(value, Mapping) and set(value) == previous_fields:
+        value = {**value, "zeeman_s0": ZEEMAN_LASER_CONFIG["s0"], "zeeman_detuning_gamma": ZEEMAN_LASER_CONFIG["detuning_gamma"]}
     if not isinstance(value, Mapping) or set(value) != set(
         ZEEMAN_RUN_SPECIFICATION["request_fields"]
     ):
         raise ValueError("Individual Zeeman-run request fields are invalid.")
+    zeeman_s0, zeeman_detuning = validate_zeeman_laser_controls(value["zeeman_s0"], value["zeeman_detuning_gamma"])
     particle_count = value["particle_count"]
     seed = value["seed"]
     mot_2d_s0 = value["mot_2d_s0"]
@@ -200,6 +221,8 @@ def validate_zeeman_run_request(value: Mapping[str, Any]) -> ZeemanRunRequest:
         npools,
         retain,
         mode,
+        zeeman_s0,
+        zeeman_detuning,
     )
 
 
@@ -226,7 +249,7 @@ def _resolved_configuration(request: ZeemanRunRequest) -> dict[str, Any]:
         or field_sha256 != CANONICAL_ZEEMAN_PROFILE_SHA256
     ):
         raise RuntimeError("Active Zeeman configuration contradicts bundled policy.")
-    laser = resolved_zeeman_laser_parameters(**ZEEMAN_LASER_CONFIG)
+    laser = resolved_zeeman_laser_parameters(**{**ZEEMAN_LASER_CONFIG, "s0": request.zeeman_s0, "detuning_gamma": request.zeeman_detuning_gamma})
     field = resolved_zeeman_field_construction(
         radii_m=ZEEMAN_FIELD_CONFIG["radii_m"],
         positions_m=ZEEMAN_FIELD_CONFIG["positions_m"],
@@ -369,8 +392,6 @@ def build_zeeman_run_plan(
     locked = {
         "magnet_profile_name": CANONICAL_ZEEMAN_PROFILE_NAME,
         "magnet_profile_sha256": CANONICAL_ZEEMAN_PROFILE_SHA256,
-        "laser_s0": float(ZEEMAN_LASER_CONFIG["s0"]),
-        "laser_detuning_gamma": float(ZEEMAN_LASER_CONFIG["detuning_gamma"]),
         "solver": str(NUMERICAL_POLICY["zeeman"]["solver"]),
         "timestep_s": float(NUMERICAL_POLICY["zeeman"]["dt_s"]),
         "t_max_s": float(NUMERICAL_POLICY["zeeman"]["t_max_s"]),
@@ -381,6 +402,8 @@ def build_zeeman_run_plan(
         execution_mode=request.execution_mode,
         particle_count=request.particle_count,
         seed=request.seed,
+        zeeman_s0=request.zeeman_s0,
+        zeeman_detuning_gamma=request.zeeman_detuning_gamma,
         mot_2d_s0=request.mot_2d_s0,
         mot_2d_detuning_gamma=request.mot_2d_detuning_gamma,
         mot_2d_magnet_radius_m=request.mot_2d_magnet_radius_m,

@@ -35,6 +35,8 @@ def test_specification_is_stable_and_deeply_immutable():
         "npools",
         "retain_particle_states",
         "execution_mode",
+        "zeeman_s0",
+        "zeeman_detuning_gamma",
     )
     assert ZEEMAN_RUN_SPECIFICATION["fixed_classification"]["suitability"] == (
         "individual_only"

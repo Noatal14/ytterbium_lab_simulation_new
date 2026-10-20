@@ -194,7 +194,8 @@ describe("IndividualMot3DRun", () => {
     } as unknown as Mot3DRun;
     vi.mocked(api.runs).mockResolvedValue([completed]);
     vi.mocked(api.run).mockResolvedValue(completed);
-    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    const onBack = vi.fn();
+    render(<IndividualMot3DRun api={api} onBack={onBack} />);
     await waitForSource();
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
     await user.click(await screen.findByRole("button", { name: "Create run record" }));
@@ -206,6 +207,10 @@ describe("IndividualMot3DRun", () => {
     expect(screen.getByText("retained")).toBeVisible();
     await user.click(screen.getByText("Technical provenance"));
     expect(screen.getByText(/geometry_family/)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem("ytterbium.individual-run.mot_3d.v1")).toBeNull();
+
   });
 
   it("shows exact backend-derived single-pass values in review", async () => {
@@ -242,4 +247,20 @@ describe("IndividualMot3DRun", () => {
     if (family === "single_pass") await user.click(screen.getByRole("radio", { name: /^Single pass/ }));
     expect(screen.getByRole("button", { name: "Validate setup" })).toBeEnabled();
   });
+  it("opens locally verified Zeus results without requiring the old remote checkout", async () => {
+    const api = service();
+    const completed = { id: `individual-run-${"1".repeat(24)}`, display_name: "mot3d-browser",
+      record_state: "succeeded", lifecycle: "results_ready", execution: { mode: "zeus", zeus_job_id: "123.zeus-master" },
+      retention: { particle_states_requested: true, status: "retained" },
+      results: { availability: "verified", completed_at: "2026-10-18T17:40:00Z" },
+      metrics: { n_input: 1, usable_at_end_count: 0, usable_at_end_fraction: 0, residence_qualified_captured_count: 0, residence_qualified_captured_fraction: 0, elapsed_s: 1, provenance: {} }
+    } as unknown as Mot3DRun;
+    window.localStorage.setItem("ytterbium.individual-run.mot_3d.v1", JSON.stringify({version: 1, family: "mot_3d", display_name: "mot3d-browser", execution_mode: "zeus", username: "tal.noa"}));
+    vi.mocked(api.runs).mockResolvedValue([completed]); vi.mocked(api.run).mockResolvedValue(completed);
+    api.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    expect(await screen.findByRole("heading", { name: "Verified results are ready" })).toBeVisible();
+    expect(api.recoverZeus).not.toHaveBeenCalled(); expect(api.startLocal).not.toHaveBeenCalled();
+  });
+
 });

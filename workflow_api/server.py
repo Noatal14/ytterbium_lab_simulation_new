@@ -1429,15 +1429,25 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                     if value[1] > now
                 }
                 type(self).sessions = sessions
-                if len(sessions) >= 64:
+                cookie = SimpleCookie(self.headers.get("Cookie", ""))
+                morsel = cookie.get("mot_ui_session")
+                existing = morsel.value if morsel is not None else None
+                if existing in sessions:
+                    # Tabs share the cookie. Reuse its CSRF identity so opening
+                    # another tab cannot invalidate an already reviewed action.
+                    session = existing
+                    csrf = sessions[session][0]
+                    sessions[session] = (csrf, now + 600)
+                elif len(sessions) >= 64:
                     self._error(
                         "rate_limited",
                         "Too many local creation sessions.",
                         HTTPStatus.TOO_MANY_REQUESTS,
                     )
                     return
-                session, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
-                sessions[session] = (csrf, now + 600)
+                else:
+                    session, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
+                    sessions[session] = (csrf, now + 600)
             self._json(
                 {"api_version": SCHEMA_VERSION, "data": {"csrf_token": csrf}},
                 extra_headers={

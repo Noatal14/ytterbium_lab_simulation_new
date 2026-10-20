@@ -282,7 +282,7 @@ describe("individual 2D-MOT client", () => {
           preview_token: "z",
           expires_in_seconds: 300,
           run_id: "mot2d-test",
-          job: { kind: "scalar", array: false, pbs_sha256: "d".repeat(64) },
+          job: { kind: "scalar", array: false, pbs_sha256: "d".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
           package_sha256: "e".repeat(64),
           submission_key: "f".repeat(64),
           effects: {
@@ -329,7 +329,7 @@ describe("individual 2D-MOT client", () => {
           preview_token: "z",
           expires_in_seconds: 300,
           run_id: "mot2d-test",
-          job: { kind: "scalar", array: false, pbs_sha256: "d".repeat(64) },
+          job: { kind: "scalar", array: false, pbs_sha256: "d".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
           package_sha256: "e".repeat(64),
           submission_key: key,
           effects: {
@@ -376,7 +376,7 @@ describe("individual 2D-MOT client", () => {
         preview_token: "z",
         expires_in_seconds: 300,
         run_id: "mot2d-test",
-        job: { kind: "scalar", array: false, pbs_sha256: "d".repeat(64) },
+        job: { kind: "scalar", array: false, pbs_sha256: "d".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
         package_sha256: "e".repeat(64),
         submission_key: "f".repeat(64),
         effects: {

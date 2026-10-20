@@ -121,7 +121,7 @@ _MOT3D_CONTRACT_PAYLOADS = {
         "preview_token": "mot3d-zeus-token",
         "expires_in_seconds": 300,
         "run_id": "mot3d-contract",
-        "job": {"kind": "scalar", "array": False, "pbs_sha256": "b" * 64},
+        "job": {"kind": "scalar", "array": False, "pbs_sha256": "b" * 64, "resources": {"queue": "zeus_combined_q", "cores": 200, "memory_bytes": 68719476736, "walltime_seconds": 28800}},
         "package_sha256": "c" * 64,
         "submission_key": "d" * 64,
         "effects": {
@@ -1081,7 +1081,7 @@ _PAYLOADS.update(
             "preview_token": "zeus-token",
             "expires_in_seconds": 300,
             "run_id": "zeeman-contract",
-            "job": {"kind": "scalar", "array": False, "pbs_sha256": "b" * 64},
+            "job": {"kind": "scalar", "array": False, "pbs_sha256": "b" * 64, "resources": {"queue": "zeus_combined_q", "cores": 200, "memory_bytes": 68719476736, "walltime_seconds": 28800}},
             "package_sha256": "c" * 64,
             "submission_key": "d" * 64,
             "effects": {
@@ -1136,7 +1136,7 @@ _PAYLOADS.update(
             "preview_token": "mot2d-zeus-token",
             "expires_in_seconds": 300,
             "run_id": "mot2d-contract",
-            "job": {"kind": "scalar", "array": False, "pbs_sha256": "b" * 64},
+            "job": {"kind": "scalar", "array": False, "pbs_sha256": "b" * 64, "resources": {"queue": "zeus_combined_q", "cores": 200, "memory_bytes": 68719476736, "walltime_seconds": 28800}},
             "package_sha256": "c" * 64,
             "submission_key": "d" * 64,
             "effects": {

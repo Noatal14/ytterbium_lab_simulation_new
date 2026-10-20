@@ -95,7 +95,7 @@ try:
     if len(job_ids) > 500 or len(job_ids) != len(set(job_ids)) or any(not valid_id.match(identifier) for identifier in job_ids):
         raise RuntimeError("invalid job selection")
     if job_ids:
-        qstat_code, qstat, _ = run(["qstat", "-f"] + job_ids, resolved, 1048576)
+        qstat_code, qstat, _ = run(["qstat", "-f", "-t"] + job_ids, resolved, 1048576)
     else:
         qstat_code, qstat = 0, ""
 except (OSError, RuntimeError, UnicodeError):

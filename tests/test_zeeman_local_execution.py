@@ -409,3 +409,21 @@ def fixed_cpu_budget(monkeypatch):
     # CPU-limit tests override this again to exercise smaller hosts.
     import workflow_api.zeeman_run_specification as specification
     monkeypatch.setattr(specification.os, "cpu_count", lambda: 16)
+
+
+@pytest.mark.parametrize("mode", ["local", "zeus"])
+def test_custom_reviewed_laser_reaches_engine_and_real_beam(mode):
+    from lab_setup.zeeman_laser_setup import setup_zeeman_laser
+    base = dict(particle_count=4, seed=71, mot_2d_s0=1.3, mot_2d_detuning_gamma=-0.9196610026631429,
+                mot_2d_magnet_radius_m=0.04676406447474441, npools=4 if mode == "local" else 200,
+                retain_particle_states=True, execution_mode=mode, zeeman_s0=1.7, zeeman_detuning_gamma=-10.5)
+    records = build_zeeman_run_plan(base, run_id="zeeman-laser-custom", git_revision="a" * 40, created_utc=NOW).storage_records()
+    engine = Engine()
+    ZeemanLocalWorker(engine=engine, monotonic=iter([1.0, 2.0]).__next__, clock=lambda: NOW).run(
+        WorkerRequest(records["run"], records["configuration"], records["inputs"]))
+    config = engine.calls[0]["zeeman_config"]
+    assert config["s0"] == 1.7 and config["detuning_gamma"] == -10.5
+    beam = setup_zeeman_laser(**config)[0]
+    resolved = records["configuration"]["resolved"]["zeeman"]["laser"]
+    assert beam.detuning == resolved["detuning_rad_s"]
+    assert beam.power == resolved["power_W"]

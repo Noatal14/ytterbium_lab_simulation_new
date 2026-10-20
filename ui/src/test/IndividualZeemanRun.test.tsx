@@ -4,11 +4,30 @@ import { describe, expect, it, vi } from "vitest";
 import { IndividualZeemanRun, monitorCopy, particleCountAfterModeChange, userVisibleLockedSettings } from "../components/IndividualZeemanRun";
 import type { IndividualZeemanApi } from "../api/clients/individualZeeman";
 
-const preview = { preview_token: "token", expires_in_seconds: 300, plan: { run_id: "zeeman-test", family: "zeeman" as const, execution_mode: "local" as const, particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8, retain_particle_states: true, suitability: "individual_only" as const, output_disposition: "retain_survivor_states" as const, locked_settings: { policy: "canonical" }, resolved_configuration: { solver: { name: "RK4StCustom" }, laser: { detuning: -1 } }, lifecycle_state: "configured" as const, laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64), execution_started: false as const, submitted_to_zeus: false as const } };
+const preview = { preview_token: "token", expires_in_seconds: 300, plan: { zeeman_s0: 3, zeeman_detuning_gamma: -13.75, run_id: "zeeman-test", family: "zeeman" as const, execution_mode: "local" as const, particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8, retain_particle_states: true, suitability: "individual_only" as const, output_disposition: "retain_survivor_states" as const, locked_settings: { policy: "canonical" }, resolved_configuration: { solver: { name: "RK4StCustom" }, laser: { detuning: -1 } }, lifecycle_state: "configured" as const, laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64), execution_started: false as const, submitted_to_zeus: false as const } };
 function fake(): IndividualZeemanApi { return { reset: vi.fn(), preview: vi.fn().mockResolvedValue(preview), confirm: vi.fn().mockResolvedValue({ status: "created", run_id: "zeeman-test", family: "zeeman", path: "data/runs/zeeman/zeeman-test", lifecycle_state: "configured", execution_started: false, submitted_to_zeus: false }), startLocal: vi.fn().mockResolvedValue({ status: "queued" }), previewZeus: vi.fn().mockResolvedValue({ preview_token: "ztoken" }), confirmZeus: vi.fn().mockResolvedValue({ status: "submitted" }), refreshZeus: vi.fn().mockResolvedValue({ state: "running" }), runs: vi.fn().mockResolvedValue([]), run: vi.fn() }; }
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 
 describe("individual Zeeman wizard", () => {
+  it("reviews chosen Zeeman laser settings separately from the 2D boundary", async () => {
+    const api = fake();
+    vi.mocked(api.preview).mockResolvedValue({ ...preview, plan: { ...preview.plan, zeeman_s0: 1.7, zeeman_detuning_gamma: -10.5 } });
+    const user = userEvent.setup();
+    render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
+    const s0 = screen.getByRole("spinbutton", { name: "Zeeman laser saturation (s₀)" });
+    const detuning = screen.getByRole("spinbutton", { name: "Zeeman laser detuning (Γ)" });
+    expect(s0).toHaveValue(3); expect(detuning).toHaveValue(-13.75);
+    await user.clear(s0); await user.type(s0, "-1");
+    expect(screen.getByRole("button", { name: /validate and review/i })).toBeDisabled();
+    await user.clear(s0); await user.type(s0, "1.7");
+    await user.clear(detuning); await user.type(detuning, "-10.5");
+    await user.click(screen.getByRole("button", { name: /validate and review/i }));
+    await screen.findByRole("heading", { name: /validated run plan/i });
+    expect(api.preview).toHaveBeenCalledWith(expect.objectContaining({ zeeman_s0: 1.7, zeeman_detuning_gamma: -10.5, mot_2d_s0: 1.3 }));
+    expect(screen.getByText("s₀ 1.7 · -10.5 Γ")).toBeVisible();
+    expect(api.startLocal).not.toHaveBeenCalled(); expect(api.confirmZeus).not.toHaveBeenCalled();
+  });
+
   it("keeps the default usable on a four-core Windows VM", async () => {
     const original = Object.getOwnPropertyDescriptor(navigator, "hardwareConcurrency");
     Object.defineProperty(navigator, "hardwareConcurrency", { configurable: true, value: 4 });
@@ -76,7 +95,7 @@ describe("individual Zeeman wizard", () => {
     expect(screen.getByText(/no files have been created/i)).toBeInTheDocument();
     expect(screen.getByText(/Scientific role: individual only/i)).toBeInTheDocument();
     expect(screen.getByText(/not validated campaign inputs/i)).toBeInTheDocument();
-    await user.click(screen.getByText(/view all locked settings/i));
+    await user.click(screen.getByText(/view complete reviewed configuration/i));
     expect(screen.getByText(/RK4StCustom/)).toBeInTheDocument();
     expect(api.confirm).not.toHaveBeenCalled();
   });
@@ -126,4 +145,21 @@ describe("individual Zeeman wizard", () => {
     await user.click(screen.getByRole("button", { name: /confirm and submit one Zeus job/i }));
     await waitFor(() => expect(api.confirmZeus).toHaveBeenCalledTimes(1));
   });
+  it.each(["local", "zeus"] as const)("lets an operator configure another simulation after recovering verified %s results", async (mode) => {
+    const api = fake(), user = userEvent.setup(), onBack = vi.fn();
+    const completed = { id: `individual-run-${"a".repeat(24)}`, display_name: "zeeman-test",
+      lifecycle: "results_ready", record_state: "succeeded", execution: { mode },
+      retention: { status: "retained" }, metrics: { n_initial: 30, n_survivors: 20 } } as unknown as Awaited<ReturnType<IndividualZeemanApi["run"]>>;
+    window.localStorage.setItem("ytterbium.individual-run.zeeman.v1", JSON.stringify({version: 1, family: "zeeman", display_name: "zeeman-test", execution_mode: mode, ...(mode === "zeus" ? { username: "tal.noa" } : {})}));
+    vi.mocked(api.runs).mockResolvedValue([completed]); vi.mocked(api.run).mockResolvedValue(completed);
+    api.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
+    render(<IndividualZeemanRun api={api} onBack={onBack} />);
+    await screen.findByRole("heading", { name: "Verified results are ready" });
+    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    expect(onBack).toHaveBeenCalledOnce();
+    expect(window.localStorage.getItem("ytterbium.individual-run.zeeman.v1")).toBeNull();
+    expect(api.recoverZeus).not.toHaveBeenCalled();
+    expect(api.startLocal).not.toHaveBeenCalled(); expect(api.confirm).not.toHaveBeenCalled();
+  });
+
 });

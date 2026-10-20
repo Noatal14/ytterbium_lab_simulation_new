@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from workflow_api.platform_io import os
 from pathlib import Path
 import stat
 from types import MappingProxyType
 from typing import Any
 
-from config import DEFAULT_NUM_PARTICLES, DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED
+from config import DEFAULT_NUM_PARTICLES, DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED, ZEEMAN_LASER_CONFIG
 from workflow_api.mot_2d_run_specification import MOT_2D_RUN_SPECIFICATION
 
 
@@ -27,6 +28,8 @@ _REQUEST_FIELDS = [
     "npools",
     "retain_particle_states",
     "execution_mode",
+    "zeeman_s0",
+    "zeeman_detuning_gamma",
 ]
 _EXECUTION_MODES = {"local", "zeus"}
 
@@ -71,6 +74,7 @@ def _validate(value: Any) -> dict[str, Any]:
             "particle_count",
             "seed",
             "mot_2d_controls",
+            "laser_controls",
             "worker_policy",
             "fixed_classification",
         },
@@ -125,6 +129,16 @@ def _validate(value: Any) -> dict[str, Any]:
     }
     if controls != expected_controls:
         raise ValueError("Invalid 2D-MOT boundary control policy.")
+
+    laser = _exact(row["laser_controls"], {"s0", "detuning_gamma"}, "Zeeman laser controls")
+    _exact(laser["s0"], {"minimum", "default"}, "Zeeman saturation policy")
+    _exact(laser["detuning_gamma"], {"default"}, "Zeeman detuning policy")
+    if laser["s0"]["minimum"] != 0.0:
+        raise ValueError("Invalid Zeeman saturation minimum.")
+    for name in ("s0", "detuning_gamma"):
+        default = laser[name]["default"]
+        if isinstance(default, bool) or not isinstance(default, (int, float)) or not math.isfinite(default) or default != ZEEMAN_LASER_CONFIG[name]:
+            raise ValueError("Zeeman laser default diverges from active configuration.")
 
     workers = _exact(row["worker_policy"], _EXECUTION_MODES, "worker policy")
     local = _exact(workers["local"], {"minimum", "maximum", "default"}, "local worker policy")

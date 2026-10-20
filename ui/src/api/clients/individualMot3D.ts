@@ -1,3 +1,4 @@
+import { isIndividualZeusResources } from "./individualZeusResources";
 import { zeusProjectDirectory } from "../zeusEnvironment";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../../generated/mot3dIndividualSpec.v1";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
@@ -253,7 +254,7 @@ function parseLocalStart(value: unknown): StartedLocalMot3DRun {
 }
 
 function parseZeusPreview(value: unknown) {
-  if (!isRecord(value) || !exactKeys(value, ["preview_token", "expires_in_seconds", "run_id", "job", "package_sha256", "submission_key", "effects"]) || !printable(value.preview_token) || !integer(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !privateRunId(value.run_id) || !hex64(value.package_sha256) || !hex64(value.submission_key) || !isRecord(value.job) || !exactKeys(value.job, ["kind", "array", "pbs_sha256"]) || value.job.kind !== "scalar" || value.job.array !== false || !hex64(value.job.pbs_sha256) || !isRecord(value.effects) || !exactKeys(value.effects, ["submit_one_job", "reconcile_existing_job", "cancel_job"]) || typeof value.effects.submit_one_job !== "boolean" || typeof value.effects.reconcile_existing_job !== "boolean" || value.effects.submit_one_job === value.effects.reconcile_existing_job || value.effects.cancel_job !== false) invalid("Zeus review");
+  if (!isRecord(value) || !exactKeys(value, ["preview_token", "expires_in_seconds", "run_id", "job", "package_sha256", "submission_key", "effects"]) || !printable(value.preview_token) || !integer(value.expires_in_seconds) || Number(value.expires_in_seconds) <= 0 || !privateRunId(value.run_id) || !hex64(value.package_sha256) || !hex64(value.submission_key) || !isRecord(value.job) || !exactKeys(value.job, ["kind", "array", "pbs_sha256", "resources"]) || value.job.kind !== "scalar" || value.job.array !== false || !hex64(value.job.pbs_sha256) || !isIndividualZeusResources(value.job.resources) || !isRecord(value.effects) || !exactKeys(value.effects, ["submit_one_job", "reconcile_existing_job", "cancel_job"]) || typeof value.effects.submit_one_job !== "boolean" || typeof value.effects.reconcile_existing_job !== "boolean" || value.effects.submit_one_job === value.effects.reconcile_existing_job || value.effects.cancel_job !== false) invalid("Zeus review");
   return value as unknown as { preview_token: string; run_id: string; submission_key: string; effects: { submit_one_job: boolean; reconcile_existing_job: boolean; cancel_job: false } };
 }
 

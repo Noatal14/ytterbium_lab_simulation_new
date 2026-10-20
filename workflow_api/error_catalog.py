@@ -193,6 +193,11 @@ CREATION = _frozen(
         "invalid_request#preview_fields": ErrorSpec(
             HTTPStatus.BAD_REQUEST, "Preview fields are invalid.", "invalid_request"
         ),
+        "invalid_request#laboratory_provenance": ErrorSpec(
+            HTTPStatus.PRECONDITION_FAILED,
+            "This source cannot create a new campaign without explicit laboratory provenance. Select a source with verified laboratory provenance; existing campaigns can still use this source.",
+            "invalid_request",
+        ),
         "invalid_request#source_unavailable": ErrorSpec(
             HTTPStatus.BAD_REQUEST,
             "The selected Zeeman source is unavailable.",

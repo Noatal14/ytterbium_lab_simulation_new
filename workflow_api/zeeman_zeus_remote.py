@@ -108,7 +108,8 @@ try:
     project = Path(requested).resolve(strict=True)
     allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}
     if Path(requested) not in allowed or project != Path(requested) or not project.is_dir(): raise ValueError
-    request_raw = base64.urlsafe_b64decode(encoded)
+    request_raw = (sys.stdin.buffer.read(MAX_REQUEST + 1)
+                   if encoded == "-" else base64.urlsafe_b64decode(encoded))
     if len(request_raw) > MAX_REQUEST: raise ValueError
     request = json.loads(request_raw)
 except Exception:

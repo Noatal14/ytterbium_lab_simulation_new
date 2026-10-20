@@ -4,14 +4,14 @@ const request: ZeemanRequest = { particle_count: 200, seed: 42, mot_2d_s0: 1.3, 
 const review = (overrides: Record<string, unknown> = {}) => ({
   preview_token: "review-token", expires_in_seconds: 300,
   plan: {
-    run_id: "zeeman-one", family: "zeeman", execution_mode: "local", particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8,
+    zeeman_s0: 3, zeeman_detuning_gamma: -13.75, run_id: "zeeman-one", family: "zeeman", execution_mode: "local", particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8,
     retain_particle_states: true, suitability: "individual_only", output_disposition: "retain_survivor_states",
     locked_settings: { policy: "canonical" }, resolved_configuration: { solver: "RK4StCustom" }, lifecycle_state: "configured",
     laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64),
     execution_started: false, submitted_to_zeus: false, ...overrides,
   },
 });
-const zeusReview = { preview_token: "zeus-token", expires_in_seconds: 300, run_id: "zeeman-one", job: { kind: "scalar", array: false, pbs_sha256: "b".repeat(64) }, package_sha256: "c".repeat(64), submission_key: "d".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } };
+const zeusReview = { preview_token: "zeus-token", expires_in_seconds: 300, run_id: "zeeman-one", job: { kind: "scalar", array: false, pbs_sha256: "b".repeat(64), resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } }, package_sha256: "c".repeat(64), submission_key: "d".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } };
 const envelope = (data: unknown) => ({ ok: true, json: async () => ({ api_version: 1, data }) });
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
 const runSummary = { id: "individual-run-" + "a".repeat(24), record_kind: "individual_simulation_run", run_kind: "zeeman", display_name: "zeeman-one", stage_semantics: "single-run-lifecycle", source: "local", queried_at: "2026-10-11T10:00:00+00:00", trust: "verified-package", scientific_role: "individual-only", record_state: "running", integrity: "active", lifecycle: "running", next_action: "wait", created_at: "2026-10-11T09:00:00+00:00", updated_at: "2026-10-11T10:00:00+00:00", execution: { mode: "local", zeus_job_id: null }, retention: { particle_states_requested: true, status: "pending" }, results: { availability: "not_ready", completed_at: null }, warnings: [] };
@@ -25,6 +25,10 @@ describe("individual Zeeman API trust boundary", () => {
     ["malformed digest", review({ plan_sha256: "not-a-digest" })],
     ["wrong mode", review({ execution_mode: "zeus" })],
     ["wrong run request", review({ particle_count: 201 })],
+    ["mismatched saturation", review({ zeeman_s0: 2 })],
+    ["mismatched detuning", review({ zeeman_detuning_gamma: -10 })],
+    ["invalid saturation", review({ zeeman_s0: -1 })],
+    ["nonfinite detuning", review({ zeeman_detuning_gamma: Infinity })],
   ])("rejects a %s in a creation review", async (_label, data) => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(envelope(data)));
     await expect(createIndividualZeemanApi(async () => "csrf").preview(request)).rejects.toThrow();
