@@ -84,6 +84,9 @@ def test_plan_binds_the_entire_prepared_production_receipt(tmp_path, monkeypatch
     files={"sensitivity_summary.json":"1"*64,"production/tasks.json":"2"*64,
            "jobs/06_production.pbs":"3"*64,"campaign.json":"4"*64}
     manifest={"name":"Campaign","s0_values":[1.3],"stages":{"production":{"tasks":20}}}
+    rendered = {name: (json.dumps(manifest).encode() if name == "campaign.json" else name.encode()) for name in files}
+    files = {name: hashlib.sha256(raw).hexdigest() for name, raw in rendered.items()}
+    monkeypatch.setattr("workflow_api.mot_2d_plan.render_production_transition", lambda *args: rendered)
     receipt={"status":"production_prepared","nonce":"b"*32,"transition_key":"5"*64,
              "sensitivity_submission_key":"6"*64,"sensitivity_submission_nonce":"7"*32,
              "sensitivity_job_id":"111[].zeus-master","commit":"a"*40,"rows_digest":"8"*64,
@@ -92,10 +95,12 @@ def test_plan_binds_the_entire_prepared_production_receipt(tmp_path, monkeypatch
              "completed_unix_s":1}
     plan=("campaign-id",profile,campaign,manifest,"a"*40,{"old":"0"*64},"9"*32,
           "0"*64,"6"*64,files,"8"*64,"5"*64)
-    state=SimpleNamespace(lifecycle="production_prepared",receipt=receipt)
+    state=SimpleNamespace(lifecycle="production_prepared",receipt=receipt,rows=receipt["rows"])
     class FakePreparation:
         def __init__(self,*_args):pass
         def _inspect(self,_request):return plan,state
+        def _base_plan(self,_request):return plan
+        def _confirmation_rows(self,*args):return []
     monkeypatch.setattr(submission,"ZeusProductionCoordinator",FakePreparation)
     coordinator=ZeusProductionSubmissionCoordinator(root,ssh,git)
     first=coordinator._plan({"campaign_id":"campaign-id"})
@@ -223,7 +228,7 @@ def _receiver_fixture(tmp_path, monkeypatch):
     (campaign/".mot_ui/transitions").mkdir(parents=True)
     artifacts={
         "sensitivity_summary.json":b"{}\n", "production/tasks.json":b"[]\n",
-        "jobs/06_production.pbs":b"#!/bin/bash\n", "campaign.json":json.dumps({"stage":"production","name":"C","s0_values":[1.3],"stages":{"production":{"tasks":20}},"provenance":{"git_commit":"a"*40}}).encode(),
+        "jobs/06_production.pbs":b"#!/bin/bash\n", "campaign.json":json.dumps({"kind":"mot_2d_s0_campaign","stage":"production","name":"C","s0_values":[1.3],"stages":{"production":{"tasks":20}},"provenance":{"git_commit":"a"*40}},indent=2,sort_keys=True).encode()+b"\n",
     }
     files={name:hashlib.sha256(data).hexdigest() for name,data in artifacts.items()}
     for name,data in artifacts.items():(campaign/name).write_bytes(data)
@@ -358,3 +363,61 @@ def test_pinned_transport_enforces_operation_specific_receiver_states(operation,
     with pytest.raises(ZeusProductionSubmissionError) as caught:
         transport._call(operation,{"nonce":None})
     assert caught.value.code=="remote_response_invalid"
+
+
+@pytest.mark.parametrize('operation',['inspect','status','submit'])
+@pytest.mark.parametrize('altered',[False,True])
+def test_completed_campaign_without_submission_never_becomes_eligible_or_resubmits(tmp_path,monkeypatch,capsys,operation,altered):
+    _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch)
+    target=campaign/'campaign.json';manifest=json.loads(target.read_text())
+    manifest['stage']='complete';manifest['stages']['final_report']='final_report.json'
+    if altered:manifest['name']='changed predecessor'
+    target.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+    calls=[]
+    monkeypatch.setattr(receiver,'run_captured',lambda *args,**kwargs:calls.append(args) or (0,b'123[].zeus-master\n',b''))
+    before={str(p):p.read_bytes() for p in campaign.rglob('*') if p.is_file()}
+    with pytest.raises(SystemExit):_invoke_receiver(monkeypatch,payload,operation,capsys)
+    capsys.readouterr()
+    assert calls==[]
+    assert before=={str(p):p.read_bytes() for p in campaign.rglob('*') if p.is_file()}
+    assert not (campaign/'.mot_ui/submissions').exists()
+
+
+@pytest.mark.parametrize('operation',['inspect','status','submit'])
+def test_completed_campaign_existing_submission_deduplicates_with_exact_history(tmp_path,monkeypatch,capsys,operation):
+    _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
+    def captured(argv,**kwargs):
+        calls.append(argv)
+        return (0,b'123[].zeus-master\n',b'') if argv[0].endswith('qsub') else (0,_qstat([('F','0')]*20),b'')
+    monkeypatch.setattr(receiver,'run_captured',captured)
+    assert _invoke_receiver(monkeypatch,payload,'submit',capsys)['status']=='submitted'
+    target=campaign/'campaign.json';manifest=json.loads(target.read_text())
+    manifest['stage']='complete';manifest['stages']['final_report']='final_report.json'
+    target.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+    assert _invoke_receiver(monkeypatch,payload,operation,capsys)['status']==('completed_success' if operation=='status' else 'submitted')
+    assert sum(call[0].endswith('qsub') for call in calls)==1
+    manifest['name']='changed predecessor';target.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+    with pytest.raises(SystemExit):_invoke_receiver(monkeypatch,payload,operation,capsys)
+    capsys.readouterr()
+    assert sum(call[0].endswith('qsub') for call in calls)==1
+
+
+def test_production_stage_is_rechecked_under_submission_lock(tmp_path,monkeypatch,capsys):
+    _,campaign,receipt,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
+    original=receiver.read_json;reads=0
+    def changed(path,*args,**kwargs):
+        nonlocal reads
+        value=original(path,*args,**kwargs)
+        if path==receipt:
+            reads+=1
+            if reads==2:
+                target=campaign/'campaign.json';manifest=json.loads(target.read_text())
+                manifest['stage']='complete';manifest['stages']['final_report']='final_report.json'
+                target.write_text(json.dumps(manifest,indent=2,sort_keys=True)+'\n')
+        return value
+    monkeypatch.setattr(receiver,'read_json',changed)
+    monkeypatch.setattr(receiver,'run_captured',lambda *args,**kwargs:calls.append(args) or (0,b'123[].zeus-master\n',b''))
+    with pytest.raises(SystemExit):_invoke_receiver(monkeypatch,payload,'submit',capsys)
+    capsys.readouterr()
+    assert reads==2 and calls==[]
+    assert not (campaign/'.mot_ui/submissions/production.pending.json').exists()

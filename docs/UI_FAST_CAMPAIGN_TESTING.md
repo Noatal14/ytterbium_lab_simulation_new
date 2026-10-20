@@ -197,7 +197,7 @@ physical solver receives the original frozen timestep and endpoint.
 | 2D screen | One trial, five ensembles × two atoms, flattened | Three workers, throttle 3 | 10 / 30 |
 | 2D refinement | Up to four cumulative trials, each five × two atoms | Three workers per checkpoint, throttle 3 | 10 / 30 |
 | 2D confirmation | One candidate, five × two atoms | Five tasks, throttle 3 | 10 / 30 |
-| 2D sensitivity | One control point, five × two atoms | 17 tasks, throttle 3 | 10 / 30 |
+| 2D sensitivity | One control point, five × two atoms | Up to 17 tasks per s₀, throttle 3 | 10 / 30 |
 | 2D production | One sealed ensemble, at most 32 atoms | 20 tasks, throttle 4 | 24 / 96 |
 | 3D discovery | One worker, four cumulative trials of 12 atoms | Three workers per family; dependent rounds | 4 / 24 across two families |
 | 3D preliminary | Up to four candidates × three recoil seeds; four atoms per call | Three workers per family | 4 / 24 across two families |
@@ -214,3 +214,24 @@ fresh input generation, to keep the combined physical-worker allocation within
 200 CPUs. This is an operator scheduling requirement; the scheduler does not
 provide a cross-campaign global cap. Independent unrelated jobs are outside
 these per-campaign bounds.
+
+The 2D sensitivity candidate count 17 is the maximum canonical neighborhood,
+not a promise of 17 distinct tasks. The existing scientific generator clamps
+points to the frozen search bounds and removes duplicates; a boundary winner
+can therefore produce fewer tasks (observed 16). Submission review, scheduler
+accounting and output validation must use the exact rendered/frozen task
+registry. This does not change the profile, search bounds or neighborhood
+policy.
+
+Checkpointed 2D optimization restores the original seeded TPE stream through
+verified public Optuna trial replay. Checkpoints must produce exactly the same
+parameter sequence as an uninterrupted run, including after TPE startup and
+for queued points. Replay does not evaluate trajectories or rewrite historical
+trials. Incompatible legacy or incomplete histories stop with an explicit
+error; preserve their databases and inspect them using their pinned version.
+The profile, seeds and trial budgets are unchanged.
+
+Campaign workers pass frozen magnet radii through `--magnet-radius-m` to
+preserve their exact SI value. The manual `--magnet-radius-mm` interface remains
+available with its previous conversion behavior; the two options are mutually
+exclusive. This avoids changing a frozen value during an m→mm→m round trip.

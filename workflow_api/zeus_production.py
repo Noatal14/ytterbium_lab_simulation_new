@@ -1,7 +1,7 @@
 """Validated, explicit Sensitivity-to-Production preparation on Zeus."""
 
 from __future__ import annotations
-from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget
+from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget, sensitivity_task_count
 
 import hashlib
 import json
@@ -167,8 +167,7 @@ class ZeusProductionCoordinator:
             raise ZeusProductionError("sensitivity_preparation_invalid")
         return [dict(row) for row in state.receipt["rows"]]
 
-    @staticmethod
-    def _remote_payload(plan: tuple[Any, ...]) -> dict[str, object]:
+    def _remote_payload(self, plan: tuple[Any, ...]) -> dict[str, object]:
         (
             _,
             _,
@@ -183,7 +182,7 @@ class ZeusProductionCoordinator:
             job_id,
         ) = plan[:11]
         return {
-            "campaign": campaign.relative_to(campaign.parents[3]).as_posix(),
+            "campaign": campaign.relative_to(self.root).as_posix(),
             "commit": commit,
             "sensitivity_files": files,
             "sensitivity_transition_nonce": transition_nonce,
@@ -243,7 +242,8 @@ class ZeusProductionCoordinator:
             "production_prepared",
         }
         scheduler = state.scheduler
-        expected = len(manifest["s0_values"]) * 17
+        try: expected = sensitivity_task_count(dict(manifest))
+        except ValueError as error: raise ZeusProductionError("remote_response_invalid") from error
         if (
             state.lifecycle not in allowed
             or not state.branch
@@ -358,7 +358,7 @@ class ZeusProductionCoordinator:
 
     def status(self, request):
         plan, state = self._inspect(request)
-        expected = len(plan[3]["s0_values"]) * 17
+        expected = sensitivity_task_count(plan[3])
         valid = state.lifecycle in {
             "ready_to_prepare_production",
             "production_prepared",

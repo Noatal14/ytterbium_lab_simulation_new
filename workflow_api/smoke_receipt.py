@@ -83,3 +83,41 @@ def resolve_smoke_receipt(campaign: str | Path) -> Path:
     if any(identity != receipts[0][1] for _, identity in receipts[1:]):
         raise ValueError('Conflicting smoke submission receipts.')
     return receipts[0][0]
+
+
+def resolve_refinement_receipts(campaign: str | Path) -> tuple[Path, ...]:
+    """Select the actual refinement writer's receipts, without migration.
+
+    The chain writer uses transitions; older confirmation readers expected
+    submissions. Every unresolved intent in either location blocks recovery.
+    Callers must still validate the complete chain schemas and causal links.
+    """
+    campaign = Path(campaign)
+    if not stat.S_ISDIR(campaign.lstat().st_mode):
+        raise ValueError('Unsafe refinement campaign directory.')
+    names = ('refinement_chain', *(f'refinement_round_{index:02d}' for index in range(1, 5)))
+    candidates = {name: [] for name in names}
+    for leaf in ('transitions', 'submissions'):
+        directory = campaign
+        for part in ('.mot_ui', leaf):
+            directory /= part
+            metadata = _metadata(directory)
+            if metadata is not None and not stat.S_ISDIR(metadata.st_mode):
+                raise ValueError('Unsafe refinement receipt parent.')
+        if _metadata(directory / 'refinement_chain.lock') is not None:
+            raise ValueError('Refinement submission is locked.')
+        for name in names:
+            if _metadata(directory / f'{name}.pending.json') is not None:
+                raise ValueError('Unresolved refinement submission intent.')
+            receipt = directory / f'{name}.json'
+            if _metadata(receipt) is not None:
+                candidates[name].append((receipt, _receipt_identity(receipt)))
+    selected = []
+    for name in names:
+        rows = candidates[name]
+        if not rows:
+            raise FileNotFoundError('Incomplete refinement submission receipts.')
+        if any(identity != rows[0][1] for _, identity in rows[1:]):
+            raise ValueError('Conflicting refinement submission receipts.')
+        selected.append(rows[0][0])
+    return tuple(selected)

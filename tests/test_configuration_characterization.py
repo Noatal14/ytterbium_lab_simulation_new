@@ -74,6 +74,7 @@ EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
     'workflow_api/zeus_confirmation_remote.py',
     'workflow_api/zeus_confirmation_submission.py',
     'workflow_api/zeus_confirmation_submission_remote.py',
+    'workflow_api/zeus_finalization.py',  # Authenticates TEST ONLY suitability at the public DTO boundary.
     'workflow_api/zeus_finalization_remote.py',
     'workflow_api/zeus_production.py',
     'workflow_api/zeus_production_remote.py',

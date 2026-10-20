@@ -84,6 +84,9 @@ def test_plan_binds_the_entire_prepared_sensitivity_receipt(tmp_path, monkeypatc
     files={"winners.json":"1"*64,"sensitivity/tasks.json":"2"*64,
            "jobs/05_sensitivity.pbs":"3"*64,"campaign.json":"4"*64}
     manifest={"name":"Campaign","s0_values":[1.3],"stages":{"sensitivity":{"tasks":17}}}
+    rendered = {name: (json.dumps(manifest).encode() if name == "campaign.json" else name.encode()) for name in files}
+    files = {name: hashlib.sha256(raw).hexdigest() for name, raw in rendered.items()}
+    monkeypatch.setattr("workflow_api.mot_2d_plan.render_sensitivity_transition", lambda *args: rendered)
     receipt={"status":"sensitivity_prepared","nonce":"b"*32,"transition_key":"5"*64,
              "confirmation_submission_key":"6"*64,"confirmation_submission_nonce":"7"*32,
              "confirmation_job_id":"111[].zeus-master","commit":"a"*40,"rows_digest":"8"*64,

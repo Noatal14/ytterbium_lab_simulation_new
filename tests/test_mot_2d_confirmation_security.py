@@ -156,7 +156,11 @@ def _receiver_fixture(tmp_path,monkeypatch,*,wrong_dependency=False,failed_child
     confirmation_files={name:hashlib.sha256(data).hexdigest() for name,data in rendered.items()}
     import workflow_api.mot_2d_screen as screen_module
     import workflow_api.mot_2d_plan as plan_module
+    # This scheduler/locking unit fixture intentionally substitutes scientific files;
+    # the full protocol-chain test exercises the real predecessor proof.
+    monkeypatch.setattr(receiver,"_validate_screen_predecessor",lambda *args: None)
     monkeypatch.setattr(screen_module,"validate_refine_outputs",lambda *_:rows)
+    monkeypatch.setattr(screen_module,"validate_screen_outputs",lambda *_:rows)
     monkeypatch.setattr(plan_module,"render_confirmation_transition",lambda *_:rendered)
     real_path=Path;home=tmp_path
     monkeypatch.setattr(receiver,"Path",lambda value:home if str(value)=="/home" else real_path(value))

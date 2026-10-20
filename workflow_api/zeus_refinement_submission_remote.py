@@ -73,12 +73,20 @@ def main():
         manifest_path=campaign/"campaign.json";no_symlinks(root,manifest_path)
         try:manifest=json.loads(manifest_path.read_text("utf-8"))
         except Exception:fail("refinement_not_prepared")
+        historical_projection_used = False
+        if operation == "inspect" and isinstance(manifest, dict) and manifest.get("stage") in {"confirmation", "sensitivity", "production", "complete"}:
+            try:
+                from workflow_api.mot_2d_spec import project_historical_manifest
+                manifest = project_historical_manifest(manifest, "refine", files["campaign.json"])
+                historical_projection_used = True
+            except (ValueError, KeyError): fail("refinement_not_prepared")
         if not isinstance(manifest,dict) or manifest.get("stage")!="refine" or manifest.get("provenance",{}).get("git_commit")!=payload["commit"]:fail("refinement_not_prepared")
         for name,want in files.items():
             path=campaign/name;no_symlinks(root,path)
-            if not path.is_file() or digest_bytes(path.read_bytes())!=want:fail("refinement_not_prepared")
+            data = (json.dumps(manifest, indent=2, sort_keys=True)+"\n").encode() if name == "campaign.json" and historical_projection_used else path.read_bytes() if path.is_file() else b""
+            if not path.is_file() or digest_bytes(data)!=want:fail("refinement_not_prepared")
         refine=campaign/"refine";no_symlinks(root,refine)
-        if not refine.is_dir() or any(path.name!="tasks.json" for path in refine.iterdir()):fail("refinement_already_started")
+        if not refine.is_dir() or not receipt.exists() and any(path.name!="tasks.json" for path in refine.iterdir()):fail("refinement_already_started")
         return [ (campaign/name).read_bytes() for name in FILES ]
     ids=[]
     receipt_nonce=None

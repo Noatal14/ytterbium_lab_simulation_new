@@ -73,27 +73,42 @@ def main() -> None:
     from workflow_api.mot_2d_smoke import SmokeValidationError, validate_smoke_outputs
     from workflow_api.zeus_snapshot import _parse_qstat
     prepared = payload.get("prepared_files"); submission_key = payload.get("submission_key")
-    if not isinstance(prepared,dict) or len(prepared)!=72 or not isinstance(submission_key,str) or not re.fullmatch(r"[0-9a-f]{64}",submission_key): fail("invalid_request")
+    if not isinstance(prepared,dict) or len(prepared)!=72 or any(not isinstance(name,str) or not isinstance(value,str) or not re.fullmatch(r"[0-9a-f]{64}",value) for name,value in prepared.items()) or not isinstance(submission_key,str) or not re.fullmatch(r"[0-9a-f]{64}",submission_key): fail("invalid_request")
+    hashes = payload.get("transition_files")
+    if not isinstance(hashes,dict) or set(hashes)!={"campaign.json","screen/tasks.json","jobs/02_screen.pbs"} or not all(isinstance(value,str) and re.fullmatch(r"[0-9a-f]{64}",value) for value in hashes.values()): fail("invalid_request")
+    manifest_path = campaign / "campaign.json"
+    try:
+        manifest_bytes=manifest_path.read_bytes()
+        manifest=json.loads(manifest_bytes.decode("utf-8"))
+    except Exception: fail("remote_preparation_invalid")
+    manifest_name=f"{relative}/campaign.json"
+    if manifest_name not in prepared or f"{relative}/jobs/01_smoke.pbs" not in prepared: fail("invalid_request")
+    expected_submission_key=hashlib.sha256(json.dumps({"campaign":relative,"commit":commit,"manifest":prepared[manifest_name],"pbs":prepared[f"{relative}/jobs/01_smoke.pbs"]},sort_keys=True,separators=(",",":")).encode()).hexdigest()
+    if submission_key!=expected_submission_key: fail("invalid_request")
+    from workflow_api.mot_2d_spec import project_historical_manifest
+    actual_stage=manifest.get("stage")
+    historical=actual_stage not in {"smoke","screen"}
+    if historical and operation!="inspect": fail("campaign_not_smoke")
+    try:
+        original=project_historical_manifest(manifest,"smoke",prepared[manifest_name])
+        screened=project_historical_manifest(manifest,"screen",hashes["campaign.json"]) if actual_stage!="smoke" else None
+    except ValueError: fail("remote_preparation_invalid")
     total=0
     for name,digest in prepared.items():
         if not isinstance(name,str) or not isinstance(digest,str) or not re.fullmatch(r"[0-9a-f]{64}",digest): fail("invalid_request")
         item=PurePosixPath(name)
         if item.is_absolute() or any(part in {"", ".", ".."} for part in item.parts): fail("invalid_request")
         path=root.joinpath(*item.parts)
+        expected=hashes["campaign.json"] if name==manifest_name and screened is not None else digest
         try:
             metadata=path.lstat(); resolved=path.resolve(strict=True)
             if path.is_symlink() or not path.is_file() or root not in resolved.parents: fail("remote_preparation_invalid")
             total+=metadata.st_size
-            if total>128*1024*1024 or hashlib.sha256(path.read_bytes()).hexdigest()!=digest: fail("remote_preparation_invalid")
+            raw=(json.dumps(screened,indent=2,sort_keys=True)+"\n").encode() if name==manifest_name and historical else path.read_bytes()
+            if total>128*1024*1024 or hashlib.sha256(raw).hexdigest()!=expected: fail("remote_preparation_invalid")
         except OSError: fail("remote_preparation_invalid")
-    manifest_path = campaign / "campaign.json"
-    try:
-        manifest_bytes = manifest_path.read_bytes()
-        manifest = json.loads(manifest_bytes.decode("utf-8"))
-    except Exception: fail("remote_preparation_invalid")
-    transition = render_screen_transition(manifest, campaign, root) if manifest.get("stage") == "smoke" else None
-    hashes = payload.get("transition_files")
-    if not isinstance(hashes, dict) or transition is not None and hashes != {name:hashlib.sha256(data).hexdigest() for name,data in transition.items()}: fail("transition_conflict")
+    transition=render_screen_transition(original,campaign,root) if original.get("stage")=="smoke" else None
+    if transition is not None and hashes!={name:hashlib.sha256(data).hexdigest() for name,data in transition.items()}: fail("transition_conflict")
     state_dir = campaign / ".mot_ui" / "transitions"; receipt = state_dir / "screen.json"; pending = state_dir / "screen.pending.json"
     submission = campaign / ".mot_ui" / "submissions" / "smoke.json"
     for protected in (campaign/".mot_ui",state_dir,campaign/"jobs",campaign/"screen"):
@@ -108,7 +123,7 @@ def main() -> None:
             return row
         except FileNotFoundError: fail("smoke_not_submitted")
         except Exception: fail("submission_record_invalid")
-    if manifest.get("stage") == "screen":
+    if screened is not None:
         try:
             submitted=read_submission()
             if receipt.exists():
@@ -124,7 +139,8 @@ def main() -> None:
             if set(record)!=expected_receipt or record.get("status")!="screening_prepared" or record.get("commit")!=commit or record.get("submission_key")!=submission_key or record.get("transition_files")!=hashes or record.get("job_id")!=submitted["job_id"] or not re.fullmatch(r"[0-9a-f]{32}",str(record.get("nonce",""))) or not re.fullmatch(r"\d+(?:\[\])?\.zeus-master",job_id) or not isinstance(record.get("points"),list) or record.get("artifact_count")!=3*len(record["points"]) or not isinstance(record.get("completed_unix_s"),int) or hashlib.sha256(json.dumps(record["points"],sort_keys=True).encode()).hexdigest()!=record.get("smoke_digest"): fail("transition_outcome_unknown")
             for name,digest in hashes.items():
                 path=campaign/name
-                if not path.is_file() or path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest()!=digest: fail("transition_conflict")
+                raw=(json.dumps(screened,indent=2,sort_keys=True)+"\n").encode() if name=="campaign.json" and historical else path.read_bytes()
+                if not path.is_file() or path.is_symlink() or hashlib.sha256(raw).hexdigest()!=digest: fail("transition_conflict")
         except Exception: fail("transition_outcome_unknown")
         print(json.dumps({"lifecycle":"screen_prepared","job_id":job_id,"raw_state":"F","exit_status":0,"points":record.get("points",[]),"artifact_count":record.get("artifact_count",0)})); return
     if manifest.get("stage") != "smoke": fail("campaign_not_smoke")

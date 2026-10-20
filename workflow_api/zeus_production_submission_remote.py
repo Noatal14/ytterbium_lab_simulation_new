@@ -141,9 +141,17 @@ def main():
     if record_digest!=payload["transition_digest"] or record["status"]!="production_prepared" or record["nonce"]!=payload["transition_nonce"] or record["commit"]!=payload["commit"] or record["files"]!=files or not timestamp(record["completed_unix_s"]): fail("production_preparation_invalid")
     manifest=json.loads(bounded(campaign/"campaign.json"));
     if not isinstance(manifest,dict) or manifest.get("stage") not in {"production","complete"} or manifest.get("provenance",{}).get("git_commit")!=payload["commit"]: fail("production_preparation_invalid")
+    completed = manifest.get("stage") == "complete"
+    historical_manifest_bytes = None
+    if completed:
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            historical = project_historical_manifest(manifest, "production", files["campaign.json"])
+            historical_manifest_bytes = (json.dumps(historical, indent=2, sort_keys=True)+"\n").encode()
+        except (ValueError, KeyError, TypeError): fail("production_preparation_invalid")
     for name,want in files.items():
-        if manifest.get("stage")=="complete" and name=="campaign.json": continue
         path=campaign/name;no_links(campaign,path);data=bounded(path,64*1024*1024)
+        if completed and name=="campaign.json": data=historical_manifest_bytes
         if hashlib.sha256(data).hexdigest()!=want: fail("production_preparation_invalid")
     job_bytes=bounded(campaign/JOB_FILE,1024*1024)
     submission=submissions/"production.json";pending=submissions/"production.pending.json";lock=submissions/"production.lock"
@@ -167,6 +175,7 @@ def main():
             if intent["version"]!=1 or intent["status"]!="pending" or intent["submission_key"]!=payload["submission_key"] or intent["transition_nonce"]!=payload["transition_nonce"] or intent["transition_digest"]!=payload["transition_digest"] or intent["pbs_sha256"]!=files[JOB_FILE] or intent["job_file"]!=f"{relative.as_posix()}/{JOB_FILE}" or intent["commit"]!=payload["commit"] or not re.fullmatch(r"[0-9a-f]{32}",str(intent["nonce"])) or not timestamp(intent["created_unix_s"]): fail("production_submission_outcome_unknown")
             pending_nonce=intent["nonce"]
         respond("ambiguous",branch,None,pending_nonce,None);return
+    if completed: fail("production_preparation_invalid")
     if operation in {"inspect","status"}: respond("eligible",branch);return
     nonce=payload["nonce"]
     if not isinstance(nonce,str) or not re.fullmatch(r"[0-9a-f]{32}",nonce): fail("invalid_request")
@@ -177,9 +186,10 @@ def main():
         locked_record=read_json(receipt,receipt_keys,8*1024*1024)
         locked_digest=hashlib.sha256(json.dumps(locked_record,sort_keys=True,separators=(",",":")).encode()).hexdigest()
         if locked_digest!=payload["transition_digest"] or locked_record!=record: fail("production_submission_outcome_unknown")
+        locked_manifest=json.loads(bounded(campaign/"campaign.json"))
+        if not isinstance(locked_manifest,dict) or locked_manifest.get("stage")!="production" or locked_manifest!=manifest: fail("production_submission_outcome_unknown")
         locked_files={}
         for name,want in files.items():
-            if manifest.get("stage")=="complete" and name=="campaign.json": continue
             data=bounded(campaign/name,64*1024*1024)
             if hashlib.sha256(data).hexdigest()!=want: fail("production_submission_outcome_unknown")
             locked_files[name]=data

@@ -1,0 +1,468 @@
+{
+  "kind": "real_coordinator_protocol_capture_v1",
+  "mode": "acceptance",
+  "provenance": "Immutable subset of full hermetic real receiver/coordinator/writer protocol, 2026-10-20. Physical solver/input loading and scheduler transport were fixture seams; all public status DTOs are unmodified real output.",
+  "original_job_file": "jobs/01_smoke.pbs",
+  "remote_project_directory": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance",
+  "responses": [
+    {
+      "module": "domain",
+      "parser": "parseSmokeLifecycle",
+      "coordinator": "zeus_screening",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:18.716907+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "screen"
+        },
+        "submission": {
+          "job_id": "70000.zeus-master"
+        },
+        "scheduler": {
+          "state": "completed_success",
+          "raw_state": "F",
+          "exit_status": 0
+        },
+        "validation": {
+          "status": "valid",
+          "points": [
+            {
+              "s0": 1.3,
+              "captured": 1,
+              "input": 2,
+              "efficiency": 0.5
+            }
+          ],
+          "artifact_count": 3
+        },
+        "lifecycle": "screen_prepared",
+        "next_action": "none"
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseScreeningLifecycle",
+      "coordinator": "zeus_refinement",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:19.056100+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "refine"
+        },
+        "submission": {
+          "job_id": "70001[].zeus-master"
+        },
+        "scheduler": {
+          "state": "completed_success",
+          "raw_state": "F",
+          "exit_status": 0,
+          "task_count": 3,
+          "counts": {
+            "queued": 0,
+            "running": 0,
+            "held": 0,
+            "succeeded": 3,
+            "failed": 0
+          }
+        },
+        "validation": {
+          "status": "valid",
+          "completed_trials": 3,
+          "expected_trials": 3,
+          "candidate_count": 3
+        },
+        "lifecycle": "refinement_prepared",
+        "next_action": "none"
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseRefinementChainStatus",
+      "coordinator": "zeus_refinement_submission",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:19.602361+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "refine"
+        },
+        "chain": {
+          "status": "submitted",
+          "dependency": "afterok",
+          "rounds": [
+            {
+              "round": 1,
+              "state": "submitted",
+              "job_id": "70002[].zeus-master",
+              "depends_on_job_id": null
+            },
+            {
+              "round": 2,
+              "state": "submitted",
+              "job_id": "70003[].zeus-master",
+              "depends_on_job_id": "70002[].zeus-master"
+            },
+            {
+              "round": 3,
+              "state": "submitted",
+              "job_id": "70004[].zeus-master",
+              "depends_on_job_id": "70003[].zeus-master"
+            },
+            {
+              "round": 4,
+              "state": "submitted",
+              "job_id": "70005[].zeus-master",
+              "depends_on_job_id": "70004[].zeus-master"
+            }
+          ]
+        },
+        "next_action": "none",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseRefinementLifecycle",
+      "coordinator": "zeus_confirmation",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:20.170167+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "confirmation"
+        },
+        "chain": {
+          "status": "confirmation_prepared",
+          "rounds": [
+            {
+              "depends_on_job_id": null,
+              "job_id": "70002[].zeus-master",
+              "round": 1,
+              "scheduler": {
+                "counts": {
+                  "failed": 0,
+                  "held": 0,
+                  "queued": 0,
+                  "running": 0,
+                  "succeeded": 3
+                },
+                "state": "completed_success",
+                "task_count": 3
+              }
+            },
+            {
+              "depends_on_job_id": "70002[].zeus-master",
+              "job_id": "70003[].zeus-master",
+              "round": 2,
+              "scheduler": {
+                "counts": {
+                  "failed": 0,
+                  "held": 0,
+                  "queued": 0,
+                  "running": 0,
+                  "succeeded": 3
+                },
+                "state": "completed_success",
+                "task_count": 3
+              }
+            },
+            {
+              "depends_on_job_id": "70003[].zeus-master",
+              "job_id": "70004[].zeus-master",
+              "round": 3,
+              "scheduler": {
+                "counts": {
+                  "failed": 0,
+                  "held": 0,
+                  "queued": 0,
+                  "running": 0,
+                  "succeeded": 3
+                },
+                "state": "completed_success",
+                "task_count": 3
+              }
+            },
+            {
+              "depends_on_job_id": "70004[].zeus-master",
+              "job_id": "70005[].zeus-master",
+              "round": 4,
+              "scheduler": {
+                "counts": {
+                  "failed": 0,
+                  "held": 0,
+                  "queued": 0,
+                  "running": 0,
+                  "succeeded": 3
+                },
+                "state": "completed_success",
+                "task_count": 3
+              }
+            }
+          ]
+        },
+        "validation": {
+          "status": "valid",
+          "completed_trials": 12,
+          "expected_trials": 12,
+          "candidate_count": 5
+        },
+        "next_action": "none",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseConfirmationSubmissionStatus",
+      "coordinator": "zeus_confirmation_submission",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:21.000847+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "confirmation"
+        },
+        "submission": {
+          "status": "completed_success",
+          "job_id": "70006[].zeus-master"
+        },
+        "next_action": "validate_outputs",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseSensitivityStatus",
+      "coordinator": "zeus_sensitivity",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:22.050596+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "sensitivity"
+        },
+        "confirmation": {
+          "status": "sensitivity_prepared",
+          "job_id": "70006[].zeus-master",
+          "scheduler": {
+            "counts": {
+              "failed": 0,
+              "held": 0,
+              "queued": 0,
+              "running": 0,
+              "succeeded": 5
+            },
+            "job_id": "70006[].zeus-master",
+            "state": "completed_success",
+            "submission_nonce": "30135b3e2b7d2dd58edda857e9a587fc",
+            "task_count": 5
+          }
+        },
+        "validation": {
+          "status": "valid",
+          "completed_points": 5,
+          "expected_points": 5
+        },
+        "next_action": "none",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseSensitivitySubmissionStatus",
+      "coordinator": "zeus_sensitivity_submission",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:23.199345+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "sensitivity"
+        },
+        "submission": {
+          "status": "completed_success",
+          "job_id": "70007[].zeus-master"
+        },
+        "next_action": "validate_outputs",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseProductionStatus",
+      "coordinator": "zeus_production",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:25.083686+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "production"
+        },
+        "sensitivity": {
+          "status": "production_prepared",
+          "job_id": "70007[].zeus-master",
+          "scheduler": {
+            "counts": {
+              "failed": 0,
+              "held": 0,
+              "queued": 0,
+              "running": 0,
+              "succeeded": 17
+            },
+            "job_id": "70007[].zeus-master",
+            "state": "completed_success",
+            "submission_nonce": "fe1ba5ec9e2a8170df8c2b062312ddc1",
+            "task_count": 17
+          }
+        },
+        "validation": {
+          "status": "valid",
+          "completed_points": 17,
+          "expected_points": 17
+        },
+        "next_action": "none",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseProductionSubmissionStatus",
+      "coordinator": "zeus_production_submission",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:28.763859+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "production"
+        },
+        "submission": {
+          "status": "completed_success",
+          "job_id": "70008[].zeus-master"
+        },
+        "next_action": "validate_outputs",
+        "local_sync": {
+          "status": "not_synchronized"
+        }
+      }
+    },
+    {
+      "module": "domain",
+      "parser": "parseFinalizationStatus",
+      "coordinator": "zeus_finalization",
+      "method": "status",
+      "value": {
+        "source": "zeus",
+        "queried_at": "2026-10-20T15:46:29.237465+00:00",
+        "campaign": {
+          "id": "mot_2d-61a2454deb285495a7e5",
+          "name": "protocol-chain",
+          "stage": "complete"
+        },
+        "production": {
+          "status": "campaign_complete",
+          "job_id": "70008[].zeus-master",
+          "scheduler": {
+            "counts": {
+              "failed": 0,
+              "held": 0,
+              "queued": 0,
+              "running": 0,
+              "succeeded": 20
+            },
+            "job_id": "70008[].zeus-master",
+            "state": "completed_success",
+            "submission_nonce": "37e3c76be63449ba7ba757bfca0d7450",
+            "task_count": 20
+          }
+        },
+        "validation": {
+          "status": "valid",
+          "completed_ensembles": 20,
+          "expected_ensembles": 20
+        },
+        "next_action": "none",
+        "local_sync": {
+          "status": "not_synchronized"
+        },
+        "results": [
+          {
+            "s0": 1.3,
+            "n_ensembles": 20,
+            "total_input": 640,
+            "total_survivors": 20,
+            "recommended_parameters": {
+              "detuning_gamma": -1.2671032493116698,
+              "magnet_radius": 0.04964851839399881,
+              "s0": 1.3
+            },
+            "prediction": {
+              "reporting_zeeman_survivors": 10000000,
+              "simulated_zeeman_survivors": 640,
+              "simulated_captured_atoms": 20,
+              "pooled_conditional_efficiency": 0.03125,
+              "expected_captured_atoms": 312500,
+              "predicted_95_interval_fraction": [
+                0.03109624,
+                0.06253980999999996
+              ],
+              "predicted_95_captured_atoms_interval": [
+                310962,
+                625398
+              ],
+              "predicted_95_half_width_fraction": 0.01572178499999998,
+              "predicted_95_half_width_percentage_points": 1.5721784999999981,
+              "binomial_mean_variance": 4.730224609375e-05,
+              "empirical_between_ensemble_mean_variance": 0.0,
+              "selected_mean_variance": 4.730224609375e-05,
+              "selected_mean_variance_source": "pooled_binomial",
+              "critical_value": 1.96,
+              "future_counting_variance": 3.02734375e-09,
+              "uncertainty_method": "20,000-draw cluster-aware parametric bootstrap: independent Zeeman/MOT ensemble pairs are resampled as clusters, finite within-cluster capture uncertainty is sampled with a Jeffreys beta model, cluster probabilities are pooled with their resampled survivor counts as weights, and future counting noise is sampled binomially",
+              "bootstrap_replicates": 20000
+            },
+            "target_uncertainty_passes": false,
+            "robustness_status": "not_established_pending_adaptive_challenger_validation",
+            "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+            "warnings": [
+              "target_95_prediction_half_width_not_met",
+              "robust_operating_region_not_established",
+              "epsilon_near_optimality_not_established"
+            ],
+            "retention": "retained",
+            "output_suitability": "acceptance_only"
+          }
+        ]
+      }
+    }
+  ]
+}

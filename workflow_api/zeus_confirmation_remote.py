@@ -82,6 +82,26 @@ def completed_rounds(value,job_ids,task_count):
         expected={"round":index,"job_id":job_ids[index-1],"depends_on_job_id":None if index==1 else job_ids[index-2],"scheduler":{"state":"completed_success","task_count":task_count,"counts":counts}}
         if row!=expected:return False
     return True
+def _validate_screen_predecessor(campaign, manifest, refine_receipt, screen_digest):
+    """Bind screening evidence to its original transition, never refined rows."""
+    from workflow_api.mot_2d_spec import project_historical_manifest
+    from workflow_api.mot_2d_screen import validate_screen_outputs
+    candidate = json.loads(json.dumps(manifest))
+    candidate["stage"] = "screen"
+    for name in ("refine", "confirmation", "sensitivity", "production", "complete", "final_report"):
+        candidate.get("stages", {}).pop(name, None)
+    manifest_sha = hashlib.sha256((json.dumps(candidate, indent=2, sort_keys=True)+"\n").encode()).hexdigest()
+    hashes = {"campaign.json": manifest_sha}
+    for name in ("screen/tasks.json", "jobs/02_screen.pbs"):
+        no_links(campaign, campaign / name)
+        hashes[name] = sha(campaign / name)
+    if hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest() != screen_digest:
+        raise ValueError("Screen predecessor differs from its frozen transition.")
+    screen = project_historical_manifest(manifest, "screen", manifest_sha)
+    rows = validate_screen_outputs(campaign, screen)
+    if rows != refine_receipt.get("rows") or hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest() != refine_receipt.get("rows_digest"):
+        raise ValueError("Screen predecessor receipt differs from its real outputs.")
+
 def main():
     if len(sys.argv)!=5 or sys.argv[1] not in {"inspect","prepare"}:fail("invalid_request")
     operation,username,requested,encoded=sys.argv[1:]
@@ -102,8 +122,20 @@ def main():
     if head!=commit or not branch or not safe_status(dirty,root):fail("remote_checkout_mismatch")
     manifest=read_json(campaign/"campaign.json");metadata=campaign/".mot_ui";transitions=metadata/"transitions";submissions=metadata/"submissions"
     for path in (metadata,transitions,submissions,campaign/"refine",campaign/"jobs"):no_links(campaign,path)
-    refine_receipt=read_json(transitions/"refine.json");chain=read_json(submissions/"refinement_chain.json");refine_files=payload["refine_files"]
+    from workflow_api.smoke_receipt import resolve_refinement_receipts
+    try: refinement_receipts = resolve_refinement_receipts(campaign)
+    except (ValueError, OSError): fail("submission_record_invalid")
+    refine_receipt=read_json(transitions/"refine.json");chain=read_json(refinement_receipts[0]);refine_files=payload["refine_files"]
     if not isinstance(refine_files,dict) or set(refine_files)!={"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_refine_round_01.pbs","jobs/03_refine_round_02.pbs","jobs/03_refine_round_03.pbs","jobs/03_refine_round_04.pbs","jobs/03_submit_refinement_chain.sh"} or any(not re.fullmatch(r"[0-9a-f]{64}",str(value)) for value in refine_files.values()):fail("invalid_request")
+    if operation == "inspect" and manifest.get("stage") in {"sensitivity", "production", "complete"}:
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            from workflow_api.mot_2d_screen import validate_refine_outputs
+            from workflow_api.mot_2d_plan import render_confirmation_transition
+            historical_refine = project_historical_manifest(manifest, "refine", refine_files["campaign.json"])
+            historical_files = render_confirmation_transition(historical_refine, campaign, root, validate_refine_outputs(campaign, historical_refine))
+            manifest = project_historical_manifest(manifest, "confirmation", hashlib.sha256(historical_files["campaign.json"]).hexdigest())
+        except (ValueError, OSError, KeyError, TypeError): fail("transition_conflict")
     if set(refine_receipt)!={"status","nonce","job_id","rows_digest","rows","refine_files","commit","screening_submission_key","screen_digest","completed_unix_s"} or refine_receipt["status"]!="refinement_prepared" or refine_receipt["commit"]!=commit or refine_receipt["refine_files"]!=refine_files or refine_receipt["screen_digest"]!=payload["screen_digest"] or refine_receipt["screening_submission_key"]!=payload["screening_submission_key"] or not re.fullmatch(r"[0-9a-f]{32}",str(refine_receipt["nonce"])) or not re.fullmatch(r"\d+\[\]\.zeus-master",str(refine_receipt["job_id"])) or not re.fullmatch(r"[0-9a-f]{64}",str(refine_receipt["rows_digest"])) or not isinstance(refine_receipt["rows"],list) or hashlib.sha256(json.dumps(refine_receipt["rows"],sort_keys=True).encode()).hexdigest()!=refine_receipt["rows_digest"] or not re.fullmatch(r"[0-9a-f]{64}",str(refine_receipt["screening_submission_key"])) or not re.fullmatch(r"[0-9a-f]{64}",str(refine_receipt["screen_digest"])) or not timestamp(refine_receipt["completed_unix_s"]):fail("transition_conflict")
     for name,expected in refine_files.items():
         path=campaign/name;no_links(campaign,path)
@@ -112,10 +144,12 @@ def main():
             observed=hashlib.sha256((json.dumps(prior_manifest,indent=2,sort_keys=True)+"\n").encode()).hexdigest()
         else:observed=sha(path) if path.is_file() else ""
         if observed!=expected:fail("transition_conflict")
+    try: _validate_screen_predecessor(campaign, manifest, refine_receipt, payload["screen_digest"])
+    except (ValueError, OSError, KeyError, TypeError): fail("transition_conflict")
     if set(chain)!={"status","chain_key","nonce","commit","job_ids","created_unix_s","completed_unix_s"} or chain["status"]!="submitted" or chain["chain_key"]!=payload["chain_key"] or chain["commit"]!=commit or not re.fullmatch(r"[0-9a-f]{32}",str(chain["nonce"])) or not timestamp(chain["created_unix_s"]) or not timestamp(chain["completed_unix_s"]) or chain["completed_unix_s"]<chain["created_unix_s"] or not isinstance(chain["job_ids"],list) or len(chain["job_ids"])!=4 or len(set(chain["job_ids"]))!=4 or any(not re.fullmatch(r"\d+\[\]\.zeus-master",str(job)) for job in chain["job_ids"]):fail("submission_record_invalid")
     step_created=[];step_completed=[]
     for index,job in enumerate(chain["job_ids"],1):
-        step=read_json(submissions/f"refinement_round_{index:02d}.json")
+        step=read_json(refinement_receipts[index])
         exact={"status","chain_key","nonce","round","pbs_sha256","depends_on","created_unix_s","job_id","completed_unix_s"}
         if set(step)!=exact or step["status"]!="submitted" or step["job_id"]!=job or step["chain_key"]!=payload["chain_key"] or step["nonce"]!=chain["nonce"] or step["round"]!=index or step["pbs_sha256"]!=refine_files[f"jobs/03_refine_round_{index:02d}.pbs"] or step["depends_on"]!=(chain["job_ids"][index-2] if index>1 else None) or not timestamp(step["created_unix_s"]) or not timestamp(step["completed_unix_s"]) or step["completed_unix_s"]<step["created_unix_s"]:fail("submission_record_invalid")
         step_created.append(step["created_unix_s"]);step_completed.append(step["completed_unix_s"])
@@ -138,6 +172,9 @@ def main():
                 if manifest.get("stage")!="confirmation" or receipt.exists() or not pending.exists():fail("transition_outcome_unknown")
                 pending_record=read_json(pending)
                 if set(pending_record)!={"status","nonce","chain_key","rows_digest","files","rounds","created_unix_s"} or pending_record["status"]!="confirmation_pending" or pending_record["nonce"]!=payload.get("nonce") or pending_record["chain_key"]!=payload["chain_key"] or pending_record["rows_digest"]!=payload.get("rows_digest") or pending_record["files"]!=payload.get("confirmation_files") or not completed_rounds(pending_record["rounds"],chain["job_ids"],len(manifest["s0_values"])*3) or not timestamp(pending_record["created_unix_s"]):fail("transition_outcome_unknown")
+                if read_json(transitions/"refine.json") != refine_receipt: fail("transition_outcome_unknown")
+                try: _validate_screen_predecessor(campaign, manifest, refine_receipt, payload["screen_digest"])
+                except (ValueError, OSError, KeyError, TypeError): fail("transition_outcome_unknown")
                 prior=json.loads(json.dumps(manifest));prior["stage"]="refine";prior["stages"].pop("confirmation",None)
                 from workflow_api.mot_2d_screen import validate_refine_outputs
                 locked=validate_refine_outputs(campaign,prior)
@@ -182,9 +219,7 @@ def main():
         try:rows=validate_refine_outputs(campaign,manifest)
         except FileNotFoundError:lifecycle="awaiting_outputs";rows=[]
         except Exception:lifecycle="outputs_invalid";rows=[]
-        else:
-            if rows!=refine_receipt.get("rows") or hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest()!=refine_receipt.get("rows_digest"):lifecycle="outputs_invalid";rows=[]
-            else:lifecycle="ready_to_prepare_confirmation"
+        else:lifecycle="ready_to_prepare_confirmation"
     if lifecycle!="ready_to_prepare_confirmation" or operation=="inspect":print(json.dumps({"lifecycle":lifecycle,"rounds":rounds,"rows":rows,"branch":branch,"receipt":None}));return
     rows_digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest()
     if rows_digest!=payload["rows_digest"]:fail("transition_conflict")
@@ -198,6 +233,9 @@ def main():
         # Re-check every scheduler child, dependency, manifest, and scientific output under the lock.
         locked_manifest=read_json(campaign/"campaign.json")
         if locked_manifest!=manifest:fail("transition_conflict")
+        if read_json(transitions/"refine.json") != refine_receipt: fail("transition_conflict")
+        try: _validate_screen_predecessor(campaign, locked_manifest, refine_receipt, payload["screen_digest"])
+        except (ValueError, OSError, KeyError, TypeError): fail("transition_conflict")
         for round_index,job in enumerate(chain["job_ids"],1):
             checked=subprocess.run(["/opt/pbs/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
             try:checked_round,checked_unknown=parse_round(checked.stdout,job,task_count,round_index,chain["job_ids"],_parse_qstat)

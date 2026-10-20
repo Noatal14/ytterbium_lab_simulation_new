@@ -67,7 +67,12 @@ class ZeusConfirmationCoordinator:
         return {"preview_token":token,"expires_in_seconds":TOKEN_LIFETIME_SECONDS,"campaign":{"id":campaign_id,"name":manifest["name"],"git_commit":commit,"s0_values":manifest["s0_values"]},"from_stage":"refine","to_stage":"confirmation","bounds":{"detuning_gamma":{"low":fixed["detuning_bounds_gamma"][0],"high":fixed["detuning_bounds_gamma"][1]},"magnet_radius_m":{"low":fixed["magnet_radius_bounds_m"][0],"high":fixed["magnet_radius_bounds_m"][1]}},"refinement":{"round_job_ids":ids,"completed_trials":len(rows),"expected_trials":len(manifest["s0_values"])*3*trial_budget(manifest, "refine"),"candidates":candidates},"artifacts":{"create":["refined_candidates.json","confirmation/tasks.json","jobs/04_confirmation.pbs"],"update":["campaign.json"]},"job":{"file":"jobs/04_confirmation.pbs","kind":"array","task_count":len(manifest["s0_values"])*5,"array_throttle":3,"queue":"zeus_combined_q",**reviewed_job_resources(manifest, 'confirmation', {"cores_per_task":200, "memory_per_task_bytes":68719476736, "walltime_seconds":36000})},"effects":{"prepare_confirmation":True,"submit_confirmation":False,"start_simulation":False,"overwrite_existing":False},"local_sync":{"status":"not_synchronized"}}
     @staticmethod
     def _remote_manifest(manifest,campaign,root):
-        value=json.loads(json.dumps(manifest));value["stage"]="refine";argument=campaign.relative_to(root).as_posix();count=len(value["s0_values"])*3
+        if manifest.get("stage") == "smoke":
+            from workflow_api.mot_2d_plan import render_screen_transition
+            value = json.loads(render_screen_transition(manifest, campaign, root)["campaign.json"])
+        else:
+            value = json.loads(json.dumps(manifest))
+        value["stage"]="refine";argument=campaign.relative_to(root).as_posix();count=len(value["s0_values"])*3
         value.setdefault("stages",{})["refine"]={"tasks":count,"cumulative_trial_targets":list(refinement_targets(manifest)),"round_job_files":[f"{argument}/jobs/03_refine_round_{index:02d}.pbs" for index in range(1,5)],"submit_chain":f"{argument}/jobs/03_submit_refinement_chain.sh","dependency":"afterok"}
         return value
     def confirm(self,request,*,session_id):

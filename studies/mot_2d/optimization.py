@@ -44,6 +44,100 @@ def remaining_complete_trials(target, states):
     return target - complete
 
 
+def suggest_parameters(trial, fixed_s0, bounds_s0, bounds_detuning, bounds_radius):
+    """The ordered public sampling contract, shared by execution and replay."""
+    return {
+        "s0": float(fixed_s0) if fixed_s0 is not None else trial.suggest_float("s0", *bounds_s0),
+        "detuning_gamma": trial.suggest_float("detuning_gamma", *bounds_detuning),
+        "magnet_radius": trial.suggest_float("magnet_radius", *bounds_radius),
+    }
+
+
+class _ReplaySampler(optuna.samplers.BaseSampler):
+    """Keep the advanced sampler attached to its public shadow study."""
+
+    def __init__(self, shadow, suggest):
+        self.shadow = shadow
+        self.suggest = suggest
+        self.active = None
+
+    def before_trial(self, study, trial):
+        if self.active is not None:
+            raise RuntimeError("Concurrent sampler replay is unsupported.")
+        self.active = self.shadow.ask()
+        if self.active.number != trial.number:
+            raise RuntimeError("Sampler replay trial numbering mismatch.")
+        self.suggest(self.active)
+
+    def infer_relative_search_space(self, study, trial):
+        return {}
+
+    def sample_relative(self, study, trial, search_space):
+        return {}
+
+    def sample_independent(self, study, trial, param_name, param_distribution):
+        if self.active is None or self.active.distributions.get(param_name) != param_distribution:
+            raise RuntimeError("Sampler replay distribution mismatch.")
+        return self.active.params[param_name]
+
+    def after_trial(self, study, trial, state, values):
+        if (self.active is None or trial.params != self.active.params
+                or trial.distributions != self.active.distributions):
+            raise RuntimeError("Sampler replay trial mismatch.")
+        self.shadow.tell(self.active, values=values, state=state)
+        self.active = None
+
+    def reseed_rng(self):
+        raise RuntimeError("Parallel/reseeded sampler replay is unsupported.")
+
+
+def restore_sampler(study, *, seed, suggest, enqueue_points):
+    """Reconstruct a sequential sampler stream using verified public Optuna APIs.
+
+    Unverifiable interrupted/legacy history fails closed; replay never evaluates
+    physics or modifies the persisted trials.
+    """
+    trials = study.get_trials(deepcopy=True)
+    if not trials:
+        return
+    replay = optuna.create_study(
+        directions=study.directions, sampler=optuna.samplers.TPESampler(seed=seed),
+        pruner=optuna.pruners.NopPruner(),
+    )
+    for point in enqueue_points:
+        replay.enqueue_trial(dict(point))
+    waiting = False
+    for number, saved in enumerate(trials):
+        if (saved.number != number or saved.user_attrs or saved.intermediate_values
+                or any(key != "fixed_params" and not key.startswith("tpe:relative_params:")
+                       for key in saved.system_attrs)):
+            raise RuntimeError("Optuna sampler history cannot be replayed exactly.")
+        if saved.state == optuna.trial.TrialState.WAITING:
+            waiting = True
+            queued = replay.get_trials(deepcopy=True)
+            if (number >= len(queued) or queued[number].state != saved.state
+                    or queued[number].system_attrs != saved.system_attrs
+                    or saved.params or saved.distributions or saved.values is not None):
+                raise RuntimeError("Optuna queued history cannot be replayed exactly.")
+            continue
+        if waiting or saved.state not in (
+            optuna.trial.TrialState.COMPLETE, optuna.trial.TrialState.FAIL,
+        ):
+            raise RuntimeError("Optuna interrupted history cannot be replayed exactly.")
+        trial = replay.ask()
+        suggest(trial)
+        rebuilt = replay.get_trials(deepcopy=True)[number]
+        if (rebuilt.params != saved.params or rebuilt.distributions != saved.distributions
+                or any(key not in rebuilt.system_attrs or rebuilt.system_attrs[key] != value
+                       for key, value in saved.system_attrs.items())
+                or rebuilt.system_attrs.get("fixed_params") != saved.system_attrs.get("fixed_params")):
+            raise RuntimeError("Optuna sampler history does not match its frozen seed and bounds.")
+        if saved.state == optuna.trial.TrialState.FAIL and saved.values is not None:
+            raise RuntimeError("Optuna failed history has unexpected values.")
+        replay.tell(trial, values=saved.values, state=saved.state)
+    study.sampler = _ReplaySampler(replay, suggest)
+
+
 def evaluate_configuration(
     s0,
     detuning_gamma,
@@ -167,15 +261,9 @@ def optimize_mot(args):
     design_id = hashlib.sha256(json.dumps(design, sort_keys=True).encode()).hexdigest()
 
     def objective(trial):
-        parameters = {
-            "s0": (
-                float(args.fixed_s0)
-                if args.fixed_s0 is not None
-                else trial.suggest_float("s0", *bounds_s0)
-            ),
-            "detuning_gamma": trial.suggest_float("detuning_gamma", *bounds_detuning),
-            "magnet_radius": trial.suggest_float("magnet_radius", *bounds_radius),
-        }
+        parameters = suggest_parameters(
+            trial, args.fixed_s0, bounds_s0, bounds_detuning, bounds_radius,
+        )
         evaluation = evaluate_configuration(
             **parameters,
             ensembles=ensembles,
@@ -250,6 +338,14 @@ def optimize_mot(args):
                     "magnet_radius": float(magnet_radius),
                 }
             )
+    restore_sampler(
+        study, seed=args.sampler_seed,
+        suggest=lambda trial: suggest_parameters(
+            trial, args.fixed_s0, bounds_s0, bounds_detuning, bounds_radius,
+        ),
+        enqueue_points=[{"detuning_gamma": float(d), "magnet_radius": float(r)}
+                        for d, r in args.enqueue_point],
+    )
     remaining = remaining_complete_trials(args.n_trials, [t.state for t in study.trials])
     if remaining:
         study.optimize(objective, n_trials=remaining)

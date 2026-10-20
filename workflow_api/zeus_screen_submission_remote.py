@@ -85,6 +85,13 @@ def main():
     prepared=payload["prepared_files"];transition=payload["transition_files"];transition_digest=payload["transition_digest"];key=payload["submission_key"]
     if not isinstance(prepared,dict) or len(prepared)!=72 or not isinstance(transition,dict) or set(transition)!={"campaign.json","screen/tasks.json","jobs/02_screen.pbs"} or not all(isinstance(v,str) and re.fullmatch(r"[0-9a-f]{64}",v) for v in [*prepared.values(),*transition.values(),transition_digest,key]):fail("invalid_request")
     if hashlib.sha256(json.dumps(transition,sort_keys=True).encode()).hexdigest()!=transition_digest:fail("invalid_request")
+    historical_manifest = None
+    if operation == "inspect":
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            observed_manifest = read_json(campaign / "campaign.json", 1024*1024)
+            historical_manifest = project_historical_manifest(observed_manifest, "screen", transition["campaign.json"])
+        except (ValueError, OSError, KeyError): fail("screening_not_prepared")
     # The remote manifest is the transitioned manifest, while all other frozen
     # prepared artifacts must still match their original exact bytes.
     total=0
@@ -98,7 +105,8 @@ def main():
         if total>128*1024*1024 or not path.is_file() or digest(path)!=expected:fail("remote_preparation_invalid")
     for name,expected in transition.items():
         path=campaign/name;no_symlinks(campaign,path)
-        if not path.is_file() or digest(path)!=expected:fail("screening_not_prepared")
+        observed = hashlib.sha256((json.dumps(historical_manifest, indent=2, sort_keys=True)+"\n").encode()).hexdigest() if name == "campaign.json" and historical_manifest is not None else digest(path) if path.is_file() else ""
+        if not path.is_file() or observed!=expected:fail("screening_not_prepared")
     metadata=campaign/".mot_ui";transitions=metadata/"transitions";submissions=metadata/"submissions"
     for parent in (metadata,transitions,submissions):no_symlinks(campaign,parent)
     transition_receipt=read_json(transitions/"screen.json")

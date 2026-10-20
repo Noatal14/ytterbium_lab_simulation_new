@@ -140,9 +140,17 @@ def main():
     record_digest=hashlib.sha256(json.dumps(record,sort_keys=True,separators=(",",":")).encode()).hexdigest()
     if record_digest!=payload["transition_digest"] or record["status"]!="sensitivity_prepared" or record["nonce"]!=payload["transition_nonce"] or record["commit"]!=payload["commit"] or record["files"]!=files or not timestamp(record["completed_unix_s"]): fail("sensitivity_preparation_invalid")
     manifest=json.loads(bounded(campaign/"campaign.json"));
+    historical_projection_used = False
+    if operation in {"inspect", "status"} and isinstance(manifest, dict) and manifest.get("stage") in {"production", "complete"}:
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            manifest = project_historical_manifest(manifest, "sensitivity", files["campaign.json"])
+            historical_projection_used = True
+        except (ValueError, KeyError): fail("sensitivity_preparation_invalid")
     if not isinstance(manifest,dict) or manifest.get("stage")!="sensitivity" or manifest.get("provenance",{}).get("git_commit")!=payload["commit"]: fail("sensitivity_preparation_invalid")
     for name,want in files.items():
         path=campaign/name;no_links(campaign,path);data=bounded(path,64*1024*1024)
+        if name == "campaign.json" and historical_projection_used: data = (json.dumps(manifest, indent=2, sort_keys=True)+"\n").encode()
         if hashlib.sha256(data).hexdigest()!=want: fail("sensitivity_preparation_invalid")
     job_bytes=bounded(campaign/JOB_FILE,1024*1024)
     submission=submissions/"sensitivity.json";pending=submissions/"sensitivity.pending.json";lock=submissions/"sensitivity.lock"

@@ -189,7 +189,7 @@ def response(lifecycle: str, scheduler: dict[str, object], rows: list[dict],
 def validate_static(payload: dict, root: Path):
     exact = {"campaign", "commit", "sensitivity_files",
              "sensitivity_transition_nonce", "sensitivity_transition_digest",
-             "sensitivity_submission_key"}
+             "sensitivity_submission_key", "sensitivity_submission_nonce", "sensitivity_job_id"}
     if not exact.issubset(payload) or set(payload) - exact - {
             "rows_digest", "production_files", "transition_key", "nonce"}:
         fail("invalid_request")
@@ -251,11 +251,28 @@ def validate_static(payload: dict, root: Path):
                 transition, sort_keys=True, separators=(",", ":")
             ).encode()).hexdigest() != payload["sensitivity_transition_digest"]):
         fail("sensitivity_preparation_invalid")
+    historical_sensitivity_bytes = None
+    if manifest.get("stage") in {"production", "complete"}:
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            historical = project_historical_manifest(manifest, "sensitivity", files["campaign.json"])
+            historical_sensitivity_bytes = (json.dumps(historical, indent=2, sort_keys=True)+"\n").encode()
+        except (ValueError, KeyError, TypeError): fail("sensitivity_preparation_invalid")
     for name, expected_digest in files.items():
-        if manifest.get("stage") in {"production", "complete"} and name == "campaign.json": continue
         path = campaign / name; no_links(campaign, path)
-        if hashlib.sha256(bounded(path)).hexdigest() != expected_digest:
+        data = bounded(path)
+        if name == "campaign.json" and historical_sensitivity_bytes is not None:
+            data = historical_sensitivity_bytes
+        if hashlib.sha256(data).hexdigest() != expected_digest:
             fail("sensitivity_preparation_invalid")
+    try:
+        from workflow_api.mot_2d_spec import sensitivity_task_count
+        from workflow_api.mot_2d_validation import expected_sensitivity_tasks
+        canonical_tasks = expected_sensitivity_tasks(manifest, transition["rows"])
+        if (read_json(campaign / "sensitivity/tasks.json") != canonical_tasks
+                or sensitivity_task_count(manifest) != len(canonical_tasks)):
+            raise ValueError("Frozen sensitivity registry differs from its canonical derivation.")
+    except (ValueError, KeyError, TypeError): fail("sensitivity_preparation_invalid")
     submission = read_json(campaign / ".mot_ui/submissions/sensitivity.json")
     submission_exact = {"version", "status", "submission_key", "transition_nonce",
                         "transition_digest", "pbs_sha256", "nonce", "job_file",
@@ -263,6 +280,8 @@ def validate_static(payload: dict, root: Path):
     if (not isinstance(submission, dict) or set(submission) != submission_exact
             or submission.get("version") != 1 or submission.get("status") != "submitted"
             or submission.get("submission_key") != payload["sensitivity_submission_key"]
+            or submission.get("nonce") != payload["sensitivity_submission_nonce"]
+            or submission.get("job_id") != payload["sensitivity_job_id"]
             or submission.get("transition_nonce") != payload["sensitivity_transition_nonce"]
             or submission.get("transition_digest") != payload["sensitivity_transition_digest"]
             or submission.get("pbs_sha256") != files["jobs/05_sensitivity.pbs"]
@@ -278,7 +297,9 @@ def validate_static(payload: dict, root: Path):
 
 
 def inspect_scheduler(root: Path, submission: dict, manifest: dict) -> dict[str, object]:
-    count = len(manifest["s0_values"]) * 17
+    from workflow_api.mot_2d_spec import sensitivity_task_count
+    try: count = sensitivity_task_count(manifest)
+    except ValueError: fail("sensitivity_preparation_invalid")
     try:
         returncode, stdout, stderr = run_captured(
             ["/opt/pbs/bin/qstat", "-x", "-t", "-f", submission["job_id"]],
@@ -385,6 +406,12 @@ def main() -> None:
             else:
                 receipt = read_json(receipt_path)
                 scheduler = receipt.get("scheduler")
+            historical_campaign_bytes = None
+            live_manifest = read_json(campaign / "campaign.json")
+            if operation == "inspect" and live_manifest.get("stage") in {'complete'}:
+                from workflow_api.mot_2d_spec import project_historical_manifest
+                historical = project_historical_manifest(live_manifest, "production", hashes["campaign.json"])
+                historical_campaign_bytes = (json.dumps(historical, indent=2, sort_keys=True)+"\n").encode()
             receipt_exact = {"status", "nonce", "transition_key", "commit",
                              "sensitivity_submission_key", "sensitivity_submission_nonce",
                              "sensitivity_job_id", "rows_digest", "rows", "files",
@@ -406,7 +433,7 @@ def main() -> None:
                     or not re.fullmatch(r"[0-9a-f]{32}", str(receipt.get("nonce")))
                     or not timestamp(receipt.get("completed_unix_s"))
                     or any(not (campaign / name).is_file()
-                           or hashlib.sha256(bounded(campaign / name)).hexdigest() != digest
+                           or hashlib.sha256(historical_campaign_bytes if name == "campaign.json" and historical_campaign_bytes is not None else bounded(campaign / name)).hexdigest() != digest
                            for name, digest in hashes.items())):
                 raise ValueError()
         except Exception:

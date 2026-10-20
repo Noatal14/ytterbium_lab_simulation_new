@@ -294,3 +294,31 @@ def test_real_finalization_writer_public_results_match_coordinator_policy(tmp_pa
                 changed['kind'] = 'mot_3d_ui_acceptance_v1'
             with pytest.raises(ZeusFinalizationError, match='remote_response_invalid'):
                 ZeusFinalizationCoordinator._validate_state(state, changed)
+
+
+def test_real_optimizer_checkpoint_writer_matches_uninterrupted(tmp_path, monkeypatch):
+    """Actual SQLite optimizer and JSON writer preserve the uninterrupted stream."""
+    from copy import copy
+    root, manifest = _fixture(tmp_path, monkeypatch, False)
+    original = optimization.optimize_mot
+    requests = []
+    monkeypatch.setattr(optimization, 'optimize_mot', lambda args: requests.append(args))
+    _run(root, manifest, 'smoke')
+    args = requests[0]
+    full = copy(args)
+    full.output_dir = str(tmp_path / 'full')
+    full.n_trials = 20
+    original(full)
+    resumed = copy(args)
+    resumed.output_dir = str(tmp_path / 'resumed')
+    for target in [1, 2, 3, 4, 8, 12, 16, 20]:
+        resumed.n_trials = target
+        original(resumed)
+    full_trials = sorted((tmp_path / 'full/trials').glob('trial_*.json'))
+    resumed_trials = sorted((tmp_path / 'resumed/trials').glob('trial_*.json'))
+    assert len(full_trials) == len(resumed_trials) == 20
+    for left, right in zip(full_trials, resumed_trials):
+        a, b = json.loads(left.read_text()), json.loads(right.read_text())
+        assert a['parameters'] == b['parameters']
+        assert a['statistics'] == b['statistics']
+        assert a['design'] == b['design']

@@ -615,7 +615,7 @@ def production_task(args):
                     "--zeeman-seeds", str(spec["zeeman_seed"]), "--s0", str(spec["s0"]),
                     "--mot-seeds", str(spec["mot_seed"]),
                     "--detuning-gamma", str(p["detuning_gamma"]),
-                    "--magnet-radius-mm", str(1000*p["magnet_radius"]), "--npools", str(stage_npools(manifest, "production", 150)),
+                    "--magnet-radius-m", str(p["magnet_radius"]), "--npools", str(stage_npools(manifest, "production", 150)),
                     "--ensemble-dir", str(repository_path(manifest["ensemble_source"]["directory"])),
                     "--ensemble-identity", manifest["ensemble_source"]["directory"],
                     "--expected-zeeman-profile", manifest["ensemble_source"]["zeeman_profile"],

@@ -129,11 +129,10 @@ class ZeusFinalizationCoordinator:
             raise ZeusFinalizationError("campaign_not_found") from None
         return campaign_id, profile, campaign, manifest, commit
 
-    @staticmethod
-    def _remote_payload(base: tuple[Any, ...]) -> dict[str, object]:
+    def _remote_payload(self, base: tuple[Any, ...]) -> dict[str, object]:
         (_, _, campaign, _, commit) = base
         return {
-            "campaign": campaign.relative_to(campaign.parents[3]).as_posix(),
+            "campaign": campaign.relative_to(self.root).as_posix(),
             "commit": commit,
         }
 
@@ -412,7 +411,7 @@ class ZeusFinalizationCoordinator:
                     )
                 ),
                 "completed_ensembles": (
-                    plan[3]["stages"]["production"]["tasks"] if valid else 0
+                    state.scheduler["task_count"] if valid else 0
                 ),
                 "expected_ensembles": 20 * len(plan[3]["s0_values"]),
             },
@@ -422,6 +421,8 @@ class ZeusFinalizationCoordinator:
                 else "none" if state.lifecycle == "campaign_complete" else "wait"
             ),
             "local_sync": {"status": "not_synchronized"},
+            **({"results": [dict(item) for item in state.results]}
+               if state.lifecycle == "campaign_complete" else {}),
         }
 
     def preview(self, request, *, session_id: str):

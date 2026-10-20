@@ -106,7 +106,7 @@ def test_production_preparation_is_explicit_and_freezes_twenty_tasks(
         "seed_roles": {"sealed_validation": list(range(3015, 3035))},
         "mot_seeds": {"sealed_validation": list(range(43015, 43035))},
         "provenance": {"git_commit": "a" * 40},
-        "stages": {},
+        "stages": {"sensitivity": {"tasks": 17}},
     }
     confirmation = [
         {

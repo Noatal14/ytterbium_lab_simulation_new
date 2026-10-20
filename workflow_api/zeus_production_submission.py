@@ -114,6 +114,12 @@ class ZeusProductionSubmissionCoordinator:
             or not re.fullmatch(r"[0-9a-f]{32}", str(receipt.get("nonce", "")))
         ):
             raise ZeusProductionSubmissionError("production_preparation_invalid")
+        from workflow_api.mot_2d_plan import render_production_transition
+        confirmation_rows = coordinator._confirmation_rows(request, coordinator._base_plan(request))
+        rendered = render_production_transition(manifest, campaign, self.root, confirmation_rows, [dict(row) for row in state.rows])
+        if {name: hashlib.sha256(raw).hexdigest() for name, raw in rendered.items()} != files:
+            raise ZeusProductionSubmissionError("production_preparation_invalid")
+        manifest = json.loads(rendered["campaign.json"])
         relative = campaign.relative_to(self.root).as_posix()
         key = hashlib.sha256(json.dumps({
             "campaign": relative,

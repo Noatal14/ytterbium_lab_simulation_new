@@ -40,6 +40,14 @@ STAGE_ROLE = {
 MAX_JSON_BYTES = 8 * 1024 * 1024
 
 
+def _campaign_repository_root(root: Path, manifest: dict[str, Any]) -> Path:
+    if validate_campaign_policy(manifest):
+        if root.parts[-5:-1] != ("data", "optimization", "mot_2d", "ui_acceptance"):
+            raise ValueError("Acceptance campaign has no canonical repository root.")
+        return root.parents[4]
+    return root.parents[3]
+
+
 def _mapping(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
@@ -310,11 +318,11 @@ def _valid_trial(path: Path, manifest: dict[str, Any], stage: str, task: dict[st
             and design.get("particles_per_ensemble") == particles
             and design.get("design_id") == _optimization_design_id(
                 manifest, stage=stage, s0=s0, worker=worker, particles=particles,
-                sampler_seed=sampler_seed, bounds=bounds, repository_root=root.parents[3],
+                sampler_seed=sampler_seed, bounds=bounds, repository_root=_campaign_repository_root(root, manifest),
             )
             and _design_matches(
                 design, manifest, STAGE_ROLE[stage], manifest["fixed_design"]["working_dt_s"],
-                root.parents[3],
+                _campaign_repository_root(root, manifest),
             )
         )
     except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
@@ -333,7 +341,7 @@ def _valid_smoke_trial(path: Path, manifest: dict[str, Any], s0: float, root: Pa
         expected_id = _optimization_design_id(
             manifest, stage="smoke", s0=s0, worker=0, particles=2,
             sampler_seed=42, bounds=bounds, zeeman_seeds=zeeman, mot_seeds=mot,
-            repository_root=root.parents[3],
+            repository_root=_campaign_repository_root(root, manifest),
         )
         source = manifest["ensemble_source"]["directory"]
         return (
@@ -455,9 +463,13 @@ def _expected_confirmation_tasks(
     from workflow_api.mot_2d_plan import render_confirmation_transition
     from workflow_api.mot_2d_screen import validate_refine_outputs
 
-    repository_root = root.parents[3]
+    repository_root = _campaign_repository_root(root, manifest)
+    prior = json.loads(json.dumps(manifest))
+    prior["stage"] = "refine"
+    for later in ("confirmation", "sensitivity", "production", "complete", "final_report"):
+        prior.get("stages", {}).pop(later, None)
     rendered = render_confirmation_transition(
-        manifest, root, repository_root, validate_refine_outputs(root, manifest)
+        prior, root, repository_root, validate_refine_outputs(root, prior)
     )
     tasks = json.loads(rendered["confirmation/tasks.json"].decode("utf-8"))
     if not isinstance(tasks, list):

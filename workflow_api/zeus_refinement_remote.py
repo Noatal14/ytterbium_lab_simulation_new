@@ -69,6 +69,17 @@ def main():
         path=root.joinpath(*PurePosixPath(name).parts);no_links(root,path)
         if not path.is_file() or sha(path)!=expected:fail('remote_preparation_invalid')
     manifest=read_json(campaign/'campaign.json')
+    historical_projection_used = False
+    if operation == 'inspect' and manifest.get('stage') in {'confirmation', 'sensitivity', 'production', 'complete'}:
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            from workflow_api.mot_2d_screen import validate_screen_outputs
+            from workflow_api.mot_2d_plan import render_refine_transition
+            historical_screen = project_historical_manifest(manifest, 'screen', screen_hashes['campaign.json'])
+            historical_files = render_refine_transition(historical_screen, campaign, root, validate_screen_outputs(campaign, historical_screen))
+            manifest = project_historical_manifest(manifest, 'refine', hashlib.sha256(historical_files['campaign.json']).hexdigest())
+            historical_projection_used = True
+        except (ValueError, OSError, KeyError, TypeError): fail('transition_conflict')
     for name,expected in screen_hashes.items():
         if name=='campaign.json':continue
         path=campaign/name;no_links(campaign,path)
@@ -94,7 +105,8 @@ def main():
         if set(record)!=exact or record.get('status')!='refinement_prepared' or record.get('job_id')!=screen_submission['job_id'] or record.get('commit')!=commit or record.get('screening_submission_key')!=payload['screening_submission_key'] or record.get('screen_digest')!=payload['screen_digest'] or not re.fullmatch(r'[0-9a-f]{32}',str(record.get('nonce',''))) or not timestamp(record.get('completed_unix_s')) or not isinstance(record.get('rows'),list) or hashlib.sha256(json.dumps(record['rows'],sort_keys=True).encode()).hexdigest()!=record.get('rows_digest') or not isinstance(record.get('refine_files'),dict) or set(record['refine_files'])!={'campaign.json','screening_candidates.json','refine/tasks.json','jobs/03_refine_round_01.pbs','jobs/03_refine_round_02.pbs','jobs/03_refine_round_03.pbs','jobs/03_refine_round_04.pbs','jobs/03_submit_refinement_chain.sh'}:fail('transition_outcome_unknown')
         for name,expected in record['refine_files'].items():
             path=campaign/name;no_links(campaign,path)
-            if not re.fullmatch(r'[0-9a-f]{64}',str(expected)) or not path.is_file() or sha(path)!=expected:fail('transition_outcome_unknown')
+            observed = hashlib.sha256((json.dumps(manifest, indent=2, sort_keys=True)+'\n').encode()).hexdigest() if name == 'campaign.json' and historical_projection_used else sha(path) if path.is_file() else ''
+            if not re.fullmatch(r'[0-9a-f]{64}',str(expected)) or not path.is_file() or observed!=expected:fail('transition_outcome_unknown')
         try:
             from copy import deepcopy
             screen_manifest=deepcopy(manifest);screen_manifest['stage']='screen';screen_manifest['stages'].pop('refine',None)

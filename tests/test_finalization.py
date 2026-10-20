@@ -333,7 +333,7 @@ def test_finalization_is_explicit_no_submission_and_replay_safe(tmp_path, monkey
     manifest = {
         "name": "Campaign",
         "s0_values": [1.3],
-        "stages": {"production": {"tasks": 20}},
+        "stages": {},  # The local saved campaign has not advanced with Zeus.
     }
     transport = _Transport()
     coordinator = ZeusFinalizationCoordinator(
@@ -354,6 +354,10 @@ def test_finalization_is_explicit_no_submission_and_replay_safe(tmp_path, monkey
         "username": "tal.noa",
         "project_directory": profile.project_directory,
     }
+    ready_status = coordinator.status(request)
+    assert ready_status["validation"]["completed_ensembles"] == 20
+    assert manifest["stages"] == {}
+    assert "results" not in ready_status
     preview = coordinator.preview(request, session_id="owner")
     assert preview["results"][0]["n_ensembles"] == 20
     assert preview["effects"]["submit_job"] is False
@@ -362,6 +366,11 @@ def test_finalization_is_explicit_no_submission_and_replay_safe(tmp_path, monkey
     second = coordinator.confirm({"preview_token": "token"}, session_id="owner")
     assert first == second
     assert first["status"] == "campaign_complete"
+    assert transport.finalizes == 1
+    # A fresh read-only check reopens the verified report without another confirmation.
+    reopened = coordinator.status(request)
+    assert reopened["production"]["status"] == "campaign_complete"
+    assert reopened["results"] == first["results"]
     assert transport.finalizes == 1
 
 

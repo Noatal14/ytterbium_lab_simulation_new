@@ -133,11 +133,10 @@ class ZeusSensitivityCoordinator:
                 dict(confirmation_files), transition_nonce, transition_digest,
                 submission_key)
 
-    @staticmethod
-    def _remote_payload(plan: tuple[Any, ...]) -> dict[str, object]:
+    def _remote_payload(self, plan: tuple[Any, ...]) -> dict[str, object]:
         (_, _, campaign, _, commit, files, transition_nonce,
          transition_digest, submission_key) = plan[:9]
-        root = campaign.parents[3]
+        root = self.root
         return {
             "campaign": campaign.relative_to(root).as_posix(),
             "commit": commit,

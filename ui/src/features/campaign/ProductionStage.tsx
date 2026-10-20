@@ -40,7 +40,10 @@ export function ProductionStage({
     prepared =
       p.state === "success" ||
       p.status?.sensitivity.status === "production_prepared",
-    submitted = s.state === "success" || Boolean(s.status);
+    submitted = s.state === "success" || Boolean(s.status),
+    finalResults = !f.error ? f.result?.results ??
+      (f.state === "success" && f.status?.production.status === "campaign_complete"
+        ? f.status.results : undefined) : undefined;
   return (
     <section className="section-block" aria-labelledby="production-heading">
       <div className="section-heading">
@@ -226,7 +229,7 @@ export function ProductionStage({
                 profile and source identity. It submits no job.
               </p>
             </div>
-            {!f.result && f.state === "idle" && (
+            {!finalResults && f.state === "idle" && (
               <div className="prepare-card">
                 <div>
                   <strong>
@@ -270,7 +273,7 @@ export function ProductionStage({
             {f.state === "confirming" && (
               <Busy title="Recording the validated final report" />
             )}
-            {f.result && (
+            {finalResults && (
               <div className="transfer-review">
                 <div className="section-heading">
                   <p className="eyebrow">Campaign complete</p>
@@ -282,7 +285,7 @@ export function ProductionStage({
                     the reported best tested result.
                   </p>
                 </div>
-                <Results rows={f.result.results} />
+                <Results rows={finalResults} />
               </div>
             )}
             {f.error && (

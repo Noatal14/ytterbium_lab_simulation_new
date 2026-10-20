@@ -337,10 +337,9 @@ class Mot3DDiscoveryTransitionCoordinator:
             raise Mot3DDiscoveryTransitionError(exc.code) from exc
         return plan
 
-    @staticmethod
-    def _payload(plan: tuple[Any, ...]) -> dict[str, object]:
+    def _payload(self, plan: tuple[Any, ...]) -> dict[str, object]:
         return {
-            "campaign": plan[2].relative_to(plan[2].parents[3]).as_posix(),
+            "campaign": plan[2].relative_to(self.root).as_posix(),
             "commit": plan[4],
             "bootstrap_digest": plan[7],
             "bootstrap_key": plan[8],
@@ -394,13 +393,12 @@ class Mot3DDiscoveryTransitionCoordinator:
         ):
             raise Mot3DDiscoveryTransitionError("remote_response_invalid")
 
-    @staticmethod
     def _transition_key(
-        plan: tuple[Any, ...], chain: Mapping[str, tuple[str, ...]]
+        self, plan: tuple[Any, ...], chain: Mapping[str, tuple[str, ...]]
     ) -> str:
         return canonical_digest(
             {
-                "campaign": plan[2].relative_to(plan[2].parents[3]).as_posix(),
+                "campaign": plan[2].relative_to(self.root).as_posix(),
                 "commit": plan[4],
                 "bootstrap_digest": plan[7],
                 "submission_key": plan[9],

@@ -186,7 +186,7 @@ def response(lifecycle: str, scheduler: dict[str, object], rows: list[dict],
                       "rows": rows, "branch": branch, "receipt": receipt}))
 
 
-def validate_static(payload: dict, root: Path):
+def validate_static(payload: dict, root: Path, *, read_only=False):
     exact = {"campaign", "commit", "confirmation_files",
              "confirmation_transition_nonce", "confirmation_transition_digest",
              "confirmation_submission_key"}
@@ -228,6 +228,15 @@ def validate_static(payload: dict, root: Path):
     if status_code or status_stderr or not safe_status(status_stdout, root):
         fail("local_checkout_mismatch")
     manifest = read_json(campaign / "campaign.json")
+    if read_only and manifest.get("stage") in {"production", "complete"}:
+        try:
+            from workflow_api.mot_2d_spec import project_historical_manifest
+            from workflow_api.mot_2d_validation import validated_evaluation_outputs
+            from workflow_api.mot_2d_plan import render_sensitivity_transition
+            historical_confirmation = project_historical_manifest(manifest, "confirmation", payload["confirmation_files"]["campaign.json"])
+            historical_files = render_sensitivity_transition(historical_confirmation, campaign, root, validated_evaluation_outputs(campaign, historical_confirmation, "confirmation"))
+            manifest = project_historical_manifest(manifest, "sensitivity", hashlib.sha256(historical_files["campaign.json"]).hexdigest())
+        except (ValueError, OSError, KeyError, TypeError): fail("confirmation_preparation_invalid")
     if (not isinstance(manifest, dict) or manifest.get("stage") not in {"confirmation", "sensitivity"}
             or manifest.get("provenance", {}).get("git_commit") != commit):
         fail("confirmation_preparation_invalid")
@@ -316,7 +325,7 @@ def main() -> None:
     except Exception: fail("invalid_request")
     if not isinstance(payload, dict): fail("invalid_request")
     root = Path.cwd().resolve(strict=True)
-    campaign, manifest, branch, submission = validate_static(payload, root)
+    campaign, manifest, branch, submission = validate_static(payload, root, read_only=operation == "inspect")
     state = campaign / ".mot_ui"; transitions = state / "transitions"
     no_links(campaign, state); no_links(campaign, transitions)
     receipt_path = transitions / "sensitivity.json"
@@ -380,6 +389,12 @@ def main() -> None:
             else:
                 receipt = read_json(receipt_path)
                 scheduler = receipt.get("scheduler")
+            historical_campaign_bytes = None
+            live_manifest = read_json(campaign / "campaign.json")
+            if operation == "inspect" and live_manifest.get("stage") in {'production', 'complete'}:
+                from workflow_api.mot_2d_spec import project_historical_manifest
+                historical = project_historical_manifest(live_manifest, "sensitivity", hashes["campaign.json"])
+                historical_campaign_bytes = (json.dumps(historical, indent=2, sort_keys=True)+"\n").encode()
             receipt_exact = {"status", "nonce", "transition_key", "commit",
                              "confirmation_submission_key", "confirmation_submission_nonce",
                              "confirmation_job_id", "rows_digest", "rows", "files",
@@ -401,7 +416,7 @@ def main() -> None:
                     or not re.fullmatch(r"[0-9a-f]{32}", str(receipt.get("nonce")))
                     or not timestamp(receipt.get("completed_unix_s"))
                     or any(not (campaign / name).is_file()
-                           or hashlib.sha256(bounded(campaign / name)).hexdigest() != digest
+                           or hashlib.sha256(historical_campaign_bytes if name == "campaign.json" and historical_campaign_bytes is not None else bounded(campaign / name)).hexdigest() != digest
                            for name, digest in hashes.items())):
                 raise ValueError()
         except Exception:

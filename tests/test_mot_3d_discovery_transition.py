@@ -284,3 +284,22 @@ def test_campaign_mutation_during_publication_is_preserved_and_fails_closed(
     with pytest.raises(Mot3DDiscoveryTransitionError, match="local_sync_conflict"):
         service._synchronize(tuple(plan), Retrieve(), prepared)
     assert (campaign / "campaign.json").read_bytes() == b"concurrent mutation"
+
+
+@pytest.mark.parametrize('relative', ['data/optimization/mot_3d/campaign', 'data/optimization/mot_3d/ui_acceptance/TEST_ONLY_campaign'])
+def test_discovery_transition_payload_and_receipt_key_keep_full_namespace(tmp_path, relative):
+    """An extra TEST ONLY namespace must not drop data/ from the remote path."""
+    service, _ = coordinator(tmp_path, state())
+    plan = list(service._base({}))
+    plan[2] = service.root / relative
+    payload = service._payload(tuple(plan))
+    assert payload['campaign'] == relative
+    expected = transition_module.canonical_digest({
+        'campaign': relative, 'commit': 'a' * 40,
+        'bootstrap_digest': 'd' * 64, 'submission_key': 'f' * 64,
+        'chain': {family: list(CHAIN[family]) for family in transition_module.FAMILIES},
+    })
+    assert service._transition_key(tuple(plan), CHAIN) == expected
+    plan[2] = tmp_path / 'unrelated' / 'campaign'
+    with pytest.raises(ValueError): service._payload(tuple(plan))
+    with pytest.raises(ValueError): service._transition_key(tuple(plan), CHAIN)

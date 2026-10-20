@@ -55,7 +55,7 @@ def parameters_from_args(args):
     return {
         "s0": float(args.s0),
         "detuning_gamma": float(args.detuning_gamma),
-        "magnet_radius": float(args.magnet_radius_mm) * 1e-3,
+        "magnet_radius": (float(args.magnet_radius_m) if getattr(args, "magnet_radius_m", None) is not None else float(args.magnet_radius_mm) * 1e-3),
     }
 
 
@@ -334,7 +334,9 @@ def parse_args(argv=None):
     parser.add_argument("--input-manifest")
     parser.add_argument("--s0", type=float)
     parser.add_argument("--detuning-gamma", type=float)
-    parser.add_argument("--magnet-radius-mm", type=float)
+    radius = parser.add_mutually_exclusive_group()
+    radius.add_argument("--magnet-radius-mm", type=float)
+    radius.add_argument("--magnet-radius-m", type=float, help="Exact SI radius from a frozen campaign; avoids a millimetre roundtrip.")
     parser.add_argument("--summarize-only", action="store_true")
     parser.add_argument("--npools", type=int, default=DEFAULT_NUM_POOLS)
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
@@ -348,9 +350,11 @@ def parse_args(argv=None):
     if not args.summarize_only:
         missing = [
             name
-            for name in ("zeeman_seeds", "mot_seeds", "s0", "detuning_gamma", "magnet_radius_mm")
+            for name in ("zeeman_seeds", "mot_seeds", "s0", "detuning_gamma")
             if getattr(args, name) is None
         ]
+        if args.magnet_radius_mm is None and args.magnet_radius_m is None:
+            missing.append("magnet_radius_mm or magnet_radius_m")
         if missing:
             parser.error("Missing required production arguments: " + ", ".join(missing))
     return args

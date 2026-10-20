@@ -1539,7 +1539,7 @@ def render_final_validation_input_transition(
         f'--mot-seeds "$mseed" --ensemble-dir {zeeman_dir} '
         f"--expected-zeeman-profile {profile} --expected-git-commit {revision} "
         f"--s0 {params['s0']} --detuning-gamma {params['detuning_gamma']} "
-        f"--magnet-radius-mm {1000 * params['magnet_radius']} --npools 200 "
+        f"--magnet-radius-m {params['magnet_radius']} --npools 200 "
         f"--output-dir {output_2d} --save-survivor-states --states-dir {states_dir}\n"
     )
     freeze_job = jobs / "03_freeze_inputs.pbs"

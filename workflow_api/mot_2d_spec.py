@@ -195,3 +195,55 @@ def authorize_review_target(manifest, profile, campaign, repository_root, error_
                                campaign.relative_to(repository_root).as_posix())
     except ValueError as error:
         raise error_type('profile_invalid') from error
+
+
+def project_historical_manifest(current: dict[str, Any], stage: str, expected_sha256: str) -> dict[str, Any]:
+    """Prove one bounded historical manifest for read-only receipt inspection.
+
+    Callers must never use this projection to authorize a submission or publish
+    a transition. The current manifest is never changed, unknown fields remain,
+    and the exact independently frozen predecessor hash is mandatory.
+    """
+    import hashlib
+    import json
+    import re
+
+    order = ('smoke', 'screen', 'refine', 'confirmation', 'sensitivity', 'production', 'complete')
+    if (not isinstance(current, dict) or not campaign_kind_matches(current)
+            or stage not in order or current.get('stage') not in order
+            or order.index(current['stage']) < order.index(stage)
+            or not isinstance(expected_sha256, str)
+            or re.fullmatch(r'[0-9a-f]{64}', expected_sha256) is None):
+        raise ValueError('Invalid historical campaign projection.')
+    validate_campaign_policy(current)
+    projected = deepcopy(current)
+    projected['stage'] = stage
+    stages = projected.get('stages')
+    if stages is not None:
+        if not isinstance(stages, dict):
+            raise ValueError('Invalid historical campaign stage registry.')
+        for later in order[order.index(stage) + 1:]:
+            stages.pop(later, None)
+        if stage != 'complete':
+            stages.pop('final_report', None)
+    candidates = [projected]
+    if stages == {}:
+        without_empty_registry = deepcopy(projected)
+        without_empty_registry.pop('stages')
+        candidates.append(without_empty_registry)
+    for candidate in candidates:
+        raw = (json.dumps(candidate, indent=2, sort_keys=True, allow_nan=False) + '\n').encode()
+        if hashlib.sha256(raw).hexdigest() == expected_sha256:
+            return candidate
+    raise ValueError('Historical campaign differs from its exact frozen hash.')
+
+
+def sensitivity_task_count(manifest: dict[str, Any]) -> int:
+    """Read the frozen, canonically derived clamped/deduplicated point count."""
+    validate_campaign_policy(manifest)
+    count = manifest.get('stages', {}).get('sensitivity', {}).get('tasks')
+    values = manifest.get('s0_values')
+    if (type(count) is not int or not isinstance(values, list) or not values
+            or not 1 <= count <= 17 * len(values)):
+        raise ValueError('Invalid frozen sensitivity task count.')
+    return count

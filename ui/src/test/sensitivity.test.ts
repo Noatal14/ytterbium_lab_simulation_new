@@ -99,3 +99,16 @@ describe("Sensitivity strict response contracts", () => {
     ).toThrow();
   });
 });
+
+it("preserves the actual clamped and deduplicated sensitivity task count in both reviews", () => {
+  // A boundary winner legitimately yields16 instead of the maximum17 tasks.
+  // The backend proves the frozen registry; the UI must display that count.
+  for (const [id, parse] of [["sensitivity-preview", parseSensitivityPreview], ["sensitivity-submit-preview", parseSensitivitySubmissionPreview]] as const) {
+    const value = structuredClone(data(id));
+    (value.job as Record<string, unknown>).task_count = 16;
+    expect(parse(value).job.task_count).toBe(16);
+    for (const task_count of [0, -1, 1.5, 1001]) {
+      expect(() => parse({ ...value, job: { ...(value.job as object), task_count } })).toThrow();
+    }
+  }
+});

@@ -216,3 +216,29 @@ def test_renderer_locks_real_profiles_and_rejects_noncanonical_boundaries():
             render_final_validation_input_transition(
                 root, manifest_value, summary_value, hash_value, before_hash
             )
+
+
+@pytest.mark.parametrize('acceptance', [False, True])
+def test_fresh_2d_job_preserves_exact_frozen_radius_in_si_units(acceptance):
+    import shlex
+    from studies.mot_2d.production import parse_args, parameters_from_args
+    source, summaries, hashes, _ = _real_renderer_inputs()
+    if acceptance:
+        from tests.test_mot_3d_acceptance_workload import manifest as acceptance_manifest
+        manifest = acceptance_manifest()
+        manifest['stage'] = 'finalist_selection'
+        manifest['upstream_2d_campaign'] = source['upstream_2d_campaign']
+        root = 'data/optimization/mot_3d/ui_acceptance/' + manifest['name']
+    else:
+        manifest = source
+        root = 'data/optimization/mot_3d/example'
+    radius = 0.048772914725133266
+    assert float(str(radius * 1000)) * 1e-3 != radius
+    manifest['upstream_2d_campaign']['expected_survivor_parameters']['magnet_radius'] = radius
+    files, _ = render_final_validation_input_transition(root, manifest, summaries, hashes, 'f' * 64)
+    command = files['jobs/final_validation_inputs/02_generate_2d_survivors.pbs'].decode()
+    tokens = shlex.split(command)
+    assert '--magnet-radius-mm' not in tokens
+    encoded = tokens[tokens.index('--magnet-radius-m') + 1]
+    args = parse_args(['--zeeman-seeds', '3035', '--mot-seeds', '43035', '--s0', '1.3', '--detuning-gamma', '-1', '--magnet-radius-m', encoded])
+    assert parameters_from_args(args)['magnet_radius'].hex() == radius.hex()

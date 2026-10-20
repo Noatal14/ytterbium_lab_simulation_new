@@ -137,6 +137,8 @@ def test_campaign_worker_commands_use_domain_module_paths(tmp_path, monkeypatch)
         type("Args", (), {"campaign": str(root), "task_index": 0})()
     )
     assert "studies.mot_2d.production" in commands[1]
+    assert commands[1][commands[1].index("--magnet-radius-m") + 1] == str(0.046)
+    assert "--magnet-radius-mm" not in commands[1]
     # Each production array index owns one ensemble, rather than the whole
     # 20-ensemble sealed population. Resource sizing follows this task unit.
     assert commands[1][commands[1].index("--zeeman-seeds") + 1:commands[1].index("--s0")] == ["3015"]
