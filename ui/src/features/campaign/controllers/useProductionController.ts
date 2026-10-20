@@ -37,6 +37,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
     [preview, setPreview] = useState<TPreview | null>(null),
     [result, setResult] = useState<TResult | null>(null),
     [error, setError] = useState("");
+  const [lastObservation, setLastObservation] = useState<"status" | "confirm" | null>(null);
   const gen = useRef(0),
     busy = useRef(false);
   useEffect(() => {
@@ -45,6 +46,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
     args.api.reset();
     setState("idle");
     setStatus(null);
+    setLastObservation(null);
     setPreview(null);
     setResult(null);
     setError("");
@@ -80,6 +82,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
         const v = await args.api.status(args.campaignId, args.snapshot.profile);
         if (gen.current !== g) return;
         setStatus(v);
+        setLastObservation("status");
         setState(
           args.terminal(v) ? "terminal" : args.complete(v) ? "success" : "idle",
         );
@@ -95,6 +98,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
         const v = await args.api.confirm(args.token(preview!));
         if (gen.current !== g) return;
         setResult(v);
+        setLastObservation("confirm");
         setPreview(null);
         setState("success");
       }
@@ -119,6 +123,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
   }
   return {
     state,
+    lastObservation,
     status,
     preview,
     result,

@@ -1,3 +1,4 @@
+import { late2DPriority, type SensitivityPriorityFlow, type ProductionPriorityFlow } from "./late2DPriority";
 import { campaignDiscoveryTrials } from "../../api/campaignPolicy";
 import { campaignAcceptanceMode } from "../../api/zeusEnvironment";
 import { Clipboard } from "lucide-react";
@@ -48,6 +49,8 @@ export function CampaignPriorityPanel({
   screenState,
   chainStatus,
   refinementLifecycle,
+  sensitivityFlow,
+  productionFlow,
   confirmationSubmitState = "idle",
   confirmationSubmitJobId = null,
   mot3DDiscoveryState = "idle",
@@ -81,6 +84,8 @@ export function CampaignPriorityPanel({
   screenState: ScreeningLifecycle | null;
   chainStatus: RefinementChainStatus | null;
   refinementLifecycle: RefinementLifecycle | null;
+  sensitivityFlow?: SensitivityPriorityFlow;
+  productionFlow?: ProductionPriorityFlow;
   confirmationSubmitState?: ConfirmationSubmissionUiState;
   confirmationSubmitJobId?: string | null;
   mot3DDiscoveryState?: Mot3DDiscoveryUiState;
@@ -289,6 +294,9 @@ export function CampaignPriorityPanel({
       </section>
     );
   }
+
+  const latePriority = late2DPriority(campaign, sensitivityFlow, productionFlow);
+  if (latePriority) return <section className={`priority-panel ${latePriority.blocked ? "priority-panel--blocked" : ""}`} aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">{latePriority.title}</h2><p>{latePriority.text}</p></section>;
 
   if (confirmationSubmissionPriority) {
     return (

@@ -228,11 +228,21 @@ def scheduler_state(raw: bytes, job_id: str) -> str:
             return "status_unknown"
         seen.add(identifier)
         fields: dict[str, str] = {}
+        previous = None
         for line in lines[1:]:
-            match = re.fullmatch(r"\s*([A-Za-z_]+)\s*=\s*(.*?)\s*", line)
-            if not match or match.group(1) in fields:
+            if not line.strip():
+                continue
+            match = re.fullmatch(r"\s*([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.*?)\s*", line)
+            if match:
+                if match.group(1) in fields:
+                    return "status_unknown"
+                previous = match.group(1)
+                fields[previous] = match.group(2)
+            elif (line.startswith(("\t", "        ")) and previous is not None
+                  and previous not in {"job_state", "Exit_status"}):
+                fields[previous] += " " + line.strip()
+            else:
                 return "status_unknown"
-            fields[match.group(1)] = match.group(2)
         if identifier == job_id:
             continue
         state = fields.get("job_state")

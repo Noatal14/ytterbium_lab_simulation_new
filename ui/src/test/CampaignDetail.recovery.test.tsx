@@ -22,11 +22,13 @@ function recorded<T>(
 }
 afterEach(() => vi.unstubAllEnvs());
 it.each([
-  ["development", scientificCapture],
-  ["ui-acceptance", acceptanceCapture],
+  ["development", scientificCapture, false],
+  ["development", scientificCapture, true],
+  ["ui-acceptance", acceptanceCapture, false],
+  ["ui-acceptance", acceptanceCapture, true],
 ] as const)(
-  "recovers a reloaded local Smoke campaign in %s through every completed stage using only read-only status calls",
-  async (mode, capture) => {
+  "recovers a reloaded local Smoke campaign in %s through every completed stage using only read-only status calls (historical uncertainty %s)",
+  async (mode, capture, historicalUnknown) => {
     vi.stubEnv("MODE", mode);
     vi.resetModules();
     const domain = await import("../api/schema/domain");
@@ -77,24 +79,14 @@ it.each([
       "Refinement status",
       read(domain.parseRefinementLifecycle, "parseRefinementLifecycle"),
     );
-    const confirmationSubmission = operation(
-      "Confirmation submission status",
-      read(
-        domain.parseConfirmationSubmissionStatus,
-        "parseConfirmationSubmissionStatus",
-      ),
-    );
+    const confirmationValue=read(domain.parseConfirmationSubmissionStatus,"parseConfirmationSubmissionStatus");
+    const confirmationSubmission = operation("Confirmation submission status", historicalUnknown ? domain.parseConfirmationSubmissionStatus({...confirmationValue,submission:{...confirmationValue.submission,status:"status_unknown"},next_action:"inspect_zeus"}) : confirmationValue);
     const sensitivity = operation(
       "Confirmation results",
       read(domain.parseSensitivityStatus, "parseSensitivityStatus"),
     );
-    const sensitivitySubmission = operation(
-      "Sensitivity submission status",
-      read(
-        domain.parseSensitivitySubmissionStatus,
-        "parseSensitivitySubmissionStatus",
-      ),
-    );
+    const sensitivityValue=read(domain.parseSensitivitySubmissionStatus,"parseSensitivitySubmissionStatus");
+    const sensitivitySubmission = operation("Sensitivity submission status", historicalUnknown ? domain.parseSensitivitySubmissionStatus({...sensitivityValue,submission:{...sensitivityValue.submission,status:"running"},next_action:"wait"}) : sensitivityValue);
     const production = operation(
       "Sensitivity results",
       read(domain.parseProductionStatus, "parseProductionStatus"),
@@ -161,14 +153,22 @@ it.each([
     await click("Check chain status");
     await click("Check Refinement status");
     await click("Check Zeus status", "confirmation-submit-heading");
+    if(historicalUnknown)expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Manual verification required"})).toBeVisible();
     await click("Check Confirmation results");
     await click("Check Zeus status", "sensitivity-heading");
+    if(historicalUnknown){
+      expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Sensitivity is running"})).toBeVisible();
+      const historicalCard=document.querySelector('section[aria-labelledby="confirmation-submit-heading"]') as HTMLElement;
+      expect(historicalCard).not.toBeNull();
+      expect(historicalCard.textContent).toMatch(/unknown|could not|inspection|verify|verification/i);
+    }
     await click("Check Sensitivity results");
     await click("Check Zeus status", "production-heading");
     await click("Check Production results");
     expect(
       await screen.findByRole("heading", { name: "Sealed final results" }),
     ).toBeVisible();
+    expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Final report is ready"})).toBeVisible();
     expect(reads).toEqual([
       "Smoke recovery",
       "Screening status",

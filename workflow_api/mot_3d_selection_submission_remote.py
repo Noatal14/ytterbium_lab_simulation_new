@@ -688,13 +688,16 @@ def qstat_fields(raw):
         fields = {}
         previous = None
         for line in lines[1:]:
-            match = re.fullmatch(r"\s*([A-Za-z_]+)\s*=\s*(.*?)\s*", line)
+            if not line.strip():
+                continue
+            match = re.fullmatch(r"\s*([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.*?)\s*", line)
             if match:
                 if match.group(1) in fields:
                     return None
                 previous = match.group(1)
                 fields[previous] = match.group(2)
-            elif line.startswith(("\t", "        ")) and previous is not None:
+            elif (line.startswith(("\t", "        ")) and previous is not None
+                  and previous not in {"job_state", "Exit_status"}):
                 continuation = line.strip()
                 if not continuation:
                     return None

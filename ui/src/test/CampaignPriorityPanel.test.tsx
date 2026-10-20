@@ -243,3 +243,81 @@ it("qualifies miniature Discovery and completed reports as TEST ONLY evidence", 
     expect(screen.getByText(/not eligible for scientific promotion/)).toBeVisible();
   } finally { vi.unstubAllEnvs(); }
 });
+
+// Real public coordinator DTOs from the genuine full receiver protocol; only
+// scheduler lifecycle/next_action pairs vary to exercise priority presentation.
+import recoveryCapture from "./fixtures/CampaignDetail.readonlyRecovery.v1.json";
+import { parseSensitivitySubmissionStatus, parseProductionSubmissionStatus, parseFinalizationStatus, parseProductionStatus } from "../api/schema/domain";
+import type { SensitivityPriorityFlow, ProductionPriorityFlow } from "../features/campaign/late2DPriority";
+function captured(parser: string) { return structuredClone(recoveryCapture.responses.find(row => row.parser === parser)!.value); }
+const emptyOperation = { state: "idle" as const, status: null, result: null, error: "" };
+function laterSensitivity(status: "running" | "status_unknown" = "running"): SensitivityPriorityFlow {
+  const raw = captured("parseSensitivitySubmissionStatus") as unknown as Record<string, unknown>;
+  raw.submission = { status, job_id: "70018[].zeus-master" };
+  raw.next_action = status === "running" ? "wait" : "inspect_zeus";
+  return { preparation: emptyOperation, submission: { ...emptyOperation, status: parseSensitivitySubmissionStatus(raw), state: status === "running" ? "success" : "terminal" } };
+}
+function laterProduction(status: "running" | "status_unknown" = "running"): ProductionPriorityFlow {
+  const raw = captured("parseProductionSubmissionStatus") as unknown as Record<string, unknown>;
+  raw.submission = { status, job_id: "70019[].zeus-master" };
+  raw.next_action = status === "running" ? "wait" : "inspect_zeus";
+  return { preparation: emptyOperation, finalization: emptyOperation, submission: { ...emptyOperation, status: parseProductionSubmissionStatus(raw), state: status === "running" ? "success" : "terminal" } };
+}
+const lateCampaign = { ...campaignFixture, id: laterSensitivity().submission.status!.campaign.id };
+describe("latest authoritative 2D priority", () => {
+  it("keeps historical Confirmation unknown behind actual Sensitivity running evidence", () => {
+    render(<CampaignPriorityPanel {...base} campaign={lateCampaign} confirmationSubmitState="terminal" sensitivityFlow={laterSensitivity()} />);
+    expect(screen.getByRole("heading", { name: "Sensitivity is running" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Manual verification required" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Earlier stage warnings remain historical/)).toBeVisible();
+  });
+  it("gives Production priority over both historical Confirmation and Sensitivity uncertainty", () => {
+    render(<CampaignPriorityPanel {...base} campaign={lateCampaign} confirmationSubmitState="terminal" sensitivityFlow={laterSensitivity("status_unknown")} productionFlow={laterProduction()} />);
+    expect(screen.getByRole("heading", { name: "Production is running" })).toBeVisible();
+  });
+  it("reopens authoritative completed results above earlier unknown warnings", () => {
+    const flow = laterProduction();
+    flow.finalization = { ...emptyOperation, state: "success", status: parseFinalizationStatus(captured("parseFinalizationStatus")) };
+    render(<CampaignPriorityPanel {...base} campaign={lateCampaign} confirmationSubmitState="terminal" sensitivityFlow={laterSensitivity("status_unknown")} productionFlow={flow} />);
+    expect(screen.getByRole("heading", { name: "Final report is ready" })).toBeVisible();
+  });
+  it.each(["Sensitivity", "Production"])("retains manual inspection for current %s uncertainty", stage => {
+    render(<CampaignPriorityPanel {...base} campaign={lateCampaign} confirmationSubmitState="terminal" sensitivityFlow={laterSensitivity(stage === "Sensitivity" ? "status_unknown" : "running")} productionFlow={stage === "Production" ? laterProduction("status_unknown") : undefined} />);
+    expect(screen.getByRole("heading", { name: "Manual verification required" })).toBeVisible();
+    expect(screen.getByText(new RegExp(stage+" is the latest verified"))).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "No action needed" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /submit/i })).not.toBeInTheDocument();
+  });
+  it("ignores other-campaign DTOs and local later-stage hints", () => {
+    render(<CampaignPriorityPanel {...base} campaign={{ ...lateCampaign, id: "other-campaign", stage: "complete" }} confirmationSubmitState="terminal" sensitivityFlow={laterSensitivity()} productionFlow={laterProduction()} />);
+    expect(screen.getByRole("heading", { name: "Manual verification required" })).toBeVisible();
+    expect(screen.queryByRole("heading", { name: "Final report is ready" })).not.toBeInTheDocument();
+  });
+  it("does not hide unknown Confirmation without later evidence", () => {
+    render(<CampaignPriorityPanel {...base} confirmationSubmitState="terminal" />);
+    expect(screen.getByRole("heading", { name: "Manual verification required" })).toBeVisible();
+  });
+  it("preserves later-stage read errors as inspection, even with an older running DTO", () => {
+    const flow=laterSensitivity();flow.submission.error="Status read could not be verified";
+    render(<CampaignPriorityPanel {...base} campaign={lateCampaign} sensitivityFlow={flow} />);
+    expect(screen.getByRole("heading", { name: "Manual verification required" })).toBeVisible();
+  });
+});
+
+it("prefers a newer full Sensitivity validator over an older unknown submission observation", () => {
+  const sensitivity=laterSensitivity("status_unknown");
+  sensitivity.submission.status={...sensitivity.submission.status!,queried_at:"2026-10-20T01:00:00Z"};
+  const raw=structuredClone(captured("parseProductionStatus")) as unknown as import("../api/schema/domain").ProductionStatus;
+  const count=raw.sensitivity.scheduler.task_count;
+  const status=parseProductionStatus({...raw,queried_at:"2026-10-20T02:00:00Z",campaign:{...raw.campaign,stage:"sensitivity"},sensitivity:{...raw.sensitivity,status:"running",scheduler:{...raw.sensitivity.scheduler,state:"running",counts:{queued:0,running:count,held:0,succeeded:0,failed:0}}},validation:{...raw.validation,status:"not_ready",completed_points:0},next_action:"wait"});
+  const production:ProductionPriorityFlow={submission:emptyOperation,finalization:emptyOperation,preparation:{...emptyOperation,status}};
+  const view=render(<CampaignPriorityPanel {...base} campaign={lateCampaign} sensitivityFlow={sensitivity} productionFlow={production} />);
+  expect(screen.getByRole("heading",{name:"Sensitivity is running"})).toBeVisible();
+  sensitivity.submission.status={...sensitivity.submission.status!,queried_at:"2026-10-20T03:00:00Z"};
+  view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} sensitivityFlow={sensitivity} productionFlow={production} />);
+  expect(screen.getByRole("heading",{name:"Manual verification required"})).toBeVisible();
+  sensitivity.submission.status={...sensitivity.submission.status!,queried_at:"2026-10-20T01:00:00Z"};
+  sensitivity.submission.error="Fresh status read failed";
+  view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} sensitivityFlow={sensitivity} productionFlow={production} />);
+  expect(screen.getByRole("heading",{name:"Manual verification required"})).toBeVisible();
+});

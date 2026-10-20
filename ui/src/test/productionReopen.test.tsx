@@ -37,7 +37,7 @@ describe("reopening sealed final results", () => {
   });
   it("renders freshly verified completed results without another preview or confirm and retires them on error", () => {
     const noop = vi.fn();
-    const operation = { state: "idle", status: null, preview: null, result: null, error: "", refresh: noop, review: noop, confirm: noop, reset: noop };
+    const operation = { lastObservation: null, state: "idle", status: null, preview: null, result: null, error: "", refresh: noop, review: noop, confirm: noop, reset: noop };
     const flow = {
       preparation: operation,
       submission: { ...operation, state: "success", status: parseProductionSubmissionStatus(data("production-submit-status")) },
