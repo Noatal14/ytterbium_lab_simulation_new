@@ -8,6 +8,7 @@ generic command endpoint or caller-controlled scheduler operation.
 from __future__ import annotations
 
 import json
+import logging
 import secrets
 import socket
 import time
@@ -1236,6 +1237,22 @@ def _post_routes() -> tuple[PostRoute, ...]:
 POST_ROUTES = {route.path: route for route in _post_routes()}
 
 _INDIVIDUAL_ZEUS_ERRORS = {
+    "zeus_unavailable": (
+        HTTPStatus.SERVICE_UNAVAILABLE,
+        "Could not reach Zeus. Keep this run and retry checking its status; do not submit another job.",
+    ),
+    "job_status_unavailable": (
+        HTTPStatus.BAD_GATEWAY,
+        "Zeus job status is temporarily unavailable. Keep this run and check its status again; do not resubmit it.",
+    ),
+    "result_unavailable": (
+        HTTPStatus.CONFLICT,
+        "Zeus results are not available for collection yet. Keep this run and check its status again.",
+    ),
+    "remote_response_invalid": (
+        HTTPStatus.BAD_GATEWAY,
+        "The Zeus response could not be verified. Keep this run and inspect its existing job before continuing.",
+    ),
     "confirmation_invalid": (
         HTTPStatus.BAD_REQUEST,
         "The Zeus confirmation is invalid or belongs to another session.",
@@ -1742,6 +1759,14 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             self._error(resolved.code, resolved.message, resolved.status)
             return
         except ZeemanZeusError as error:
+            diagnostic_code = (
+                error.code if isinstance(error.code, str)
+                and error.code in _INDIVIDUAL_ZEUS_ERRORS else "unclassified"
+            )
+            logging.getLogger(__name__).warning(
+                "Individual Zeus request failed: route=%s code=%s",
+                target.path, diagnostic_code,
+            )
             status, message = _INDIVIDUAL_ZEUS_ERRORS.get(
                 error.code,
                 (
