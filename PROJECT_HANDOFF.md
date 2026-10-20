@@ -6,7 +6,17 @@
 > sealed output. If the guide, plan, configuration, implementation, and prompt
 > disagree, stop before submission and report the discrepancy.
 
-Last updated: 2026-10-06
+Last updated: 2026-10-20
+
+The canonical 3D-MOT scientific campaign is now closed under the approved
+5-us / 50-ms final-validation amendment. Blue-shell capture is 99.766%
+(95% CI 99.674%–99.855%); Single-pass capture is 27.496%
+(26.620%–28.386%), conditional on 2D survivors. The owner accepted the latter
+uncertainty without further sampling. See
+[`docs/3D_MOT_FINAL_RESULTS.md`](docs/3D_MOT_FINAL_RESULTS.md) and the hashed
+closure/evidence bundle in `data/validation/mot_3d/final_campaign_20261020/`.
+Scientific closure does not mark unperformed cross-platform/Zeus UI acceptance
+checks as passed; use `docs/UI_RELEASE_ACCEPTANCE_CHECKLIST.md` separately.
 
 ## 1. Purpose and scientific context
 
@@ -46,7 +56,12 @@ apparatus, and 399-nm optical layout. Parameters explicitly selected for an
 optimization study are exceptions; they should not be mistaken for arbitrary
 geometry.
 
-The 3D MOT is **not a finalized laboratory design**. The maintained candidates are now only `angled_donut` and `single_pass`. The evidence for retiring the explored reduced-blue geometries is summarized in `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`; the production optimization design is in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`. Current operating points are provisional simulation seeds, not laboratory settings. The forthcoming search must optimize the eight donut variables and nine single-pass variables on paired 2D-MOT survivor ensembles, then validate the selected points and robust parameter boxes on held-out particles.
+The 3D-MOT simulation study is complete for `angled_donut` (Blue shell) and
+`single_pass`. Locked selected profiles and held-out results are preserved in
+the final evidence bundle. These are simulation recommendations, not proof of
+experimental performance or a finalized laboratory design. Historical search
+design and candidate rationale remain in `docs/3D_MOT_FULL_OPTIMIZATION_PLAN.md`
+and `docs/3D_MOT_OPTIMIZATION_CANDIDATE_RATIONALE.md`.
 
 Current work has concentrated on the Zeeman-slower-to-2D-MOT chain. Zeeman
 survivor states are saved and reused as a fixed input ensemble for many 2D-MOT

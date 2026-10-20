@@ -1,0 +1,22 @@
+{
+  "kind": "mot_3d_sealed_final_validation_seed_result",
+  "family": "single_pass",
+  "candidate_id": "single_pass_finalist_01",
+  "recoil_seed": 44001,
+  "input_particle_count": 16675,
+  "usable_at_end_count": 4627,
+  "usable_ever_count": 4629,
+  "outcomes_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_5us_50ms/single_pass/seed_44001.npz",
+  "outcomes_sha256": "33b291a35b259fe1139b0e10db30bb54d719034806cecc6d855ccd879d0cd3b3",
+  "design": {
+    "campaign_manifest_sha256": "bfd6cde7441892ab6220a87115b0e2ddb93ccee23c1533941c4a1040d1615c6d",
+    "locked_nominals_sha256": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+    "input_manifest_sha256": "dc9ff236c1cfe0c10680a9b0bebf790e6ab59df94940f7bad9d2e47375882d18",
+    "family": "single_pass",
+    "recoil_seed": 44001,
+    "dt_s": 5e-06,
+    "t_max_s": 0.05,
+    "solver": "RK4StHybridCustom",
+    "classification": "sealed_unbiased_final_validation"
+  }
+}

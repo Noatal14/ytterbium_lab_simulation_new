@@ -1,0 +1,41 @@
+{
+  "kind": "mot_3d_paired_capture_time_seed",
+  "family": "single_pass",
+  "candidate_id": "single_pass_finalist_01",
+  "recoil_seed": 44003,
+  "design": {
+    "campaign_manifest_sha256": "bfd6cde7441892ab6220a87115b0e2ddb93ccee23c1533941c4a1040d1615c6d",
+    "locked_nominals_sha256": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+    "input_manifest_sha256": "dc9ff236c1cfe0c10680a9b0bebf790e6ab59df94940f7bad9d2e47375882d18",
+    "family": "single_pass",
+    "recoil_seed": 44003,
+    "dt_s": 5e-06,
+    "t_max_s": 0.05,
+    "solver": "RK4StHybridCustom",
+    "classification": "sealed_unbiased_final_validation"
+  },
+  "capture_config": {
+    "capture_radius_m": 0.005,
+    "diagnostic_radii_m": [
+      0.005,
+      0.0075,
+      0.01
+    ],
+    "minimum_residence_time_s": 0.005,
+    "maximum_final_speed_m_s": 1.0
+  },
+  "early_time_s": 0.03,
+  "final_time_s": 0.05,
+  "canonical_outcomes_sha256": "770a1b30e8aa6fc732ad34b29f45140164d34f6d7effb2a1bf86c743b3daca0a",
+  "canonical_outcomes_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_5us_50ms/single_pass/seed_44003.npz",
+  "input_particle_count": 16675,
+  "counts": {
+    "eligible_at_30ms": 4543,
+    "eligible_at_50ms": 4545,
+    "lost_after_30ms": 0,
+    "captured_after_30ms": 2,
+    "temporarily_ineligible_after_30ms": 0,
+    "left_capture_region_after_30ms": 0
+  },
+  "outcomes_sha256": "14090de71cca860302e63479edfb8fe9ff7503a1e3b0ae5e0325974420cbdac6"
+}

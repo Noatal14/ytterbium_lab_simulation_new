@@ -1,0 +1,400 @@
+{
+  "kind": "mot_3d_final_validation_inputs",
+  "classification": "newly_generated_sealed_after_nominal_lock",
+  "locked_nominals_sha256": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+  "solver": "RK4StHybridCustom",
+  "campaign_name": "mot_3d_s0_1p3_search10us_20261012_v1",
+  "git_commit": "7facc798d89c5386cacca3f37b5d1158c147348c",
+  "physical_model_sha256": "a59025be662f7554b303ed7c4bbdd9d0f85ee99a3490f1d7093da9f2dbf2a759",
+  "generation_submission_sha256": "a25cefacbedc55583868b4c078034fa7e5558e89682e05219a295468cf65463a",
+  "generation_jobs": {
+    "kind": "mot_3d_final_validation_input_submission",
+    "status": "submitted",
+    "zeeman_array_job_id": "4803371[].zeus-master",
+    "mot_array_job_id": "4803372[].zeus-master",
+    "freeze_job_id": "4803373.zeus-master"
+  },
+  "ensembles": [
+    {
+      "zeeman_seed": 3035,
+      "mot_seed": 43035,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3035_mot_seed43035.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3035_mot_seed43035.json",
+      "sha256": "393fff9cb69be1b6b6b25499d33cc2f9a62b0415f772fb4cc8e06554d3687901",
+      "metadata_sha256": "1cb0450c138fdebe5419d67e3e288f0d487be7fc29231a8dbca0dd565ebcb612",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3035.json",
+      "replicate_sha256": "3e0b0c6c4d08943e76fb83b9d88ff910ca888f9cce97ff4b4e73d29bd43d1ebd",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3035.npy",
+      "zeeman_sha256": "d5a90d4bbaf76d334287bcf3f81edfeeb3c48bd80005518d3a5d1b02e8383805",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3035.json",
+      "zeeman_metadata_sha256": "d8ce73b6e153db38c280f849138e5198cd70631e6078b103a72cc30d38eb3bac",
+      "shape": [
+        865,
+        6
+      ],
+      "n_survivors": 865
+    },
+    {
+      "zeeman_seed": 3036,
+      "mot_seed": 43036,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3036_mot_seed43036.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3036_mot_seed43036.json",
+      "sha256": "7d89ca447df8b80267e50582912d8390350fb35993362ec16b5542e29fec5ad2",
+      "metadata_sha256": "67e17c98ae68119aa2d7cb4c96c2fc5a0d6066d401ff0c71e91bbfd5e08f66df",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3036.json",
+      "replicate_sha256": "48eaf008655f7becf04d00fdb2fd67edfbe606fa1040b7d5a22eccd94f377655",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3036.npy",
+      "zeeman_sha256": "7ee91a49961e91ec17d79694e1431ab4434d48dbc39372cb0bf2ae761d635ad8",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3036.json",
+      "zeeman_metadata_sha256": "a00ba9b60aaecb124f3fabe63be5b56c1bdb902ae89c3061deab727e90108522",
+      "shape": [
+        740,
+        6
+      ],
+      "n_survivors": 740
+    },
+    {
+      "zeeman_seed": 3037,
+      "mot_seed": 43037,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3037_mot_seed43037.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3037_mot_seed43037.json",
+      "sha256": "5d5ebc49e721873ece600b1e6fc4abc596d7ccd67055ec5a593cac7ada55b1c9",
+      "metadata_sha256": "a0e0e474fcb70fafc80c82789b758d46cdef7ed6137ab8c3bda3f9071fd32d08",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3037.json",
+      "replicate_sha256": "24970a3e6d33e2fec81d17d17197ccd86f6a2e2fa4dbbe6f804ba9f8d9486bd0",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3037.npy",
+      "zeeman_sha256": "1e4c213ef93a5696daf3abad2724f25d1546d16da8a8b93e66e73058ca721bcd",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3037.json",
+      "zeeman_metadata_sha256": "f933fc0b1643a29344ca3d641cc01bea652bb42373a6fcb8378e179b2aab5a81",
+      "shape": [
+        859,
+        6
+      ],
+      "n_survivors": 859
+    },
+    {
+      "zeeman_seed": 3038,
+      "mot_seed": 43038,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3038_mot_seed43038.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3038_mot_seed43038.json",
+      "sha256": "356a0597aa90c791a5b195f151ab80a0fa5c056fdc2fa7f35e49189a1658f203",
+      "metadata_sha256": "d60aa1f135bdfd727542b8ff0401644c6c4a376cda49f7f37dffdc0c595058e7",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3038.json",
+      "replicate_sha256": "2ce671932d8229f308a33f6c53936731b32513834415315c476ce4430102f609",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3038.npy",
+      "zeeman_sha256": "6773404d210a1317ac3f58cd6caa1b0a437f0d5e8597464a12688a98d738abfe",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3038.json",
+      "zeeman_metadata_sha256": "8d4e497a6a6f4f33128eb6e6c15a11b1e68eeac61e7d8e0fcb367c521fe430d4",
+      "shape": [
+        808,
+        6
+      ],
+      "n_survivors": 808
+    },
+    {
+      "zeeman_seed": 3039,
+      "mot_seed": 43039,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3039_mot_seed43039.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3039_mot_seed43039.json",
+      "sha256": "09b9fb18a607ba2f0e9ece57760f22d705264d5aabd002deb8b52dab959749af",
+      "metadata_sha256": "af7e235ab7684c420380a311b35113863020f0edd6f4eebbde194e3f32fc96af",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3039.json",
+      "replicate_sha256": "e0a6a88003dd2ee5cf3da99de6ca4093bc0115f554089e7813725281f7fe0326",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3039.npy",
+      "zeeman_sha256": "c1df2509dea3ba310160c720813166845c94411b4fdc7cbd0a272b167a580233",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3039.json",
+      "zeeman_metadata_sha256": "13ae1407828e46658091128adf3886c6f74a711515ad56c935df9404375b24c8",
+      "shape": [
+        860,
+        6
+      ],
+      "n_survivors": 860
+    },
+    {
+      "zeeman_seed": 3040,
+      "mot_seed": 43040,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3040_mot_seed43040.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3040_mot_seed43040.json",
+      "sha256": "56326c2dd99f501f5dbf21da0970e0c2a37799aec6b7998038f94fe3b1e6ded7",
+      "metadata_sha256": "c0a3d2f58436b486b828679004725cd75db13d33ffac6ba1795409c6c4476b86",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3040.json",
+      "replicate_sha256": "8d9fd8bc2031ff7ea3e045cd68675f8ad2839452dfcbff1296f51bfe2a74f1d5",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3040.npy",
+      "zeeman_sha256": "9fc4a6e6377835a462ac1aa7f49e375a76ab883dd9ebf78ab0a69697c73eca65",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3040.json",
+      "zeeman_metadata_sha256": "5a59de305b4559c24c8e805117104cfe82b4f096fcd55d74020e29247af38a87",
+      "shape": [
+        807,
+        6
+      ],
+      "n_survivors": 807
+    },
+    {
+      "zeeman_seed": 3041,
+      "mot_seed": 43041,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3041_mot_seed43041.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3041_mot_seed43041.json",
+      "sha256": "3a313b05c78cd3d93c72048e2b2fe6fcc519aa30e75566948673fb56955679c0",
+      "metadata_sha256": "a6cdfaa1f49f1679dd624eeb7126e5e1b0b26f6e2d4bd801f45797c23adb23fe",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3041.json",
+      "replicate_sha256": "49860b2027f65e3fa1a93eed095f08bc2686b4a6d65a2302c8d5b0edde42f862",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3041.npy",
+      "zeeman_sha256": "3f6950fa6fd0773371f7f14cd71b1f49ce5eaf1c16a1c0c95d675fbcf67dc35d",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3041.json",
+      "zeeman_metadata_sha256": "6e128e182e0b1629016a5c3f16742365a3317f25726e975443992ee3a6c36921",
+      "shape": [
+        896,
+        6
+      ],
+      "n_survivors": 896
+    },
+    {
+      "zeeman_seed": 3042,
+      "mot_seed": 43042,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3042_mot_seed43042.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3042_mot_seed43042.json",
+      "sha256": "24e7e1aa7e7d527d0b030999083550c7f259df845998b5f7dad2850de1415d33",
+      "metadata_sha256": "3e7180879b43424f328fefbf9323badbdf462b80c9e86f87b7fabd82a138218d",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3042.json",
+      "replicate_sha256": "42b67b5d3a10ef9406bebaaa212fa79705a86e5d7a23b740ad5302e88988bb2c",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3042.npy",
+      "zeeman_sha256": "f6f4d20c33c222d9cca0f523d1d5d968baaeed7cd33642701d2c4e9f761e84d4",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3042.json",
+      "zeeman_metadata_sha256": "376a547b426fc75dcd8223a4dee33d4696ab09cdc153de791c55b3116729dfbc",
+      "shape": [
+        852,
+        6
+      ],
+      "n_survivors": 852
+    },
+    {
+      "zeeman_seed": 3043,
+      "mot_seed": 43043,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3043_mot_seed43043.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3043_mot_seed43043.json",
+      "sha256": "97bf59d65a84b7c8dff4d8b26cea4f59e635d3f0dce90ed82dfdc3a11f503c06",
+      "metadata_sha256": "eadcbcd4139d9911dd8ede044de067d050ec1bc350ad22056ab12b7a9a31ff9f",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3043.json",
+      "replicate_sha256": "2a2b1aa8638e94ac2328832a1ef3b9fa1ce6889964a2667a414a2d051be72ff0",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3043.npy",
+      "zeeman_sha256": "5d4de81375ef0b3fd53fbef05d9409f4a2c8c33afe9d3cb56099aa52af9be32e",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3043.json",
+      "zeeman_metadata_sha256": "5f9c927de7d253c2f462032951f68fd0daba6f05a2f12473f49ebf9ddc749cf2",
+      "shape": [
+        832,
+        6
+      ],
+      "n_survivors": 832
+    },
+    {
+      "zeeman_seed": 3044,
+      "mot_seed": 43044,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3044_mot_seed43044.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3044_mot_seed43044.json",
+      "sha256": "58a40022d38a31b931ebfdb62db1b8a58ad537e0b2b74c17eea9d9dc703f069c",
+      "metadata_sha256": "55316853315544a367b42ef9fd5432b457592ae72511eadc490109b725c2a293",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3044.json",
+      "replicate_sha256": "88ee5a66fed99e5e7626e788c24352fdeb481f85969d4683890ecd045dcf301d",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3044.npy",
+      "zeeman_sha256": "d3f542ea6d856f7a85be6b566d929c915acff9258ee692eb978d1a0d4d953461",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3044.json",
+      "zeeman_metadata_sha256": "9e5600f084836bf4c57fc10499aca484122a8f584fea6b277160b78c0753b25e",
+      "shape": [
+        878,
+        6
+      ],
+      "n_survivors": 878
+    },
+    {
+      "zeeman_seed": 3045,
+      "mot_seed": 43045,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3045_mot_seed43045.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3045_mot_seed43045.json",
+      "sha256": "bd188ca6d8a601b73d5ce07510222b01dfcf51391bd63c3f8a131726474b7b5f",
+      "metadata_sha256": "169a4ae52d4a921b347bc2f7428c6d28230171b3f0d74b7a634c1cabd316d180",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3045.json",
+      "replicate_sha256": "01f10e33d03cc19fe537f6541b6d2df5ec6e0b6d4e1b3aee97e120729b0cb343",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3045.npy",
+      "zeeman_sha256": "6a8819a6b09edb4c3724f86a008500fe3c9c9b53142a49ff3db75f2612dbae0f",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3045.json",
+      "zeeman_metadata_sha256": "add1dc48427deaaa3ef6dfd55c23b4745645ab86b0a30a05dbca176f625fa884",
+      "shape": [
+        838,
+        6
+      ],
+      "n_survivors": 838
+    },
+    {
+      "zeeman_seed": 3046,
+      "mot_seed": 43046,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3046_mot_seed43046.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3046_mot_seed43046.json",
+      "sha256": "3ec84f477aa733e9b2bb980e40fda96016552162f242e5978988264970bd4492",
+      "metadata_sha256": "088d2f9dcba656bb11814f3ba0dd2cc5263c8db57c03b911c4f67b9bc492e2bd",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3046.json",
+      "replicate_sha256": "6ffac7476405a48ee04c8f611fd6dc0b283bb2db16f1c569a6fd574efd7f8eda",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3046.npy",
+      "zeeman_sha256": "4d08a0e4865f9f90f2b24cfe4e3de13302a454fba90970b91d96a34d4ad8df02",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3046.json",
+      "zeeman_metadata_sha256": "f9d71a3015ae6509de64062e430a7998b133a992aa122725f24ff3541ca7502b",
+      "shape": [
+        804,
+        6
+      ],
+      "n_survivors": 804
+    },
+    {
+      "zeeman_seed": 3047,
+      "mot_seed": 43047,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3047_mot_seed43047.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3047_mot_seed43047.json",
+      "sha256": "262b2605362413d0a0432ec03e273d6c3b59723b1f1241de67c98a8cf885d6dc",
+      "metadata_sha256": "9608b87cc75e1e8d0033c87582877b56f12486c53e0d586c410888d1458e1636",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3047.json",
+      "replicate_sha256": "a63103a205310994f203a142f4e8301f79335062b7afb500563017a92e9e77f2",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3047.npy",
+      "zeeman_sha256": "b031761face3f13868bcd81570f0f9646c81c49f204bd1e85604a14ae9ef83fd",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3047.json",
+      "zeeman_metadata_sha256": "62ff8bc39367c17b1f270c44c193b31ad76e3c728a3a243769cf1e293e3fd935",
+      "shape": [
+        833,
+        6
+      ],
+      "n_survivors": 833
+    },
+    {
+      "zeeman_seed": 3048,
+      "mot_seed": 43048,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3048_mot_seed43048.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3048_mot_seed43048.json",
+      "sha256": "441e144813f6d360c8b899cd700fcfc6c922b72d40f5dd6cd76c3ae1beb14dfe",
+      "metadata_sha256": "83157c2075214d6d0d1d8ffd38964c5d0de1a50095f24a582f70e0211523dcfb",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3048.json",
+      "replicate_sha256": "43b7ee4fe17bcc4396b9129b3ad93116a35306340e560ef138000aea0334a354",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3048.npy",
+      "zeeman_sha256": "f0f0a123603cca2ae34ef7ec17ab61e8809c4c67b06a253ead858bb0070ba13b",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3048.json",
+      "zeeman_metadata_sha256": "bae95ca8ac26d73859e0692588cdedb9a0be3babdae2d4a0e32d5ef5dcd5357e",
+      "shape": [
+        857,
+        6
+      ],
+      "n_survivors": 857
+    },
+    {
+      "zeeman_seed": 3049,
+      "mot_seed": 43049,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3049_mot_seed43049.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3049_mot_seed43049.json",
+      "sha256": "cf9da0d901fb40ec552c7100f288f37f4da00b51a603bd2b145c493d66ec71c8",
+      "metadata_sha256": "7f562a54183f7711bf2d5a53c8d9c92cf1ad995c736eb1834b3e1562bb68b6aa",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3049.json",
+      "replicate_sha256": "f3bffb34fb037d9570da8c975be8b7816ca828e815f822d8cfb1ba91909ab459",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3049.npy",
+      "zeeman_sha256": "4eed7d2af92adff3a10943df66bc6914b139f52b7895dbd2b7dd14cdc5d6ed70",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3049.json",
+      "zeeman_metadata_sha256": "e32315157c0f5171877be460fe89dbcf7d41654bd639e190ee7ab97e17b84dbb",
+      "shape": [
+        825,
+        6
+      ],
+      "n_survivors": 825
+    },
+    {
+      "zeeman_seed": 3050,
+      "mot_seed": 43050,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3050_mot_seed43050.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3050_mot_seed43050.json",
+      "sha256": "1fecad2aadd54f228434dbd277704bd94973970de7080f960a5fe617e2c7fea6",
+      "metadata_sha256": "21a28b4753a11aa12cebe08e8b9e2b953c415a103524909b2fe585462a8c457f",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3050.json",
+      "replicate_sha256": "aebff7e2b6627626e60a0878dbcc5b88ce9dfc00ad97073f44524b7d6ae717af",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3050.npy",
+      "zeeman_sha256": "7392edd63114bbd5f4d65b8522e716e85dec6bca2326672dd78857907ec2c772",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3050.json",
+      "zeeman_metadata_sha256": "20dbfba9ad85fcec65246bccec131ca5c671bd4c32755d72698f4ed45ec1f8ed",
+      "shape": [
+        835,
+        6
+      ],
+      "n_survivors": 835
+    },
+    {
+      "zeeman_seed": 3051,
+      "mot_seed": 43051,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3051_mot_seed43051.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3051_mot_seed43051.json",
+      "sha256": "e3753bfd20c8e063add4abbf52c5bbac623d3ab0c4f8e3c2e147c67fae6b437f",
+      "metadata_sha256": "5d82791ea7c4e11376c3e2037c86be779a0a9dade85bd7d7ad24ee252721c600",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3051.json",
+      "replicate_sha256": "ce7342817083f73be45d52671b658e7d58aa5fdd978097dc334e8a7eee2efa7e",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3051.npy",
+      "zeeman_sha256": "3e6b65887d8bed1b043e74992a631c9d174d17f0cab21a30bf5eaec208da4215",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3051.json",
+      "zeeman_metadata_sha256": "8653bbc338537e63cd2eabdf55bac937ca70d660cde33a92aff9c88da80c0250",
+      "shape": [
+        876,
+        6
+      ],
+      "n_survivors": 876
+    },
+    {
+      "zeeman_seed": 3052,
+      "mot_seed": 43052,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3052_mot_seed43052.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3052_mot_seed43052.json",
+      "sha256": "29b70bf36b1b20798242be841bbc9753f6eda18ee678e95ec11a9ec4d3b50985",
+      "metadata_sha256": "893882c3a4c401f6a79f03995f3215913a457ac3c7560f500280b04fe91f01f3",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3052.json",
+      "replicate_sha256": "e4362e1d010528178e7a448cdde2a744e042c2f127076f9d66a7971b9e626353",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3052.npy",
+      "zeeman_sha256": "aa797a42834704dc0abd35050447253ac6d82372c36e8641a4dce68a006d60a8",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3052.json",
+      "zeeman_metadata_sha256": "73f811f050d4a556b6bf11d265af2a0d6d02d317c402b1ac04de8e1b6bd1ea71",
+      "shape": [
+        804,
+        6
+      ],
+      "n_survivors": 804
+    },
+    {
+      "zeeman_seed": 3053,
+      "mot_seed": 43053,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3053_mot_seed43053.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3053_mot_seed43053.json",
+      "sha256": "64d95ace0adbf1768ccf64c96066e8ae97ba9f4f4f3def3b09250f80492004ec",
+      "metadata_sha256": "198c38a9f77127ebd13946d8edb73943a427df89c2e9b110f4ec918c80311a3e",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3053.json",
+      "replicate_sha256": "410146658fea779a272a5ff54aa3768a75902aa43a0754f32ff1fe0f917f821f",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3053.npy",
+      "zeeman_sha256": "bd5e18814d95cd875e5073cbe8bce2e19476d33043688ed7509d3832b35b4efc",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3053.json",
+      "zeeman_metadata_sha256": "49d95c619710161b4d5936a5a0d184079799067d4675c900e508d74c1ea7cbd0",
+      "shape": [
+        778,
+        6
+      ],
+      "n_survivors": 778
+    },
+    {
+      "zeeman_seed": 3054,
+      "mot_seed": 43054,
+      "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3054_mot_seed43054.npy",
+      "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_2d_mot/mot_2d_survivors_zeeman_seed3054_mot_seed43054.json",
+      "sha256": "8f9600efa0b61f9db00916c52cd457f75a3529857a93a48194fa8035620a9e87",
+      "metadata_sha256": "0f91055f0ea287a752825974bcdf16f9cd29356f74d88340efdfee952887aa89",
+      "replicate_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/mot_2d_records/replicates/zeeman_seed3054.json",
+      "replicate_sha256": "71e9a5596b38e89f3fc027cf2d6ec16c8055fb513ca7bd58ed5f09203612b5b6",
+      "zeeman_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3054.npy",
+      "zeeman_sha256": "c8af299688c532bc8a8911623ec4c9796a6d627fb44b6f76f001a7eb0a14b155",
+      "zeeman_metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman/production_zeeman_n50000_dt40us_seed3054.json",
+      "zeeman_metadata_sha256": "af46dc446ab0d0cb66740e4ccfd5c560186f6b2078d30900f1a54f21438f5427",
+      "shape": [
+        828,
+        6
+      ],
+      "n_survivors": 828
+    }
+  ],
+  "total_survivors": 16675
+}

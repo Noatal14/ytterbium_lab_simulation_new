@@ -1,0 +1,41 @@
+{
+  "kind": "mot_3d_paired_capture_time_seed",
+  "family": "angled_donut",
+  "candidate_id": "angled_donut_finalist_03",
+  "recoil_seed": 44001,
+  "design": {
+    "campaign_manifest_sha256": "bfd6cde7441892ab6220a87115b0e2ddb93ccee23c1533941c4a1040d1615c6d",
+    "locked_nominals_sha256": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+    "input_manifest_sha256": "dc9ff236c1cfe0c10680a9b0bebf790e6ab59df94940f7bad9d2e47375882d18",
+    "family": "angled_donut",
+    "recoil_seed": 44001,
+    "dt_s": 5e-06,
+    "t_max_s": 0.05,
+    "solver": "RK4StHybridCustom",
+    "classification": "sealed_unbiased_final_validation"
+  },
+  "capture_config": {
+    "capture_radius_m": 0.005,
+    "diagnostic_radii_m": [
+      0.005,
+      0.0075,
+      0.01
+    ],
+    "minimum_residence_time_s": 0.005,
+    "maximum_final_speed_m_s": 1.0
+  },
+  "early_time_s": 0.03,
+  "final_time_s": 0.05,
+  "canonical_outcomes_sha256": "5903564a47e6775632311d5b5006b5771cf5d9532eb2a4904c1fdaba69cc56d7",
+  "canonical_outcomes_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_5us_50ms/angled_donut/seed_44001.npz",
+  "input_particle_count": 16675,
+  "counts": {
+    "eligible_at_30ms": 16588,
+    "eligible_at_50ms": 16635,
+    "lost_after_30ms": 5,
+    "captured_after_30ms": 52,
+    "temporarily_ineligible_after_30ms": 33,
+    "left_capture_region_after_30ms": 4
+  },
+  "outcomes_sha256": "0ab2ec301cedf4455ff739f001d80c3392da17d813164863beadf8eeb1412cfe"
+}

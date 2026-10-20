@@ -1,0 +1,49 @@
+{
+  "endpoint_key_fix": "eligible_at_100ms -> eligible_at_50ms",
+  "original_runtime_unchanged": true,
+  "checkpoint_provenance_unchanged": true,
+  "results": [
+    {
+      "family": "angled_donut",
+      "seed": 44001,
+      "atoms": 16675,
+      "integration_calls": 0,
+      "result_sha256": "15e22c8691e86b13fbe0dfc47271a76be41397fb16e83caa2468dcb2cbca6fef"
+    },
+    {
+      "family": "angled_donut",
+      "seed": 44002,
+      "atoms": 16675,
+      "integration_calls": 0,
+      "result_sha256": "049aa12516bd0040a497657a095944de02a2abab3a74a9930a6d7839058e98d4"
+    },
+    {
+      "family": "angled_donut",
+      "seed": 44003,
+      "atoms": 16675,
+      "integration_calls": 0,
+      "result_sha256": "edb5f7e21a1b4d2989f6e1b9f51188a04ee2c83790915151756baa4f4ae72280"
+    },
+    {
+      "family": "single_pass",
+      "seed": 44001,
+      "atoms": 16675,
+      "integration_calls": 0,
+      "result_sha256": "ddde3779b51d6216335294ef879a48a6a17230247e46185e30a9d97b40e4ee93"
+    },
+    {
+      "family": "single_pass",
+      "seed": 44002,
+      "atoms": 16675,
+      "integration_calls": 0,
+      "result_sha256": "2e7f06dc28da80d2a6a038a70ee97071f359c6def23cd197b7069c2f869f6e3d"
+    },
+    {
+      "family": "single_pass",
+      "seed": 44003,
+      "atoms": 16675,
+      "integration_calls": 0,
+      "result_sha256": "869fb757d9adb35d319e342fd04651aae0bc00d6d924b412413036c03ab20d37"
+    }
+  ]
+}

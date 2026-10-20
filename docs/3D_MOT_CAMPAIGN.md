@@ -84,6 +84,25 @@ bootstrap over ensembles, recoil realizations and particles within ensembles.
 New-ensemble variation is reported separately and does not control the stopping
 rule.
 
+## Completed canonical campaign (2026-10-20)
+
+`mot_3d_s0_1p3_search10us_20261012_v1` is scientifically closed under an
+explicit user-approved execution amendment: final validation used **5 us and
+50 ms**, not the original 0.625-us / 100-ms plan. No timestep-convergence claim
+is made. See [final results and closure](3D_MOT_FINAL_RESULTS.md).
+
+The immutable evidence, paired 30/50-ms diagnostic, checkpoints, exact runtime
+and publication-only repair are archived under
+`data/validation/mot_3d/final_campaign_20261020/`. One-off runtime/submission and
+time-comparison tools were retired from active source after this backup.
+The retained scientific runner and generic campaign lifecycle are unchanged;
+this historical exception does not redefine their default protocol.
+
+The original hashed remote `campaign.json` still records `final_validation`.
+`campaign_closure_20261020.json` records the accepted final amended execution;
+do not run ordinary `advance` on it or rewrite its provenance to make a UI
+status appear complete. Software release acceptance remains a separate gate.
+
 ## Required post-campaign validation: 2D-to-3D transferability
 
 Before deciding that every fixed 2D-MOT `s0` (or every small laboratory

@@ -1459,6 +1459,21 @@ def prepare_final_validation_inputs(root, manifest):
     manifest.update(updated)
 
 
+def _matches_generated_zeeman_reference(reference, expected_path):
+    """Production records basenames relative to its declared ensemble directory.
+
+    Only an exact basename may use that directory. References containing path
+    components retain the existing strict resolved-path comparison.
+    """
+    if not isinstance(reference, str) or not reference:
+        return False
+    recorded = Path(reference)
+    expected = Path(expected_path)
+    if reference == expected.name:
+        return (expected.parent / recorded).resolve() == expected.resolve()
+    return recorded.resolve() == expected.resolve()
+
+
 def _collect_final_validation_inputs(root, manifest):
     stage = manifest["stages"]["final_validation_input_generation"]
     states_dir = root / "final_validation_inputs" / "after_2d_mot"
@@ -1549,15 +1564,17 @@ def _collect_final_validation_inputs(root, manifest):
             or metadata.get("mot_seed") != mseed
             or metadata.get("parameters") != expected_params
             or design != expected_design
-            or Path(metadata.get("source_zeeman_ensemble", "")).resolve()
-            != zeeman_path.resolve()
+            or not _matches_generated_zeeman_reference(
+                metadata.get("source_zeeman_ensemble"), zeeman_path
+            )
             or replicate.get("kind") != "mot_2d_final_production_replicate"
             or replicate.get("parameters") != expected_params
             or replicate.get("design") != expected_design
             or replicate.get("replicate", {}).get("zeeman_seed") != zseed
             or replicate.get("replicate", {}).get("mot_seed") != mseed
-            or Path(replicate.get("replicate", {}).get("ensemble_file", "")).resolve()
-            != zeeman_path.resolve()
+            or not _matches_generated_zeeman_reference(
+                replicate.get("replicate", {}).get("ensemble_file"), zeeman_path
+            )
             or replicate.get("replicate", {}).get("captured") != len(values)
             or list(values.shape) != metadata.get("shape")
             or metadata.get("output_sha256") != _sha256(path)

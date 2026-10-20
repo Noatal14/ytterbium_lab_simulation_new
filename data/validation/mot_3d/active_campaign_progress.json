@@ -1,0 +1,14 @@
+{
+  "kind": "informational_campaign_handoff_not_scientific_input",
+  "campaign": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1",
+  "status": "closed_with_approved_protocol_amendment",
+  "updated": "2026-10-20",
+  "closure": "data/validation/mot_3d/final_campaign_20261020/closure.json",
+  "results_document": "docs/3D_MOT_FINAL_RESULTS.md",
+  "remote_closure": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/campaign_closure_20261020.json",
+  "additional_jobs_authorized": false,
+  "dt_s": 0.000005,
+  "t_max_s": 0.05,
+  "original_manifest_preserved": true,
+  "ui_release_acceptance": "separate; not certified by scientific closure"
+}

@@ -1,0 +1,1534 @@
+{
+  "kind": "mot_3d_campaign_v2",
+  "name": "mot_3d_s0_1p3_search10us_20261012_v1",
+  "stage": "final_validation",
+  "provenance": {
+    "git_commit": "7facc798d89c5386cacca3f37b5d1158c147348c",
+    "physical_model_sha256": "a59025be662f7554b303ed7c4bbdd9d0f85ee99a3490f1d7093da9f2dbf2a759"
+  },
+  "input_directory": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3",
+  "upstream_2d_campaign": {
+    "campaign_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/campaign.json",
+    "campaign_sha256": "32fc98767b61f3a63ff2dc3829650aa7f0e1de94a2f637ac1a29274666591380",
+    "final_report_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/final_report.json",
+    "final_report_sha256": "072a84ecd0ff845b9733d606e9f398d946d29fbce89ec619c2edd67ee27cedc2",
+    "git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+    "physical_model_sha256": "21c8aa2e06f8be7a3997f909306303ddbc57726862477504278822b98f8f0df2",
+    "sealed_seed_pairs": [
+      {
+        "zeeman_seed": 3015,
+        "mot_seed": 43015
+      },
+      {
+        "zeeman_seed": 3016,
+        "mot_seed": 43016
+      },
+      {
+        "zeeman_seed": 3017,
+        "mot_seed": 43017
+      },
+      {
+        "zeeman_seed": 3018,
+        "mot_seed": 43018
+      },
+      {
+        "zeeman_seed": 3019,
+        "mot_seed": 43019
+      },
+      {
+        "zeeman_seed": 3020,
+        "mot_seed": 43020
+      },
+      {
+        "zeeman_seed": 3021,
+        "mot_seed": 43021
+      },
+      {
+        "zeeman_seed": 3022,
+        "mot_seed": 43022
+      },
+      {
+        "zeeman_seed": 3023,
+        "mot_seed": 43023
+      },
+      {
+        "zeeman_seed": 3024,
+        "mot_seed": 43024
+      },
+      {
+        "zeeman_seed": 3025,
+        "mot_seed": 43025
+      },
+      {
+        "zeeman_seed": 3026,
+        "mot_seed": 43026
+      },
+      {
+        "zeeman_seed": 3027,
+        "mot_seed": 43027
+      },
+      {
+        "zeeman_seed": 3028,
+        "mot_seed": 43028
+      },
+      {
+        "zeeman_seed": 3029,
+        "mot_seed": 43029
+      },
+      {
+        "zeeman_seed": 3030,
+        "mot_seed": 43030
+      },
+      {
+        "zeeman_seed": 3031,
+        "mot_seed": 43031
+      },
+      {
+        "zeeman_seed": 3032,
+        "mot_seed": 43032
+      },
+      {
+        "zeeman_seed": 3033,
+        "mot_seed": 43033
+      },
+      {
+        "zeeman_seed": 3034,
+        "mot_seed": 43034
+      }
+    ],
+    "selected_result": {
+      "s0": 1.3,
+      "recommended_parameters": {
+        "s0": 1.3,
+        "detuning_gamma": -0.9196610026631429,
+        "magnet_radius": 0.04676406447474441
+      },
+      "warnings": [
+        "target_95_prediction_half_width_not_met",
+        "robust_operating_region_not_established",
+        "epsilon_near_optimality_not_established"
+      ],
+      "sensitivity": {
+        "reference": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        },
+        "points": [
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9296610026631429,
+              "magnet_radius": 0.04675406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.026000000000000002,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 4.000000000000045e-05,
+              "95_ci_fraction": [
+                -0.0014334385959975699,
+                0.001513438595997571
+              ],
+              "95_ci_half_width_fraction": 0.0014734385959975704,
+              "differences_fraction": [
+                -0.00030000000000000165,
+                9.99999999999994e-05,
+                -0.0003999999999999976,
+                0.0009000000000000015,
+                -9.99999999999994e-05
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9296610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.02554,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.00042000000000000023,
+              "95_ci_fraction": [
+                -0.0029926201863162485,
+                0.002152620186316248
+              ],
+              "95_ci_half_width_fraction": 0.0025726201863162483,
+              "differences_fraction": [
+                -0.0010000000000000009,
+                -0.0015000000000000013,
+                -0.0005000000000000004,
+                0.0008000000000000021,
+                9.99999999999994e-05
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9296610026631429,
+              "magnet_radius": 0.046774064474744415
+            },
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02556,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.000399999999999999,
+              "95_ci_fraction": [
+                -0.002969469394948659,
+                0.0021694693949486613
+              ],
+              "95_ci_half_width_fraction": 0.00256946939494866,
+              "differences_fraction": [
+                -9.99999999999994e-05,
+                -0.0019999999999999983,
+                0.0,
+                0.00020000000000000226,
+                -9.99999999999994e-05
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.04675406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.025980000000000003,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 2.0000000000000574e-05,
+              "95_ci_fraction": [
+                -0.002104184533585187,
+                0.002144184533585188
+              ],
+              "95_ci_half_width_fraction": 0.0021241845335851876,
+              "differences_fraction": [
+                -9.99999999999994e-05,
+                -0.0011999999999999997,
+                0.0005000000000000004,
+                0.00020000000000000226,
+                0.0006999999999999992
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.02596,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0,
+              "95_ci_fraction": [
+                0.0,
+                0.0
+              ],
+              "95_ci_half_width_fraction": 0.0,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "within_loss_margin_at_95_percent": true
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.046774064474744415
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02566,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.00030000000000000024,
+              "95_ci_fraction": [
+                -0.0030373826554023374,
+                0.0024373826554023367
+              ],
+              "95_ci_half_width_fraction": 0.002737382655402337,
+              "differences_fraction": [
+                -0.0009000000000000015,
+                -0.0016000000000000007,
+                0.0006999999999999992,
+                -0.0001999999999999988,
+                0.0005000000000000004
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9096610026631429,
+              "magnet_radius": 0.04675406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02616,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.00020000000000000017,
+              "95_ci_fraction": [
+                -0.0026390705527227338,
+                0.003039070552722734
+              ],
+              "95_ci_half_width_fraction": 0.002839070552722734,
+              "differences_fraction": [
+                -0.00040000000000000105,
+                -0.0011999999999999997,
+                0.0005000000000000004,
+                0.0013000000000000025,
+                0.0007999999999999986
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9096610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.026000000000000002,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 4.000000000000045e-05,
+              "95_ci_fraction": [
+                -0.0033908161986023304,
+                0.0034708161986023315
+              ],
+              "95_ci_half_width_fraction": 0.003430816198602331,
+              "differences_fraction": [
+                -0.0017999999999999995,
+                0.0001999999999999988,
+                0.0005000000000000004,
+                0.0015000000000000013,
+                -0.0001999999999999988
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9096610026631429,
+              "magnet_radius": 0.046774064474744415
+            },
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02622,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0002600000000000005,
+              "95_ci_fraction": [
+                -0.00150142449606987,
+                0.002021424496069871
+              ],
+              "95_ci_half_width_fraction": 0.0017614244960698704,
+              "differences_fraction": [
+                -0.0007000000000000027,
+                0.0005000000000000004,
+                0.00020000000000000226,
+                0.0010000000000000009,
+                0.00030000000000000165
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9396610026631429,
+              "magnet_radius": 0.04666406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "mean_efficiency": 0.0262,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.00023999999999999992,
+              "95_ci_fraction": [
+                -0.002862221940740678,
+                0.0033422219407406775
+              ],
+              "95_ci_half_width_fraction": 0.0031022219407406777,
+              "differences_fraction": [
+                -0.0007000000000000027,
+                -0.0006999999999999992,
+                -9.99999999999994e-05,
+                0.0009000000000000015,
+                0.0017999999999999995
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9396610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.0262,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.00024000000000000063,
+              "95_ci_fraction": [
+                -0.0018183323001485004,
+                0.0022983323001485017
+              ],
+              "95_ci_half_width_fraction": 0.002058332300148501,
+              "differences_fraction": [
+                -0.00030000000000000165,
+                9.99999999999994e-05,
+                -0.0003999999999999976,
+                0.001400000000000002,
+                0.00040000000000000105
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9396610026631429,
+              "magnet_radius": 0.046864064474744414
+            },
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "mean_efficiency": 0.02592,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -3.999999999999976e-05,
+              "95_ci_fraction": [
+                -0.003882890228647075,
+                0.003802890228647076
+              ],
+              "95_ci_half_width_fraction": 0.0038428902286470755,
+              "differences_fraction": [
+                -0.0016000000000000007,
+                -0.0010000000000000009,
+                -0.0002999999999999982,
+                0.0013000000000000025,
+                0.0013999999999999985
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.04666406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "mean_efficiency": 0.02646,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0005000000000000004,
+              "95_ci_fraction": [
+                -0.0013771945006894853,
+                0.0023771945006894864
+              ],
+              "95_ci_half_width_fraction": 0.0018771945006894857,
+              "differences_fraction": [
+                0.0001999999999999988,
+                -0.0002999999999999982,
+                0.0005000000000000004,
+                0.0015000000000000013,
+                0.0005999999999999998
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.046864064474744414
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "mean_efficiency": 0.02566,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.0002999999999999996,
+              "95_ci_fraction": [
+                -0.002821735156517813,
+                0.002221735156517814
+              ],
+              "95_ci_half_width_fraction": 0.0025217351565178137,
+              "differences_fraction": [
+                -0.0005999999999999998,
+                -0.0017000000000000001,
+                0.0,
+                0.0005000000000000004,
+                0.00030000000000000165
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.8996610026631429,
+              "magnet_radius": 0.04666406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "mean_efficiency": 0.02626,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0002999999999999996,
+              "95_ci_fraction": [
+                -0.0017915176057778184,
+                0.0023915176057778174
+              ],
+              "95_ci_half_width_fraction": 0.002091517605777818,
+              "differences_fraction": [
+                -0.0008000000000000021,
+                9.99999999999994e-05,
+                0.0005999999999999998,
+                0.0011999999999999997,
+                0.00040000000000000105
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.8996610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.025679999999999998,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.0002800000000000004,
+              "95_ci_fraction": [
+                -0.002569374204581306,
+                0.0020093742045813054
+              ],
+              "95_ci_half_width_fraction": 0.0022893742045813057,
+              "differences_fraction": [
+                -0.00040000000000000105,
+                -0.0010000000000000009,
+                -0.0005999999999999998,
+                0.0011000000000000003,
+                -0.0005000000000000004
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.8996610026631429,
+              "magnet_radius": 0.046864064474744414
+            },
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "mean_efficiency": 0.0256,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.0003599999999999999,
+              "95_ci_fraction": [
+                -0.0041176241497615715,
+                0.0033976241497615718
+              ],
+              "95_ci_half_width_fraction": 0.003757624149761572,
+              "differences_fraction": [
+                -0.0007000000000000027,
+                -0.0023999999999999994,
+                -0.0002999999999999982,
+                0.0008000000000000021,
+                0.0007999999999999986
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          }
+        ],
+        "production_selection": {
+          "parameters": {
+            "s0": 1.3,
+            "detuning_gamma": -0.9196610026631429,
+            "magnet_radius": 0.04676406447474441
+          },
+          "offsets_from_confirmed_winner": {
+            "detuning_gamma": 0.0,
+            "magnet_radius_m": 0.0
+          },
+          "mean_efficiency": 0.02596,
+          "comparison_to_confirmed_winner": {
+            "mean_difference_fraction": 0.0,
+            "95_ci_fraction": [
+              0.0,
+              0.0
+            ],
+            "95_ci_half_width_fraction": 0.0,
+            "differences_fraction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "selection_reason": "no_sensitivity_neighbor_clearly_better_at_95_percent",
+          "familywise_method": "Bonferroni simultaneous paired intervals",
+          "familywise_confidence_per_comparison": 0.996875
+        },
+        "robustness_status": "not_established_pending_adaptive_challenger_validation",
+        "near_optimality_status": "not_established_pending_domain_challenger_elimination"
+      },
+      "prediction": {
+        "reporting_zeeman_survivors": 10000000,
+        "simulated_zeeman_survivors": 634783,
+        "simulated_captured_atoms": 16883,
+        "pooled_conditional_efficiency": 0.026596490454218212,
+        "expected_captured_atoms": 265965,
+        "predicted_95_interval_fraction": [
+          0.0260770925,
+          0.0271680025
+        ],
+        "predicted_95_captured_atoms_interval": [
+          260771,
+          271680
+        ],
+        "predicted_95_half_width_fraction": 0.0005454550000000002,
+        "predicted_95_half_width_percentage_points": 0.054545500000000025,
+        "binomial_mean_variance": 4.0784200505900275e-08,
+        "empirical_between_ensemble_mean_variance": 3.4632694924472833e-08,
+        "selected_mean_variance": 4.0784200505900275e-08,
+        "selected_mean_variance_source": "pooled_binomial",
+        "critical_value": 1.96,
+        "future_counting_variance": 2.5889117149736892e-09,
+        "uncertainty_method": "20,000-draw cluster-aware parametric bootstrap: independent Zeeman/MOT ensemble pairs are resampled as clusters, finite within-cluster capture uncertainty is sampled with a Jeffreys beta model, cluster probabilities are pooled with their resampled survivor counts as weights, and future counting noise is sampled binomially",
+        "bootstrap_replicates": 20000
+      },
+      "target_uncertainty_passes": false,
+      "survivor_states_directory": "data/particle_states/after_2d_mot/final_ensemble_s0_1.3"
+    },
+    "expected_survivor_design": {
+      "git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+      "dt_s": 6.25e-07,
+      "stochastic_solver": "RK4StHybridCustom",
+      "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+      "zeeman_profile": "corrected_projectant_19ring_20261005"
+    },
+    "expected_survivor_parameters": {
+      "s0": 1.3,
+      "detuning_gamma": -0.9196610026631429,
+      "magnet_radius": 0.04676406447474441
+    },
+    "laboratory_provenance": {
+      "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534",
+      "legacy_attested_profile": true
+    }
+  },
+  "input_roles": {
+    "discovery": [
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.json",
+        "metadata_sha256": "67fd9579d862985dc5863dc355221d7a113cccce2530cdcd1d80b4c4133549b7",
+        "sha256": "78465dcd8f2c7475fe0576236ea6a18de52eb83cfd8a269a8f81cb75ab84773a",
+        "shape": [
+          813,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3015,
+        "mot_seed": 43015,
+        "n_survivors": 813,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.json",
+        "metadata_sha256": "4b4eb9adb1af11bcb2265773ef2655b38164cd971cbc9ca71107c2b870ff5243",
+        "sha256": "bd6bae15954dcf3ebacd35704c744b9bba53f88fc2298ff45064a9cff6a1b947",
+        "shape": [
+          820,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3016,
+        "mot_seed": 43016,
+        "n_survivors": 820,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.json",
+        "metadata_sha256": "38343b731cf9e805ae96c4935abb2bdc22cf6f65adcc453aaf335a0c6319956d",
+        "sha256": "ad6ce20394e1ee8e038c2fb66da34ab74281dee6c9e14a104ac9bce6c29565dd",
+        "shape": [
+          842,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3017,
+        "mot_seed": 43017,
+        "n_survivors": 842,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.json",
+        "metadata_sha256": "a5ba458d275fd04d62423084ef393041840cd2ad9a6fe14d0ef96d913352fedf",
+        "sha256": "93e2c1daff71443f9f260f1224969cbd4c640ce3dccf079f2c594c549a03558c",
+        "shape": [
+          879,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3018,
+        "mot_seed": 43018,
+        "n_survivors": 879,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.json",
+        "metadata_sha256": "c7adfa5dc0f744c5053be08a72805906b23a43130c2915eb66e8293e5a24b7c9",
+        "sha256": "cead1d6fd3401da028819db6fcdca181d51e6047dd22cdea65a0461d720ad08c",
+        "shape": [
+          843,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3019,
+        "mot_seed": 43019,
+        "n_survivors": 843,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.json",
+        "metadata_sha256": "527f9e679a52e9a539f8134ef7c722f8597320c4533c91f9649b6b57eb1341ed",
+        "sha256": "facc6c35038bc9229220eabc5fe22eaaf2fefd24c84297b1980f2046b56712f8",
+        "shape": [
+          840,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3020,
+        "mot_seed": 43020,
+        "n_survivors": 840,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.json",
+        "metadata_sha256": "457200d80514215a7696683b7dd61eec8d0db529fd2d4d1f97cce093679bd851",
+        "sha256": "94cbac84e40ca5bdb326e3b872a61f738180e53cc5eac04271856fa9884bb051",
+        "shape": [
+          879,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3021,
+        "mot_seed": 43021,
+        "n_survivors": 879,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.json",
+        "metadata_sha256": "a3e2bc5dd14a5551f63a53bd4491509951345c5bfe5ed1ad4337c513eac90ee5",
+        "sha256": "9a386c4cdbfdc899096f1094e2a11521f4b2d0abfb1168c97074789a2044a339",
+        "shape": [
+          908,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3022,
+        "mot_seed": 43022,
+        "n_survivors": 908,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.json",
+        "metadata_sha256": "36b177ec999a12bca1e60d59ae8ec630cb16c57b304f3f2bb95f0e5a03476e49",
+        "sha256": "73a8e4f7ba9809afaa605217316f7bda95af5f40b821bbd329eebd1ed21df345",
+        "shape": [
+          844,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3023,
+        "mot_seed": 43023,
+        "n_survivors": 844,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.json",
+        "metadata_sha256": "ed0197e830c9f66946529cb0a5e70fef0d86817c494463607b8ade5a5cf0b682",
+        "sha256": "55ca69ba7181d1f066326326078d740a94da2e4e4a5a3d827e68daafafdf6d5a",
+        "shape": [
+          832,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3024,
+        "mot_seed": 43024,
+        "n_survivors": 832,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.json",
+        "metadata_sha256": "fb463b8d4bc3a8128d620ac7441e17c365f9b3d5fe9d9a1147c08b6707cb9b51",
+        "sha256": "0c0b5dee91aa0ea345a03c153778b37d5522bdadf025641efc7dc8c123dbc5b8",
+        "shape": [
+          827,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3025,
+        "mot_seed": 43025,
+        "n_survivors": 827,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.json",
+        "metadata_sha256": "16ba84680e9ecf136c0e70a997c153989f25c81db94fd59a7355dcf643121f01",
+        "sha256": "83f52ab53a442c2ad5af889e88e1d67d64fedba6f88cd1fd93ad4ba9ce431ad0",
+        "shape": [
+          839,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3026,
+        "mot_seed": 43026,
+        "n_survivors": 839,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      }
+    ],
+    "refinement": [
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.json",
+        "metadata_sha256": "bcbe40dd1df0a81cee505a746b06194ed21074e73c3a0ee0d8c4412a1056659f",
+        "sha256": "03e15553b2b5763ffb6bd4981bf3905932063f73c411953f478b8af34a66d87c",
+        "shape": [
+          828,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3027,
+        "mot_seed": 43027,
+        "n_survivors": 828,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.json",
+        "metadata_sha256": "6666bf85719c49472c49eb34f14e7de7ef5a023935e40612e16d7ae4c5c03473",
+        "sha256": "ec0ab550a70e4248a2bbcc00fa7e61d7ceccd4de4f971d6e8fa77fd20eb7121a",
+        "shape": [
+          823,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3028,
+        "mot_seed": 43028,
+        "n_survivors": 823,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.json",
+        "metadata_sha256": "e375cf6bf824686c612e336507ee483ea7b02b0b7be15f39144b80e0347496a6",
+        "sha256": "02a6eb82961074d041fa15a15b0d16ee598150c1cdeae4c40481f5d0cec10dcb",
+        "shape": [
+          819,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3029,
+        "mot_seed": 43029,
+        "n_survivors": 819,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.json",
+        "metadata_sha256": "f92fcda0280d79cdb62a494bb9a4a9d5162de2de73528094708154dd2400b636",
+        "sha256": "09dbc270e2f18b43a619febbe698fe5223913e178518b9ac099fc61814903d66",
+        "shape": [
+          884,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3030,
+        "mot_seed": 43030,
+        "n_survivors": 884,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      }
+    ],
+    "preliminary_check": [
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.json",
+        "metadata_sha256": "bbc560d4fd28a86485127f34644f6b05a85d1666da9476e1c7ecebc9df1a630b",
+        "sha256": "a123854931e168366d1d32729f1cc6df0f5ff6284a318eeb3bb5ae395d7b8b57",
+        "shape": [
+          857,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3031,
+        "mot_seed": 43031,
+        "n_survivors": 857,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.json",
+        "metadata_sha256": "bcc51a309b42465c3884fd23134f724559fbf3afe2ff14b01fa3ce5a990ce83f",
+        "sha256": "0b895fbd73af3a6dc79f272e7aafa0ad9c226d284a8114622f47e560b73ed573",
+        "shape": [
+          817,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3032,
+        "mot_seed": 43032,
+        "n_survivors": 817,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.json",
+        "metadata_sha256": "ce713f8d8ab902eccf857a9dc6a0f494cd785424267b51ddaf2abfe5be991495",
+        "sha256": "3da4b0d077114f1831320618cd8b315c719f293d0c2c82eac080e65a8992ac62",
+        "shape": [
+          833,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3033,
+        "mot_seed": 43033,
+        "n_survivors": 833,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      },
+      {
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.json",
+        "metadata_sha256": "47825f8aa74f0cf067f8d511ce854d0046820cbfa3cb7bac6efe2bfc63ce0f1f",
+        "sha256": "758a30edd8f4314f9ef1f9f0cd671b109206013271c4bbfb468d78a298f63c34",
+        "shape": [
+          856,
+          6
+        ],
+        "dtype": "float64",
+        "zeeman_seed": 3034,
+        "mot_seed": 43034,
+        "n_survivors": 856,
+        "source_git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+        "source_design": {
+          "dt_s": 6.25e-07,
+          "stochastic_solver": "RK4StHybridCustom",
+          "uses_all_available_particles": true,
+          "npools": 150,
+          "ensemble_dir": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+          "zeeman_profile": "corrected_projectant_19ring_20261005",
+          "git_commit": "9bdacac8d223e59033a883bc331e256bca392075"
+        },
+        "source_parameters": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        }
+      }
+    ]
+  },
+  "design": {
+    "families": [
+      "angled_donut",
+      "single_pass"
+    ],
+    "solver": "RK4StHybridCustom",
+    "screening_dt_s": 1e-05,
+    "production_dt_s": 6.25e-07,
+    "timestep_status": "pragmatic_user_approved_not_converged",
+    "dt_validation_candidates_s": [
+      1e-05,
+      5e-06,
+      2.5e-06,
+      1.25e-06,
+      6.25e-07
+    ],
+    "dt_validation_reference_s": 3.125e-07,
+    "green_full_angle_deg": 62.0,
+    "donut_shared_aperture_radius_m": 0.005,
+    "single_pass_green_aperture_radius_m": 0.005,
+    "single_pass_blue_aperture_radius_m": 0.0075,
+    "power_feasibility_status": "unknown_no_experimental_power_cap_provided",
+    "power_policy": "record per-candidate power proxies and boundary hits; do not reject trials or claim laboratory feasibility",
+    "selection_statistics": {
+      "estimand": "survivor-weighted conditional capture fraction",
+      "alpha": 0.05,
+      "bootstrap_replicates": 10000,
+      "multiplicity": "paired max-T simultaneous confidence bounds",
+      "ranking_rule": "largest lower endpoint of the simultaneous two-sided 95% interval"
+    },
+    "optimization_bounds": {
+      "common": {
+        "green_s0_bounds": [
+          0.5,
+          150.0
+        ],
+        "green_detuning_gamma_bounds": [
+          -35.0,
+          -5.0
+        ],
+        "green_waist_m_bounds": [
+          0.002,
+          0.02
+        ],
+        "blue_s0_bounds": [
+          0.05,
+          1.5
+        ],
+        "blue_waist_m_bounds": [
+          0.002,
+          0.02
+        ],
+        "magnetic_gradient_G_cm_bounds": [
+          0.5,
+          100.0
+        ],
+        "particles_per_trial": 600,
+        "t_max_s": 0.1
+      },
+      "angled_donut": {
+        "blue_detuning_gamma_bounds": [
+          -6.0,
+          -0.5
+        ],
+        "core_shell_split_radius_m_bounds": [
+          0.0005,
+          0.0049
+        ],
+        "shared_aperture_radius_m": 0.005,
+        "total_discovery_trials": 350
+      },
+      "single_pass": {
+        "blue_detuning_anchor_gamma_bounds": [
+          -3.75,
+          -1.75
+        ],
+        "blue_crossing_angle_deg_bounds": [
+          45.0,
+          70.0
+        ],
+        "blue_crossing_z_offset_m_bounds": [
+          -0.05,
+          -0.04
+        ],
+        "maximum_blue_center_relative_intensity": 0.001,
+        "green_full_angle_deg": 62.0,
+        "green_aperture_radius_m": 0.005,
+        "blue_aperture_radius_m": 0.0075,
+        "slowing_position_waist_factor": 1.1,
+        "blue_zeeman_gamma_per_G": 0.04969,
+        "reference_gradient_G_cm": 2.5,
+        "reference_crossing_z_offset_m": -0.05,
+        "reference_blue_waist_m": 0.0075,
+        "total_discovery_trials": 600
+      }
+    },
+    "final_validation_inputs": "newly generated and sealed after finalist selection",
+    "timestep_evidence": {
+      "policy_spec_version": "mot-3d-timestep-policy-v1",
+      "policy_sha256": "00cfde9bf98f50cda79a5105462b382ff9b81e259488eb0e5ad69100903c8482",
+      "policy_status": "pragmatic_user_approved_after_inconclusive_study",
+      "convergence_claim": "not_established",
+      "inconclusive_evidence": {
+        "campaign_name": "mot_3d_s0_1p3_20261010_v1",
+        "study_date": "2026-10-10",
+        "status": "inconclusive_degenerate_sentinel",
+        "artifact_availability": "reported_on_zeus_not_imported",
+        "archive_path": "docs/evidence/mot_3d_timestep_20261010_inconclusive.json",
+        "evidence_sha256": "3426f50916a14fe02beccf203119ab8310ac581bc91af21b968aab158045fbac",
+        "tasks_sha256": null,
+        "raw_result_registry_sha256": null
+      },
+      "source_handoff": {
+        "campaign_sha256": "32fc98767b61f3a63ff2dc3829650aa7f0e1de94a2f637ac1a29274666591380",
+        "final_report_sha256": "072a84ecd0ff845b9733d606e9f398d946d29fbce89ec619c2edd67ee27cedc2",
+        "input_registry_sha256": "3c91d3c93baf423023b14c6e97a68682761cb678f7f66d21d4a8e72676903122"
+      }
+    }
+  },
+  "jobs": {
+    "smoke": {
+      "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/01_smoke_angled_donut.pbs",
+      "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/01_smoke_single_pass.pbs"
+    },
+    "discovery_rounds": {
+      "angled_donut": [
+        "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/angled_donut/round_01.pbs",
+        "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/angled_donut/round_02.pbs"
+      ],
+      "single_pass": [
+        "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/single_pass/round_01.pbs",
+        "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/single_pass/round_02.pbs",
+        "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/single_pass/round_03.pbs"
+      ]
+    },
+    "discovery_submit_chain": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/02_submit_discovery_chain.sh",
+    "dependency": "afterok"
+  },
+  "stages": {
+    "preliminary_check": {
+      "classification": "candidate_selection_not_final_validation",
+      "selection_files": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/discovery/angled_donut.json",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/discovery/single_pass.json"
+      },
+      "worker_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/preliminary_check/angled_donut_array.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/preliminary_check/single_pass_array.pbs"
+      },
+      "merge_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/preliminary_check/angled_donut_merge.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/preliminary_check/single_pass_merge.pbs"
+      },
+      "input_role": "preliminary_check"
+    },
+    "refinement": {
+      "classification": "candidate_selection_not_final_validation",
+      "selection_files": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/refinement/angled_donut.json",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/refinement/single_pass.json"
+      },
+      "worker_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/refinement/angled_donut_array.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/refinement/single_pass_array.pbs"
+      },
+      "merge_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/refinement/angled_donut_merge.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/refinement/single_pass_merge.pbs"
+      },
+      "input_role": "refinement"
+    },
+    "closure": {
+      "classification": "candidate_selection_not_final_validation",
+      "selection_files": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/closure/angled_donut.json",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/closure/single_pass.json"
+      },
+      "worker_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/closure/angled_donut_array.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/closure/single_pass_array.pbs"
+      },
+      "merge_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/closure/angled_donut_merge.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/closure/single_pass_merge.pbs"
+      },
+      "input_role": "refinement"
+    },
+    "finalist_selection": {
+      "classification": "final_candidate_selection_not_unbiased_validation",
+      "selection_files": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/finalists/angled_donut.json",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/finalists/single_pass.json"
+      },
+      "worker_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/finalist_selection/angled_donut_array.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/finalist_selection/single_pass_array.pbs"
+      },
+      "merge_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/finalist_selection/angled_donut_merge.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/finalist_selection/single_pass_merge.pbs"
+      },
+      "input_roles": [
+        "discovery",
+        "refinement",
+        "preliminary_check"
+      ]
+    },
+    "final_validation_input_generation": {
+      "classification": "new_unopened_inputs_after_nominal_lock",
+      "locked_nominals": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/locked_nominals.json",
+      "zeeman_seeds": [
+        3035,
+        3036,
+        3037,
+        3038,
+        3039,
+        3040,
+        3041,
+        3042,
+        3043,
+        3044,
+        3045,
+        3046,
+        3047,
+        3048,
+        3049,
+        3050,
+        3051,
+        3052,
+        3053,
+        3054
+      ],
+      "mot_seeds": [
+        43035,
+        43036,
+        43037,
+        43038,
+        43039,
+        43040,
+        43041,
+        43042,
+        43043,
+        43044,
+        43045,
+        43046,
+        43047,
+        43048,
+        43049,
+        43050,
+        43051,
+        43052,
+        43053,
+        43054
+      ],
+      "zeeman_job": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation_inputs/01_generate_zeeman.pbs",
+      "mot_job": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation_inputs/02_generate_2d_survivors.pbs",
+      "freeze_job": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation_inputs/03_freeze_inputs.pbs",
+      "input_manifest": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/input_manifest.json"
+    },
+    "final_validation": {
+      "classification": "sealed_unbiased_final_validation",
+      "locked_nominals": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/selection/locked_nominals.json",
+      "input_manifest": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/input_manifest.json",
+      "worker_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation/angled_donut_array.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation/single_pass_array.pbs"
+      },
+      "merge_jobs": {
+        "angled_donut": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation/angled_donut_merge.pbs",
+        "single_pass": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/jobs/final_validation/single_pass_merge.pbs"
+      }
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "kind": "mot_3d_locked_nominals",
+  "classification": "locked_before_new_validation_inputs",
+  "campaign_manifest_sha256_before_stage": "d76beb7238fc251b695369fe92855c87140464fd5362b5d6be9cb9505261f3a5",
+  "families": {
+    "angled_donut": {
+      "candidate_id": "angled_donut_finalist_03",
+      "parameters": {
+        "green_s0": 130.38311874889104,
+        "green_detuning_gamma": -5.932550002692984,
+        "green_waist_m": 0.008563583550927088,
+        "blue_s0": 1.3667027005835732,
+        "blue_waist_m": 0.018145079659869626,
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "blue_detuning_gamma": -3.120575392133525,
+        "core_shell_split_radius_m": 0.0008219179673853373
+      },
+      "derived_parameters": {},
+      "resolved_profile": {
+        "description": "Two xz axes with a 62-degree full included angle plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell, and the common chamber hole clips both colors at 5 mm radius.",
+        "beam_layout": "angled_xz_y",
+        "xz_angle_from_z_deg": 31.0,
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 25.83531679690036,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "blue_green_center_separation_m": 0.0,
+        "399": {
+          "enabled": true,
+          "s0": 1.3667027005835732,
+          "detuning_gamma": -3.120575392133525,
+          "waist_m": 0.018145079659869626,
+          "profile": "donut",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "inner_cutoff_radius_m": 0.0008219179673853373,
+          "outer_cutoff_radius_m": 0.005
+        },
+        "556": {
+          "enabled": true,
+          "s0": 130.38311874889104,
+          "detuning_gamma": -5.932550002692984,
+          "waist_m": 0.008563583550927088,
+          "profile": "outer_clipped_gaussian",
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          },
+          "outer_cutoff_radius_m": 0.0008219179673853373
+        }
+      },
+      "selection_summary_sha256": "1824865942281061c2d065e909aa34a1b22fc87df5e065d29abaf583f2dd22df"
+    },
+    "single_pass": {
+      "candidate_id": "single_pass_finalist_01",
+      "parameters": {
+        "green_s0": 145.39167642788135,
+        "green_detuning_gamma": -22.76165952007537,
+        "green_waist_m": 0.011801225662163621,
+        "blue_s0": 0.13639731945918043,
+        "blue_waist_m": 0.016745646876613576,
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_detuning_anchor_gamma": -2.486927112944002,
+        "blue_crossing_angle_deg": 57.027282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904
+      },
+      "derived_parameters": {
+        "blue_detuning_gamma": -1.9934225490090594,
+        "effective_slowing_z_offset_m": -0.061208042041603974,
+        "effective_slowing_field_G": 24.494167617930014,
+        "reference_slowing_field_G": 14.5625
+      },
+      "resolved_profile": {
+        "description": "Six-beam angled green MOT with one localized pair of 399-nm entrance-slowing beams in the yz plane. The blue beams cross upstream of the MOT center and both propagate with a -z component.",
+        "beam_layout": "angled_green_yz_single_pass",
+        "gravity_axis": "x",
+        "transport_axis": "z",
+        "magnetic_strong_axis": "y",
+        "magnetic_gradient_G_cm": 4.001789111515931,
+        "blue_crossing_angle_deg": 57.027282093322945,
+        "blue_crossing_z_offset_m": -0.04278783047732904,
+        "maximum_blue_center_relative_intensity": 0.001,
+        "xz_angle_from_z_deg": 31.0,
+        "center_position_m": [
+          0.0,
+          0.0,
+          0.413
+        ],
+        "beam_components": {
+          "+XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_1": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-XZ_2": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "+Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "-Y": {
+            "399_enabled": false,
+            "556_enabled": true
+          },
+          "SP_FROM_NEG_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          },
+          "SP_FROM_POS_Y": {
+            "399_enabled": true,
+            "556_enabled": false
+          }
+        },
+        "399": {
+          "enabled": true,
+          "s0": 0.13639731945918043,
+          "detuning_gamma": -1.9934225490090594,
+          "waist_m": 0.016745646876613576,
+          "profile": "outer_clipped_gaussian",
+          "outer_cutoff_radius_m": 0.0075,
+          "polarization_by_axis": {
+            "SP_FROM_NEG_Y": "right",
+            "SP_FROM_POS_Y": "right"
+          }
+        },
+        "556": {
+          "enabled": true,
+          "s0": 145.39167642788135,
+          "detuning_gamma": -22.76165952007537,
+          "waist_m": 0.011801225662163621,
+          "profile": "outer_clipped_gaussian",
+          "outer_cutoff_radius_m": 0.005,
+          "polarization_by_axis": {
+            "+XZ_1": "right",
+            "-XZ_1": "right",
+            "+XZ_2": "right",
+            "-XZ_2": "right",
+            "+Y": "left",
+            "-Y": "left"
+          }
+        }
+      },
+      "selection_summary_sha256": "7f94ffebdde5156efa62f990d641676afbff0c8a4029dbfbd974b368a8c52601"
+    }
+  }
+}

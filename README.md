@@ -4,11 +4,16 @@
 
 This repository models a Yb-171 atomic beam and the downstream laser-cooling stages used to study a compact apparatus: a thermal source, a Zeeman slower, a 2D MOT, and, where applicable, a 3D MOT and transport region.
 
+The canonical 3D-MOT optimization study is closed (2026-10-20). See
+[final results and preserved evidence](docs/3D_MOT_FINAL_RESULTS.md).
+For running the application, start with [UI_QUICKSTART.md](UI_QUICKSTART.md).
+Software release acceptance is tracked separately from scientific completion.
+
 The code is primarily a simulation and analysis project for understanding how atoms move through the apparatus and how survival/capture depend on geometry, laser detuning, magnetic fields, and timestep choices.
 
 ## Project overview
 
-The project simulates a neutral ytterbium beam produced from a thermal source, follows the atoms through a Zeeman slower, and then evaluates capture in the 2D MOT stage. The repository also contains models for the downstream apparatus and a 3D MOT stage, although the main production workflow currently focuses on the Zeeman slower and 2D MOT.
+The project follows a neutral ytterbium beam from a thermal source through a Zeeman slower, a 2D MOT and a 3D MOT. It supports individual simulations and reproducible 2D- and 3D-MOT optimization campaigns.
 
 An important use of the repository is to study capture efficiency and optimize 2D-MOT operating parameters after fixing the upstream Zeeman-slower conditions.
 

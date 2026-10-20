@@ -1,0 +1,42 @@
+{
+  "kind": "mot_3d_sealed_final_validation_summary",
+  "classification": "sealed_unbiased_estimate_pending_precision_gate",
+  "family": "single_pass",
+  "candidate_id": "single_pass_finalist_01",
+  "estimand": "survivor-weighted conditional capture fraction",
+  "input_particle_count": 16675,
+  "ensemble_count": 20,
+  "recoil_seed_count": 3,
+  "conditional_efficiency": 0.27496251874062966,
+  "bootstrap_95_ci": [
+    0.2662038712414085,
+    0.2838639759773499
+  ],
+  "ci_half_width": 0.008830052367970714,
+  "target_half_width": 0.0075,
+  "precision_target_met": false,
+  "expected_usable_per_10m_2d_survivors": 2749625.1874062964,
+  "expected_usable_per_10m_95_ci": [
+    2662038.712414085,
+    2838639.7597734993
+  ],
+  "new_ensemble_rate_sd": 0.01349813753076888,
+  "new_equivalent_ensemble_predictive_95_interval": [
+    0.23708920187793428,
+    0.31716417910447764
+  ],
+  "predictive_method": "empirical random-effects bootstrap of ensemble and recoil effects plus finite-particle binomial variation",
+  "bootstrap_method": "crossed ensemble/recoil bootstrap with within-ensemble particle resampling",
+  "bootstrap_replicates": 20000,
+  "bootstrap_seed": 92001,
+  "design": {
+    "campaign_manifest_sha256": "bfd6cde7441892ab6220a87115b0e2ddb93ccee23c1533941c4a1040d1615c6d",
+    "locked_nominals_sha256": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+    "input_manifest_sha256": "dc9ff236c1cfe0c10680a9b0bebf790e6ab59df94940f7bad9d2e47375882d18",
+    "family": "single_pass",
+    "dt_s": 5e-06,
+    "t_max_s": 0.05,
+    "solver": "RK4StHybridCustom",
+    "classification": "sealed_unbiased_final_validation"
+  }
+}

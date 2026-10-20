@@ -1,0 +1,224 @@
+{
+  "kind": "mot_3d_checkpointed_validation_submission",
+  "stage": "final_validation",
+  "status": "submitted",
+  "baseline_commit": "7facc798d89c5386cacca3f37b5d1158c147348c",
+  "runtime_directory": "/home/tal.noa/ytterbium_validation_runtime_5us_50ms_20261019_v1",
+  "runtime_receipt_sha256": "b62aa86bd04626695a0a2ae4394dfef9ec0a5ab4c749fb585781fc89567592a8",
+  "preflight_sha256": "a4ff23dd8b309388b4cf2eb7358bcd5beab056955f042fd0c6874bef8d573b4f",
+  "campaign_sha256": "bfd6cde7441892ab6220a87115b0e2ddb93ccee23c1533941c4a1040d1615c6d",
+  "input_manifest_sha256": "dc9ff236c1cfe0c10680a9b0bebf790e6ab59df94940f7bad9d2e47375882d18",
+  "locked_nominals_sha256": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+  "scheduler_source_sha256": "bc343cedd41aaaab46fc4de807759010e09541adc6371da1fd8e1b550b445e17",
+  "max_concurrent_lanes": 3,
+  "walltime_per_attempt_hours": 12,
+  "soft_budget_hours": 10,
+  "checkpoint_atoms": 200,
+  "max_attempts_per_family_seed": 3,
+  "conservative_memory_estimate_bytes": 13954961408,
+  "official_endpoint_s": 0.05,
+  "secondary_endpoint_s": 0.03,
+  "dt_s": 5e-06,
+  "no_automatic_scientific_completion": true,
+  "jobs": [
+    {
+      "job_id": "4804750.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44001,
+      "attempt": 1,
+      "host": "n152",
+      "dependency": null,
+      "script_sha256": "afb04b86a15df9e17d82e18035bcd6376d5863eba318352f0ef572f56dc1d525"
+    },
+    {
+      "job_id": "4804752.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44001,
+      "attempt": 1,
+      "host": "n152",
+      "dependency": "4804750.zeus-master",
+      "script_sha256": "aade94c84267af98a5089414b86a065a8fd4c372d011475d24d1d0dad38a556b"
+    },
+    {
+      "job_id": "4804753.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44001,
+      "attempt": 2,
+      "host": "n152",
+      "dependency": "4804752.zeus-master",
+      "script_sha256": "1f9a4c4b2d66397a43e642f3362f428f789f3c5c8a20c76c378d33597bd644a5"
+    },
+    {
+      "job_id": "4804754.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44001,
+      "attempt": 2,
+      "host": "n152",
+      "dependency": "4804753.zeus-master",
+      "script_sha256": "8e2d1ac819b3f742678aef2e3a61d5ce37065ecf016dd4ce9be0c7dafbdaa02b"
+    },
+    {
+      "job_id": "4804755.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44001,
+      "attempt": 3,
+      "host": "n152",
+      "dependency": "4804754.zeus-master",
+      "script_sha256": "77783c3ed2469285072fd7b61caf5ac27c3d572660aa840e25d41ee452e34424"
+    },
+    {
+      "job_id": "4804756.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44001,
+      "attempt": 3,
+      "host": "n152",
+      "dependency": "4804755.zeus-master",
+      "script_sha256": "9b37000d33eff0dcabc5220b50930c5fe1dfa44b21844c935dca7e05ab33f0dd"
+    },
+    {
+      "job_id": "4804757.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44002,
+      "attempt": 1,
+      "host": "n177",
+      "dependency": null,
+      "script_sha256": "fbdebcb67d26bee192fcb4171c2570f3024f3f1263e369b6198ddd80da908fc8"
+    },
+    {
+      "job_id": "4804758.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44002,
+      "attempt": 1,
+      "host": "n177",
+      "dependency": "4804757.zeus-master",
+      "script_sha256": "9109f946b2b8ab146c7d9bccb2befb5bbf081bc15fd72609abfd45d93d174265"
+    },
+    {
+      "job_id": "4804759.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44002,
+      "attempt": 2,
+      "host": "n177",
+      "dependency": "4804758.zeus-master",
+      "script_sha256": "83a03543758e506f941064a32c9736336909df66e3fe08131cdd34fa09ac1393"
+    },
+    {
+      "job_id": "4804760.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44002,
+      "attempt": 2,
+      "host": "n177",
+      "dependency": "4804759.zeus-master",
+      "script_sha256": "90900db8db44c1d2f4db278743410aedd77d3545ff2e8b139a800926f11273db"
+    },
+    {
+      "job_id": "4804761.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44002,
+      "attempt": 3,
+      "host": "n177",
+      "dependency": "4804760.zeus-master",
+      "script_sha256": "f106eb2d043f752c3ed7aa68ef21389e6115061ebfce23d32c77766089db59ef"
+    },
+    {
+      "job_id": "4804762.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44002,
+      "attempt": 3,
+      "host": "n177",
+      "dependency": "4804761.zeus-master",
+      "script_sha256": "8eae613c0a9857d5b8a1e639ff35a6834c20d64089bd71d1461704f7b3adbaea"
+    },
+    {
+      "job_id": "4804763.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44003,
+      "attempt": 1,
+      "host": "n172",
+      "dependency": null,
+      "script_sha256": "4d2074a5f79acb56b9a38cf5c8e8e00a7b21ff29b4dbdb227e2a6a718d04de66"
+    },
+    {
+      "job_id": "4804764.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44003,
+      "attempt": 1,
+      "host": "n172",
+      "dependency": "4804763.zeus-master",
+      "script_sha256": "5bc5ec2b52c10ddcfbeb1f34ffea62e8b0dff11e67cb6a4b8cc7eca2c061f456"
+    },
+    {
+      "job_id": "4804765.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44003,
+      "attempt": 2,
+      "host": "n172",
+      "dependency": "4804764.zeus-master",
+      "script_sha256": "e5e4a9878deb262fc5496b3f02553bbda7ba06f944f696b0704766ab9192a035"
+    },
+    {
+      "job_id": "4804766.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44003,
+      "attempt": 2,
+      "host": "n172",
+      "dependency": "4804765.zeus-master",
+      "script_sha256": "558db99b276f74ef1512cc8d20df1f1b312e6f8ac482a9478df1afb60a97a77d"
+    },
+    {
+      "job_id": "4804767.zeus-master",
+      "family": "angled_donut",
+      "recoil_seed": 44003,
+      "attempt": 3,
+      "host": "n172",
+      "dependency": "4804766.zeus-master",
+      "script_sha256": "ca8fddee9b71c40557d5d2d39d3bd20f738d7e2e8572122b9537485f6bc9a57f"
+    },
+    {
+      "job_id": "4804768.zeus-master",
+      "family": "single_pass",
+      "recoil_seed": 44003,
+      "attempt": 3,
+      "host": "n172",
+      "dependency": "4804767.zeus-master",
+      "script_sha256": "40d93376028bc411c15740a8dafded4feba27ecc0682a219e3a68c3f96b13eb7"
+    }
+  ],
+  "families": {
+    "angled_donut": {
+      "jobs": [
+        "4804750.zeus-master",
+        "4804753.zeus-master",
+        "4804755.zeus-master",
+        "4804757.zeus-master",
+        "4804759.zeus-master",
+        "4804761.zeus-master",
+        "4804763.zeus-master",
+        "4804765.zeus-master",
+        "4804767.zeus-master"
+      ],
+      "merge_job_id": "4804769.zeus-master"
+    },
+    "single_pass": {
+      "jobs": [
+        "4804752.zeus-master",
+        "4804754.zeus-master",
+        "4804756.zeus-master",
+        "4804758.zeus-master",
+        "4804760.zeus-master",
+        "4804762.zeus-master",
+        "4804764.zeus-master",
+        "4804766.zeus-master",
+        "4804768.zeus-master"
+      ],
+      "merge_job_id": "4804769.zeus-master"
+    }
+  },
+  "scheduler_repair_history": [
+    "b5e8d2750b0640891aebe62c150d4c84794972ef4bc77372834da14ffcfd169f"
+  ],
+  "resolved_submission_errors": [
+    "CalledProcessError: Command '['qsub', '-W', 'afterany:4804750.zeus-master', '/home/tal.noa/ytterbium_validation_runtime_5us_50ms_20261019_v1/jobs/single_pass_44001_attempt1.pbs']' returned non-zero exit status 2."
+  ],
+  "merge_job_id": "4804769.zeus-master"
+}

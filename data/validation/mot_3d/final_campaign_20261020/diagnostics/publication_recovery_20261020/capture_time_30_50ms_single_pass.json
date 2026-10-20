@@ -1,0 +1,67 @@
+{
+  "kind": "mot_3d_paired_capture_time_summary",
+  "particle_count": 16675,
+  "ensemble_count": 20,
+  "recoil_seed_count": 3,
+  "early_time_s": 0.03,
+  "final_time_s": 0.05,
+  "mean_capture_fraction_at_30ms": 0.2747426286856572,
+  "mean_capture_fraction_at_50ms": 0.27496251874062966,
+  "metrics": {
+    "net_late_minus_early": {
+      "fraction": 0.00021989005497251375,
+      "interval": [
+        0.0,
+        0.0007358868313829624
+      ],
+      "constant_bootstrap": false
+    },
+    "lost_after_30ms": {
+      "fraction": 0.0,
+      "interval": [
+        0.0,
+        0.0
+      ],
+      "constant_bootstrap": true
+    },
+    "captured_after_30ms": {
+      "fraction": 0.00021989005497251375,
+      "interval": [
+        0.0,
+        0.0007358868313829624
+      ],
+      "constant_bootstrap": false
+    },
+    "identity_disagreement": {
+      "fraction": 0.00021989005497251375,
+      "interval": [
+        0.0,
+        0.0007358868313829624
+      ],
+      "constant_bootstrap": false
+    }
+  },
+  "tolerances_fraction": {
+    "net_change": 0.0025,
+    "identity_disagreement": 0.0025
+  },
+  "bootstrap": {
+    "method": "crossed paired ensemble/recoil/within-ensemble particle resampling",
+    "replicates": 10000,
+    "seed": 93001,
+    "familywise_confidence": 0.95,
+    "bonferroni_metrics_across_two_families": 8
+  },
+  "supports_30ms_in_observed_data": true,
+  "automatic_campaign_change": false,
+  "requires_scientific_review": true,
+  "scope": "Only the tested locked profiles and input distribution; not arbitrary optimization trials",
+  "warning": "Constant bootstrap draws do not give an upper bound on unseen rare escape events. The official final-validation endpoint remains 100 ms.",
+  "family": "single_pass",
+  "candidate_id": "single_pass_finalist_01",
+  "source_diagnostic_hashes": {
+    "seed_44001.json": "8da0dd719d1c20e2ca260b43068a8a275d461154f4479752d714a608891deeaf",
+    "seed_44002.json": "fec63ff1aff82071005e6a1ce5abfe40b82516eb7d1800e6b165ed2bc4da61ca",
+    "seed_44003.json": "ea4abfc314df18dca56f696099bc513409242a45780defbca19bcb8cbb85711f"
+  }
+}

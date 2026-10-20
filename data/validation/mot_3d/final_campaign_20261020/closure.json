@@ -1,0 +1,110 @@
+{
+  "kind": "mot_3d_campaign_closure",
+  "campaign": "mot_3d_s0_1p3_search10us_20261012_v1",
+  "closed_date": "2026-10-20",
+  "status": "closed_with_approved_protocol_amendment",
+  "scientific_work_complete": true,
+  "additional_jobs_authorized": false,
+  "remote_campaign": "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1",
+  "original_manifest_preserved": true,
+  "original_manifest_stage": "final_validation",
+  "lifecycle_note": "This closure sidecar supersedes the historical pending stage for this completed amended execution only. Standard campaign advance cannot finalize these separately versioned outputs; do not run it or rewrite the hashed original manifest.",
+  "protocol": {
+    "dt_s": 0.000005,
+    "t_max_s": 0.05,
+    "capture_radius_m": 0.005,
+    "maximum_final_speed_m_s": 1,
+    "ensemble_count": 20,
+    "input_particle_count": 16675,
+    "recoil_seeds": [
+      44001,
+      44002,
+      44003
+    ],
+    "total_atom_integrations": 100050,
+    "baseline_commit": "7facc798d89c5386cacca3f37b5d1158c147348c",
+    "convergence_claim": false
+  },
+  "results": {
+    "angled_donut": {
+      "display_name": "Blue shell",
+      "candidate_id": "angled_donut_finalist_03",
+      "conditional_efficiency": 0.9976611694152924,
+      "bootstrap_95_ci": [
+        0.9967353992227569,
+        0.9985452870309685
+      ],
+      "precision_target_met": true
+    },
+    "single_pass": {
+      "display_name": "Single pass",
+      "candidate_id": "single_pass_finalist_01",
+      "conditional_efficiency": 0.27496251874062966,
+      "bootstrap_95_ci": [
+        0.2662038712414085,
+        0.2838639759773499
+      ],
+      "precision_target_met": false
+    }
+  },
+  "precision_exception": {
+    "accepted_by": "project owner in this chat",
+    "date": "2026-10-20",
+    "scope": "Accept the measured Single-pass uncertainty as reported; no further sampling. Do not relabel precision_target_met as true."
+  },
+  "time_comparison": {
+    "global_endpoint_changed_to_30ms": false,
+    "blue_shell_supports_30ms": false,
+    "single_pass_supports_30ms_for_tested_profile_only": true,
+    "adopted_endpoint_s": 0.05
+  },
+  "publication_recovery": {
+    "merge_job": "4806783.zeus-master",
+    "exit_status": 0,
+    "atom_reintegration_count": 0,
+    "description": "Publication-only eligible_at_100ms -> eligible_at_50ms key repair; all saved outcomes checked against checkpoints, original runtime immutable; see runtime_audit.tar.gz/recover_publication.py."
+  },
+  "software_release": {
+    "status": "scientific_campaign_closed_ui_acceptance_separate",
+    "mac_windows_zeus_manual_acceptance_claimed": false,
+    "checklist": "docs/UI_RELEASE_ACCEPTANCE_CHECKLIST.md"
+  },
+  "artifact_sha256": {
+    "campaign.json": "3c279013c058288a86e6a466e4307487043d9b1b6eab33a02854ca8a1c979290",
+    "diagnostics/capture_time_30_50ms_angled_donut.json": "7de7a57ff3eb41718a91d338bc724179fba64f99897c3ef13b75b500febf7382",
+    "diagnostics/capture_time_30_50ms_single_pass.json": "25b0c881ed5fbcd1ba2cae0f05363433fbd50a019c3aea18d56fa0183c3e1fda",
+    "diagnostics/capture_time_comparison_30_50ms/angled_donut/seed_44001.json": "836d6f63c9b74bf893b9645b589f7047f568fc90478c1a37aa4cfffc5d03c857",
+    "diagnostics/capture_time_comparison_30_50ms/angled_donut/seed_44001.npz": "0ab2ec301cedf4455ff739f001d80c3392da17d813164863beadf8eeb1412cfe",
+    "diagnostics/capture_time_comparison_30_50ms/angled_donut/seed_44002.json": "4785a9ddedf7df2a337051876ea6d3a1f80d23082ebe14574b28d7245f5c20e7",
+    "diagnostics/capture_time_comparison_30_50ms/angled_donut/seed_44002.npz": "e2b09c7c8939d15f573c05d8f57fac5ea0b4373a6020e9925acb1951ab0da4c0",
+    "diagnostics/capture_time_comparison_30_50ms/angled_donut/seed_44003.json": "6ef0ee1cd892e577349a108c80a97a5264e5973c178cd5b2befebc98b4c60bef",
+    "diagnostics/capture_time_comparison_30_50ms/angled_donut/seed_44003.npz": "3ba881c2170d2303f1219f1ef63cc6a603602b927b8f02e490e1f08f748cd84c",
+    "diagnostics/capture_time_comparison_30_50ms/single_pass/seed_44001.json": "8da0dd719d1c20e2ca260b43068a8a275d461154f4479752d714a608891deeaf",
+    "diagnostics/capture_time_comparison_30_50ms/single_pass/seed_44001.npz": "207a75f69ea50c2f33246398172d74364fe9b26bdde89b8a9bf45701691e2acb",
+    "diagnostics/capture_time_comparison_30_50ms/single_pass/seed_44002.json": "fec63ff1aff82071005e6a1ce5abfe40b82516eb7d1800e6b165ed2bc4da61ca",
+    "diagnostics/capture_time_comparison_30_50ms/single_pass/seed_44002.npz": "95ebb2bbcf786dfce1d26fd542dce761b7a36fdbd7c0df31585f4360c8d421cb",
+    "diagnostics/capture_time_comparison_30_50ms/single_pass/seed_44003.json": "ea4abfc314df18dca56f696099bc513409242a45780defbca19bcb8cbb85711f",
+    "diagnostics/capture_time_comparison_30_50ms/single_pass/seed_44003.npz": "14090de71cca860302e63479edfb8fe9ff7503a1e3b0ae5e0325974420cbdac6",
+    "evidence.tar.gz": "2ec8bc280d73beb2410bd3173af828d813e0f9baed064a954201b810dc32e62e",
+    "final_validation_5us_50ms/angled_donut/final_validation_summary.json": "f50c28b132700aeccd37b2ec254f9ba52e51cf51849af60fe63abbc20208ef1d",
+    "final_validation_5us_50ms/angled_donut/seed_44001.json": "15e22c8691e86b13fbe0dfc47271a76be41397fb16e83caa2468dcb2cbca6fef",
+    "final_validation_5us_50ms/angled_donut/seed_44001.npz": "5903564a47e6775632311d5b5006b5771cf5d9532eb2a4904c1fdaba69cc56d7",
+    "final_validation_5us_50ms/angled_donut/seed_44002.json": "049aa12516bd0040a497657a095944de02a2abab3a74a9930a6d7839058e98d4",
+    "final_validation_5us_50ms/angled_donut/seed_44002.npz": "cd931da6921757002fc6e5bbfff0e5ef3c587a6bc89a2c23a755a732edae2574",
+    "final_validation_5us_50ms/angled_donut/seed_44003.json": "edb5f7e21a1b4d2989f6e1b9f51188a04ee2c83790915151756baa4f4ae72280",
+    "final_validation_5us_50ms/angled_donut/seed_44003.npz": "fc57a3df06628dabc193a2e07d967b1afe968beab36892c55697ed92a85ca73d",
+    "final_validation_5us_50ms/single_pass/final_validation_summary.json": "d2957c63dc237a60e8894d119f54300e1cb59de9b1aaba7ce9ed4d64f4bc27ad",
+    "final_validation_5us_50ms/single_pass/seed_44001.json": "ddde3779b51d6216335294ef879a48a6a17230247e46185e30a9d97b40e4ee93",
+    "final_validation_5us_50ms/single_pass/seed_44001.npz": "33b291a35b259fe1139b0e10db30bb54d719034806cecc6d855ccd879d0cd3b3",
+    "final_validation_5us_50ms/single_pass/seed_44002.json": "2e7f06dc28da80d2a6a038a70ee97071f359c6def23cd197b7069c2f869f6e3d",
+    "final_validation_5us_50ms/single_pass/seed_44002.npz": "ec2f77bc8a5736609e885e496fdf44c39f3fd9741da6407dcd6f7409c014f874",
+    "final_validation_5us_50ms/single_pass/seed_44003.json": "869fb757d9adb35d319e342fd04651aae0bc00d6d924b412413036c03ab20d37",
+    "final_validation_5us_50ms/single_pass/seed_44003.npz": "770a1b30e8aa6fc732ad34b29f45140164d34f6d7effb2a1bf86c743b3daca0a",
+    "final_validation_5us_50ms_submission.json": "8f8c8c83b4e1d33515b9a9e9f74e0a0e75b880729f5eb0b2fc68a532b269e59d",
+    "final_validation_inputs/input_manifest.json": "dc9ff236c1cfe0c10680a9b0bebf790e6ab59df94940f7bad9d2e47375882d18",
+    "runtime_audit.tar.gz": "8ade5cab2042110005ecdfae667c9ea0ac8d1de477eac3da317b5acc11124b7e",
+    "sealed_inputs.tar.gz": "413f744d90d062a84ad0a7acf96364e32c123866211e70f1c650ca359f279383",
+    "selection/locked_nominals.json": "4f5715f8542d5c3379b15e784e7ea76cf0357d086a065e64231a0b9854ed7c5d",
+    "validation_5us_50ms_manifest.json": "bfd6cde7441892ab6220a87115b0e2ddb93ccee23c1533941c4a1040d1615c6d"
+  }
+}
