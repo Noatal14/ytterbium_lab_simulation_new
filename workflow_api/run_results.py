@@ -633,6 +633,11 @@ def inspect_run_package(
                 receipt = _read_record_at(
                     run_descriptor, _RECEIPT_PATH, "retention_receipt"
                 )
+            # Generic artifact validation remains available separately. Every
+            # canonical read/admission also rechecks the publisher's exact family
+            # metric contract, including runs that intentionally omitted states.
+            from workflow_api.run_metrics import validate_family_metrics
+            validate_family_metrics(family, run, results, configuration)
             publication = _validate_publication_plan_at(
                 run_descriptor,
                 run,

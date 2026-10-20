@@ -27,7 +27,7 @@ def records(*, retained=False):
         "family": "zeeman",
         "laboratory_spec": {"version": "laboratory-physical-v1", "sha256": "b" * 64},
         "numerical_policy": {"version": "numerical-policy-v1", "sha256": "c" * 64},
-        "resolved": {"example_si": 1.0},
+        "resolved": {"example_si": 1.0, "simulation": {"particle_count": 100}},
     }
     inputs = {
         "schema_version": "run-inputs-v1",
@@ -108,7 +108,8 @@ def result(artifact, *, retained=False, captured=0):
         "completed_utc": NOW,
         "states_retained": retained,
         "suitability": "individual_only",
-        "metrics": {"captured": captured},
+        "metrics": {"n_initial": 100, "n_survivors": captured, "captured": captured,
+                    "survival_fraction": captured / 100, "elapsed_s": 0.0},
         "artifacts": [artifact],
     }
 

@@ -25,7 +25,7 @@ def _records(run_id="run-1", family="zeeman", *, retained=False):
         "family": family,
         "laboratory_spec": {"version": "laboratory-physical-v1", "sha256": "b" * 64},
         "numerical_policy": {"version": "numerical-policy-v1", "sha256": "c" * 64},
-        "resolved": {"particle_count": 100, "detuning_gamma": -1.0},
+        "resolved": {"particle_count": 100, "detuning_gamma": -1.0, "simulation": {"particle_count": 100}},
     }
     inputs = {
         "schema_version": "run-inputs-v1",
@@ -115,7 +115,8 @@ def _result(artifact, *, retained=False, captured=0):
         "completed_utc": NOW,
         "states_retained": retained,
         "suitability": "individual_only",
-        "metrics": {"captured": captured},
+        "metrics": {"n_initial": 100, "n_survivors": captured, "captured": captured,
+                    "survival_fraction": captured / 100, "elapsed_s": 0.0},
         "artifacts": [artifact],
     }
 
@@ -141,7 +142,7 @@ def test_lists_only_verified_canonical_packages_and_detail_is_read_only(tmp_path
     assert detail["display_name"] == "zeta"
     assert detail["configuration"] == {
         "status": "complete",
-        "resolved": {"particle_count": 100, "detuning_gamma": -1.0},
+        "resolved": {"particle_count": 100, "detuning_gamma": -1.0, "simulation": {"particle_count": 100}},
     }
     assert detail["retention"] == {
         "particle_states_requested": False,
@@ -209,7 +210,8 @@ def test_verified_results_expose_retention_and_metrics_without_campaign_claims(t
         "completed_utc": NOW,
         "states_retained": False,
         "suitability": "individual_only",
-        "metrics": {"captured": 0, "elapsed_s": 1.25},
+        "metrics": {"n_initial": 100, "n_survivors": 0, "captured": 0,
+                    "survival_fraction": 0.0, "elapsed_s": 1.25},
         "artifacts": [
             {
                 "kind": "retention_receipt",
@@ -233,7 +235,8 @@ def test_verified_results_expose_retention_and_metrics_without_campaign_claims(t
     }
     detail = registry.get_run(row["id"])
     assert detail["results"] == {"availability": "verified", "completed_at": NOW}
-    assert detail["metrics"] == {"captured": 0, "elapsed_s": 1.25}
+    assert detail["metrics"] == {"n_initial": 100, "n_survivors": 0, "captured": 0,
+                                  "survival_fraction": 0.0, "elapsed_s": 1.25}
     assert detail["scientific_role"] == "individual-only"
 
 
@@ -262,7 +265,8 @@ def test_running_durable_registry_is_visible_but_never_called_verified(tmp_path)
     assert row["retention"]["status"] == "publication_pending"
     assert row["warnings"] == ["Result publication is not yet terminal."]
     detail = registry.get_run(row["id"])
-    assert detail["metrics"] == {"captured": 0}
+    assert detail["metrics"] == {"n_initial": 100, "n_survivors": 0, "captured": 0,
+                                  "survival_fraction": 0.0, "elapsed_s": 0.0}
     assert detail["trust"] == "verified-package"
 
 

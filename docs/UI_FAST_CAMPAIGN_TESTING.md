@@ -14,22 +14,18 @@ mocked scheduler/results contracts. Those tests are useful but do not prove
 that a complete physical campaign will finish on Zeus. The existing 2D smoke
 stage is also not a miniature end-to-end campaign.
 
-## Proposed miniature profile
+## Implemented TEST ONLY campaign profile
 
-Implement this as a reviewed **acceptance profile of the same workflow**, not
-a copied backend or scripts that bypass the normal validation. Start with a
-handful of particles per ensemble and one or two candidate configurations;
-reduce recoil repetitions and bootstrap draws only where the versioned test
-profile and its validators explicitly permit it. Preserve the required stage
-topology and ensemble-role structure. Include controlled test inputs that can
-produce survivors so downstream success paths can be exercised; separately
-test zero-survivor and failed-job paths.
+`npm run dev:acceptance` uses the versioned `ui_acceptance_v1` profile through
+the normal 2D/3D campaign services, transfer, workers and validators. The profile
+reduces particle and search budgets while retaining the ordinary stage topology,
+separate search/validation populations and canonical physical policy.
 
-Use separate campaign kinds/provenance, a conspicuous TEST ONLY banner and
-dedicated directories/checkouts. Never admit an acceptance output as a
-scientific source, winner or validated efficiency. Test mode must fail closed
-on production paths. The present `dev:zeus-test` mode supports individual runs
-only; it must not be represented as full campaign acceptance support.
+Separate TEST ONLY kinds, immutable profile markers and dedicated namespaces
+prevent scientific promotion. `dev:zeus-test` remains the individual-run mode.
+Implementation and hermetic protocol coverage do not establish completed real
+Zeus lifecycle qualification: consult the release evidence for each operating
+system and stage, including outstanding blockers.
 
 Run success plus held/failed jobs, interrupted checkpoint/resume, corrupt or
 missing results, refresh/reconnection and double-confirmation cases. Keep
@@ -44,7 +40,8 @@ scientific campaigns and their budgets immutable. Test both 2D and 3D flows.
 
 Browser emulation is not Windows OS acceptance. Repeat the miniature real
 workflow on actual Windows and Mac environments, using isolated Zeus targets.
-No acceptance campaign was submitted as part of the 50-ms / 5-us policy update.
+The earlier 50-ms / 5-us policy update itself did not submit acceptance campaigns;
+subsequent qualification jobs are recorded separately in the release evidence.
 
 ## Versioned acceptance policy foundation
 

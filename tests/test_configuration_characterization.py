@@ -228,7 +228,8 @@ def _direct_imports(module_name):
         paths.extend(Path(directory) / name for name in files if name.endswith(".py"))
     for path in paths:
         relative = path.relative_to(ROOT).as_posix()
-        if relative.startswith(("tests/", "atomsmltr/tests/")):
+        # Archived evidence may contain copied scripts; it is not executable source.
+        if relative.startswith(("tests/", "atomsmltr/tests/", "acceptance-evidence/")):
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         names, found = set(), False
