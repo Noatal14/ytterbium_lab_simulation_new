@@ -267,7 +267,7 @@ export function Mot3DCampaignCreation({
             <h2>Pragmatic timestep policy</h2>
             <p>
               The one-off study was inconclusive. The reviewed policy uses 10
-              µs to make the search stages practical and 0.625 µs only for the
+              µs to make the search stages practical and 5 µs only for the
               sealed final validation. It is not evidence that 10 µs has
               converged.
             </p>
@@ -329,7 +329,8 @@ export function Mot3DCampaignCreation({
         <div>
           <h2 id="timestep-policy-heading">Pragmatic timestep policy</h2>
           <p>
-            Search stages use 10 µs. Sealed final validation uses 0.625 µs.
+            Search stages use 10 µs. Sealed final validation uses 5 µs.
+            All campaign evaluations run to 50 ms.
             These values are locked and cannot be changed here.
           </p>
           <p>

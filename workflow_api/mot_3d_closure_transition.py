@@ -51,7 +51,7 @@ CODE_PATHS = frozenset(
         "workflow_api/mot_3d_preliminary_transition_remote.py",
         "workflow_api/mot_3d_stage_topology.py",
         "lab_setup/specifications/laboratory_physical_v1.json",
-        "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+        "lab_setup/specifications/mot_3d_timestep_policy_v2.json",
     }
 )
 

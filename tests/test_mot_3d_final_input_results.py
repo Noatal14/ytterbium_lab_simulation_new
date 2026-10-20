@@ -66,7 +66,7 @@ def _fixture():
         "provenance": {"git_commit": COMMIT, "physical_model_sha256": PHYSICAL},
         "design": {
             "solver": "RK4StHybridCustom",
-            "production_dt_s": 0.625e-6,
+            "production_dt_s": 5e-6,
             "families": ["angled_donut", "single_pass"],
         },
         "upstream_2d_campaign": {
@@ -471,12 +471,12 @@ def test_final_validation_renderer_is_exact_portable_and_science_bound():
     for family in ("angled_donut", "single_pass"):
         worker = artifacts[f"jobs/final_validation/{family}_array.pbs"]
         merge = artifacts[f"jobs/final_validation/{family}_merge.pbs"]
-        for literal in (b"44001 44002 44003", b"--npools 200", b"--dt 6.25e-07"):
+        for literal in (b"44001 44002 44003", b"--npools 200", b"--dt 5e-06", b"--t-max 0.05"):
             assert literal in worker
         for literal in (
             b"--bootstrap-replicates 20000",
             b"--bootstrap-seed 92001",
-            b"--dt 6.25e-07",
+            b"--dt 5e-06",
         ):
             assert literal in merge
     for bad_root in (

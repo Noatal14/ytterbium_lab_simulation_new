@@ -190,6 +190,7 @@ def _timestep_validation(
             != MOT_3D_SIM_CONFIG["screening_dt_s"]
             or design.get("production_dt_s")
             != MOT_3D_SIM_CONFIG["production_dt_s"]
+            or design.get("t_max_s") != MOT_3D_TIMESTEP_POLICY["t_max_s"]
         ):
             return False, (
                 "The frozen pragmatic timestep policy identity is invalid or changed.",

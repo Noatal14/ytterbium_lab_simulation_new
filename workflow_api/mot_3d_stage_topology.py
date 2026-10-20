@@ -40,7 +40,7 @@ class PreliminaryScientificDesign:
     input_ensembles: int = 4
     particles_per_ensemble: int = 150
     recoil_seeds: tuple[int, ...] = (41001, 41002, 41003)
-    t_max_s: float = 0.1
+    t_max_s: float = MOT_3D_TIMESTEP_POLICY["t_max_s"]
     selection_seed: int = 51001
     bootstrap_replicates: int = 10_000
     bootstrap_seed: int = 52_001
@@ -60,7 +60,7 @@ class ClosureScientificDesign:
     input_ensembles: int = 4
     particles_per_ensemble: int = 750
     recoil_seeds: tuple[int, ...] = (42001, 42002, 42003)
-    t_max_s: float = 0.1
+    t_max_s: float = MOT_3D_TIMESTEP_POLICY["t_max_s"]
     selection_seed: int = 71_001
     bootstrap_replicates: int = 10_000
     bootstrap_seed: int = 72_001
@@ -72,7 +72,7 @@ class ClosureScientificDesign:
 class FinalistSelectionScientificDesign:
     input_ensembles: int = 20
     recoil_seeds: tuple[int, ...] = (43001, 43002, 43003)
-    t_max_s: float = 0.1
+    t_max_s: float = MOT_3D_TIMESTEP_POLICY["t_max_s"]
     bootstrap_replicates: int = 10_000
     bootstrap_seed: int = 82_001
     solver: str = MOT_3D_TIMESTEP_POLICY["solver"]
@@ -83,7 +83,7 @@ class FinalistSelectionScientificDesign:
 class FinalValidationScientificDesign:
     input_ensembles: int = 20
     recoil_seeds: tuple[int, ...] = (44001, 44002, 44003)
-    t_max_s: float = 0.1
+    t_max_s: float = MOT_3D_TIMESTEP_POLICY["t_max_s"]
     npools: int = 200
     bootstrap_replicates: int = 20_000
     bootstrap_seed: int = 92_001

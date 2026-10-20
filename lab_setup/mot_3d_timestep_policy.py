@@ -16,10 +16,10 @@ from lab_setup.strict_specification import (
 
 
 SPECIFICATION_PATH = (
-    Path(__file__).with_name("specifications") / "mot_3d_timestep_policy_v1.json"
+    Path(__file__).with_name("specifications") / "mot_3d_timestep_policy_v2.json"
 )
 MAX_SPECIFICATION_BYTES = 16 * 1024
-VERSION = "mot-3d-timestep-policy-v1"
+VERSION = "mot-3d-timestep-policy-v2"
 STATUS = "pragmatic_user_approved_after_inconclusive_study"
 
 
@@ -40,6 +40,7 @@ def _validate(value):
             "search_dt_s",
             "sealed_final_validation_dt_s",
             "convergence_claim",
+            "t_max_s",
             "decision",
             "inconclusive_evidence",
         },
@@ -59,8 +60,9 @@ def _validate(value):
         lo=0,
     )
     if (
-        value["search_dt_s"] != 10e-6
-        or value["sealed_final_validation_dt_s"] != 0.625e-6
+        value["t_max_s"] != 0.05
+        or value["search_dt_s"] != 10e-6
+        or value["sealed_final_validation_dt_s"] != 5e-6
     ):
         raise ValueError("Invalid approved 3D timestep policy values.")
     decision = value["decision"]
@@ -170,6 +172,6 @@ def render_typescript_specification() -> str:
     body = json.dumps(_VALUE, indent=2, sort_keys=True)
     return (
         "// Generated from lab_setup/specifications/"
-        "mot_3d_timestep_policy_v1.json; do not edit.\n"
-        f"export const MOT_3D_TIMESTEP_POLICY_V1 = {body} as const;\n"
+        "mot_3d_timestep_policy_v2.json; do not edit.\n"
+        f"export const MOT_3D_TIMESTEP_POLICY_V2 = {body} as const;\n"
     )

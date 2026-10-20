@@ -44,7 +44,7 @@ CODE_FILES = frozenset(
         "workflow_api/mot_3d_selection_submission_remote.py",
         "workflow_api/mot_3d_finalist_submission_remote.py",
         "lab_setup/specifications/laboratory_physical_v1.json",
-        "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+        "lab_setup/specifications/mot_3d_timestep_policy_v2.json",
     }
 )
 

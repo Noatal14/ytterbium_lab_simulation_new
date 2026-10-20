@@ -15,14 +15,14 @@ to this baseline deliberate and reviewable.
 | Stable laboratory physics | `lab_setup/specifications/laboratory_physical_v2.json`, strictly loaded by `lab_setup/physical_specification.py` | Compatibility facade, apparatus construction, Zeeman generation, provenance | New reviewed version for changes to species, transitions, source, apparatus geometry, canonical 19-ring profile, measured Zeeman hardware, or Zeeman-laser geometry |
 | Zeeman model conventions | `lab_setup/specifications/zeeman_model_conventions_v1.json`, strictly loaded by `lab_setup/physical_specification.py` | Magnetic-field and Zeeman-laser construction | New reviewed version for coordinate axes, tilt sign, azimuth sampling, or software construction tag/type; these are model semantics, not measured laboratory facts |
 | Historical laboratory identity | Exact pinned `laboratory_physical_v1.json` version and SHA-256, loaded only through the explicit legacy path | Historical display/resume/readers | Read-only; never relabel or rewrite an existing artifact as v2 |
-| Versioned numerical policy | `lab_setup/specifications/numerical_policy_v1.json`, strictly loaded by `lab_setup/numerical_policy.py` | `config.py` compatibility facade; simulations and campaigns consume the facade | Numerical convergence review and new policy version; no laboratory geometry or campaign budgets belong here |
+| Versioned numerical policy | `lab_setup/specifications/numerical_policy_v2.json`, strictly loaded by `lab_setup/numerical_policy.py` | `config.py` compatibility facade; simulations and campaigns consume the facade | Numerical convergence review and new policy version; no laboratory geometry or campaign budgets belong here |
 | Compatibility facade | `config.py` exposes legacy public names and derives `g_F` and the model-effective factor from the v2 measured Zeeman coefficients | Existing simulation and study imports | Moved physical/model/numerical values must not be re-authored here; aliases and derived values must remain characterized |
 | Zeeman operating point | `lab_setup/specifications/zeeman_operating_v1.json`, strictly loaded by `lab_setup/zeeman_operating_specification.py` | `config.py` compatibility facade, Zeeman engine/studies, individual-run plans | New reviewed version for the default laser s0/detuning or propagation start/cutoff; numerical values remain in numerical policy |
 | Generic 2D MOT operating defaults | `lab_setup/specifications/mot_2d_operating_v1.json`, strictly loaded by `lab_setup/mot_2d_operating_specification.py` | `config.py` compatibility facade, generic stage engines/studies | New reviewed version for generic laser s0/detuning/polarization, magnet radius, or propagation start; not the individual UI or campaign authority |
 | Remaining shared operating values | `config.py`: `FORCE_SCALE_N`; search bounds in `studies/mot_2d/optimization.py` | Simulation engines, studies, and executable campaign design | Scientific review; keep outside the generic 2D operating contract until separately migrated |
 | Executable 2D campaign science | `workflow_api/mot_2d_spec.py`: `ROLE_SEEDS`, `RELEVANT_FILES`, `FIXED_DESIGN`; orchestration constants in `studies/mot_2d_s0_campaign.py` | Campaign planner, runner, repository snapshot | Campaign design/provenance review |
 | Versioned 2D UI/job contract | `workflow_api/specifications/mot_2d_v1.json`, validated by `workflow_api/mot_2d_specification.py` | UI mutation and Zeus transfer presentation | Contract/schema review and generated-artifact verification |
-| 3D MOT | Geometry/bounds/capture remain in `config.py`; `lab_setup/specifications/mot_3d_timestep_policy_v1.json` owns the pragmatic search/final-validation timestep decision and its inconclusive provenance; `workflow_api/specifications/mot_3d_individual_v1.json` owns the individual-run controls, limits, locked `10 us` timestep, explicit canonical-campaign `0.1 s` horizon, and runnable family defaults | `lab_setup/laser_setup_3d.py`, `simulations/mot_3d.py`, `studies/mot_3d_campaign.py`, `studies/mot_3d/**`, individual-run planning/UI | Scientific review and a new versioned policy/contract; campaign identity remains separately frozen in each manifest |
+| 3D MOT | Geometry/bounds/capture remain in `config.py`; `lab_setup/specifications/mot_3d_timestep_policy_v2.json` owns the pragmatic search/final-validation timestep decision and its inconclusive provenance; `workflow_api/specifications/mot_3d_individual_v1.json` owns the individual-run controls, limits, locked `10 us` timestep, independent individual-run `0.1 s` horizon, and runnable family defaults | `lab_setup/laser_setup_3d.py`, `simulations/mot_3d.py`, `studies/mot_3d_campaign.py`, `studies/mot_3d/**`, individual-run planning/UI | Scientific review and a new versioned policy/contract; campaign identity remains separately frozen in each manifest |
 | Full-pipeline numerics | `config.py`: `FULL_SIM_CONFIG`, `DEFAULT_NUM_*`, `DEFAULT_RANDOM_SEED` | `simulations/pipeline.py`, simulation entry points and studies | Numerical validation |
 | Campaign serialization and provenance | `workflow_api/mot_2d_spec.py`, `studies/mot_2d_s0_campaign.py`, `studies/mot_3d_campaign.py`, `utils/file_helpers.py` | Generated manifests, PBS files, merge/final-report stages | Schema/design changes require regression tests; manifests freeze exact runs |
 
@@ -70,10 +70,17 @@ campaign design, the complete versioned 2D UI/job contract, and 3D campaign
 seed/round defaults.  Canonical sorted JSON for this payload has SHA-256
 `8de38dc91305491665540304f6ae6eb4cc7321ac9d9479797431ba24aab97750`.
 
+That historical hash remains protected after normalizing only the approved 3D
+protocol changes and the portability dependency. The current v2 resolved
+baseline hash is `865e9e5ee473a871b9bbd328e273f4a97d61ad9c0d2ef7e503aee5249e2ab12d`.
+Zeeman and 2D numerical values, forces, geometry and capture criteria are
+unchanged. Individual 3D v1 admission still uses 10 us / 100 ms; only its
+numerical-authority reference is refreshed to the new shared policy hash.
+
 - 2D production timestep: `0.625 us`; 2D campaign working timestep:
   `1.25 us`; solver: `RK4StHybridCustom`.
 - 3D search/optimization timestep: `10 us`; sealed final-validation timestep:
-  `0.625 us`. `mot_3d_timestep_policy_v1.json` owns the pragmatic decision and
+  `5 us`, with `50 ms` evaluations. `mot_3d_timestep_policy_v2.json` owns the pragmatic decision and
   explicitly records that convergence was not established. The historical
   one-off grid/reference remain `10, 5, 2.5, 1.25, 0.625 us` and `0.3125 us`.
 - Active 3D presentation configuration: `angled_donut`; the campaign still

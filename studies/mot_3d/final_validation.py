@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+
 import argparse
 import hashlib
 import json
@@ -72,8 +74,11 @@ def load_sealed_inputs(input_manifest, campaign_manifest, locked_nominals):
 def run(args):
     locked = json.loads(Path(args.locked_nominals).read_text(encoding="utf-8"))
     campaign = json.loads(Path(args.campaign_manifest).read_text(encoding="utf-8"))
-    if args.dt != campaign["design"]["production_dt_s"]:
+    if (args.dt != campaign["design"]["production_dt_s"]
+            or args.dt != MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"]):
         raise ValueError("Final validation must use the campaign production timestep.")
+    if args.t_max != MOT_3D_TIMESTEP_POLICY["t_max_s"]:
+        raise ValueError("Final validation must use the current campaign endpoint.")
     candidate = locked["families"][args.family]
     states, ensemble_ids, inputs = load_sealed_inputs(
         args.input_manifest, args.campaign_manifest, args.locked_nominals
@@ -213,7 +218,8 @@ def merge(args):
         raise ValueError("Final-validation result metadata mismatch.")
     locked = json.loads(Path(args.locked_nominals).read_text(encoding="utf-8"))
     campaign = json.loads(Path(args.campaign_manifest).read_text(encoding="utf-8"))
-    if args.dt != campaign["design"]["production_dt_s"]:
+    if (args.dt != campaign["design"]["production_dt_s"]
+            or args.dt != MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"]):
         raise ValueError("Final-validation merge timestep disagrees with the campaign.")
     expected_candidate = locked["families"][args.family]["candidate_id"]
     input_manifest = json.loads(Path(args.input_manifest).read_text(encoding="utf-8"))
@@ -224,7 +230,7 @@ def merge(args):
         "input_manifest_sha256": sha256(args.input_manifest),
         "family": args.family,
         "dt_s": args.dt,
-        "t_max_s": 0.1,
+        "t_max_s": MOT_3D_TIMESTEP_POLICY["t_max_s"],
         "solver": campaign["design"]["solver"],
         "classification": "sealed_unbiased_final_validation",
     }
@@ -362,7 +368,7 @@ def parse_args(argv=None):
     command.add_argument("--output", required=True)
     command.add_argument("--npools", type=int, default=200)
     command.add_argument("--dt", type=float, required=True)
-    command.add_argument("--t-max", type=float, default=0.1)
+    command.add_argument("--t-max", type=float, default=MOT_3D_TIMESTEP_POLICY["t_max_s"])
     command.set_defaults(func=run)
     command = commands.add_parser("merge")
     command.add_argument("--input-root", required=True)

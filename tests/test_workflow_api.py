@@ -373,8 +373,9 @@ def _write_3d_manifest(root, *, stage="discovery", stages=None):
             "families": ["angled_donut", "single_pass"],
             "solver": "RK4StHybridCustom",
             "screening_dt_s": 10e-6,
-            "production_dt_s": 0.625e-6,
+            "production_dt_s": 5e-6,
             "timestep_status": "pragmatic_user_approved_not_converged",
+            "t_max_s": 0.05,
             "timestep_evidence": {
                 "policy_spec_version": MOT_3D_TIMESTEP_POLICY_VERSION,
                 "policy_sha256": MOT_3D_TIMESTEP_POLICY_SHA256,

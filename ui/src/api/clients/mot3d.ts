@@ -224,7 +224,7 @@ export function parseMot3DBootstrapPreview(
     discovery.families[1] !== "single_pass" ||
     discovery.solver !== "RK4StHybridCustom" ||
     discovery.screening_dt_s !== 10e-6 ||
-    discovery.production_dt_s !== 0.625e-6 ||
+    discovery.production_dt_s !== 5e-6 ||
     discovery.timestep_policy_status !==
       "pragmatic_user_approved_after_inconclusive_study" ||
     discovery.convergence_claim !== "not_established" ||

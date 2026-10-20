@@ -346,7 +346,7 @@ def validate_refinement_result_bytes(
                     or current.get("selection_sha256")
                     != hashlib.sha256(selection_bytes[family]).hexdigest()
                     or current.get("dt_s") != MOT_3D_TIMESTEP_POLICY["search_dt_s"]
-                    or current.get("t_max_s") != 0.1
+                    or current.get("t_max_s") != MOT_3D_TIMESTEP_POLICY["t_max_s"]
                     or current.get("solver") != MOT_3D_TIMESTEP_POLICY["solver"]
                     or current.get("particles_per_ensemble") != 750
                     or current.get("selection_seed") != policy.selection_seed

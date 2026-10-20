@@ -132,6 +132,7 @@ def load_timestep_policy() -> tuple[Mapping[str, Any], str]:
         != MOT_3D_SIM_CONFIG["screening_dt_s"]
         or MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"]
         != MOT_3D_SIM_CONFIG["production_dt_s"]
+        or MOT_3D_TIMESTEP_POLICY["t_max_s"] != MOT_3D_SIM_CONFIG["t_max_s"]
     ):
         raise ValueError("3D timestep policy and runtime configuration disagree.")
     return MOT_3D_TIMESTEP_POLICY, MOT_3D_TIMESTEP_POLICY_SHA256

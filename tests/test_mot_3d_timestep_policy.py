@@ -27,13 +27,13 @@ def _payload():
 
 def test_policy_is_immutable_nonconverged_and_matches_runtime():
     assert isinstance(MOT_3D_TIMESTEP_POLICY, MappingProxyType)
-    assert MOT_3D_TIMESTEP_POLICY_VERSION == "mot-3d-timestep-policy-v1"
+    assert MOT_3D_TIMESTEP_POLICY_VERSION == "mot-3d-timestep-policy-v2"
     assert len(MOT_3D_TIMESTEP_POLICY_SHA256) == 64
     assert MOT_3D_TIMESTEP_POLICY["convergence_claim"] == "not_established"
     assert MOT_3D_TIMESTEP_POLICY["search_dt_s"] == 10e-6
-    assert MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"] == 0.625e-6
+    assert MOT_3D_TIMESTEP_POLICY["sealed_final_validation_dt_s"] == 5e-6
     assert MOT_3D_SIM_CONFIG["screening_dt_s"] == 10e-6
-    assert MOT_3D_SIM_CONFIG["production_dt_s"] == 0.625e-6
+    assert MOT_3D_SIM_CONFIG["production_dt_s"] == 5e-6
     assert MOT_3D_TIMESTEP_POLICY["decision"]["requires_new_campaign"] is True
     assert (
         MOT_3D_TIMESTEP_POLICY["decision"]["legacy_campaign_mutation_forbidden"]
@@ -61,5 +61,5 @@ def test_policy_rejects_scientific_or_schema_drift(mutation):
 
 
 def test_checked_in_typescript_contract_matches_authority_exactly():
-    generated = Path("ui/src/generated/mot3dTimestepPolicy.v1.ts")
+    generated = Path("ui/src/generated/mot3dTimestepPolicy.v2.ts")
     assert generated.read_text() == render_typescript_specification()

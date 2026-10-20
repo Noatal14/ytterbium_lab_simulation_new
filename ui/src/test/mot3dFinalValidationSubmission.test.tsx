@@ -61,7 +61,7 @@ const base = {
 describe("Final Validation submission", () => {
   it("pins the native scientific and effects contract", () => {
     expect(status().validation.expected_candidates_per_family).toBe(1);
-    expect(preview().science.dt_s).toBe(0.625e-6);
+    expect(preview().science.dt_s).toBe(5e-6);
     expect(result().stage).toBe("final_validation");
     for (const mutate of [
       (v: any) => (v.science.dt_s = 1e-5),
@@ -93,7 +93,7 @@ describe("Final Validation submission", () => {
     expect(
       screen.getByRole("heading", { name: "Submit Final Validation" }),
     ).toHaveFocus();
-    expect(screen.getByText("0.625 µs")).toBeVisible();
+    expect(screen.getByText("5 µs")).toBeVisible();
     const done = status();
     done.submission.status = "completed_success_unvalidated";
     view.rerender(

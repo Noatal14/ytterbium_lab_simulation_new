@@ -125,7 +125,7 @@ def _closed_fixture(tmp_path):
             "input_role": "preliminary_check",
             "input_role_sha256": hashlib.sha256(_canonical(roles)).hexdigest(),
             "dt_s": 1e-5,
-            "t_max_s": 0.1,
+            "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "particles_per_ensemble": 150,
             "selection_seed": 51001,

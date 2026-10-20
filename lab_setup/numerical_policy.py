@@ -13,7 +13,7 @@ from lab_setup.strict_specification import (
     require_finite_number,
 )
 
-SPECIFICATION_PATH = Path(__file__).with_name("specifications") / "numerical_policy_v1.json"
+SPECIFICATION_PATH = Path(__file__).with_name("specifications") / "numerical_policy_v2.json"
 MAX_SPECIFICATION_BYTES = 32 * 1024
 
 
@@ -28,7 +28,7 @@ def _solver(value, expected, label):
 
 def _validate(value):
     _exact(value, {"spec_version", "zeeman", "mot_2d", "mot_3d"}, "numerical policy")
-    if value["spec_version"] != "numerical-policy-v1":
+    if value["spec_version"] != "numerical-policy-v2":
         raise ValueError("Invalid numerical policy version.")
     for stage, expected_solver in (("zeeman", "RK4StCustom"), ("mot_2d", "RK4StHybridCustom")):
         section = value[stage]

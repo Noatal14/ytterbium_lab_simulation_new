@@ -6,8 +6,8 @@ export const MOT_3D_INDIVIDUAL_SPECIFICATION_V1 = {
       "version": "laboratory-physical-v2"
     },
     "numerical_policy": {
-      "sha256": "08a6ad18017ff9a649e46dc94595be24922b3838ffd7c183cdf1a9c9c097cef1",
-      "version": "numerical-policy-v1"
+      "sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+      "version": "numerical-policy-v2"
     }
   },
   "common_controls": {

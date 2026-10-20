@@ -68,9 +68,9 @@ CAMPAIGN_FILES = (
     "lab_setup/specifications/mot_2d_operating_v1.json",
     "lab_setup/strict_specification.py",
     "lab_setup/numerical_policy.py",
-    "lab_setup/specifications/numerical_policy_v1.json",
+    "lab_setup/specifications/numerical_policy_v2.json",
     "lab_setup/mot_3d_timestep_policy.py",
-    "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+    "lab_setup/specifications/mot_3d_timestep_policy_v2.json",
     "docs/evidence/mot_3d_timestep_20261010_inconclusive.json",
     "lab_setup/laser_setup_3d.py",
     "simulations/mot_3d.py",
@@ -613,7 +613,7 @@ def render_discovery_jobs(
             f"--output-dir {shlex.quote((command_root/'smoke'/family).as_posix())} "
             f"--input {quoted_input} "
             f"--input-manifest {quoted_manifest} --input-role discovery "
-            f"--particles-per-ensemble 1 --npools 12 --dt {dt} --timeout-s 3000\n"
+            f"--particles-per-ensemble 1 --npools 12 --dt {dt} --t-max {MOT_3D_TIMESTEP_POLICY['t_max_s']} --timeout-s 3000\n"
         )
 
     round_paths = {}
@@ -644,7 +644,7 @@ def render_discovery_jobs(
                 f"--output-dir {shlex.quote((command_root/'discovery'/family).as_posix())} "
                 f"--input {quoted_input} "
                 f"--input-manifest {quoted_manifest} --input-role discovery "
-                f"--particles-per-ensemble 50 --npools 200 --dt {dt} "
+                f"--particles-per-ensemble 50 --npools 200 --dt {dt} --t-max {MOT_3D_TIMESTEP_POLICY['t_max_s']} "
                 f"--timeout-s 68400\n"
             )
         round_paths[family] = family_paths
@@ -806,7 +806,7 @@ def render_selection_stage_jobs(
             '--worker-index "$PBS_ARRAY_INDEX" --num-workers 3 '
             f"--selection {selection} --input-manifest {manifest_path} "
             f"--particles-per-ensemble {particles_per_ensemble} "
-            f"--selection-seed {selection_seed} --npools 200 --dt {dt} "
+            f"--selection-seed {selection_seed} --npools 200 --dt {dt} --t-max {MOT_3D_TIMESTEP_POLICY['t_max_s']} "
             f"--output-dir {stage_root}/worker_${{PBS_ARRAY_INDEX}}\n"
         )
         summary_name = (
@@ -863,7 +863,7 @@ def validate_discovery_complete(root, manifest, family):
         "simulation_seed": DEFAULT_RANDOM_SEED,
         "particles_per_ensemble": 50,
         "dt_s": manifest["design"]["screening_dt_s"],
-        "t_max_s": 0.1,
+        "t_max_s": MOT_3D_TIMESTEP_POLICY["t_max_s"],
         "solver": manifest["design"]["solver"],
         "bounds": MOT_3D_OPTIMIZATION_CONFIG,
         "particle_selection": expected_selection,
@@ -1206,7 +1206,7 @@ def _prepare_finalist_selection_legacy(root, manifest):
             + f"python -u -m studies.mot_3d.finalists.run "
             f"--family {family} --selection {selection} "
             '--finalist-index "$PBS_ARRAY_INDEX" '
-            f"--input-manifest {manifest_path} --npools 200 --dt {dt} "
+            f"--input-manifest {manifest_path} --npools 200 --dt {dt} --t-max {MOT_3D_TIMESTEP_POLICY['t_max_s']} "
             f"--output-dir {family_root}/finalist_${{PBS_ARRAY_INDEX}}\n",
         )
         merge_jobs[family] = _write(
@@ -1257,7 +1257,7 @@ def render_finalist_selection_transition(
             + f"python -u -m studies.mot_3d.finalists.run --family {family} "
             f'--selection {selections[family]} --finalist-index "$PBS_ARRAY_INDEX" '
             f"--input-manifest {root / 'campaign.json'} --npools 200 "
-            f"--dt {manifest['design']['screening_dt_s']} "
+            f"--dt {manifest['design']['screening_dt_s']} --t-max {MOT_3D_TIMESTEP_POLICY['t_max_s']} "
             f"--output-dir {family_root}/finalist_${{PBS_ARRAY_INDEX}}\n"
         ).encode("utf-8")
         artifacts[f"jobs/finalist_selection/{family}_merge.pbs"] = (
@@ -1705,7 +1705,7 @@ def render_final_validation_transition(logical_root, manifest):
             + f"python -u -m studies.mot_3d.final_validation run --family {family} "
             f'--recoil-seed "$seed" --locked-nominals {locked} '
             f"--input-manifest {input_manifest} --campaign-manifest {root/'campaign.json'} "
-            f"--output {family_root}/seed_${{seed}}.json --npools 200 --dt {dt}\n"
+            f"--output {family_root}/seed_${{seed}}.json --npools 200 --dt {dt} --t-max {MOT_3D_TIMESTEP_POLICY['t_max_s']}\n"
         ).encode("utf-8")
         merge_jobs[family] = jobs / f"{family}_merge.pbs"
         artifacts[merge_jobs[family].relative_to(root).as_posix()] = (
@@ -1983,7 +1983,7 @@ def complete_final_validation(root, manifest):
             "input_manifest_sha256": _sha256(stage["input_manifest"]),
             "family": family,
             "dt_s": manifest["design"]["production_dt_s"],
-            "t_max_s": 0.1,
+            "t_max_s": MOT_3D_TIMESTEP_POLICY["t_max_s"],
             "solver": manifest["design"]["solver"],
             "classification": "sealed_unbiased_final_validation",
         }
@@ -2370,6 +2370,7 @@ def build_campaign_manifest(
         "solver": MOT_3D_SIM_CONFIG["solver"],
         "screening_dt_s": MOT_3D_SIM_CONFIG["screening_dt_s"],
         "production_dt_s": MOT_3D_SIM_CONFIG["production_dt_s"],
+        "t_max_s": MOT_3D_TIMESTEP_POLICY["t_max_s"],
         "timestep_status": timestep_status,
         "dt_validation_candidates_s": list(
             MOT_3D_SIM_CONFIG["dt_validation_candidates_s"]

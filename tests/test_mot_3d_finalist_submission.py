@@ -43,7 +43,7 @@ def test_descriptor_binds_exact_finalist_stage_contract():
         "input_ensembles": 20,
         "recoil_seeds": (43001, 43002, 43003),
         "dt_s": None,
-        "t_max_s": 0.1,
+        "t_max_s": 0.05,
         "solver": None,
         "npools": 200,
         "bootstrap_replicates": 10000,

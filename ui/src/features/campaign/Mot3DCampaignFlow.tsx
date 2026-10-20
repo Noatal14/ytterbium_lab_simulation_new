@@ -379,7 +379,7 @@ function Mot3DFinalValidationSubmissionStage({
             </div>
             <div>
               <dt>Timestep</dt>
-              <dd>0.625 µs</dd>
+              <dd>5 µs</dd>
             </div>
             <div>
               <dt>Later stages</dt>

@@ -46,7 +46,13 @@ def validate_outcome_archive(npz_path, input_particle_count, *, expected_sha256=
             and hashlib.sha256(raw).hexdigest() != expected_sha256
         ):
             raise ValueError(f"Outcome hash mismatch: {npz_path}")
-        validate_npz_container_bytes(raw)
+        # An int64 ID array for 16,675 sealed atoms exceeds the preliminary
+        # stage's 128-KiB limit. Bound allocation by the trusted count, while
+        # retaining the shared 2-MiB ceiling and strict array checks below.
+        validate_npz_container_bytes(
+            raw, max_member_bytes=min(2 * 1024 * 1024,
+                                      max(128 * 1024, 8 * input_particle_count + 10_000))
+        )
         with np.load(io.BytesIO(raw), allow_pickle=False) as data:
             if set(data.files) != OUTCOME_ARCHIVE_MEMBERS:
                 raise ValueError(f"Unexpected outcome archive members: {npz_path}")
@@ -201,7 +207,9 @@ def validate_artifact_registry(
                 raw = stream.read(2 * 1024 * 1024 + 1)
             if hashlib.sha256(raw).hexdigest() != row.get("outcomes_sha256"):
                 raise ValueError(f"Outcome hash mismatch: {npz_path}")
-            validate_npz_container_bytes(raw)
+            # Selection counts are checked against the frozen stage design
+            # downstream; retain a hard per-member ceiling before NumPy load.
+            validate_npz_container_bytes(raw, max_member_bytes=2 * 1024 * 1024)
         except (OSError, ValueError) as error:
             raise ValueError(f"Invalid outcome archive: {npz_path}") from error
         with np.load(io.BytesIO(raw), allow_pickle=False) as data:

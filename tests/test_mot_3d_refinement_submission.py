@@ -229,7 +229,7 @@ def _receiver_repository(tmp_path: Path):
         "workflow_api/mot_3d_selection_submission_remote.py",
         "workflow_api/mot_3d_refinement_submission_remote.py",
         "lab_setup/specifications/laboratory_physical_v1.json",
-        "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+        "lab_setup/specifications/mot_3d_timestep_policy_v2.json",
     }:
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -252,7 +252,7 @@ def _receiver_repository(tmp_path: Path):
             "total_particles": 3000,
             "recoil_seeds": [42001, 42002, 42003],
             "dt_s": 1e-5,
-            "t_max_s": 0.1,
+            "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "selection_seed": 61001,
             "bootstrap_replicates": 10000,

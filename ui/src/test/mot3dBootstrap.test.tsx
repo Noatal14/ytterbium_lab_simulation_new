@@ -46,7 +46,7 @@ const preview = {
     ],
     solver: "RK4StHybridCustom",
     screening_dt_s: 10e-6,
-    production_dt_s: 0.625e-6,
+    production_dt_s: 5e-6,
     timestep_policy_status:
       "pragmatic_user_approved_after_inconclusive_study" as const,
     convergence_claim: "not_established" as const,
@@ -218,7 +218,7 @@ describe("3D bootstrap strict contracts", () => {
       screen.getByText(/one-off study was inconclusive/i),
     ).toBeInTheDocument();
     expect(screen.getByText("10 µs")).toBeInTheDocument();
-    expect(screen.getByText("0.625 µs")).toBeInTheDocument();
+    expect(screen.getByText("5 µs")).toBeInTheDocument();
     expect(screen.getByText("Not established")).toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: /Create Discovery campaign/i }),

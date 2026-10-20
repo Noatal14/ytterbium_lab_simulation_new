@@ -38,10 +38,10 @@ validated in the laboratory.
 
 ## Capture metric and simulation model
 
-The primary objective is the usable fraction at 100 ms:
+The primary objective is the usable fraction at 50 ms:
 
 ```text
-usable at 100 ms =
+usable at 50 ms =
     distance from MOT center <= 5 mm
     and total speed <= 1 m/s
 ```
@@ -52,7 +52,7 @@ population versus time, loss after the peak, and an exponential lifetime only
 when the decay tail passes the existing fit checks.
 
 All stages use `RK4StHybridCustom` and gravity. Search/optimization stages use
-the policy-frozen `10 us` timestep; sealed final validation uses `0.625 us`.
+the policy-frozen `10 us` timestep; sealed final validation uses `5 us`.
 This is a pragmatic runtime policy, not a convergence claim. All stages retain
 the same physical capture definition, and the same input ordering. Candidate
 comparisons within a stage use common initial particles and matched recoil
@@ -369,7 +369,7 @@ percentage point near the end, an important optimum remains on a boundary, or
 the sampler seeds locate incompatible regions. After that block the campaign
 stops unless the laboratory explicitly approves a new budget.
 
-The objective is usable fraction at 100 ms. Do not optimize
+The objective is usable fraction at 50 ms. Do not optimize
 usable-at-least-once count. Record it only to diagnose loading followed by loss.
 
 ## Stage 2: successive refinement
@@ -500,8 +500,8 @@ they have different denominators and answer different questions.
 At each recommended nominal point:
 
 1. rerun force-sign and protected-core tests;
-2. save the population-versus-time curve through 100 ms;
-3. continue the usable population beyond 100 ms when sufficient atoms remain;
+2. save the population-versus-time curve through 50 ms;
+3. continue the usable population beyond 50 ms when sufficient atoms remain;
 4. fit `tau` only when the observed tail is genuinely exponential and passes
    the declared loss and goodness-of-fit tests;
 5. save final survivor states for continuation;

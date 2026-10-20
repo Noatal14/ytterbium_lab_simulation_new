@@ -209,7 +209,7 @@ def validate_finalist_result_bytes(
             target.parent.mkdir(parents=True, exist_ok=True)
             if relative.endswith(".npz"):
                 try:
-                    _validate_npz_container(raw)
+                    _validate_npz_container(raw, max_member_bytes=2 * 1024 * 1024)
                 except PreliminaryResultError as exc:
                     _raise("result_archive_invalid", exc)
             if (
@@ -410,7 +410,7 @@ def validate_finalist_result_bytes(
                 != hashlib.sha256(selection_bytes[family]).hexdigest()
                 or design.get("input_role") != "all_existing_selection"
                 or design.get("dt_s") != MOT_3D_TIMESTEP_POLICY["search_dt_s"]
-                or design.get("t_max_s") != 0.1
+                or design.get("t_max_s") != MOT_3D_TIMESTEP_POLICY["t_max_s"]
                 or design.get("solver") != MOT_3D_TIMESTEP_POLICY["solver"]
             ):
                 _raise("design_mismatch")

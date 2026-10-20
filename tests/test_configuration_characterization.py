@@ -225,16 +225,25 @@ def _walk_numbers(value):
 def test_complete_normalized_resolved_baseline_has_golden_hash():
     payload = _resolved_baseline_payload()
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
-    # The portability runtime is now an attested campaign dependency. This
-    # changes the provenance ledger, not the physical or numerical settings.
+    # Approved v2 changes only the 3D horizon/production timestep and policy
+    # provenance. The historical golden below still protects all other values.
     assert _canonical_sha256(payload) == (
-        "9beea0f7e4ec294cd35ee8106067ecb4c125a95be130e1a12834e2d3e4e6e610"
+        "865e9e5ee473a871b9bbd328e273f4a97d61ad9c0d2ef7e503aee5249e2ab12d"
     )
 
 
-def test_portability_dependency_is_the_only_change_to_historical_baseline():
+def test_only_approved_3d_protocol_and_portability_differ_from_historical_baseline():
     payload = _resolved_baseline_payload()
+    payload["versioned_numerical_policy"] = json.loads(
+        Path("lab_setup/specifications/numerical_policy_v1.json").read_text()
+    )
+    payload["mot_3d"]["simulation"]["production_dt_s"] = 0.625e-6
+    payload["mot_3d"]["simulation"]["t_max_s"] = 0.025
     relevant_files = payload["mot_2d_executable_campaign"]["relevant_files"]
+    relevant_files[:] = [
+        name.replace("numerical_policy_v2.json", "numerical_policy_v1.json")
+        for name in relevant_files
+    ]
     assert relevant_files.count("workflow_api/platform_io.py") == 1
     relevant_files.remove("workflow_api/platform_io.py")
     assert _canonical_sha256(payload) == (

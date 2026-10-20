@@ -514,10 +514,12 @@ def _validate_materialized_preliminary_results(
     return ValidatedPreliminaryResults(paths, hashes, summaries, evidence)
 
 
-def _validate_npz_container(raw: bytes) -> None:
+def _validate_npz_container(raw: bytes, *, max_member_bytes: int = 128 * 1024) -> None:
     """Reject oversized/foreign members before NumPy sees the archive."""
 
-    if not 0 < len(raw) <= 2 * 1024 * 1024:
+    if (type(max_member_bytes) is not int
+            or not 0 < max_member_bytes <= 2 * 1024 * 1024
+            or not 0 < len(raw) <= 2 * 1024 * 1024):
         raise PreliminaryResultError("result_archive_invalid")
     try:
         with zipfile.ZipFile(io.BytesIO(raw)) as archive:
@@ -532,9 +534,9 @@ def _validate_npz_container(raw: bytes) -> None:
                 if (
                     row.is_dir()
                     or row.file_size <= 0
-                    or row.file_size > 128 * 1024
+                    or row.file_size > max_member_bytes
                     or row.compress_size <= 0
-                    or row.compress_size > 128 * 1024
+                    or row.compress_size > max_member_bytes
                     or row.flag_bits & 0x1
                     or row.compress_type
                     not in {zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED}
@@ -546,9 +548,9 @@ def _validate_npz_container(raw: bytes) -> None:
         raise PreliminaryResultError("result_archive_invalid") from exc
 
 
-def validate_npz_container_bytes(raw: bytes) -> None:
+def validate_npz_container_bytes(raw: bytes, *, max_member_bytes: int = 128 * 1024) -> None:
     """Public shared preflight for the canonical three-member outcome archive."""
-    _validate_npz_container(raw)
+    _validate_npz_container(raw, max_member_bytes=max_member_bytes)
 
 
 def validate_frozen_role_records(

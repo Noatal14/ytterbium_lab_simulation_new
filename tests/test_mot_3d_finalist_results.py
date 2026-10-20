@@ -193,7 +193,7 @@ def _fixture(tmp_path):
             "input_role": "all_existing_selection",
             "input_role_sha256": role_digest,
             "dt_s": 1e-5,
-            "t_max_s": 0.1,
+            "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "particles_per_ensemble": None,
             "selection_seed": None,

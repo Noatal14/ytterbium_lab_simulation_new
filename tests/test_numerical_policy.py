@@ -29,7 +29,7 @@ def _mutable():
 
 def test_policy_is_immutable_and_config_facade_is_exact():
     assert isinstance(NUMERICAL_POLICY, MappingProxyType)
-    assert NUMERICAL_POLICY_VERSION == "numerical-policy-v1"
+    assert NUMERICAL_POLICY_VERSION == "numerical-policy-v2"
     assert len(NUMERICAL_POLICY_SHA256) == 64
     assert config.ZEEMAN_SIM_CONFIG == {
         "t_max_s": 0.02, "dt_s": 4e-5,
@@ -39,8 +39,8 @@ def test_policy_is_immutable_and_config_facade_is_exact():
         "t_max_s": 0.025, "dt_s": 0.625e-6, "start_distance_m": 0.100,
     }
     assert config.MOT_3D_SIM_CONFIG == {
-        "t_max_s": 0.025, "dt_s": 10e-6,
-        "screening_dt_s": 10e-6, "production_dt_s": 0.625e-6,
+        "t_max_s": 0.05, "dt_s": 10e-6,
+        "screening_dt_s": 10e-6, "production_dt_s": 5e-6,
         "dt_validation_candidates_s": (10e-6, 5e-6, 2.5e-6, 1.25e-6, 0.625e-6),
         "dt_validation_reference_s": 0.3125e-6,
         "solver": "RK4StHybridCustom",

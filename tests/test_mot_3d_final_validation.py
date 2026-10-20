@@ -19,7 +19,7 @@ def test_final_validation_merge_reports_sealed_unbiased_interval(tmp_path):
     inputs_path = tmp_path / "inputs.json"
     campaign.write_text(
         json.dumps(
-            {"design": {"production_dt_s": 0.625e-6, "solver": "RK4StHybridCustom"}}
+            {"design": {"production_dt_s": 5e-6, "solver": "RK4StHybridCustom"}}
         )
     )
     locked_path.write_text(
@@ -39,8 +39,8 @@ def test_final_validation_merge_reports_sealed_unbiased_interval(tmp_path):
         "locked_nominals_sha256": sha256(locked_path),
         "input_manifest_sha256": sha256(inputs_path),
         "family": "angled_donut",
-        "dt_s": 0.625e-6,
-        "t_max_s": 0.1,
+        "dt_s": 5e-6,
+        "t_max_s": 0.05,
         "solver": "RK4StHybridCustom",
         "classification": "sealed_unbiased_final_validation",
     }
@@ -81,7 +81,7 @@ def test_final_validation_merge_reports_sealed_unbiased_interval(tmp_path):
         locked_nominals=str(locked_path),
         input_manifest=str(inputs_path),
         campaign_manifest=str(campaign),
-        dt=0.625e-6,
+        dt=5e-6,
     )
     merge(args)
     summary = json.loads(output.read_text())
@@ -96,7 +96,7 @@ def test_final_validation_merge_reports_sealed_unbiased_interval(tmp_path):
     args.dt = 1.25e-6
     with pytest.raises(ValueError, match="timestep"):
         merge(args)
-    args.dt = 0.625e-6
+    args.dt = 5e-6
     inputs_payload = json.loads(inputs_path.read_text())
     inputs_payload["ensembles"] = [{"n_survivors": 9}, {"n_survivors": 11}]
     inputs_path.write_text(json.dumps(inputs_payload))
@@ -188,8 +188,8 @@ def test_outcome_validation_uses_the_same_bytes_after_preflight(tmp_path, monkey
     )
     original_preflight = strict_npz.validate_npz_container_bytes
 
-    def mutate_after_preflight(raw):
-        original_preflight(raw)
+    def mutate_after_preflight(raw, **kwargs):
+        original_preflight(raw, **kwargs)
         np.savez(
             path,
             usable_at_end=np.array([False], dtype=bool),
@@ -308,7 +308,7 @@ def test_completed_final_report_binds_all_final_validation_provenance(
         "name": "campaign-123",
         "stage": "final_validation",
         "provenance": {"git_commit": "a" * 40, "physical_model_sha256": "b" * 64},
-        "design": {"production_dt_s": 0.625e-6, "solver": "RK4StHybridCustom"},
+        "design": {"production_dt_s": 5e-6, "solver": "RK4StHybridCustom"},
         "stages": {
             "final_validation": {
                 "locked_nominals": str(locked),
@@ -401,8 +401,8 @@ def test_completed_final_report_binds_all_final_validation_provenance(
                 "locked_nominals_sha256": sha256(locked),
                 "input_manifest_sha256": sha256(inputs),
                 "family": family,
-                "dt_s": 0.625e-6,
-                "t_max_s": 0.1,
+                "dt_s": 5e-6,
+                "t_max_s": 0.05,
                 "solver": "RK4StHybridCustom",
                 "classification": "sealed_unbiased_final_validation",
             },
@@ -424,7 +424,7 @@ def test_completed_final_report_binds_all_final_validation_provenance(
         "locked_nominals_sha256": sha256(locked),
         "input_manifest_sha256": sha256(inputs),
         "final_validation_submission_sha256": sha256(submission),
-        "production_dt_s": 0.625e-6,
+        "production_dt_s": 5e-6,
         "solver": "RK4StHybridCustom",
     }
 

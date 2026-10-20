@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+
 import hashlib
 import json
 import re
@@ -69,7 +71,7 @@ CODE_FILES = frozenset(
         "workflow_api/mot_3d_selection_submission_remote.py",
         "workflow_api/mot_3d_preliminary_submission_remote.py",
         "lab_setup/specifications/laboratory_physical_v1.json",
-        "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+        "lab_setup/specifications/mot_3d_timestep_policy_v2.json",
     }
 )
 
@@ -281,7 +283,7 @@ class Mot3DPreliminarySubmissionCoordinator:
                 "total_particles": 600,
                 "recoil_seeds": [41001, 41002, 41003],
                 "dt_s": design.get("screening_dt_s"),
-                "t_max_s": 0.1,
+                "t_max_s": MOT_3D_TIMESTEP_POLICY["t_max_s"],
                 "solver": design.get("solver"),
                 "selection_seed": 51001,
                 "bootstrap_replicates": 10000,

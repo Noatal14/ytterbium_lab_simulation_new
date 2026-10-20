@@ -39,7 +39,7 @@ RELEVANT_FILES = (
     "lab_setup/specifications/mot_2d_operating_v1.json",
     "lab_setup/strict_specification.py",
     "lab_setup/numerical_policy.py",
-    "lab_setup/specifications/numerical_policy_v1.json",
+    "lab_setup/specifications/numerical_policy_v2.json",
 )
 
 FIXED_DESIGN: dict[str, Any] = {

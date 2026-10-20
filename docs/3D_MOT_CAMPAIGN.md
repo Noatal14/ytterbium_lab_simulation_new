@@ -18,11 +18,23 @@ flux and from oven-to-3D efficiency.
 
 ## Lifecycle
 
+Current new-campaign policy is v2: every 3D evaluation ends at 50 ms, search
+uses 10 us and sealed final validation uses 5 us. v1 specifications and
+historical campaign files are retained unchanged. Old campaigns must use
+their pinned code/runtime for execution; current code must not reinterpret
+their 100-ms / 0.625-us results as v2 results or silently migrate them.
+
+Completed individual-run results remain readable through their frozen records.
+Previously configured but unstarted runs may need a fresh preview/configuration
+after upgrading: submission deliberately rejects stale numerical-policy hashes.
+In-flight Zeus runs still require their original pinned checkout revision.
+
 1. `create` validates the completed 2D campaign, freezes every input hash and
    writes the PBS files. It submits nothing.
 2. A new campaign starts at Discovery under the versioned pragmatic timestep
    policy: `10 us` for Discovery, preliminary check, refinement, closure and
-   finalist selection; `0.625 us` only for sealed final validation. The
+   finalist selection; `5 us` for sealed final validation. Every evaluation
+   uses a `50 ms` endpoint under policy v2. The
    2026-10-10 one-off study was inconclusive because its sentinel evidence was
    degenerate. These values are an explicit runtime tradeoff, not a convergence
    claim. The old provisional campaign remains unchanged; this policy always
@@ -59,7 +71,7 @@ python -u -m studies.mot_3d_campaign submit-final-inputs --campaign CAMPAIGN
 python -u -m studies.mot_3d_campaign status --campaign CAMPAIGN
 ```
 
-`lab_setup/specifications/mot_3d_timestep_policy_v1.json` is the strict,
+`lab_setup/specifications/mot_3d_timestep_policy_v2.json` is the strict,
 hash-pinned authority. It records the inconclusive study status, whether its
 artifact hashes are locally available, the absence of a convergence claim and
 the user-approved rationale. The one-off timestep code remains available for
@@ -95,8 +107,8 @@ The immutable evidence, paired 30/50-ms diagnostic, checkpoints, exact runtime
 and publication-only repair are archived under
 `data/validation/mot_3d/final_campaign_20261020/`. One-off runtime/submission and
 time-comparison tools were retired from active source after this backup.
-The retained scientific runner and generic campaign lifecycle are unchanged;
-this historical exception does not redefine their default protocol.
+The subsequent v2 policy adopts 5-us / 50-ms final validation for new campaigns.
+This does not relabel any historical run or rewrite its frozen protocol.
 
 The original hashed remote `campaign.json` still records `final_validation`.
 `campaign_closure_20261020.json` records the accepted final amended execution;

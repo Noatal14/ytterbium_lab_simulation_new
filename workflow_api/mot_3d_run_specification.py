@@ -220,9 +220,8 @@ def _validate(value: Any) -> dict[str, Any]:
         "suitability": "individual_only",
         "solver": MOT_3D_SIM_CONFIG["solver"],
         "timestep_s": MOT_3D_SIM_CONFIG["dt_s"],
-        # Individual 3D runs use the canonical campaign horizon.  This is an
-        # explicit part of this versioned contract, not the shorter generic
-        # presentation/default horizon exposed by MOT_3D_SIM_CONFIG.
+        # The individual-run v1 horizon is independent of the newer campaign
+        # policy. This task changes campaigns, not individual-run physics.
         "t_max_s": 0.1,
         "convergence_claim": "not_established",
         "gravity_enabled": True,

@@ -201,7 +201,7 @@ describe("individual 3D-MOT frontend contract", () => {
     ["malformed laboratory specification", (row: ReturnType<typeof preview>) => { delete (row.plan.laboratory_specification as unknown as Record<string, unknown>).sha256; }],
     ["malformed numerical policy", (row: ReturnType<typeof preview>) => { Object.assign(row.plan.numerical_policy, { path: "private" }); }],
     ["changed laboratory authority", (row: ReturnType<typeof preview>) => { (row.plan.laboratory_specification as unknown as Record<string, unknown>).sha256 = "0".repeat(64); }],
-    ["changed numerical authority", (row: ReturnType<typeof preview>) => { (row.plan.numerical_policy as unknown as Record<string, unknown>).version = "numerical-policy-v2"; }],
+    ["changed numerical authority", (row: ReturnType<typeof preview>) => { (row.plan.numerical_policy as unknown as Record<string, unknown>).version = "numerical-policy-foreign"; }],
   ])("rejects %s", async (_label, mutate) => {
     const row = structuredClone(preview()); mutate(row);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope(row)));

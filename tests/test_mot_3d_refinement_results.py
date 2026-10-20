@@ -154,7 +154,7 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(
                 json.dumps(roles, sort_keys=True, separators=(",", ":")).encode()
             ).hexdigest(),
             "dt_s": 1e-5,
-            "t_max_s": 0.1,
+            "t_max_s": 0.05,
             "solver": "RK4StHybridCustom",
             "particles_per_ensemble": 750,
             "selection_seed": selection_seed,

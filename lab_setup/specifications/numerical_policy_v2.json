@@ -1,0 +1,28 @@
+{
+  "spec_version": "numerical-policy-v2",
+  "zeeman": {
+    "solver": "RK4StCustom",
+    "dt_s": 0.00004,
+    "t_max_s": 0.02
+  },
+  "mot_2d": {
+    "solver": "RK4StHybridCustom",
+    "dt_s": 6.25e-7,
+    "t_max_s": 0.025
+  },
+  "mot_3d": {
+    "solver": "RK4StHybridCustom",
+    "dt_s": 0.00001,
+    "screening_dt_s": 0.00001,
+    "production_dt_s": 0.000005,
+    "dt_validation_candidates_s": [
+      0.00001,
+      0.000005,
+      0.0000025,
+      0.00000125,
+      6.25e-7
+    ],
+    "dt_validation_reference_s": 3.125e-7,
+    "t_max_s": 0.05
+  }
+}

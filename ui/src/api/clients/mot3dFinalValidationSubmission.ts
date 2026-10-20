@@ -5,7 +5,7 @@ import {
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
-import { MOT_3D_TIMESTEP_POLICY_V1 } from "../../generated/mot3dTimestepPolicy.v1";
+import { MOT_3D_TIMESTEP_POLICY_V2 } from "../../generated/mot3dTimestepPolicy.v2";
 import { creationApi } from "./campaign";
 import {
   parseMot3DClosureSubmissionStatus,
@@ -140,9 +140,9 @@ export function parseMot3DFinalValidationSubmissionPreview(
     science.input_ensembles !== 20 ||
     JSON.stringify(science.recoil_seeds) !==
       JSON.stringify([44001, 44002, 44003]) ||
-    science.dt_s !== MOT_3D_TIMESTEP_POLICY_V1.sealed_final_validation_dt_s ||
-    science.t_max_s !== 0.1 ||
-    science.solver !== MOT_3D_TIMESTEP_POLICY_V1.solver ||
+    science.dt_s !== MOT_3D_TIMESTEP_POLICY_V2.sealed_final_validation_dt_s ||
+    science.t_max_s !== MOT_3D_TIMESTEP_POLICY_V2.t_max_s ||
+    science.solver !== MOT_3D_TIMESTEP_POLICY_V2.solver ||
     science.npools !== 200 ||
     science.bootstrap_replicates !== 20000 ||
     science.bootstrap_seed !== 92001 ||
@@ -164,8 +164,8 @@ export function parseMot3DFinalValidationSubmissionPreview(
     particles_per_ensemble: 750,
     total_particles: 3000,
     recoil_seeds: [42001, 42002, 42003],
-    dt_s: MOT_3D_TIMESTEP_POLICY_V1.search_dt_s,
-    t_max_s: 0.1,
+    dt_s: MOT_3D_TIMESTEP_POLICY_V2.search_dt_s,
+    t_max_s: 0.05,
     solver: science.solver,
     selection_seed: 71001,
     bootstrap_replicates: 10000,

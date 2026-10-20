@@ -516,7 +516,7 @@ MOT_3D_LASER_CONFIG = MOT_3D_CONFIGURATIONS[ACTIVE_MOT_3D_CONFIGURATION]
 MOT_3D_SIM_CONFIG = {
     "t_max_s": _NUMERICS["mot_3d"]["t_max_s"],
     # Pragmatic, explicitly non-converged policy: use 10 us for all search and
-    # optimization stages, then 0.625 us for sealed final validation.  The
+    # optimization stages, then 5 us for sealed final validation.  The
     # versioned policy records the inconclusive study and user decision.
     "dt_s": _NUMERICS["mot_3d"]["dt_s"],
     "screening_dt_s": _NUMERICS["mot_3d"]["screening_dt_s"],

@@ -429,7 +429,7 @@ PRELIMINARY_CODE_PATHS = frozenset(
         "workflow_api/mot_3d_stage_topology.py",
         "workflow_api/verified_artifact_bundle.py",
         "workflow_api/mot_3d_preliminary_transition_remote.py",
-        "lab_setup/specifications/mot_3d_timestep_policy_v1.json",
+        "lab_setup/specifications/mot_3d_timestep_policy_v2.json",
     }
 )
 # Backward-compatible public constants used by the Stage-3 characterization

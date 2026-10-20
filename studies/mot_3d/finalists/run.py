@@ -1,3 +1,4 @@
+from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
 """Evaluate one 3D-MOT finalist on all 20 frozen selection ensembles and three seeds."""
 
 import argparse
@@ -125,7 +126,7 @@ def parse_args(argv=None):
     parser.add_argument("--input-manifest", required=True)
     parser.add_argument("--npools", type=int, default=200)
     parser.add_argument("--dt", type=float, default=MOT_3D_SIM_CONFIG["dt_s"])
-    parser.add_argument("--t-max", type=float, default=0.1)
+    parser.add_argument("--t-max", type=float, default=MOT_3D_TIMESTEP_POLICY["t_max_s"])
     return parser.parse_args(argv)
 
 

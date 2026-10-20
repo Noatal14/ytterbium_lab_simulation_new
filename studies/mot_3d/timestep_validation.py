@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+
 import argparse
 import hashlib
 import json
@@ -29,7 +31,7 @@ BOOTSTRAP_REPLICATES = 20_000
 SCREENING_TOLERANCE = 0.005
 PRODUCTION_TOLERANCE = 0.0025
 DISAGREEMENT_TOLERANCE = 0.020
-T_MAX_S = 0.1
+T_MAX_S = MOT_3D_TIMESTEP_POLICY["t_max_s"]
 EVIDENCE_FORMAT_VERSION = 1
 
 SENTINEL_PARAMETERS = {

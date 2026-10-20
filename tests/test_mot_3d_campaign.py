@@ -213,7 +213,7 @@ def test_create_is_plan_only_and_freezes_new_design(
         0.0075
     )
     assert manifest["design"]["screening_dt_s"] == pytest.approx(10e-6)
-    assert manifest["design"]["production_dt_s"] == pytest.approx(0.625e-6)
+    assert manifest["design"]["production_dt_s"] == pytest.approx(5e-6)
     assert (
         manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
     )
@@ -227,7 +227,7 @@ def test_create_is_plan_only_and_freezes_new_design(
     assert manifest["design"]["dt_validation_reference_s"] == pytest.approx(0.3125e-6)
     assert "studies/mot_3d/timestep_validation.py" in mot_3d_campaign.relevant_files()
     assert (
-        "lab_setup/specifications/mot_3d_timestep_policy_v1.json"
+        "lab_setup/specifications/mot_3d_timestep_policy_v2.json"
         in mot_3d_campaign.relevant_files()
     )
 
@@ -280,7 +280,13 @@ def test_ui_bootstrap_renders_discovery_only_from_pragmatic_policy(
         manifest["design"]["timestep_status"] == "pragmatic_user_approved_not_converged"
     )
     assert manifest["design"]["screening_dt_s"] == 10e-6
-    assert manifest["design"]["production_dt_s"] == 0.625e-6
+    assert manifest["design"]["production_dt_s"] == 5e-6
+    assert manifest["design"]["t_max_s"] == .05
+    from workflow_api.mot_3d import _timestep_validation
+    assert _timestep_validation(destination, manifest)[0] is True
+    changed_horizon = json.loads(json.dumps(manifest))
+    changed_horizon["design"]["t_max_s"] = .1
+    assert _timestep_validation(destination, changed_horizon)[0] is False
     assert (
         manifest["design"]["timestep_evidence"]["convergence_claim"]
         == "not_established"
@@ -303,6 +309,10 @@ def test_ui_bootstrap_renders_discovery_only_from_pragmatic_policy(
     }
     assert all(
         b"qsub" not in data for name, data in files.items() if name.endswith(".pbs")
+    )
+    assert all(
+        b"--t-max 0.05" in data
+        for name, data in files.items() if name.endswith(".pbs")
     )
     assert all(
         str(tmp_path).encode() not in data

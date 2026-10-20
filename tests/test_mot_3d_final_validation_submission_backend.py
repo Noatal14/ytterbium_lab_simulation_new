@@ -73,13 +73,13 @@ def test_final_validation_submission_science_is_frozen():
         "input_ensembles": 20,
         "recoil_seeds": [44001, 44002, 44003],
         "dt_s": None,
-        "t_max_s": 0.1,
+        "t_max_s": 0.05,
         "solver": None,
         "npools": 200,
         "bootstrap_replicates": 20_000,
         "bootstrap_seed": 92_001,
     }
-    assert policy.dt_s == 0.625e-6
+    assert policy.dt_s == 5e-6
 
 
 @pytest.mark.parametrize(
@@ -110,7 +110,7 @@ def _repository(tmp_path):
             "final_report_sha256": "3" * 64,
         },
         "design": {
-            "production_dt_s": 0.625e-6,
+            "production_dt_s": 5e-6,
             "solver": "RK4StHybridCustom",
             "timestep_evidence": {"policy_sha256": "4" * 64},
         },
@@ -154,7 +154,7 @@ def _repository(tmp_path):
         "files": {
             name: hashlib.sha256(raw).hexdigest() for name, raw in frozen.items()
         },
-        "science": {**SCIENCE, "dt_s": 0.625e-6, "solver": "RK4StHybridCustom"},
+        "science": {**SCIENCE, "dt_s": 5e-6, "solver": "RK4StHybridCustom"},
         "physical_model_sha256": "1" * 64,
         "upstream_campaign_sha256": "2" * 64,
         "upstream_final_report_sha256": "3" * 64,
@@ -335,7 +335,7 @@ def test_real_coordinator_status_and_preview_accept_only_production_dt(
             "final_report_sha256": "3" * 64,
         },
         "design": {
-            "production_dt_s": 0.625e-6,
+            "production_dt_s": 5e-6,
             "solver": "RK4StHybridCustom",
             "timestep_evidence": {"policy_sha256": "4" * 64},
         },
@@ -413,7 +413,7 @@ def test_real_coordinator_status_and_preview_accept_only_production_dt(
     }
     assert coordinator.status(request)["campaign"]["stage"] == "final_validation"
     preview = coordinator.preview(request, session_id="session")
-    assert preview["science"]["dt_s"] == 0.625e-6
+    assert preview["science"]["dt_s"] == 5e-6
     assert preview["resources"]["merge"] == {
         "ncpus": 1,
         "memory_gb": 8,

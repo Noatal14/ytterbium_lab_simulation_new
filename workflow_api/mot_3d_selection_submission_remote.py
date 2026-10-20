@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+
 import base64, hashlib, json, os, re, stat, subprocess, sys, tempfile, time
 try:
     import fcntl
@@ -161,7 +163,7 @@ class ReceiverDescriptor:
                 for name in numeric_names
             )
             or type(science["t_max_s"]) not in {int, float}
-            or science["t_max_s"] != 0.1
+            or science["t_max_s"] != MOT_3D_TIMESTEP_POLICY["t_max_s"]
             or not isinstance(science["recoil_seeds"], (list, tuple))
             or any(
                 type(seed) is not int or seed < 0 for seed in science["recoil_seeds"]

@@ -124,7 +124,7 @@ def validate_final_validation_result_bytes(
         _safe_bytes(raw, code="result_registry_invalid")
         if name.endswith(".npz"):
             try:
-                validate_npz_container_bytes(raw)
+                validate_npz_container_bytes(raw, max_member_bytes=MAX_FILE_BYTES)
             except Exception as exc:
                 _raise("result_archive_invalid", exc)
         elif name.endswith(".json"):
