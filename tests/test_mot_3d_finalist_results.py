@@ -2,6 +2,7 @@ from argparse import Namespace
 import hashlib
 import io
 import json
+from pathlib import PurePosixPath
 
 import numpy as np
 import pytest
@@ -85,13 +86,18 @@ def test_validator_rejects_nonbyte_and_oversized_boundaries_before_loading():
         )
 
 
-def _fixture(tmp_path):
+def _fixture(tmp_path, monkeypatch, *, acceptance=False):
     from studies.mot_3d.discovery.optimize import build_profile_from_parameters
-    from studies.mot_3d.finalists.merge import merge
+    from studies.mot_3d.finalists import merge as merge_module
 
-    project = str(tmp_path / "project")
-    remote = f"{project}/data/optimization/mot_3d/campaign"
-    root = tmp_path / "project/data/optimization/mot_3d/campaign"
+    from workflow_api.acceptance_profile import load_acceptance_profile
+    marker = load_acceptance_profile().provenance() if acceptance else None
+    project = str(PurePosixPath(
+        "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"
+        if acceptance else "/home/tal.noa/ytterbium_lab_simulation_new"
+    ))
+    remote = f"{project}/data/optimization/mot_3d/{'ui_acceptance/' if acceptance else ''}campaign"
+    root = tmp_path / "project/data/optimization/mot_3d" / ("ui_acceptance" if acceptance else "") / "campaign"
     root.mkdir(parents=True)
     roles, provenance = {}, []
     seeds = iter(range(3015, 3035))
@@ -100,8 +106,8 @@ def _fixture(tmp_path):
         for _ in range(count):
             seed = next(seeds)
             row = {
-                "path": f"{project}/data/input_{seed}.npy",
-                "metadata_path": f"{project}/data/input_{seed}.json",
+                "path": f"{project}/data/{'acceptance/' if acceptance else ''}input_{seed}.npy",
+                "metadata_path": f"{project}/data/{'acceptance/' if acceptance else ''}input_{seed}.json",
                 "sha256": hashlib.sha256(str(seed).encode()).hexdigest(),
                 "metadata_sha256": hashlib.sha256(f"meta{seed}".encode()).hexdigest(),
                 "zeeman_seed": seed,
@@ -110,7 +116,7 @@ def _fixture(tmp_path):
                 "shape": [1, 6],
                 "dtype": "float64",
                 "source_git_commit": "a" * 40,
-                "source_design": {},
+                "source_design": {"acceptance": marker} if acceptance else {},
                 "source_parameters": {},
             }
             rows.append(row)
@@ -138,6 +144,15 @@ def _fixture(tmp_path):
             }
         },
     }
+    if acceptance:
+        from studies.mot_3d_campaign import build_campaign_manifest
+        canonical = build_campaign_manifest(
+            name="campaign", input_directory="data/acceptance/source",
+            upstream={}, roles=roles, revision="a" * 40,
+            physical_model_sha256="b" * 64,
+            acceptance_profile_id="ui_acceptance_v1",
+        )
+        manifest.update({key: canonical[key] for key in ("kind", "acceptance", "design")})
     manifest_raw = json.dumps(manifest, indent=2).encode() + b"\n"
     (root / "campaign.json").write_bytes(manifest_raw)
     role_rows = sum(
@@ -199,6 +214,8 @@ def _fixture(tmp_path):
             "selection_seed": None,
             "particle_selection_sha256": particle_digest,
         }
+        if acceptance:
+            design.update({"acceptance": marker, "suitability": "acceptance_only"})
         for index, candidate in enumerate(candidates):
             directory = root / "finalist_selection" / family / f"finalist_{index}"
             directory.mkdir(parents=True)
@@ -233,15 +250,28 @@ def _fixture(tmp_path):
                     "design": design,
                 }
                 (directory / f"{stem}.json").write_text(json.dumps(record))
-        merge(
-            Namespace(
-                selection=str(selection_path),
-                input_root=str(root / "finalist_selection" / family),
-                output_dir=str(root / "finalist_selection" / family / "merged"),
-                bootstrap_replicates=10000,
-                bootstrap_seed=82001,
+        native_path = merge_module.Path
+
+        def materialized_path(value):
+            # Only the fixture producer maps its logical Zeus manifest to the
+            # native temporary filesystem; all scientific checks still run.
+            if isinstance(value, str) and value.startswith(project + "/"):
+                return (tmp_path / "project").joinpath(
+                    *PurePosixPath(value[len(project) + 1 :]).parts
+                )
+            return native_path(value)
+
+        with monkeypatch.context() as patches:
+            patches.setattr(merge_module, "Path", materialized_path)
+            merge_module.merge(
+                Namespace(
+                    selection=str(selection_path),
+                    input_root=str(root / "finalist_selection" / family),
+                    output_dir=str(root / "finalist_selection" / family / "merged"),
+                    bootstrap_replicates=10000,
+                    bootstrap_seed=82001,
+                )
             )
-        )
         for path in (root / "finalist_selection" / family).rglob("*"):
             if path.is_file():
                 relative = path.relative_to(root).as_posix()
@@ -259,10 +289,19 @@ def _fixture(tmp_path):
     return project, remote, manifest, manifest_raw, selection_bytes, results, provenance
 
 
-def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path):
+def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path, monkeypatch):
     project, remote, manifest, manifest_raw, selections_raw, results, provenance = (
-        _fixture(tmp_path)
+        _fixture(tmp_path, monkeypatch)
     )
+    from studies.mot_3d.finalists import merge as merge_module
+    native_path = merge_module.Path
+
+    def forbid_remote_manifest(value):
+        if isinstance(value, str) and value.startswith("/home/"):
+            raise AssertionError("Host recomputation reopened remote manifest")
+        return native_path(value)
+
+    monkeypatch.setattr(merge_module, "Path", forbid_remote_manifest)
     validated = validate_finalist_result_bytes(
         manifest_raw,
         selections_raw,
@@ -433,3 +472,28 @@ def test_realistic_exact_44_file_fixture_and_adversarial_matrix(tmp_path):
     )
     assert other.hashes[record_key] != validated.hashes[record_key]
     assert other.evidence_sha256 != validated.evidence_sha256
+
+
+def test_acceptance_captured_finalist_registry_recomputes_without_remote_path_reads(
+    tmp_path, monkeypatch
+):
+    from studies.mot_3d.finalists import merge as merge_module
+
+    project, remote, _, manifest, selections_raw, results, _ = _fixture(
+        tmp_path, monkeypatch, acceptance=True
+    )
+    native_path = merge_module.Path
+
+    def forbid_remote_manifest(value):
+        if isinstance(value, str) and value.startswith("/home/"):
+            raise AssertionError("Host recomputation reopened remote manifest")
+        return native_path(value)
+
+    monkeypatch.setattr(merge_module, "Path", forbid_remote_manifest)
+    validated = validate_finalist_result_bytes(
+        manifest, selections_raw, results,
+        project_directory=project, campaign_absolute_path=remote,
+    )
+    assert validated.hashes == {
+        name: hashlib.sha256(raw).hexdigest() for name, raw in results.items()
+    }

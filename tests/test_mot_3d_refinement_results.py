@@ -2,7 +2,7 @@ from argparse import Namespace
 import hashlib
 import io
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 import pytest
@@ -257,7 +257,7 @@ def test_closed_200_file_fixture_validates_and_binds_canonical_paths(
         and "worker_" in name
         and not name.endswith("particle_selection.json")
     )
-    npz_key = str(Path(record_key).with_suffix(".npz"))
+    npz_key = str(PurePosixPath(record_key).with_suffix(".npz"))
     bad = dict(results)
     row = json.loads(bad[record_key])
     row["outcomes_path"] = f"/attacker/{npz_key}"

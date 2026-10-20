@@ -51,7 +51,7 @@ def _repository(root: Path) -> None:
         path.write_text(relative, encoding="utf-8")
     lab = root / "lab_setup/model.py"
     lab.parent.mkdir(exist_ok=True)
-    lab.write_text("MODEL = 1\n", encoding="utf-8")
+    lab.write_text("MODEL = 1\n", encoding="utf-8", newline="\n")
     subprocess.run(["git", "init", "-q"], cwd=root, check=True)
     subprocess.run(["git", "add", "."], cwd=root, check=True)
     subprocess.run(
@@ -495,7 +495,16 @@ def test_pinned_transport_uses_fixed_ssh_argv_and_no_shell(tmp_path, monkeypatch
     assert argv[0] == str(SSH_EXECUTABLE)
     assert argv[-2] == "tal.noa@zeus.technion.ac.il"
     assert kwargs["shell"] is False
-    assert kwargs["stdin"] is subprocess.DEVNULL
+    assert "stdin" not in kwargs
+    header, tail = kwargs["input"].split(b"\n", 1)
+    source, receiver_argv = json.loads(header)
+    assert base64.urlsafe_b64decode(source).decode() == _REMOTE_SCRIPT
+    assert receiver_argv[1:4] == ["inspect", "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"]
+    transported = json.loads(base64.urlsafe_b64decode(receiver_argv[4]))
+    assert transported["campaign"] == "data/optimization/mot_2d/campaign"
+    assert transported["submission_key"] == "b" * 64
+    assert len(transported["files"]) == 72
+    assert tail == b""
     assert "BatchMode=yes" in argv and "StrictHostKeyChecking=yes" in argv
     assert "ForwardAgent=no" in argv and "ClearAllForwardings=yes" in argv
     assert all(term not in " ".join(argv[:-1]) for term in ("qsub", "qdel", "qalter"))
@@ -627,7 +636,7 @@ def test_remote_receiver_contains_only_fixed_smoke_qsub_and_no_mutating_admin_co
         assert forbidden not in _REMOTE_SCRIPT
 
 
-def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None):
+def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_mutation=None):
     """Build a hermetic stand-in for the fixed Zeus receiver contract."""
 
     fake_home = tmp_path / "home" / "tal.noa"
@@ -681,11 +690,12 @@ printf '12345.zeus-master\\n'
         "campaign": campaign.as_posix(),
         "job_file": job_file.as_posix(),
         "commit": commit,
-        "submission_key": "b" * 64,
+        "submission_key": hashlib.sha256(json.dumps({"campaign":campaign.as_posix(),"commit":commit,"manifest":files[(campaign / "campaign.json").as_posix()],"pbs":files[job_file.as_posix()]},sort_keys=True,separators=(",",":")).encode()).hexdigest(),
     }
 
     def invoke(operation: str, nonce: str | None = None) -> tuple[subprocess.CompletedProcess[bytes], dict[str, object]]:
         request = {**base_request, "nonce": nonce}
+        if request_mutation is not None: request_mutation(request)
         encoded = base64.urlsafe_b64encode(
             json.dumps(request, sort_keys=True, separators=(",", ":")).encode()
         ).decode("ascii")
@@ -808,3 +818,19 @@ def test_transport_rejects_success_json_with_failed_or_noisy_ssh(
             nonce="0" * 32,
         )
     ) == "submission_outcome_unknown"
+
+
+@pytest.mark.parametrize('mutation', ['missing_manifest', 'wrong_key'])
+def test_embedded_receiver_requires_manifest_digest_and_recomputed_key_before_qsub(tmp_path, mutation):
+    def change(request):
+        if mutation == 'wrong_key': request['submission_key'] = '0' * 64
+        else:
+            files = dict(request['files'])
+            files['data/particle_states/after_zeeman/unrelated.bin'] = files.pop(request['campaign'] + '/campaign.json')
+            request['files'] = files
+    _, _, _, calls, captured, invoke = _receiver_fixture(tmp_path, request_mutation=change)
+    result, response = invoke('submit', '1' * 32)
+    assert result.returncode == 20
+    assert response == {'error': 'invalid_request'}
+    assert not calls.exists()
+    assert not captured.exists()

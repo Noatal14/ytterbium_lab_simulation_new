@@ -1558,7 +1558,13 @@ class PinnedSshRunner:
                 raise RuntimeError("Pinned SSH receiver is unavailable.")
             return Path(__file__).with_name(definition.filename).read_bytes()
 
-        if definition.payload_stdin:
+        operation_only = self._policy.receiver in {
+            ReceiverKind.SENSITIVITY_PREPARATION,
+            ReceiverKind.PRODUCTION_PREPARATION,
+            ReceiverKind.FINALIZATION,
+        }
+        payload_stdin = definition.payload_stdin or operation_only
+        if payload_stdin:
             receiver = read_receiver()
             encoded = ""
         elif definition.payload_before_receiver:
@@ -1567,35 +1573,26 @@ class PinnedSshRunner:
         else:
             receiver = read_receiver()
             encoded = encode_payload()
-        script = base64.urlsafe_b64encode(receiver).decode()
-        if definition.embedded_smoke_receiver:
-            wrapper = (
-                "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
-                "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
-            )
-        else:
-            # Individual receivers parse four arguments after argv[0]. Keep the
-            # encoded receiver as argv[0] when entering their Python bootstrap.
-            argument_start = 1 if self._policy.receiver in {
-                ReceiverKind.ZEEMAN_INDIVIDUAL,
-                ReceiverKind.MOT_2D_INDIVIDUAL,
-                ReceiverKind.MOT_3D_INDIVIDUAL,
-            } else 2
-            wrapper = (
-                "import base64,sys;code=base64.urlsafe_b64decode(sys.argv[1]);"
-                f"sys.argv=sys.argv[{argument_start}:];exec(compile(code,'"
-                + definition.compile_name
-                + "','exec'),{'__name__':'__main__'})"
-            )
-            if definition.payload_stdin:
-                # Keep receiver source off argv too: Windows CreateProcess has
-                # a 32,767-character command-line limit. Consume one framing
-                # line, leaving the existing JSON payload for the receiver.
-                wrapper = wrapper.replace(
-                    "base64.urlsafe_b64decode(sys.argv[1])",
-                    "base64.urlsafe_b64decode(sys.stdin.buffer.readline())",
-                )
-                script = definition.compile_name
+        receiver_argv = [definition.compile_name, operation.value]
+        if not operation_only:
+            receiver_argv.extend((profile.username, profile.project_directory,
+                                  "-" if payload_stdin else encoded))
+        header = json.dumps(
+            [base64.urlsafe_b64encode(receiver).decode("ascii"), receiver_argv],
+            separators=(",", ":"),
+        ).encode("ascii") + b"\n"
+        if len(header) > 2 * 1024 * 1024:
+            raise ValueError("Pinned SSH receiver framing exceeds its bound.")
+        # Source and closed argv are transport-owned framing, never shell argv.
+        # The receiver sees its original stdin contract after this single line.
+        wrapper = (
+            "import base64,json,sys;line=sys.stdin.buffer.readline(2097153);"
+            "(line.endswith(b'\\n') and len(line)<=2097152) or sys.exit(21);"
+            "header=json.loads(line);sys.argv=header[1];"
+            "exec(compile(base64.urlsafe_b64decode(header[0]),"
+            + repr(definition.compile_name)
+            + ",'exec'),{'__name__':'__main__'})"
+        )
         interpreter = "python3"
         prefix = ""
         if profile.project_directory.endswith("/ytterbium_lab_simulation_ui_acceptance"):
@@ -1611,18 +1608,15 @@ class PinnedSshRunner:
             environment = "atomsmltr-ui-test" if expected_project.endswith("/ytterbium_lab_simulation_ui_test") else "atomsmltr"
             interpreter = f"/home/{profile.username}/venvs/{environment}/bin/python"
             prefix = f"cd -- {shlex.quote(expected_project)} && exec "
-        remote = prefix + shlex.join(
-            (
-                interpreter,
-                "-c",
-                wrapper,
-                script,
-                operation.value,
-                profile.username,
-                profile.project_directory,
-                "-" if definition.payload_stdin else encoded,
-            )
-        )
+        if self._policy.receiver not in {
+            ReceiverKind.ZEEMAN_INDIVIDUAL, ReceiverKind.MOT_2D_INDIVIDUAL,
+            ReceiverKind.MOT_3D_INDIVIDUAL,
+        } and profile.project_directory == f"/home/{profile.username}/ytterbium_lab_simulation_new":
+            interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
+        if operation_only and not prefix:
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
+        remote = prefix + shlex.join((interpreter, "-c", wrapper))
         argv = [
             str(self._policy.ssh_executable),
             *definition.ssh_arguments,
@@ -1636,12 +1630,10 @@ class PinnedSshRunner:
             "timeout": self._policy.timeout,
             "check": False,
         }
-        if definition.payload_stdin:
-            kwargs["input"] = base64.urlsafe_b64encode(receiver) + b"\n" + json.dumps(
-                payload, sort_keys=True, separators=(",", ":")
-            ).encode()
-        else:
-            kwargs["stdin"] = subprocess.DEVNULL
+        kwargs["input"] = header + (
+            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+            if payload_stdin else b""
+        )
         if definition.pinned_environment:
             environment = {
                 "PATH": str(self._policy.ssh_executable.parent),

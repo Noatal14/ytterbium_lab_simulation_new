@@ -127,14 +127,19 @@ be measured on Zeus before claiming successful lifecycle acceptance.
 The shared transfer receiver first attempts an atomic no-replace directory
 rename. Some Zeus filesystems reject that operation. For known unsupported
 capability errors only, the receiver exclusively reserves a new directory,
-links each verified file without replacement, and publishes `campaign.json`
-last as its commit marker. Submission still requires the exact manifest,
-job and input hashes. The implementation is shared by ordinary and acceptance
-campaigns; no physical validation is relaxed.
+copies verified files into exclusively created destinations without replacement,
+and copies `campaign.json` last. This fallback does not promise atomic manifest
+visibility: interrupted copies can remain visible, and consumers reject them.
+Readiness and submission require the complete exact manifest, job and input
+hashes; success is returned only after those bytes and directories are synced.
+The implementation is shared by ordinary and acceptance campaigns; no physical
+validation is relaxed.
 
 An interrupted reservation remains blocked and must be reconciled explicitly.
-The receiver retains its private `.zeus-campaign-*` staging directory after
-using this fallback, including on success, to avoid pathname cleanup races.
+The receiver retains its private `.zeus-campaign-*` staging directory
+and all its original files after using this fallback, including on success,
+to avoid pathname cleanup races. Published copies have separate inodes and a
+single hardlink, preserving the strict readers’ file checks.
 These directories are not campaign records and must not be submitted or used
 as inputs. Preserve them as evidence until the acceptance report is complete;
 never delete a directory just because its name resembles a test artifact.

@@ -47,7 +47,7 @@ REFINEMENT_ROUND_WALLTIME = "20:00:00"
 CONFIRMATION_CANDIDATES = 5
 CAPTURE_CRITERION_VERSION = "mot_2d_extract_survivors_v1"
 DEFAULT_PROFILE = CANONICAL_ZEEMAN_PROFILE_NAME
-DEFAULT_ENSEMBLE_DIR = str(Path("data/particle_states/after_zeeman") / DEFAULT_PROFILE)
+DEFAULT_ENSEMBLE_DIR = (Path("data/particle_states/after_zeeman") / DEFAULT_PROFILE).as_posix()
 SEED_ROLES = ROLE_SEEDS
 STAGE_ROLE = {"smoke": "discovery", "screen": "discovery",
               "refine": "refinement", "confirmation": "held_out_confirmation",
@@ -147,7 +147,7 @@ def freeze_input_ensembles(directory, profile, seed_roles):
     return records
 
 
-def _project_frozen_ensemble(row):
+def _project_frozen_ensemble(row, *, catalog_identity=False):
     """Project a validated runtime row to its historically honest record."""
     observed = {
         "zeeman_seed": row["zeeman_seed"],
@@ -163,6 +163,12 @@ def _project_frozen_ensemble(row):
         "source_git_commit": row["source_git_commit"],
         "generation": row["generation"],
     }
+    if catalog_identity:
+        observed.update({
+            "size_bytes": Path(row["path"]).stat().st_size,
+            "metadata_size_bytes": Path(row["metadata_path"]).stat().st_size,
+            "legacy_attested_profile": row["legacy_attested_profile"],
+        })
     if not row.get("legacy_attested_profile"):
         required = (
             row.get("laboratory_spec_version"),
@@ -205,7 +211,14 @@ def stage_ensembles(manifest, stage, particles):
     frozen = {row["zeeman_seed"]: row for row in manifest["input_ensembles"][role]}
     for row in ensembles:
         record = frozen.get(row["zeeman_seed"])
-        observed = _project_frozen_ensemble(row)
+        catalog_fields = {"size_bytes", "metadata_size_bytes", "legacy_attested_profile"}
+        present = catalog_fields.intersection(record or {})
+        if present and (present != catalog_fields
+                        or type(record["legacy_attested_profile"]) is not bool
+                        or any(type(record[field]) is not int or record[field] <= 0
+                               for field in ("size_bytes", "metadata_size_bytes"))):
+            raise RuntimeError(f"Frozen Zeeman input changed for seed {row['zeeman_seed']}")
+        observed = _project_frozen_ensemble(row, catalog_identity=bool(present))
         if record is None or record != observed:
             raise RuntimeError(f"Frozen Zeeman input changed for seed {row['zeeman_seed']}")
     return ensembles

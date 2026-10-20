@@ -1333,3 +1333,65 @@ def test_optuna_resume_targets_total_complete_trials():
     assert remaining_complete_trials(7, states) == 0
     with pytest.raises(RuntimeError, match="exceeding target"):
         remaining_complete_trials(6, states)
+
+
+@pytest.mark.parametrize('acceptance', [False, True], ids=['scientific', 'TEST-ONLY'])
+def test_catalog_frozen_inputs_match_real_subset_stage_loader(tmp_path, monkeypatch, acceptance):
+    import copy
+    import studies.mot_2d_s0_campaign as campaign
+    from workflow_api.acceptance_profile import load_acceptance_profile
+    from workflow_api.mot_2d_sources import inspect_source
+    from workflow_api.mot_2d_spec import ROLE_SEEDS, build_manifest
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(campaign, 'REPOSITORY_ROOT', tmp_path)
+    profile = load_acceptance_profile() if acceptance else None
+    relative = 'data/particle_states/after_zeeman/' + ('ui_acceptance/source' if acceptance else 'source')
+    directory = tmp_path / relative
+    directory.mkdir(parents=True)
+    for seed in range(3000, 3035):
+        path = _ensemble(directory, seed=seed)
+        if profile:
+            renamed = path.with_name(path.name.replace('n50000', 'n32'))
+            path.rename(renamed)
+            metadata = json.loads(path.with_suffix('.json').read_text())
+            path.with_suffix('.json').unlink()
+            metadata['parameters']['n_initial_atoms'] = 32
+            metadata['survival_fraction'] = 4 / 32
+            metadata['acceptance'] = profile.provenance()
+            renamed.with_suffix('.json').write_text(json.dumps(metadata))
+    source = inspect_source(directory, tmp_path, include_records=True,
+                            acceptance_profile_id=profile.profile_id if profile else None)
+    records = {row['zeeman_seed']: row for row in source['records']}
+    frozen = {role: [records[seed] for seed in seeds] for role, seeds in ROLE_SEEDS.items()}
+    manifest = build_manifest(name='catalog_stage', s0_values=[1.3], ensemble_directory=relative,
+                              zeeman_profile=campaign.DEFAULT_PROFILE, frozen_inputs=frozen,
+                              git_commit='a' * 40, physical_model_sha256='b' * 64, hashed_files=[],
+                              acceptance_profile_id=profile.profile_id if profile else None)
+    rows = campaign.stage_ensembles(manifest, 'smoke', 2)
+    assert len(rows) == 5
+    assert all(row['states'].shape == (2, 6) and row['shape'] == [4, 6] for row in rows)
+    for field in ['sha256', 'metadata_sha256', 'size_bytes', 'metadata_size_bytes', 'legacy_attested_profile']:
+        changed = copy.deepcopy(manifest)
+        record = changed['input_ensembles']['discovery'][0]
+        record[field] = (not record[field] if isinstance(record[field], bool) else
+                         record[field] + 1 if isinstance(record[field], int) else '0' * 64)
+        with pytest.raises(RuntimeError, match='Frozen Zeeman input changed'):
+            campaign.stage_ensembles(changed, 'smoke', 2)
+    changed = copy.deepcopy(manifest)
+    changed['input_ensembles']['discovery'][0].pop('size_bytes')
+    with pytest.raises(RuntimeError, match='Frozen Zeeman input changed'):
+        campaign.stage_ensembles(changed, 'smoke', 2)
+
+
+@pytest.mark.parametrize("field,value", [("legacy_attested_profile", 0), ("size_bytes", True), ("metadata_size_bytes", False), ("size_bytes", 0), ("metadata_size_bytes", -1)])
+def test_catalog_frozen_identity_rejects_noncanonical_scalar_types(tmp_path, monkeypatch, field, value):
+    import studies.mot_2d_s0_campaign as campaign
+    monkeypatch.setattr(campaign, "validate_campaign_policy", lambda manifest: None)
+    monkeypatch.setattr(campaign, "repository_path", lambda path: tmp_path)
+    monkeypatch.setattr(campaign, "load_production_ensembles", lambda **kwargs: [{"zeeman_seed": 3000}])
+    record = {"zeeman_seed": 3000, "size_bytes": 1, "metadata_size_bytes": 1, "legacy_attested_profile": False}
+    record[field] = value
+    manifest = {"provenance": {"path_contract": "repository-relative-v1"}, "seed_roles": {"discovery": [3000]},
+                "input_ensembles": {"discovery": [record]}, "ensemble_source": {"directory": "source", "zeeman_profile": "corrected"}}
+    with pytest.raises(RuntimeError, match="Frozen Zeeman input changed"):
+        campaign.stage_ensembles(manifest, "smoke", 2)

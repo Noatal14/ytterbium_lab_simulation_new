@@ -42,6 +42,14 @@ def test_large_receiver_and_payload_execute_with_short_command_line(tmp_path, mo
     assert observed['length'] < 4000
     assert json.loads(result.stdout) == {'argv': ['inspect', profile.username, profile.project_directory, '-'], 'payload': payload}
 
+def _framed_receiver(observed):
+    parts = shlex.split(observed["argv"][-1])
+    assert len(parts[parts.index("-c") + 1:]) == 1
+    assert len(subprocess.list2cmdline(observed["argv"])) < 4000
+    header, remainder = observed["kwargs"]["input"].split(b"\n", 1)
+    source, argv = json.loads(header)
+    return base64.urlsafe_b64decode(source), argv, remainder
+
 def _expected_windows_ssh_paths():
     if os.name != "nt":
         return {}
@@ -176,10 +184,8 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
         "sys.argv=sys.argv[2:];exec(compile(code,'<refine>','exec'),"
         "{'__name__':'__main__'})"
     )
-    remote = shlex.join((
-        "python3", "-c", wrapper, script, operation, "tal.noa",
-        "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
-    ))
+    remote = observed["argv"][-1]
+    assert _framed_receiver(observed) == (receiver, ["<refine>", operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new", encoded], b"")
     assert observed["argv"] == [
         str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
@@ -192,7 +198,7 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
     ]
     assert observed["kwargs"] == {
         "cwd": tmp_path,
-        "stdin": subprocess.DEVNULL,
+        "input": observed["kwargs"]["input"],
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 37,
@@ -202,8 +208,8 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
     assert "env" not in observed["kwargs"]
     assert "close_fds" not in observed["kwargs"]
     remote_parts = shlex.split(observed["argv"][-1])
-    assert base64.urlsafe_b64decode(remote_parts[3]) == receiver
-    assert json.loads(base64.urlsafe_b64decode(remote_parts[7])) == payload
+    assert _framed_receiver(observed)[0] == receiver
+    assert json.loads(base64.urlsafe_b64decode(_framed_receiver(observed)[1][4])) == payload
 
 
 def test_runner_call_surface_has_no_command_host_receiver_or_ssh_controls():
@@ -359,10 +365,8 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
         "sys.argv=sys.argv[2:];exec(compile(code,'<confirmation>','exec'),"
         "{'__name__':'__main__'})"
     )
-    remote = shlex.join((
-        "python3", "-c", wrapper, script, operation, "tal.noa",
-        "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
-    ))
+    remote = observed["argv"][-1]
+    assert _framed_receiver(observed) == (receiver, ["<confirmation>", operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new", encoded], b"")
     assert observed["argv"] == [
         str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
@@ -375,7 +379,7 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
     ]
     assert observed["kwargs"] == {
         "cwd": tmp_path,
-        "stdin": subprocess.DEVNULL,
+        "input": observed["kwargs"]["input"],
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 90,
@@ -384,8 +388,8 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
     assert "env" not in observed["kwargs"]
     assert "close_fds" not in observed["kwargs"]
     remote_parts = shlex.split(observed["argv"][-1])
-    assert base64.urlsafe_b64decode(remote_parts[3]) == receiver
-    assert json.loads(base64.urlsafe_b64decode(remote_parts[7])) == payload
+    assert _framed_receiver(observed)[0] == receiver
+    assert json.loads(base64.urlsafe_b64decode(_framed_receiver(observed)[1][4])) == payload
 
 
 @pytest.mark.parametrize("exception", [
@@ -523,10 +527,8 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
         "sys.argv=sys.argv[2:];exec(compile(code,'<refine-submit>','exec'),"
         "{'__name__':'__main__'})"
     )
-    remote = shlex.join((
-        "python3", "-c", wrapper, script, operation, "tal.noa",
-        "/home/tal.noa/ytterbium_lab_simulation_new", encoded,
-    ))
+    remote = observed["argv"][-1]
+    assert _framed_receiver(observed) == (receiver, ["<refine-submit>", operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new", encoded], b"")
     assert observed["argv"] == [
         str(executable("ssh")), "-F", "none", "-T",
         "-o", "BatchMode=yes",
@@ -539,7 +541,7 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
     ]
     assert observed["kwargs"] == {
         "cwd": tmp_path,
-        "stdin": subprocess.DEVNULL,
+        "input": observed["kwargs"]["input"],
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 150,
@@ -548,8 +550,8 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
     assert "env" not in observed["kwargs"]
     assert "close_fds" not in observed["kwargs"]
     remote_parts = shlex.split(observed["argv"][-1])
-    assert base64.urlsafe_b64decode(remote_parts[3]) == receiver
-    assert json.loads(base64.urlsafe_b64decode(remote_parts[7])) == payload
+    assert _framed_receiver(observed)[0] == receiver
+    assert json.loads(base64.urlsafe_b64decode(_framed_receiver(observed)[1][4])) == payload
 
 
 @pytest.mark.parametrize("operation", ["inspect", "submit"])
@@ -683,10 +685,10 @@ def test_screening_runner_preserves_exact_hardened_invocation(
         Path(__file__).parents[1] / "workflow_api/zeus_screening_remote.py"
     ).read_bytes()
     parts = shlex.split(observed["argv"][-1])
-    assert base64.urlsafe_b64decode(parts[3]) == receiver
-    assert json.loads(base64.urlsafe_b64decode(parts[7])) == payload
-    assert "compile(code,'<zeus-screening>','exec')" in parts[2]
-    assert parts[4:7] == [
+    assert _framed_receiver(observed)[0] == receiver
+    assert json.loads(base64.urlsafe_b64decode(_framed_receiver(observed)[1][4])) == payload
+    assert "<zeus-screening>" in parts[parts.index("-c") + 1]
+    assert _framed_receiver(observed)[1][1:4] == [
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
@@ -710,7 +712,7 @@ def test_screening_runner_preserves_exact_hardened_invocation(
     assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
     assert observed["kwargs"] == {
         "cwd": tmp_path,
-        "stdin": subprocess.DEVNULL,
+        "input": observed["kwargs"]["input"],
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 37,
@@ -925,10 +927,10 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
         Path(__file__).parents[1] / "workflow_api/zeus_screen_submission_remote.py"
     ).read_bytes()
     parts = shlex.split(observed["argv"][-1])
-    assert base64.urlsafe_b64decode(parts[3]) == receiver
-    assert json.loads(base64.urlsafe_b64decode(parts[7])) == payload
-    assert "compile(code,'<screen-submit>','exec')" in parts[2]
-    assert parts[4:7] == [
+    assert _framed_receiver(observed)[0] == receiver
+    assert json.loads(base64.urlsafe_b64decode(_framed_receiver(observed)[1][4])) == payload
+    assert "<screen-submit>" in parts[parts.index("-c") + 1]
+    assert _framed_receiver(observed)[1][1:4] == [
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
@@ -952,7 +954,7 @@ def test_screen_submission_runner_preserves_exact_hardened_invocation(
     assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
     assert observed["kwargs"] == {
         "cwd": tmp_path,
-        "stdin": subprocess.DEVNULL,
+        "input": observed["kwargs"]["input"],
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 45,
@@ -1142,16 +1144,13 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
     assert state.status == ("eligible" if operation == "inspect" else "submitted")
 
     parts = shlex.split(observed["argv"][-1])
-    assert base64.urlsafe_b64decode(parts[3]).decode() == _REMOTE_SCRIPT
+    assert _framed_receiver(observed)[0].decode() == _REMOTE_SCRIPT
     expected_payload = dict(payload)
     if operation == "inspect":
         expected_payload["nonce"] = None
-    assert json.loads(base64.urlsafe_b64decode(parts[7])) == expected_payload
-    assert parts[2] == (
-        "import base64,sys;payload=sys.argv[1];sys.argv=sys.argv[1:];"
-        "exec(base64.urlsafe_b64decode(payload).decode('utf-8'))"
-    )
-    assert parts[4:7] == [
+    assert json.loads(base64.urlsafe_b64decode(_framed_receiver(observed)[1][4])) == expected_payload
+    assert "exec(compile(" in parts[parts.index("-c") + 1]
+    assert _framed_receiver(observed)[1][1:4] == [
         operation, "tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new",
     ]
     assert observed["argv"][:-2] == [
@@ -1168,7 +1167,7 @@ def test_smoke_submission_runner_preserves_exact_embedded_invocation(
     assert observed["argv"][-2] == "tal.noa@zeus.technion.ac.il"
     assert observed["kwargs"] == {
         "cwd": root,
-        "stdin": subprocess.DEVNULL,
+        "input": observed["kwargs"]["input"],
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
         "timeout": 45,
@@ -2106,4 +2105,56 @@ def test_transfer_rejects_oversized_framing_before_process_creation(tmp_path, mo
     runner = PinnedSshRunner(PinnedSshPolicy.transfer(tmp_path, executable("ssh"), timeout=10))
     with pytest.raises(ValueError, match="framing exceeds its bound"):
         runner.transfer(TransferOperation.INSPECT, _profile(), (), "a" * 40, b"")
+    assert calls == []
+
+
+@pytest.mark.parametrize('kind,operation,profile_mode', [
+    (kind, operation, profile_mode)
+    for kind, definition in __import__('workflow_api.pinned_ssh', fromlist=['_RECEIVERS'])._RECEIVERS.items()
+    if definition.filename is not None or definition.embedded_smoke_receiver
+    for operation in definition.operations
+    for profile_mode in (['canonical'] if kind.value.endswith('_individual') else ['canonical','acceptance'])
+])
+def test_every_file_receiver_bootstrap_preserves_real_child_argument_contract(tmp_path, monkeypatch, kind, operation, profile_mode):
+    from workflow_api import pinned_ssh
+    definition = pinned_ssh._RECEIVERS[kind]
+    operation_only = kind in {
+        pinned_ssh.ReceiverKind.SENSITIVITY_PREPARATION,
+        pinned_ssh.ReceiverKind.PRODUCTION_PREPARATION,
+        pinned_ssh.ReceiverKind.FINALIZATION,
+    }
+    stdin_payload = definition.payload_stdin or operation_only
+    observer = b"#" + b"x" * 40000 + b"\nimport sys,json,base64\nprint(json.dumps({'argv':sys.argv[1:],'payload':json.loads(sys.stdin.buffer.read()) if " + str(stdin_payload).encode() + b" else json.loads(base64.urlsafe_b64decode(sys.argv[4]))}))\n"
+    if definition.embedded_smoke_receiver:
+        monkeypatch.setattr('workflow_api.zeus_submission._REMOTE_SCRIPT', observer.decode())
+    original = Path.read_bytes
+    monkeypatch.setattr(Path, 'read_bytes', lambda path: observer if path.name == definition.filename else original(path))
+    observed = {}
+    def execute(argv, **kwargs):
+        parts = shlex.split(argv[-1])
+        observed['remote'] = parts
+        assert len(subprocess.list2cmdline(argv)) < 4000
+        offset = parts.index('-c')
+        return subprocess.run([sys.executable, *parts[offset:]],
+                              input=kwargs.get('input'), capture_output=True, check=False)
+    monkeypatch.setattr(pinned_ssh, '_bounded_run', execute)
+    profile = _profile() if profile_mode == 'canonical' else ZeusProfile.parse({'username':'tal.noa','project_directory':'/home/tal.noa/ytterbium_lab_simulation_ui_acceptance'})
+    payload = {'unicode': 'בדיקה', 'receiver': kind.value, 'operation': operation.value, 'paths': ['data/' + 'p' * 503 + str(i).zfill(4) for i in range(72)]}
+    policy = PinnedSshPolicy(kind, tmp_path, Path(sys.executable), 10)
+    result = PinnedSshRunner(policy).run(operation, profile, payload)
+    assert result.returncode == 0, result.stderr.decode()
+    expected = [operation.value] if operation_only else [operation.value, profile.username, profile.project_directory, '-' if stdin_payload else base64.urlsafe_b64encode(json.dumps(payload,sort_keys=True,separators=(',',':')).encode()).decode()]
+    assert json.loads(result.stdout) == {'argv': expected, 'payload': payload}
+    if not kind.value.endswith('_individual'):
+        remote = observed['remote']
+        assert remote[remote.index('-c') - 1] == '/home/tal.noa/venvs/' + ('atomsmltr' if profile_mode == 'canonical' else 'atomsmltr-ui-test') + '/bin/python'
+        assert observed['remote'][:4] == ['cd', '--', profile.project_directory, '&&']
+
+
+def test_run_rejects_oversized_transport_header_before_process_launch(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr('workflow_api.pinned_ssh._bounded_run', lambda *a, **k: calls.append((a,k)))
+    runner = PinnedSshRunner(PinnedSshPolicy.screening_preparation(tmp_path, Path(sys.executable), timeout=10))
+    with pytest.raises(ValueError, match='receiver framing exceeds its bound'):
+        runner.run(ReceiverOperation.INSPECT, _profile(), {'oversized': 'x' * (2 * 1024 * 1024)})
     assert calls == []

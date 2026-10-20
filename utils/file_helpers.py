@@ -88,7 +88,7 @@ def save_file_json(filename, data):
         prefix=f".{filepath.name}.", suffix=".tmp", dir=filepath.parent
     )
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
             json.dump(data, f, indent=2, default=_json_default)
             f.flush()
             os.fsync(f.fileno())

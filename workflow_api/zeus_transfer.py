@@ -281,7 +281,8 @@ try:
                 if failure not in unsupported: raise OSError(failure,'renameat2 failed')
                 retain_stage=True
                 # Directory rename without NOREPLACE is unsafe. Reserve exclusively,
-                # then publish campaign.json LAST as the consumer commit marker.
+                # then copy campaign.json LAST. Readiness requires complete hash
+                # attestation, not atomic visibility of this fallback manifest.
                 # A failed reservation is deliberately retained, never auto-retried.
                 if not checkout_matches(): raise CheckoutMismatch()
                 ordered=sorted(received, key=lambda pure: pure.parts[count:]==('campaign.json',))
@@ -328,18 +329,37 @@ try:
                         try:
                             digest=received[pure][3]
                             identity=checked_file(source_parent,relative[-1],digest)
-                            os.link(relative[-1],relative[-1],src_dir_fd=source_parent,dst_dir_fd=destination_parent,follow_symlinks=False)
-                            linked=os.stat(relative[-1],dir_fd=destination_parent,follow_symlinks=False)
-                            if (linked.st_dev,linked.st_ino)!=(identity.st_dev,identity.st_ino): raise ValueError()
-                            checked_file(destination_parent,relative[-1],digest)
-                            os.fsync(destination_parent)
+                            # Unsupported directory rename uses exclusive copies.
+                            # A partial file/reservation is never retried or replaced;
+                            # consumers attest the complete manifest/job/input hashes.
+                            publication_guard()
+                            source_file=os.open(relative[-1],os.O_RDONLY|NOFOLLOW,dir_fd=source_parent)
+                            try:
+                                opened=os.fstat(source_file)
+                                if (opened.st_dev,opened.st_ino)!=(identity.st_dev,identity.st_ino): raise ValueError()
+                                destination_file=os.open(relative[-1],os.O_WRONLY|os.O_CREAT|os.O_EXCL|NOFOLLOW,0o600,dir_fd=destination_parent)
+                                with os.fdopen(destination_file,'wb') as output:
+                                    copied=hashlib.sha256()
+                                    while True:
+                                        chunk=os.read(source_file,1048576)
+                                        if not chunk: break
+                                        output.write(chunk); copied.update(chunk)
+                                    output.flush(); os.fsync(output.fileno())
+                                    written=os.fstat(output.fileno())
+                                    if copied.hexdigest()!=digest or written.st_nlink!=1: raise ValueError()
+                                observed=os.stat(relative[-1],dir_fd=destination_parent,follow_symlinks=False)
+                                if (observed.st_dev,observed.st_ino)!=(written.st_dev,written.st_ino): raise ValueError()
+                                checked_file(destination_parent,relative[-1],digest)
+                                publication_guard()
+                                os.fsync(destination_parent)
+                            finally: os.close(source_file)
                         finally:
                             os.close(source_parent); os.close(destination_parent)
                     publication_guard()
                     os.fsync(final_fd); os.fsync(parent_fd)
                 finally: os.close(final_fd)
-                # Retain private staging: pathname-based recursive removal cannot
-                # atomically exclude same-account rename/replacement races.
+                # Retain all private staging files/directories as evidence. No
+                # pathname unlink can atomically exclude same-account replacement.
         except Exception:
             if not retain_stage:
                 try: cleanup_stage()

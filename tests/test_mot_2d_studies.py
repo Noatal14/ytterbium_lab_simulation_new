@@ -166,7 +166,7 @@ def test_final_production_can_save_downstream_states():
         ]
     )
     assert args.save_survivor_states
-    assert "after_2d_mot/final_production_v22" in args.states_dir
+    assert "after_2d_mot/final_production_v22" in Path(args.states_dir).as_posix()
 
 
 def test_joint_evaluation_returns_requested_survivor_states(monkeypatch):
@@ -607,3 +607,18 @@ def test_load_production_ensembles_can_select_explicit_seed_order(tmp_path):
     )
 
     assert [row["zeeman_seed"] for row in ensembles] == [3002, 3000]
+
+
+def test_s0_default_ensemble_argument_resolves_as_portable_repository_identity(
+    tmp_path, monkeypatch
+):
+    from studies import mot_2d_s0_campaign as campaign
+
+    root = tmp_path / "Native repository with spaces"
+    expected = f"data/particle_states/after_zeeman/{campaign.DEFAULT_PROFILE}"
+    (root / expected).mkdir(parents=True)
+    monkeypatch.setattr(campaign, "REPOSITORY_ROOT", root)
+    args = campaign.parse_args(["create", "--name", "test", "--s0", "1.3", "--output-dir", "output"])
+    assert args.ensemble_dir == expected
+    assert "\\" not in args.ensemble_dir
+    assert campaign.repository_relative(args.ensemble_dir, require="dir") == expected

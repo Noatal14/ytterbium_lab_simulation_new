@@ -447,6 +447,17 @@ def validate_finalist_result_bytes(
                 _raise("summary_mismatch")
             from studies.mot_3d.finalists.merge import merge
 
+            # The normal merger reopens the design's frozen manifest. Only
+            # after validating every original remote identity/hash above, bind
+            # that temporary recomputation to the already captured bytes.
+            captured_manifest_path = str(root / "campaign.json")
+            for metadata_path in json_paths:
+                materialized = _strict_json(metadata_path)
+                materialized["design"] = {
+                    **materialized["design"],
+                    "campaign_manifest_path": captured_manifest_path,
+                }
+                metadata_path.write_bytes(_canonical(materialized))
             output = root / "recomputed" / family
             with contextlib.redirect_stdout(io.StringIO()):
                 merge(
@@ -458,7 +469,16 @@ def validate_finalist_result_bytes(
                         bootstrap_seed=82_001,
                     )
                 )
-            if _strict_json(output / "finalist_summary.json") != summary:
+            recomputed = _strict_json(output / "finalist_summary.json")
+            recomputed_design = recomputed.get("design")
+            if (
+                not isinstance(recomputed_design, dict)
+                or recomputed_design.get("campaign_manifest_path")
+                != captured_manifest_path
+            ):
+                _raise("summary_mismatch")
+            recomputed_design["campaign_manifest_path"] = design["campaign_manifest_path"]
+            if recomputed != summary:
                 _raise("summary_mismatch")
             summaries[family] = summary
     return ValidatedFinalistResults(

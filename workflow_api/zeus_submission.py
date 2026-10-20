@@ -142,7 +142,10 @@ try:
     if job_pure.parts[len(campaign_pure.parts):] != ('jobs','01_smoke.pbs'): raise ValueError()
     if not isinstance(files,dict) or len(files)!=72 or any(not isinstance(k,str) or not isinstance(v,str) or not hex64.fullmatch(v) for k,v in files.items()): raise ValueError()
     paths={rel(k,('data',)):v for k,v in files.items()}
-    if job_pure not in paths or not hex40.fullmatch(str(commit)) or not hex64.fullmatch(str(key)): raise ValueError()
+    manifest_pure=campaign_pure/'campaign.json'
+    if job_pure not in paths or manifest_pure not in paths or not hex40.fullmatch(str(commit)) or not hex64.fullmatch(str(key)): raise ValueError()
+    expected_key=hashlib.sha256(json.dumps({'campaign':campaign,'commit':commit,'manifest':paths[manifest_pure],'pbs':paths[job_pure]},sort_keys=True,separators=(',',':')).encode()).hexdigest()
+    if key!=expected_key: raise ValueError()
     if nonce is not None and (not isinstance(nonce,str) or not hex32.fullmatch(nonce)): raise ValueError()
     if op=='submit' and nonce is None: raise ValueError()
 except ValueError: print(json.dumps({'error':'invalid_request'})); raise SystemExit(20)

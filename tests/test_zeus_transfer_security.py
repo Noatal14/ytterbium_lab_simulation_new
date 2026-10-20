@@ -622,7 +622,14 @@ def test_remote_receiver_atomically_publishes_complete_campaign_and_never_replac
     final = project / "data/optimization/mot_2d/campaign"
     assert (final / "campaign.json").read_bytes() == contents[0]
     assert (final / "jobs/01_smoke.pbs").read_bytes() == contents[1]
-    assert not list(final.parent.glob(".zeus-campaign-*"))
+    # Linux filesystems may reject RENAME_NOREPLACE. The supported fallback
+    # retains staging evidence and publishes separate single-link copies.
+    for staged in final.parent.glob(".zeus-campaign-*"):
+        assert (staged / "campaign.json").read_bytes() == contents[0]
+        assert (staged / "jobs/01_smoke.pbs").read_bytes() == contents[1]
+        assert (staged / "campaign.json").stat().st_ino != (final / "campaign.json").stat().st_ino
+    assert (final / "campaign.json").stat().st_nlink == 1
+    assert (final / "jobs/01_smoke.pbs").stat().st_nlink == 1
 
     second = subprocess.run(argv, input=bytes(payload), stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
     assert second.returncode == 23
@@ -793,7 +800,7 @@ def test_remote_receiver_rechecks_head_after_receiving_before_campaign_publish(t
 
 
 @pytest.mark.parametrize('rename_capability', ['missing', 'EINVAL', 'EIO'])
-@pytest.mark.parametrize('failure_step', [None, 'reserved', 'job', 'before_manifest', 'identity_swap', 'checkout_change', 'stage_swap'])
+@pytest.mark.parametrize('failure_step', [None, 'reserved', 'job', 'before_manifest', 'identity_swap', 'checkout_change', 'stage_swap', 'source_swap', 'manifest_copy'])
 @pytest.mark.parametrize('namespace', ['canonical', 'acceptance'])
 def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, failure_step, namespace, rename_capability):
     project = tmp_path / 'home' / 'tester' / 'project'
@@ -815,9 +822,13 @@ def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, f
     if failure_step == 'reserved':
         script = script.replace('reservation=os.fstat(final_fd)', "raise ValueError('injected after reservation')\n                reservation=os.fstat(final_fd)")
     elif failure_step == 'job':
-        script = script.replace('os.fsync(destination_parent)', "os.fsync(destination_parent)\n                            raise ValueError('injected after job')")
+        script = script.replace('os.fsync(destination_parent)', "os.fsync(destination_parent)\n                                raise ValueError('injected after job')")
     elif failure_step == 'identity_swap':
         script = script.replace('parent_identity=os.fstat(parent_fd)', "parent_identity=os.fstat(parent_fd)\n                os.rename(final_name, final_name+'-reserved', src_dir_fd=parent_fd, dst_dir_fd=parent_fd)\n                os.mkdir(final_name, 0o700, dir_fd=parent_fd)")
+    elif failure_step == 'manifest_copy':
+        script = script.replace('output.write(chunk); copied.update(chunk)', "if relative==('campaign.json',): output.write(chunk[:7]); output.flush(); raise ValueError('injected partial manifest')\n                                        output.write(chunk); copied.update(chunk)")
+    elif failure_step == 'source_swap':
+        script = script.replace('source_file=os.open(relative[-1],os.O_RDONLY|NOFOLLOW,dir_fd=source_parent)', "os.rename(relative[-1],relative[-1]+'.original',src_dir_fd=source_parent,dst_dir_fd=source_parent)\n                            foreign=os.open(relative[-1],os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600,dir_fd=source_parent)\n                            os.write(foreign,b'foreign'); os.close(foreign)\n                            source_file=os.open(relative[-1],os.O_RDONLY|NOFOLLOW,dir_fd=source_parent)")
     elif failure_step == 'stage_swap':
         script = script.replace('parent_identity=os.fstat(parent_fd)', "parent_identity=os.fstat(parent_fd)\n                os.rename(stage_name,stage_name+'-owned',src_dir_fd=parent_fd,dst_dir_fd=parent_fd)\n                os.mkdir(stage_name,0o700,dir_fd=parent_fd)\n                replacement_fd=os.open(stage_name,os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=parent_fd)\n                sentinel=os.open('foreign',os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600,dir_fd=replacement_fd)\n                os.write(sentinel,b'protected'); os.close(sentinel); os.close(replacement_fd)")
     elif failure_step == 'checkout_change':
@@ -839,11 +850,19 @@ def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, f
     assert final.is_dir()
     if failure_step and failure_step != 'stage_swap':
         assert first.returncode == (25 if failure_step == 'checkout_change' else 24), first.stderr.decode()
-        assert (final / 'campaign.json').exists() == (failure_step == 'stage_swap')
+        assert (final / 'campaign.json').exists() == (failure_step == 'manifest_copy')
     else:
         assert first.returncode == 0, first.stderr.decode()
         assert (final / 'campaign.json').read_bytes() == contents[0]
         assert (final / 'jobs/01_smoke.pbs').read_bytes() == contents[1]
+        assert (final / 'campaign.json').stat().st_nlink == 1
+        assert (final / 'jobs/01_smoke.pbs').stat().st_nlink == 1
+        originals = [stage / 'jobs/01_smoke.pbs' for stage in final.parent.glob('.zeus-campaign-*') if (stage / 'jobs/01_smoke.pbs').is_file()]
+        assert any(path.read_bytes() == contents[1] and path.stat().st_ino != (final / 'jobs/01_smoke.pbs').stat().st_ino for path in originals)
+    if failure_step == 'manifest_copy':
+        with pytest.raises(json.JSONDecodeError): json.loads((final / 'campaign.json').read_bytes())
+    if failure_step == 'source_swap':
+        assert any(path.read_bytes() == b'foreign' for path in final.parent.glob('.zeus-campaign-*/jobs/01_smoke.pbs'))
     if failure_step == 'stage_swap':
         assert any((item / 'foreign').is_file() for item in final.parent.glob('.zeus-campaign-*'))
     else:

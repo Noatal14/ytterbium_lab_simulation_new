@@ -224,7 +224,7 @@ def test_public_revision_service_uses_exact_read_only_git_contract(tmp_path, mon
     assert all(call[1]["cwd"] == tmp_path.resolve() for call in calls)
     assert all(call[1]["stdin"] is subprocess.DEVNULL and call[1]["shell"] is False for call in calls)
     assert all(call[1]["env"] == {
-        "PATH": "/usr/bin", "HOME": str(Path.home()), "LC_ALL": "C",
+        "PATH": str(GIT_EXECUTABLE.parent), "HOME": str(Path.home()), "LC_ALL": "C",
         "GIT_CONFIG_NOSYSTEM": "1", "GIT_OPTIONAL_LOCKS": "0",
         "GIT_TERMINAL_PROMPT": "0",
     } for call in calls)
