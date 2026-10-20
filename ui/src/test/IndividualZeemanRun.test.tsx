@@ -11,6 +11,36 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 beforeEach(() => window.localStorage.clear());
 
 describe("individual Zeeman wizard", () => {
+  it("does not copy an unfinished particle input into local workers when changing mode", async () => {
+    const user = userEvent.setup();
+    render(<IndividualZeemanRun api={fake()} onBack={vi.fn()} />);
+    const count = screen.getByRole("spinbutton", { name: /Particle count/i });
+    await user.clear(count);
+    await user.click(screen.getByRole("radio", { name: "Zeus" }));
+    await user.click(screen.getByRole("radio", { name: "This computer" }));
+    await user.type(count, "1");
+    expect(screen.getByRole("spinbutton", { name: /CPU worker processes/i })).toHaveValue(1);
+    expect(screen.getByRole("button", { name: /validate and review/i })).toBeEnabled();
+  });
+  it.each([false, true])("keeps a one-particle local run reviewable after mode round trip %s", async (roundTrip) => {
+    const api = fake();
+    const user = userEvent.setup();
+    render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
+    const count = screen.getByRole("spinbutton", { name: /Particle count/i });
+    await user.clear(count);
+    await user.type(count, "1");
+    if (roundTrip) {
+      await user.click(screen.getByRole("radio", { name: "Zeus" }));
+      await user.click(screen.getByRole("radio", { name: "This computer" }));
+    }
+    expect(screen.getByRole("spinbutton", { name: /CPU worker processes/i })).toHaveValue(1);
+    const review = screen.getByRole("button", { name: /validate and review/i });
+    expect(review).toBeEnabled();
+    await user.click(review);
+    await waitFor(() => expect(api.preview).toHaveBeenCalledWith(expect.objectContaining({ particle_count: 1, npools: 1, execution_mode: "local" })));
+    expect(api.startLocal).not.toHaveBeenCalled();
+    expect(api.confirmZeus).not.toHaveBeenCalled();
+  });
   it("reviews chosen Zeeman laser settings separately from the 2D boundary", async () => {
     const api = fake();
     vi.mocked(api.preview).mockResolvedValue({ ...preview, plan: { ...preview.plan, zeeman_s0: 1.7, zeeman_detuning_gamma: -10.5 } });

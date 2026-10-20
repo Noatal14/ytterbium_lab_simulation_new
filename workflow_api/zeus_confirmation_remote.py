@@ -51,11 +51,51 @@ def publish(path,data,mode=0o600):
     descriptor=os.open(path.parent,os.O_RDONLY);os.fsync(descriptor);os.close(descriptor)
 def atomic_json(path,value):publish(path,(json.dumps(value,sort_keys=True)+"\n").encode())
 def timestamp(value):return isinstance(value,int) and not isinstance(value,bool) and 0<=value<=253402300799
-def parse_round(output,job,task_count,index,job_ids,parser):
+def _round_dependency_records(output):
+    """Read only PBS depend attributes, joining their documented continuations."""
+    records={};current=None;last=None
+    for line in output.splitlines():
+        if line.startswith("Job Id:"):
+            current=line.split(":",1)[1].strip()
+            if current in records:raise ValueError("scheduler records")
+            records[current]=None;last=None
+        elif line.strip():
+            match=re.fullmatch(r"\s+([A-Za-z0-9_.]+)\s*=\s*(.*)",line)
+            if match:
+                last=match.group(1)
+                if current is None:raise ValueError("scheduler dependency")
+                if last=="depend":
+                    if records[current] is not None:raise ValueError("scheduler dependency")
+                    records[current]=match.group(2)
+            elif line[:1].isspace() and current is not None and last is not None:
+                if last=="depend":records[current]+=" "+line.strip()
+            else:raise ValueError("scheduler dependency")
+    return records
+
+def parse_round(output,job,task_count,index,job_ids,parser,*,dependency_receipts_verified=False,predecessor_completed=False):
     jobs=parser(output);prefix=job.replace("[].zeus-master","");children={f"{prefix}[{i}].zeus-master" for i in range(task_count)};ids=[row.get("id") for row in jobs]
     if any(not isinstance(row,dict) or "id" not in row for row in jobs) or len(ids)!=len(set(ids)) or set(ids) not in (children,children|{job}) or len(jobs) not in {task_count,task_count+1}:raise ValueError("scheduler records")
-    by_id={row["id"]:row for row in jobs};dependencies=re.findall(r"depend\s*=\s*([^\s,]+)",output);expected=[] if index==1 else ["afterok:"+job_ids[index-2]+"@zeus-master"]
-    if dependencies not in (expected,[] if index==1 else ["afterok:"+job_ids[index-2]]):raise ValueError("scheduler dependency")
+    by_id={row["id"]:row for row in jobs}
+    records=_round_dependency_records(output)
+    if set(records)!=set(ids):raise ValueError("scheduler records")
+    for identifier,dependency in records.items():
+        clauses={}
+        if dependency is not None:
+            for part in dependency.split(","):
+                match=re.fullmatch(r"\s*(afterok|beforeok):(\d+\[\]\.zeus-master)(?:@zeus-master)?\s*",part)
+                if match is None or match[1] in clauses:raise ValueError("scheduler dependency")
+                clauses[match[1]]=match[2]
+        expected=None if index==1 else job_ids[index-2]
+        observed=clauses.get("afterok")
+        if observed!=expected:
+            # PBS removes satisfied dependencies, including from children still
+            # queued for resources. Only the verified durable chain AND an
+            # independently parsed successful predecessor prove that absence.
+            if not (expected is not None and observed is None
+                    and dependency_receipts_verified is True and predecessor_completed is True):
+                raise ValueError("scheduler dependency")
+        if "beforeok" in clauses and (index==len(job_ids) or clauses["beforeok"]!=job_ids[index]):
+            raise ValueError("scheduler dependency")
     counts={"queued":0,"running":0,"held":0,"succeeded":0,"failed":0};unknown=False
     for child in children:
         row=by_id[child];state=row.get("state");key={"queued":"queued","running":"running","held_attention":"held","completed_success":"succeeded","completed_failed":"failed"}.get(state)
@@ -209,7 +249,7 @@ def main():
     for index,job in enumerate(chain["job_ids"],1):
         result=subprocess.run(["/opt/pbs/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
         if result.returncode or result.stderr:fail("scheduler_unavailable")
-        try:round_row,unknown=parse_round(result.stdout,job,task_count,index,chain["job_ids"],_parse_qstat)
+        try:round_row,unknown=parse_round(result.stdout,job,task_count,index,chain["job_ids"],_parse_qstat,dependency_receipts_verified=True,predecessor_completed=bool(rounds and rounds[-1]["scheduler"]["state"]=="completed_success"))
         except Exception:fail("scheduler_unavailable")
         rounds.append(round_row);any_unknown|=unknown
     rows=[]
@@ -236,11 +276,13 @@ def main():
         if read_json(transitions/"refine.json") != refine_receipt: fail("transition_conflict")
         try: _validate_screen_predecessor(campaign, locked_manifest, refine_receipt, payload["screen_digest"])
         except (ValueError, OSError, KeyError, TypeError): fail("transition_conflict")
+        locked_rounds=[]
         for round_index,job in enumerate(chain["job_ids"],1):
             checked=subprocess.run(["/opt/pbs/bin/qstat","-x","-t","-f",job],cwd=root,text=True,capture_output=True,timeout=20,check=False)
-            try:checked_round,checked_unknown=parse_round(checked.stdout,job,task_count,round_index,chain["job_ids"],_parse_qstat)
+            try:checked_round,checked_unknown=parse_round(checked.stdout,job,task_count,round_index,chain["job_ids"],_parse_qstat,dependency_receipts_verified=True,predecessor_completed=bool(locked_rounds and locked_rounds[-1]["scheduler"]["state"]=="completed_success"))
             except Exception:fail("refine_status_unknown")
             if checked.returncode or checked.stderr or checked_unknown or checked_round["scheduler"]["state"]!="completed_success":fail("refine_status_unknown")
+            locked_rounds.append(checked_round)
         locked=validate_refine_outputs(campaign,manifest)
         if hashlib.sha256(json.dumps(locked,sort_keys=True).encode()).hexdigest()!=rows_digest:fail("transition_conflict")
         for path in (receipt,pending,lock,campaign/"confirmation",campaign/"confirmation/tasks.json",campaign/"jobs/04_confirmation.pbs",campaign/"refined_candidates.json"):no_links(campaign,path)

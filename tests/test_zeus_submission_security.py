@@ -659,7 +659,9 @@ def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_m
         manifest_value = two_d_manifest()
     else:
         manifest_value = {"kind":"mot_2d_s0_campaign","stage":"smoke","s0_values":[1.3],"provenance":{"git_commit":"a" * 40}}
-    manifest.write_text(json.dumps(manifest_value) + "\n", encoding="utf-8")
+    # Match the real campaign writer so exact historical SHA proofs inspect
+    # genuine canonical bytes rather than a compact hand-built approximation.
+    manifest.write_text(json.dumps(manifest_value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     job = project / job_file
     job.parent.mkdir(parents=True, exist_ok=True)
     job_bytes = b"#!/bin/bash\n#PBS -N mot2d_smoke\npython -m studies.mot_2d_s0_campaign smoke\n"

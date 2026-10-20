@@ -1,3 +1,4 @@
+import re
 import json
 import math
 import subprocess
@@ -59,15 +60,20 @@ def _scheduler_rows(job, states):
     return rows
 
 
+def _round_output(job, dependency=""):
+    prefix=job.replace("[].zeus-master", "")
+    return "".join(f"Job Id: {prefix}[{child}].zeus-master\n" + (f"    depend = {dependency}\n" if dependency else "") for child in range(3))
+
+
 def test_parse_round_requires_exact_children_and_dependency():
     ids=[f"{100+i}[].zeus-master" for i in range(4)]
-    output=f"depend = afterok:{ids[0]}@zeus-master\n"
+    output=_round_output(ids[1], f"afterok:{ids[0]}@zeus-master")
     parser=lambda _:_scheduler_rows(ids[1],["completed_success"]*3)
     row,unknown=parse_round(output,ids[1],3,2,ids,parser)
     assert row["scheduler"]=={"state":"completed_success","task_count":3,"counts":{"queued":0,"running":0,"held":0,"succeeded":3,"failed":0}}
     assert unknown is False
     with pytest.raises(ValueError,match="dependency"):
-        parse_round("depend = afterok:999[].zeus-master\n",ids[1],3,2,ids,parser)
+        parse_round(_round_output(ids[1], "afterok:999[].zeus-master"),ids[1],3,2,ids,parser)
     with pytest.raises(ValueError,match="records"):
         parse_round(output,ids[1],3,2,ids,lambda _:_scheduler_rows(ids[1],["completed_success"]*2))
     with pytest.raises(ValueError,match="records"):
@@ -166,7 +172,7 @@ def _receiver_fixture(tmp_path,monkeypatch,*,wrong_dependency=False,failed_child
     monkeypatch.setattr(receiver,"Path",lambda value:home if str(value)=="/home" else real_path(value))
     import workflow_api.zeus_snapshot as snapshot
     def parsed(output):
-        match=output.splitlines()[0];states=["completed_success"]*3
+        match=output.splitlines()[0].split(":",1)[1].strip();match=re.sub(r"\[\d+\]", "[]", match);states=["completed_success"]*3
         if failed_child and match==job_ids[0]:states[0]="completed_failed"
         return _scheduler_rows(match,states)
     monkeypatch.setattr(snapshot,"_parse_qstat",parsed)
@@ -176,8 +182,8 @@ def _receiver_fixture(tmp_path,monkeypatch,*,wrong_dependency=False,failed_child
         if argv[:3]==["/usr/bin/git","rev-parse","HEAD"]:return SimpleNamespace(stdout=commit+"\n",stderr="",returncode=0)
         if argv[:3]==["/usr/bin/git","status","--porcelain=v1"]:return SimpleNamespace(stdout=b"",stderr=b"",returncode=0)
         if argv[:3]==["/usr/bin/git","branch","--show-current"]:return SimpleNamespace(stdout="main\n",stderr="",returncode=0)
-        job=argv[-1];index=job_ids.index(job);dependency="" if index==0 else f"depend = afterok:{'999[].zeus-master' if wrong_dependency else job_ids[index-1]}@zeus-master\n"
-        return SimpleNamespace(stdout=f"{job}\n{dependency}",stderr="",returncode=0)
+        job=argv[-1];index=job_ids.index(job);dependency="" if index==0 else f"afterok:{'999[].zeus-master' if wrong_dependency else job_ids[index-1]}@zeus-master"
+        return SimpleNamespace(stdout=_round_output(job,dependency),stderr="",returncode=0)
     monkeypatch.setattr(receiver.subprocess,"run",run)
     payload={"campaign":"data/optimization/mot_2d/camp","commit":commit,"refine_files":refine_files,"chain_key":chain_key,"screen_digest":screen_digest,"screening_submission_key":screen_key,"rows_digest":rows_digest,"confirmation_files":confirmation_files,"nonce":"1"*32}
     encoded=base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()

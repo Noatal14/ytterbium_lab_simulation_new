@@ -30,6 +30,11 @@ def _sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _scheduler_array(argv, content):
+    """PBS creates arrays from -J, not ordinary environment-variable text."""
+    return '-J' in argv or re.search(rb'^#PBS\s+-J\s+', content, re.M) is not None
+
+
 def _source(root, commit, acceptance):
     from lab_setup.physical_specification import (LABORATORY_PHYSICAL_SPECIFICATION,
         LABORATORY_SPEC_VERSION, LABORATORY_SPEC_SHA256, CANONICAL_ZEEMAN_PROFILE_SHA256,
@@ -114,7 +119,7 @@ class _Protocol:
             if command.endswith('/qsub'):
                 content = kwargs.get('input', b'')
                 if isinstance(content, str): content = content.encode()
-                array = bool(re.search(rb'#PBS -J', content)) or '-J' in argv or b'PBS_ARRAY_INDEX' in content
+                array = _scheduler_array(argv, content)
                 job = str(70000 + len(self.jobs)) + ('[]' if array else '') + '.zeus-master'
                 dep = next((str(x).split('depend=afterok:', 1)[1] for x in argv if str(x).startswith('depend=afterok:')), None)
                 array_spec = str(argv[argv.index('-J') + 1]) if '-J' in argv else ''
@@ -132,6 +137,7 @@ class _Protocol:
                     rows += ['    array = True', f'    array_indices_submitted = 0-{count-1}', '    array_state_count = Queued:0 Running:0 Exiting:0 Expired:' + str(count)]
                     for index in range(count):
                         rows += [f'Job Id: {job.replace("[]", f"[{index}]")}', '    Job_Name = protocol', '    job_state = F', '    Exit_status = 0']
+                        if data['dependency']: rows.append('    depend = afterok:' + data['dependency'] + '@zeus-master')
                 raw = ('\n'.join(rows) + '\n').encode()
                 return emitted(raw)
             if len(argv) > 2 and argv[1] == '-m' and argv[2] in {'studies.mot_2d.optimization', 'studies.mot_2d.production'}:

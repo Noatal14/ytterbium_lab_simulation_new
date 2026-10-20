@@ -194,6 +194,7 @@ def test_refinement_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwargs(
         "-o", "StrictHostKeyChecking=yes",
         "-o", "ForwardAgent=no",
         "-o", "ClearAllForwardings=yes",
+        "-o", "LogLevel=ERROR",
         "tal.noa@zeus.technion.ac.il", remote,
     ]
     assert observed["kwargs"] == {
@@ -375,6 +376,7 @@ def test_confirmation_runner_preserves_exact_legacy_argv_wrapper_bytes_and_kwarg
         "-o", "StrictHostKeyChecking=yes",
         "-o", "ForwardAgent=no",
         "-o", "ClearAllForwardings=yes",
+        "-o", "LogLevel=ERROR",
         "tal.noa@zeus.technion.ac.il", remote,
     ]
     assert observed["kwargs"] == {
@@ -537,6 +539,7 @@ def test_refinement_submission_runner_preserves_exact_legacy_invocation(
         "-o", "StrictHostKeyChecking=yes",
         "-o", "ForwardAgent=no",
         "-o", "ClearAllForwardings=yes",
+        "-o", "LogLevel=ERROR",
         "tal.noa@zeus.technion.ac.il", remote,
     ]
     assert observed["kwargs"] == {
@@ -2158,3 +2161,27 @@ def test_run_rejects_oversized_transport_header_before_process_launch(tmp_path, 
     with pytest.raises(ValueError, match='receiver framing exceeds its bound'):
         runner.run(ReceiverOperation.INSPECT, _profile(), {'oversized': 'x' * (2 * 1024 * 1024)})
     assert calls == []
+
+
+def test_every_closed_receiver_uses_error_only_ssh_logging_with_strict_host_keys():
+    from workflow_api.pinned_ssh import _RECEIVERS
+    for kind, definition in _RECEIVERS.items():
+        arguments = definition.ssh_arguments
+        assert arguments.count('LogLevel=ERROR') == 1, kind
+        assert 'StrictHostKeyChecking=yes' in arguments, kind
+        assert 'BatchMode=yes' in arguments, kind
+        assert arguments[:2] == ('-F', 'none'), kind
+
+
+@pytest.mark.parametrize('operation,error_code',[('inspect','remote_response_invalid'),('prepare','transition_outcome_unknown')])
+def test_refinement_still_rejects_transport_warning_stderr(tmp_path,monkeypatch,operation,error_code):
+    observed=[]
+    def process(argv,**kwargs):
+        observed.append(argv)
+        return subprocess.CompletedProcess(argv,0,_valid_response(),b'** WARNING: connection is not using a post-quantum key exchange algorithm.\n')
+    monkeypatch.setattr('workflow_api.pinned_ssh._bounded_run',process)
+    transport=PinnedSshRefinementTransport(tmp_path,executable('ssh'),_profile())
+    with pytest.raises(ZeusRefinementError) as caught:getattr(transport,operation)(example=True)
+    assert caught.value.code==error_code
+    assert observed[0].count('LogLevel=ERROR')==1
+    assert 'StrictHostKeyChecking=yes' in observed[0]

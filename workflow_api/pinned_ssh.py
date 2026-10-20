@@ -111,6 +111,8 @@ class _ReceiverDefinition:
         "ForwardAgent=no",
         "-o",
         "ClearAllForwardings=yes",
+        "-o",
+        "LogLevel=ERROR",
     )
     pinned_environment: bool = False
     explicit_process_safety: bool = False
@@ -148,6 +150,8 @@ _RECEIVERS = {
             "ForwardAgent=no",
             "-o",
             "ClearAllForwardings=yes",
+            "-o",
+            "LogLevel=ERROR",
         ),
     ),
     ReceiverKind.MOT_3D_FINALIST_TRANSITION: _ReceiverDefinition(
@@ -178,6 +182,8 @@ _RECEIVERS = {
             "ForwardAgent=no",
             "-o",
             "ClearAllForwardings=yes",
+            "-o",
+            "LogLevel=ERROR",
         ),
     ),
     ReceiverKind.MOT_3D_FINAL_VALIDATION_TRANSITION: _ReceiverDefinition(
@@ -197,6 +203,8 @@ _RECEIVERS = {
             "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
             "-o", "StrictHostKeyChecking=yes", "-o", "ForwardAgent=no", "-o",
             "ClearAllForwardings=yes",
+            "-o",
+            "LogLevel=ERROR",
         ),
     ),
     ReceiverKind.MOT_3D_FINAL_VALIDATION_COMPLETION: _ReceiverDefinition(
@@ -216,6 +224,8 @@ _RECEIVERS = {
             "PasswordAuthentication=no", "-o", "KbdInteractiveAuthentication=no",
             "-o", "StrictHostKeyChecking=yes", "-o", "ForwardAgent=no", "-o",
             "ClearAllForwardings=yes",
+            "-o",
+            "LogLevel=ERROR",
         ),
     ),
     ReceiverKind.MOT_3D_CLOSURE_TRANSITION: _ReceiverDefinition(

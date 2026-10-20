@@ -1,0 +1,162 @@
+Job Id: 4809120[].zeus-master
+    Job_Name = mot2d_ref2
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = H
+    queue = zeus_combined_q
+    server = zeus-master
+    Checkpoint = u
+    ctime = Tue Oct 20 19:18:18 2026
+    depend = afterok:4809119[].zeus-master@zeus-master,
+	beforeok:4809121[].zeus-master@zeus-master
+    Error_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_sim
+	ulation_ui_acceptance/mot2d_ref2.e4809120.^array_index^
+    Hold_Types = s
+    Join_Path = n
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Tue Oct 20 19:18:18 2026
+    Output_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_si
+	mulation_ui_acceptance/mot2d_ref2.o4809120.^array_index^
+    Priority = 0
+    qtime = Tue Oct 20 19:18:18 2026
+    Rerunable = True
+    Resource_List.mem = 8gb
+    Resource_List.ncpus = 10
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.select = 1:ncpus=10:mem=8gb:vnode=gd002
+    Resource_List.walltime = 01:00:00
+    substate = 22
+    Variable_List = PBS_O_HOME=/home/tal.noa,PBS_O_LANG=en_US.UTF-8,
+	PBS_O_LOGNAME=tal.noa,
+	PBS_O_PATH=/home/tal.noa/.local/bin:/home/tal.noa/bin:/usr/local/bin:/
+	usr/share/lmod/lmod/libexec:/usr/lib64/ccache:/usr/local/bin:/usr/bin:/
+	usr/local/sbin:/usr/sbin:/opt/pbs/bin,PBS_O_SHELL=/bin/bash,
+	PBS_O_HOST=zeus-login.zeus.technion.ac.il,
+	PBS_O_WORKDIR=/home/tal.noa/ytterbium_lab_simulation_ui_acceptance,
+	PBS_O_SYSTEM=Linux,PBS_O_QUEUE=zeus_combined_q
+    Submit_arguments = -W depend=afterok:4809119[].zeus-master
+    array = True
+    array_state_count = Queued:3 Running:0 Exiting:0 Expired:0
+    array_indices_submitted = 0-2
+    array_indices_remaining = 0-2
+    project = _pbs_project_default
+    Submit_Host = zeus-login.zeus.technion.ac.il
+    max_run_subjobs = 3
+
+Job Id: 4809120[0].zeus-master
+    Job_Name = mot2d_ref2
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = Q
+    queue = zeus_combined_q
+    server = zeus-master
+    Checkpoint = u
+    ctime = Tue Oct 20 19:18:18 2026
+    depend = afterok:4809119[].zeus-master@zeus-master,
+	beforeok:4809121[].zeus-master@zeus-master
+    Error_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_sim
+	ulation_ui_acceptance/mot2d_ref2.e4809120.^array_index^
+    Hold_Types = s
+    Join_Path = n
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Tue Oct 20 19:18:18 2026
+    Output_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_si
+	mulation_ui_acceptance/mot2d_ref2.o4809120.^array_index^
+    Priority = 0
+    qtime = Tue Oct 20 19:18:18 2026
+    Rerunable = True
+    Resource_List.mem = 8gb
+    Resource_List.ncpus = 10
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.select = 1:ncpus=10:mem=8gb:vnode=gd002
+    Resource_List.walltime = 01:00:00
+    substate = 10
+    Variable_List = PBS_O_HOME=/home/tal.noa,PBS_O_LANG=en_US.UTF-8,
+	PBS_O_LOGNAME=tal.noa,
+	PBS_O_PATH=/home/tal.noa/.local/bin:/home/tal.noa/bin:/usr/local/bin:/
+	usr/share/lmod/lmod/libexec:/usr/lib64/ccache:/usr/local/bin:/usr/bin:/
+	usr/local/sbin:/usr/sbin:/opt/pbs/bin,PBS_O_SHELL=/bin/bash,
+	PBS_O_HOST=zeus-login.zeus.technion.ac.il,
+	PBS_O_WORKDIR=/home/tal.noa/ytterbium_lab_simulation_ui_acceptance,
+	PBS_O_SYSTEM=Linux,PBS_O_QUEUE=zeus_combined_q
+    Submit_arguments = -W depend=afterok:4809119[].zeus-master
+
+Job Id: 4809120[1].zeus-master
+    Job_Name = mot2d_ref2
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = Q
+    queue = zeus_combined_q
+    server = zeus-master
+    Checkpoint = u
+    ctime = Tue Oct 20 19:18:18 2026
+    depend = afterok:4809119[].zeus-master@zeus-master,
+	beforeok:4809121[].zeus-master@zeus-master
+    Error_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_sim
+	ulation_ui_acceptance/mot2d_ref2.e4809120.^array_index^
+    Hold_Types = s
+    Join_Path = n
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Tue Oct 20 19:18:18 2026
+    Output_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_si
+	mulation_ui_acceptance/mot2d_ref2.o4809120.^array_index^
+    Priority = 0
+    qtime = Tue Oct 20 19:18:18 2026
+    Rerunable = True
+    Resource_List.mem = 8gb
+    Resource_List.ncpus = 10
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.select = 1:ncpus=10:mem=8gb:vnode=gd002
+    Resource_List.walltime = 01:00:00
+    substate = 10
+    Variable_List = PBS_O_HOME=/home/tal.noa,PBS_O_LANG=en_US.UTF-8,
+	PBS_O_LOGNAME=tal.noa,
+	PBS_O_PATH=/home/tal.noa/.local/bin:/home/tal.noa/bin:/usr/local/bin:/
+	usr/share/lmod/lmod/libexec:/usr/lib64/ccache:/usr/local/bin:/usr/bin:/
+	usr/local/sbin:/usr/sbin:/opt/pbs/bin,PBS_O_SHELL=/bin/bash,
+	PBS_O_HOST=zeus-login.zeus.technion.ac.il,
+	PBS_O_WORKDIR=/home/tal.noa/ytterbium_lab_simulation_ui_acceptance,
+	PBS_O_SYSTEM=Linux,PBS_O_QUEUE=zeus_combined_q
+    Submit_arguments = -W depend=afterok:4809119[].zeus-master
+
+Job Id: 4809120[2].zeus-master
+    Job_Name = mot2d_ref2
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = Q
+    queue = zeus_combined_q
+    server = zeus-master
+    Checkpoint = u
+    ctime = Tue Oct 20 19:18:18 2026
+    depend = afterok:4809119[].zeus-master@zeus-master,
+	beforeok:4809121[].zeus-master@zeus-master
+    Error_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_sim
+	ulation_ui_acceptance/mot2d_ref2.e4809120.^array_index^
+    Hold_Types = s
+    Join_Path = n
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Tue Oct 20 19:18:18 2026
+    Output_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_si
+	mulation_ui_acceptance/mot2d_ref2.o4809120.^array_index^
+    Priority = 0
+    qtime = Tue Oct 20 19:18:18 2026
+    Rerunable = True
+    Resource_List.mem = 8gb
+    Resource_List.ncpus = 10
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.select = 1:ncpus=10:mem=8gb:vnode=gd002
+    Resource_List.walltime = 01:00:00
+    substate = 10
+    Variable_List = PBS_O_HOME=/home/tal.noa,PBS_O_LANG=en_US.UTF-8,
+	PBS_O_LOGNAME=tal.noa,
+	PBS_O_PATH=/home/tal.noa/.local/bin:/home/tal.noa/bin:/usr/local/bin:/
+	usr/share/lmod/lmod/libexec:/usr/lib64/ccache:/usr/local/bin:/usr/bin:/
+	usr/local/sbin:/usr/sbin:/opt/pbs/bin,PBS_O_SHELL=/bin/bash,
+	PBS_O_HOST=zeus-login.zeus.technion.ac.il,
+	PBS_O_WORKDIR=/home/tal.noa/ytterbium_lab_simulation_ui_acceptance,
+	PBS_O_SYSTEM=Linux,PBS_O_QUEUE=zeus_combined_q
+    Submit_arguments = -W depend=afterok:4809119[].zeus-master

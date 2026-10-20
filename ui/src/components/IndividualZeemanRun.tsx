@@ -502,15 +502,24 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       ? npools >= spec.worker_policy.local.minimum &&
         npools <= localWorkerMaximum
       : npools === spec.worker_policy.zeus.fixed);
+  function changeParticles(next: number) {
+    setParticles(next);
+    if (mode === "local" && Number.isInteger(next) && next >= spec.particle_count.minimum) {
+      setNpools((current) => Math.min(current, next));
+    }
+  }
   function changeMode(next: ZeemanMode) {
-    setParticles((current) =>
-      particleCountAfterModeChange(current, mode, next),
-    );
+    const nextParticles = particleCountAfterModeChange(particles, mode, next);
+    const particleWorkerLimit = Number.isInteger(nextParticles) && nextParticles >= spec.particle_count.minimum
+      ? nextParticles
+      : spec.worker_policy.local.maximum;
+    setParticles(nextParticles);
     setNpools(
       next === "local"
         ? Math.min(
             spec.worker_policy.local.default,
             navigator.hardwareConcurrency || spec.worker_policy.local.default,
+            particleWorkerLimit,
           )
         : spec.worker_policy.zeus.fixed,
     );
@@ -635,7 +644,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
                 step="1"
                 value={particles}
                 onChange={(event) =>
-                  setParticles(event.currentTarget.valueAsNumber)
+                  changeParticles(event.currentTarget.valueAsNumber)
                 }
               />
             </div>
