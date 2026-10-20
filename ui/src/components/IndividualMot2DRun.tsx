@@ -16,7 +16,15 @@ import type {
   Mot2DSource,
 } from "../api/clients/individualMot2D";
 import { RunProgressPanel } from "./RunProgressPanel";
-import { confirmRememberedZeusRun, forgetIndividualRun, readRememberedIndividualRun, recoveredRunStep, recoverIndividualRun, rememberIndividualRun } from "../features/individual/individualRunRecovery";
+import {
+  individualRunStorageWarning,
+  confirmRememberedZeusRun,
+  forgetIndividualRun,
+  readRememberedIndividualRun,
+  recoveredRunStep,
+  recoverIndividualRun,
+  rememberIndividualRun,
+} from "../features/individual/individualRunRecovery";
 
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const labels: [Step, string][] = [
@@ -131,6 +139,7 @@ export function IndividualMot2DRun({
 }) {
   const title = useRef<HTMLHeadingElement>(null);
   const refreshRequest = useRef(0);
+  const [recoveryPending, setRecoveryPending] = useState(false);
   const [step, setStep] = useState<Step>("configure"),
     [sources, setSources] = useState<Mot2DSource[]>([]),
     [source, setSource] = useState("");
@@ -150,7 +159,8 @@ export function IndividualMot2DRun({
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const [run, setRun] = useState<Mot2DRun | null>(null);
-  const [zeusResources, setZeusResources] = useState<IndividualZeusResources | null>(null);
+  const [zeusResources, setZeusResources] =
+    useState<IndividualZeusResources | null>(null);
   const [submittedJobId, setSubmittedJobId] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
@@ -161,7 +171,8 @@ export function IndividualMot2DRun({
           setSources(rows);
           setSource(rows[0]?.id ?? "");
           const available = rows[0]?.available_particle_count.pooled ?? 0;
-          if (available > 0) setParticles((current) => Math.min(current, available));
+          if (available > 0)
+            setParticles((current) => Math.min(current, available));
         }
       })
       .catch((e) => active && setError(message(e)));
@@ -179,7 +190,52 @@ export function IndividualMot2DRun({
       refreshRequest.current += 1;
     };
   }, [api]);
-  useEffect(() => { let active = true; const id = refreshRequest.current; void (async () => { const remembered = readRememberedIndividualRun("mot_2d"); const found = await recoverIndividualRun("mot_2d", api); if (!active || id !== refreshRequest.current || !found) return; if (found.execution.mode === "zeus" && found.lifecycle !== "results_ready") { if (!remembered?.username || !api.recoverZeus) throw new Error("The remembered Zeus run cannot be verified safely yet. It was not restarted."); await api.recoverZeus(found.display_name, remembered.username); if (!active || id !== refreshRequest.current) return; setUsername(remembered.username); } setRunId(found.display_name); setMode(found.execution.mode); setRun(found as Mot2DRun); setStep(recoveredRunStep(found)); })().catch((caught) => { if (active && id === refreshRequest.current) setError(message(caught)); }); return () => { active = false; }; }, [api]);
+  useEffect(() => {
+    let active = true;
+    const id = refreshRequest.current;
+    void (async () => {
+      const remembered = readRememberedIndividualRun("mot_2d");
+      const found = await recoverIndividualRun("mot_2d", api);
+      if (!active || id !== refreshRequest.current || !found) return;
+      setRunId(found.display_name);
+      setMode(found.execution.mode);
+      setRun(found as Mot2DRun);
+      setStep(
+        found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
+          ? "monitor"
+          : recoveredRunStep(found),
+      );
+      if (
+        found.execution.mode === "zeus" &&
+        found.lifecycle !== "results_ready"
+      ) {
+        setStep("monitor");
+        setUsername(remembered?.username ?? "");
+        setRecoveryPending(true);
+        if (!remembered?.username || !api.recoverZeus)
+          throw new Error(
+            "The remembered Zeus run cannot be verified safely yet. It was not restarted.",
+          );
+        await api.recoverZeus(found.display_name, remembered.username);
+        if (!active || id !== refreshRequest.current) return;
+        setUsername(remembered.username);
+        setRecoveryPending(false);
+      }
+      setRunId(found.display_name);
+      setMode(found.execution.mode);
+      setRun(found as Mot2DRun);
+      setStep(
+        found.execution.mode === "zeus" && found.lifecycle !== "results_ready"
+          ? "monitor"
+          : recoveredRunStep(found),
+      );
+    })().catch((caught) => {
+      if (active && id === refreshRequest.current) setError(message(caught));
+    });
+    return () => {
+      active = false;
+    };
+  }, [api]);
   const selected = sources.find((row) => row.id === source),
     max = Math.min(
       mode === "local" ? 1000 : 50000,
@@ -254,21 +310,33 @@ export function IndividualMot2DRun({
       await act(async () => {
         const row = await api.confirm(preview.preview_token);
         setRunId(row.run_id);
-        if (mode === "local") rememberIndividualRun("mot_2d", row.run_id, "local");
+        if (mode === "local")
+          if (!rememberIndividualRun("mot_2d", row.run_id, "local"))
+            setError(individualRunStorageWarning);
         setStep("run");
       });
   }
   async function start() {
     if (!runId) return;
     await act(async () => {
-      if (mode === "local") { await api.startLocal(runId); rememberIndividualRun("mot_2d", runId, "local"); }
-      else if (!zeusToken) {
+      if (mode === "local") {
+        await api.startLocal(runId);
+        if (!rememberIndividualRun("mot_2d", runId, "local"))
+          setError(individualRunStorageWarning);
+      } else if (!zeusToken) {
         const reviewed = await api.previewZeus(runId, username);
+        if (run && !reviewed.effects.reconcile_existing_job)
+          throw new Error(
+            "No existing Zeus job could be verified. No new submission was authorized; inspect Zeus before continuing.",
+          );
         setZeusResources(reviewed.job.resources);
         setZeusToken(reviewed.preview_token);
-      }
-      else {
-        await confirmRememberedZeusRun("mot_2d", runId, username, async () => { const result = await api.confirmZeus(zeusToken); setSubmittedJobId(result.job_id); return result; });
+      } else {
+        await confirmRememberedZeusRun("mot_2d", runId, username, async () => {
+          const result = await api.confirmZeus(zeusToken);
+          setSubmittedJobId(result.job_id);
+          return result;
+        });
       }
       if (mode === "local" || zeusToken) setStep("monitor");
     });
@@ -295,11 +363,76 @@ export function IndividualMot2DRun({
       if (requestId === refreshRequest.current) setBusy(false);
     }
   }
-  useEffect(() => { if (step !== "monitor" || mode !== "local" || !runId) return; let active = true, inFlight = false; const poll = async () => { if (inFlight) return; inFlight = true; try { const summary = (await api.runs()).find((item) => item.display_name === runId); if (!summary) throw new Error("The run has not appeared in the verified run list yet. Try checking again shortly."); if (active) { const found = summary.lifecycle === "results_ready" ? await api.run(summary.id) : summary; if (active) { setError(null); setRun(found); if (found.lifecycle === "results_ready") setStep("results"); } } } catch (caught) { if (active) setError(message(caught)); } finally { inFlight = false; } }; const timer = window.setInterval(() => void poll(), 1000); return () => { active = false; window.clearInterval(timer); }; }, [api, mode, runId, step]);
+  useEffect(() => {
+    if (step !== "monitor" || mode !== "local" || !runId) return;
+    let active = true,
+      inFlight = false;
+    const poll = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const summary = (await api.runs()).find(
+          (item) => item.display_name === runId,
+        );
+        if (!summary)
+          throw new Error(
+            "The run has not appeared in the verified run list yet. Try checking again shortly.",
+          );
+        if (active) {
+          const found =
+            summary.lifecycle === "results_ready"
+              ? await api.run(summary.id)
+              : summary;
+          if (active) {
+            setError(null);
+            setRun(found);
+            if (found.lifecycle === "results_ready") setStep("results");
+          }
+        }
+      } catch (caught) {
+        if (active) setError(message(caught));
+      } finally {
+        inFlight = false;
+      }
+    };
+    const timer = window.setInterval(() => void poll(), 1000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [api, mode, runId, step]);
+  async function reconcileRememberedRun() {
+    if (!runId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const reviewed = await api.previewZeus(runId, username);
+      if (run && !reviewed.effects.reconcile_existing_job)
+        throw new Error(
+          "No existing Zeus job could be verified. No new submission was authorized; inspect Zeus before continuing.",
+        );
+      if (!reviewed.effects.reconcile_existing_job)
+        throw new Error(
+          "No existing Zeus job could be verified. No new submission was authorized; inspect Zeus before continuing.",
+        );
+      setZeusResources(reviewed.job.resources);
+      setZeusToken(reviewed.preview_token);
+      setRecoveryPending(false);
+      setStep("run");
+    } catch (cause) {
+      setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
   const current = labels.findIndex(([id]) => id === step);
   return (
     <main id="main" className="individual-run-page">
-      <button className="text-button back-button" onClick={onBack}>
+      <button
+        className="text-button back-button"
+        disabled={busy}
+        onClick={onBack}
+      >
         <ArrowLeft /> Back to home
       </button>
       <header className="detail-hero">
@@ -326,6 +459,22 @@ export function IndividualMot2DRun({
           </li>
         ))}
       </ol>
+      {recoveryPending && (
+        <section className="state-panel" role="status">
+          <strong>Existing Zeus run needs verification</strong>
+          <p>
+            {runId} remains selected. Its submission outcome is uncertain.
+            Inspect Zeus or review linking its existing job before continuing.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void reconcileRememberedRun()}
+          >
+            Review existing Zeus job
+          </button>
+        </section>
+      )}
       <div className="sr-only" aria-live="polite">
         {busy ? "Working" : `Current step: ${step}`}
       </div>
@@ -393,15 +542,29 @@ export function IndividualMot2DRun({
                 value={particles}
                 onChange={(e) => setParticles(e.currentTarget.valueAsNumber)}
                 aria-describedby="mot2d-particle-guidance"
-                aria-invalid={!!selected && (!Number.isInteger(particles) || particles < 1 || particles > max)}
+                aria-invalid={
+                  !!selected &&
+                  (!Number.isInteger(particles) ||
+                    particles < 1 ||
+                    particles > max)
+                }
               />
-              <small id="mot2d-particle-guidance" className={particles > max || !Number.isInteger(particles) || particles < 1 ? "field-error" : undefined}>
+              <small
+                id="mot2d-particle-guidance"
+                className={
+                  particles > max ||
+                  !Number.isInteger(particles) ||
+                  particles < 1
+                    ? "field-error"
+                    : undefined
+                }
+              >
                 {selected
                   ? !Number.isInteger(particles) || particles < 1
                     ? "Choose a whole number of particles, starting at 1."
                     : particles > max
-                    ? `This source contains only ${max.toLocaleString()} available particles. Choose ${max.toLocaleString()} or fewer.`
-                    : `Up to ${max.toLocaleString()} particles are available for this execution mode.`
+                      ? `This source contains only ${max.toLocaleString()} available particles. Choose ${max.toLocaleString()} or fewer.`
+                      : `Up to ${max.toLocaleString()} particles are available for this execution mode.`
                   : "Select a Zeeman survivor source first."}
               </small>
             </div>
@@ -492,7 +655,24 @@ export function IndividualMot2DRun({
                 Zeus
               </label>
             </div>
-            {mode === "local" && <div className="form-field local-worker-field"><label htmlFor="mot2d-npools">CPU workers <Help text="Choose how many parallel worker processes this computer should use. A larger value is useful only when the machine has enough available CPU cores." /></label><input id="mot2d-npools" type="number" min="1" max="256" value={npools} onChange={(event) => setNpools(event.currentTarget.valueAsNumber)} /></div>}
+            {mode === "local" && (
+              <div className="form-field local-worker-field">
+                <label htmlFor="mot2d-npools">
+                  CPU workers{" "}
+                  <Help text="Choose how many parallel worker processes this computer should use. A larger value is useful only when the machine has enough available CPU cores." />
+                </label>
+                <input
+                  id="mot2d-npools"
+                  type="number"
+                  min="1"
+                  max="256"
+                  value={npools}
+                  onChange={(event) =>
+                    setNpools(event.currentTarget.valueAsNumber)
+                  }
+                />
+              </div>
+            )}
           </fieldset>
           <label className="check-control">
             <input
@@ -543,8 +723,14 @@ export function IndividualMot2DRun({
                     {s0} / {detuning} Γ / {radiusMm} mm
                   </dd>
                 </div>
-                <div><dt>Selection seed</dt><dd>{preview.plan.selection.seed}</dd></div>
-                <div><dt>MOT seed</dt><dd>{preview.plan.execution.mot_seed}</dd></div>
+                <div>
+                  <dt>Selection seed</dt>
+                  <dd>{preview.plan.selection.seed}</dd>
+                </div>
+                <div>
+                  <dt>MOT seed</dt>
+                  <dd>{preview.plan.execution.mot_seed}</dd>
+                </div>
                 <div>
                   <dt>Execution</dt>
                   <dd>{mode === "local" ? "This computer" : "Zeus"}</dd>
@@ -573,6 +759,7 @@ export function IndividualMot2DRun({
           <div className="form-actions">
             <button
               className="secondary-button"
+              disabled={busy}
               onClick={() => setStep("configure")}
             >
               Change choices
@@ -593,9 +780,15 @@ export function IndividualMot2DRun({
           <div className="action-banner">
             <Play />
             <div>
-              <strong>Reviewed run is ready</strong>
+              <strong>
+                {run && mode === "zeus"
+                  ? "Existing Zeus run selected"
+                  : "Reviewed run is ready"}
+              </strong>
               <p>
-                Nothing is running yet. Starting requires this explicit action.
+                {run && mode === "zeus"
+                  ? "Review linking the verified existing job. No new job will be submitted."
+                  : "Nothing is running yet. Starting requires this explicit action."}
               </p>
             </div>
           </div>
@@ -616,18 +809,38 @@ export function IndividualMot2DRun({
                   <strong>Zeus submission reviewed</strong>
                   <p>
                     The connection profile is frozen for this reviewed
-                    submission. Confirm to submit exactly one job.
+                    submission.{" "}
+                    {run
+                      ? "Confirm to link the existing job without submitting new work."
+                      : "Confirm to submit exactly one job."}
                   </p>
-                  {zeusResources && <dl aria-label="Reviewed Zeus reservation">
-                    <div><dt>Queue</dt><dd>{zeusResources.queue}</dd></div>
-                    <div><dt>CPU cores</dt><dd>{zeusResources.cores}</dd></div>
-                    <div><dt>Memory</dt><dd>{zeusResources.memory_bytes / 1024 ** 3} GiB</dd></div>
-                    <div><dt>Time limit</dt><dd>{zeusResources.walltime_seconds / 3600} hours</dd></div>
-                  </dl>}
+                  {zeusResources && (
+                    <dl aria-label="Reviewed Zeus reservation">
+                      <div>
+                        <dt>Queue</dt>
+                        <dd>{zeusResources.queue}</dd>
+                      </div>
+                      <div>
+                        <dt>CPU cores</dt>
+                        <dd>{zeusResources.cores}</dd>
+                      </div>
+                      <div>
+                        <dt>Memory</dt>
+                        <dd>{zeusResources.memory_bytes / 1024 ** 3} GiB</dd>
+                      </div>
+                      <div>
+                        <dt>Time limit</dt>
+                        <dd>{zeusResources.walltime_seconds / 3600} hours</dd>
+                      </div>
+                    </dl>
+                  )}
                   <button
                     className="text-button"
                     type="button"
-                    onClick={() => { setZeusToken(null); setZeusResources(null); }}
+                    onClick={() => {
+                      setZeusToken(null);
+                      setZeusResources(null);
+                    }}
                   >
                     Change connection
                   </button>
@@ -650,7 +863,9 @@ export function IndividualMot2DRun({
                 ? "Working…"
                 : mode === "zeus"
                   ? zeusToken
-                    ? "Confirm and submit one Zeus job"
+                    ? run && mode === "zeus"
+                      ? "Confirm and link existing Zeus job"
+                      : "Confirm and submit one Zeus job"
                     : "Review Zeus submission"
                   : "Start on this computer"}
             </button>
@@ -674,8 +889,17 @@ export function IndividualMot2DRun({
               </div>
             );
           })()}
-          {mode === "zeus" && <p role="status"><strong>Zeus Job ID:</strong> {run?.execution.zeus_job_id ?? submittedJobId ?? "Awaiting verified job identity"}</p>}
-          {mode === "local" && <RunProgressPanel progress={run?.execution.progress ?? null} />}
+          {mode === "zeus" && (
+            <p role="status">
+              <strong>Zeus Job ID:</strong>{" "}
+              {run?.execution.zeus_job_id ??
+                submittedJobId ??
+                "Awaiting verified job identity"}
+            </p>
+          )}
+          {mode === "local" && (
+            <RunProgressPanel progress={run?.execution.progress ?? null} />
+          )}
           <div className="form-actions">
             <button
               className="secondary-button"
@@ -694,7 +918,16 @@ export function IndividualMot2DRun({
             <CheckCircle2 />
             <h2>Verified results are ready</h2>
           </div>
-          <button className="secondary-button" type="button" onClick={() => { forgetIndividualRun("mot_2d"); onBack(); }}>Configure another simulation</button>
+          <button
+            className="secondary-button"
+            type="button"
+            onClick={() => {
+              forgetIndividualRun("mot_2d");
+              onBack();
+            }}
+          >
+            Configure another simulation
+          </button>
           <div className="scientific-role-note">
             <strong>Scientific role: individual only</strong>
             <p>

@@ -100,15 +100,19 @@ describe("IndividualMot2DRun", () => {
     expect(particles.max).toBe("10000");
   });
   it("explains zero and fractional particle counts beside the invalid input", async () => {
-    const user = userEvent.setup(), service = api();
+    const user = userEvent.setup(),
+      service = api();
     render(<IndividualMot2DRun api={service} onBack={vi.fn()} />);
     await screen.findByRole("option", { name: /October ensembles/ });
     const input = screen.getByRole("spinbutton", { name: /Particle count/ });
     for (const value of ["0", "1.5"]) {
-      await user.clear(input); await user.type(input, value);
+      await user.clear(input);
+      await user.type(input, value);
       expect(input).toHaveAttribute("aria-invalid", "true");
       expect(input).toHaveAccessibleDescription(/whole number.*starting at 1/);
-      expect(screen.getByRole("button", { name: "Validate and review" })).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Validate and review" }),
+      ).toBeDisabled();
     }
     expect(service.preview).not.toHaveBeenCalled();
   });
@@ -125,7 +129,8 @@ describe("IndividualMot2DRun", () => {
     );
   });
   it("shows an action failure beside the button that triggered it", async () => {
-    const user = userEvent.setup(), service = api();
+    const user = userEvent.setup(),
+      service = api();
     vi.mocked(service.preview).mockRejectedValue(
       new Error("The 2D-MOT run could not be validated."),
     );
@@ -186,7 +191,19 @@ describe("IndividualMot2DRun", () => {
     });
     vi.mocked(service.previewZeus).mockResolvedValue({
       preview_token: "zeus-review",
-      job: { resources: { queue: "zeus_combined_q", cores: 200, memory_bytes: 68719476736, walltime_seconds: 28800 } },
+      effects: {
+        submit_one_job: true,
+        reconcile_existing_job: false,
+        cancel_job: false,
+      },
+      job: {
+        resources: {
+          queue: "zeus_combined_q",
+          cores: 200,
+          memory_bytes: 68719476736,
+          walltime_seconds: 28800,
+        },
+      },
       run_id: "mot2d-ui",
       submission_key: "d".repeat(64),
     });
@@ -215,9 +232,20 @@ describe("IndividualMot2DRun", () => {
     await user.click(screen.getByRole("button", { name: "Change connection" }));
     expect(username).toBeEnabled();
     expect(screen.queryByText("64 GiB")).not.toBeInTheDocument();
-    vi.mocked(service.confirmZeus).mockResolvedValue({ status: "submitted", run_id: "mot2d-ui", job_id: "987.zeus-master", submission_key: "d".repeat(64) });
-    await user.click(screen.getByRole("button", { name: "Review Zeus submission" }));
-    await user.click(await screen.findByRole("button", { name: "Confirm and submit one Zeus job" }));
+    vi.mocked(service.confirmZeus).mockResolvedValue({
+      status: "submitted",
+      run_id: "mot2d-ui",
+      job_id: "987.zeus-master",
+      submission_key: "d".repeat(64),
+    });
+    await user.click(
+      screen.getByRole("button", { name: "Review Zeus submission" }),
+    );
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Confirm and submit one Zeus job",
+      }),
+    );
     expect(await screen.findByText(/987.zeus-master/)).toBeVisible();
     expect(service.confirmZeus).toHaveBeenCalledOnce();
   });
@@ -312,25 +340,66 @@ describe("IndividualMot2DRun", () => {
     expect(await screen.findByText("25.000%")).toBeVisible();
     await user.click(screen.getByText("Technical provenance"));
     expect(screen.getByText(/reviewed-commit/)).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    await user.click(
+      screen.getByRole("button", { name: "Configure another simulation" }),
+    );
     expect(onBack).toHaveBeenCalledOnce();
-    expect(window.localStorage.getItem("ytterbium.individual-run.mot_2d.v1")).toBeNull();
-
+    expect(
+      window.localStorage.getItem("ytterbium.individual-run.mot_2d.v1"),
+    ).toBeNull();
   });
-  it.each(["local", "zeus"] as const)("restores a completed %s run under StrictMode without restarting or reconnecting", async (mode) => {
-    const service = api();
-    const completed = { id: `individual-run-${"a".repeat(24)}`, display_name: "mot2d-ui",
-      lifecycle: "results_ready", record_state: "succeeded", execution: { mode, zeus_job_id: mode === "zeus" ? "123.zeus-master" : null },
-      retention: { status: "retained", particle_states_requested: true },
-      results: { availability: "verified", completed_at: "2026-10-18T17:40:00Z" },
-      metrics: { n_input: 20, n_survivors: 1, conditional_efficiency: 0.05, elapsed_s: 1 }, provenance: {} } as unknown as Awaited<ReturnType<IndividualMot2DApi["run"]>>;
-    window.localStorage.setItem("ytterbium.individual-run.mot_2d.v1", JSON.stringify({version: 1, family: "mot_2d", display_name: "mot2d-ui", execution_mode: mode, ...(mode === "zeus" ? { username: "tal.noa" } : {})}));
-    vi.mocked(service.runs).mockResolvedValue([completed]); vi.mocked(service.run).mockResolvedValue(completed);
-    service.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
-    render(<StrictMode><IndividualMot2DRun api={service} onBack={vi.fn()} /></StrictMode>);
-    expect(await screen.findByRole("heading", { name: "Verified results are ready" })).toBeVisible();
-    expect(service.recoverZeus).not.toHaveBeenCalled();
-    expect(service.confirm).not.toHaveBeenCalled(); expect(service.startLocal).not.toHaveBeenCalled();
-  });
-
+  it.each(["local", "zeus"] as const)(
+    "restores a completed %s run under StrictMode without restarting or reconnecting",
+    async (mode) => {
+      const service = api();
+      const completed = {
+        id: `individual-run-${"a".repeat(24)}`,
+        display_name: "mot2d-ui",
+        lifecycle: "results_ready",
+        record_state: "succeeded",
+        execution: {
+          mode,
+          zeus_job_id: mode === "zeus" ? "123.zeus-master" : null,
+        },
+        retention: { status: "retained", particle_states_requested: true },
+        results: {
+          availability: "verified",
+          completed_at: "2026-10-18T17:40:00Z",
+        },
+        metrics: {
+          n_input: 20,
+          n_survivors: 1,
+          conditional_efficiency: 0.05,
+          elapsed_s: 1,
+        },
+        provenance: {},
+      } as unknown as Awaited<ReturnType<IndividualMot2DApi["run"]>>;
+      window.localStorage.setItem(
+        "ytterbium.individual-run.mot_2d.v1",
+        JSON.stringify({
+          version: 1,
+          family: "mot_2d",
+          display_name: "mot2d-ui",
+          execution_mode: mode,
+          ...(mode === "zeus" ? { username: "tal.noa" } : {}),
+        }),
+      );
+      vi.mocked(service.runs).mockResolvedValue([completed]);
+      vi.mocked(service.run).mockResolvedValue(completed);
+      service.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
+      render(
+        <StrictMode>
+          <IndividualMot2DRun api={service} onBack={vi.fn()} />
+        </StrictMode>,
+      );
+      expect(
+        await screen.findByRole("heading", {
+          name: "Verified results are ready",
+        }),
+      ).toBeVisible();
+      expect(service.recoverZeus).not.toHaveBeenCalled();
+      expect(service.confirm).not.toHaveBeenCalled();
+      expect(service.startLocal).not.toHaveBeenCalled();
+    },
+  );
 });

@@ -10,7 +10,10 @@ import type {
   SinglePassParameters,
   Mot3DRun,
 } from "../api/clients/individualMot3D";
-import { IndividualMot3DRun, mot3dMonitorCopy } from "../components/IndividualMot3DRun";
+import {
+  IndividualMot3DRun,
+  mot3dMonitorCopy,
+} from "../components/IndividualMot3DRun";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/mot3dIndividualSpec.v1";
 
 const sourceId = `mot3d-source-${"a".repeat(32)}`;
@@ -30,22 +33,23 @@ const source = {
 };
 
 function previewFor(request: Mot3DRequest): Mot3DPreview {
-  const geometry = request.geometry_family === "angled_donut"
-    ? {
-        family: "angled_donut" as const,
-        parameters: request.parameters as AngledDonutParameters,
-        derived_parameters: {},
-      }
-    : {
-        family: "single_pass" as const,
-        parameters: request.parameters as SinglePassParameters,
-        derived_parameters: {
-          blue_detuning_gamma: -2.58,
-          effective_slowing_z_offset_m: -0.044,
-          effective_slowing_field_G: 12.5,
-          reference_slowing_field_G: 10.25,
-        },
-      };
+  const geometry =
+    request.geometry_family === "angled_donut"
+      ? {
+          family: "angled_donut" as const,
+          parameters: request.parameters as AngledDonutParameters,
+          derived_parameters: {},
+        }
+      : {
+          family: "single_pass" as const,
+          parameters: request.parameters as SinglePassParameters,
+          derived_parameters: {
+            blue_detuning_gamma: -2.58,
+            effective_slowing_z_offset_m: -0.044,
+            effective_slowing_field_G: 12.5,
+            reference_slowing_field_G: 10.25,
+          },
+        };
   return {
     preview_token: "review-token",
     expires_in_seconds: 300,
@@ -74,7 +78,9 @@ function previewFor(request: Mot3DRequest): Mot3DPreview {
       },
       retention: { particle_states: request.retain_particle_states },
       suitability: "individual_only",
-      output_disposition: request.retain_particle_states ? "retain_survivor_states" : "discard_survivor_states_after_summary",
+      output_disposition: request.retain_particle_states
+        ? "retain_survivor_states"
+        : "discard_survivor_states_after_summary",
       locked_settings: {
         ...spec.fixed_classification,
         sampling_algorithm: spec.sampling.algorithm,
@@ -82,7 +88,8 @@ function previewFor(request: Mot3DRequest): Mot3DPreview {
         workers: request.npools,
       },
       lifecycle_state: "configured",
-      laboratory_specification: spec.authority_references.laboratory_specification,
+      laboratory_specification:
+        spec.authority_references.laboratory_specification,
       numerical_policy: spec.authority_references.numerical_policy,
       plan_sha256: "c".repeat(64),
       execution_started: false,
@@ -95,7 +102,11 @@ function service(): IndividualMot3DApi {
   return {
     reset: vi.fn(),
     sources: vi.fn().mockResolvedValue([source]),
-    preview: vi.fn().mockImplementation((request: Mot3DRequest) => Promise.resolve(previewFor(request))),
+    preview: vi
+      .fn()
+      .mockImplementation((request: Mot3DRequest) =>
+        Promise.resolve(previewFor(request)),
+      ),
     confirm: vi.fn().mockResolvedValue({
       status: "created",
       run_id: "mot3d-browser",
@@ -105,10 +116,36 @@ function service(): IndividualMot3DApi {
       execution_started: false,
       submitted_to_zeus: false,
     }),
-    startLocal: vi.fn().mockResolvedValue({ status: "queued", run_id: "mot3d-browser", execution_mode: "local" }),
-    previewZeus: vi.fn().mockResolvedValue({ preview_token: "zeus-review", run_id: "mot3d-browser", submission_key: "d".repeat(64), effects: { submit_one_job: true, reconcile_existing_job: false, cancel_job: false } }),
-    confirmZeus: vi.fn().mockResolvedValue({ status: "submitted", run_id: "mot3d-browser", job_id: "500.zeus-master", submission_key: "d".repeat(64) }),
-    refreshZeus: vi.fn().mockResolvedValue({ state: "running", job_id: "500.zeus-master" }),
+    startLocal: vi
+      .fn()
+      .mockResolvedValue({
+        status: "queued",
+        run_id: "mot3d-browser",
+        execution_mode: "local",
+      }),
+    previewZeus: vi
+      .fn()
+      .mockResolvedValue({
+        preview_token: "zeus-review",
+        run_id: "mot3d-browser",
+        submission_key: "d".repeat(64),
+        effects: {
+          submit_one_job: true,
+          reconcile_existing_job: false,
+          cancel_job: false,
+        },
+      }),
+    confirmZeus: vi
+      .fn()
+      .mockResolvedValue({
+        status: "submitted",
+        run_id: "mot3d-browser",
+        job_id: "500.zeus-master",
+        submission_key: "d".repeat(64),
+      }),
+    refreshZeus: vi
+      .fn()
+      .mockResolvedValue({ state: "running", job_id: "500.zeus-master" }),
     runs: vi.fn().mockResolvedValue([]),
     run: vi.fn(),
   } as unknown as IndividualMot3DApi;
@@ -134,18 +171,23 @@ describe("IndividualMot3DRun", () => {
     render(<IndividualMot3DRun api={service()} onBack={vi.fn()} />);
     await waitForSource();
     expect(screen.queryByText(/data\/particle_states/)).not.toBeInTheDocument();
-    const particles = screen.getByRole("spinbutton", { name: /Particle count/ });
+    const particles = screen.getByRole("spinbutton", {
+      name: /Particle count/,
+    });
     expect(particles).toHaveAttribute("max", "1000");
     await user.click(screen.getByLabelText("Zeus"));
     expect(particles).toHaveAttribute("max", "12000");
   });
 
   it("reviews and creates an angled-donut record without starting execution", async () => {
-    const user = userEvent.setup(), api = service();
+    const user = userEvent.setup(),
+      api = service();
     render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
     await waitForSource();
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
-    expect(await screen.findByRole("heading", { name: "Angled-donut parameters" })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", { name: "Angled-donut parameters" }),
+    ).toBeVisible();
     const request = vi.mocked(api.preview).mock.calls[0][0];
     expect(request.geometry_family).toBe("angled_donut");
     expect(request.parameters).toEqual(spec.defaults.angled_donut);
@@ -157,40 +199,73 @@ describe("IndividualMot3DRun", () => {
   });
 
   it("starts locally only after the explicit action and shows truthful monitor copy", async () => {
-    const user = userEvent.setup(), api = service();
+    const user = userEvent.setup(),
+      api = service();
     render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
     await waitForSource();
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
-    await user.click(await screen.findByRole("button", { name: "Create run record" }));
-    await user.click(await screen.findByRole("button", { name: "Start on this computer" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Create run record" }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Start on this computer" }),
+    );
     expect(api.startLocal).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText("Status has not been checked")).toBeVisible();
+    expect(
+      await screen.findByText("Status has not been checked"),
+    ).toBeVisible();
     expect(screen.getByText(/Select Check status/)).toBeVisible();
   });
 
   it("requires Zeus review and a separate explicit confirmation", async () => {
-    const user = userEvent.setup(), api = service();
+    const user = userEvent.setup(),
+      api = service();
     render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
     await waitForSource();
     await user.click(screen.getByLabelText("Zeus"));
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
-    await user.click(await screen.findByRole("button", { name: "Create run record" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Create run record" }),
+    );
     await user.type(screen.getByLabelText(/Technion username/), "tal.noa");
-    await user.click(screen.getByRole("button", { name: "Review Zeus submission" }));
+    await user.click(
+      screen.getByRole("button", { name: "Review Zeus submission" }),
+    );
     expect(await screen.findByText(/ready for confirmation/)).toBeVisible();
     expect(api.confirmZeus).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Confirm and submit one Zeus job" }));
+    await user.click(
+      screen.getByRole("button", { name: "Confirm and submit one Zeus job" }),
+    );
     expect(api.confirmZeus).toHaveBeenCalledTimes(1);
-    expect(await screen.findByText("Status has not been checked")).toBeVisible();
+    expect(
+      await screen.findByText("Status has not been checked"),
+    ).toBeVisible();
   });
 
   it("renders the two capture meanings separately with retention and provenance", async () => {
-    const user = userEvent.setup(), api = service();
+    const user = userEvent.setup(),
+      api = service();
     const completed = {
-      id: `individual-run-${"1".repeat(24)}`, display_name: "mot3d-browser", record_state: "succeeded", lifecycle: "results_ready",
-      execution: { mode: "local", zeus_job_id: null }, retention: { particle_states_requested: true, status: "retained" },
-      results: { availability: "verified", completed_at: "2026-10-12T12:00:00+00:00" },
-      metrics: { n_input: 100, usable_at_end_count: 40, usable_at_end_fraction: 0.4, residence_qualified_captured_count: 25, residence_qualified_captured_fraction: 0.25, elapsed_s: 3.5, selection_sha256: "a".repeat(64), provenance: { geometry_family: "angled_donut" } },
+      id: `individual-run-${"1".repeat(24)}`,
+      display_name: "mot3d-browser",
+      record_state: "succeeded",
+      lifecycle: "results_ready",
+      execution: { mode: "local", zeus_job_id: null },
+      retention: { particle_states_requested: true, status: "retained" },
+      results: {
+        availability: "verified",
+        completed_at: "2026-10-12T12:00:00+00:00",
+      },
+      metrics: {
+        n_input: 100,
+        usable_at_end_count: 40,
+        usable_at_end_fraction: 0.4,
+        residence_qualified_captured_count: 25,
+        residence_qualified_captured_fraction: 0.25,
+        elapsed_s: 3.5,
+        selection_sha256: "a".repeat(64),
+        provenance: { geometry_family: "angled_donut" },
+      },
     } as unknown as Mot3DRun;
     vi.mocked(api.runs).mockResolvedValue([completed]);
     vi.mocked(api.run).mockResolvedValue(completed);
@@ -198,28 +273,44 @@ describe("IndividualMot3DRun", () => {
     render(<IndividualMot3DRun api={api} onBack={onBack} />);
     await waitForSource();
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
-    await user.click(await screen.findByRole("button", { name: "Create run record" }));
-    await user.click(await screen.findByRole("button", { name: "Start on this computer" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Create run record" }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Start on this computer" }),
+    );
     await user.click(screen.getByRole("button", { name: "Check status" }));
-    expect(await screen.findByRole("heading", { name: "Verified results are ready" })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", {
+        name: "Verified results are ready",
+      }),
+    ).toBeVisible();
     expect(screen.getByText("40 (40.000%)")).toBeVisible();
     expect(screen.getByText("25 (25.000%)")).toBeVisible();
     expect(screen.getByText("retained")).toBeVisible();
     await user.click(screen.getByText("Technical provenance"));
     expect(screen.getByText(/geometry_family/)).toBeVisible();
-    await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
+    await user.click(
+      screen.getByRole("button", { name: "Configure another simulation" }),
+    );
     expect(onBack).toHaveBeenCalledOnce();
-    expect(window.localStorage.getItem("ytterbium.individual-run.mot_3d.v1")).toBeNull();
-
+    expect(
+      window.localStorage.getItem("ytterbium.individual-run.mot_3d.v1"),
+    ).toBeNull();
   });
 
   it("shows exact backend-derived single-pass values in review", async () => {
-    const user = userEvent.setup(), api = service();
+    const user = userEvent.setup(),
+      api = service();
     render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
     await waitForSource();
     await user.click(screen.getByRole("radio", { name: /^Single pass/ }));
     await user.click(screen.getByRole("button", { name: "Validate setup" }));
-    expect(await screen.findByRole("heading", { name: "Derived single-pass values" })).toBeVisible();
+    expect(
+      await screen.findByRole("heading", {
+        name: "Derived single-pass values",
+      }),
+    ).toBeVisible();
     expect(screen.getByText("-2.58 Γ")).toBeVisible();
     expect(screen.getByText("-44 mm")).toBeVisible();
     expect(screen.getByText("12.5 G")).toBeVisible();
@@ -231,36 +322,188 @@ describe("IndividualMot3DRun", () => {
   });
 
   it("drops a source response after unmount", async () => {
-    let resolve!: (value: typeof source[]) => void;
+    let resolve!: (value: (typeof source)[]) => void;
     const api = service();
-    vi.mocked(api.sources).mockReturnValue(new Promise((done) => { resolve = done; }));
+    vi.mocked(api.sources).mockReturnValue(
+      new Promise((done) => {
+        resolve = done;
+      }),
+    );
     const view = render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
     view.unmount();
     resolve([source]);
     await waitFor(() => expect(api.sources).toHaveBeenCalledTimes(1));
   });
 
-  it.each<Mot3DFamily>(["angled_donut", "single_pass"])("keeps the %s form within reviewed ranges", async (family) => {
-    const user = userEvent.setup();
-    render(<IndividualMot3DRun api={service()} onBack={vi.fn()} />);
-    await waitForSource();
-    if (family === "single_pass") await user.click(screen.getByRole("radio", { name: /^Single pass/ }));
-    expect(screen.getByRole("button", { name: "Validate setup" })).toBeEnabled();
-  });
+  it.each<Mot3DFamily>(["angled_donut", "single_pass"])(
+    "keeps the %s form within reviewed ranges",
+    async (family) => {
+      const user = userEvent.setup();
+      render(<IndividualMot3DRun api={service()} onBack={vi.fn()} />);
+      await waitForSource();
+      if (family === "single_pass")
+        await user.click(screen.getByRole("radio", { name: /^Single pass/ }));
+      expect(
+        screen.getByRole("button", { name: "Validate setup" }),
+      ).toBeEnabled();
+    },
+  );
   it("opens locally verified Zeus results without requiring the old remote checkout", async () => {
     const api = service();
-    const completed = { id: `individual-run-${"1".repeat(24)}`, display_name: "mot3d-browser",
-      record_state: "succeeded", lifecycle: "results_ready", execution: { mode: "zeus", zeus_job_id: "123.zeus-master" },
+    const completed = {
+      id: `individual-run-${"1".repeat(24)}`,
+      display_name: "mot3d-browser",
+      record_state: "succeeded",
+      lifecycle: "results_ready",
+      execution: { mode: "zeus", zeus_job_id: "123.zeus-master" },
       retention: { particle_states_requested: true, status: "retained" },
-      results: { availability: "verified", completed_at: "2026-10-18T17:40:00Z" },
-      metrics: { n_input: 1, usable_at_end_count: 0, usable_at_end_fraction: 0, residence_qualified_captured_count: 0, residence_qualified_captured_fraction: 0, elapsed_s: 1, provenance: {} }
+      results: {
+        availability: "verified",
+        completed_at: "2026-10-18T17:40:00Z",
+      },
+      metrics: {
+        n_input: 1,
+        usable_at_end_count: 0,
+        usable_at_end_fraction: 0,
+        residence_qualified_captured_count: 0,
+        residence_qualified_captured_fraction: 0,
+        elapsed_s: 1,
+        provenance: {},
+      },
     } as unknown as Mot3DRun;
-    window.localStorage.setItem("ytterbium.individual-run.mot_3d.v1", JSON.stringify({version: 1, family: "mot_3d", display_name: "mot3d-browser", execution_mode: "zeus", username: "tal.noa"}));
-    vi.mocked(api.runs).mockResolvedValue([completed]); vi.mocked(api.run).mockResolvedValue(completed);
+    window.localStorage.setItem(
+      "ytterbium.individual-run.mot_3d.v1",
+      JSON.stringify({
+        version: 1,
+        family: "mot_3d",
+        display_name: "mot3d-browser",
+        execution_mode: "zeus",
+        username: "tal.noa",
+      }),
+    );
+    vi.mocked(api.runs).mockResolvedValue([completed]);
+    vi.mocked(api.run).mockResolvedValue(completed);
     api.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
     render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
-    expect(await screen.findByRole("heading", { name: "Verified results are ready" })).toBeVisible();
-    expect(api.recoverZeus).not.toHaveBeenCalled(); expect(api.startLocal).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("heading", {
+        name: "Verified results are ready",
+      }),
+    ).toBeVisible();
+    expect(api.recoverZeus).not.toHaveBeenCalled();
+    expect(api.startLocal).not.toHaveBeenCalled();
   });
 
+  it("keeps an uncertain Zeus identity visible after failed recovery and only reviews linking", async () => {
+    const user = userEvent.setup();
+    const api = service();
+    window.localStorage.setItem(
+      "ytterbium.individual-run.mot_3d.v1",
+      JSON.stringify({
+        version: 1,
+        family: "mot_3d",
+        display_name: "mot3d-browser",
+        execution_mode: "zeus",
+        username: "tal.noa",
+      }),
+    );
+    vi.mocked(api.runs).mockResolvedValue([
+      {
+        id: "individual-run-test",
+        display_name: "mot3d-browser",
+        record_state: "outcome_unknown",
+        lifecycle: "outcome_unknown",
+        execution: { mode: "zeus" },
+      } as unknown as Mot3DRun,
+    ]);
+    api.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    expect(
+      await screen.findByText("Existing Zeus run needs verification"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Validate setup" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Review existing Zeus job" }),
+    );
+    expect(
+      await screen.findByText(/No existing Zeus job could be verified/),
+    ).toBeVisible();
+    expect(api.confirmZeus).not.toHaveBeenCalled();
+    expect(api.startLocal).not.toHaveBeenCalled();
+    vi.mocked(api.previewZeus).mockResolvedValue({
+      preview_token: "existing-job",
+      effects: { reconcile_existing_job: true },
+    } as Awaited<ReturnType<IndividualMot3DApi["previewZeus"]>>);
+    await user.click(
+      screen.getByRole("button", { name: "Review existing Zeus job" }),
+    );
+    expect(
+      await screen.findByRole("button", {
+        name: "Confirm and link existing Zeus job",
+      }),
+    ).toBeVisible();
+  });
+
+  it("keeps pending creation controls disabled until the created identity is installed", async () => {
+    const user = userEvent.setup();
+    const api = service();
+    let resolve!: (
+      value: Awaited<ReturnType<IndividualMot3DApi["confirm"]>>,
+    ) => void;
+    vi.mocked(api.confirm).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    await waitForSource();
+    await user.click(screen.getByRole("button", { name: "Validate setup" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Create run record" }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Change choices" }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Back to home" })).toBeDisabled();
+    resolve({ run_id: "mot3d-created" } as Awaited<
+      ReturnType<IndividualMot3DApi["confirm"]>
+    >);
+    expect(await screen.findByText("mot3d-created")).toBeVisible();
+  });
+
+  it("monitors a successfully started local run when browser persistence fails", async () => {
+    const user = userEvent.setup();
+    const api = service();
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    await waitForSource();
+    await user.click(screen.getByRole("button", { name: "Validate setup" }));
+    await user.click(
+      await screen.findByRole("button", { name: "Create run record" }),
+    );
+    const storage = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("quota");
+      });
+    try {
+      await user.click(
+        await screen.findByRole("button", { name: "Start on this computer" }),
+      );
+      expect(
+        await screen.findByRole("button", { name: "Check status" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByText(/Nothing is running yet/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/Browser recovery storage is unavailable/),
+      ).toBeVisible();
+      expect(api.startLocal).toHaveBeenCalledOnce();
+    } finally {
+      storage.mockRestore();
+    }
+  });
 });

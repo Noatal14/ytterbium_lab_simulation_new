@@ -23,6 +23,14 @@ export function probeWorkflowApi() {
   });
 }
 
+export function requireUnusedWorkflowApi(state) {
+  if (state === "absent") return;
+  if (state === "compatible") {
+    throw new Error("An application is already using port 8765. Check for an active local simulation before stopping the existing application in its terminal, then start this checkout again. Its backend cannot safely be shared with another checkout.");
+  }
+  throw new Error("Port 8765 is occupied by another service. Check which application owns it and stop it safely before starting this checkout. Nothing was started.");
+}
+
 export async function waitForWorkflowApi({ probe = probeWorkflowApi, timeoutMs = 120000, intervalMs = 100, isStopped = () => false } = {}) {
   const deadline = performance.now() + timeoutMs;
   while (performance.now() < deadline) {

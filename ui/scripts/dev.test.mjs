@@ -1,13 +1,20 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import test from "node:test";
-import { isCompatibleHealth, superviseChildren, terminateChildren, waitForWorkflowApi } from "./dev-lib.mjs";
+import { isCompatibleHealth, requireUnusedWorkflowApi, superviseChildren, terminateChildren, waitForWorkflowApi } from "./dev-lib.mjs";
 
 test("accepts only the exact workflow health response", () => {
   assert.equal(isCompatibleHealth(200, "application/json; charset=utf-8", '{"api_version":1,"status":"ok"}'), true);
   assert.equal(isCompatibleHealth(200, "text/html", '{"api_version":1,"status":"ok"}'), false);
   assert.equal(isCompatibleHealth(200, "application/json", '{"status":"ok"}'), false);
   assert.equal(isCompatibleHealth(200, "application/json", '{"api_version":1,"status":"ok","foreign":true}'), false);
+});
+
+test("startup refuses an existing compatible backend before creating any children", () => {
+  assert.doesNotThrow(() => requireUnusedWorkflowApi("absent"));
+  assert.throws(() => requireUnusedWorkflowApi("compatible"), /active local simulation.*existing application.*another checkout/);
+  assert.throws(() => requireUnusedWorkflowApi("occupied"), /another service.*Nothing was started/);
+  assert.throws(() => requireUnusedWorkflowApi(undefined), /Nothing was started/);
 });
 
 class FakeChild extends EventEmitter {

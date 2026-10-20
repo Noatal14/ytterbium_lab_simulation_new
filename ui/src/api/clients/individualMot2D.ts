@@ -1,8 +1,14 @@
-import { isIndividualZeusResources, type IndividualZeusResources } from "./individualZeusResources";
+import {
+  isIndividualZeusResources,
+  type IndividualZeusResources,
+} from "./individualZeusResources";
 import { zeusProjectDirectory } from "../zeusEnvironment";
 import { exactKeys, getData, isRecord, postData } from "../http/envelope";
 import { isRunProgress, type RunProgress } from "./individualZeeman";
-import { individualZeusApiError, parseIndividualZeusRecovery } from "./individualZeusRecovery";
+import {
+  individualZeusApiError,
+  parseIndividualZeusRecovery,
+} from "./individualZeusRecovery";
 
 export type Mot2DMode = "local" | "zeus";
 export type Mot2DSource = {
@@ -70,7 +76,11 @@ export type Mot2DRun = {
   display_name: string;
   record_state: string;
   lifecycle: string;
-  execution: { mode: Mot2DMode; zeus_job_id: string | null; progress?: RunProgress | null };
+  execution: {
+    mode: Mot2DMode;
+    zeus_job_id: string | null;
+    progress?: RunProgress | null;
+  };
   retention: { particle_states_requested: boolean; status: string };
   results: { availability: string; completed_at: string | null };
   metrics?: {
@@ -187,9 +197,14 @@ function parseSources(v: unknown): Mot2DSource[] {
       invalid("source catalog");
     if (row.source_kind === "canonical_folder") {
       if (
-        !["canonical_campaign_source", "verified_individual_folder"].includes(String(row.source_qualification)) ||
+        !["canonical_campaign_source", "verified_individual_folder"].includes(
+          String(row.source_qualification),
+        ) ||
         !exactKeys(provenance, ["validation", "profile", "fingerprint"]) ||
-        !["canonical_zeeman_folder", "verified_individual_zeeman_folder"].includes(String(provenance.validation)) ||
+        ![
+          "canonical_zeeman_folder",
+          "verified_individual_zeeman_folder",
+        ].includes(String(provenance.validation)) ||
         !printable(provenance.profile) ||
         !hex64(provenance.fingerprint)
       )
@@ -291,7 +306,9 @@ function parsePreview(v: unknown): Mot2DPreview {
     retention = p.retention as Record<string, unknown>;
   const sourcePair =
     (source.kind === "canonical_folder" &&
-      ["canonical_campaign_source", "verified_individual_folder"].includes(String(source.qualification))) ||
+      ["canonical_campaign_source", "verified_individual_folder"].includes(
+        String(source.qualification),
+      )) ||
     (source.kind === "retained_individual_zeeman" &&
       source.qualification === "verified_individual_result");
   const mode = String(execution.mode);
@@ -386,7 +403,8 @@ function parseZeusPreview(v: unknown) {
     !exactKeys(v.job, ["kind", "array", "pbs_sha256", "resources"]) ||
     v.job.kind !== "scalar" ||
     v.job.array !== false ||
-    !hex64(v.job.pbs_sha256) || !isIndividualZeusResources(v.job.resources) ||
+    !hex64(v.job.pbs_sha256) ||
+    !isIndividualZeusResources(v.job.resources) ||
     !isRecord(v.effects) ||
     !exactKeys(v.effects, [
       "submit_one_job",
@@ -399,7 +417,17 @@ function parseZeusPreview(v: unknown) {
     v.effects.cancel_job !== false
   )
     invalid("Zeus review");
-  return v as { preview_token: string; run_id: string; submission_key: string; job: { resources: IndividualZeusResources } };
+  return v as {
+    preview_token: string;
+    run_id: string;
+    submission_key: string;
+    job: { resources: IndividualZeusResources };
+    effects: {
+      submit_one_job: boolean;
+      reconcile_existing_job: boolean;
+      cancel_job: false;
+    };
+  };
 }
 function parseZeusResult(v: unknown) {
   if (
@@ -507,7 +535,8 @@ function parseRun(raw: unknown, detail = false): Mot2DRun {
   const execution = v.execution,
     retention = v.retention,
     results = v.results;
-  if (isRecord(execution) && execution.progress === undefined) execution.progress = null;
+  if (isRecord(execution) && execution.progress === undefined)
+    execution.progress = null;
   if (
     !publicRunId(v.id) ||
     v.record_kind !== "individual_simulation_run" ||
@@ -889,9 +918,25 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
     },
     async catalog() {
       const raw = await getData("/api/v1/individual-runs");
-      if (!isRecord(raw) || !exactKeys(raw, ["runs", "invalid_count", "total", "truncated"]) || !Array.isArray(raw.runs) || !integer(raw.invalid_count) || Number(raw.invalid_count) < 0 || raw.total !== raw.runs.length || typeof raw.truncated !== "boolean") invalid("run list");
+      if (
+        !isRecord(raw) ||
+        !exactKeys(raw, ["runs", "invalid_count", "total", "truncated"]) ||
+        !Array.isArray(raw.runs) ||
+        !integer(raw.invalid_count) ||
+        Number(raw.invalid_count) < 0 ||
+        raw.total !== raw.runs.length ||
+        typeof raw.truncated !== "boolean"
+      )
+        invalid("run list");
       const value = raw as Record<string, unknown>;
-      return { runs: (value.runs as unknown[]).filter((row) => isRecord(row) && row.run_kind === "mot_2d").map((row) => parseRun(row)), invalid_count: Number(value.invalid_count), total: Number(value.total), truncated: value.truncated as boolean };
+      return {
+        runs: (value.runs as unknown[])
+          .filter((row) => isRecord(row) && row.run_kind === "mot_2d")
+          .map((row) => parseRun(row)),
+        invalid_count: Number(value.invalid_count),
+        total: Number(value.total),
+        truncated: value.truncated as boolean,
+      };
     },
     async run(publicId: string) {
       const activeGeneration = generation,
@@ -909,8 +954,13 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
     },
   };
 }
-type IndividualMot2DImplementation = ReturnType<typeof createIndividualMot2DApi>;
-export type IndividualMot2DApi = Omit<IndividualMot2DImplementation, "catalog" | "recoverZeus"> & {
+type IndividualMot2DImplementation = ReturnType<
+  typeof createIndividualMot2DApi
+>;
+export type IndividualMot2DApi = Omit<
+  IndividualMot2DImplementation,
+  "catalog" | "recoverZeus"
+> & {
   catalog?: IndividualMot2DImplementation["catalog"];
   recoverZeus?: IndividualMot2DImplementation["recoverZeus"];
 };
