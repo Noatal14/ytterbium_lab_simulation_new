@@ -814,7 +814,7 @@ function Mot3DFinalInputSubmissionStage({
                   <span className="timeline-marker" aria-hidden="true" />
                   <div>
                     <strong>{index + 1}. {({zeeman:"Generate Zeeman ensembles",mot_2d:"Run 2D-MOT survivors",freeze:"Freeze the inputs"})[step.id]}</strong>
-                    <p>{step.id === "zeeman" ? `${step.tasks} new ensembles, seeds ${flow.preview!.science.zeeman_seeds[0]}–${flow.preview!.science.zeeman_seeds.at(-1)}` : step.id === "mot_2d" ? `${step.tasks} corresponding jobs, seeds ${flow.preview!.science.mot_seeds[0]}–${flow.preview!.science.mot_seeds.at(-1)}` : "One manifest job"} · {step.resources.ncpus} CPUs · {step.resources.memory_gb} GB · {step.resources.walltime}{step.resources.vnode ? ` · Node ${step.resources.vnode}` : ""}</p>
+                    <p>{step.id === "zeeman" ? `${step.tasks} new ensembles, seeds ${flow.preview!.science.zeeman_seeds[0]}–${flow.preview!.science.zeeman_seeds.at(-1)}` : step.id === "mot_2d" ? `${step.tasks} corresponding jobs, seeds ${flow.preview!.science.mot_seeds[0]}–${flow.preview!.science.mot_seeds.at(-1)}` : "One manifest job"} · {step.resources.ncpus} CPUs · {step.resources.memory_gb} GiB · {step.resources.walltime}{step.resources.vnode ? ` · Node ${step.resources.vnode}` : ""}</p>
                   </div>
                 </li>
               ))}
@@ -3270,5 +3270,5 @@ function evidenceText(text: string): string {
 export function ReviewedResources({resources}: {resources: unknown}) {
   if (!resources || typeof resources !== "object" || !("array" in resources) || !("merge" in resources)) return null;
   const value = resources as {array: {ncpus_per_task: number; memory_gb_per_task: number; walltime: string; vnode?: string; array_throttle?: number}; merge: {ncpus: number; memory_gb: number; walltime: string; vnode?: string}};
-  return <dl className="transfer-facts"><div><dt>Array reservation per task</dt><dd>{value.array.ncpus_per_task} CPUs · {value.array.memory_gb_per_task} GB · {value.array.walltime}{value.array.vnode ? ` · Node ${value.array.vnode}` : ""}</dd></div>{value.array.array_throttle !== undefined && <div><dt>Maximum concurrent array tasks per family</dt><dd>{value.array.array_throttle}</dd></div>}<div><dt>Merge reservation</dt><dd>{value.merge.ncpus} CPU · {value.merge.memory_gb} GB · {value.merge.walltime}{value.merge.vnode ? ` · Node ${value.merge.vnode}` : ""}</dd></div></dl>;
+  return <dl className="transfer-facts"><div><dt>Array reservation per task</dt><dd>{value.array.ncpus_per_task} CPUs · {value.array.memory_gb_per_task} GiB · {value.array.walltime}{value.array.vnode ? ` · Node ${value.array.vnode}` : ""}</dd></div>{value.array.array_throttle !== undefined && <div><dt>Maximum concurrent array tasks per family</dt><dd>{value.array.array_throttle}</dd></div>}<div><dt>Merge reservation</dt><dd>{value.merge.ncpus} CPU · {value.merge.memory_gb} GiB · {value.merge.walltime}{value.merge.vnode ? ` · Node ${value.merge.vnode}` : ""}</dd></div></dl>;
 }

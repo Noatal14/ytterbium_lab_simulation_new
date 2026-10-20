@@ -106,7 +106,7 @@ export function RefinementSubmissionView({
                         {round.task_count} array tasks · throttle{" "}
                         {round.array_throttle} · {round.cores_per_task} CPU
                         cores and{" "}
-                        {Math.round(round.memory_per_task_bytes / 1024 ** 3)} GB
+                        {Math.round(round.memory_per_task_bytes / 1024 ** 3)} GiB
                         per task · {round.walltime_seconds / 3600} h limit
                       </p>
                       <p>

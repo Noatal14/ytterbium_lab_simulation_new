@@ -172,7 +172,7 @@ export function ScreeningSubmissionSection({
                     {Math.round(
                       submitPreview.job.memory_per_task_bytes / 1024 ** 3,
                     )}{" "}
-                    GB memory
+                    GiB memory
                   </dd>
                 </div>
                 <div>

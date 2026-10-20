@@ -124,7 +124,7 @@ export function SmokeSubmissionSection({
                   </div>
                   <div>
                     <dt>Resources per task</dt>
-                    <dd>{submissionPreview.job.cores_per_task} CPU {submissionPreview.job.cores_per_task === 1 ? "core" : "cores"} · {Math.round(submissionPreview.job.memory_per_task_bytes / 1024 ** 3)} GB memory</dd>
+                    <dd>{submissionPreview.job.cores_per_task} CPU {submissionPreview.job.cores_per_task === 1 ? "core" : "cores"} · {Math.round(submissionPreview.job.memory_per_task_bytes / 1024 ** 3)} GiB memory</dd>
                   </div>
                   <div>
                     <dt>Walltime limit per task</dt>

@@ -122,7 +122,7 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await expect(page.getByText("No simulation was started and no Zeus job was submitted.")).toBeVisible();
   await page.getByRole("button", { name: "Review smoke submission" }).click();
   await expect(page.getByRole("heading", { name: "Submit smoke check to Zeus" })).toBeFocused();
-  await expect(page.getByText("1 CPU core · 64 GB memory")).toBeVisible();
+  await expect(page.getByText("1 CPU core · 64 GiB memory")).toBeVisible();
   await page.getByRole("button", { name: "Submit smoke check to Zeus" }).click();
   await expect(page.getByRole("heading", { name: "No action needed" })).toBeVisible();
   await expect(page.getByText("Smoke check submitted", { exact: true })).toBeVisible();

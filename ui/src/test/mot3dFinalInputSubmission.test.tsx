@@ -79,9 +79,9 @@ it("renders TEST ONLY final-input reservations separately for all three jobs", (
     step.resources = {ncpus: cores[index], memory_gb: 4, walltime: "01:00:00", vnode: "gd002"};
   });
   render(<Mot3DCampaignFlow {...base} finalInputSubmission={flow({phase: "review", status: status(), preview: reviewed})} />);
-  expect(screen.getByText("20 new ensembles, seeds 3035–3054 · 1 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
-  expect(screen.getByText("20 corresponding jobs, seeds 43035–43054 · 10 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
-  expect(screen.getByText("One manifest job · 1 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("20 new ensembles, seeds 3035–3054 · 1 CPUs · 4 GiB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("20 corresponding jobs, seeds 43035–43054 · 10 CPUs · 4 GiB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("One manifest job · 1 CPUs · 4 GiB · 01:00:00 · Node gd002")).toBeVisible();
   expect(screen.getByText("10", {selector: "dd"})).toBeVisible();
   expect(screen.queryByText(/200 CPUs/)).not.toBeInTheDocument();
   expect(screen.getAllByText("Not submitted")).toHaveLength(2);

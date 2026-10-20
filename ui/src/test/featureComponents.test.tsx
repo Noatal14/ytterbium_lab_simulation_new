@@ -55,7 +55,7 @@ describe("shared workflow presentation", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
     try {
       render(<><div data-testid="resources"><JobResources job={{ cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 36000 }} /></div><ReviewEffects effects={[<>Does not submit a Zeus job.</>, <>Does not start a simulation.</>]} /></>);
-      expect(screen.getByTestId("resources")).toHaveTextContent("200 cores · 64 GB · 10 h");
+      expect(screen.getByTestId("resources")).toHaveTextContent("200 cores · 64 GiB · 10 h");
       expect(screen.getByText("Does not submit a Zeus job.")).toBeVisible();
       expect(consoleError).not.toHaveBeenCalled();
     } finally {
@@ -620,6 +620,14 @@ describe("stage action visibility matrix", () => {
 
 it("shows the reviewed heavy-stage reservation and per-family concurrency cap", () => {
   render(<ReviewedResources resources={{array:{ncpus_per_task:100,memory_gb_per_task:64,walltime:"01:00:00",vnode:"gd002",array_throttle:1},merge:{ncpus:1,memory_gb:4,walltime:"01:00:00",vnode:"gd002"}}} />);
-  expect(screen.getByText("100 CPUs · 64 GB · 01:00:00 · Node gd002")).toBeVisible();
+  expect(screen.getByText("100 CPUs · 64 GiB · 01:00:00 · Node gd002")).toBeVisible();
   expect(screen.getByText("Maximum concurrent array tasks per family").nextElementSibling).toHaveTextContent(/^1$/);
+});
+
+it("labels the actual 8589934592-byte reservation as 8 GiB without changing resource values",()=>{
+ const job={cores_per_task:10,memory_per_task_bytes:8_589_934_592,walltime_seconds:3600};
+ render(<div data-testid="binary-reservation"><JobResources job={job}/></div>);
+ expect(screen.getByTestId("binary-reservation")).toHaveTextContent("10 cores · 8 GiB · 1 h");
+ expect(screen.getByTestId("binary-reservation")).not.toHaveTextContent(/8 GB/);
+ expect(job).toEqual({cores_per_task:10,memory_per_task_bytes:8_589_934_592,walltime_seconds:3600});
 });

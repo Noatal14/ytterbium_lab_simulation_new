@@ -64,3 +64,8 @@ export function reviewedCampaignStageArray(value: unknown, stage: Campaign3DReso
       || (throttle !== undefined && row.array_throttle !== throttle)) throw new Error("Invalid stage-specific campaign resources.");
   return row;
 }
+
+/** Confirmation uses the canonical 2D fixed count or the reviewed test policy. */
+export function campaignConfirmationParticles(): number {
+  return campaignAcceptanceMode() ? UI_ACCEPTANCE_POLICY.mot_2d.stages.confirmation.particles_per_ensemble : 10_000;
+}

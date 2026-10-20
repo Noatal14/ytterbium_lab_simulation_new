@@ -374,7 +374,7 @@ describe("onboarding home", () => {
     await user.click(screen.getByRole("button", { name: "Review smoke submission" }));
     expect(await screen.findByRole("heading", { name: "Submit smoke check to Zeus" })).toHaveFocus();
     expect(screen.getByText("1 PBS job · 1 task")).toBeInTheDocument();
-    expect(screen.getByText("1 CPU core · 64 GB memory")).toBeInTheDocument();
+    expect(screen.getByText("1 CPU core · 64 GiB memory")).toBeInTheDocument();
     expect(screen.getByText(/Screening or any later stage/i)).toBeInTheDocument();
     expect(confirm).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Submit smoke check to Zeus" }));

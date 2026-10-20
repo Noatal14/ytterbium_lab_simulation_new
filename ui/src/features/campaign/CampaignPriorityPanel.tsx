@@ -1,5 +1,5 @@
 import { late2DPriority, type SensitivityPriorityFlow, type ProductionPriorityFlow } from "./late2DPriority";
-import { campaignDiscoveryTrials } from "../../api/campaignPolicy";
+import { campaignDiscoveryTrials, campaignConfirmationParticles } from "../../api/campaignPolicy";
 import { campaignAcceptanceMode } from "../../api/zeusEnvironment";
 import { Clipboard } from "lucide-react";
 import type { Campaign } from "../../api/clients/campaign";
@@ -349,7 +349,7 @@ export function CampaignPriorityPanel({
             </p>
             <p>
               It tests one selected candidate on five frozen held-out ensembles
-              with 10,000 particles each and the final RK4StHybridCustom solver
+              with {campaignConfirmationParticles().toLocaleString("en")} particles each and the final RK4StHybridCustom solver
               at 0.625 µs. It is not the sealed final performance estimate.
             </p>
           </>

@@ -1,3 +1,4 @@
+import { campaignConfirmationParticles } from "../../../api/campaignPolicy";
 import { useEffect, useRef } from "react";
 import { AlertTriangle, LoaderCircle } from "lucide-react";
 import type {
@@ -115,7 +116,7 @@ export function ConfirmationSubmissionView({
             </p>
             <p>
               Confirmation evaluates one selected candidate on five frozen
-              held-out ensembles, using 10,000 particles per ensemble and the
+              held-out ensembles, using {campaignConfirmationParticles().toLocaleString("en")} particles per ensemble and the
               final RK4StHybridCustom solver at a 0.625 µs timestep. This is a
               selection check, not the sealed final performance estimate.
             </p>

@@ -107,7 +107,7 @@ export function Mot3DDiscoveryStage({
               apply only within each family.
             </p>
             <dl className="transfer-facts">
-              <div><dt>Reservation per task</dt><dd>{flow.preview.resources.array.ncpus_per_task} CPU cores · {flow.preview.resources.array.memory_gb_per_task} GB · {flow.preview.resources.array.walltime}</dd></div>
+              <div><dt>Reservation per task</dt><dd>{flow.preview.resources.array.ncpus_per_task} CPU cores · {flow.preview.resources.array.memory_gb_per_task} GiB · {flow.preview.resources.array.walltime}</dd></div>
               {flow.preview.resources.array.vnode && <div><dt>Test compute node</dt><dd>{flow.preview.resources.array.vnode}</dd></div>}
               <div><dt>Search workload</dt><dd>{flow.preview.science.total_trials} trials · {flow.preview.science.input_ensembles} discovery ensembles · {flow.preview.science.particles_per_ensemble} atoms per ensemble</dd></div>
               <div><dt>Particles per trial</dt><dd>{flow.preview.science.total_particles_per_trial} atoms · {flow.preview.science.npools} worker pools</dd></div>

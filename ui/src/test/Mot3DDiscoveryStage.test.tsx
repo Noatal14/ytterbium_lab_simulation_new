@@ -83,7 +83,7 @@ it("shows the exact reviewed Discovery reservations and per-family workload", ()
     science: {total_trials: 24, input_ensembles: 12, particles_per_ensemble: 1, total_particles_per_trial: 12, npools: 4, dt_s: 1e-5, t_max_s: 0.05, solver: "RK4StHybridCustom", final_trial_targets: {angled_donut: [4,4,4], single_pass: [4,4,4]}},
   }} as unknown as ReturnType<typeof useMot3DDiscoveryController>;
   render(<Mot3DDiscoveryStage visible connected flow={flow} onConnectZeus={vi.fn()} onViewJobs={vi.fn()} />);
-  expect(screen.getByText("4 CPU cores · 4 GB · 01:00:00")).toBeVisible();
+  expect(screen.getByText("4 CPU cores · 4 GiB · 01:00:00")).toBeVisible();
   expect(screen.getByText("gd002")).toBeVisible();
   expect(screen.getByText("12 atoms · 4 worker pools")).toBeVisible();
   expect(screen.getByText("2 arrays × 3 tasks · final trial targets per worker: 4 / 4 / 4")).toBeVisible();

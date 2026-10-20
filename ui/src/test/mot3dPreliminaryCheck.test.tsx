@@ -58,8 +58,8 @@ it("shows TEST ONLY preliminary workloads and actual reviewed reservations", () 
     render(<Mot3DCampaignFlow stage="preliminary_check" connected discovery={discovery} transition={transition} preliminary={flow} onConnectZeus={vi.fn()} onViewJobs={vi.fn()}/>);
     expect(screen.getByText("TEST ONLY: physical UI acceptance evidence")).toBeVisible();
     expect(screen.getByText("4 ensembles · 4 particles")).toBeVisible();
-    expect(screen.getByText("4 CPUs · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
-    expect(screen.getByText("1 CPU · 4 GB · 01:00:00 · Node gd002")).toBeVisible();
+    expect(screen.getByText("4 CPUs · 4 GiB · 01:00:00 · Node gd002")).toBeVisible();
+    expect(screen.getByText("1 CPU · 4 GiB · 01:00:00 · Node gd002")).toBeVisible();
     expect(screen.queryByText(/600 particles/)).not.toBeInTheDocument();
   } finally { vi.unstubAllEnvs(); }
 });
