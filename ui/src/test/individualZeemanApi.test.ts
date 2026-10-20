@@ -74,13 +74,13 @@ describe("individual Zeeman API trust boundary", () => {
     await expect(api.refreshZeus("zeeman-one", "tal.noa")).resolves.toMatchObject({ state: "running" });
   });
 
-  it("recovers a fresh read-only Zeus binding before an explicit refresh", async () => {
-    const recovered = { run_id: "zeeman-one", family: "zeeman", job_id: "12345.zeus-master", scheduler_state: "running", exit_status: null, local_state: "queued", read_only: true };
-    const fetchMock = vi.fn().mockResolvedValueOnce(envelope(recovered)).mockResolvedValueOnce(envelope({ state: "running", job_id: "12345.zeus-master" }));
+  it.each(["running", "held"])("recovers a fresh read-only Zeus binding before an explicit refresh (%s)", async (schedulerState) => {
+    const recovered = { run_id: "zeeman-one", family: "zeeman", job_id: "12345.zeus-master", scheduler_state: schedulerState, exit_status: null, local_state: "queued", read_only: true };
+    const fetchMock = vi.fn().mockResolvedValueOnce(envelope(recovered)).mockResolvedValueOnce(envelope({ state: schedulerState, job_id: "12345.zeus-master" }));
     vi.stubGlobal("fetch", fetchMock);
     const api = createIndividualZeemanApi(async () => "csrf");
     await expect(api.recoverZeus("zeeman-one", "tal.noa")).resolves.toEqual(recovered);
-    await expect(api.refreshZeus("zeeman-one", "tal.noa")).resolves.toEqual({ state: "running", job_id: "12345.zeus-master" });
+    await expect(api.refreshZeus("zeeman-one", "tal.noa")).resolves.toEqual({ state: schedulerState, job_id: "12345.zeus-master" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/individual-runs/zeeman/zeus/recover");
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "zeeman-one", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });

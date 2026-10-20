@@ -452,6 +452,7 @@ function parseZeusRefresh(v: unknown) {
     !exactKeys(v, ["state", "job_id"]) ||
     ![
       "queued",
+      "held",
       "running",
       "succeeded",
       "failed",

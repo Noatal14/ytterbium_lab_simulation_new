@@ -1598,6 +1598,11 @@ class PinnedSshRunner:
                 script = definition.compile_name
         interpreter = "python3"
         prefix = ""
+        if profile.project_directory.endswith("/ytterbium_lab_simulation_ui_acceptance"):
+            if self._policy.receiver in {ReceiverKind.ZEEMAN_INDIVIDUAL, ReceiverKind.MOT_2D_INDIVIDUAL, ReceiverKind.MOT_3D_INDIVIDUAL}:
+                raise ValueError("Individual runs require their separate individual test checkout.")
+            interpreter = f"/home/{profile.username}/venvs/atomsmltr-ui-test/bin/python"
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         if self._policy.receiver in {ReceiverKind.MOT_2D_INDIVIDUAL, ReceiverKind.MOT_3D_INDIVIDUAL} or (
             self._policy.receiver is ReceiverKind.ZEEMAN_INDIVIDUAL
             and profile.project_directory.endswith("/ytterbium_lab_simulation_ui_test")

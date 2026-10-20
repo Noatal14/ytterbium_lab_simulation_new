@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   IndividualMot2DRun,
   mot2dMonitorCopy,
@@ -41,6 +41,8 @@ function api(): IndividualMot2DApi {
     run: vi.fn(),
   } as unknown as IndividualMot2DApi;
 }
+
+beforeEach(() => window.localStorage.clear());
 
 describe("IndividualMot2DRun", () => {
   it("drops a superseded local multi-await refresh", async () => {
@@ -202,6 +204,7 @@ describe("IndividualMot2DRun", () => {
           cores: 200,
           memory_bytes: 68719476736,
           walltime_seconds: 28800,
+          vnode: "gd002",
         },
       },
       run_id: "mot2d-ui",
@@ -225,6 +228,8 @@ describe("IndividualMot2DRun", () => {
     );
     expect(await screen.findByText("Zeus submission reviewed")).toBeVisible();
     expect(screen.getByText("64 GiB")).toBeVisible();
+    expect(screen.getByText("Test compute node")).toBeVisible();
+    expect(screen.getByText("gd002")).toBeVisible();
     expect(screen.getByText("8 hours")).toBeVisible();
     expect(screen.getByText("zeus_combined_q")).toBeVisible();
 

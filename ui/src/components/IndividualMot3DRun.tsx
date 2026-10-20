@@ -1,3 +1,4 @@
+import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -113,6 +114,12 @@ const format = (value: number, digits = 6) =>
   });
 
 export function mot3dMonitorCopy(state: string | undefined) {
+  if (state === "held")
+    return {
+      title: "Zeus job is held",
+      body: "Zeus has held this job. Open Zeus jobs to inspect the scheduler reason before continuing.",
+      attention: true,
+    };
   if (!state)
     return {
       title: "Status has not been checked",
@@ -174,10 +181,12 @@ export async function refreshMot3DTransaction(
   runId: string,
   username: string,
   isCurrent: () => boolean,
+  onSchedulerState?: (state: string) => void,
 ): Promise<Mot3DRun | null> {
   if (mode === "zeus") {
-    await api.refreshZeus(runId, username);
+    const scheduler = await api.refreshZeus(runId, username);
     if (!isCurrent()) return null;
+    onSchedulerState?.(scheduler.state);
   }
   const summary = (await api.runs()).find((row) => row.display_name === runId);
   if (!isCurrent()) return null;
@@ -191,15 +200,20 @@ export async function refreshMot3DTransaction(
 export function IndividualMot3DRun({
   api,
   onBack,
+  onViewZeusJobs,
 }: {
   api: IndividualMot3DApi;
   onBack: () => void;
+  onViewZeusJobs?: () => void;
 }) {
   const title = useRef<HTMLHeadingElement>(null),
     requestSequence = useRef(0),
     mounted = useRef(true),
     recoveryStarted = useRef(false);
   const [recoveryPending, setRecoveryPending] = useState(false);
+  const [zeusHeld, setZeusHeld] = useState(false);
+  const [zeusResources, setZeusResources] =
+    useState<IndividualZeusResources | null>(null);
   const [step, setStep] = useState<Step>("configure"),
     [sources, setSources] = useState<Mot3DSource[]>([]),
     [sourceId, setSourceId] = useState("");
@@ -263,6 +277,13 @@ export function IndividualMot3DRun({
     recoveryStarted.current = true;
     void (async () => {
       const remembered = readRememberedIndividualRun("mot_3d");
+      if (remembered) {
+        setRunId(remembered.display_name);
+        setMode(remembered.execution_mode);
+        setUsername(remembered.username ?? "");
+        setStep("monitor");
+        setRecoveryPending(remembered.execution_mode === "zeus");
+      }
       const found = await recoverIndividualRun("mot_3d", api);
       if (!mounted.current || !found) return;
       setRunId(found.display_name);
@@ -284,7 +305,11 @@ export function IndividualMot3DRun({
           throw new Error(
             "The remembered Zeus run cannot be verified safely yet. It was not restarted.",
           );
-        await api.recoverZeus(found.display_name, remembered.username);
+        const recoveredStatus = await api.recoverZeus(
+          found.display_name,
+          remembered.username,
+        );
+        setZeusHeld(recoveredStatus?.scheduler_state === "held");
         if (!mounted.current) return;
         setUsername(remembered.username);
         setRecoveryPending(false);
@@ -425,7 +450,7 @@ export function IndividualMot3DRun({
         setRunId(created.run_id);
         if (mode === "local")
           if (!rememberIndividualRun("mot_3d", created.run_id, "local"))
-            setError(individualRunStorageWarning);
+            setError(`${individualRunStorageWarning} Run: ${created.run_id}`);
         setStep("run");
       }
     } catch (caught) {
@@ -445,7 +470,7 @@ export function IndividualMot3DRun({
       if (mode === "local") {
         await api.startLocal(runId);
         if (!rememberIndividualRun("mot_3d", runId, "local"))
-          setError(individualRunStorageWarning);
+          setError(`${individualRunStorageWarning} Run: ${runId}`);
       } else if (!zeusToken) {
         const reviewed = await api.previewZeus(runId, username);
         if (run && !reviewed.effects.reconcile_existing_job)
@@ -453,7 +478,10 @@ export function IndividualMot3DRun({
             "No existing Zeus job could be verified. No new submission was authorized; inspect Zeus before continuing.",
           );
         if (mounted.current && sequence === requestSequence.current) {
-          setZeusToken(reviewed.preview_token);
+          {
+            setZeusResources(reviewed.job?.resources ?? null);
+            setZeusToken(reviewed.preview_token);
+          }
           setZeusReconciliation(reviewed.effects.reconcile_existing_job);
         }
         return;
@@ -484,6 +512,7 @@ export function IndividualMot3DRun({
         runId,
         username,
         () => mounted.current && sequence === requestSequence.current,
+        (state) => setZeusHeld(state === "held"),
       );
       if (next && mounted.current && sequence === requestSequence.current) {
         setRun(next);
@@ -551,7 +580,10 @@ export function IndividualMot3DRun({
         throw new Error(
           "No existing Zeus job could be verified. No new submission was authorized; inspect Zeus before continuing.",
         );
-      setZeusToken(reviewed.preview_token);
+      {
+        setZeusResources(reviewed.job?.resources ?? null);
+        setZeusToken(reviewed.preview_token);
+      }
       setZeusReconciliation(true);
       setRecoveryPending(false);
       setStep("run");
@@ -1130,6 +1162,32 @@ export function IndividualMot3DRun({
                       ? "The reviewed package matches an existing job. Confirm below to link it; no new job will be submitted."
                       : "The frozen package was checked. Confirm below to submit exactly one job; no later job is submitted automatically."}
                   </p>
+                  {zeusResources && (
+                    <dl aria-label="Reviewed Zeus reservation">
+                      <div>
+                        <dt>Queue</dt>
+                        <dd>{zeusResources.queue}</dd>
+                      </div>
+                      <div>
+                        <dt>CPU cores</dt>
+                        <dd>{zeusResources.cores}</dd>
+                      </div>
+                      <div>
+                        <dt>Memory</dt>
+                        <dd>{zeusResources.memory_bytes / 1024 ** 3} GiB</dd>
+                      </div>
+                      <div>
+                        <dt>Time limit</dt>
+                        <dd>{zeusResources.walltime_seconds / 3600} hours</dd>
+                      </div>
+                      {zeusResources.vnode && (
+                        <div>
+                          <dt>Test compute node</dt>
+                          <dd>{zeusResources.vnode}</dd>
+                        </div>
+                      )}
+                    </dl>
+                  )}
                 </div>
               )}
             </>
@@ -1180,7 +1238,9 @@ export function IndividualMot3DRun({
       {step === "monitor" && (
         <section className="run-stage">
           {(() => {
-            const copy = mot3dMonitorCopy(run?.record_state);
+            const copy = mot3dMonitorCopy(
+              zeusHeld ? "held" : run?.record_state,
+            );
             return (
               <div
                 className={`action-banner ${copy.attention ? "action-banner--attention" : "action-banner--running"}`}
@@ -1196,6 +1256,18 @@ export function IndividualMot3DRun({
               </div>
             );
           })()}
+          {zeusHeld &&
+            (onViewZeusJobs ? (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={onViewZeusJobs}
+              >
+                Open Zeus jobs
+              </button>
+            ) : (
+              <p>Open Zeus jobs from the navigation to inspect this hold.</p>
+            ))}
           {mode === "local" && (
             <RunProgressPanel progress={run?.execution.progress ?? null} />
           )}

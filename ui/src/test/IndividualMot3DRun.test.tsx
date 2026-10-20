@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
   AngledDonutParameters,
   IndividualMot3DApi,
@@ -15,6 +15,8 @@ import {
   mot3dMonitorCopy,
 } from "../components/IndividualMot3DRun";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../generated/mot3dIndividualSpec.v1";
+
+beforeEach(() => window.localStorage.clear());
 
 const sourceId = `mot3d-source-${"a".repeat(32)}`;
 const source = {
@@ -116,33 +118,28 @@ function service(): IndividualMot3DApi {
       execution_started: false,
       submitted_to_zeus: false,
     }),
-    startLocal: vi
-      .fn()
-      .mockResolvedValue({
-        status: "queued",
-        run_id: "mot3d-browser",
-        execution_mode: "local",
-      }),
-    previewZeus: vi
-      .fn()
-      .mockResolvedValue({
-        preview_token: "zeus-review",
-        run_id: "mot3d-browser",
-        submission_key: "d".repeat(64),
-        effects: {
-          submit_one_job: true,
-          reconcile_existing_job: false,
-          cancel_job: false,
-        },
-      }),
-    confirmZeus: vi
-      .fn()
-      .mockResolvedValue({
-        status: "submitted",
-        run_id: "mot3d-browser",
-        job_id: "500.zeus-master",
-        submission_key: "d".repeat(64),
-      }),
+    startLocal: vi.fn().mockResolvedValue({
+      status: "queued",
+      run_id: "mot3d-browser",
+      execution_mode: "local",
+    }),
+    previewZeus: vi.fn().mockResolvedValue({
+      preview_token: "zeus-review",
+      job: { resources: { queue: "test", cores: 1, memory_bytes: 4294967296, walltime_seconds: 3600, vnode: "gd002" } },
+      run_id: "mot3d-browser",
+      submission_key: "d".repeat(64),
+      effects: {
+        submit_one_job: true,
+        reconcile_existing_job: false,
+        cancel_job: false,
+      },
+    }),
+    confirmZeus: vi.fn().mockResolvedValue({
+      status: "submitted",
+      run_id: "mot3d-browser",
+      job_id: "500.zeus-master",
+      submission_key: "d".repeat(64),
+    }),
     refreshZeus: vi
       .fn()
       .mockResolvedValue({ state: "running", job_id: "500.zeus-master" }),
@@ -232,6 +229,8 @@ describe("IndividualMot3DRun", () => {
       screen.getByRole("button", { name: "Review Zeus submission" }),
     );
     expect(await screen.findByText(/ready for confirmation/)).toBeVisible();
+    expect(screen.getByText("Test compute node")).toBeVisible();
+    expect(screen.getByText("gd002")).toBeVisible();
     expect(api.confirmZeus).not.toHaveBeenCalled();
     await user.click(
       screen.getByRole("button", { name: "Confirm and submit one Zeus job" }),
@@ -506,4 +505,45 @@ describe("IndividualMot3DRun", () => {
       storage.mockRestore();
     }
   });
+  it("keeps the remembered Zeus identity blocked when the catalog is unavailable", async () => {
+    const api = service();
+    window.localStorage.setItem(
+      "ytterbium.individual-run.mot_3d.v1",
+      JSON.stringify({
+        version: 1,
+        family: "mot_3d",
+        display_name: "mot3d-browser",
+        execution_mode: "zeus",
+        username: "tal.noa",
+      }),
+    );
+    vi.mocked(api.runs).mockRejectedValue(new Error("catalog offline"));
+    render(<IndividualMot3DRun api={api} onBack={vi.fn()} />);
+    expect(
+      await screen.findByText("Existing Zeus run needs verification"),
+    ).toBeVisible();
+    expect(await screen.findByText("catalog offline")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Validate setup" }),
+    ).not.toBeInTheDocument();
+    expect(api.startLocal).not.toHaveBeenCalled();
+    expect(api.confirmZeus).not.toHaveBeenCalled();
+  });
+});
+
+
+it("shows a recovered scheduler hold without resubmitting", async () => {
+  const api = service();
+  const openJobs = vi.fn();
+  window.localStorage.setItem("ytterbium.individual-run.mot_3d.v1", JSON.stringify({
+    version: 1, family: "mot_3d", display_name: "mot3d-browser", execution_mode: "zeus", username: "tal.noa",
+  }));
+  vi.mocked(api.runs).mockResolvedValue([{ id: "individual-run-test", display_name: "mot3d-browser", record_state: "queued", lifecycle: "queued", execution: { mode: "zeus", zeus_job_id: "123.zeus-master" } } as unknown as Mot3DRun]);
+  api.recoverZeus = vi.fn().mockResolvedValue({ run_id: "individual-run-test", family: "mot_3d", job_id: "123.zeus-master", scheduler_state: "held", exit_status: -10, local_state: "queued", read_only: true });
+  render(<IndividualMot3DRun api={api} onBack={vi.fn()} onViewZeusJobs={openJobs} />);
+  expect(await screen.findByText("Zeus job is held")).toBeVisible();
+  await userEvent.click(screen.getByRole("button", { name: "Open Zeus jobs" }));
+  expect(openJobs).toHaveBeenCalledOnce();
+  expect(api.confirmZeus).not.toHaveBeenCalled();
+  expect(api.startLocal).not.toHaveBeenCalled();
 });

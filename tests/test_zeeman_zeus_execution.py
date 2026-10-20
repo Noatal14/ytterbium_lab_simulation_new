@@ -165,7 +165,12 @@ def test_preview_is_immutable_scalar_and_has_no_submission_side_effect(tmp_path)
         "kind": "scalar",
         "array": False,
         "pbs_sha256": preview["job"]["pbs_sha256"],
-        "resources": {"queue": "zeus_combined_q", "cores": 200, "memory_bytes": 68719476736, "walltime_seconds": 86400},
+        "resources": {
+            "queue": "zeus_combined_q",
+            "cores": 200,
+            "memory_bytes": 68719476736,
+            "walltime_seconds": 86400,
+        },
     }
     assert preview["effects"] == {
         "submit_one_job": True,
@@ -888,7 +893,13 @@ def _submitted_for_read_only_recovery(tmp_path):
 
 @pytest.mark.parametrize(
     ("remote_state", "exit_status"),
-    [("queued", None), ("running", None), ("succeeded", 0), ("failed", 7)],
+    [
+        ("queued", None),
+        ("held", -10),
+        ("running", None),
+        ("succeeded", 0),
+        ("failed", 7),
+    ],
 )
 def test_read_only_recovery_reports_scheduler_without_mutating_run(
     tmp_path, remote_state, exit_status
@@ -1007,16 +1018,71 @@ def test_read_only_recovery_rejects_wrong_family_path(tmp_path):
 
 def test_reservation_review_reads_the_exact_pbs_instead_of_ui_defaults():
     from workflow_api.zeeman_zeus_execution import _reviewed_pbs_resources
-    pbs = b'#PBS -q test_q\n#PBS -l select=1:ncpus=3:mem=7gb\n#PBS -l walltime=01:02:03\n'
-    assert _reviewed_pbs_resources(pbs) == dict(queue='test_q', cores=3, memory_bytes=7*1024**3, walltime_seconds=3723)
-    with pytest.raises(ZeemanZeusError, match='run_evidence_invalid'):
-        _reviewed_pbs_resources(b'not a scalar reservation')
+
+    pbs = (
+        b"#PBS -q test_q\n#PBS -l select=1:ncpus=3:mem=7gb\n#PBS -l walltime=01:02:03\n"
+    )
+    assert _reviewed_pbs_resources(pbs) == dict(
+        queue="test_q", cores=3, memory_bytes=7 * 1024**3, walltime_seconds=3723
+    )
+    with pytest.raises(ZeemanZeusError, match="run_evidence_invalid"):
+        _reviewed_pbs_resources(b"not a scalar reservation")
 
 
 @pytest.mark.parametrize("family", ["zeeman", "mot_2d", "mot_3d"])
 def test_individual_jobs_reserve_24_hours_without_changing_cpu_or_memory(family):
     import importlib
+
     module = importlib.import_module(f"workflow_api.{family}_zeus_execution")
-    pbs = module._render_pbs({"run_id": "individual-walltime-check", "git_revision": "a" * 40}, "b" * 64)
+    pbs = module._render_pbs(
+        {"run_id": "individual-walltime-check", "git_revision": "a" * 40}, "b" * 64
+    )
     assert b"#PBS -l walltime=24:00:00\n" in pbs
     assert b"#PBS -l select=1:ncpus=200:mem=64gb\n" in pbs
+
+
+@pytest.mark.parametrize("family", ["zeeman", "mot_2d", "mot_3d"])
+def test_only_individual_test_checkout_pins_reviewed_compute_node(family):
+    import importlib
+    from workflow_api.zeeman_zeus_execution import _reviewed_pbs_resources
+
+    module = importlib.import_module(f"workflow_api.{family}_zeus_execution")
+    run = {"run_id": "acceptance-placement", "git_revision": "a" * 40}
+    normal = module._render_pbs(
+        run, "b" * 64, "/home/tal.noa/ytterbium_lab_simulation_new"
+    )
+    isolated = module._render_pbs(
+        run, "b" * 64, "/home/tal.noa/ytterbium_lab_simulation_ui_test"
+    )
+    assert b":vnode=" not in normal
+    assert b"#PBS -l select=1:ncpus=200:mem=64gb:vnode=gd002\n" in isolated
+    assert "vnode" not in _reviewed_pbs_resources(normal)
+    assert _reviewed_pbs_resources(isolated)["vnode"] == "gd002"
+    with pytest.raises(ZeemanZeusError):
+        module._render_pbs(
+            run, "b" * 64, "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"
+        )
+
+
+def test_held_scheduler_refresh_preserves_local_queued_record(tmp_path):
+    root, transport, coordinator, confirmed = _submitted_for_read_only_recovery(
+        tmp_path
+    )
+    run_dir = root / "data/runs/zeeman/zeeman-zeus-001"
+    before = {
+        p.relative_to(run_dir): p.read_bytes()
+        for p in run_dir.rglob("*")
+        if p.is_file()
+    }
+    transport.remote_status = RemoteJobStatus(confirmed["job_id"], "held", -10)
+    assert coordinator.refresh(run_id="zeeman-zeus-001", profile=PROFILE) == {
+        "state": "held",
+        "job_id": confirmed["job_id"],
+    }
+    assert {
+        p.relative_to(run_dir): p.read_bytes()
+        for p in run_dir.rglob("*")
+        if p.is_file()
+    } == before
+    assert [name for name, _ in transport.calls].count("submit") == 1
+    assert "retrieve" not in [name for name, _ in transport.calls]

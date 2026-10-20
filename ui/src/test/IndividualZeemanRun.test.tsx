@@ -1,12 +1,14 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IndividualZeemanRun, monitorCopy, particleCountAfterModeChange, userVisibleLockedSettings } from "../components/IndividualZeemanRun";
 import type { IndividualZeemanApi } from "../api/clients/individualZeeman";
 
 const preview = { preview_token: "token", expires_in_seconds: 300, plan: { zeeman_s0: 3, zeeman_detuning_gamma: -13.75, run_id: "zeeman-test", family: "zeeman" as const, execution_mode: "local" as const, particle_count: 200, seed: 42, mot_2d_s0: 1.3, mot_2d_detuning_gamma: -0.9196610026631429, mot_2d_magnet_radius_m: 0.04676406447474441, npools: 8, retain_particle_states: true, suitability: "individual_only" as const, output_disposition: "retain_survivor_states" as const, locked_settings: { policy: "canonical" }, resolved_configuration: { solver: { name: "RK4StCustom" }, laser: { detuning: -1 } }, lifecycle_state: "configured" as const, laboratory_specification: { version: 1 }, numerical_policy: { version: 1 }, plan_sha256: "a".repeat(64), execution_started: false as const, submitted_to_zeus: false as const } };
-function fake(): IndividualZeemanApi { return { reset: vi.fn(), preview: vi.fn().mockResolvedValue(preview), confirm: vi.fn().mockResolvedValue({ status: "created", run_id: "zeeman-test", family: "zeeman", path: "data/runs/zeeman/zeeman-test", lifecycle_state: "configured", execution_started: false, submitted_to_zeus: false }), startLocal: vi.fn().mockResolvedValue({ status: "queued" }), previewZeus: vi.fn().mockResolvedValue({ preview_token: "ztoken" }), confirmZeus: vi.fn().mockResolvedValue({ status: "submitted" }), refreshZeus: vi.fn().mockResolvedValue({ state: "running" }), runs: vi.fn().mockResolvedValue([]), run: vi.fn() }; }
+function fake(): IndividualZeemanApi { return { reset: vi.fn(), preview: vi.fn().mockResolvedValue(preview), confirm: vi.fn().mockResolvedValue({ status: "created", run_id: "zeeman-test", family: "zeeman", path: "data/runs/zeeman/zeeman-test", lifecycle_state: "configured", execution_started: false, submitted_to_zeus: false }), startLocal: vi.fn().mockResolvedValue({ status: "queued" }), previewZeus: vi.fn().mockResolvedValue({ preview_token: "ztoken", job: { resources: { queue: "test", cores: 1, memory_bytes: 4294967296, walltime_seconds: 3600, vnode: "gd002" } } }), confirmZeus: vi.fn().mockResolvedValue({ status: "submitted" }), refreshZeus: vi.fn().mockResolvedValue({ state: "running" }), runs: vi.fn().mockResolvedValue([]), run: vi.fn() }; }
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { promise, resolve }; };
+
+beforeEach(() => window.localStorage.clear());
 
 describe("individual Zeeman wizard", () => {
   it("reviews chosen Zeeman laser settings separately from the 2D boundary", async () => {
@@ -75,6 +77,7 @@ describe("individual Zeeman wizard", () => {
     ["validated", "Validation is complete", true],
     ["reviewed", "Ready to start", true],
     ["queued", "Run is queued", false],
+    ["held", "Zeus job is held", true],
     ["submitted", "Run was submitted", false],
     ["running", "Run is in progress", false],
     ["succeeded", "Run completed", false],
@@ -141,7 +144,7 @@ describe("individual Zeeman wizard", () => {
     await user.click(await screen.findByRole("button", { name: /create reviewed run/i }));
     await user.type(screen.getByLabelText(/Technion username/i), "tal.noa");
     await user.click(screen.getByRole("button", { name: /review Zeus submission/i }));
-    await screen.findByText(/ready for confirmation/i); expect(api.confirmZeus).not.toHaveBeenCalled();
+    await screen.findByText(/ready for confirmation/i); expect(screen.getByText("Test compute node")).toBeVisible(); expect(screen.getByText("gd002")).toBeVisible(); expect(api.confirmZeus).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /confirm and submit one Zeus job/i }));
     await waitFor(() => expect(api.confirmZeus).toHaveBeenCalledTimes(1));
   });

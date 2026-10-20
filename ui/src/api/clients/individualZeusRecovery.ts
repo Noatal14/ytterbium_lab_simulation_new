@@ -1,7 +1,12 @@
 import { exactKeys, isRecord } from "../http/envelope";
 
 export class IndividualZeusApiError extends Error {
-  constructor(public code: string, message: string) { super(message); }
+  constructor(
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+  }
 }
 
 const definitelyRejected = new Set([
@@ -16,20 +21,38 @@ const definitelyRejected = new Set([
 export const individualZeusConfirmWasDefinitelyRejected = (cause: unknown) =>
   cause instanceof IndividualZeusApiError && definitelyRejected.has(cause.code);
 
-export const individualZeusApiError = (error: { code: string; message: string }) =>
-  new IndividualZeusApiError(error.code, error.message);
+export const individualZeusApiError = (error: {
+  code: string;
+  message: string;
+}) => new IndividualZeusApiError(error.code, error.message);
 
 export type IndividualZeusRecovery = {
   run_id: string;
   family: "zeeman" | "mot_2d" | "mot_3d";
   job_id: string;
-  scheduler_state: "queued" | "running" | "succeeded" | "failed";
+  scheduler_state: "queued" | "running" | "held" | "succeeded" | "failed";
   exit_status: number | null;
-  local_state: "configured" | "validated" | "reviewed" | "queued" | "running" | "succeeded" | "failed" | "outcome_unknown" | "cancelled";
+  local_state:
+    | "configured"
+    | "validated"
+    | "reviewed"
+    | "queued"
+    | "running"
+    | "held"
+    | "succeeded"
+    | "failed"
+    | "outcome_unknown"
+    | "cancelled";
   read_only: true;
 };
 
-const schedulerStates = new Set(["queued", "running", "succeeded", "failed"]);
+const schedulerStates = new Set([
+  "queued",
+  "running",
+  "held",
+  "succeeded",
+  "failed",
+]);
 const localStates = new Set([
   "configured",
   "validated",

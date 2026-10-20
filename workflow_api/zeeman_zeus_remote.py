@@ -205,7 +205,7 @@ elif operation in {"status", "retrieve"}:
             fail("job_status_unavailable")
         state_match = re.search(r"^\s*job_state = ([A-Z])\s*$", text, re.M)
         exit_match = re.search(r"^\s*Exit_status = (-?[0-9]+)\s*$", text, re.M)
-        states = {"Q": "queued", "H": "queued", "R": "running", "F": "succeeded", "X": "succeeded"}
+        states = {"Q": "queued", "H": "held", "R": "running", "F": "succeeded", "X": "succeeded"}
         if result.returncode or state_match is None or state_match.group(1) not in states:
             fail("job_status_unavailable")
         exit_status = int(exit_match.group(1)) if exit_match else None

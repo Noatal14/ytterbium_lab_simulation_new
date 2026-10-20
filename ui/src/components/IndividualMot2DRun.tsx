@@ -53,6 +53,12 @@ const ActionError = ({ error }: { error: string | null }) =>
     </p>
   ) : null;
 export function mot2dMonitorCopy(state: string | undefined) {
+  if (state === "held")
+    return {
+      title: "Zeus job is held",
+      body: "Zeus has held this job. Open Zeus jobs to inspect the scheduler reason before continuing.",
+      attention: true,
+    };
   if (!state)
     return {
       title: "Status has not been checked",
@@ -114,10 +120,12 @@ export async function refreshMot2DTransaction(
   runId: string,
   username: string,
   isCurrent: () => boolean,
+  onSchedulerState?: (state: string) => void,
 ): Promise<Mot2DRun | null> {
   if (mode === "zeus") {
-    await api.refreshZeus(runId, username);
+    const scheduler = await api.refreshZeus(runId, username);
     if (!isCurrent()) return null;
+    onSchedulerState?.(scheduler.state);
   }
   const summary = (await api.runs()).find(
     (row: Mot2DRun) => row.display_name === runId,
@@ -133,13 +141,16 @@ export async function refreshMot2DTransaction(
 export function IndividualMot2DRun({
   api,
   onBack,
+  onViewZeusJobs,
 }: {
   api: IndividualMot2DApi;
   onBack: () => void;
+  onViewZeusJobs?: () => void;
 }) {
   const title = useRef<HTMLHeadingElement>(null);
   const refreshRequest = useRef(0);
   const [recoveryPending, setRecoveryPending] = useState(false);
+  const [zeusHeld, setZeusHeld] = useState(false);
   const [step, setStep] = useState<Step>("configure"),
     [sources, setSources] = useState<Mot2DSource[]>([]),
     [source, setSource] = useState("");
@@ -195,6 +206,13 @@ export function IndividualMot2DRun({
     const id = refreshRequest.current;
     void (async () => {
       const remembered = readRememberedIndividualRun("mot_2d");
+      if (remembered) {
+        setRunId(remembered.display_name);
+        setMode(remembered.execution_mode);
+        setUsername(remembered.username ?? "");
+        setStep("monitor");
+        setRecoveryPending(remembered.execution_mode === "zeus");
+      }
       const found = await recoverIndividualRun("mot_2d", api);
       if (!active || id !== refreshRequest.current || !found) return;
       setRunId(found.display_name);
@@ -216,7 +234,11 @@ export function IndividualMot2DRun({
           throw new Error(
             "The remembered Zeus run cannot be verified safely yet. It was not restarted.",
           );
-        await api.recoverZeus(found.display_name, remembered.username);
+        const recoveredStatus = await api.recoverZeus(
+          found.display_name,
+          remembered.username,
+        );
+        setZeusHeld(recoveredStatus?.scheduler_state === "held");
         if (!active || id !== refreshRequest.current) return;
         setUsername(remembered.username);
         setRecoveryPending(false);
@@ -312,7 +334,7 @@ export function IndividualMot2DRun({
         setRunId(row.run_id);
         if (mode === "local")
           if (!rememberIndividualRun("mot_2d", row.run_id, "local"))
-            setError(individualRunStorageWarning);
+            setError(`${individualRunStorageWarning} Run: ${row.run_id}`);
         setStep("run");
       });
   }
@@ -322,7 +344,7 @@ export function IndividualMot2DRun({
       if (mode === "local") {
         await api.startLocal(runId);
         if (!rememberIndividualRun("mot_2d", runId, "local"))
-          setError(individualRunStorageWarning);
+          setError(`${individualRunStorageWarning} Run: ${runId}`);
       } else if (!zeusToken) {
         const reviewed = await api.previewZeus(runId, username);
         if (run && !reviewed.effects.reconcile_existing_job)
@@ -353,6 +375,7 @@ export function IndividualMot2DRun({
         runId,
         username,
         () => requestId === refreshRequest.current,
+        (state) => setZeusHeld(state === "held"),
       );
       if (!next) return;
       setRun(next);
@@ -832,6 +855,12 @@ export function IndividualMot2DRun({
                         <dt>Time limit</dt>
                         <dd>{zeusResources.walltime_seconds / 3600} hours</dd>
                       </div>
+                      {zeusResources.vnode && (
+                        <div>
+                          <dt>Test compute node</dt>
+                          <dd>{zeusResources.vnode}</dd>
+                        </div>
+                      )}
                     </dl>
                   )}
                   <button
@@ -876,7 +905,9 @@ export function IndividualMot2DRun({
       {step === "monitor" && (
         <section className="run-stage">
           {(() => {
-            const copy = mot2dMonitorCopy(run?.record_state);
+            const copy = mot2dMonitorCopy(
+              zeusHeld ? "held" : run?.record_state,
+            );
             return (
               <div
                 className={`action-banner ${copy.attention ? "action-banner--attention" : "action-banner--running"}`}
@@ -897,6 +928,18 @@ export function IndividualMot2DRun({
                 "Awaiting verified job identity"}
             </p>
           )}
+          {zeusHeld &&
+            (onViewZeusJobs ? (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={onViewZeusJobs}
+              >
+                Open Zeus jobs
+              </button>
+            ) : (
+              <p>Open Zeus jobs from the navigation to inspect this hold.</p>
+            ))}
           {mode === "local" && (
             <RunProgressPanel progress={run?.execution.progress ?? null} />
           )}

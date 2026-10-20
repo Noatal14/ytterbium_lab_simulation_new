@@ -1,3 +1,4 @@
+import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -26,7 +27,7 @@ import {
   rememberIndividualRun,
 } from "../features/individual/individualRunRecovery";
 
-type Props = { api: IndividualZeemanApi; onBack: () => void };
+type Props = { api: IndividualZeemanApi; onBack: () => void; onViewZeusJobs?: () => void };
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const steps: { id: Step; label: string }[] = [
   { id: "configure", label: "Configure" },
@@ -90,6 +91,13 @@ export function particleCountAfterModeChange(
     : current;
 }
 export function monitorCopy(state: string | undefined) {
+  if (state === "held")
+    return {
+      title: "Zeus job is held",
+      message:
+        "Zeus has held this job. Open Zeus jobs to inspect the scheduler reason before continuing.",
+      attention: true,
+    };
   if (!state)
     return {
       title: "Check run progress",
@@ -170,8 +178,11 @@ export function monitorCopy(state: string | undefined) {
   };
 }
 
-export function IndividualZeemanRun({ api, onBack }: Props) {
+export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
   const [recoveryPending, setRecoveryPending] = useState(false);
+  const [zeusHeld, setZeusHeld] = useState(false);
+  const [zeusResources, setZeusResources] =
+    useState<IndividualZeusResources | null>(null);
   const [step, setStep] = useState<Step>("configure");
   const [particles, setParticles] = useState<number>(
     spec.particle_count.default_by_execution_mode.local,
@@ -246,6 +257,13 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
     const id = ++request.current;
     void (async () => {
       const remembered = readRememberedIndividualRun("zeeman");
+      if (remembered) {
+        setRunId(remembered.display_name);
+        setMode(remembered.execution_mode);
+        setUsername(remembered.username ?? "");
+        setStep("monitor");
+        setRecoveryPending(remembered.execution_mode === "zeus");
+      }
       const found = await recoverIndividualRun("zeeman", api);
       if (id !== request.current || !found) return;
       setRunId(found.display_name);
@@ -267,7 +285,11 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
           throw new Error(
             "The remembered Zeus run cannot be verified safely yet. It was not restarted.",
           );
-        await api.recoverZeus(found.display_name, remembered.username);
+        const recoveredStatus = await api.recoverZeus(
+          found.display_name,
+          remembered.username,
+        );
+        setZeusHeld(recoveredStatus?.scheduler_state === "held");
         if (id !== request.current) return;
         setUsername(remembered.username);
         setRecoveryPending(false);
@@ -320,7 +342,7 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
         setRunId(value.run_id);
         if (mode === "local")
           if (!rememberIndividualRun("zeeman", value.run_id, "local"))
-            setError(individualRunStorageWarning);
+            setError(`${individualRunStorageWarning} Run: ${value.run_id}`);
         setStep("run");
       }
     } catch (caught) {
@@ -338,7 +360,7 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
       await api.startLocal(runId);
       if (id === request.current) {
         if (!rememberIndividualRun("zeeman", runId, "local"))
-          setError(individualRunStorageWarning);
+          setError(`${individualRunStorageWarning} Run: ${runId}`);
         setStep("monitor");
       }
     } catch (caught) {
@@ -360,7 +382,10 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
         );
       if (typeof reviewed.preview_token !== "string")
         throw new Error("The Zeus submission review was invalid.");
-      if (id === request.current) setZeusPreviewToken(reviewed.preview_token);
+      if (id === request.current) {
+        setZeusResources(reviewed.job?.resources ?? null);
+        setZeusPreviewToken(reviewed.preview_token);
+      }
     } catch (caught) {
       if (id === request.current) setError(userMessage(caught));
     } finally {
@@ -389,7 +414,10 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
     setBusy(true);
     setError(null);
     try {
-      if (mode === "zeus") await api.refreshZeus(runId, username);
+      if (mode === "zeus") {
+        const status = await api.refreshZeus(runId, username);
+        if (id === request.current) setZeusHeld(status.state === "held");
+      }
       const summary =
         (await api.runs()).find((item) => item.display_name === runId) ?? null;
       if (!summary)
@@ -502,7 +530,10 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
         throw new Error(
           "No existing Zeus job could be verified. No new submission was authorized; inspect Zeus before continuing.",
         );
-      setZeusPreviewToken(reviewed.preview_token);
+      {
+        setZeusResources(reviewed.job?.resources ?? null);
+        setZeusPreviewToken(reviewed.preview_token);
+      }
       setRecoveryPending(false);
       setStep("run");
     } catch (cause) {
@@ -921,6 +952,32 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
                   ? "Confirm to link the existing job; no new job will be submitted."
                   : "The frozen package was checked. Confirm below to submit exactly one job; no later job is submitted automatically."}
               </p>
+              {zeusResources && (
+                <dl aria-label="Reviewed Zeus reservation">
+                  <div>
+                    <dt>Queue</dt>
+                    <dd>{zeusResources.queue}</dd>
+                  </div>
+                  <div>
+                    <dt>CPU cores</dt>
+                    <dd>{zeusResources.cores}</dd>
+                  </div>
+                  <div>
+                    <dt>Memory</dt>
+                    <dd>{zeusResources.memory_bytes / 1024 ** 3} GiB</dd>
+                  </div>
+                  <div>
+                    <dt>Time limit</dt>
+                    <dd>{zeusResources.walltime_seconds / 3600} hours</dd>
+                  </div>
+                  {zeusResources.vnode && (
+                    <div>
+                      <dt>Test compute node</dt>
+                      <dd>{zeusResources.vnode}</dd>
+                    </div>
+                  )}
+                </dl>
+              )}
             </div>
           )}
           <div className="form-actions">
@@ -974,7 +1031,7 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
       {step === "monitor" && (
         <section className="run-stage">
           {(() => {
-            const copy = monitorCopy(run?.record_state);
+            const copy = monitorCopy(zeusHeld ? "held" : run?.record_state);
             return (
               <div
                 className={`action-banner${copy.attention ? " action-banner--attention" : " action-banner--running"}`}
@@ -990,6 +1047,18 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
               </div>
             );
           })()}
+          {zeusHeld &&
+            (onViewZeusJobs ? (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={onViewZeusJobs}
+              >
+                Open Zeus jobs
+              </button>
+            ) : (
+              <p>Open Zeus jobs from the navigation to inspect this hold.</p>
+            ))}
           {mode === "local" && (
             <RunProgressPanel progress={run?.execution.progress ?? null} />
           )}
@@ -997,7 +1066,9 @@ export function IndividualZeemanRun({ api, onBack }: Props) {
             <dl className="monitor-facts">
               <div>
                 <dt>Status</dt>
-                <dd>{run.record_state.replaceAll("_", " ")}</dd>
+                <dd>
+                  {zeusHeld ? "held" : run.record_state.replaceAll("_", " ")}
+                </dd>
               </div>
               <div>
                 <dt>Execution</dt>

@@ -50,7 +50,7 @@ from workflow_api.pinned_ssh import (
 _LIFETIME = 300
 _CAPACITY = 64
 _JOB_ID = re.compile(r"^[1-9][0-9]*\.zeus-master$")
-_REMOTE_STATES = frozenset({"queued", "running", "succeeded", "failed"})
+_REMOTE_STATES = frozenset({"queued", "running", "held", "succeeded", "failed"})
 _OPERATIONS = frozenset({"inspect", "stage", "submit", "status", "retrieve"})
 
 
@@ -266,29 +266,53 @@ def _reviewed_pbs_resources(pbs: bytes) -> dict[str, Any]:
     """Expose the reservation from the exact frozen PBS being confirmed."""
     text = pbs.decode("utf-8")
     queue = re.search(r"^#PBS -q ([A-Za-z0-9_]+)$", text, re.M)
-    select = re.search(r"^#PBS -l select=1:ncpus=([1-9][0-9]*):mem=([1-9][0-9]*)gb$", text, re.M)
-    wall = re.search(r"^#PBS -l walltime=([0-9]+):([0-5][0-9]):([0-5][0-9])$", text, re.M)
+    select = re.search(
+        r"^#PBS -l select=1:ncpus=([1-9][0-9]*):mem=([1-9][0-9]*)gb(?::vnode=(gd002))?$", text, re.M
+    )
+    wall = re.search(
+        r"^#PBS -l walltime=([0-9]+):([0-5][0-9]):([0-5][0-9])$", text, re.M
+    )
     if not queue or not select or not wall:
         raise ZeemanZeusError("run_evidence_invalid")
-    return {"queue": queue[1], "cores": int(select[1]),
-            "memory_bytes": int(select[2]) * 1024**3,
-            "walltime_seconds": int(wall[1])*3600 + int(wall[2])*60 + int(wall[3])}
+    return {
+        "queue": queue[1],
+        "cores": int(select[1]),
+        "memory_bytes": int(select[2]) * 1024**3,
+        "walltime_seconds": int(wall[1]) * 3600 + int(wall[2]) * 60 + int(wall[3]),
+        **({"vnode": select[3]} if select[3] else {}),
+    }
 
 
 def _target_pbs(text: str, project_directory: str | None) -> bytes:
     if project_directory is not None:
         path = Path(project_directory)
-        ZeusProfile.parse({"username": path.parent.name, "project_directory": project_directory})
+        ZeusProfile.parse(
+            {"username": path.parent.name, "project_directory": project_directory}
+        )
+        if path.name == "ytterbium_lab_simulation_ui_acceptance":
+            raise ZeemanZeusError("profile_or_submission_identity_mismatch")
         if path.name == "ytterbium_lab_simulation_ui_test":
-            text = text.replace("set -euo pipefail\n", "set -euo pipefail\nexport OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1\n")
-            text = text.replace("/ytterbium_lab_simulation_new", "/ytterbium_lab_simulation_ui_test")
+            # Test-only placement is included in the exact reviewed PBS bytes.
+            text = re.sub(r"^(#PBS -l select=1:ncpus=\d+:mem=\d+gb)$", r"\1:vnode=gd002", text, flags=re.M)
+            text = text.replace(
+                "set -euo pipefail\n",
+                "set -euo pipefail\nexport OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1\n",
+            )
+            text = text.replace(
+                "/ytterbium_lab_simulation_new", "/ytterbium_lab_simulation_ui_test"
+            )
             text = text.replace("/venvs/atomsmltr/", "/venvs/atomsmltr-ui-test/")
             if "source " not in text:
-                text = text.replace("python -m ", 'module load SPACK/apps\nmodule load gcc/14.1.0\nmodule load python/3.14.2\nsource "${HOME}/venvs/atomsmltr-ui-test/bin/activate"\npython -m ')
+                text = text.replace(
+                    "python -m ",
+                    'module load SPACK/apps\nmodule load gcc/14.1.0\nmodule load python/3.14.2\nsource "${HOME}/venvs/atomsmltr-ui-test/bin/activate"\npython -m ',
+                )
     return text.encode("utf-8")
 
 
-def _render_pbs(run: Mapping[str, Any], package_sha256: str, project_directory: str | None = None) -> bytes:
+def _render_pbs(
+    run: Mapping[str, Any], package_sha256: str, project_directory: str | None = None
+) -> bytes:
     workers = ZEEMAN_RUN_SPECIFICATION["worker_policy"]["zeus"]["fixed"]
     # Scalar by construction: no #PBS -J and no user-controlled command text.
     text = f"""#!/bin/bash
@@ -634,7 +658,12 @@ class IndividualZeemanZeusCoordinator:
             "preview_token": token,
             "expires_in_seconds": _LIFETIME,
             "run_id": run_id,
-            "job": {"kind": "scalar", "array": False, "pbs_sha256": package.pbs_sha256, "resources": _reviewed_pbs_resources(package.pbs)},
+            "job": {
+                "kind": "scalar",
+                "array": False,
+                "pbs_sha256": package.pbs_sha256,
+                "resources": _reviewed_pbs_resources(package.pbs),
+            },
             "package_sha256": package.package_sha256,
             "submission_key": package.submission_key,
             "effects": {
@@ -873,8 +902,8 @@ class IndividualZeemanZeusCoordinator:
         store = self.store_factory(self.root)
         try:
             current = status
-            if remote.state == "queued":
-                return {"state": "queued", "job_id": job_id}
+            if remote.state in {"queued", "held"}:
+                return {"state": remote.state, "job_id": job_id}
             if current["state"] == "queued":
                 current = store.transition(
                     self.authority,
