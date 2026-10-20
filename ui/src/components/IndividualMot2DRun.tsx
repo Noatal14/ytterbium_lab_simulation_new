@@ -239,7 +239,11 @@ export function IndividualMot2DRun({
         setStep("monitor");
         setRecoveryPending(remembered.execution_mode === "zeus");
       }
-      const found = await recoverIndividualRun("mot_2d", api);
+      const found = await recoverIndividualRun(
+        "mot_2d",
+        api,
+        () => active && id === refreshRequest.current,
+      );
       if (!active || id !== refreshRequest.current || !found) return;
       setRunId(found.display_name);
       setMode(found.execution.mode);
@@ -267,8 +271,8 @@ export function IndividualMot2DRun({
           found.display_name,
           remembered.username,
         );
-        setZeusHeld(recoveredStatus?.scheduler_state === "held");
         if (!active || id !== refreshRequest.current) return;
+        setZeusHeld(recoveredStatus?.scheduler_state === "held");
         setUsername(remembered.username);
         setRecoveryPending(false);
       }

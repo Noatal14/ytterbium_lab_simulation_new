@@ -143,12 +143,16 @@ export async function recoverIndividualRun<Run extends RecoverableRun>(
     }>;
     run(id: string): Promise<Run>;
   },
+  isCurrent: () => boolean = () => true,
 ) {
   const stored = readRememberedIndividualRun(family);
   if (!stored) return null;
   const catalog = api.catalog
     ? await api.catalog()
     : { runs: await api.runs(), invalid_count: 0, total: 0, truncated: false };
+  // A retired mount must not start a detail read and supersede the active
+  // mount's SDK request. Catalog reads can finish after StrictMode cleanup.
+  if (!isCurrent()) return null;
   const matches = catalog.runs.filter(
     (row) => row.display_name === stored.display_name,
   );
@@ -171,7 +175,9 @@ export async function recoverIndividualRun<Run extends RecoverableRun>(
   }
   const summary = matches[0];
   if (summary.lifecycle !== "results_ready") return summary;
+  if (!isCurrent()) return null;
   const detail = await api.run(summary.id);
+  if (!isCurrent()) return null;
   if (
     detail.id !== summary.id ||
     detail.display_name !== stored.display_name ||

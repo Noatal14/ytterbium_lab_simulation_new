@@ -251,7 +251,6 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
   const title = useRef<HTMLHeadingElement>(null);
-  const recoveryStarted = useRef(false);
   const stepIndex = steps.findIndex((item) => item.id === step);
   const requestBody = useMemo(
     () => ({
@@ -283,9 +282,9 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
     title.current?.focus();
   }, [step]);
   useEffect(() => {
-    if (recoveryStarted.current) return;
-    recoveryStarted.current = true;
+    let active = true;
     const id = ++request.current;
+    const isCurrent = () => active && id === request.current;
     void (async () => {
       const remembered = readRememberedIndividualRun("zeeman");
       if (remembered) {
@@ -295,8 +294,8 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
         setStep("monitor");
         setRecoveryPending(remembered.execution_mode === "zeus");
       }
-      const found = await recoverIndividualRun("zeeman", api);
-      if (id !== request.current || !found) return;
+      const found = await recoverIndividualRun("zeeman", api, isCurrent);
+      if (!isCurrent() || !found) return;
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as IndividualRun);
@@ -323,8 +322,8 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
           found.display_name,
           remembered.username,
         );
+        if (!isCurrent()) return;
         setZeusHeld(recoveredStatus?.scheduler_state === "held");
-        if (id !== request.current) return;
         setUsername(remembered.username);
         setRecoveryPending(false);
       }
@@ -337,8 +336,11 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
           : recoveredRunStep(found),
       );
     })().catch((caught) => {
-      if (id === request.current) setError(userMessage(caught));
+      if (isCurrent()) setError(userMessage(caught));
     });
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   async function validate() {

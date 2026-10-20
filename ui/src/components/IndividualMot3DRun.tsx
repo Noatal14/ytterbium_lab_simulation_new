@@ -234,8 +234,7 @@ export function IndividualMot3DRun({
 }) {
   const title = useRef<HTMLHeadingElement>(null),
     requestSequence = useRef(0),
-    mounted = useRef(true),
-    recoveryStarted = useRef(false);
+    mounted = useRef(true);
   const [recoveryPending, setRecoveryPending] = useState(false);
   const [zeusHeld, setZeusHeld] = useState(false);
   const [zeusResources, setZeusResources] =
@@ -299,8 +298,10 @@ export function IndividualMot3DRun({
     title.current?.focus();
   }, [step]);
   useEffect(() => {
-    if (recoveryStarted.current) return;
-    recoveryStarted.current = true;
+    let active = true;
+    const sequence = requestSequence.current;
+    const isCurrent = () =>
+      active && mounted.current && sequence === requestSequence.current;
     void (async () => {
       const remembered = readRememberedIndividualRun("mot_3d");
       if (remembered) {
@@ -310,8 +311,8 @@ export function IndividualMot3DRun({
         setStep("monitor");
         setRecoveryPending(remembered.execution_mode === "zeus");
       }
-      const found = await recoverIndividualRun("mot_3d", api);
-      if (!mounted.current || !found) return;
+      const found = await recoverIndividualRun("mot_3d", api, isCurrent);
+      if (!isCurrent() || !found) return;
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot3DRun);
@@ -338,8 +339,8 @@ export function IndividualMot3DRun({
           found.display_name,
           remembered.username,
         );
+        if (!isCurrent()) return;
         setZeusHeld(recoveredStatus?.scheduler_state === "held");
-        if (!mounted.current) return;
         setUsername(remembered.username);
         setRecoveryPending(false);
       }
@@ -352,8 +353,11 @@ export function IndividualMot3DRun({
           : recoveredRunStep(found),
       );
     })().catch((caught) => {
-      if (mounted.current) setError(errorMessage(caught));
+      if (isCurrent()) setError(errorMessage(caught));
     });
+    return () => {
+      active = false;
+    };
   }, [api]);
 
   const selected = sources.find((row) => row.id === sourceId);

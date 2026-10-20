@@ -733,8 +733,12 @@ def test_windows_blocks_publication_directory_replacement(tmp_path, monkeypatch,
     coordinator = IndividualRunExecutionCoordinator(
         root, FakeWorker(discarded_product()), issue_execution_authority(), clock=lambda: NOW
     )
-    with pytest.raises(RunRecordError):
-        coordinator.execute("zeeman", "zeeman-run-001")
+    outcome = coordinator.execute("zeeman", "zeeman-run-001")
+    assert outcome == {"state": "outcome_unknown", "recovered": False, "worker_started": True}
     assert blocked
-    assert inspect_run(root, "zeeman", "zeeman-run-001").state == "running"
+    inspected = inspect_run(root, "zeeman", "zeeman-run-001")
+    assert inspected.state == "outcome_unknown"
+    assert inspected.status["error"]["code"] == "publication_outcome_unknown"
+    assert inspected.results is None
+    assert coordinator.worker.calls == 1
     assert not path.with_name(path.name + "-replaced").exists()

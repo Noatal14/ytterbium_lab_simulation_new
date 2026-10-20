@@ -1,0 +1,994 @@
+{
+  "zeeman": {
+    "summary": {
+      "created_at": "2026-10-20T20:19:31.261940+00:00",
+      "display_name": "zeeman-749a502e8ef238b3b56a55db",
+      "execution": {
+        "locally_scheduled": false,
+        "mode": "zeus",
+        "progress": null,
+        "zeus_job_id": "4809752.zeus-master"
+      },
+      "id": "individual-run-af9e2e748c7cf61ac234c863",
+      "integrity": "complete_verified",
+      "lifecycle": "results_ready",
+      "next_action": "view_results",
+      "queried_at": "2026-10-20T20:50:06.761702+00:00",
+      "record_kind": "individual_simulation_run",
+      "record_state": "succeeded",
+      "results": {
+        "availability": "verified",
+        "completed_at": "2026-10-20T20:20:05.880419+00:00"
+      },
+      "retention": {
+        "particle_states_requested": true,
+        "status": "retained"
+      },
+      "run_kind": "zeeman",
+      "scientific_role": "individual-only",
+      "source": "local",
+      "stage_semantics": "single-run-lifecycle",
+      "trust": "verified-package",
+      "updated_at": "2026-10-20T20:20:16.656323+00:00",
+      "warnings": []
+    },
+    "detail": {
+      "artifacts": [
+        {
+          "kind": "particle_states",
+          "path": "results/states.npy",
+          "sha256": "9f8f9c6bccb5f593998cc8a5fc2b314319fb4e30c7e9826d6c39bcbb54cb2fde",
+          "size_bytes": 1088
+        }
+      ],
+      "configuration": {
+        "resolved": {
+          "admission_specification": {
+            "sha256": "0df928430b47a9429db37b960e531780c8c7bb407f2c01e6f51c28040ce06cbf",
+            "version": "zeeman-individual-v1"
+          },
+          "downstream_boundary": {
+            "mot_2d_laser": {
+              "detuning_gamma": -0.9196610026631429,
+              "s0": 1.3,
+              "swap_polarization": false
+            },
+            "mot_2d_magnet_radius_m": 0.04676406447474441
+          },
+          "execution": {
+            "mode": "zeus",
+            "workers": 200
+          },
+          "numerical_policy": {
+            "dt_s": 4e-5,
+            "solver": "RK4StCustom",
+            "t_max_s": 0.02
+          },
+          "physical_specification": {
+            "apparatus": {
+              "dps_length_m": 0.07,
+              "dps_radius_m": 0.0015,
+              "mot_2d_chamber_length_m": 0.04,
+              "mot_2d_chamber_radius_m": 0.015,
+              "science_arm_1_length_m": 0.1445,
+              "science_arm_1_radius_m": 0.008,
+              "science_arm_3_radius_m": 0.008,
+              "science_arm_total_length_m": 0.51,
+              "science_region_center_z_m": 0.413,
+              "zeeman_arm_1_extended_length_m": 0.12,
+              "zeeman_arm_1_length_m": 0.378,
+              "zeeman_arm_1_radius_m": 0.008,
+              "zeeman_arm_1_short_length_m": 0.1,
+              "zeeman_arm_2_length_m": 0.0237,
+              "zeeman_arm_2_radius_m": 0.0035,
+              "zeeman_arm_3_length_m": 0.06,
+              "zeeman_arm_3_radius_m": 0.0174,
+              "zeeman_arm_angle_deg": 25,
+              "zeeman_start_distance_m": 0.314
+            },
+            "canonical_zeeman_profile": {
+              "canonical_json_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534",
+              "name": "corrected_projectant_19ring_20261005",
+              "positions_m": [
+                -0.024997611820684773, -0.0166074820171394,
+                -0.008950627767647022, -0.00092078429967626,
+                0.00814443912675755, 0.017179267715678983, 0.026052663995999155,
+                0.034685478864268364, 0.04313306739867095, 0.05148390143722414,
+                0.05982896994946931, 0.06827013970417552, 0.07691949882013517,
+                0.08584387642827504, 0.09421920860081025, 0.11603819574961396,
+                0.12420178457671346, 0.13228342027062034, 0.14031881812095845
+              ],
+              "radii_m": [
+                0.015135533905932736, 0.015135533905932736,
+                0.015135533905932736, 0.01564067491712827, 0.015135533905932736,
+                0.01545487107744853, 0.01550619118213793, 0.015431029052418464,
+                0.015431384813488134, 0.015593843015546225,
+                0.015982574299336368, 0.016696322694038545,
+                0.017911491977064927, 0.019997208970787862, 0.02441422530642514,
+                0.023392011949175236, 0.018848907108002317, 0.0175763591559792,
+                0.01877230109180483
+              ],
+              "ring_count": 19,
+              "tilt_angles_deg": [
+                335.0804487572892, 285.2490031515197, 270.0000002439007,
+                221.7488209497955, 225.5347010506507, 216.80695838117836,
+                207.61076606534354, 202.18280990952204, 199.40982196429187,
+                198.4289729313029, 199.19434976365733, 202.15552612330583,
+                208.5689225261901, 222.93255723300166, 277.02744495961696,
+                310.1872851907945, 356.6815879296744, 31.72880818764883,
+                92.20371185585765
+              ]
+            },
+            "source": {
+              "collimation_angle_deg": 1.5,
+              "microtube_count": 350,
+              "microtube_length_m": 0.009,
+              "microtube_radius_m": 0.00013,
+              "oven_temperature_C": 400,
+              "yb171_natural_abundance": 0.143
+            },
+            "spec_version": "laboratory-physical-v2",
+            "species": {
+              "mass_amu": 170.936331515,
+              "name": "Yb171"
+            },
+            "transitions": {
+              "blue": {
+                "gamma_rad_s": 183029187.99814135,
+                "measured_zeeman_coefficient_khz_per_G": 965,
+                "reference_saturation_intensity_mw_cm2": 59.97,
+                "wavelength_m": 3.989108443e-7
+              },
+              "green": {
+                "gamma_rad_s": 1146053.0000295565,
+                "measured_zeeman_coefficient_khz_per_G": 1392.674,
+                "wavelength_m": 5.5580068663e-7
+              }
+            },
+            "zeeman_field_hardware": {
+              "axis_offset_m": 0,
+              "magnet_dimensions_m": [0.005, 0.005, 0.005],
+              "magnet_polarization_T": -1.24,
+              "magnets_per_ring": 8
+            },
+            "zeeman_laser_geometry": {
+              "waist_m": 0.007,
+              "waist_position_m": [0, 0, 0]
+            }
+          },
+          "simulation": {
+            "cutoff_distance_m": 0.1,
+            "force_scale_N": 3.141895058426422e-20,
+            "gravity_enabled": true,
+            "particle_count": 30,
+            "seed": 42,
+            "start_distance_m": 0.45,
+            "stochastic": true
+          },
+          "source": {
+            "angular_broadening_factor": 1,
+            "collimation_angle_deg": 1.5
+          },
+          "zeeman": {
+            "field": {
+              "arm_angle_deg": 25,
+              "azimuthal_angles_deg": [0, 45, 90, 135, 180, 225, 270, 315],
+              "internal_axis": "+z",
+              "lab_axis_direction": "toward_lab_origin_in_negative_y_negative_z_arm",
+              "magnet_dimensions_m": [0.005, 0.005, 0.005],
+              "magnet_polarization_T": -1.24,
+              "magnets_per_ring": 8,
+              "positions_m": [
+                -0.024997611820684773, -0.0166074820171394,
+                -0.008950627767647022, -0.00092078429967626,
+                0.00814443912675755, 0.017179267715678983, 0.026052663995999155,
+                0.034685478864268364, 0.04313306739867095, 0.05148390143722414,
+                0.05982896994946931, 0.06827013970417552, 0.07691949882013517,
+                0.08584387642827504, 0.09421920860081025, 0.11603819574961396,
+                0.12420178457671346, 0.13228342027062034, 0.14031881812095845
+              ],
+              "radii_m": [
+                0.015135533905932736, 0.015135533905932736,
+                0.015135533905932736, 0.01564067491712827, 0.015135533905932736,
+                0.01545487107744853, 0.01550619118213793, 0.015431029052418464,
+                0.015431384813488134, 0.015593843015546225,
+                0.015982574299336368, 0.016696322694038545,
+                0.017911491977064927, 0.019997208970787862, 0.02441422530642514,
+                0.023392011949175236, 0.018848907108002317, 0.0175763591559792,
+                0.01877230109180483
+              ],
+              "start_distance_m": 0.314,
+              "tilt_angles_deg": [
+                335.0804487572892, 285.2490031515197, 270.0000002439007,
+                221.7488209497955, 225.5347010506507, 216.80695838117836,
+                207.61076606534354, 202.18280990952204, 199.40982196429187,
+                198.4289729313029, 199.19434976365733, 202.15552612330583,
+                208.5689225261901, 222.93255723300166, 277.02744495961696,
+                310.1872851907945, 356.6815879296744, 31.72880818764883,
+                92.20371185585765
+              ],
+              "tilt_input_sign": -1,
+              "zeeman_axis_offset_m": 0
+            },
+            "laser": {
+              "detuning_gamma": -13.75,
+              "detuning_rad_s": -2516651334.9744434,
+              "direction": [0, -0.42261826174069944, -0.9063077870366499],
+              "direction_type": "vector",
+              "gamma_rad_s": 183029187.99814135,
+              "peak_intensity_W_m2": 1799.1000000000001,
+              "polarization": "CircularRight",
+              "power_W": 0.13847496390529826,
+              "s0": 3,
+              "saturation_intensity_W_m2": 599.7,
+              "tag": "Zeeman_Laser",
+              "waist_m": 0.007,
+              "waist_position_m": [0, 0, 0],
+              "wavelength_m": 3.989108443e-7
+            },
+            "magnet_profile_name": "corrected_projectant_19ring_20261005",
+            "magnet_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+          }
+        },
+        "status": "complete"
+      },
+      "created_at": "2026-10-20T20:19:31.261940+00:00",
+      "display_name": "zeeman-749a502e8ef238b3b56a55db",
+      "error": null,
+      "execution": {
+        "mode": "zeus",
+        "progress": null,
+        "zeus_job_id": "4809752.zeus-master"
+      },
+      "id": "individual-run-af9e2e748c7cf61ac234c863",
+      "inputs": {
+        "artifacts": [],
+        "status": "complete"
+      },
+      "integrity": "complete_verified",
+      "lifecycle": "results_ready",
+      "metrics": {
+        "captured": 20,
+        "elapsed_s": 23.028152514249086,
+        "n_initial": 30,
+        "n_survivors": 20,
+        "survival_fraction": 0.6666666666666666
+      },
+      "next_action": "view_results",
+      "provenance": {
+        "configuration_sha256": "3109ceee8691eb5cffcdf5653f18d99de80cca3382722a3943dfaa9895814b14",
+        "git_revision": "a1d8b3500c562ac58f811f6d54eb7c00015ff4fe",
+        "inputs_sha256": "67e587cf88c3d3ead9dca318a4ac59773f676279b0f857e8f51db315e5c42a9e",
+        "laboratory_spec": {
+          "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "version": "laboratory-physical-v2"
+        },
+        "numerical_policy": {
+          "sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "version": "numerical-policy-v2"
+        }
+      },
+      "queried_at": "2026-10-20T20:20:26.541907+00:00",
+      "record_kind": "individual_simulation_run",
+      "record_state": "succeeded",
+      "results": {
+        "availability": "verified",
+        "completed_at": "2026-10-20T20:20:05.880419+00:00"
+      },
+      "retention": {
+        "particle_states_requested": true,
+        "status": "retained"
+      },
+      "run_kind": "zeeman",
+      "scientific_role": "individual-only",
+      "source": "local",
+      "stage_semantics": "single-run-lifecycle",
+      "trust": "verified-package",
+      "updated_at": "2026-10-20T20:20:16.656323+00:00",
+      "warnings": []
+    }
+  },
+  "mot_2d": {
+    "summary": {
+      "created_at": "2026-10-20T20:20:28.512628+00:00",
+      "display_name": "mot2d-b1eee445e2f78fa176b3efe8",
+      "execution": {
+        "locally_scheduled": false,
+        "mode": "zeus",
+        "progress": null,
+        "zeus_job_id": "4809754.zeus-master"
+      },
+      "id": "individual-run-7eaee782a8144c4529393f7f",
+      "integrity": "complete_verified",
+      "lifecycle": "results_ready",
+      "next_action": "view_results",
+      "queried_at": "2026-10-20T20:50:06.761702+00:00",
+      "record_kind": "individual_simulation_run",
+      "record_state": "succeeded",
+      "results": {
+        "availability": "verified",
+        "completed_at": "2026-10-20T20:30:32.837454+00:00"
+      },
+      "retention": {
+        "particle_states_requested": true,
+        "status": "retained"
+      },
+      "run_kind": "mot_2d",
+      "scientific_role": "individual-only",
+      "source": "local",
+      "stage_semantics": "single-run-lifecycle",
+      "trust": "verified-package",
+      "updated_at": "2026-10-20T20:30:44.972468+00:00",
+      "warnings": []
+    },
+    "detail": {
+      "artifacts": [
+        {
+          "kind": "particle_states",
+          "path": "results/states.npy",
+          "sha256": "ab7b8629d3b84b12080027507ca2e9ee2d80a75bf83185f4b468680cb62a1dd4",
+          "size_bytes": 176
+        }
+      ],
+      "configuration": {
+        "resolved": {
+          "admission_specification": {
+            "sha256": "61081da7ad3be663cd2bd470482e0ecbd4ef4438a0b58344ac3912d30ae88ea0",
+            "version": "mot-2d-individual-v1"
+          },
+          "execution": {
+            "mode": "zeus",
+            "workers": 200
+          },
+          "input_source": {
+            "fingerprint": "504b0e9fa098c6e7e24a7bf1f8d1728ae504c04cd6302f7614084eff92765914",
+            "id": "mot2d-source-28f5cc4c1ea64028ee55e81cd02e4e82",
+            "kind": "retained_individual_zeeman",
+            "pooled_particle_count": 20,
+            "qualification": "verified_individual_result",
+            "records": [
+              {
+                "dtype": "float64",
+                "path": "data/runs/zeeman/zeeman-749a502e8ef238b3b56a55db/results/states.npy",
+                "sha256": "9f8f9c6bccb5f593998cc8a5fc2b314319fb4e30c7e9826d6c39bcbb54cb2fde",
+                "shape": [20, 6],
+                "size_bytes": 1088,
+                "source_index": 0,
+                "source_run_public_id": "individual-run-af9e2e748c7cf61ac234c863",
+                "survivor_count": 20
+              }
+            ]
+          },
+          "mot_2d": {
+            "capture_criterion_version": "mot_2d_extract_survivors_v1",
+            "laser": {
+              "detuning_gamma": -0.9196610026631429,
+              "s0": 1.3,
+              "swap_polarization": false
+            },
+            "magnet_radius_m": 0.04676406447474441
+          },
+          "numerical_policy": {
+            "dt_s": 6.25e-7,
+            "solver": "RK4StHybridCustom",
+            "t_max_s": 0.025
+          },
+          "physical_specification": {
+            "apparatus": {
+              "dps_length_m": 0.07,
+              "dps_radius_m": 0.0015,
+              "mot_2d_chamber_length_m": 0.04,
+              "mot_2d_chamber_radius_m": 0.015,
+              "science_arm_1_length_m": 0.1445,
+              "science_arm_1_radius_m": 0.008,
+              "science_arm_3_radius_m": 0.008,
+              "science_arm_total_length_m": 0.51,
+              "science_region_center_z_m": 0.413,
+              "zeeman_arm_1_extended_length_m": 0.12,
+              "zeeman_arm_1_length_m": 0.378,
+              "zeeman_arm_1_radius_m": 0.008,
+              "zeeman_arm_1_short_length_m": 0.1,
+              "zeeman_arm_2_length_m": 0.0237,
+              "zeeman_arm_2_radius_m": 0.0035,
+              "zeeman_arm_3_length_m": 0.06,
+              "zeeman_arm_3_radius_m": 0.0174,
+              "zeeman_arm_angle_deg": 25,
+              "zeeman_start_distance_m": 0.314
+            },
+            "canonical_zeeman_profile": {
+              "canonical_json_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534",
+              "name": "corrected_projectant_19ring_20261005",
+              "positions_m": [
+                -0.024997611820684773, -0.0166074820171394,
+                -0.008950627767647022, -0.00092078429967626,
+                0.00814443912675755, 0.017179267715678983, 0.026052663995999155,
+                0.034685478864268364, 0.04313306739867095, 0.05148390143722414,
+                0.05982896994946931, 0.06827013970417552, 0.07691949882013517,
+                0.08584387642827504, 0.09421920860081025, 0.11603819574961396,
+                0.12420178457671346, 0.13228342027062034, 0.14031881812095845
+              ],
+              "radii_m": [
+                0.015135533905932736, 0.015135533905932736,
+                0.015135533905932736, 0.01564067491712827, 0.015135533905932736,
+                0.01545487107744853, 0.01550619118213793, 0.015431029052418464,
+                0.015431384813488134, 0.015593843015546225,
+                0.015982574299336368, 0.016696322694038545,
+                0.017911491977064927, 0.019997208970787862, 0.02441422530642514,
+                0.023392011949175236, 0.018848907108002317, 0.0175763591559792,
+                0.01877230109180483
+              ],
+              "ring_count": 19,
+              "tilt_angles_deg": [
+                335.0804487572892, 285.2490031515197, 270.0000002439007,
+                221.7488209497955, 225.5347010506507, 216.80695838117836,
+                207.61076606534354, 202.18280990952204, 199.40982196429187,
+                198.4289729313029, 199.19434976365733, 202.15552612330583,
+                208.5689225261901, 222.93255723300166, 277.02744495961696,
+                310.1872851907945, 356.6815879296744, 31.72880818764883,
+                92.20371185585765
+              ]
+            },
+            "source": {
+              "collimation_angle_deg": 1.5,
+              "microtube_count": 350,
+              "microtube_length_m": 0.009,
+              "microtube_radius_m": 0.00013,
+              "oven_temperature_C": 400,
+              "yb171_natural_abundance": 0.143
+            },
+            "spec_version": "laboratory-physical-v2",
+            "species": {
+              "mass_amu": 170.936331515,
+              "name": "Yb171"
+            },
+            "transitions": {
+              "blue": {
+                "gamma_rad_s": 183029187.99814135,
+                "measured_zeeman_coefficient_khz_per_G": 965,
+                "reference_saturation_intensity_mw_cm2": 59.97,
+                "wavelength_m": 3.989108443e-7
+              },
+              "green": {
+                "gamma_rad_s": 1146053.0000295565,
+                "measured_zeeman_coefficient_khz_per_G": 1392.674,
+                "wavelength_m": 5.5580068663e-7
+              }
+            },
+            "zeeman_field_hardware": {
+              "axis_offset_m": 0,
+              "magnet_dimensions_m": [0.005, 0.005, 0.005],
+              "magnet_polarization_T": -1.24,
+              "magnets_per_ring": 8
+            },
+            "zeeman_laser_geometry": {
+              "waist_m": 0.007,
+              "waist_position_m": [0, 0, 0]
+            }
+          },
+          "sampling": {
+            "algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+            "canonical_order": "constituent-record-order-then-row-index",
+            "selected_count": 20,
+            "selected_identities": [
+              [0, 0],
+              [0, 1],
+              [0, 2],
+              [0, 3],
+              [0, 4],
+              [0, 5],
+              [0, 6],
+              [0, 7],
+              [0, 8],
+              [0, 9],
+              [0, 10],
+              [0, 11],
+              [0, 12],
+              [0, 13],
+              [0, 14],
+              [0, 15],
+              [0, 16],
+              [0, 17],
+              [0, 18],
+              [0, 19]
+            ],
+            "selected_identities_sha256": "06674256ba4a4052eb3bb7dcc3b7c64df67bf8b96294ad728e3f83f2952ddcf6",
+            "selection_seed": 42,
+            "version": "v1"
+          },
+          "simulation": {
+            "force_scale_N": 3.141895058426422e-20,
+            "gravity_enabled": true,
+            "mot_seed": 42,
+            "particle_count": 20,
+            "start_distance_m": 0.1,
+            "stochastic": true
+          },
+          "upstream_zeeman_boundary": {
+            "field": {
+              "arm_angle_deg": 25,
+              "azimuthal_angles_deg": [0, 45, 90, 135, 180, 225, 270, 315],
+              "internal_axis": "+z",
+              "lab_axis_direction": "toward_lab_origin_in_negative_y_negative_z_arm",
+              "magnet_dimensions_m": [0.005, 0.005, 0.005],
+              "magnet_polarization_T": -1.24,
+              "magnets_per_ring": 8,
+              "positions_m": [
+                -0.024997611820684773, -0.0166074820171394,
+                -0.008950627767647022, -0.00092078429967626,
+                0.00814443912675755, 0.017179267715678983, 0.026052663995999155,
+                0.034685478864268364, 0.04313306739867095, 0.05148390143722414,
+                0.05982896994946931, 0.06827013970417552, 0.07691949882013517,
+                0.08584387642827504, 0.09421920860081025, 0.11603819574961396,
+                0.12420178457671346, 0.13228342027062034, 0.14031881812095845
+              ],
+              "radii_m": [
+                0.015135533905932736, 0.015135533905932736,
+                0.015135533905932736, 0.01564067491712827, 0.015135533905932736,
+                0.01545487107744853, 0.01550619118213793, 0.015431029052418464,
+                0.015431384813488134, 0.015593843015546225,
+                0.015982574299336368, 0.016696322694038545,
+                0.017911491977064927, 0.019997208970787862, 0.02441422530642514,
+                0.023392011949175236, 0.018848907108002317, 0.0175763591559792,
+                0.01877230109180483
+              ],
+              "start_distance_m": 0.314,
+              "tilt_angles_deg": [
+                335.0804487572892, 285.2490031515197, 270.0000002439007,
+                221.7488209497955, 225.5347010506507, 216.80695838117836,
+                207.61076606534354, 202.18280990952204, 199.40982196429187,
+                198.4289729313029, 199.19434976365733, 202.15552612330583,
+                208.5689225261901, 222.93255723300166, 277.02744495961696,
+                310.1872851907945, 356.6815879296744, 31.72880818764883,
+                92.20371185585765
+              ],
+              "tilt_input_sign": -1,
+              "zeeman_axis_offset_m": 0
+            },
+            "laser": {
+              "detuning_gamma": -13.75,
+              "detuning_rad_s": -2516651334.9744434,
+              "direction": [0, -0.42261826174069944, -0.9063077870366499],
+              "direction_type": "vector",
+              "gamma_rad_s": 183029187.99814135,
+              "peak_intensity_W_m2": 1799.1000000000001,
+              "polarization": "CircularRight",
+              "power_W": 0.13847496390529826,
+              "s0": 3,
+              "saturation_intensity_W_m2": 599.7,
+              "tag": "Zeeman_Laser",
+              "waist_m": 0.007,
+              "waist_position_m": [0, 0, 0],
+              "wavelength_m": 3.989108443e-7
+            }
+          }
+        },
+        "status": "complete"
+      },
+      "created_at": "2026-10-20T20:20:28.512628+00:00",
+      "display_name": "mot2d-b1eee445e2f78fa176b3efe8",
+      "error": null,
+      "execution": {
+        "mode": "zeus",
+        "progress": null,
+        "zeus_job_id": "4809754.zeus-master"
+      },
+      "id": "individual-run-7eaee782a8144c4529393f7f",
+      "inputs": {
+        "artifacts": [
+          {
+            "id": "source-000-states",
+            "path": "data/runs/zeeman/zeeman-749a502e8ef238b3b56a55db/results/states.npy",
+            "provenance": {
+              "source_fingerprint": "504b0e9fa098c6e7e24a7bf1f8d1728ae504c04cd6302f7614084eff92765914",
+              "source_id": "mot2d-source-28f5cc4c1ea64028ee55e81cd02e4e82",
+              "source_record_index": 0
+            },
+            "role": "zeeman_states",
+            "sha256": "9f8f9c6bccb5f593998cc8a5fc2b314319fb4e30c7e9826d6c39bcbb54cb2fde",
+            "size_bytes": 1088
+          }
+        ],
+        "status": "complete"
+      },
+      "integrity": "complete_verified",
+      "lifecycle": "results_ready",
+      "metrics": {
+        "conditional_efficiency": 0.05,
+        "elapsed_s": 585.5968076437712,
+        "n_input": 20,
+        "n_survivors": 1,
+        "provenance": {
+          "admission_specification_sha256": "61081da7ad3be663cd2bd470482e0ecbd4ef4438a0b58344ac3912d30ae88ea0",
+          "capture_criterion_version": "mot_2d_extract_survivors_v1",
+          "configuration_sha256": "a04841c9b6c95610bbddc03ad473988a4b2bb270403134ed91c699f8feccd33d",
+          "detuning_gamma": -0.9196610026631429,
+          "git_revision": "a1d8b3500c562ac58f811f6d54eb7c00015ff4fe",
+          "inputs_sha256": "a1ebf18f8d7e7debe5e91d5898750401c92d5a0f0747592dd1acef17cfb36b20",
+          "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "magnet_radius_m": 0.04676406447474441,
+          "mot_seed": 42,
+          "numerical_policy_sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "s0": 1.3,
+          "selection_algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+          "selection_seed": 42,
+          "selection_version": "v1",
+          "solver": "RK4StHybridCustom",
+          "source_fingerprint": "504b0e9fa098c6e7e24a7bf1f8d1728ae504c04cd6302f7614084eff92765914",
+          "source_id": "mot2d-source-28f5cc4c1ea64028ee55e81cd02e4e82",
+          "timestep_s": 6.25e-7
+        },
+        "selection_sha256": "06674256ba4a4052eb3bb7dcc3b7c64df67bf8b96294ad728e3f83f2952ddcf6"
+      },
+      "next_action": "view_results",
+      "provenance": {
+        "configuration_sha256": "a04841c9b6c95610bbddc03ad473988a4b2bb270403134ed91c699f8feccd33d",
+        "git_revision": "a1d8b3500c562ac58f811f6d54eb7c00015ff4fe",
+        "inputs_sha256": "a1ebf18f8d7e7debe5e91d5898750401c92d5a0f0747592dd1acef17cfb36b20",
+        "laboratory_spec": {
+          "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "version": "laboratory-physical-v2"
+        },
+        "numerical_policy": {
+          "sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "version": "numerical-policy-v2"
+        }
+      },
+      "queried_at": "2026-10-20T20:30:54.207094+00:00",
+      "record_kind": "individual_simulation_run",
+      "record_state": "succeeded",
+      "results": {
+        "availability": "verified",
+        "completed_at": "2026-10-20T20:30:32.837454+00:00"
+      },
+      "retention": {
+        "particle_states_requested": true,
+        "status": "retained"
+      },
+      "run_kind": "mot_2d",
+      "scientific_role": "individual-only",
+      "source": "local",
+      "stage_semantics": "single-run-lifecycle",
+      "trust": "verified-package",
+      "updated_at": "2026-10-20T20:30:44.972468+00:00",
+      "warnings": []
+    }
+  },
+  "mot_3d": {
+    "summary": {
+      "created_at": "2026-10-20T20:30:56.543831+00:00",
+      "display_name": "mot3d-f02c1bf15ec8d18d610d4ce5",
+      "execution": {
+        "locally_scheduled": false,
+        "mode": "zeus",
+        "progress": null,
+        "zeus_job_id": "4809766.zeus-master"
+      },
+      "id": "individual-run-79b78e368df628d641e28d4d",
+      "integrity": "complete_verified",
+      "lifecycle": "results_ready",
+      "next_action": "view_results",
+      "queried_at": "2026-10-20T20:50:06.761702+00:00",
+      "record_kind": "individual_simulation_run",
+      "record_state": "succeeded",
+      "results": {
+        "availability": "verified",
+        "completed_at": "2026-10-20T20:32:04.612131+00:00"
+      },
+      "retention": {
+        "particle_states_requested": true,
+        "status": "retained"
+      },
+      "run_kind": "mot_3d",
+      "scientific_role": "individual-only",
+      "source": "local",
+      "stage_semantics": "single-run-lifecycle",
+      "trust": "verified-package",
+      "updated_at": "2026-10-20T20:32:17.691732+00:00",
+      "warnings": []
+    },
+    "detail": {
+      "artifacts": [
+        {
+          "kind": "particle_states",
+          "path": "results/states.npy",
+          "sha256": "20143430c596d2a6fc1ca5ca24aa2f8f166f9b66808ad0b798c27c01264271b4",
+          "size_bytes": 128
+        }
+      ],
+      "configuration": {
+        "resolved": {
+          "admission_specification": {
+            "sha256": "4f8a14c66f22d3236dcc62f1e01ee4083db760058433a22855148bc9862553b2",
+            "version": "mot-3d-individual-v1"
+          },
+          "execution": {
+            "mode": "zeus",
+            "workers": 200
+          },
+          "input_source": {
+            "fingerprint": "1fd5b057455a1bce9b0a4b84d48fbfbf33353f4dfcbb0247a9c014256b102f43",
+            "id": "mot3d-source-8f43b00ccb479a5f5a3eb0525f337700",
+            "kind": "retained_individual_mot_2d",
+            "pooled_particle_count": 1,
+            "qualification": "verified_individual_result",
+            "records": [
+              {
+                "dtype": "float64",
+                "path": "data/runs/mot_2d/mot2d-b1eee445e2f78fa176b3efe8/results/states.npy",
+                "sha256": "ab7b8629d3b84b12080027507ca2e9ee2d80a75bf83185f4b468680cb62a1dd4",
+                "shape": [1, 6],
+                "size_bytes": 176,
+                "source_index": 0,
+                "source_run_public_id": "individual-run-7eaee782a8144c4529393f7f",
+                "survivor_count": 1
+              }
+            ]
+          },
+          "mot_3d": {
+            "capture": {
+              "capture_radius_m": 0.005,
+              "maximum_final_speed_m_s": 1,
+              "minimum_residence_time_s": 0.005
+            },
+            "derived_parameters": {},
+            "geometry_family": "angled_donut",
+            "parameters": {
+              "blue_detuning_gamma": -3,
+              "blue_s0": 1.5,
+              "blue_waist_m": 0.0075,
+              "core_shell_split_radius_m": 0.0025,
+              "green_detuning_gamma": -25,
+              "green_s0": 30,
+              "green_waist_m": 0.0075,
+              "magnetic_gradient_G_cm": 2.5
+            },
+            "resolved_profile": {
+              "399": {
+                "detuning_gamma": -3,
+                "enabled": true,
+                "inner_cutoff_radius_m": 0.0025,
+                "outer_cutoff_radius_m": 0.005,
+                "polarization_by_axis": {
+                  "+XZ_1": "right",
+                  "+XZ_2": "right",
+                  "+Y": "left",
+                  "-XZ_1": "right",
+                  "-XZ_2": "right",
+                  "-Y": "left"
+                },
+                "profile": "donut",
+                "s0": 1.5,
+                "waist_m": 0.0075
+              },
+              "556": {
+                "detuning_gamma": -25,
+                "enabled": true,
+                "outer_cutoff_radius_m": 0.0025,
+                "polarization_by_axis": {
+                  "+XZ_1": "right",
+                  "+XZ_2": "right",
+                  "+Y": "left",
+                  "-XZ_1": "right",
+                  "-XZ_2": "right",
+                  "-Y": "left"
+                },
+                "profile": "outer_clipped_gaussian",
+                "s0": 30,
+                "waist_m": 0.0075
+              },
+              "beam_layout": "angled_xz_y",
+              "blue_green_center_separation_m": 0,
+              "center_position_m": [0, 0, 0.413],
+              "description": "Two xz axes with a 62-degree full included angle plus a y axis. A shared optimized radius splits each coaxial beam into a green core and blue shell, and the common chamber hole clips both colors at 5 mm radius.",
+              "magnetic_gradient_G_cm": 2.5,
+              "magnetic_strong_axis": "y",
+              "xz_angle_from_z_deg": 31
+            }
+          },
+          "numerical_policy": {
+            "convergence_claim": "not_established",
+            "dt_s": 1e-5,
+            "solver": "RK4StHybridCustom",
+            "t_max_s": 0.1
+          },
+          "physical_specification": {
+            "apparatus": {
+              "dps_length_m": 0.07,
+              "dps_radius_m": 0.0015,
+              "mot_2d_chamber_length_m": 0.04,
+              "mot_2d_chamber_radius_m": 0.015,
+              "science_arm_1_length_m": 0.1445,
+              "science_arm_1_radius_m": 0.008,
+              "science_arm_3_radius_m": 0.008,
+              "science_arm_total_length_m": 0.51,
+              "science_region_center_z_m": 0.413,
+              "zeeman_arm_1_extended_length_m": 0.12,
+              "zeeman_arm_1_length_m": 0.378,
+              "zeeman_arm_1_radius_m": 0.008,
+              "zeeman_arm_1_short_length_m": 0.1,
+              "zeeman_arm_2_length_m": 0.0237,
+              "zeeman_arm_2_radius_m": 0.0035,
+              "zeeman_arm_3_length_m": 0.06,
+              "zeeman_arm_3_radius_m": 0.0174,
+              "zeeman_arm_angle_deg": 25,
+              "zeeman_start_distance_m": 0.314
+            },
+            "canonical_zeeman_profile": {
+              "canonical_json_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534",
+              "name": "corrected_projectant_19ring_20261005",
+              "positions_m": [
+                -0.024997611820684773, -0.0166074820171394,
+                -0.008950627767647022, -0.00092078429967626,
+                0.00814443912675755, 0.017179267715678983, 0.026052663995999155,
+                0.034685478864268364, 0.04313306739867095, 0.05148390143722414,
+                0.05982896994946931, 0.06827013970417552, 0.07691949882013517,
+                0.08584387642827504, 0.09421920860081025, 0.11603819574961396,
+                0.12420178457671346, 0.13228342027062034, 0.14031881812095845
+              ],
+              "radii_m": [
+                0.015135533905932736, 0.015135533905932736,
+                0.015135533905932736, 0.01564067491712827, 0.015135533905932736,
+                0.01545487107744853, 0.01550619118213793, 0.015431029052418464,
+                0.015431384813488134, 0.015593843015546225,
+                0.015982574299336368, 0.016696322694038545,
+                0.017911491977064927, 0.019997208970787862, 0.02441422530642514,
+                0.023392011949175236, 0.018848907108002317, 0.0175763591559792,
+                0.01877230109180483
+              ],
+              "ring_count": 19,
+              "tilt_angles_deg": [
+                335.0804487572892, 285.2490031515197, 270.0000002439007,
+                221.7488209497955, 225.5347010506507, 216.80695838117836,
+                207.61076606534354, 202.18280990952204, 199.40982196429187,
+                198.4289729313029, 199.19434976365733, 202.15552612330583,
+                208.5689225261901, 222.93255723300166, 277.02744495961696,
+                310.1872851907945, 356.6815879296744, 31.72880818764883,
+                92.20371185585765
+              ]
+            },
+            "source": {
+              "collimation_angle_deg": 1.5,
+              "microtube_count": 350,
+              "microtube_length_m": 0.009,
+              "microtube_radius_m": 0.00013,
+              "oven_temperature_C": 400,
+              "yb171_natural_abundance": 0.143
+            },
+            "spec_version": "laboratory-physical-v2",
+            "species": {
+              "mass_amu": 170.936331515,
+              "name": "Yb171"
+            },
+            "transitions": {
+              "blue": {
+                "gamma_rad_s": 183029187.99814135,
+                "measured_zeeman_coefficient_khz_per_G": 965,
+                "reference_saturation_intensity_mw_cm2": 59.97,
+                "wavelength_m": 3.989108443e-7
+              },
+              "green": {
+                "gamma_rad_s": 1146053.0000295565,
+                "measured_zeeman_coefficient_khz_per_G": 1392.674,
+                "wavelength_m": 5.5580068663e-7
+              }
+            },
+            "zeeman_field_hardware": {
+              "axis_offset_m": 0,
+              "magnet_dimensions_m": [0.005, 0.005, 0.005],
+              "magnet_polarization_T": -1.24,
+              "magnets_per_ring": 8
+            },
+            "zeeman_laser_geometry": {
+              "waist_m": 0.007,
+              "waist_position_m": [0, 0, 0]
+            }
+          },
+          "sampling": {
+            "algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+            "canonical_order": "constituent-record-order-then-row-index",
+            "selected_count": 1,
+            "selected_identities": [[0, 0]],
+            "selected_identities_sha256": "b0d317a3ada5818326ed8cf9a2c369a0833045f2d94f5144cd19ddd7bf978738",
+            "selection_seed": 42,
+            "version": "v1"
+          },
+          "simulation": {
+            "gravity_enabled": true,
+            "particle_count": 1,
+            "simulation_seed": 42,
+            "stochastic": true
+          }
+        },
+        "status": "complete"
+      },
+      "created_at": "2026-10-20T20:30:56.543831+00:00",
+      "display_name": "mot3d-f02c1bf15ec8d18d610d4ce5",
+      "error": null,
+      "execution": {
+        "mode": "zeus",
+        "progress": null,
+        "zeus_job_id": "4809766.zeus-master"
+      },
+      "id": "individual-run-79b78e368df628d641e28d4d",
+      "inputs": {
+        "artifacts": [
+          {
+            "id": "source-000-states",
+            "path": "data/runs/mot_2d/mot2d-b1eee445e2f78fa176b3efe8/results/states.npy",
+            "provenance": {
+              "source_fingerprint": "1fd5b057455a1bce9b0a4b84d48fbfbf33353f4dfcbb0247a9c014256b102f43",
+              "source_id": "mot3d-source-8f43b00ccb479a5f5a3eb0525f337700",
+              "source_record_index": 0
+            },
+            "role": "mot_2d_states",
+            "sha256": "ab7b8629d3b84b12080027507ca2e9ee2d80a75bf83185f4b468680cb62a1dd4",
+            "size_bytes": 176
+          }
+        ],
+        "status": "complete"
+      },
+      "integrity": "complete_verified",
+      "lifecycle": "results_ready",
+      "metrics": {
+        "elapsed_s": 48.8158319555223,
+        "n_input": 1,
+        "provenance": {
+          "admission_specification_sha256": "4f8a14c66f22d3236dcc62f1e01ee4083db760058433a22855148bc9862553b2",
+          "configuration_sha256": "42cc49a80da76e533c07ef6a7ec05752d0d3606810491fe5dbbb941923c62b0d",
+          "convergence_claim": "not_established",
+          "geometry_family": "angled_donut",
+          "git_revision": "a1d8b3500c562ac58f811f6d54eb7c00015ff4fe",
+          "inputs_sha256": "77982ea35e4024c007a74b7b9e0f5ba2783c085c4b4dcb39413d9b4a68931e1a",
+          "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "numerical_policy_sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "selection_algorithm": "pcg64-raw-partial-fisher-yates-unbiased",
+          "selection_seed": 42,
+          "selection_version": "v1",
+          "simulation_seed": 42,
+          "solver": "RK4StHybridCustom",
+          "source_fingerprint": "1fd5b057455a1bce9b0a4b84d48fbfbf33353f4dfcbb0247a9c014256b102f43",
+          "source_id": "mot3d-source-8f43b00ccb479a5f5a3eb0525f337700",
+          "t_max_s": 0.1,
+          "timestep_s": 1e-5
+        },
+        "residence_qualified_captured_count": 0,
+        "residence_qualified_captured_fraction": 0,
+        "selection_sha256": "b0d317a3ada5818326ed8cf9a2c369a0833045f2d94f5144cd19ddd7bf978738",
+        "usable_at_end_count": 0,
+        "usable_at_end_fraction": 0
+      },
+      "next_action": "view_results",
+      "provenance": {
+        "configuration_sha256": "42cc49a80da76e533c07ef6a7ec05752d0d3606810491fe5dbbb941923c62b0d",
+        "git_revision": "a1d8b3500c562ac58f811f6d54eb7c00015ff4fe",
+        "inputs_sha256": "77982ea35e4024c007a74b7b9e0f5ba2783c085c4b4dcb39413d9b4a68931e1a",
+        "laboratory_spec": {
+          "sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "version": "laboratory-physical-v2"
+        },
+        "numerical_policy": {
+          "sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "version": "numerical-policy-v2"
+        }
+      },
+      "queried_at": "2026-10-20T20:32:26.513240+00:00",
+      "record_kind": "individual_simulation_run",
+      "record_state": "succeeded",
+      "results": {
+        "availability": "verified",
+        "completed_at": "2026-10-20T20:32:04.612131+00:00"
+      },
+      "retention": {
+        "particle_states_requested": true,
+        "status": "retained"
+      },
+      "run_kind": "mot_3d",
+      "scientific_role": "individual-only",
+      "source": "local",
+      "stage_semantics": "single-run-lifecycle",
+      "trust": "verified-package",
+      "updated_at": "2026-10-20T20:32:17.691732+00:00",
+      "warnings": []
+    }
+  }
+}
