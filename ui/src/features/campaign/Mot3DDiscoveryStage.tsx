@@ -5,12 +5,14 @@ import type { useMot3DDiscoveryController } from "./controllers/useMot3DDiscover
 export function Mot3DDiscoveryStage({
   visible,
   connected,
+  preparationReady = true,
   flow,
   onConnectZeus,
   onViewJobs,
 }: {
   visible: boolean;
   connected: boolean;
+  preparationReady?: boolean;
   flow: ReturnType<typeof useMot3DDiscoveryController>;
   onConnectZeus: () => void;
   onViewJobs: () => void;
@@ -70,10 +72,9 @@ export function Mot3DDiscoveryStage({
         {connected && flow.state === "idle" && !tracked && !needsAttention && (
           <div className="prepare-card">
             <div>
-              <strong>Discovery is prepared, but not submitted</strong>
+              <strong>{preparationReady ? "Discovery is prepared, but not submitted" : "Prepare this campaign on Zeus first"}</strong>
               <p>
-                Review the exact five-array dependency chain before any Zeus job
-                starts.
+                {preparationReady ? "Review the exact five-array dependency chain before any Zeus job starts." : "Review and confirm the campaign transfer above. If jobs already exist, check their status without submitting again."}
               </p>
             </div>
             <div className="form-actions">
@@ -85,6 +86,7 @@ export function Mot3DDiscoveryStage({
               </button>
               <button
                 className="primary-button"
+                disabled={!preparationReady}
                 onClick={() => void flow.review()}
               >
                 Review Discovery jobs
@@ -95,7 +97,7 @@ export function Mot3DDiscoveryStage({
         {flow.state === "checking" && (
           <Busy title="Checking the frozen Discovery chain" />
         )}
-        {flow.preview && flow.state === "review" && (
+        {preparationReady && flow.preview && flow.state === "review" && (
           <div className="review-panel">
             <p className="eyebrow">Explicit review</p>
             <h3>Submit the Discovery chain</h3>

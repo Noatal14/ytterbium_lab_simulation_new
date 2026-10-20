@@ -22,6 +22,7 @@ import { Mot3DDiscoveryStage } from "./Mot3DDiscoveryStage";
 export function Mot3DCampaignFlow({
   stage,
   connected,
+  preparationReady = true,
   discovery,
   transition,
   preliminary,
@@ -41,6 +42,7 @@ export function Mot3DCampaignFlow({
 }: {
   stage: string;
   connected: boolean;
+  preparationReady?: boolean;
   discovery: ReturnType<typeof useMot3DDiscoveryController>;
   transition: ReturnType<typeof useMot3DDiscoveryTransitionController>;
   preliminary: ReturnType<typeof useMot3DPreliminaryCheckController>;
@@ -85,6 +87,7 @@ export function Mot3DCampaignFlow({
       <Mot3DDiscoveryStage
         visible={stage === "discovery"}
         connected={connected}
+        preparationReady={preparationReady}
         flow={discovery}
         onConnectZeus={onConnectZeus}
         onViewJobs={onViewJobs}

@@ -50,7 +50,12 @@ def worker_path_type(physical_root, logical_root):
             super().__init__(*(translate(os.fspath(value), logical, physical) for value in args))
 
         def __str__(self):
-            return translate(super().__str__(), physical, logical)
+            value = super().__str__()
+            # Plain relative paths are serialized by the simulated POSIX worker.
+            # Rooted/drive-relative paths outside its mount remain native.
+            if not native_type(value).anchor:
+                return value.replace(os.sep, '/')
+            return translate(value, physical, logical)
 
         def __fspath__(self):
             return native_io_path(super().__str__())

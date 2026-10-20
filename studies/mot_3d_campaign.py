@@ -155,9 +155,34 @@ def _dirty_relevant_files():
 
 
 def validate_upstream_2d_campaign(
-    campaign_directory, survivor_directory, *, acceptance_profile_id=None
+    campaign_directory, survivor_directory, *, acceptance_profile_id=None, repository_root=None
 ):
-    root = Path(campaign_directory).resolve()
+    authority_root = Path(repository_root).resolve(strict=True) if repository_root is not None else None
+    def source_reference(value, allowed_root, require):
+        if authority_root is None:
+            return Path(value).resolve()
+        from workflow_api.repository_paths import canonical_repo_relative, resolve_repo_relative
+        path = Path(value)
+        if any(part == ".." for part in path.parts):
+            raise ValueError("Upstream source path contains traversal.")
+        identity = canonical_repo_relative(authority_root, path if path.is_absolute() else value,
+                                           allowed_root=allowed_root, require=require)
+        return resolve_repo_relative(authority_root, identity, allowed_root=allowed_root, require=require)
+    def survivor_reference(value):
+        if authority_root is None:
+            return Path(value).resolve()
+        roots = ["data/particle_states/after_2d_mot"]
+        if acceptance_profile_id is not None:
+            roots += ["data/particle_states/after_mot_2d", "data/optimization/mot_2d"]
+        for allowed in roots:
+            try:
+                return source_reference(value, allowed, "dir")
+            except ValueError:
+                continue
+        raise ValueError("Upstream survivor path is outside canonical source roots.")
+    if authority_root is not None:
+        survivor_directory = survivor_reference(survivor_directory)
+    root = source_reference(campaign_directory, "data/optimization/mot_2d", "dir")
     manifest_path = root / "campaign.json"
     report_path = root / "final_report.json"
     if not manifest_path.is_file() or not report_path.is_file():
@@ -184,7 +209,7 @@ def validate_upstream_2d_campaign(
                 "3D acceptance requires a completed upstream acceptance campaign of the same profile."
             )
         for path in (root, survivor_directory):
-            assert_acceptance_path(path, Path(__file__).resolve().parents[1])
+            assert_acceptance_path(path, authority_root or Path(__file__).resolve().parents[1])
     else:
         assert_scientific_source(manifest)
         assert_scientific_source(report)
@@ -203,7 +228,7 @@ def validate_upstream_2d_campaign(
     ):
         raise ValueError("Unexpected upstream 2D final-report kind.")
     registered_report = manifest.get("stages", {}).get("final_report")
-    if not registered_report or Path(registered_report).resolve() != report_path:
+    if not registered_report or source_reference(registered_report, "data/optimization/mot_2d", "file") != report_path:
         raise ValueError("Upstream manifest does not register this final report.")
     seeds = tuple(manifest.get("seed_roles", {}).get("sealed_validation", ()))
     mot_seeds = tuple(manifest.get("mot_seeds", {}).get("sealed_validation", ()))
@@ -213,7 +238,7 @@ def validate_upstream_2d_campaign(
     matching = [
         row
         for row in results
-        if Path(row.get("survivor_states_directory", "")).resolve()
+        if survivor_reference(row.get("survivor_states_directory", ""))
         == Path(survivor_directory).resolve()
     ]
     if len(matching) != 1:
@@ -280,13 +305,17 @@ def validate_upstream_2d_campaign(
                 )
             legacy_attested = legacy_attested or identity["legacy_attested_profile"]
             continue
-        repository_root = Path(__file__).resolve().parents[1]
-        metadata_path = Path(str(record.get("metadata_path", "")))
-        state_path = Path(str(record.get("path", "")))
-        if not metadata_path.is_absolute():
-            metadata_path = repository_root / metadata_path
-        if not state_path.is_absolute():
-            state_path = repository_root / state_path
+        repository_root = authority_root or Path(__file__).resolve().parents[1]
+        if authority_root is not None:
+            metadata_path = source_reference(record.get("metadata_path", ""), "data/particle_states/after_zeeman", "file")
+            state_path = source_reference(record.get("path", ""), "data/particle_states/after_zeeman", "file")
+        else:
+            metadata_path = Path(str(record.get("metadata_path", "")))
+            state_path = Path(str(record.get("path", "")))
+            if not metadata_path.is_absolute():
+                metadata_path = repository_root / metadata_path
+            if not state_path.is_absolute():
+                state_path = repository_root / state_path
         if not metadata_path.is_file() or not state_path.is_file():
             raise ValueError("Upstream 2D frozen input is unavailable.")
         # Campaigns created before metadata hashing was introduced do not carry

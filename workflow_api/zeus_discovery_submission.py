@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib, json, os, re, secrets, stat, subprocess, threading, time
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Mapping, Protocol
 
 from workflow_api.discovery import build_registry
@@ -178,6 +178,172 @@ def _reject_symlink_components(root: Path, path: Path) -> None:
             raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
 
 
+def bootstrap_input_hashes(manifest):
+    """The exact sealed twenty-ensemble and upstream-report transfer closure."""
+    from workflow_api.mot_3d_provenance import input_registry_digest
+
+    roles = manifest.get("input_roles")
+    upstream = manifest.get("upstream_2d_campaign")
+    if not isinstance(roles, dict) or set(roles) != {"discovery", "refinement", "preliminary_check"} or not isinstance(upstream, dict):
+        raise ValueError("Invalid bootstrap source closure")
+    def relative(value):
+        if type(value) is not str or not value or "\\" in value or not value.isprintable():
+            raise ValueError("Unsafe bootstrap source path")
+        path = PurePosixPath(value)
+        if path.is_absolute() or path.as_posix() != value or any(part in {"", ".", ".."} for part in path.parts):
+            raise ValueError("Unsafe bootstrap source path")
+        return path
+    directory = relative(manifest.get("input_directory"))
+    allowed_input_roots = {("data", "particle_states", "after_2d_mot"), ("data", "optimization", "mot_2d")}
+    if manifest.get("kind") == "mot_3d_ui_acceptance_v1":
+        allowed_input_roots.add(("data", "particle_states", "after_mot_2d"))
+    if directory.parts[:3] not in allowed_input_roots:
+        raise ValueError("Invalid bootstrap input namespace")
+    selected = {}
+    seeds = set()
+    for role, count in (("discovery", 12), ("refinement", 4), ("preliminary_check", 4)):
+        rows = roles[role]
+        if not isinstance(rows, list) or len(rows) != count:
+            raise ValueError("Invalid bootstrap role cardinality")
+        for row in rows:
+            if not isinstance(row, dict) or type(row.get("zeeman_seed")) is not int or row["zeeman_seed"] in seeds:
+                raise ValueError("Invalid bootstrap seed registry")
+            seeds.add(row["zeeman_seed"])
+            for key, digest_key in (("path", "sha256"), ("metadata_path", "metadata_sha256")):
+                name, digest = row.get(key), row.get(digest_key)
+                if relative(name).parent != directory or type(digest) is not str or not HEX64.fullmatch(digest) or name in selected:
+                    raise ValueError("Invalid bootstrap frozen source")
+                selected[name] = digest
+    source_campaign = relative(upstream.get("campaign_path"))
+    source_report = relative(upstream.get("final_report_path"))
+    if source_campaign.parts[:3] != ("data", "optimization", "mot_2d") or source_campaign.name != "campaign.json" or source_report != source_campaign.with_name("final_report.json"):
+        raise ValueError("Invalid bootstrap upstream namespace")
+    for path, key in ((source_campaign, "campaign_sha256"), (source_report, "final_report_sha256")):
+        digest = upstream.get(key)
+        if type(digest) is not str or not HEX64.fullmatch(digest) or path.as_posix() in selected:
+            raise ValueError("Invalid bootstrap upstream hash")
+        selected[path.as_posix()] = digest
+    if len(selected) != 42:
+        raise ValueError("Invalid bootstrap source count")
+    evidence = manifest.get("design", {}).get("timestep_evidence", {})
+    handoff = evidence.get("source_handoff", {})
+    if handoff != {"campaign_sha256": upstream["campaign_sha256"], "final_report_sha256": upstream["final_report_sha256"], "input_registry_sha256": input_registry_digest(roles)}:
+        raise ValueError("Bootstrap input registry identity changed")
+    return selected
+
+
+def validate_discovery_bootstrap(root: Path, campaign: Path, manifest, receipt, *, campaign_relative: str, validate_inputs: bool = False):
+    """Authenticate the existing exact bootstrap registry without submitting jobs.
+
+    ``campaign`` may be a private staging directory; ``campaign_relative`` is the
+    independently authorized final namespace used by the canonical renderer.
+    """
+    relative = campaign_relative
+    from workflow_api.mot_3d_workload import validate_location
+    validate_location(manifest, relative)
+    if validate_inputs:
+        bootstrap_input_hashes(manifest)
+        upstream = manifest["upstream_2d_campaign"]
+        evidence = manifest["design"]["timestep_evidence"]
+        expected_digests = {
+            "physical_model_sha256": manifest.get("provenance", {}).get("physical_model_sha256"),
+            "source_2d_campaign_sha256": upstream["campaign_sha256"],
+            "source_2d_final_report_sha256": upstream["final_report_sha256"],
+            "input_registry_sha256": evidence["source_handoff"]["input_registry_sha256"],
+            "timestep_policy_sha256": evidence["policy_sha256"],
+        }
+        if any(receipt.get(key) != value for key, value in expected_digests.items()):
+            raise ValueError("Bootstrap receipt identity changed")
+    if (
+        set(receipt) != RECEIPT_KEYS
+        or receipt.get("status") != "discovery_prepared"
+        or manifest.get("stage") != "discovery"
+        or manifest.get("name") != Path(relative).name
+    ):
+        raise ZeusMot3DDiscoverySubmissionError("discovery_not_prepared")
+    commit = receipt.get("commit")
+    nonce = receipt.get("nonce")
+    files = receipt.get("files")
+    digests = (
+        "physical_model_sha256",
+        "source_2d_campaign_sha256",
+        "source_2d_final_report_sha256",
+        "input_registry_sha256",
+        "timestep_policy_sha256",
+    )
+    if (
+        not isinstance(commit, str)
+        or not HEX40.fullmatch(commit)
+        or not isinstance(nonce, str)
+        or not HEX32.fullmatch(nonce)
+        or not isinstance(files, dict)
+        or set(files) != FILES
+        or any(
+            not isinstance(v, str) or not HEX64.fullmatch(v) for v in files.values()
+        )
+        or any(
+            not isinstance(receipt.get(k), str) or not HEX64.fullmatch(receipt[k])
+            for k in digests
+        )
+        or not isinstance(receipt.get("completed_unix_s"), (int, float))
+        or isinstance(receipt.get("completed_unix_s"), bool)
+        or not 0 <= receipt["completed_unix_s"] <= 253402300799
+    ):
+        raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+    if manifest.get("provenance", {}).get("git_commit") != commit:
+        raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+    expected = canonical_digest(
+        {
+            "campaign_name": Path(relative).name,
+            "commit": commit,
+            **{k: receipt[k] for k in digests},
+            "files": files,
+            "nonce": nonce,
+        }
+    )
+    if receipt.get("bootstrap_key") != expected:
+        raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+    for name, digest in files.items():
+        path = campaign.joinpath(*Path(name).parts)
+        _reject_symlink_components(root, path)
+        raw = _bounded_bytes(path)
+        if hashlib.sha256(raw).hexdigest() != digest:
+            raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+    # Review numbers are policy-derived only after exact frozen PBS parity.
+    from workflow_api.mot_3d_workload import (
+        discovery_review,
+        validate_discovery_job_bytes,
+    )
+
+    _, science = discovery_review(manifest)
+    design = manifest.get("design", {})
+    if any(
+        design.get(field) != science[value]
+        for field, value in (
+            ("screening_dt_s", "dt_s"),
+            ("t_max_s", "t_max_s"),
+            ("solver", "solver"),
+        )
+    ):
+        raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+    try:
+        validate_discovery_job_bytes(
+            manifest,
+            commit,
+            relative,
+            {
+                name: _bounded_bytes(campaign / name)
+                for name in files
+                if name != "campaign.json"
+            },
+        )
+    except ValueError as error:
+        raise ZeusMot3DDiscoverySubmissionError(
+            "discovery_preparation_invalid"
+        ) from error
+    return commit, nonce, dict(files), expected
+
+
 class ZeusMot3DDiscoverySubmissionCoordinator:
     def __init__(
         self,
@@ -247,93 +413,9 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
             raise ZeusMot3DDiscoverySubmissionError(
                 "discovery_preparation_invalid"
             ) from exc
-        if (
-            set(receipt) != RECEIPT_KEYS
-            or receipt.get("status") != "discovery_prepared"
-            or manifest.get("stage") != "discovery"
-            or manifest.get("name") != campaign.name
-        ):
-            raise ZeusMot3DDiscoverySubmissionError("discovery_not_prepared")
-        commit = receipt.get("commit")
-        nonce = receipt.get("nonce")
-        files = receipt.get("files")
-        digests = (
-            "physical_model_sha256",
-            "source_2d_campaign_sha256",
-            "source_2d_final_report_sha256",
-            "input_registry_sha256",
-            "timestep_policy_sha256",
+        commit, nonce, files, expected = validate_discovery_bootstrap(
+            self.root, campaign, manifest, receipt, campaign_relative=relative
         )
-        if (
-            not isinstance(commit, str)
-            or not HEX40.fullmatch(commit)
-            or not isinstance(nonce, str)
-            or not HEX32.fullmatch(nonce)
-            or not isinstance(files, dict)
-            or set(files) != FILES
-            or any(
-                not isinstance(v, str) or not HEX64.fullmatch(v) for v in files.values()
-            )
-            or any(
-                not isinstance(receipt.get(k), str) or not HEX64.fullmatch(receipt[k])
-                for k in digests
-            )
-            or not isinstance(receipt.get("completed_unix_s"), (int, float))
-            or isinstance(receipt.get("completed_unix_s"), bool)
-            or not 0 <= receipt["completed_unix_s"] <= 253402300799
-        ):
-            raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
-        if manifest.get("provenance", {}).get("git_commit") != commit:
-            raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
-        expected = canonical_digest(
-            {
-                "campaign_name": campaign.name,
-                "commit": commit,
-                **{k: receipt[k] for k in digests},
-                "files": files,
-                "nonce": nonce,
-            }
-        )
-        if receipt.get("bootstrap_key") != expected:
-            raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
-        for name, digest in files.items():
-            path = campaign.joinpath(*Path(name).parts)
-            _reject_symlink_components(self.root, path)
-            raw = _bounded_bytes(path)
-            if hashlib.sha256(raw).hexdigest() != digest:
-                raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
-        # Review numbers are policy-derived only after exact frozen PBS parity.
-        from workflow_api.mot_3d_workload import (
-            discovery_review,
-            validate_discovery_job_bytes,
-        )
-
-        _, science = discovery_review(manifest)
-        design = manifest.get("design", {})
-        if any(
-            design.get(field) != science[value]
-            for field, value in (
-                ("screening_dt_s", "dt_s"),
-                ("t_max_s", "t_max_s"),
-                ("solver", "solver"),
-            )
-        ):
-            raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
-        try:
-            validate_discovery_job_bytes(
-                manifest,
-                commit,
-                relative,
-                {
-                    name: _bounded_bytes(campaign / name)
-                    for name in files
-                    if name != "campaign.json"
-                },
-            )
-        except ValueError as error:
-            raise ZeusMot3DDiscoverySubmissionError(
-                "discovery_preparation_invalid"
-            ) from error
         receipt_digest = canonical_digest(receipt)
         key = canonical_digest(
             {

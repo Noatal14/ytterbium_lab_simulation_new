@@ -1,23 +1,21 @@
 """Strict Vite-loaded 3D client contracts over real protocol public DTOs."""
 import json
+import re
 from pathlib import Path
 import shutil
 import subprocess
 
 
-def assert_3d_contracts(rows):
-    root = Path(__file__).resolve().parents[1]
-    node = shutil.which('node')
-    if node is None:
-        node = str(Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node')
+def render_bridge_script(root):
+    root = Path(root)
     script = '''
-import {createServer} from VITE;
+import {createServer} from __VITE_URI_JSON__;
 let raw='';for await(const chunk of process.stdin)raw+=chunk;
 const rows=JSON.parse(raw);
-const server=await createServer({root:UI,mode:'ui-acceptance',configFile:false,server:{middlewareMode:true,hmr:false},appType:'custom'});
+const server=await createServer({root:__UI_ROOT_JSON__,mode:'ui-acceptance',configFile:false,server:{middlewareMode:true,hmr:false},appType:'custom'});
 try{
  for(const row of rows){
-  const module=await server.ssrLoadModule('/src/api/clients/'+row.client+'.ts');
+  const module=await server.ssrLoadModule(row.client==='domain'?'/src/api/schema/domain.ts':'/src/api/clients/'+row.client+'.ts');
   try{
    if(row.parser==='completionClient'){
     let call=0;
@@ -34,7 +32,20 @@ try{
  }
  console.log('3D_PROTOCOL_CONTRACTS:'+rows.length);
 }finally{await server.close();}
-'''.replace('VITE', json.dumps((root / 'ui/node_modules/vite/dist/node/index.js').as_uri())).replace('UI', json.dumps(str(root / 'ui')))
+'''
+    replacements = {
+        '__VITE_URI_JSON__': json.dumps((root / 'ui/node_modules/vite/dist/node/index.js').as_uri()),
+        '__UI_ROOT_JSON__': json.dumps(str(root / 'ui')),
+    }
+    return re.sub(r'__VITE_URI_JSON__|__UI_ROOT_JSON__', lambda match: replacements[match[0]], script)
+
+
+def assert_3d_contracts(rows):
+    root = Path(__file__).resolve().parents[1]
+    node = shutil.which('node')
+    if node is None:
+        node = str(Path.home() / '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node')
+    script = render_bridge_script(root)
     result = subprocess.run([node, '--input-type=module', '-e', script],
                             input=json.dumps(rows, allow_nan=False), capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr

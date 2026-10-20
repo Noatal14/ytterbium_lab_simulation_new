@@ -419,16 +419,17 @@ def test_ui_bootstrap_catalog_rejects_symlinked_report(
     assert service.status({})["sources"] == []
 
 
-@pytest.mark.parametrize("attack", ["name", "bool_s0", "nonfinite_s0"])
+@pytest.mark.parametrize("attack", ["name", "name_tab", "name_nul", "name_cr", "name_del", "bool_s0", "nonfinite_s0"])
 def test_ui_bootstrap_catalog_rejects_unsafe_public_fields(
     input_dir, upstream_campaign, tmp_path, attack
 ):
     from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
 
-    if attack == "name":
+    if attack.startswith("name"):
         manifest_path = upstream_campaign / "campaign.json"
         manifest = json.loads(manifest_path.read_text())
-        manifest["name"] = "unsafe\nname"
+        control = {"name": "\n", "name_tab": "\t", "name_nul": "\0", "name_cr": "\r", "name_del": "\x7f"}[attack]
+        manifest["name"] = "unsafe" + control + "name"
         manifest_path.write_text(json.dumps(manifest))
     else:
         report_path = upstream_campaign / "final_report.json"
@@ -442,6 +443,21 @@ def test_ui_bootstrap_catalog_rejects_unsafe_public_fields(
         dirty_provider=lambda: (),
     )
     assert service.status({})["sources"] == []
+
+
+@pytest.mark.parametrize("name", ["TEST ONLY UI Release Mac J", "בדיקת קבלה – TEST ONLY"])
+def test_ui_bootstrap_catalog_preserves_printable_display_names(input_dir, upstream_campaign, tmp_path, name):
+    from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
+
+    manifest_path = upstream_campaign / "campaign.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["name"] = name
+    manifest_path.write_text(json.dumps(manifest))
+    service = Mot3DDiscoveryBootstrapService(
+        tmp_path, revision_provider=lambda: "a" * 40,
+        physical_hash_provider=lambda: "b" * 64, dirty_provider=lambda: (),
+    )
+    assert [source["campaign_name"] for source in service.status({})["sources"]] == [name]
 
 
 def test_ui_bootstrap_confirm_never_replaces_racing_destination(
@@ -1242,3 +1258,60 @@ def test_selection_candidate_count_rejects_conflicting_metadata():
         mot_3d_campaign._selection_candidate_count(
             {"selected_candidate_count": 12, "candidate_count": 11}
         )
+
+
+@pytest.mark.parametrize("portable", [False, True])
+def test_upstream_explicit_repository_resolves_sources_outside_cwd(tmp_path, input_dir, upstream_campaign, monkeypatch, portable):
+    manifest_path, report_path = upstream_campaign / "campaign.json", upstream_campaign / "final_report.json"
+    manifest, report = json.loads(manifest_path.read_bytes()), json.loads(report_path.read_bytes())
+    manifest["stages"]["final_report"] = report_path.relative_to(tmp_path).as_posix() if portable else str(report_path)
+    report["results"][0]["survivor_states_directory"] = input_dir.relative_to(tmp_path).as_posix() if portable else str(input_dir)
+    manifest_path.write_text(json.dumps(manifest))
+    report_path.write_text(json.dumps(report))
+    elsewhere = tmp_path / "unrelated-cwd"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    result = mot_3d_campaign.validate_upstream_2d_campaign(
+        upstream_campaign.relative_to(tmp_path).as_posix() if portable else upstream_campaign,
+        input_dir.relative_to(tmp_path).as_posix() if portable else input_dir,
+        repository_root=tmp_path)
+    assert result["campaign_sha256"] == hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+    assert result["final_report_sha256"] == hashlib.sha256(report_path.read_bytes()).hexdigest()
+
+
+@pytest.mark.parametrize("attack", ["report_traversal", "report_outside", "report_foreign_root", "survivor_outside", "metadata_foreign", "state_foreign"])
+def test_upstream_explicit_repository_rejects_foreign_source_references(tmp_path, input_dir, upstream_campaign, attack):
+    manifest_path, report_path = upstream_campaign / "campaign.json", upstream_campaign / "final_report.json"
+    manifest, report = json.loads(manifest_path.read_bytes()), json.loads(report_path.read_bytes())
+    if attack == "report_traversal":
+        manifest["stages"]["final_report"] = "data/optimization/mot_2d/upstream_2d/../upstream_2d/final_report.json"
+    elif attack == "report_outside":
+        foreign = tmp_path / "outside-report.json"
+        foreign.write_bytes(report_path.read_bytes())
+        manifest["stages"]["final_report"] = str(foreign)
+    elif attack == "report_foreign_root":
+        foreign = tmp_path / "data/optimization/mot_3d/foreign/final_report.json"
+        foreign.parent.mkdir(parents=True)
+        foreign.write_bytes(report_path.read_bytes())
+        manifest["stages"]["final_report"] = str(foreign)
+    elif attack == "survivor_outside":
+        foreign = tmp_path / "outside-source"
+        foreign.mkdir()
+        report["results"][0]["survivor_states_directory"] = str(foreign)
+    else:
+        record = manifest["input_ensembles"]["sealed_validation"][0]
+        for key in ("laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"):
+            record.pop(key)
+        allowed = tmp_path / "data/particle_states/after_zeeman/source"
+        allowed.mkdir(parents=True)
+        state, metadata = allowed / "states.npy", allowed / "states.json"
+        state.write_bytes(b"frozen state bytes")
+        metadata.write_bytes(b"{}")
+        foreign = tmp_path / "foreign-source"
+        foreign.write_bytes(b"foreign bytes")
+        record.update(path=str(foreign if attack == "state_foreign" else state),
+                      metadata_path=str(foreign if attack == "metadata_foreign" else metadata))
+    manifest_path.write_text(json.dumps(manifest))
+    report_path.write_text(json.dumps(report))
+    with pytest.raises(ValueError):
+        mot_3d_campaign.validate_upstream_2d_campaign(upstream_campaign, input_dir, repository_root=tmp_path)

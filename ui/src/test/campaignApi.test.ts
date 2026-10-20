@@ -202,7 +202,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "transfer-csrf" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: {
         preview_token: "transfer-token", expires_in_seconds: 300,
-        campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40) },
+        campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40) , family: "mot_2d"},
         destination: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/x" },
         artifacts: { ensemble_count: 35, total_count: 72, missing_count: 2, identical_count: 70, total_bytes: 52_000_000, missing_bytes: 1000 },
         effects: { copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false },

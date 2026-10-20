@@ -1,0 +1,38 @@
+import { expect, test, type Route } from "@playwright/test";
+
+test("fresh 3D preparation transfers once before Discovery and reload retires submit authority", async ({page}) => {
+  const id = "mot_3d-transfer";
+  const campaign = {id, family: "mot_3d", kind: "mot_3d_campaign_v2", name: "3D transfer acceptance", path: "data/optimization/mot_3d/transfer_acceptance", stage: "discovery", stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current", scientific_role: "candidate-selection", progress: [], warnings: [], next_plan: null, s0_values: [], families: ["angled_donut", "single_pass"], git_commit: "a".repeat(40), remote_preparation: {status: "ready", reason_code: null}};
+  const profile = {host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent"};
+  const calls: string[] = [];
+  page.on("request", request => {if(request.method() === "POST")calls.push(new URL(request.url()).pathname);});
+  const respond = async (route: Route, data: unknown) => route.fulfill({json: {api_version: 1, data}});
+  await page.route("**/api/v1/session", route => respond(route, {csrf_token: "csrf"}));
+  await page.route("**/api/v1/campaigns", route => respond(route, {campaigns: [campaign], invalid_count: 0, total: 1}));
+  await page.route(`**/api/v1/campaigns/${id}`, route => respond(route, campaign));
+  await page.route("**/api/v1/zeus/snapshot", route => respond(route, {connection_status: "connected", profile, remote: {project_directory: profile.project_directory, git_commit: campaign.git_commit, branch: "main", dirty: false}, scheduler: {status: "available", queried_at: new Date().toISOString(), jobs: []}}));
+  await page.route("**/api/v1/zeus/transfers/preview", route => respond(route, {preview_token: "transfer", expires_in_seconds: 300, campaign: {id, family: "mot_3d", name: campaign.name, path: campaign.path, git_commit: campaign.git_commit}, destination: {host: profile.host, project_directory: profile.project_directory, campaign_directory: `${profile.project_directory}/${campaign.path}`}, artifacts: {ensemble_count: 20, total_count: 52, missing_count: 52, identical_count: 0, total_bytes: 1000, missing_bytes: 1000}, effects: {copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false}}));
+  await page.route("**/api/v1/zeus/transfers/confirm", route => respond(route, {status: "prepared", campaign_id: id, destination: `${profile.project_directory}/${campaign.path}`, transferred_count: 52, reused_identical_count: 0, bytes_transferred: 1000, submitted_to_zeus: false, simulation_started: false}));
+  await page.goto("/");
+  await page.getByRole("link", {name: "Zeus connection"}).click();
+  await page.getByLabel("Technion username").fill("tal.noa");
+  await page.getByRole("button", {name: "Connect and check status"}).click();
+  await page.getByRole("button", {name: "Inspect campaign"}).click();
+  await expect(page.getByRole("button", {name: "Review Discovery jobs"})).toBeDisabled();
+  await page.getByRole("button", {name: "Review Zeus preparation"}).click();
+  await expect(page.getByRole("heading", {name: "Review preparation"})).toBeFocused();
+  await expect(page.getByText("Sealed input ensembles")).toBeVisible();
+  await page.getByRole("button", {name: "Prepare campaign on Zeus", exact: true}).dblclick();
+  await expect(page.getByText("Campaign prepared on Zeus")).toBeVisible();
+  await expect(page.getByRole("button", {name: "Review Discovery jobs"})).toBeEnabled();
+  expect(calls.filter(p => p.endsWith("/transfers/confirm"))).toHaveLength(1);
+  expect(calls.some(p => p.includes("/submissions/"))).toBe(false);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
+  await page.reload();
+  await page.getByRole("link", {name: "Zeus connection"}).click();
+  await page.getByLabel("Technion username").fill("tal.noa");
+  await page.getByRole("button", {name: "Connect and check status"}).click();
+  await page.getByRole("button", {name: "Inspect campaign"}).click();
+  await expect(page.getByRole("button", {name: "Review Discovery jobs"})).toBeDisabled();
+  expect(calls.filter(p => p.endsWith("/transfers/confirm"))).toHaveLength(1);
+});

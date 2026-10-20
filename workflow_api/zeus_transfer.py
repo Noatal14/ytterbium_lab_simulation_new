@@ -85,6 +85,7 @@ class ZeusPreparationTransport(Protocol):
 _REMOTE_TRANSFER_SCRIPT = r'''import hashlib,json,os,pathlib,secrets,stat,struct,subprocess,sys
 op, username, project_text, encoded_paths, expected_commit = sys.argv[1:6]
 project = pathlib.Path(project_text)
+project_is_alias = project.is_symlink()
 home = pathlib.Path('/home') / username
 try: project = project.resolve(strict=True)
 except (OSError,RuntimeError): print(json.dumps({'error':'remote_project_missing'})); raise SystemExit(20)
@@ -103,8 +104,9 @@ def relative(text):
     if not isinstance(text,str) or not text or len(text.encode())>512 or '\\' in text or not text.isprintable(): raise ValueError()
     pure=pathlib.PurePosixPath(text)
     if pure.is_absolute() or pure.as_posix()!=text or any(x in ('','.','..') for x in pure.parts): raise ValueError()
-    allowed=(('data','particle_states','after_zeeman'),('data','optimization','mot_2d'))
+    allowed=(('data','particle_states','after_zeeman'),('data','particle_states','after_2d_mot'),('data','optimization','mot_2d'),('data','optimization','mot_3d'))
     if not any(pure.parts[:len(prefix)]==prefix for prefix in allowed): raise ValueError()
+    if op=='inputs' and pure.parts[:3]==('data','optimization','mot_3d'): raise ValueError()
     if project.name=='ytterbium_lab_simulation_ui_acceptance':
         if len(pure.parts)<5 or pure.parts[3]!='ui_acceptance': raise ValueError()
     elif 'ui_acceptance' in pure.parts: raise ValueError()
@@ -114,7 +116,9 @@ def relative(text):
         current=current/part
         if current.is_symlink(): raise ValueError()
     return pure,target
-try: resolved=[relative(path) for path in paths]
+try:
+    resolved=[relative(path) for path in paths]
+    if any(pure.parts[:3]==('data','optimization','mot_3d') for pure,_ in resolved) and project_is_alias: raise ValueError()
 except (ValueError,OSError): print(json.dumps({'error':'invalid_request'})); raise SystemExit(21)
 def run(argv):
     result=subprocess.run(argv,cwd='.',stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,
@@ -154,6 +158,14 @@ if op=='inspect':
 if op not in ('inputs','campaign'): print(json.dumps({'error':'invalid_request'})); raise SystemExit(21)
 if not checkout_matches(): print(json.dumps({'error':'remote_checkout_mismatch'})); raise SystemExit(25)
 class CheckoutMismatch(Exception): pass
+def unique_object(pairs):
+    result={}
+    for key,value in pairs:
+        if key in result: raise ValueError()
+        result[key]=value
+    return result
+def strict_record(source):
+    return json.load(source,object_pairs_hook=unique_object,parse_constant=lambda value: (_ for _ in ()).throw(ValueError()))
 def directory_fd(parts,create=False,start_fd=None):
     current=os.dup(root_fd if start_fd is None else start_fd)
     try:
@@ -241,7 +253,10 @@ try:
         pure_paths=[pure for pure,_ in resolved]
         count=5 if project.name=='ytterbium_lab_simulation_ui_acceptance' else 4
         campaign_parts=pure_paths[0].parts[:count]
-        if len(campaign_parts)!=count or campaign_parts[:3]!=('data','optimization','mot_2d') or any(p.parts[:count]!=campaign_parts for p in pure_paths): raise ValueError()
+        if len(campaign_parts)!=count or campaign_parts[:2]!=('data','optimization') or campaign_parts[2] not in ('mot_2d','mot_3d') or any(p.parts[:count]!=campaign_parts for p in pure_paths): raise ValueError()
+        if campaign_parts[2]=='mot_3d':
+            required={'campaign.json','jobs/01_smoke_angled_donut.pbs','jobs/01_smoke_single_pass.pbs','jobs/02_submit_discovery_chain.sh','jobs/angled_donut/round_01.pbs','jobs/angled_donut/round_02.pbs','jobs/single_pass/round_01.pbs','jobs/single_pass/round_02.pbs','jobs/single_pass/round_03.pbs','.mot_ui/transitions/discovery_bootstrap.json'}
+            if {p.relative_to(pathlib.PurePosixPath(*campaign_parts)).as_posix() for p in pure_paths}!=required: raise ValueError()
         parent_fd=directory_fd(campaign_parts[:-1],create=True)
         final_name=campaign_parts[-1]
         try: os.stat(final_name,dir_fd=parent_fd,follow_symlinks=False); raise FileExistsError()
@@ -259,12 +274,39 @@ try:
             for pure,(file_parent_fd,temporary,target_name,digest) in received.items():
                 os.rename(temporary,target_name,src_dir_fd=file_parent_fd,dst_dir_fd=file_parent_fd); os.close(file_parent_fd)
             if not checkout_matches(): raise CheckoutMismatch()
-            if project.name=='ytterbium_lab_simulation_ui_acceptance':
+            if project.name=='ytterbium_lab_simulation_ui_acceptance' or campaign_parts[2]=='mot_3d':
+                if campaign_parts[2]=='mot_3d':
+                    sys.dont_write_bytecode=True
+                    sys.path.insert(0,str(project/'atomsmltr/src'))
                 sys.path.insert(0,str(project))
                 from workflow_api.acceptance_remote import assert_campaign_target
                 fd=os.open('campaign.json',os.O_RDONLY|NOFOLLOW,dir_fd=stage_fd)
-                with os.fdopen(fd,'r') as record: manifest=json.load(record)
+                with os.fdopen(fd,'r') as record: manifest=strict_record(record) if campaign_parts[2]=='mot_3d' else json.load(record)
+                if campaign_parts[2]=='mot_3d' and manifest.get('kind')!=('mot_3d_ui_acceptance_v1' if project.name=='ytterbium_lab_simulation_ui_acceptance' else 'mot_3d_campaign_v2'): raise ValueError()
                 assert_campaign_target(manifest,username,project_text,'/'.join(campaign_parts))
+            if campaign_parts[2]=='mot_3d':
+                from workflow_api.zeus_discovery_submission import validate_discovery_bootstrap,bootstrap_input_hashes
+                fd=os.open('.mot_ui',os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=stage_fd)
+                transition_fd=os.open('transitions',os.O_RDONLY|DIRECTORY|NOFOLLOW,dir_fd=fd);os.close(fd)
+                receipt_fd=os.open('discovery_bootstrap.json',os.O_RDONLY|NOFOLLOW,dir_fd=transition_fd);os.close(transition_fd)
+                with os.fdopen(receipt_fd,'r') as record: receipt=strict_record(record)
+                staged_path=project.joinpath(*campaign_parts[:-1],stage_name)
+                bootstrap=validate_discovery_bootstrap(project,staged_path,manifest,receipt,campaign_relative=pathlib.PurePosixPath(*campaign_parts).as_posix(),validate_inputs=True)
+                if bootstrap[0]!=expected_commit: raise ValueError()
+                for input_name,expected_hash in bootstrap_input_hashes(manifest).items():
+                    pure,_=relative(input_name)
+                    input_parent=directory_fd(pure.parts[:-1])
+                    try:
+                        input_fd=os.open(pure.parts[-1],os.O_RDONLY|NOFOLLOW,dir_fd=input_parent)
+                        with os.fdopen(input_fd,'rb') as source:
+                            info=os.fstat(source.fileno())
+                            if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or info.st_size>134217728: raise ValueError()
+                            digest=hashlib.sha256()
+                            for chunk in iter(lambda:source.read(1048576),b''): digest.update(chunk)
+                            if digest.hexdigest()!=expected_hash: raise ValueError()
+                    finally: os.close(input_parent)
+                from studies.mot_3d_campaign import validate_frozen_inputs
+                for role in ('discovery','refinement','preliminary_check'): validate_frozen_inputs(staged_path/'campaign.json',role)
             import ctypes,errno
             libc=ctypes.CDLL(None,use_errno=True)
             renameat2=getattr(libc,'renameat2',None)
@@ -539,7 +581,7 @@ class ZeusPreparationCoordinator:
         except ValueError as error:
             raise ZeusPreparationError("profile_invalid") from error
         entry = build_registry(self.root).get(campaign_id)
-        if entry is None or entry.family != "mot_2d":
+        if entry is None or entry.family not in {"mot_2d", "mot_3d"}:
             raise ZeusPreparationError("campaign_not_found")
         manifest = _load_manifest(entry.manifest)
         from workflow_api.acceptance_remote import assert_campaign_target
@@ -572,10 +614,10 @@ class ZeusPreparationCoordinator:
         response = {
             "preview_token": preview.token,
             "expires_in_seconds": TOKEN_LIFETIME_SECONDS,
-            "campaign": {"id": campaign_id, "name": manifest_name, "path": preview.campaign, "git_commit": preview.git_commit},
+            "campaign": {"id": campaign_id, "family": entry.family, "name": manifest_name, "path": preview.campaign, "git_commit": preview.git_commit},
             "destination": destination,
             "artifacts": {
-                "ensemble_count": MOT_2D_SPECIFICATION["design"]["ensemble_count"], "total_count": len(preview.files),
+                "ensemble_count": 20 if entry.family == "mot_3d" else MOT_2D_SPECIFICATION["design"]["ensemble_count"], "total_count": len(preview.files),
                 "missing_count": sum(item.action == "upload" for item in preview.files),
                 "identical_count": sum(item.action == "reuse" for item in preview.files),
                 "total_bytes": sum(item.size for item in preview.files),
@@ -687,7 +729,7 @@ def _sha256(path: Path) -> str:
 
 def _load_manifest(path: Path) -> dict[str, object]:
     try:
-        value = read_manifest(path, expected_family="mot_2d").model
+        value = read_manifest(path).model
     except (OSError, TypeError, ValueError) as error:
         raise ZeusPreparationError("campaign_manifest_invalid") from error
     return value
@@ -709,6 +751,9 @@ class CampaignArtifactPlanner:
         self.root = repository_root.resolve(strict=True)
 
     def plan(self, campaign: Path) -> CampaignArtifactPlan:
+        manifest = _load_manifest(campaign / "campaign.json")
+        if manifest.get("kind") in {"mot_3d_campaign_v2", "mot_3d_ui_acceptance_v1"}:
+            return self._plan_3d(campaign, manifest)
         try:
             campaign_identity = canonical_repo_relative(
                 self.root, campaign, allowed_root=CAMPAIGN_ROOT, require="dir",
@@ -768,6 +813,61 @@ class CampaignArtifactPlanner:
             identity = canonical_repo_relative(self.root, local, allowed_root=CAMPAIGN_ROOT, require="file")
             selected[identity] = (local, _sha256(local), local.stat().st_size, "campaign")
         return CampaignArtifactPlan(campaign, commit, MappingProxyType(selected))
+
+
+    def _plan_3d(self, campaign: Path, manifest) -> CampaignArtifactPlan:
+        from workflow_api.zeus_discovery_submission import (
+            FILES, _strict_json, bootstrap_input_hashes, validate_discovery_bootstrap,
+            ZeusMot3DDiscoverySubmissionError,
+        )
+        from workflow_api.acceptance_profile import policy_for_manifest, assert_acceptance_path
+        from studies.mot_3d_campaign import validate_upstream_2d_campaign, freeze_inputs
+        from workflow_api.mot_3d_provenance import input_registry_digest
+
+        try:
+            relative = canonical_repo_relative(self.root, campaign, allowed_root="data/optimization/mot_3d", require="dir")
+            receipt_path = resolve_repo_relative(self.root, relative + "/.mot_ui/transitions/discovery_bootstrap.json", allowed_root="data/optimization/mot_3d", require="file")
+            receipt = _strict_json(receipt_path)
+            commit, _, file_hashes, _ = validate_discovery_bootstrap(
+                self.root, campaign, manifest, receipt, campaign_relative=relative, validate_inputs=True,
+            )
+            selected = {}
+            inputs = bootstrap_input_hashes(manifest)
+            profile = policy_for_manifest(manifest)
+            if profile is not None:
+                assert_acceptance_path(campaign, self.root)
+            for name, digest in inputs.items():
+                local = resolve_repo_relative(self.root, name, allowed_root="data", require="file")
+                if profile is not None:
+                    assert_acceptance_path(local, self.root)
+                if _sha256(local) != digest:
+                    raise ValueError("Frozen 3D source changed")
+                selected[name] = (local, digest, local.stat().st_size, "input")
+            upstream = manifest["upstream_2d_campaign"]
+            source_campaign = resolve_repo_relative(self.root, upstream["campaign_path"], allowed_root="data/optimization/mot_2d", require="file").parent
+            survivors = resolve_repo_relative(self.root, manifest["input_directory"], allowed_root="data", require="dir")
+            profile_id = profile.profile_id if profile is not None else None
+            source = validate_upstream_2d_campaign(source_campaign, survivors, acceptance_profile_id=profile_id, repository_root=self.root)
+            if any(source[key] != upstream[key] for key in ("campaign_sha256", "final_report_sha256")):
+                raise ValueError("Upstream handoff changed")
+            roles = freeze_inputs(survivors,
+                expected_seed_pairs={row["zeeman_seed"]: row["mot_seed"] for row in source["sealed_seed_pairs"]},
+                expected_design=source["expected_survivor_design"], expected_parameters=source["expected_survivor_parameters"],
+                acceptance_profile_id=profile_id)
+            if input_registry_digest(roles) != input_registry_digest(manifest["input_roles"]):
+                raise ValueError("Frozen 3D roles changed")
+            for name in (*sorted(FILES), ".mot_ui/transitions/discovery_bootstrap.json"):
+                identity = relative + "/" + name
+                local = resolve_repo_relative(self.root, identity, allowed_root="data/optimization/mot_3d", require="file")
+                digest = _sha256(local)
+                if name in file_hashes and digest != file_hashes[name]:
+                    raise ValueError("Frozen 3D campaign changed")
+                selected[identity] = (local, digest, local.stat().st_size, "campaign")
+            if len(selected) != 52:
+                raise ValueError("Invalid 3D transfer registry")
+            return CampaignArtifactPlan(campaign, commit, MappingProxyType(selected))
+        except (OSError, ValueError, KeyError, TypeError, ZeusMot3DDiscoverySubmissionError) as error:
+            raise ZeusPreparationError("campaign_manifest_invalid") from error
 
 
 class ZeusPreparationService:
@@ -833,7 +933,7 @@ class ZeusPreparationService:
                 canonical_repo_relative(
                     self.root,
                     campaign,
-                    allowed_root=CAMPAIGN_ROOT,
+                    allowed_root=("data/optimization/mot_3d" if _load_manifest(campaign / "campaign.json").get("kind") in {"mot_3d_campaign_v2", "mot_3d_ui_acceptance_v1"} else CAMPAIGN_ROOT),
                     require="dir",
                 ),
                 commit,

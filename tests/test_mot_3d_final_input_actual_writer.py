@@ -5,6 +5,8 @@ physical attestation, records, NPY writes, freeze and strict validator are real.
 """
 import hashlib
 import json
+import pathlib
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -14,7 +16,41 @@ from tests.test_mot_3d_final_input_results import _fixture, _json
 from workflow_api.mot_3d_final_input_results import validate_final_input_result_bytes, expected_paths, FinalInputResultError
 
 
-def _produce(tmp_path,monkeypatch,acceptance,explicit_absolute_identity):
+def _produce(tmp_path, monkeypatch, acceptance, explicit_absolute_identity):
+    # This is a Zeus worker integration: model its POSIX mount identity while
+    # keeping all actual filesystem reads/writes in the native temporary tree.
+    # Restore the host namespace before any byte validator executes.
+    from protocol_path_namespace import worker_path_type, restore_worker_path_bindings
+    worker_path = worker_path_type(tmp_path, "/home/tal.noa/producer_fixture")
+    native_path = Path
+    original_load = np.load
+    bindings = [(module, module.Path) for name, module in tuple(sys.modules.items())
+                if (name.startswith(('studies.', 'simulations.', 'utils.'))
+                    or name in {'workflow_api.acceptance_profile', __name__})
+                and hasattr(module, 'Path')]
+    try:
+        with monkeypatch.context() as child:
+            child.setattr(pathlib, 'Path', worker_path)
+            child.setattr(sys.modules[__name__], 'Path', worker_path)
+            for name, module in tuple(sys.modules.items()):
+                if (name.startswith(('studies.', 'simulations.', 'utils.')) or name == 'workflow_api.acceptance_profile') and getattr(module, 'Path', None) is native_path:
+                    child.setattr(module, 'Path', worker_path)
+            def native_load(file, *args, **kwargs):
+                if isinstance(file, str) and file.startswith('/home/tal.noa/producer_fixture/'):
+                    file = worker_path(file)
+                return original_load(file, *args, **kwargs)
+            child.setattr(np, 'load', native_load)
+            try:
+                return _produce_worker(worker_path(tmp_path), child, acceptance, explicit_absolute_identity)
+            finally:
+                restore_worker_path_bindings(worker_path)
+    finally:
+        assert pathlib.Path is native_path
+        assert np.load is original_load
+        assert all(module.Path is original for module, original in bindings)
+
+
+def _produce_worker(tmp_path,monkeypatch,acceptance,explicit_absolute_identity):
     from studies.mot_2d import production, optimization
     from simulations import zeeman
     from studies.zeeman.generate_ensembles import corrected_field
@@ -59,7 +95,7 @@ def _produce(tmp_path,monkeypatch,acceptance,explicit_absolute_identity):
         return [(None,1,states[:1].copy()) for states in kwargs['survivor_state_ensembles']]
     monkeypatch.setattr(optimization,'mot_simulation_paired_ensembles',solver)
     params=manifest['upstream_2d_campaign']['expected_survivor_parameters']
-    arguments=['--zeeman-seeds',*[str(x) for x in range(3035,3055)],'--mot-seeds',*[str(x) for x in range(43035,43055)],'--ensemble-dir',str(zdir if explicit_absolute_identity else zdir.relative_to(project)),'--expected-zeeman-profile',manifest['upstream_2d_campaign']['expected_survivor_design']['zeeman_profile'],'--expected-git-commit',commit,'--s0',str(params['s0']),'--detuning-gamma',str(params['detuning_gamma']),'--magnet-radius-m',str(params['magnet_radius']),'--npools',str(profile.policy['generation']['jobs']['mot_2d']['npools'] if profile else 200),'--output-dir',str(campaign/'final_validation_inputs/mot_2d_records'),'--save-survivor-states','--states-dir',str(campaign/'final_validation_inputs/after_2d_mot')]
+    arguments=['--zeeman-seeds',*[str(x) for x in range(3035,3055)],'--mot-seeds',*[str(x) for x in range(43035,43055)],'--ensemble-dir',str(zdir) if explicit_absolute_identity else zdir.relative_to(project).as_posix(),'--expected-zeeman-profile',manifest['upstream_2d_campaign']['expected_survivor_design']['zeeman_profile'],'--expected-git-commit',commit,'--s0',str(params['s0']),'--detuning-gamma',str(params['detuning_gamma']),'--magnet-radius-m',str(params['magnet_radius']),'--npools',str(profile.policy['generation']['jobs']['mot_2d']['npools'] if profile else 200),'--output-dir',str(campaign/'final_validation_inputs/mot_2d_records'),'--save-survivor-states','--states-dir',str(campaign/'final_validation_inputs/after_2d_mot')]
     if explicit_absolute_identity:arguments+=['--ensemble-identity',str(zdir)]
     if profile:arguments+=['--acceptance-profile','ui_acceptance_v1','--input-manifest',str(manifest_path)]
     production.run_seeds(production.parse_args(arguments))
@@ -96,3 +132,15 @@ def test_actual_production_writers_and_freeze_validate_exact_101_files(tmp_path,
         with pytest.raises(FinalInputResultError) as rejected:
             validate_final_input_result_bytes(_json(manifest),_json(locked),_json(submission),changed,project_directory=project.as_posix(),campaign_absolute_path=campaign.as_posix())
         assert rejected.value.code=='input_metadata_mismatch'
+
+
+def test_worker_namespace_is_restored_when_producer_fails(tmp_path, monkeypatch):
+    from studies.mot_2d import production
+    from workflow_api import acceptance_profile
+    original = (pathlib.Path, production.Path, acceptance_profile.Path, np.load)
+    def fail(*args):
+        raise RuntimeError("Injected worker failure")
+    monkeypatch.setattr(sys.modules[__name__], '_produce_worker', fail)
+    with pytest.raises(RuntimeError, match="Injected worker failure"):
+        _produce(tmp_path, monkeypatch, False, False)
+    assert (pathlib.Path, production.Path, acceptance_profile.Path, np.load) == original

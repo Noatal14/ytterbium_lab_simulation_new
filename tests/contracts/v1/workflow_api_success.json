@@ -1660,7 +1660,8 @@
             "id": "campaign-id",
             "name": "Campaign",
             "path": "data/optimization/mot_2d/campaign-id",
-            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "family": "mot_2d"
           },
           "destination": {
             "host": "zeus.technion.ac.il",

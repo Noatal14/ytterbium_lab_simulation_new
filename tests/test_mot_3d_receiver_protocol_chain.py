@@ -117,13 +117,28 @@ class _ThreeD:
             assert {p.relative_to(reviewed): p.read_bytes() for p in reviewed.rglob('*') if p.is_file()} == before
         self.relative = 'data/optimization/mot_3d/ui_acceptance/TESTONLY_3D_PROTOCOL'
         self.campaign = self.remote / self.relative
-        shutil.copytree(self.local / self.relative, self.campaign)
         from studies import mot_3d_campaign
         self.mp.setattr(mot_3d_campaign, '__file__', str(self.local / 'studies/mot_3d_campaign.py'))
         from workflow_api.discovery import build_registry
         self.campaign_id = next(key for key, value in build_registry(self.local).items()
                                 if value.manifest.parent == self.local / self.relative)
         self.request = {'campaign_id': self.campaign_id, 'username': 'tal.noa', 'project_directory': self.logical}
+        # Initial bootstrap preparation uses the same guarded streaming transfer
+        # as the UI; no fixture copy publishes the 3D campaign on the remote side.
+        from workflow_api.zeus_transfer import ZeusPreparationCoordinator
+        preparation = ZeusPreparationCoordinator(self.local, self.ssh, self.git)
+        before_jobs = len(upstream.qsub_calls)
+        transfer_preview = preparation.preview(self.request, session_id='protocol3d')
+        assert transfer_preview['campaign']['family'] == 'mot_3d'
+        assert transfer_preview['artifacts']['ensemble_count'] == 20
+        assert transfer_preview['artifacts']['total_count'] == 52
+        transfer_result = preparation.confirm({'preview_token': transfer_preview['preview_token']}, session_id='protocol3d')
+        assert preparation.confirm({'preview_token': transfer_preview['preview_token']}, session_id='protocol3d') == transfer_result
+        assert len(upstream.qsub_calls) == before_jobs
+        self.dto.extend([
+            {'client':'domain', 'parser':'parseTransferPreview', 'label':'transfer/preview', 'value':transfer_preview, 'args':[]},
+            {'client':'domain', 'parser':'parseTransferResult', 'label':'transfer/confirm', 'value':transfer_result, 'args':[]},
+        ])
         self._physics()
 
     def _realm(self, child, root):
@@ -177,6 +192,26 @@ class _ThreeD:
                 raise AssertionError(f'Actual receiver machine channel is not JSON: {output.getvalue()[:3000]!r}') from error
             return subprocess.CompletedProcess([], 0, output.getvalue().encode(), b'')
         self.mp.setattr(pinned_ssh.PinnedSshRunner, 'run', call)
+        def transfer(runner, operation, profile, paths, expected_commit, payload):
+            from workflow_api.zeus_transfer import _REMOTE_TRANSFER_SCRIPT
+            source = _REMOTE_TRANSFER_SCRIPT.replace("home = pathlib.Path('/home') / username", f"home = pathlib.Path({str(self.remote.parent)!r})")
+            output = io.StringIO()
+            with self.mp.context() as child:
+                child.chdir(self.remote)
+                self._realm(child, self.remote)
+                child.setattr(sys, 'argv', ['receiver', operation.value, profile.username, str(self.remote),
+                    base64.urlsafe_b64encode(json.dumps(paths).encode()).decode(), expected_commit])
+                child.setattr(sys, 'stdin', io.TextIOWrapper(io.BytesIO(payload)))
+                with redirect_stdout(output):
+                    try:
+                        exec(compile(source, '<actual-bootstrap-transfer>', 'exec'), {'__name__':'__main__'})
+                    except SystemExit as error:
+                        code = error.code or 0
+                    else:
+                        code = 0
+            assert code == 0, f'Actual bootstrap transfer {operation.value}: {output.getvalue()}'
+            return code, output.getvalue().encode(), b''
+        self.mp.setattr(pinned_ssh.PinnedSshRunner, 'transfer', transfer)
 
     def _physics(self):
         from config import Geometry

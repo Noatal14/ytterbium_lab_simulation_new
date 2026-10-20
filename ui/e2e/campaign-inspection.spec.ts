@@ -65,7 +65,7 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   } } }));
   await page.route("**/api/v1/zeus/transfers/preview", (route) => route.fulfill({ json: { api_version: 1, data: {
     preview_token: "transfer-token", expires_in_seconds: 300,
-    campaign: { id: smoke.id, name: smoke.name, path: smoke.path, git_commit: "b".repeat(40) },
+    campaign: { id: smoke.id, name: smoke.name, path: smoke.path, git_commit: "b".repeat(40), family: "mot_2d" as const },
     destination: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/sample" },
     artifacts: { ensemble_count: 35, total_count: 72, missing_count: 12, identical_count: 60, total_bytes: 52_000_000, missing_bytes: 9_000_000 },
     effects: { copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false },

@@ -956,6 +956,7 @@ _PAYLOADS = {
             "total_count": 72,
         },
         "campaign": {
+            "family": "mot_2d",
             "git_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "id": "campaign-id",
             "name": "Campaign",

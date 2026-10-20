@@ -210,6 +210,7 @@ class Mot3DDiscoveryBootstrapService:
                     not isinstance(campaign_name, str)
                     or not campaign_name.strip()
                     or campaign_name != campaign_name.strip()
+                    or not campaign_name.isprintable()
                     or len(campaign_name) > 120
                     or isinstance(s0, bool)
                     or not isinstance(s0, (int, float))

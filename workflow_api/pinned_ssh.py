@@ -1892,6 +1892,29 @@ class PinnedSshRunner:
         if len(payload) > MAX_TRANSFER_BYTES:
             raise ZeusPreparationError("transfer_too_large")
 
+        from pathlib import PurePosixPath
+        three_d_paths = [value for value in paths if isinstance(value, str) and PurePosixPath(value).parts[:3] == ("data", "optimization", "mot_3d")]
+        if three_d_paths:
+            if len(paths) > 72 or len(set(paths)) != len(paths):
+                raise ValueError("Invalid 3D transfer registry.")
+            if (operation is TransferOperation.INPUTS
+                    or profile.project_directory not in {f"/home/{profile.username}/ytterbium_lab_simulation_new", f"/home/{profile.username}/ytterbium_lab_simulation_ui_acceptance"}):
+                raise ValueError("Invalid 3D transfer target or operation.")
+            for value in paths:
+                pure = PurePosixPath(value)
+                if (pure.is_absolute() or str(pure) != value or any(part in {".", ".."} for part in pure.parts)
+                        or "\\" in value or not value.isprintable() or len(value.encode()) > 512):
+                    raise ValueError("Invalid 3D transfer path.")
+                if pure.parts[:3] not in {("data", "optimization", "mot_3d"), ("data", "optimization", "mot_2d"), ("data", "particle_states", "after_2d_mot")}:
+                    raise ValueError("Foreign 3D transfer path.")
+                if profile.project_directory.endswith("_ui_acceptance") != (len(pure.parts) > 3 and pure.parts[3] == "ui_acceptance"):
+                    raise ValueError("Mixed scientific and acceptance transfer paths.")
+            if operation is TransferOperation.CAMPAIGN:
+                count = 5 if profile.project_directory.endswith("_ui_acceptance") else 4
+                prefix = PurePosixPath(three_d_paths[0]).parts[:count]
+                if any(PurePosixPath(value).parts[:count] != prefix for value in paths):
+                    raise ValueError("Mixed campaign transfer namespaces.")
+
         definition = _RECEIVERS[ReceiverKind.TRANSFER]
         encoded = base64.urlsafe_b64encode(
             json.dumps(paths, separators=(",", ":")).encode()
@@ -1924,6 +1947,9 @@ class PinnedSshRunner:
             f"/home/{profile.username}/ytterbium_lab_simulation_ui_acceptance"
         ):
             interpreter = f"/home/{profile.username}/venvs/atomsmltr-ui-test/bin/python"
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
+        elif three_d_paths:
+            interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         command = prefix + shlex.join((interpreter, "-c", wrapper))
         arguments = [

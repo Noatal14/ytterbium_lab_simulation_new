@@ -111,9 +111,9 @@ export function parseZeusSnapshot(value: unknown): ZeusSnapshot {
 
 export type ZeusTransferPreview = {
   preview_token: string; expires_in_seconds: number;
-  campaign: { id: string; name: string; path: string; git_commit: string };
+  campaign: { id: string; name: string; path: string; git_commit: string; family: "mot_2d" | "mot_3d" };
   destination: { host: "zeus.technion.ac.il"; project_directory: string; campaign_directory: string };
-  artifacts: { ensemble_count: typeof canonicalDesign.ensemble_count; total_count: typeof canonicalDesign.prepared_file_count; missing_count: number; identical_count: number; total_bytes: number; missing_bytes: number };
+  artifacts: { ensemble_count: 35 | 20; total_count: 72 | 52; missing_count: number; identical_count: number; total_bytes: number; missing_bytes: number };
   effects: { copy_missing_only: true; overwrite_existing: false; submit_jobs: false; run_simulation: false };
 };
 export type ZeusTransferResult = {
@@ -121,21 +121,34 @@ export type ZeusTransferResult = {
   reused_identical_count: number; bytes_transferred: number; submitted_to_zeus: false; simulation_started: false;
 };
 
+function transferDesign(path: unknown): { family: "mot_2d" | "mot_3d"; ensembles: 35 | 20; files: 72 | 52 } | null {
+  if (typeof path !== "string") return null;
+  const namespace = campaignAcceptanceMode() ? "ui_acceptance/" : "";
+  const match = new RegExp(`^data/optimization/(mot_2d|mot_3d)/${namespace}[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$`).exec(path);
+  if (!match || (!campaignAcceptanceMode() && path.split("/").at(-1) === "ui_acceptance")) return null;
+  return match[1] === "mot_2d" ? { family: "mot_2d", ensembles: 35, files: 72 } : { family: "mot_3d", ensembles: 20, files: 52 };
+}
+
 export function parseTransferPreview(value: Record<string, unknown>): ZeusTransferPreview {
   const campaign = value.campaign as Record<string, unknown>;
   const destination = value.destination as Record<string, unknown>;
   const artifacts = value.artifacts as Record<string, unknown>;
   const effects = value.effects as Record<string, unknown>;
+  const design = transferDesign(campaign?.path);
   if (!exactKeys(value, ["preview_token", "expires_in_seconds", "campaign", "destination", "artifacts", "effects"]) || !boundedPrintable(value.preview_token, 512) || !Number.isInteger(value.expires_in_seconds) || !finiteNonnegative(value.expires_in_seconds)
-    || !campaign || !exactKeys(campaign, ["id", "name", "path", "git_commit"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !boundedPrintable(campaign.path, 1024) || !String(campaign.path).startsWith("data/optimization/mot_2d/") || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit))
+    || !campaign || !exactKeys(campaign, ["id", "name", "path", "git_commit", "family"]) || !boundedPrintable(campaign.id, 512) || !boundedPrintable(campaign.name, 512) || !boundedPrintable(campaign.path, 1024) || (!design || campaign.family !== design.family) || !/^[0-9a-f]{40}$/.test(String(campaign.git_commit))
     || !destination || !exactKeys(destination, ["host", "project_directory", "campaign_directory"]) || destination.host !== "zeus.technion.ac.il" || !boundedPrintable(destination.project_directory, 1024) || !isCampaignProjectDirectory(destination.project_directory) || !boundedPrintable(destination.campaign_directory, 2048) || destination.campaign_directory !== `${destination.project_directory}/${campaign.path}`
-    || !artifacts || !exactKeys(artifacts, ["ensemble_count", "total_count", "missing_count", "identical_count", "total_bytes", "missing_bytes"]) || artifacts.ensemble_count !== canonicalDesign.ensemble_count || artifacts.total_count !== canonicalDesign.prepared_file_count || !Number.isInteger(artifacts.missing_count) || !Number.isInteger(artifacts.identical_count) || !Number.isInteger(artifacts.total_bytes) || !Number.isInteger(artifacts.missing_bytes) || !finiteNonnegative(artifacts.missing_count) || !finiteNonnegative(artifacts.identical_count) || !finiteNonnegative(artifacts.total_bytes) || !finiteNonnegative(artifacts.missing_bytes) || Number(artifacts.missing_count) + Number(artifacts.identical_count) !== canonicalDesign.prepared_file_count || Number(artifacts.missing_bytes) > Number(artifacts.total_bytes)
+    || !artifacts || !exactKeys(artifacts, ["ensemble_count", "total_count", "missing_count", "identical_count", "total_bytes", "missing_bytes"]) || artifacts.ensemble_count !== design?.ensembles || artifacts.total_count !== design?.files || !Number.isInteger(artifacts.missing_count) || !Number.isInteger(artifacts.identical_count) || !Number.isInteger(artifacts.total_bytes) || !Number.isInteger(artifacts.missing_bytes) || !finiteNonnegative(artifacts.missing_count) || !finiteNonnegative(artifacts.identical_count) || !finiteNonnegative(artifacts.total_bytes) || !finiteNonnegative(artifacts.missing_bytes) || Number(artifacts.missing_count) + Number(artifacts.identical_count) !== design?.files || Number(artifacts.missing_bytes) > Number(artifacts.total_bytes)
     || !effects || !exactKeys(effects, ["copy_missing_only", "overwrite_existing", "submit_jobs", "run_simulation"]) || effects.copy_missing_only !== true || effects.overwrite_existing !== false || effects.submit_jobs !== false || effects.run_simulation !== false) throw new Error("Invalid Zeus preparation preview response.");
   return value as unknown as ZeusTransferPreview;
 }
 
 export function parseTransferResult(value: Record<string, unknown>): ZeusTransferResult {
-  if (!exactKeys(value, ["status", "campaign_id", "destination", "transferred_count", "reused_identical_count", "bytes_transferred", "submitted_to_zeus", "simulation_started"]) || value.status !== "prepared" || !boundedPrintable(value.campaign_id, 512) || !boundedPrintable(value.destination, 2048) || !Number.isInteger(value.transferred_count) || !Number.isInteger(value.reused_identical_count) || !Number.isInteger(value.bytes_transferred) || !finiteNonnegative(value.transferred_count) || !finiteNonnegative(value.reused_identical_count) || Number(value.transferred_count) + Number(value.reused_identical_count) !== canonicalDesign.prepared_file_count || !finiteNonnegative(value.bytes_transferred) || value.submitted_to_zeus !== false || value.simulation_started !== false) throw new Error("Invalid Zeus preparation result.");
+  const destination = typeof value.destination === "string" ? value.destination : "";
+  const marker = destination.indexOf("/data/optimization/");
+  const project = marker >= 0 ? destination.slice(0, marker) : "";
+  const design = marker >= 0 ? transferDesign(destination.slice(marker + 1)) : null;
+  if (!exactKeys(value, ["status", "campaign_id", "destination", "transferred_count", "reused_identical_count", "bytes_transferred", "submitted_to_zeus", "simulation_started"]) || value.status !== "prepared" || !design || !isCampaignProjectDirectory(project) || !boundedPrintable(value.campaign_id, 512) || !boundedPrintable(value.destination, 2048) || !Number.isInteger(value.transferred_count) || !Number.isInteger(value.reused_identical_count) || !Number.isInteger(value.bytes_transferred) || !finiteNonnegative(value.transferred_count) || !finiteNonnegative(value.reused_identical_count) || Number(value.transferred_count) + Number(value.reused_identical_count) !== design?.files || !finiteNonnegative(value.bytes_transferred) || value.submitted_to_zeus !== false || value.simulation_started !== false) throw new Error("Invalid Zeus preparation result.");
   return value as unknown as ZeusTransferResult;
 }
 

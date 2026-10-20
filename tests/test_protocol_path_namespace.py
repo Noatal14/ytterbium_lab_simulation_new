@@ -20,7 +20,7 @@ def test_worker_mount_identity_preserves_real_native_io(tmp_path):
     assert str(path.resolve()) == logical + '/data/result.json'
     assert worker_path(physical / 'data/result.json').read_bytes() == path.read_bytes()
     assert str(worker_path(str(physical) + '_other')) == str(physical) + '_other'
-    assert str(worker_path(logical + '_other')) == logical + '_other'
+    assert str(worker_path(logical + '_other')) == str(Path(logical + '_other'))
     assert path.relative_to(worker_path(logical)).as_posix() == 'data/result.json'
     assert list(worker_path(logical).glob('data/*.json')) == [path]
     assert list(worker_path(logical).rglob('*.json')) == [path]
@@ -75,3 +75,22 @@ def test_fresh_import_binding_is_removed_after_worker(monkeypatch, tmp_path):
             restore_worker_path_bindings(worker_path)
         assert fresh.Path is Path
     assert pathlib.Path is Path
+
+
+def test_worker_plain_relative_identity_keeps_native_io(tmp_path, monkeypatch):
+    physical = tmp_path / 'checkout'
+    physical.mkdir()
+    logical = '/home/tal.noa/worker'
+    worker_path = worker_path_type(physical, logical)
+    relative = worker_path('data/input.npy')
+    assert str(relative) == relative.as_posix() == 'data/input.npy'
+    assert os.fspath(relative) == str(Path('data/input.npy'))
+    monkeypatch.chdir(physical)
+    relative.parent.mkdir()
+    relative.write_bytes(b'native temporary bytes')
+    joined = worker_path(logical) / relative
+    assert str(joined) == logical + '/data/input.npy'
+    assert joined.read_bytes() == (physical / 'data/input.npy').read_bytes()
+    if os.name == 'nt':
+        for value in [r'\home\foreign', r'C:relative', r'C:\foreign']:
+            assert str(worker_path(value)) == str(Path(value))

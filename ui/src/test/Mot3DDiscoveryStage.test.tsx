@@ -89,3 +89,22 @@ it("shows the exact reviewed Discovery reservations and per-family workload", ()
   expect(screen.getByText("2 arrays × 3 tasks · final trial targets per worker: 4 / 4 / 4")).toBeVisible();
   expect(screen.getByText("3 arrays × 3 tasks · final trial targets per worker: 4 / 4 / 4")).toBeVisible();
 });
+
+
+it("requires transfer before a new Discovery review while preserving read-only recovery", () => {
+  const flow = {...terminalFlow("not_submitted"), state: "idle", status: null} as unknown as ReturnType<typeof useMot3DDiscoveryController>;
+  const view = render(<Mot3DDiscoveryStage visible connected preparationReady={false} flow={flow} onConnectZeus={vi.fn()} onViewJobs={vi.fn()} />);
+  expect(screen.getByText("Prepare this campaign on Zeus first")).toBeVisible();
+  expect(screen.getByRole("button", {name: "Review Discovery jobs"})).toBeDisabled();
+  expect(screen.getByRole("button", {name: "Check Zeus status"})).toBeEnabled();
+  expect(flow.review).not.toHaveBeenCalled();
+  view.rerender(<Mot3DDiscoveryStage visible connected preparationReady flow={flow} onConnectZeus={vi.fn()} onViewJobs={vi.fn()} />);
+  expect(screen.getByRole("button", {name: "Review Discovery jobs"})).toBeEnabled();
+});
+
+it("withholds an old confirmation when transfer authority is lost", () => {
+  const flow = {...terminalFlow("not_submitted"), state: "review", preview: {preview_token: "old"}} as unknown as ReturnType<typeof useMot3DDiscoveryController>;
+  render(<Mot3DDiscoveryStage visible connected preparationReady={false} flow={flow} onConnectZeus={vi.fn()} onViewJobs={vi.fn()} />);
+  expect(screen.queryByRole("button", {name: "Submit Discovery to Zeus"})).not.toBeInTheDocument();
+  expect(flow.confirm).not.toHaveBeenCalled();
+});
