@@ -353,7 +353,10 @@ def _open_evidence(campaign: Path, manifest: dict, root: Path):
     try:
         for path in raw_evidence_paths(campaign, manifest, root):
             no_links(root, path)
-            fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+            fd = os.open(
+                path,
+                os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0),
+            )
             info = os.fstat(fd)
             limit = 8 * 1024**3 if path.suffix == ".npy" else 64 * 1024**2
             if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
