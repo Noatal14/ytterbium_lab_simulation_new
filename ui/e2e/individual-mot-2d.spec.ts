@@ -3,9 +3,12 @@ import { expect, test } from "@playwright/test";
 
 const sourceId = `mot2d-source-${"a".repeat(32)}`;
 
-test("operator reviews and explicitly starts one local 2D-MOT run", async ({
+for (const cpus of [1, 2]) {
+test(`operator reviews and explicitly starts one local 2D-MOT run on ${cpus} CPUs`, async ({
   page,
 }) => {
+  await page.addInitScript((cpus) => Object.defineProperty(navigator, "hardwareConcurrency", { value: cpus }), cpus);
+  let previewWorkers: number | undefined;
   await page.route("**/api/v1/campaigns", (route) =>
     route.fulfill({
       json: {
@@ -50,8 +53,9 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
       },
     }),
   );
-  await page.route("**/api/v1/individual-runs/mot-2d/preview", (route) =>
-    route.fulfill({
+  await page.route("**/api/v1/individual-runs/mot-2d/preview", (route) => {
+    previewWorkers = route.request().postDataJSON().npools;
+    return route.fulfill({
       json: {
         api_version: 1,
         data: {
@@ -86,7 +90,7 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
             locked_settings: {
               solver: "RK4StHybridCustom",
               timestep_s: 0.000000625,
-              workers: 8,
+              workers: previewWorkers,
             },
             lifecycle_state: "configured",
             laboratory_specification: {},
@@ -97,8 +101,8 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
           },
         },
       },
-    }),
-  );
+    });
+  });
   await page.route("**/api/v1/individual-runs/mot-2d/confirm", (route) =>
     route.fulfill({
       status: 201,
@@ -149,6 +153,8 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
   await page
     .getByRole("combobox", { name: /Zeeman survivor source/ })
     .selectOption(sourceId);
+  await expect(page.locator("#mot2d-npools")).toHaveValue(String(cpus));
+  await expect(page.locator("#mot2d-npools")).toHaveAttribute("max", String(cpus));
   await page.getByRole("button", { name: "Validate and review" }).click();
   await expect(
     page.getByText("Scientific role: individual only"),
@@ -161,6 +167,7 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
   await page.getByRole("button", { name: "Start on this computer" }).click();
   await expect(page.getByText(/Status has not been checked/)).toBeVisible();
   expect(starts).toBe(1);
+  expect(previewWorkers).toBe(cpus);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(
     await page.evaluate(
@@ -170,3 +177,5 @@ test("operator reviews and explicitly starts one local 2D-MOT run", async ({
     ),
   ).toBe(false);
 });
+
+}

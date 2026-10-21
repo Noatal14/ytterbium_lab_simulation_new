@@ -65,7 +65,7 @@ async function routes(page: Page, localWorkerOwned = true) {
           capture: spec.fixed_classification.capture,
           sampling_algorithm: spec.sampling.algorithm,
           sampling_version: spec.sampling.version,
-          workers: spec.workers_by_execution_mode[request.execution_mode as "local" | "zeus"],
+          workers: request.npools,
         },
         lifecycle_state: "configured",
         laboratory_specification: spec.authority_references.laboratory_specification,
@@ -198,4 +198,25 @@ for (const width of [320, 768]) {
     expect(bounds.right).toBeLessThanOrEqual(bounds.width);
     await expect(page.getByRole("button", { name: "Create run record" })).toBeEnabled();
   });
+}
+
+for (const cpus of [1, 2]) {
+  for (const family of ["angled_donut", "single_pass"] as const) {
+    test(`reviews ${family} with the requested local workers on ${cpus} CPUs`, async ({ page }) => {
+      await page.addInitScript((cpus) => Object.defineProperty(navigator, "hardwareConcurrency", { value: cpus }), cpus);
+      await routes(page);
+      await page.goto("/");
+      await page.getByRole("button", { name: "Configure 3D-MOT run" }).click();
+      if (family === "single_pass") await page.getByRole("radio", { name: /^Single pass/ }).click();
+      await expect(page.locator("#mot3d-npools")).toHaveValue(String(cpus));
+      await expect(page.locator("#mot3d-npools")).toHaveAttribute("max", String(cpus));
+      const request = page.waitForRequest((r) => r.url().endsWith("/mot-3d/preview"));
+      await page.getByRole("button", { name: "Validate setup" }).click();
+      expect((await request).postDataJSON().npools).toBe(cpus);
+      await expect(page.getByText("Scientific role: individual only")).toBeVisible();
+      const workers = page.locator("dl div").filter({ has: page.getByText("CPU workers", { exact: true }) });
+      await expect(workers.locator("dd")).toHaveText(String(cpus));
+      await expect(page.getByRole("button", { name: "Create run record" })).toBeEnabled();
+    });
+  }
 }
