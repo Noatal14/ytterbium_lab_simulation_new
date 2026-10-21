@@ -158,9 +158,9 @@ jobs:
         with:
           node-version: 24.19.0
       - name: Install simulation and test dependencies
-        run: |
-          python -m pip install -r requirements-dev.txt
-          python -m pip install -e ./atomsmltr
+        run: python -m pip install -r requirements-dev.txt
+      - name: Install simulation package
+        run: python -m pip install -e ./atomsmltr
       - name: Run native host compatibility suite
         run: python scripts/check_host_compatibility.py
       - name: Show native Windows file-symlink rejection outcomes
@@ -170,13 +170,17 @@ jobs:
         run: python scripts/smoke_host_simulations.py
       - name: Install browser test dependencies
         working-directory: ui
-        run: |
-          npm ci
-          npx playwright install chromium
-      - name: Exercise browser workflows and real HTTP boundary
+        run: npm ci
+      - name: Install Chromium for native browser tests
+        working-directory: ui
+        run: npx playwright install chromium
+      - name: Exercise native browser workflows
         working-directory: ui
         env:
           DEBUG: pw:webserver
-        run: |
-          npx playwright test --project=desktop --workers=2
-          npx playwright test --config=playwright.real-backend.config.ts
+        run: npx playwright test --project=desktop --workers=2
+      - name: Exercise native real HTTP boundary
+        working-directory: ui
+        env:
+          DEBUG: pw:webserver
+        run: npx playwright test --config=playwright.real-backend.config.ts

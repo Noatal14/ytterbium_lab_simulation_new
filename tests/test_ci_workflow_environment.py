@@ -73,3 +73,54 @@ def test_full_backend_suite_budget_preserves_selection_and_other_job_limits():
     # reports all failures within the unchanged serial job budget.
     assert complete.group(1) == "python -m pytest -vv --tb=short"
     assert "PYTEST_ADDOPTS" not in jobs["test"]
+
+
+def _job_steps(job):
+    workflow = WORKFLOW.read_text()
+    match = re.search(
+        rf"^  {re.escape(job)}:\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)",
+        workflow, re.MULTILINE | re.DOTALL,
+    )
+    assert match is not None
+    return re.findall(
+        r"^      - (.*?)(?=^      - |\Z)",
+        match.group(1), re.MULTILINE | re.DOTALL,
+    )
+
+
+@pytest.mark.parametrize("job", ["frontend-checks", "host-compatibility"])
+def test_windows_matrix_run_steps_have_one_native_command(job):
+    # PowerShell does not stop on an earlier failing native command by default.
+    # A single invocation lets the Actions wrapper propagate that command's exit.
+    commands = []
+    for step in _job_steps(job):
+        run = re.search(r"^        run: ([^\n]+)$", step, re.MULTILINE)
+        if run is None:
+            continue
+        command = run.group(1)
+        assert command not in {"|", ">", "|-", ">-"}, step
+        assert command.startswith(("python ", "npm ", "npx ")), step
+        assert not any(separator in command for separator in (";", "&&", "||", "`")), step
+        commands.append(command)
+    assert commands, "No native steps were inspected"
+
+
+def test_native_browser_and_install_commands_are_separately_reported():
+    steps = {
+        step.splitlines()[0].removeprefix("name: "): step
+        for step in _job_steps("host-compatibility")
+        if step.startswith("name: ")
+    }
+    expected = {
+        "Install simulation and test dependencies": "python -m pip install -r requirements-dev.txt",
+        "Install simulation package": "python -m pip install -e ./atomsmltr",
+        "Install browser test dependencies": "npm ci",
+        "Install Chromium for native browser tests": "npx playwright install chromium",
+        "Exercise native browser workflows": "npx playwright test --project=desktop --workers=2",
+        "Exercise native real HTTP boundary": "npx playwright test --config=playwright.real-backend.config.ts",
+    }
+    for name, command in expected.items():
+        assert re.findall(r"^        run: ([^\n]+)$", steps[name], re.MULTILINE) == [command]
+    for name in ("Exercise native browser workflows", "Exercise native real HTTP boundary"):
+        assert "          DEBUG: pw:webserver\n" in steps[name]
+        assert "        working-directory: ui\n" in steps[name]
