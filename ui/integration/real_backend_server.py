@@ -8,6 +8,31 @@ computation endpoints are disabled. No SSH or production data is accessed.
 from __future__ import annotations
 
 import sys
+import json
+import time
+
+_STARTUP_STARTED = time.monotonic()
+
+
+def startup_marker(phase: str, **details: object) -> None:
+    """Bounded test-fixture diagnostics; never log requests or environment."""
+    record = {
+        "marker": "SYNTHETIC_UI_FIXTURE",
+        "phase": phase,
+        "unix_s": round(time.time(), 3),
+        "elapsed_s": round(time.monotonic() - _STARTUP_STARTED, 3),
+        **details,
+    }
+    print(json.dumps(record, sort_keys=True), file=sys.stderr, flush=True)
+
+
+startup_marker(
+    "before_imports",
+    interpreter=sys.executable[:1024],
+    python=sys.version.split()[0],
+    fixture_path=__file__[:1024],
+)
+
 import tempfile
 import shutil
 import os
@@ -31,6 +56,9 @@ from workflow_api.mot_2d_zeus_execution import IndividualMot2DZeusCoordinator
 from workflow_api.zeeman_zeus_execution import RemoteSubmission
 from workflow_api.run_execution import issue_execution_authority
 from workflow_api.individual_run_discovery import CanonicalIndividualRunRegistry
+
+
+startup_marker("imports_complete")
 
 
 class InspectOnlyTransport:
@@ -114,7 +142,10 @@ class IntegrationHandler(WorkflowHandler):
 
 def main() -> None:
     fixture = tempfile.TemporaryDirectory(prefix="ui_campaign_SYNTHETIC_")
+    startup_marker("prepare_start")
     root = prepare(Path(fixture.name), ROOT)
+    startup_marker("prepare_complete")
+    startup_marker("services_start")
     git = Path(shutil.which("git"))
     IntegrationHandler.repository_root = root
     IntegrationHandler.creation_service = CreationService(root, RepositorySnapshotProvider(root, git))
@@ -124,7 +155,10 @@ def main() -> None:
         root, Mot2DRunCreationService(root, Mot2DIndividualRepositorySnapshotProvider(root, git)),
         NoLocalComputation(), IndividualMot2DZeusCoordinator(root, issue_execution_authority(), lambda _profile: InspectOnlyTransport()),
     )
+    startup_marker("services_complete")
+    startup_marker("bind_start", host=HOST, port=PORT)
     server = ThreadingHTTPServer((HOST, PORT), IntegrationHandler)
+    startup_marker("bind_complete", host=HOST, port=PORT)
     server.daemon_threads = True
     try:
         server.serve_forever()

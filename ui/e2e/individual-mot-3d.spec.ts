@@ -181,3 +181,21 @@ test("a saved local running record without a worker requires inspection", async 
   await expect(page.getByRole("button", { name: "Start on this computer" })).toHaveCount(0);
   await expect(page.getByRole("progressbar")).toHaveCount(0);
 });
+
+for (const width of [320, 768]) {
+  test(`reviewed scientific-policy help stays readable at ${width}px with larger text`, async ({ page }) => {
+    await routes(page);
+    await page.setViewportSize({ width, height: 844 });
+    await page.addInitScript(() => document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.fontSize = "18px"; }));
+    await page.goto("/");
+    await page.getByRole("button", { name: "Configure 3D-MOT run" }).click();
+    await page.getByRole("button", { name: "Validate setup" }).click();
+    const tooltip = page.getByRole("tooltip").filter({ hasText: "These settings are fixed by the reviewed scientific policy" });
+    await tooltip.locator("..").getByRole("button", { name: "More information" }).focus();
+    await expect(tooltip).toHaveCSS("opacity", "1");
+    const bounds = await tooltip.evaluate((element) => ({ left: element.getBoundingClientRect().left, right: element.getBoundingClientRect().right, width: document.documentElement.clientWidth }));
+    expect(bounds.left).toBeGreaterThanOrEqual(0);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.width);
+    await expect(page.getByRole("button", { name: "Create run record" })).toBeEnabled();
+  });
+}

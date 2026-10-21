@@ -290,8 +290,8 @@ function Mot3DFinalValidationCompletionStage({
         {["checking", "reviewing", "confirming"].includes(flow.phase) && <Busy title={flow.phase === "confirming" ? "Synchronizing sealed evidence" : "Checking sealed Final Validation evidence"} />}
         {flow.phase === "ready" && <div className="prepare-card"><div><strong>Sealed Final Validation evidence is ready for review</strong><p>Review both families and the precision decision before synchronizing one terminal outcome.</p></div><button className="primary-button" onClick={() => void flow.review()}>Review completion</button></div>}
         {flow.phase === "review" && flow.preview && evidence && <div className="review-panel">
-            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} /><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Review the sealed Final Validation result</h3><p>These estimates use only the new sealed ensembles. The precision target is a 95% interval half-width of at most 0.0075 for both families.</p><div className="review-grid">{evidence.families.map((family) => <article className="review-card" key={family.family}><h4>{family.family === "angled_donut" ? "Angled donut" : "Single pass"}</h4><dl><div><dt>Locked finalist</dt><dd>{family.candidate_id}</dd></div><div><dt>Conditional efficiency</dt><dd>{family.conditional_efficiency.toFixed(6)}</dd></div><div><dt>95% interval</dt><dd>{family.bootstrap_95_ci[0].toFixed(6)}–{family.bootstrap_95_ci[1].toFixed(6)}</dd></div><div><dt>Half-width</dt><dd>{family.ci_half_width.toFixed(6)}</dd></div><div><dt>Precision target</dt><dd>{family.precision_target_met ? "Pass" : "Not met"}</dd></div></dl></article>)}</div><div className={extension ? "state-panel state-panel--error" : "state-panel state-panel--success"}><strong>{extension ? "Precision is not established for both families" : "Both families meet the precision target"}</strong><p>{extension ? `The reviewed outcome is extension required. Failing ${failing.length === 1 ? "family" : "families"}: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. No extension policy is defined, so this interface will not submit one or claim a winner.` : "Confirming will publish a final report derived only from the sealed new ensembles."}</p></div><dl className="transfer-facts"><div><dt>Verified result artifacts</dt><dd>14 of 14</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Simulation started</dt><dd>No</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{refreshLabel:"Refresh status",reviewLabel:"Review completion",confirmLabel:extension ? "Record extension required" : "Synchronize and publish final report",resetLabel:"Back"}} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
-        {flow.phase === "success" && !extension && <div className="state-panel state-panel--success" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. Publishing this report did not submit an additional job or start a simulation.</p></div>}
+            <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} /><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Review the sealed Final Validation result</h3><p>These estimates use only the new sealed ensembles. The precision target is a 95% interval half-width of at most 0.0075 for both families.</p><div className="review-grid">{evidence.families.map((family) => <article className="review-card" key={family.family}><h4>{family.family === "angled_donut" ? "Angled donut" : "Single pass"}</h4><dl><div><dt>Locked finalist</dt><dd>{family.candidate_id}</dd></div><div><dt>Conditional efficiency</dt><dd>{family.conditional_efficiency.toFixed(6)}</dd></div><div><dt>95% interval</dt><dd>{family.bootstrap_95_ci[0].toFixed(6)}–{family.bootstrap_95_ci[1].toFixed(6)}</dd></div><div><dt>Half-width</dt><dd>{family.ci_half_width.toFixed(6)}</dd></div><div><dt>Precision target</dt><dd>{family.precision_target_met ? "Pass" : "Not met"}</dd></div></dl></article>)}</div><div className={extension ? "state-panel state-panel--error state-panel--stacked" : "state-panel state-panel--success state-panel--stacked"}><strong>{extension ? "Precision is not established for both families" : "Both families meet the precision target"}</strong><p>{extension ? `The reviewed outcome is extension required. Failing ${failing.length === 1 ? "family" : "families"}: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. No extension policy is defined, so this interface will not submit one or claim a winner.` : "Confirming will publish a final report derived only from the sealed new ensembles."}</p></div><dl className="transfer-facts"><div><dt>Verified result artifacts</dt><dd>14 of 14</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Simulation started</dt><dd>No</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{refreshLabel:"Refresh status",reviewLabel:"Review completion",confirmLabel:extension ? "Record extension required" : "Synchronize and publish final report",resetLabel:"Back"}} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
+        {flow.phase === "success" && !extension && <div className="state-panel state-panel--success state-panel--stacked" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. Publishing this report did not submit an additional job or start a simulation.</p></div>}
         {flow.phase === "success" && extension && <div className="state-panel state-panel--error" role="status"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation extension is required</strong><p>{failing.length ? `Precision was not established for: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. ` : "The precision target was not met. "}No winner or final performance claim is available. No scientifically approved extension policy exists, so no extension action is offered.</p></div></div>}
         {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Manual verification required</strong><p>The remote completion outcome is uncertain. Do not retry; inspect the existing Zeus evidence.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
         {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation completion could not be verified</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "Do not retry; inspect Zeus and the campaign first." : "Refresh authoritative status before reviewing again."}</p></div></div>}
@@ -415,7 +415,7 @@ function Mot3DFinalValidationSubmissionStage({
       )}{" "}
       {active && !flow.error && (
         <div
-          className="state-panel state-panel--success"
+          className="state-panel state-panel--success state-panel--stacked"
           ref={panel}
           role="status"
           tabIndex={-1}
@@ -427,7 +427,7 @@ function Mot3DFinalValidationSubmissionStage({
         </div>
       )}
       {finished && !flow.error && (
-        <div className="state-panel" ref={panel} role="status" tabIndex={-1}>
+        <div className="state-panel state-panel--stacked" ref={panel} role="status" tabIndex={-1}>
           <strong>Scheduler work finished</strong>
           <p>
             The sealed outputs are not yet scientifically validated,
@@ -633,7 +633,7 @@ function Mot3DFinalValidationTransitionStage({
           </div>
         )}
         {flow.phase === "success" && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Final Validation is prepared</strong>
             <p>
               This preparation verified and synchronized the frozen inputs. It
@@ -853,7 +853,7 @@ function Mot3DFinalInputSubmissionStage({
           </div>
         )}
         {waiting && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Input generation is running on Zeus</strong>
             <p>
               No action is needed while the existing chain runs. Final
@@ -889,7 +889,7 @@ function Mot3DFinalInputSubmissionStage({
           </div>
         )}
         {finished && !flow.error && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Input-generation jobs finished on Zeus</strong>
             <p>
               The scheduler reports that generation and freezing finished, but
@@ -1039,7 +1039,7 @@ function Mot3DFinalistTransitionStage({
           />
         )}
         {waiting && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Finalist Selection is still running on Zeus</strong>
             <p>No action is needed while its existing jobs run.</p>
             <div className="form-actions">
@@ -1158,7 +1158,7 @@ function Mot3DFinalistTransitionStage({
           </div>
         )}
         {flow.phase === "success" && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Final-validation inputs are prepared</strong>
             <p>
               This preparation synchronized the verified evidence and winner
@@ -1377,7 +1377,7 @@ function Mot3DFinalistSubmissionStage({
           </div>
         )}
         {waiting && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Finalist Selection is running on Zeus</strong>
             <p>
               No action is needed while the reviewed jobs run. Zeus continues
@@ -1397,7 +1397,7 @@ function Mot3DFinalistSubmissionStage({
           </div>
         )}
         {finished && !flow.error && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Finalist Selection jobs finished on Zeus</strong>
             <p>
               The scheduler completed all jobs, but results are not yet
@@ -1543,7 +1543,7 @@ function Mot3DClosureTransitionStage({
           />
         )}
         {waiting && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Closure is still running on Zeus</strong>
             <p>No action is needed while its existing jobs run.</p>
             <div className="form-actions">
@@ -1645,7 +1645,7 @@ function Mot3DClosureTransitionStage({
           </div>
         )}
         {flow.phase === "success" && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Finalist selection is prepared</strong>
             <p>
               This preparation synchronized verified Closure evidence without
@@ -1864,7 +1864,7 @@ function Mot3DClosureSubmissionStage({
           </div>
         )}
         {waiting && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Closure is running on Zeus</strong>
             <p>
               No action is needed while the reviewed arrays and merge jobs are
@@ -1884,7 +1884,7 @@ function Mot3DClosureSubmissionStage({
           </div>
         )}
         {finished && !flow.error && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Closure jobs finished on Zeus</strong>
             <p>
               The scheduler completed all four jobs, but the scientific outputs
@@ -2051,7 +2051,7 @@ function Mot3DRefinementTransitionStage({
           />
         )}{" "}
         {waiting && !attention && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Refinement is still running on Zeus</strong>
             <p>
               Closure requires validation of the complete Refinement result
@@ -2161,7 +2161,7 @@ function Mot3DRefinementTransitionStage({
           </div>
         )}
         {flow.state === "prepared" && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Closure is prepared</strong>
             <p>
               This preparation synchronized verified Refinement evidence without
@@ -2371,7 +2371,7 @@ function Mot3DRefinementSubmissionStage({
           </div>
         )}
         {waiting && !attention && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Refinement is running on Zeus</strong>
             <p>
               No action is needed while the reviewed arrays and merge jobs are
@@ -2391,7 +2391,7 @@ function Mot3DRefinementSubmissionStage({
           </div>
         )}
         {finished && !flow.error && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Refinement jobs finished on Zeus</strong>
             <p>
               The scheduler completed all four jobs, but their scientific
@@ -2561,7 +2561,7 @@ function Mot3DPreliminaryTransitionStage({
           />
         )}
         {waiting && !attention && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Preliminary check is still running on Zeus</strong>
             <p>
               Refinement requires all four Preliminary jobs to finish and the
@@ -2681,7 +2681,7 @@ function Mot3DPreliminaryTransitionStage({
           </div>
         )}
         {flow.state === "prepared" && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Refinement is prepared</strong>
             <p>
               The preliminary-check evidence is scientifically validated,
@@ -2908,7 +2908,7 @@ function Mot3DPreliminaryCheckStage({
           </div>
         )}
         {waiting && !attention && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Preliminary check is running on Zeus</strong>
             <p>
               No action is needed while the reviewed arrays and merge jobs are
@@ -2928,7 +2928,7 @@ function Mot3DPreliminaryCheckStage({
           </div>
         )}
         {schedulerFinished && !flow.error && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>Preliminary-check jobs finished on Zeus</strong>
             <p>
               The scheduler completed the four jobs, but their scientific
@@ -3091,7 +3091,7 @@ function Mot3DDiscoveryTransitionStage({
           />
         )}
         {waiting && !attention && flow.state === "idle" && (
-          <div className="state-panel" role="status">
+          <div className="state-panel state-panel--stacked" role="status">
             <strong>
               {lifecycle === "completed_success_unvalidated"
                 ? "Discovery finished; validation is still in progress"
@@ -3194,7 +3194,7 @@ function Mot3DDiscoveryTransitionStage({
           </div>
         )}
         {flow.state === "prepared" && !flow.error && (
-          <div className="state-panel state-panel--success" role="status">
+          <div className="state-panel state-panel--success state-panel--stacked" role="status">
             <strong>Preliminary check is prepared</strong>
             <p>
               This preparation synchronized and receipt-verified Discovery

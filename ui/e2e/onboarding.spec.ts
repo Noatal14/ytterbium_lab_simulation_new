@@ -24,3 +24,15 @@ test("new operator sees the safe starting path", async ({ page, browserName }) =
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
 });
+
+test("campaign readiness badge wraps within its card at 320px with larger text", async ({ page }) => {
+  await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [], invalid_count: 0, total: 0 } } }));
+  await page.setViewportSize({ width: 320, height: 844 });
+  await page.goto("/");
+  await page.addStyleTag({ content: ":root { font-size: 18px; }" });
+  const badge = page.getByText("Readiness checked in setup", { exact: true });
+  await expect(badge).toBeVisible();
+  const bounds = await badge.evaluate((element) => ({ right: element.getBoundingClientRect().right, cardRight: element.closest("article")!.getBoundingClientRect().right }));
+  expect(bounds.right).toBeLessThanOrEqual(bounds.cardRight);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth), JSON.stringify(await overflowDiagnostic(page), null, 2)).toBe(false);
+});

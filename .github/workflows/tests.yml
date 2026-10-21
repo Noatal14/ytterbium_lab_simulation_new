@@ -135,6 +135,8 @@ jobs:
         run: npx playwright test --project=desktop --project=split-screen --project=tablet --project=desktop-webkit --project=mobile
 
       - name: Run browser-to-backend integration test
+        env:
+          DEBUG: pw:webserver
         run: npx playwright test --config=playwright.real-backend.config.ts
 
   host-compatibility:
@@ -172,6 +174,8 @@ jobs:
           npx playwright install chromium
       - name: Exercise browser workflows and real HTTP boundary
         working-directory: ui
+        env:
+          DEBUG: pw:webserver
         run: |
           npx playwright test --project=desktop --workers=2
           npx playwright test --config=playwright.real-backend.config.ts

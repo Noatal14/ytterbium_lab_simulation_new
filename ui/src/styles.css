@@ -53,9 +53,9 @@ h1 { margin-bottom: 14px; color: #1c2f34; font-size: clamp(2rem, 4vw, 3.25rem); 
 .campaign-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .campaign-card { display: flex; flex-direction: column; min-width: 0; padding: clamp(24px, 3vw, 34px); background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 5px 20px rgb(23 61 70 / .04); }
 .campaign-card--locked { background: #fbfcfc; }
-.card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.card-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .card-heading h3 { margin: 0; color: #172c31; font-size: clamp(1.3rem, 2vw, 1.65rem); }
-.card-badge { flex: 0 0 auto; padding: 8px 12px; color: var(--mint-ink); background: var(--mint); border-radius: 999px; font-size: .84rem; font-weight: 700; }
+.card-badge { flex: 0 0 auto; max-width: 100%; overflow-wrap: anywhere; padding: 8px 12px; color: var(--mint-ink); background: var(--mint); border-radius: 999px; font-size: .84rem; font-weight: 700; }
 .campaign-card > p { min-height: 4.6em; margin-bottom: 20px; line-height: 1.55; }
 .campaign-card ul { display: grid; gap: 12px; margin: 0 0 28px; padding: 0; list-style: none; }
 .campaign-card li { display: flex; align-items: flex-start; gap: 10px; line-height: 1.45; }
@@ -81,6 +81,7 @@ h1 { margin-bottom: 14px; color: #1c2f34; font-size: clamp(2rem, 4vw, 3.25rem); 
 .read-only-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 28px 0 0; color: var(--muted); font-size: .9rem; }
 .read-only-note svg { width: 18px; }
 .state-panel { display: flex; align-items: flex-start; gap: 14px; padding: 22px; color: var(--muted); background: white; border: 1px solid var(--line); border-radius: 14px; }
+.state-panel--stacked { display: block; }
 .state-panel svg { width: 23px; flex: 0 0 auto; color: var(--ink); }
 .state-panel strong { display: block; margin-bottom: 5px; color: #1c3035; }
 .state-panel p { margin: 0; line-height: 1.45; }
@@ -188,6 +189,7 @@ footer { padding: 18px 24px; color: #d5e4e3; background: var(--ink-dark); text-a
 @media (max-width: 900px) {
   .app-header { align-items: flex-start; }
   nav { gap: 12px; }
+  .help [role="tooltip"] { position: fixed; left: 50%; bottom: 16px; width: min(320px, calc(100% - 32px)); overflow-wrap: anywhere; }
   nav a { flex-direction: column; gap: 4px; font-size: .8rem; }
   .campaign-grid { grid-template-columns: 1fr; }
   .inspection-card { grid-template-columns: 1fr auto; }
