@@ -159,6 +159,9 @@ jobs:
           python -m pip install -e ./atomsmltr
       - name: Run native host compatibility suite
         run: python scripts/check_host_compatibility.py
+      - name: Show native Windows file-symlink rejection outcomes
+        if: runner.os == 'Windows'
+        run: python -m pytest -vv -rs tests/test_run_records.py::test_read_rejects_symlinked_record tests/test_run_results.py::test_state_symlink_and_wrong_digest_are_rejected
       - name: Compare real serial and spawn simulation results
         run: python scripts/smoke_host_simulations.py
       - name: Install browser test dependencies
