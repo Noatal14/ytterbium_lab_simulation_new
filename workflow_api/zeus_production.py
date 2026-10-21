@@ -636,8 +636,9 @@ class ZeusProductionCoordinator:
                     "nonce": pending.nonce,
                 }
             )
+            transport = self.transport_factory(plan[1])
             try:
-                result_state = self.transport_factory(plan[1]).prepare(**payload)
+                result_state = transport.prepare(**payload)
                 self._validate_state(result_state, plan[3])
                 current_request = {"campaign_id": pending.campaign_id, "username": pending.profile.username,
                                    "project_directory": pending.profile.project_directory}
@@ -649,7 +650,7 @@ class ZeusProductionCoordinator:
                 if {name: hashlib.sha256(raw).hexdigest() for name, raw in confirmed_files.items()} != pending.files:
                     raise ZeusProductionError("transition_outcome_unknown")
                 self._validate_receipt(result_state, plan, current_base)
-            except ZeusProductionError as error:
+            except Exception as error:
                 raise ZeusProductionError("transition_outcome_unknown") from error
             result = {
                 "status": "production_prepared",
@@ -671,7 +672,17 @@ class PinnedSshProductionTransport:
             PinnedSshPolicy.production_preparation(root, ssh, timeout=timeout)
         )
 
-    def _call(self, operation: str, payload: Mapping[str, object]):
+    def _call(self, operation, payload):
+        if operation not in {"inspect", "prepare"}:
+            raise ZeusProductionError("remote_response_invalid")
+        try:
+            return self._call_response(operation, payload)
+        except Exception as error:
+            if operation == "prepare":
+                raise ZeusProductionError("transition_outcome_unknown") from error
+            raise
+
+    def _call_response(self, operation: str, payload: Mapping[str, object]):
         pinned = {
             "inspect": ReceiverOperation.INSPECT,
             "prepare": ReceiverOperation.PREPARE,

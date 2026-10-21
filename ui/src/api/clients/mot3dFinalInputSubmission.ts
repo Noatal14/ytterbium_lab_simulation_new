@@ -1,5 +1,5 @@
 import { reviewedCampaignResource, campaignGenerationJob, campaignGenerationPools } from "../campaignPolicy";
-import { isKnownServerError, requiresManualVerification } from "../errorSemantics";
+import { adaptConfirmationError, isKnownServerError, confirmationRequiresManualVerification } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -18,8 +18,8 @@ const lifecycles = ["eligible", "submitted", "queued", "running", "held", "compl
 const record = (value: unknown, keys: string[], message: string) => { if (!value || typeof value !== "object" || Array.isArray(value) || !exactKeys(value as Record<string, unknown>, keys)) throw new Error(message); return value as Record<string, unknown>; };
 const stringArray = (start: number) => Array.from({ length: 20 }, (_, index) => start + index);
 export class Mot3DFinalInputSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
-const adaptError = (error: { code: string; message: string }) => new Mot3DFinalInputSubmissionApiError(isKnownServerError(domain, error.code) ? error.code : "mot_3d_final_input_submission_failed", isKnownServerError(domain, error.code) ? error.message : "Final-validation input submission stopped safely.");
-export const finalInputConfirmIsUncertain = (cause: unknown) => cause instanceof Mot3DFinalInputSubmissionApiError && (requiresManualVerification(domain, cause.code) || ["final_input_partial_submission", "final_input_submission_outcome_unknown", "final_input_submission_conflict", "final_input_submission_busy"].includes(cause.code));
+const adaptError = (error: { code: string; message: string }) => new Mot3DFinalInputSubmissionApiError(isKnownServerError(domain, error.code) ? error.code : "mot_3d_final_input_submission_failed", isKnownServerError(domain, error.code) ? error.message : "Final-validation input submission could not be verified.");
+export const finalInputConfirmIsUncertain = (cause: unknown) => cause instanceof Mot3DFinalInputSubmissionApiError && (confirmationRequiresManualVerification(domain, cause.code) || ["final_input_partial_submission", "final_input_submission_outcome_unknown", "final_input_submission_conflict", "final_input_submission_busy"].includes(cause.code));
 
 function parseJobs(value: unknown, lifecycle: string): [Job, Job, Job] {
   const chain = record(value, ["status", "dependency", "jobs"], "Invalid input-generation status.");
@@ -80,7 +80,7 @@ export function createMot3DFinalInputSubmissionApi(session: () => Promise<string
   return {
     async status(campaignId: string, profile: Profile) { const active = generation, parsed = parseMot3DFinalInputStatus(await postData("/api/v1/zeus/submissions/mot-3d-final-validation-inputs/status", body(campaignId, profile), await session(), adaptError)); if (active !== generation || parsed.campaign.id !== campaignId) throw new Error("Input-generation status is stale or mismatched."); return parsed; },
     async preview(campaignId: string, profile: Profile, commit: string) { const active = generation, csrf = await session(), parsed = parseMot3DFinalInputPreview(await postData("/api/v1/zeus/submissions/mot-3d-final-validation-inputs/preview", body(campaignId, profile), csrf, adaptError), { campaignId, commit }); if (active !== generation) throw new Error("Input-generation review is stale."); contexts.set(parsed.preview_token, { campaignId, csrf, generation: active }); return parsed; },
-    async confirm(preview_token: string) { const context = contexts.get(preview_token); if (!context) throw new Error("The input-generation review is no longer active."); contexts.delete(preview_token); try { const parsed = parseMot3DFinalInputResult(await postData("/api/v1/zeus/submissions/mot-3d-final-validation-inputs/confirm", { preview_token }, context.csrf, adaptError), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return parsed; } catch (cause) { if (cause instanceof Mot3DFinalInputSubmissionApiError) throw cause; throw new Mot3DFinalInputSubmissionApiError("final_input_submission_outcome_unknown", "The submission outcome could not be verified. Do not submit again; inspect Zeus first."); } },
+    async confirm(preview_token: string) { const context = contexts.get(preview_token); if (!context) throw new Error("The input-generation review is no longer active."); contexts.delete(preview_token); try { const parsed = parseMot3DFinalInputResult(await postData("/api/v1/zeus/submissions/mot-3d-final-validation-inputs/confirm", { preview_token }, context.csrf, (error) => adaptConfirmationError(error, adaptError, Mot3DFinalInputSubmissionApiError)), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return parsed; } catch (cause) { if (cause instanceof Mot3DFinalInputSubmissionApiError) throw cause; throw new Mot3DFinalInputSubmissionApiError("final_input_submission_outcome_unknown", "The submission outcome could not be verified. Do not submit again; inspect Zeus first."); } },
     reset() { generation += 1; contexts.clear(); },
   };
 }

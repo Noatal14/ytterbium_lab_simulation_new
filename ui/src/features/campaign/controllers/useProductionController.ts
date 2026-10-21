@@ -40,10 +40,12 @@ function useOperation<TStatus, TPreview, TResult>(args: {
   const [lastObservation, setLastObservation] = useState<"status" | "confirm" | null>(null);
   const gen = useRef(0),
     busy = useRef(false);
+  const reviewBlocked = useRef(false);
   useEffect(() => {
     gen.current++;
     busy.current = false;
     args.api.reset();
+    reviewBlocked.current = false;
     setState("idle");
     setStatus(null);
     setLastObservation(null);
@@ -70,6 +72,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
       !args.snapshot ||
       !args.enabled ||
       busy.current ||
+      (kind === "preview" && reviewBlocked.current) ||
       (kind === "confirm" && !preview)
     )
       return;
@@ -81,6 +84,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
       if (kind === "status") {
         const v = await args.api.status(args.campaignId, args.snapshot.profile);
         if (gen.current !== g) return;
+        reviewBlocked.current = false;
         setStatus(v);
         setLastObservation("status");
         setState(
@@ -104,9 +108,10 @@ function useOperation<TStatus, TPreview, TResult>(args: {
       }
     } catch (c) {
       if (gen.current !== g) return;
+      reviewBlocked.current = true;
       setPreview(null);
       setError(
-        c instanceof Error ? c.message : "The operation stopped safely.",
+        c instanceof Error ? c.message : kind === "confirm" ? "The operation outcome is unknown. Check the current campaign status. Do not retry or submit again automatically." : "The operation could not be verified.",
       );
       setState(kind === "confirm" ? "terminal" : "idle");
     } finally {
@@ -117,6 +122,7 @@ function useOperation<TStatus, TPreview, TResult>(args: {
     gen.current++;
     busy.current = false;
     args.api.reset();
+    reviewBlocked.current = false;
     setPreview(null);
     setError("");
     setState("idle");

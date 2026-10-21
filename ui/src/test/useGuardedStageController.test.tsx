@@ -105,3 +105,16 @@ describe("useGuardedStageController", () => {
     expect(operations.preview).not.toHaveBeenCalled();
   });
 });
+
+it("blocks retained review callbacks after uncertain write until a fresh successful status",async()=>{
+ const status=vi.fn().mockResolvedValue({action:"review"});const confirm=vi.fn().mockRejectedValue(new Error("unknown"));
+ const {hook,operations}=setup({status,confirm});
+ await act(()=>hook.result.current.refresh());
+ const savedReview=hook.result.current.review;
+ await act(()=>savedReview());await act(()=>hook.result.current.confirm());await act(()=>savedReview());
+ expect(operations.preview).toHaveBeenCalledTimes(1);expect(confirm).toHaveBeenCalledTimes(1);
+ const pending=deferred<Status>();status.mockReturnValueOnce(pending.promise);
+ act(()=>{void hook.result.current.refresh();});await act(()=>savedReview());expect(operations.preview).toHaveBeenCalledTimes(1);
+ await act(()=>pending.reject(new Error("status unavailable")));await act(()=>savedReview());expect(operations.preview).toHaveBeenCalledTimes(1);
+ await act(()=>hook.result.current.refresh());await act(()=>hook.result.current.review());expect(operations.preview).toHaveBeenCalledTimes(2);expect(confirm).toHaveBeenCalledTimes(1);
+});

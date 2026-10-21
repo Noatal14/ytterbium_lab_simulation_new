@@ -338,11 +338,15 @@ class ZeusSensitivityCoordinator:
                             "sensitivity_files": dict(pending.files),
                             "transition_key": pending.transition_key,
                             "nonce": pending.nonce})
-            result_state = self.transport_factory(plan[1]).prepare(**payload)
-            self._validate_state(result_state, plan[3])
-            self._validate_receipt(result_state, plan)
-            if result_state.receipt.get("nonce") != pending.nonce:
-                raise ZeusSensitivityError("transition_outcome_unknown")
+            transport = self.transport_factory(plan[1])
+            try:
+                result_state = transport.prepare(**payload)
+                self._validate_state(result_state, plan[3])
+                self._validate_receipt(result_state, plan)
+                if result_state.receipt.get("nonce") != pending.nonce:
+                    raise ZeusSensitivityError("transition_outcome_unknown")
+            except Exception as error:
+                raise ZeusSensitivityError("transition_outcome_unknown") from error
             result = {"status": "sensitivity_prepared", "campaign_id": pending.campaign_id,
                       "stage": "sensitivity", "artifacts": {"created": 3, "updated": 1},
                       "submitted_to_zeus": False, "simulation_started": False,
@@ -358,7 +362,19 @@ class PinnedSshSensitivityTransport:
             root, ssh, timeout=timeout
         ))
 
-    def _call(self, operation: str, payload: Mapping[str, object]):
+    def _call(self, operation, payload):
+        if operation not in {"inspect", "prepare"}:
+            raise ZeusSensitivityError("remote_response_invalid")
+        try:
+            return self._call_response(operation, payload)
+        except Exception as error:
+            # Once a write-capable invocation begins, failure cannot prove that
+            # publication did not happen. Keep strict parsing; require inspection.
+            if operation == "prepare":
+                raise ZeusSensitivityError("transition_outcome_unknown") from error
+            raise
+
+    def _call_response(self, operation: str, payload: Mapping[str, object]):
         pinned = {"inspect": ReceiverOperation.INSPECT,
                   "prepare": ReceiverOperation.PREPARE}.get(operation)
         if pinned is None:

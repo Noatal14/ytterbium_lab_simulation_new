@@ -186,7 +186,7 @@ def test_unknown_codes_remain_safe_fallbacks_and_never_enter_snapshot_as_real_co
     for domain_name, domain in ERROR_DOMAINS.items():
         assert "unexpected_remote_detail" not in domain.entries
         if domain.fallback is not None:
-            assert domain.fallback.message.endswith(("safely.", "failed safely."))
+            assert domain.fallback.message.endswith(("safely.", "failed safely.", "could not be verified."))
             assert domain.fallback_code
         assert all(code != "<fallback>" for code in domain.entries)
     assert all(case["code"] != "<dynamic>" for case in catalog_payload()["cases"])
@@ -209,7 +209,7 @@ def test_unknown_or_untrusted_codes_resolve_to_fixed_allowlisted_fallback(untrus
     resolved = resolve_error("smoke_submission", untrusted)
     assert resolved.code == "zeus_submission_failed"
     assert int(resolved.status) == 412
-    assert resolved.message == "Zeus smoke submission stopped safely."
+    assert resolved.message == "Zeus smoke submission could not be verified."
     if str(untrusted):
         assert str(untrusted) not in resolved.code
         assert str(untrusted) not in resolved.message
@@ -424,56 +424,56 @@ def test_every_catalogued_creation_error_matches_the_real_handler():
             ZeusPreparationError,
             "/api/v1/zeus/transfers/preview",
             "zeus_preparation_failed",
-            "Zeus preparation stopped safely.",
+            "Zeus preparation could not be verified.",
             412,
         ),
         (
             ZeusSubmissionError,
             "/api/v1/zeus/submissions/smoke/preview",
             "zeus_submission_failed",
-            "Zeus smoke submission stopped safely.",
+            "Zeus smoke submission could not be verified.",
             412,
         ),
         (
             ZeusScreeningError,
             "/api/v1/zeus/smoke/status",
             "zeus_screening_failed",
-            "Smoke inspection or screening preparation stopped safely.",
+            "Smoke inspection or screening preparation could not be verified.",
             412,
         ),
         (
             ZeusScreenSubmissionError,
             "/api/v1/zeus/submissions/screening/preview",
             "screening_submission_failed",
-            "Screening submission stopped safely.",
+            "Screening submission could not be verified.",
             412,
         ),
         (
             ZeusRefinementError,
             "/api/v1/zeus/refinement/preview",
             "refinement_preparation_failed",
-            "Refinement preparation stopped safely.",
+            "Refinement preparation could not be verified.",
             412,
         ),
         (
             ZeusRefinementSubmissionError,
             "/api/v1/zeus/submissions/refinement/preview",
             "refinement_submission_failed",
-            "Refinement submission stopped safely.",
+            "Refinement submission could not be verified.",
             412,
         ),
         (
             ZeusConfirmationError,
             "/api/v1/zeus/confirmation/preview",
             "confirmation_preparation_failed",
-            "Confirmation preparation stopped safely.",
+            "Confirmation preparation could not be verified.",
             412,
         ),
         (
             ZeusConfirmationSubmissionError,
             "/api/v1/zeus/submissions/confirmation/preview",
             "confirmation_submission_failed",
-            "Confirmation submission stopped safely.",
+            "Confirmation submission could not be verified.",
             412,
         ),
     ],
@@ -512,3 +512,18 @@ def test_unknown_creation_value_error_fails_closed_in_real_handler():
     }
     assert "secret" not in json.dumps(body)
     assert "/absolute/path" not in json.dumps(body)
+
+
+def test_postwrite_unknown_catalog_never_claims_safe_stop():
+    for name, domain in ERROR_DOMAINS.items():
+        for code, spec in domain.entries.items():
+            if code.endswith('_outcome_unknown'):
+                assert 'stopped safely' not in spec.message.lower(), (name, code)
+                assert any(word in spec.message.lower() for word in ('unknown', 'uncertain', 'may have')), (name, code)
+    for name in ('refinement_transition', 'confirmation_transition', 'sensitivity_transition', 'production_transition', 'finalization'):
+        domain = ERROR_DOMAINS[name]
+        assert domain.fallback is not None
+        assert 'stopped safely' not in domain.fallback.message.lower()
+        code = 'finalization_outcome_unknown' if name == 'finalization' else 'transition_outcome_unknown'
+        message = domain.entries[code].message.lower()
+        assert 'check' in message and 'do not retry' in message

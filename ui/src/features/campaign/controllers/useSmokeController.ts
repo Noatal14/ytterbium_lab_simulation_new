@@ -139,7 +139,7 @@ export function useSmokeController({
       return;
     }
     const terminal = cause instanceof SubmissionApiError && requiresManualVerification("smoke_submission", cause.code);
-    setSubmissionError(cause instanceof Error ? cause.message : "Smoke submission stopped safely.");
+    setSubmissionError(cause instanceof Error ? cause.message : "Smoke submission could not be verified.");
     setSubmissionState(terminal ? "terminal" : "error");
   }
 
@@ -216,7 +216,7 @@ export function useSmokeController({
       }
       const fresh = cause instanceof SmokeLifecycleApiError && errorHasSemantic("smoke_transition", cause.code, "fresh_review");
       const terminal = !(cause instanceof SmokeLifecycleApiError) || requiresManualVerification("smoke_transition", cause.code);
-      setPreparationError(cause instanceof Error ? cause.message : "Screening preparation stopped safely.");
+      setPreparationError(cause instanceof Error ? cause.message : "Screening preparation could not be verified.");
       if (fresh) { setPreparationPreview(null); setPreparationState("idle"); }
       else if (terminal) { setPreparationPreview(null); setPreparationState("terminal"); }
       else setPreparationState("review");

@@ -48,6 +48,7 @@ export function useGuardedStageController<Status, Preview, Result>({
   const [errorPhase, setErrorPhase] = useState<GuardedStageErrorPhase | null>(null);
   const generation = useRef(0);
   const busy = useRef(false);
+  const reviewBlocked = useRef(false);
   const consumedPreview = useRef<Preview | null>(null);
   const operationsRef = useRef(operations);
   operationsRef.current = operations;
@@ -56,6 +57,7 @@ export function useGuardedStageController<Status, Preview, Result>({
     generation.current += 1;
     busy.current = false;
     consumedPreview.current = null;
+    reviewBlocked.current = false;
     operationsRef.current.reset();
     setPhase("idle");
     setStatus(null);
@@ -76,7 +78,7 @@ export function useGuardedStageController<Status, Preview, Result>({
 
   const run = useCallback(async (kind: "status" | "preview" | "confirm") => {
     if (!enabled || busy.current) return;
-    if (kind === "preview" && !canPreview(status)) return;
+    if (kind === "preview" && (reviewBlocked.current || !canPreview(status))) return;
     if (kind === "confirm" && (!preview || consumedPreview.current === preview)) return;
     busy.current = true;
     const current = generation.current;
@@ -89,6 +91,7 @@ export function useGuardedStageController<Status, Preview, Result>({
       if (kind === "status") {
         const next = await operations.status();
         if (current !== generation.current) return;
+        reviewBlocked.current = false;
         setStatus(next);
         setPhase(stateForStatus(next));
       } else if (kind === "preview") {
@@ -106,11 +109,12 @@ export function useGuardedStageController<Status, Preview, Result>({
     } catch (cause) {
       if (current !== generation.current) return;
       const unknown = kind === "confirm" && isUnknownConfirmation(cause);
+      if (unknown || kind === "status") reviewBlocked.current = true;
       if (kind === "status") {
         setStatus(null);
         setPreview(null);
       }
-      setError(cause instanceof Error ? cause.message : "The operation stopped safely.");
+      setError(cause instanceof Error ? cause.message : "The operation could not be verified.");
       setErrorPhase(kind === "status" ? "status" : kind === "preview" ? "preview" : unknown ? "confirm_unknown" : "confirm_rejected");
       if (kind === "confirm" && !unknown) consumedPreview.current = null;
       setPhase(unknown ? "blocked" : kind === "status" ? "idle" : status ? stateForStatus(status) : "idle");

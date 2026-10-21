@@ -36,7 +36,7 @@ export function ProductionStage({
   const p = flow.preparation,
     s = flow.submission,
     f = flow.finalization,
-    ready = p.status?.sensitivity.status === "ready_to_prepare_production",
+    ready = !p.error && p.status?.sensitivity.status === "ready_to_prepare_production",
     prepared =
       p.state === "success" ||
       p.status?.sensitivity.status === "production_prepared",
@@ -135,9 +135,10 @@ export function ProductionStage({
             title={
               p.state === "terminal"
                 ? "Manual verification required"
-                : "Production preparation stopped safely"
+                : "Production preparation could not be verified"
             }
             text={p.error}
+            refresh={() => void p.refresh()}
           />
         )}
         {prepared && (
@@ -162,6 +163,7 @@ export function ProductionStage({
                   </button>
                   <button
                     className="primary-button"
+                    disabled={Boolean(s.error)}
                     onClick={() => void s.review()}
                   >
                     Review Production job
@@ -214,6 +216,7 @@ export function ProductionStage({
               <Failure
                 title="Manual verification required"
                 text={s.error}
+                refresh={() => void s.refresh()}
                 action={onViewJobs}
               />
             )}
@@ -245,7 +248,7 @@ export function ProductionStage({
                   >
                     Check Production results
                   </button>
-                  {f.status?.production.status === "ready_to_finalize" && (
+                  {!f.error && f.status?.production.status === "ready_to_finalize" && (
                     <button
                       className="primary-button"
                       onClick={() => void f.review()}
@@ -290,8 +293,9 @@ export function ProductionStage({
             )}
             {f.error && (
               <Failure
-                title="Finalization stopped safely"
+                title="Finalization could not be verified"
                 text={f.error}
+                refresh={() => void f.refresh()}
                 action={onViewJobs}
               />
             )}
@@ -326,10 +330,12 @@ function Failure({
   title,
   text,
   action,
+  refresh,
 }: {
   title: string;
   text: string;
   action?: () => void;
+  refresh?: () => void;
 }) {
   return (
     <div className="state-panel state-panel--error" role="alert">
@@ -337,6 +343,7 @@ function Failure({
       <div>
         <strong>{title}</strong>
         <p>{text}</p>
+        {refresh && <><p>Check the current status before taking further action. Do not retry or submit again automatically.</p><button className="secondary-button compact-action" onClick={refresh}>Check current status</button></>}
         {action && (
           <button className="secondary-button compact-action" onClick={action}>
             View Zeus jobs

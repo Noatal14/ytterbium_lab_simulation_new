@@ -250,7 +250,7 @@ export function SmokeSubmissionSection({
                     ? "Submission outcome needs verification"
                     : submissionState === "terminal"
                       ? "Smoke stage will not be resubmitted"
-                      : "Smoke submission stopped safely"}
+                      : "Smoke submission could not be verified"}
                 </strong>
                 <p>{submissionError}</p>
                 {["unknown", "terminal"].includes(submissionState) ? (

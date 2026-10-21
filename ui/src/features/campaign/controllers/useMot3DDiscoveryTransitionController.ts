@@ -43,8 +43,8 @@ export function useMot3DDiscoveryTransitionController({ campaignId, snapshot, en
       }
     } catch (cause) {
       if (generation.current !== current) return;
-      setPreview(null); setError(cause instanceof Error ? cause.message : "Discovery synchronization stopped safely.");
-      setState(kind === "confirm" ? "terminal" : status ? stateFor(status) : "idle");
+      setPreview(null); setError(cause instanceof Error ? cause.message : "Discovery synchronization could not be verified.");
+      setState(kind !== "preview" ? "terminal" : status ? stateFor(status) : "idle");
     } finally { if (generation.current === current) busy.current = false; }
   }
   function reset() { generation.current += 1; busy.current = false; api.reset(); setPreview(null); setError(""); setState(status ? stateFor(status) : "idle"); }

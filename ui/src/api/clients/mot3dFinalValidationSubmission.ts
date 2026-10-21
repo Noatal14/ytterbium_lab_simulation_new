@@ -1,8 +1,6 @@
 import { reviewedCampaignResource, campaignMemory, campaignParticles, campaignStagePools, campaignTotalParticles, campaignWalltime } from "../campaignPolicy";
-import {
-  isKnownServerError,
-  requiresManualVerification,
-} from "../errorSemantics";
+import { adaptConfirmationError, isKnownServerError,
+  confirmationRequiresManualVerification, } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -42,11 +40,11 @@ const adapt = (e: { code: string; message: string }) =>
       : "mot_3d_final_validation_submission_failed",
     isKnownServerError(domain, e.code)
       ? e.message
-      : "Final Validation submission stopped safely.",
+      : "Final Validation submission could not be verified.",
   );
 export const finalValidationConfirmIsUncertain = (e: unknown) =>
   e instanceof Mot3DFinalValidationSubmissionApiError &&
-  (requiresManualVerification(domain, e.code) ||
+  (confirmationRequiresManualVerification(domain, e.code) ||
     [
       "final_validation_partial_submission",
       "final_validation_submission_outcome_unknown",
@@ -278,7 +276,7 @@ export function createMot3DFinalValidationSubmissionApi(
             "/api/v1/zeus/submissions/mot-3d-final-validation/confirm",
             { preview_token: token },
             c.csrf,
-            adapt,
+            (error) => adaptConfirmationError(error, adapt, Mot3DFinalValidationSubmissionApiError),
           ),
           c.campaignId,
         );

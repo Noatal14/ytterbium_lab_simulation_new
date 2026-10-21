@@ -208,7 +208,7 @@ export function ConfirmationSubmissionView({
             <strong>
               {state === "terminal"
                 ? "Manual verification required"
-                : "Confirmation submission stopped safely"}
+                : "Confirmation submission could not be verified"}
             </strong>
             <p>{error}</p>
             <div className="form-actions">

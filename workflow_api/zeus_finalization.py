@@ -543,11 +543,15 @@ class ZeusFinalizationCoordinator:
                     "nonce": pending.nonce,
                 }
             )
-            completed = self.transport_factory(plan[1]).finalize(**payload)
-            self._validate_state(completed, plan[3])
-            self._validate_receipt(completed, plan)
-            if completed.receipt.get("nonce") != pending.nonce:
-                raise ZeusFinalizationError("finalization_outcome_unknown")
+            transport = self.transport_factory(plan[1])
+            try:
+                completed = transport.finalize(**payload)
+                self._validate_state(completed, plan[3])
+                self._validate_receipt(completed, plan)
+                if completed.receipt.get("nonce") != pending.nonce:
+                    raise ZeusFinalizationError("finalization_outcome_unknown")
+            except Exception as error:
+                raise ZeusFinalizationError("finalization_outcome_unknown") from error
             result = {
                 "status": "campaign_complete",
                 "campaign_id": pending.campaign_id,
@@ -568,7 +572,19 @@ class PinnedSshFinalizationTransport:
             PinnedSshPolicy.finalization(root, ssh, timeout=timeout)
         )
 
-    def _call(self, operation: str, payload: Mapping[str, object]):
+    def _call(self, operation, payload):
+        if operation not in {"inspect", "finalize"}:
+            raise ZeusFinalizationError("remote_response_invalid")
+        try:
+            return self._call_response(operation, payload)
+        except Exception as error:
+            # Once a write-capable invocation begins, failure cannot prove that
+            # publication did not happen. Keep strict parsing; require inspection.
+            if operation == "finalize":
+                raise ZeusFinalizationError("finalization_outcome_unknown") from error
+            raise
+
+    def _call_response(self, operation: str, payload: Mapping[str, object]):
         pinned = {
             "inspect": ReceiverOperation.INSPECT,
             "finalize": ReceiverOperation.PREPARE,

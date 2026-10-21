@@ -1,4 +1,4 @@
-import { isKnownServerError, requiresManualVerification } from "../errorSemantics";
+import { adaptConfirmationError, isKnownServerError, confirmationRequiresManualVerification } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -47,8 +47,8 @@ function parseCompletion(value: unknown): FinalValidationCompletion {
 }
 
 export class Mot3DFinalValidationCompletionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
-const adapt = (error: { code: string; message: string }) => new Mot3DFinalValidationCompletionApiError(isKnownServerError(domain, error.code) ? error.code : "mot_3d_final_validation_completion_failed", isKnownServerError(domain, error.code) ? error.message : "Final Validation completion stopped safely.");
-export const finalValidationCompletionIsUncertain = (error: unknown) => error instanceof Mot3DFinalValidationCompletionApiError && (requiresManualVerification(domain, error.code) || error.code.includes("outcome_unknown"));
+const adapt = (error: { code: string; message: string }) => new Mot3DFinalValidationCompletionApiError(isKnownServerError(domain, error.code) ? error.code : "mot_3d_final_validation_completion_failed", isKnownServerError(domain, error.code) ? error.message : "Final Validation completion could not be verified.");
+export const finalValidationCompletionIsUncertain = (error: unknown) => error instanceof Mot3DFinalValidationCompletionApiError && (confirmationRequiresManualVerification(domain, error.code) || error.code.includes("outcome_unknown"));
 
 export function parseMot3DFinalValidationCompletionStatus(value: unknown) {
   const r = object(value, ["source", "campaign", "final_validation", "scheduler", "validation", "completion", "next_action", "local_sync"], "Invalid Final Validation completion status.");
@@ -97,7 +97,7 @@ export function createMot3DFinalValidationCompletionApi(session: () => Promise<s
   return {
     async status(id: string, profile: Profile) { const g = generation; const value = parseMot3DFinalValidationCompletionStatus(await postData("/api/v1/zeus/mot-3d/final-validation-completion/status", body(id, profile), await session(), adapt)); if (g !== generation || value.campaign.id !== id) throw new Error("Final Validation completion status is stale."); return value; },
     async preview(id: string, profile: Profile, commit: string) { const g = generation, csrf = await session(); const value = parseMot3DFinalValidationCompletionPreview(await postData("/api/v1/zeus/mot-3d/final-validation-completion/preview", body(id, profile), csrf, adapt), { campaignId: id, commit }); if (g !== generation) throw new Error("Final Validation completion review is stale."); contexts.set(value.preview_token, { campaignId: id, csrf, generation: g, completion: value.completion }); return value; },
-    async confirm(review: { preview_token: string }) { const context = contexts.get(review.preview_token); if (!context) throw new Error("Review is no longer active."); contexts.delete(review.preview_token); try { const result = parseResult(await postData("/api/v1/zeus/mot-3d/final-validation-completion/confirm", { preview_token: review.preview_token }, context.csrf, adapt), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return { ...result, completion: context.completion }; } catch (error) { if (error instanceof Mot3DFinalValidationCompletionApiError) throw error; throw new Mot3DFinalValidationCompletionApiError("final_validation_completion_outcome_unknown", "The completion outcome could not be verified. Do not retry."); } },
+    async confirm(review: { preview_token: string }) { const context = contexts.get(review.preview_token); if (!context) throw new Error("Review is no longer active."); contexts.delete(review.preview_token); try { const result = parseResult(await postData("/api/v1/zeus/mot-3d/final-validation-completion/confirm", { preview_token: review.preview_token }, context.csrf, (error) => adaptConfirmationError(error, adapt, Mot3DFinalValidationCompletionApiError)), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return { ...result, completion: context.completion }; } catch (error) { if (error instanceof Mot3DFinalValidationCompletionApiError) throw error; throw new Mot3DFinalValidationCompletionApiError("final_validation_completion_outcome_unknown", "The completion outcome could not be verified. Do not retry."); } },
     reset() { generation += 1; contexts.clear(); },
   };
 }

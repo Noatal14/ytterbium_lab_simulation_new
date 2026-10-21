@@ -5,6 +5,7 @@ import {
   errorHasSemantic,
   isKnownServerError,
   requiresManualVerification,
+  confirmationRequiresManualVerification,
   synthesizedUncertainty,
   type ServerErrorDomain,
 } from "../api/errorSemantics";
@@ -50,4 +51,18 @@ describe("generated frontend error semantics", () => {
       expect(errorHasSemantic(domain as ServerErrorDomain, code, "outcome_unknown")).toBe(true);
     }
   });
+});
+
+
+it("keeps remote_response_invalid conservative only at the confirmation boundary",()=>{
+ for (const domain of ["mot_3d_closure_submission","mot_3d_refinement_submission","mot_3d_finalist_submission","mot_3d_closure_transition","mot_3d_finalist_transition","mot_3d_final_input_submission","mot_3d_final_validation_submission","mot_3d_final_validation_transition","mot_3d_final_validation_completion"] as const) {
+  expect(requiresManualVerification(domain,"remote_response_invalid")).toBe(false);
+  expect(confirmationRequiresManualVerification(domain,"remote_response_invalid")).toBe(true);
+  expect(confirmationRequiresManualVerification(domain,"confirmation_invalid")).toBe(false);
+  expect(confirmationRequiresManualVerification(domain,"local_files_changed")).toBe(false);
+  expect(confirmationRequiresManualVerification(domain,"invalid_csrf")).toBe(false);
+  expect(confirmationRequiresManualVerification(domain,"untrusted_origin")).toBe(false);
+  expect(confirmationRequiresManualVerification(domain,domain+"_failed")).toBe(true);
+  expect(confirmationRequiresManualVerification(domain,domain+"_unavailable")).toBe(true);
+ }
 });

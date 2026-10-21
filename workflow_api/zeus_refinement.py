@@ -104,15 +104,31 @@ class ZeusRefinementCoordinator:
             if self.clock()>pending.expires_at:raise ZeusRefinementError("confirmation_expired")
             _,profile,plan,state=self._inspect({"campaign_id":pending.campaign_id,"username":pending.profile.username,"project_directory":pending.profile.project_directory});campaign,_,remote_manifest,commit,prepared,screen,screen_digest,key=plan;rows=[dict(row) for row in state.rows];files=render_refine_transition(remote_manifest,campaign,self.root,rows);hashes={name:hashlib.sha256(content).hexdigest() for name,content in files.items()};digest=hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest()
             if state.lifecycle!="ready_to_prepare_refinement" or commit!=pending.commit or digest!=pending.rows_digest or key!=pending.screening_key or hashes!=pending.refine_files:raise ZeusRefinementError("local_files_changed")
-            result_state=self.transport_factory(profile).prepare(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,screen_files=screen,screen_digest=screen_digest,screening_submission_key=key,rows_digest=digest,refine_files=hashes,nonce=pending.nonce)
-            if result_state.lifecycle!="refinement_prepared":raise ZeusRefinementError("transition_outcome_unknown")
+            transport = self.transport_factory(profile)
+            try:
+                result_state=transport.prepare(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,screen_files=screen,screen_digest=screen_digest,screening_submission_key=key,rows_digest=digest,refine_files=hashes,nonce=pending.nonce)
+                if result_state.lifecycle!="refinement_prepared":raise ZeusRefinementError("transition_outcome_unknown")
+            except Exception as error:
+                raise ZeusRefinementError("transition_outcome_unknown") from error
             result={"status":"refinement_prepared","campaign_id":pending.campaign_id,"stage":"refine","artifacts":{"created":7,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}}
             self._previews.replace(token,replace(pending,result=result))
             return result
 
 class PinnedSshRefinementTransport:
     def __init__(self,root:Path,ssh:Path,profile:ZeusProfile,*,timeout=60):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.refinement_transition(root,ssh,timeout=timeout))
-    def _call(self,operation,payload):
+    def _call(self, operation, payload):
+        if operation not in {"inspect", "prepare"}:
+            raise ZeusRefinementError("remote_response_invalid")
+        try:
+            return self._call_response(operation, payload)
+        except Exception as error:
+            # Once a write-capable invocation begins, failure cannot prove that
+            # publication did not happen. Keep strict parsing; require inspection.
+            if operation == "prepare":
+                raise ZeusRefinementError("transition_outcome_unknown") from error
+            raise
+
+    def _call_response(self,operation,payload):
         pinned_operation={"inspect":ReceiverOperation.INSPECT,"prepare":ReceiverOperation.PREPARE}.get(operation)
         if pinned_operation is None:raise ZeusRefinementError("remote_response_invalid")
         try:r=self.runner.run(pinned_operation,self.profile,payload)

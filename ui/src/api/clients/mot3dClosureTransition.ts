@@ -1,4 +1,4 @@
-import { isKnownServerError, requiresManualVerification } from "../errorSemantics";
+import { adaptConfirmationError, isKnownServerError, confirmationRequiresManualVerification } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -25,11 +25,11 @@ const domain = "mot_3d_closure_transition" as const;
 const adaptError = (error: { code: string; message: string }) =>
   new Mot3DClosureTransitionApiError(
     isKnownServerError(domain, error.code) ? error.code : "mot_3d_closure_transition_failed",
-    isKnownServerError(domain, error.code) ? error.message : "Closure result verification stopped safely.",
+    isKnownServerError(domain, error.code) ? error.message : "Closure result verification could not be verified.",
   );
 export const closureTransitionIsUncertain = (cause: unknown) =>
   cause instanceof Mot3DClosureTransitionApiError && (
-    requiresManualVerification(domain, cause.code) ||
+    confirmationRequiresManualVerification(domain, cause.code) ||
     ["closure_transition_outcome_unknown", "transition_outcome_unknown", "local_sync_outcome_unknown"].includes(cause.code)
   );
 
@@ -109,7 +109,7 @@ export function createMot3DClosureTransitionApi(session: () => Promise<string>) 
   return {
     async status(campaignId: string, profile: Profile) { const active = generation; const value = parseMot3DClosureTransitionStatus(await postData("/api/v1/zeus/mot-3d/closure-transition/status", body(campaignId, profile), await session(), adaptError)); if (active !== generation || value.campaign.id !== campaignId) throw new Error("The Closure transition status is stale or mismatched."); return value; },
     async preview(campaignId: string, profile: Profile) { const active = generation, csrf = await session(); const value = parseMot3DClosureTransitionPreview(await postData("/api/v1/zeus/mot-3d/closure-transition/preview", body(campaignId, profile), csrf, adaptError), campaignId); if (active !== generation) throw new Error("The Closure transition review is stale."); contexts.set(value.preview_token, { campaignId, csrf, generation: active }); return value; },
-    async confirm(preview_token: string) { const context = contexts.get(preview_token); if (!context) throw new Error("The Closure transition review is no longer active."); contexts.delete(preview_token); try { const value = parseMot3DClosureTransitionResult(await postData("/api/v1/zeus/mot-3d/closure-transition/confirm", { preview_token }, context.csrf, adaptError), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return value; } catch (cause) { if (cause instanceof Mot3DClosureTransitionApiError) throw cause; throw new Mot3DClosureTransitionApiError("closure_transition_outcome_unknown", "The Closure transition outcome could not be verified. Do not retry; inspect the campaign and Zeus first."); } },
+    async confirm(preview_token: string) { const context = contexts.get(preview_token); if (!context) throw new Error("The Closure transition review is no longer active."); contexts.delete(preview_token); try { const value = parseMot3DClosureTransitionResult(await postData("/api/v1/zeus/mot-3d/closure-transition/confirm", { preview_token }, context.csrf, (error) => adaptConfirmationError(error, adaptError, Mot3DClosureTransitionApiError)), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return value; } catch (cause) { if (cause instanceof Mot3DClosureTransitionApiError) throw cause; throw new Mot3DClosureTransitionApiError("closure_transition_outcome_unknown", "The Closure transition outcome could not be verified. Do not retry; inspect the campaign and Zeus first."); } },
     reset() { generation += 1; contexts.clear(); },
   };
 }

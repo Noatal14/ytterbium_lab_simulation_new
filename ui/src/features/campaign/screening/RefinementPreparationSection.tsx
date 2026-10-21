@@ -270,7 +270,7 @@ export function RefinementPreparationSection({
                 <strong>
                   {prepareState === "terminal"
                     ? "Refinement state needs manual verification"
-                    : "Refinement preparation stopped safely"}
+                    : "Refinement preparation could not be verified"}
                 </strong>
                 <p>{prepareError}</p>
                 {prepareState === "terminal" ? (

@@ -191,8 +191,12 @@ class ZeusScreeningCoordinator:
                 raise ZeusScreeningError("confirmation_expired")
             campaign,_,commit,prepared,submission_key,files=self._unpack_plan(self._plan(pending.campaign_id)); local,clean=self._revision()
             if not clean or local!=commit or commit!=pending.commit or files!=pending.transition_files or prepared!=pending.prepared_files or submission_key!=pending.submission_key or campaign.relative_to(self.root).as_posix()!=pending.campaign_relative: raise ZeusScreeningError("local_files_changed")
-            state=self.transport_factory(pending.profile).prepare(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,submission_key=submission_key,transition_files=files,smoke_digest=pending.smoke_digest,nonce=pending.nonce)
-            if state.lifecycle!="screen_prepared": raise ZeusScreeningError("transition_outcome_unknown")
+            transport = self.transport_factory(pending.profile)
+            try:
+                state=transport.prepare(campaign=pending.campaign_relative,commit=commit,prepared_files=prepared,submission_key=submission_key,transition_files=files,smoke_digest=pending.smoke_digest,nonce=pending.nonce)
+                if state.lifecycle!="screen_prepared": raise ZeusScreeningError("transition_outcome_unknown")
+            except Exception as error:
+                raise ZeusScreeningError("transition_outcome_unknown") from error
             result={"status":"screening_prepared","campaign_id":pending.campaign_id,"stage":"screen","artifacts":{"created":2,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}}
             self._previews.replace(token,replace(pending,result=result))
             return result
@@ -202,7 +206,19 @@ class PinnedSshScreeningTransport:
     """Fixed SSH adapter.  It can invoke only the repository's pinned receiver."""
     def __init__(self,root:Path,ssh:Path,profile:ZeusProfile,*,timeout:float=45):
         self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.screening_preparation(root,ssh,timeout=timeout))
-    def _call(self,operation:str,payload:Mapping[str,object])->RemoteSmokeState:
+    def _call(self, operation, payload):
+        if operation not in {"inspect", "prepare"}:
+            raise ZeusScreeningError("remote_response_invalid")
+        try:
+            return self._call_response(operation, payload)
+        except Exception as error:
+            # Once a write-capable invocation begins, failure cannot prove that
+            # publication did not happen. Keep strict parsing; require inspection.
+            if operation == "prepare":
+                raise ZeusScreeningError("transition_outcome_unknown") from error
+            raise
+
+    def _call_response(self,operation:str,payload:Mapping[str,object])->RemoteSmokeState:
         if operation not in {"inspect","prepare"}: raise ZeusScreeningError("remote_response_invalid")
         pinned_operation={"inspect":ReceiverOperation.INSPECT,"prepare":ReceiverOperation.PREPARE}.get(operation)
         if pinned_operation is None:raise ZeusScreeningError("remote_response_invalid")

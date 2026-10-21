@@ -1,5 +1,5 @@
 import { campaignParticles, campaignStagePools, campaignTotalParticles } from "../campaignPolicy";
-import { isKnownServerError, requiresManualVerification } from "../errorSemantics";
+import { adaptConfirmationError, isKnownServerError, confirmationRequiresManualVerification } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -12,8 +12,8 @@ const domain = "mot_3d_finalist_submission" as const;
 const record = (value: unknown, keys: string[], message: string) => { if (!value || typeof value !== "object" || Array.isArray(value) || !exactKeys(value as Record<string, unknown>, keys)) throw new Error(message); return value as Record<string, unknown>; };
 const clone = (value: unknown) => structuredClone(value) as Record<string, unknown>;
 export class Mot3DFinalistSubmissionApiError extends Error { constructor(public code: string, message: string) { super(message); } }
-const adaptError = (error: { code: string; message: string }) => new Mot3DFinalistSubmissionApiError(isKnownServerError(domain, error.code) ? error.code : "mot_3d_finalist_submission_failed", isKnownServerError(domain, error.code) ? error.message : "Finalist Selection submission stopped safely.");
-export const finalistConfirmIsUncertain = (cause: unknown) => cause instanceof Mot3DFinalistSubmissionApiError && (requiresManualVerification(domain, cause.code) || ["finalist_selection_partial_submission", "finalist_selection_submission_outcome_unknown", "finalist_selection_already_started"].includes(cause.code));
+const adaptError = (error: { code: string; message: string }) => new Mot3DFinalistSubmissionApiError(isKnownServerError(domain, error.code) ? error.code : "mot_3d_finalist_submission_failed", isKnownServerError(domain, error.code) ? error.message : "Finalist Selection submission could not be verified.");
+export const finalistConfirmIsUncertain = (cause: unknown) => cause instanceof Mot3DFinalistSubmissionApiError && (confirmationRequiresManualVerification(domain, cause.code) || ["finalist_selection_partial_submission", "finalist_selection_submission_outcome_unknown", "finalist_selection_already_started"].includes(cause.code));
 
 export function parseMot3DFinalistSubmissionStatus(value: unknown) {
   const original = clone(value), normalized = clone(value);
@@ -59,7 +59,7 @@ export function createMot3DFinalistSubmissionApi(session: () => Promise<string>)
   return {
     async status(campaignId: string, profile: Profile) { const active = generation, parsed = parseMot3DFinalistSubmissionStatus(await postData("/api/v1/zeus/submissions/mot-3d-finalist-selection/status", body(campaignId, profile), await session(), adaptError)); if (active !== generation || parsed.campaign.id !== campaignId) throw new Error("Finalist Selection status is stale or mismatched."); return parsed; },
     async preview(campaignId: string, profile: Profile) { const active = generation, csrf = await session(), parsed = parseMot3DFinalistSubmissionPreview(await postData("/api/v1/zeus/submissions/mot-3d-finalist-selection/preview", body(campaignId, profile), csrf, adaptError), { campaignId, profile }); if (active !== generation) throw new Error("Finalist Selection review is stale."); contexts.set(parsed.preview_token, { campaignId, csrf, generation: active, profile }); return parsed; },
-    async confirm(preview_token: string) { const context = contexts.get(preview_token); if (!context) throw new Error("The Finalist Selection review is no longer active."); contexts.delete(preview_token); try { const parsed = parseMot3DFinalistSubmissionResult(await postData("/api/v1/zeus/submissions/mot-3d-finalist-selection/confirm", { preview_token }, context.csrf, adaptError), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return parsed; } catch (cause) { if (cause instanceof Mot3DFinalistSubmissionApiError) throw cause; throw new Mot3DFinalistSubmissionApiError("finalist_selection_submission_outcome_unknown", "The submission outcome could not be verified. Do not submit again; inspect Zeus first."); } },
+    async confirm(preview_token: string) { const context = contexts.get(preview_token); if (!context) throw new Error("The Finalist Selection review is no longer active."); contexts.delete(preview_token); try { const parsed = parseMot3DFinalistSubmissionResult(await postData("/api/v1/zeus/submissions/mot-3d-finalist-selection/confirm", { preview_token }, context.csrf, (error) => adaptConfirmationError(error, adaptError, Mot3DFinalistSubmissionApiError)), context.campaignId); if (context.generation !== generation) throw new Error("stale"); return parsed; } catch (cause) { if (cause instanceof Mot3DFinalistSubmissionApiError) throw cause; throw new Mot3DFinalistSubmissionApiError("finalist_selection_submission_outcome_unknown", "The submission outcome could not be verified. Do not submit again; inspect Zeus first."); } },
     reset() { generation += 1; contexts.clear(); },
   };
 }

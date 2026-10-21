@@ -1,7 +1,5 @@
-import {
-  isKnownServerError,
-  requiresManualVerification,
-} from "../errorSemantics";
+import { adaptConfirmationError, isKnownServerError,
+  confirmationRequiresManualVerification, } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import { exactKeys } from "../schema/common";
 import type { ZeusSnapshot } from "../schema/domain";
@@ -80,11 +78,11 @@ const adapt = (e: { code: string; message: string }) =>
       : "mot_3d_final_validation_transition_failed",
     isKnownServerError(domain, e.code)
       ? e.message
-      : "Final-validation preparation stopped safely.",
+      : "Final-validation preparation could not be verified.",
   );
 export const finalValidationTransitionIsUncertain = (e: unknown) =>
   e instanceof Mot3DFinalValidationTransitionApiError &&
-  (requiresManualVerification(domain, e.code) ||
+  (confirmationRequiresManualVerification(domain, e.code) ||
     e.code.includes("outcome_unknown"));
 export function parseMot3DFinalValidationTransitionStatus(value: unknown) {
   const r = object(
@@ -507,7 +505,7 @@ export function createMot3DFinalValidationTransitionApi(
             "/api/v1/zeus/mot-3d/final-validation-transition/confirm",
             { preview_token: t },
             c.csrf,
-            adapt,
+            (error) => adaptConfirmationError(error, adapt, Mot3DFinalValidationTransitionApiError),
           ),
           c.campaignId,
         );

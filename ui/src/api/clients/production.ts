@@ -1,3 +1,4 @@
+import { isKnownServerError, type ServerErrorDomain } from "../errorSemantics";
 import { postData } from "../http/envelope";
 import {
   ProductionApiError,
@@ -28,6 +29,7 @@ import {
 } from "../schema/domain";
 type Session = () => Promise<string>;
 type Profile = ZeusSnapshot["profile"];
+const confirmationPreflightCodes = new Set(["unsupported_query", "session_unavailable", "untrusted_origin", "invalid_campaign_id", "not_found", "method_not_allowed", "invalid_preview", "invalid_request_target", "untrusted_host", "invalid_session", "invalid_csrf"]);
 const request = (campaign_id: string, p: Profile) => ({
   campaign_id,
   username: p.username,
@@ -43,6 +45,8 @@ function transitionApi<TS, TP, TR>(
   },
   ErrorType: new (code: string, message: string) => Error,
   label: string,
+  domain: ServerErrorDomain,
+  outcomeCode: string,
 ) {
   const contexts = new Map<string, { campaignId: string; csrf: string }>();
   return {
@@ -80,6 +84,7 @@ function transitionApi<TS, TP, TR>(
       const c = contexts.get(token);
       if (!c) throw new Error(`The ${label} review is no longer active.`);
       contexts.delete(token);
+      try {
       const v = parse.result(
         await postData(
           paths.confirm,
@@ -91,6 +96,11 @@ function transitionApi<TS, TP, TR>(
       if ((v as { campaign_id: string }).campaign_id !== c.campaignId)
         throw new Error(`${label} result did not match the reviewed campaign.`);
       return v;
+      } catch (cause) {
+        const code = cause && typeof cause === "object" && "code" in cause ? cause.code : undefined;
+        if (isKnownServerError(domain, code) || typeof code === "string" && confirmationPreflightCodes.has(code)) throw cause;
+        throw new ErrorType(outcomeCode, "The operation outcome is unknown. Check the current campaign status. Do not retry or submit again automatically.");
+      }
     },
     reset() {
       contexts.clear();
@@ -112,6 +122,8 @@ export function createProductionApi(session: Session) {
     },
     ProductionApiError,
     "Production preparation",
+    "production_transition",
+    "transition_outcome_unknown",
   );
 }
 export function createProductionSubmissionApi(session: Session) {
@@ -133,6 +145,8 @@ export function createProductionSubmissionApi(session: Session) {
     },
     ProductionSubmissionApiError,
     "Production submission",
+    "production_submission",
+    "production_submission_outcome_unknown",
   );
 }
 export function createFinalizationApi(session: Session) {
@@ -154,6 +168,8 @@ export function createFinalizationApi(session: Session) {
     },
     FinalizationApiError,
     "campaign finalization",
+    "finalization",
+    "finalization_outcome_unknown",
   );
 }
 export type ProductionApi = ReturnType<typeof createProductionApi>;

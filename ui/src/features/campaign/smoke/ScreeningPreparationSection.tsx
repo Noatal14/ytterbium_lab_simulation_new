@@ -209,7 +209,7 @@ export function ScreeningPreparationSection({
                 <strong>
                   {screeningState === "terminal"
                     ? "Screening state needs manual verification"
-                    : "Screening preparation stopped safely"}
+                    : "Screening preparation could not be verified"}
                 </strong>
                 <p>{screeningError}</p>
                 {screeningState === "terminal" && (

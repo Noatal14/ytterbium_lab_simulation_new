@@ -183,7 +183,7 @@ export function useScreeningController({
       const fresh = errorHasSemantic("screen_submission", code, "fresh_review");
       const unknown = errorHasSemantic("screen_submission", code, "outcome_unknown");
       const terminal = !(cause instanceof ScreeningSubmissionApiError) || requiresManualVerification("screen_submission", code);
-      setSubmissionError(fresh ? (code === "local_files_changed" ? "The campaign files changed after review. Start a fresh review before submitting." : "The review expired or is no longer valid. Start a fresh review before submitting.") : unknown ? "The submission outcome could not be verified. Do not submit again; inspect Zeus jobs." : cause instanceof Error ? cause.message : "Screening submission stopped safely.");
+      setSubmissionError(fresh ? (code === "local_files_changed" ? "The campaign files changed after review. Start a fresh review before submitting." : "The review expired or is no longer valid. Start a fresh review before submitting.") : unknown ? "The submission outcome could not be verified. Do not submit again; inspect Zeus jobs." : cause instanceof Error ? cause.message : "Screening submission could not be verified.");
       if (fresh) { reviewedAuthorityKey.current = null; reviewedAuthorityEpoch.current = null; setSubmissionPreview(null); setSubmissionState("error"); }
       else if (unknown) { reviewedAuthorityKey.current = null; reviewedAuthorityEpoch.current = null; setSubmissionPreview(null); setSubmissionState("unknown"); }
       else if (terminal) { reviewedAuthorityKey.current = null; reviewedAuthorityEpoch.current = null; setSubmissionPreview(null); setSubmissionState("terminal"); }
@@ -254,7 +254,7 @@ export function useScreeningController({
       }
       const fresh = cause instanceof ScreeningLifecycleApiError && errorHasSemantic("refinement_transition", cause.code, "fresh_review");
       const terminal = !(cause instanceof ScreeningLifecycleApiError) || requiresManualVerification("refinement_transition", cause.code);
-      setPreparationError(cause instanceof Error ? cause.message : "Refinement preparation stopped safely.");
+      setPreparationError(cause instanceof Error ? cause.message : "Refinement preparation could not be verified.");
       if (fresh) { setPreparationPreview(null); setPreparationState("idle"); }
       else if (terminal) { setPreparationPreview(null); setPreparationState("terminal"); }
       else setPreparationState("review");

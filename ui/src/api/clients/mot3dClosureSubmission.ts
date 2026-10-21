@@ -1,3 +1,4 @@
+import { adaptConfirmationError, confirmationRequiresManualVerification } from "../errorSemantics";
 import { reviewedCampaignStageArray, type Campaign3DResourceStage, reviewedCampaignResource, campaignParticles, campaignTotalParticles } from "../campaignPolicy";
 import { MOT_3D_TIMESTEP_POLICY_V2 } from "../../generated/mot3dTimestepPolicy.v2";
 import { postData } from "../http/envelope";
@@ -16,11 +17,11 @@ export class Mot3DClosureSubmissionApiError extends Error {
   constructor(public code: string, message: string) { super(message); }
 }
 export const closureConfirmIsUncertain = (cause: unknown) =>
-  cause instanceof Mot3DClosureSubmissionApiError && [
+  cause instanceof Mot3DClosureSubmissionApiError && (confirmationRequiresManualVerification("mot_3d_closure_submission", cause.code) || [
     "closure_submission_outcome_unknown",
     "closure_partial_submission",
     "closure_already_started",
-  ].includes(cause.code);
+  ].includes(cause.code));
 const closureErrorCodes = new Set([
   "request_invalid", "profile_invalid", "campaign_not_found", "closure_preparation_invalid",
   "closure_already_started", "closure_partial_submission", "closure_submission_outcome_unknown",
@@ -30,7 +31,7 @@ const closureErrorCodes = new Set([
   "mot_3d_closure_submission_failed", "mot_3d_closure_submission_unavailable",
 ]);
 const closureApiError = (error: { code: string; message: string }) => {
-  if (!closureErrorCodes.has(error.code)) return new Mot3DClosureSubmissionApiError("mot_3d_closure_submission_failed", "3D Closure submission stopped safely.");
+  if (!closureErrorCodes.has(error.code)) return new Mot3DClosureSubmissionApiError("mot_3d_closure_submission_failed", "3D Closure submission could not be verified.");
   return new Mot3DClosureSubmissionApiError(error.code, error.message);
 };
 type Lifecycle = "not_submitted" | "submitted" | "queued" | "running" | "held" | "completed_failed" | "completed_success_unvalidated" | "status_unknown" | "outcome_unknown" | "partial";
@@ -117,7 +118,7 @@ export function createMot3DClosureSubmissionApi(session: () => Promise<string>) 
       if (!context) throw new Error("The Closure review is no longer active.");
       contexts.delete(preview_token);
       try {
-        const result = parseMot3DClosureSubmissionResult(await postData("/api/v1/zeus/submissions/mot-3d-closure/confirm", { preview_token }, context.csrf, closureApiError), context.campaignId);
+        const result = parseMot3DClosureSubmissionResult(await postData("/api/v1/zeus/submissions/mot-3d-closure/confirm", { preview_token }, context.csrf, (error) => adaptConfirmationError(error, closureApiError, Mot3DClosureSubmissionApiError)), context.campaignId);
         if (context.generation !== generation) throw new Error("stale");
         return result;
       } catch (cause) {

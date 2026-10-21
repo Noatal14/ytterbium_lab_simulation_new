@@ -84,14 +84,30 @@ class ZeusConfirmationCoordinator:
             if self.clock()>pending.expires:raise ZeusConfirmationError("confirmation_expired")
             plan,state=self._inspect({"campaign_id":pending.campaign_id,"username":pending.profile.username,"project_directory":pending.profile.project_directory});_,profile,_,_,commit,_,key,_,_=plan;rows=[dict(x) for x in state.rows]
             if state.lifecycle!="ready_to_prepare_confirmation" or commit!=pending.commit or key!=pending.chain_key or hashlib.sha256(json.dumps(rows,sort_keys=True).encode()).hexdigest()!=pending.rows_digest:raise ZeusConfirmationError("local_files_changed")
-            result_state=self.transport_factory(profile).prepare(campaign=pending.relative,commit=commit,refine_files=plan[5],chain_key=key,screen_digest=plan[7],screening_submission_key=plan[8],rows_digest=pending.rows_digest,confirmation_files=pending.files,nonce=pending.nonce)
-            receipt=result_state.receipt;exact={"status","nonce","chain_key","commit","rows_digest","rows","files","rounds","completed_unix_s"}
-            if result_state.lifecycle!="confirmation_prepared" or not isinstance(receipt,dict) or set(receipt)!=exact or receipt.get("status")!="confirmation_prepared" or receipt.get("nonce")!=pending.nonce or receipt.get("chain_key")!=key or receipt.get("commit")!=commit or receipt.get("rows_digest")!=pending.rows_digest or receipt.get("rows")!=rows or receipt.get("files")!=pending.files or receipt.get("rounds")!=[dict(row) for row in result_state.rounds] or not isinstance(receipt.get("completed_unix_s"),int) or isinstance(receipt.get("completed_unix_s"),bool) or not 0<=receipt["completed_unix_s"]<=253402300799:raise ZeusConfirmationError("transition_outcome_unknown")
+            transport = self.transport_factory(profile)
+            try:
+                result_state=transport.prepare(campaign=pending.relative,commit=commit,refine_files=plan[5],chain_key=key,screen_digest=plan[7],screening_submission_key=plan[8],rows_digest=pending.rows_digest,confirmation_files=pending.files,nonce=pending.nonce)
+                receipt=result_state.receipt;exact={"status","nonce","chain_key","commit","rows_digest","rows","files","rounds","completed_unix_s"}
+                if result_state.lifecycle!="confirmation_prepared" or not isinstance(receipt,dict) or set(receipt)!=exact or receipt.get("status")!="confirmation_prepared" or receipt.get("nonce")!=pending.nonce or receipt.get("chain_key")!=key or receipt.get("commit")!=commit or receipt.get("rows_digest")!=pending.rows_digest or receipt.get("rows")!=rows or receipt.get("files")!=pending.files or receipt.get("rounds")!=[dict(row) for row in result_state.rounds] or not isinstance(receipt.get("completed_unix_s"),int) or isinstance(receipt.get("completed_unix_s"),bool) or not 0<=receipt["completed_unix_s"]<=253402300799:raise ZeusConfirmationError("transition_outcome_unknown")
+            except Exception as error:
+                raise ZeusConfirmationError("transition_outcome_unknown") from error
             result={"status":"confirmation_prepared","campaign_id":pending.campaign_id,"stage":"confirmation","artifacts":{"created":3,"updated":1},"submitted_to_zeus":False,"simulation_started":False,"local_sync":{"status":"not_synchronized"}};self._previews.replace(request["preview_token"],replace(pending,result=result));return result
 
 class PinnedSshConfirmationTransport:
     def __init__(self,root,ssh,profile,*,timeout=90):self.root=root;self.ssh=ssh;self.profile=profile;self.timeout=timeout;self.runner=PinnedSshRunner(PinnedSshPolicy.confirmation_preparation(root,ssh,timeout=timeout))
-    def _call(self,operation,payload):
+    def _call(self, operation, payload):
+        if operation not in {"inspect", "prepare"}:
+            raise ZeusConfirmationError("remote_response_invalid")
+        try:
+            return self._call_response(operation, payload)
+        except Exception as error:
+            # Once a write-capable invocation begins, failure cannot prove that
+            # publication did not happen. Keep strict parsing; require inspection.
+            if operation == "prepare":
+                raise ZeusConfirmationError("transition_outcome_unknown") from error
+            raise
+
+    def _call_response(self,operation,payload):
         pinned_operation={"inspect":ReceiverOperation.INSPECT,"prepare":ReceiverOperation.PREPARE}.get(operation)
         if pinned_operation is None:raise ZeusConfirmationError("remote_response_invalid")
         try:result=self.runner.run(pinned_operation,self.profile,payload)

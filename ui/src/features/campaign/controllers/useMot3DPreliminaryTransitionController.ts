@@ -21,7 +21,7 @@ export function useMot3DPreliminaryTransitionController({ campaignId, snapshot, 
       if (kind === "status") { const value = await api.status(campaignId, snapshot.profile); if (generation.current !== current) return; setStatus(value); setState(stateFor(value)); }
       else if (kind === "preview") { const value = await api.preview(campaignId, snapshot.profile); if (generation.current !== current) return; setPreview(value); setState("review"); }
       else { const value = await api.confirm(preview!.preview_token); if (generation.current !== current) return; setResult(value); setPreview(null); setState("prepared"); }
-    } catch (cause) { if (generation.current !== current) return; setPreview(null); setError(cause instanceof Error ? cause.message : "Preliminary-check synchronization stopped safely."); setErrorPhase(kind === "confirm" ? "confirm" : "inspect"); setState(kind === "confirm" ? "terminal" : status ? stateFor(status) : "idle"); }
+    } catch (cause) { if (generation.current !== current) return; setPreview(null); setError(cause instanceof Error ? cause.message : "Preliminary-check synchronization could not be verified."); setErrorPhase(kind === "confirm" ? "confirm" : "inspect"); setState(kind !== "preview" ? "terminal" : status ? stateFor(status) : "idle"); }
     finally { if (generation.current === current) busy.current = false; }
   }
   function reset() { generation.current += 1; busy.current = false; api.reset(); setPreview(null); setError(""); setErrorPhase(null); setState(status ? stateFor(status) : "idle"); }

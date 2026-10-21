@@ -266,7 +266,7 @@ export function ScreeningSubmissionSection({
                     ? "Submission outcome needs manual verification"
                     : submitState === "terminal"
                       ? "Screening will not be submitted again"
-                      : "Screening submission stopped safely"}
+                      : "Screening submission could not be verified"}
                 </strong>
                 <p>{submitError}</p>
                 {["unknown", "terminal"].includes(submitState) ? (

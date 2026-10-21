@@ -431,7 +431,7 @@ TRANSFER = _frozen(
             "The Zeus checkout is not clean at the campaign commit.",
         ),
     },
-    _spec(HTTPStatus.PRECONDITION_FAILED, "Zeus preparation stopped safely."),
+    _spec(HTTPStatus.PRECONDITION_FAILED, "Zeus preparation could not be verified."),
     "zeus_preparation_failed",
 )
 
@@ -506,7 +506,7 @@ SMOKE_SUBMISSION = _frozen(
             "Another submission operation is already checking this campaign.",
         ),
     },
-    _spec(HTTPStatus.PRECONDITION_FAILED, "Zeus smoke submission stopped safely."),
+    _spec(HTTPStatus.PRECONDITION_FAILED, "Zeus smoke submission could not be verified."),
     "zeus_submission_failed",
 )
 
@@ -514,15 +514,15 @@ SMOKE_TRANSITION = _frozen(
     {
         "request_invalid": _spec(
             HTTPStatus.BAD_REQUEST,
-            "Smoke inspection or screening preparation stopped safely.",
+            "Smoke inspection or screening preparation could not be verified.",
         ),
         "profile_invalid": _spec(
             HTTPStatus.BAD_REQUEST,
-            "Smoke inspection or screening preparation stopped safely.",
+            "Smoke inspection or screening preparation could not be verified.",
         ),
         "campaign_not_found": _spec(
             HTTPStatus.NOT_FOUND,
-            "Smoke inspection or screening preparation stopped safely.",
+            "Smoke inspection or screening preparation could not be verified.",
         ),
         "smoke_running": _spec(
             HTTPStatus.PRECONDITION_FAILED, "The smoke check is still running."
@@ -585,7 +585,7 @@ SMOKE_TRANSITION = _frozen(
     },
     _spec(
         HTTPStatus.PRECONDITION_FAILED,
-        "Smoke inspection or screening preparation stopped safely.",
+        "Smoke inspection or screening preparation could not be verified.",
     ),
     "zeus_screening_failed",
 )
@@ -593,13 +593,13 @@ SMOKE_TRANSITION = _frozen(
 SCREEN_SUBMISSION = _frozen(
     {
         "request_invalid": _spec(
-            HTTPStatus.BAD_REQUEST, "Screening submission stopped safely."
+            HTTPStatus.BAD_REQUEST, "Screening submission could not be verified."
         ),
         "profile_invalid": _spec(
-            HTTPStatus.BAD_REQUEST, "Screening submission stopped safely."
+            HTTPStatus.BAD_REQUEST, "Screening submission could not be verified."
         ),
         "campaign_not_found": _spec(
-            HTTPStatus.NOT_FOUND, "Screening submission stopped safely."
+            HTTPStatus.NOT_FOUND, "Screening submission could not be verified."
         ),
         "campaign_not_canonical": _spec(
             HTTPStatus.PRECONDITION_FAILED,
@@ -653,7 +653,7 @@ SCREEN_SUBMISSION = _frozen(
             HTTPStatus.GATEWAY_TIMEOUT, "The Zeus submission check timed out."
         ),
     },
-    _spec(HTTPStatus.PRECONDITION_FAILED, "Screening submission stopped safely."),
+    _spec(HTTPStatus.PRECONDITION_FAILED, "Screening submission could not be verified."),
     "screening_submission_failed",
 )
 
@@ -683,7 +683,10 @@ def _generic_stage(
                 )
             )
         )
-        entries[code] = _spec(status, message)
+        entries[code] = _spec(status, (
+            "The operation outcome is unknown. Check the current campaign status. "
+            "Do not retry or submit again automatically."
+        ) if code.endswith("_outcome_unknown") else message)
     return _frozen(
         entries, _spec(HTTPStatus.PRECONDITION_FAILED, message), fallback_code
     )
@@ -718,7 +721,7 @@ REFINEMENT_TRANSITION = _generic_stage(
         "zeus_unreachable",
         "scheduler_unavailable",
     },
-    "Refinement preparation stopped safely.",
+    "Refinement preparation could not be verified.",
     {
         "transition_busy",
         "transition_conflict",
@@ -729,6 +732,7 @@ REFINEMENT_TRANSITION = _generic_stage(
 )
 REFINEMENT_SUBMISSION = _generic_stage(
     {
+        "transition_outcome_unknown",
         "request_invalid",
         "profile_invalid",
         "campaign_not_found",
@@ -750,7 +754,7 @@ REFINEMENT_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Refinement submission stopped safely.",
+    "Refinement submission could not be verified.",
     {
         "refinement_chain_already_submitted",
         "refinement_chain_partially_submitted",
@@ -762,6 +766,7 @@ REFINEMENT_SUBMISSION = _generic_stage(
 )
 CONFIRMATION_TRANSITION = _generic_stage(
     {
+        "refinement_submission_outcome_unknown",
         "request_invalid",
         "profile_invalid",
         "campaign_not_found",
@@ -783,7 +788,7 @@ CONFIRMATION_TRANSITION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Confirmation preparation stopped safely.",
+    "Confirmation preparation could not be verified.",
     {
         "transition_busy",
         "transition_conflict",
@@ -796,7 +801,7 @@ CONFIRMATION_TRANSITION = _frozen(
     {
         **CONFIRMATION_TRANSITION.entries,
         "zeus_authentication_required": _spec(
-            HTTPStatus.PRECONDITION_FAILED, "Confirmation preparation stopped safely."
+            HTTPStatus.PRECONDITION_FAILED, "Confirmation preparation could not be verified."
         ),
     },
     CONFIRMATION_TRANSITION.fallback,
@@ -824,7 +829,7 @@ CONFIRMATION_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Confirmation submission stopped safely.",
+    "Confirmation submission could not be verified.",
     {
         "confirmation_already_submitted",
         "confirmation_submission_busy",
@@ -856,7 +861,7 @@ SENSITIVITY_TRANSITION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Sensitivity preparation stopped safely.",
+    "Sensitivity preparation could not be verified.",
     {
         "sensitivity_already_prepared",
         "transition_busy",
@@ -887,7 +892,7 @@ SENSITIVITY_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Sensitivity submission stopped safely.",
+    "Sensitivity submission could not be verified.",
     {
         "sensitivity_already_submitted",
         "sensitivity_submission_busy",
@@ -917,7 +922,7 @@ PRODUCTION_TRANSITION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Production preparation stopped safely.",
+    "Production preparation could not be verified.",
     {"transition_busy", "transition_conflict", "transition_outcome_unknown"},
     "production_preparation_failed",
 )
@@ -943,7 +948,7 @@ PRODUCTION_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Production submission stopped safely.",
+    "Production submission could not be verified.",
     {
         "production_already_submitted",
         "production_submission_busy",
@@ -970,7 +975,7 @@ FINALIZATION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "Campaign finalization stopped safely.",
+    "Campaign finalization could not be verified.",
     {"remote_files_changed", "finalization_outcome_unknown"},
     "finalization_failed",
 )
@@ -993,7 +998,7 @@ MOT_3D_DISCOVERY_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Discovery submission stopped safely.",
+    "3D Discovery submission could not be verified.",
     {"discovery_already_submitted", "discovery_submission_outcome_unknown"},
     "mot_3d_discovery_submission_failed",
 )
@@ -1021,7 +1026,7 @@ MOT_3D_DISCOVERY_TRANSITION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Discovery result synchronization stopped safely.",
+    "3D Discovery result synchronization could not be verified.",
     {
         "transition_busy",
         "transition_conflict",
@@ -1051,7 +1056,7 @@ MOT_3D_PRELIMINARY_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Preliminary-check submission stopped safely.",
+    "3D Preliminary-check submission could not be verified.",
     {
         "preliminary_already_started",
         "preliminary_partial_submission",
@@ -1079,7 +1084,7 @@ MOT_3D_REFINEMENT_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Refinement submission stopped safely.",
+    "3D Refinement submission could not be verified.",
     {
         "refinement_already_started",
         "refinement_partial_submission",
@@ -1107,7 +1112,7 @@ MOT_3D_CLOSURE_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Closure submission stopped safely.",
+    "3D Closure submission could not be verified.",
     {
         "closure_already_started",
         "closure_partial_submission",
@@ -1135,7 +1140,7 @@ MOT_3D_FINALIST_SUBMISSION = _generic_stage(
         "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Finalist Selection submission stopped safely.",
+    "3D Finalist Selection submission could not be verified.",
     {
         "finalist_selection_already_started",
         "finalist_selection_partial_submission",
@@ -1153,7 +1158,7 @@ MOT_3D_FINAL_VALIDATION_SUBMISSION = _generic_stage(
         "zeus_authentication_required", "zeus_host_key_untrusted", "zeus_timeout",
         "zeus_unreachable",
     },
-    "3D Final Validation submission stopped safely.",
+    "3D Final Validation submission could not be verified.",
     {"final_validation_already_started", "final_validation_partial_submission",
      "final_validation_submission_outcome_unknown"},
     "mot_3d_final_validation_submission_failed",
@@ -1186,7 +1191,7 @@ MOT_3D_PRELIMINARY_TRANSITION = _generic_stage(
         "zeus_unavailable",
         "zeus_timeout",
     },
-    "3D Preliminary-check result synchronization stopped safely.",
+    "3D Preliminary-check result synchronization could not be verified.",
     {
         "preliminary_transition_conflict",
         "preliminary_transition_busy",
@@ -1228,7 +1233,7 @@ MOT_3D_REFINEMENT_TRANSITION = _generic_stage(
         "zeus_unavailable",
         "zeus_timeout",
     },
-    "3D Refinement result synchronization stopped safely.",
+    "3D Refinement result synchronization could not be verified.",
     {
         "refinement_transition_conflict",
         "refinement_transition_busy",
@@ -1270,7 +1275,7 @@ MOT_3D_CLOSURE_TRANSITION = _generic_stage(
         "zeus_unavailable",
         "zeus_timeout",
     },
-    "3D Closure result synchronization stopped safely.",
+    "3D Closure result synchronization could not be verified.",
     {
         "closure_transition_conflict",
         "closure_transition_busy",
@@ -1312,7 +1317,7 @@ MOT_3D_FINALIST_TRANSITION = _generic_stage(
         "zeus_unavailable",
         "zeus_timeout",
     },
-    "3D Finalist result synchronization stopped safely.",
+    "3D Finalist result synchronization could not be verified.",
     {
         "finalist_transition_conflict",
         "finalist_transition_busy",
@@ -1348,7 +1353,7 @@ MOT_3D_FINAL_INPUT_SUBMISSION = _generic_stage(
         "zeus_unavailable",
         "zeus_timeout",
     },
-    "3D final-validation input submission stopped safely.",
+    "3D final-validation input submission could not be verified.",
     {
         "final_input_partial_submission",
         "final_input_submission_outcome_unknown",
@@ -1371,7 +1376,7 @@ MOT_3D_FINAL_VALIDATION_TRANSITION = _generic_stage(
         "final_validation_transition_outcome_unknown",
         "final_validation_transition_not_prepared", "zeus_unavailable", "zeus_timeout",
     },
-    "3D final-validation preparation stopped safely.",
+    "3D final-validation preparation could not be verified.",
     {
         "final_input_partial_submission", "final_input_submission_outcome_unknown",
         "final_validation_transition_conflict", "final_validation_transition_busy",
@@ -1395,7 +1400,7 @@ MOT_3D_FINAL_VALIDATION_COMPLETION = _generic_stage(
         "final_validation_completion_outcome_unknown",
         "final_validation_completion_not_prepared", "zeus_unavailable", "zeus_timeout",
     },
-    "3D final-validation completion stopped safely.",
+    "3D final-validation completion could not be verified.",
     {
         "final_validation_partial_submission", "final_validation_submission_outcome_unknown",
         "final_validation_completion_conflict", "final_validation_completion_busy",

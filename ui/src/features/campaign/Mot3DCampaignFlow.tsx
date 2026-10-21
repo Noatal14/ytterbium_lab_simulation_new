@@ -294,7 +294,7 @@ function Mot3DFinalValidationCompletionStage({
         {flow.phase === "success" && !extension && <div className="state-panel state-panel--success" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. No additional job was submitted or simulation started.</p></div>}
         {flow.phase === "success" && extension && <div className="state-panel state-panel--error" role="status"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation extension is required</strong><p>{failing.length ? `Precision was not established for: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. ` : "The precision target was not met. "}No winner or final performance claim is available. No scientifically approved extension policy exists, so no extension action is offered.</p></div></div>}
         {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Manual verification required</strong><p>The remote completion outcome is uncertain. Do not retry; inspect the existing Zeus evidence.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
-        {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation completion stopped safely</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "Do not retry; inspect Zeus and the campaign first." : "Refresh authoritative status before reviewing again."}</p></div></div>}
+        {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation completion could not be verified</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "Do not retry; inspect Zeus and the campaign first." : "Refresh authoritative status before reviewing again."}</p></div></div>}
       </div>
     </section>
   );
@@ -666,7 +666,7 @@ function Mot3DFinalValidationTransitionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Input verification stopped safely</strong>
+              <strong>Input verification could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm_unknown"
@@ -928,7 +928,7 @@ function Mot3DFinalInputSubmissionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Input-generation submission stopped safely</strong>
+              <strong>Input-generation submission could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm_unknown"
@@ -1191,7 +1191,7 @@ function Mot3DFinalistTransitionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Winner verification stopped safely</strong>
+              <strong>Winner verification could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm_unknown"
@@ -1436,7 +1436,7 @@ function Mot3DFinalistSubmissionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Finalist Selection submission stopped safely</strong>
+              <strong>Finalist Selection submission could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm_unknown"
@@ -1677,7 +1677,7 @@ function Mot3DClosureTransitionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Closure verification stopped safely</strong>
+              <strong>Closure verification could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm_unknown"
@@ -1922,7 +1922,7 @@ function Mot3DClosureSubmissionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Closure submission stopped safely</strong>
+              <strong>Closure submission could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm_unknown"
@@ -2194,7 +2194,7 @@ function Mot3DRefinementTransitionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Closure preparation stopped safely</strong>
+              <strong>Closure preparation could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm"
@@ -2430,7 +2430,7 @@ function Mot3DRefinementSubmissionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Refinement submission stopped safely</strong>
+              <strong>Refinement submission could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "submit_unknown"
@@ -2723,7 +2723,7 @@ function Mot3DPreliminaryTransitionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Refinement preparation stopped safely</strong>
+              <strong>Refinement preparation could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "confirm"
@@ -2967,7 +2967,7 @@ function Mot3DPreliminaryCheckStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Preliminary-check submission stopped safely</strong>
+              <strong>Preliminary-check submission could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 {flow.errorPhase === "submit"
@@ -3233,7 +3233,7 @@ function Mot3DDiscoveryTransitionStage({
           <div className="state-panel state-panel--error" role="alert">
             <AlertTriangle aria-hidden="true" />
             <div>
-              <strong>Discovery preparation stopped safely</strong>
+              <strong>Discovery preparation could not be verified</strong>
               <p>{flow.error}</p>
               <p>
                 No later job was submitted. Verify the existing evidence before

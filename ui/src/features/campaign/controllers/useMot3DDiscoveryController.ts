@@ -97,9 +97,9 @@ export function useMot3DDiscoveryController({
       if (generation.current !== current) return;
       setPreview(null);
       setError(
-        cause instanceof Error ? cause.message : "3D Discovery stopped safely.",
+        cause instanceof Error ? cause.message : "3D Discovery could not be verified.",
       );
-      setState(kind === "confirm" ? "terminal" : "idle");
+      setState(kind !== "preview" ? "terminal" : "idle");
     } finally {
       if (generation.current === current) busy.current = false;
     }

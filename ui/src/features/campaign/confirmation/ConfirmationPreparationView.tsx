@@ -214,7 +214,7 @@ export function ConfirmationPreparationView({
               >
                 <AlertTriangle aria-hidden="true" />
                 <div>
-                  <strong>Confirmation preparation stopped safely</strong>
+                  <strong>Confirmation preparation could not be verified</strong>
                   <p>{error}</p>
                   <button
                     className="secondary-button compact-action"

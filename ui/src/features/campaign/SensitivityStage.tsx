@@ -31,7 +31,7 @@ export function SensitivityStage({
   if (!visible) return null;
   const p = flow.preparation,
     s = flow.submission,
-    remote = p.status?.confirmation.status;
+    remote = !p.error ? p.status?.confirmation.status : undefined;
   return (
     <section className="section-block" aria-labelledby="sensitivity-heading">
       <div className="section-heading">
@@ -157,7 +157,7 @@ export function SensitivityStage({
               <strong>
                 {p.state === "terminal"
                   ? "Manual verification required"
-                  : "Sensitivity preparation stopped safely"}
+                  : "Sensitivity preparation could not be verified"}
               </strong>
               <p>{p.error}</p>
             </div>
@@ -186,6 +186,7 @@ export function SensitivityStage({
                   </button>
                   <button
                     className="primary-button"
+                    disabled={Boolean(s.error)}
                     onClick={() => void s.review()}
                   >
                     Review Sensitivity job
