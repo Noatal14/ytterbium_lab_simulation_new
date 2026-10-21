@@ -173,7 +173,7 @@ it.each([
     await click("Check Zeus status", "production-heading");
     await click("Check Production results");
     expect(
-      await screen.findByRole("heading", { name: "Sealed final results" }),
+      await screen.findByRole("heading", { name: mode === "ui-acceptance" ? "TEST ONLY sealed results" : "Sealed final results" }),
     ).toBeVisible();
     expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Final report is ready"})).toBeVisible();
     expect(reads).toEqual([

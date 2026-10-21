@@ -2,7 +2,27 @@ import { useEffect, useRef } from "react";
 import { AlertTriangle, LoaderCircle } from "lucide-react";
 import type { useProductionController } from "./controllers/useProductionController";
 import { JobResources } from "../shared/JobResources";
+import type { FinalCampaignResult } from "../../api/schema/domain";
 const percent = (value: number) => (100 * value).toFixed(3) + "%";
+function resultLabels(rows: FinalCampaignResult[]) {
+  const acceptanceCount = rows.filter(row => row.output_suitability === "acceptance_only").length;
+  const includesAcceptance = acceptanceCount > 0;
+  const acceptanceOnly = includesAcceptance && acceptanceCount === rows.length;
+  return {
+    includesAcceptance,
+    scientificOnly: rows.length > 0 && !includesAcceptance,
+    title: acceptanceOnly ? "TEST ONLY sealed results" : includesAcceptance ? "Sealed results — includes TEST ONLY outputs" : "Sealed final results",
+    description: acceptanceOnly
+      ? "These results verify the acceptance workflow. They are not scientific performance estimates."
+      : includesAcceptance
+        ? "These results include TEST ONLY acceptance outputs. Read each row's suitability; no combined scientific performance claim is made."
+        : "These are unbiased estimates from the frozen sealed ensembles. A warning about robustness or near-optimality means that claim was not established; it does not invalidate the reported best tested result.",
+    reviewTitle: acceptanceOnly ? "Finalize TEST ONLY results" : includesAcceptance ? "Finalize results including TEST ONLY outputs" : "Finalize this campaign",
+    reviewDescription: includesAcceptance
+      ? "Review each row's suitability below. Confirming records the report, including TEST ONLY outputs, and marks the campaign complete; it does not run or submit anything."
+      : "Review the sealed estimates below. Confirming records the validated report and marks the campaign complete; it does not run or submit anything.",
+  };
+}
 export function ProductionStage({
   visible,
   flow,
@@ -44,6 +64,9 @@ export function ProductionStage({
     finalResults = !f.error ? f.result?.results ??
       (f.state === "success" && f.status?.production.status === "campaign_complete"
         ? f.status.results : undefined) : undefined;
+  const observedRows = (["review", "confirming"].includes(f.state) ? f.preview?.results : undefined)
+    ?? finalResults ?? f.status?.results ?? [];
+  const labels = resultLabels(observedRows), finalLabels = resultLabels(finalResults ?? []);
   return (
     <section className="section-block" aria-labelledby="production-heading">
       <div className="section-heading">
@@ -53,8 +76,12 @@ export function ProductionStage({
         </h2>
         <p>
           Production uses exactly 20 frozen, previously unseen Zeeman/MOT seed
-          pairs for each fixed s₀. These sealed ensembles provide the campaign's
-          unbiased final performance estimate.
+          pairs for each fixed s₀.{" "}
+          {labels.includesAcceptance
+            ? "TEST ONLY outputs exercise the workflow and do not establish scientific performance. Each row states its allowed use."
+            : labels.scientificOnly
+              ? "These sealed ensembles provide the campaign's unbiased final performance estimate."
+              : "Each result's recorded output suitability determines its allowed use."}
         </p>
       </div>
       <div ref={focus} tabIndex={-1}>
@@ -264,8 +291,8 @@ export function ProductionStage({
             )}
             {f.preview && f.state === "review" && (
               <Review
-                title="Finalize this campaign"
-                description="Review the sealed estimates below. Confirming records the validated report and marks the campaign complete; it does not run or submit anything."
+                title={labels.reviewTitle}
+                description={labels.reviewDescription}
                 back={f.reset}
                 confirm={() => void f.confirm()}
                 confirmLabel="Finalize campaign"
@@ -274,19 +301,14 @@ export function ProductionStage({
               </Review>
             )}
             {f.state === "confirming" && (
-              <Busy title="Recording the validated final report" />
+              <Busy title={labels.includesAcceptance ? "Recording the report including TEST ONLY outputs" : "Recording the validated final report"} />
             )}
             {finalResults && (
               <div className="transfer-review">
                 <div className="section-heading">
                   <p className="eyebrow">Campaign complete</p>
-                  <h3>Sealed final results</h3>
-                  <p>
-                    These are unbiased estimates from the frozen sealed
-                    ensembles. A warning about robustness or near-optimality
-                    means that claim was not established; it does not invalidate
-                    the reported best tested result.
-                  </p>
+                  <h3>{finalLabels.title}</h3>
+                  <p>{finalLabels.description}</p>
                 </div>
                 <Results rows={finalResults} />
               </div>
@@ -390,13 +412,13 @@ function Review({
 function Results({
   rows,
 }: {
-  rows: import("../../api/schema/domain").FinalCampaignResult[];
+  rows: FinalCampaignResult[];
 }) {
   return (
     <div className="campaign-grid">
       {rows.map((row) => (
         <article className="campaign-card" key={row.s0}>
-          <p className="eyebrow">Fixed s₀ {row.s0}</p>
+          <p className="eyebrow">{row.output_suitability === "acceptance_only" ? "TEST ONLY diagnostics · " : ""}Fixed s₀ {row.s0}</p>
           <h4>
             {percent(row.prediction.pooled_conditional_efficiency)} conditional
             capture
@@ -426,7 +448,7 @@ function Results({
           </dl>
           {row.warnings.length > 0 && (
             <div className="state-panel state-panel--warning">
-              <strong>Scientific qualifications</strong>
+              <strong>{row.output_suitability === "acceptance_only" ? "Acceptance diagnostics" : "Scientific qualifications"}</strong>
               <ul>
                 {row.warnings.map((w) => (
                   <li key={w}>{w.replaceAll("_", " ")}</li>
