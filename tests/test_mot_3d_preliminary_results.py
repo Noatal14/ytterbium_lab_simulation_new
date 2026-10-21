@@ -417,6 +417,41 @@ def test_scientific_trust_boundary_mutations_fail_closed(
     assert error.value.code == code
 
 
+def _violate_usable_subset_preserving_counts(results):
+    for npz_name in sorted(name for name in results if name.endswith(".npz")):
+        with np.load(io.BytesIO(results[npz_name]), allow_pickle=False) as archive:
+            usable = archive["usable_at_end"].copy()
+            ever = archive["usable_ever"].copy()
+            groups = archive["ensemble_ids"].copy()
+        for group in np.unique(groups):
+            accepted = np.flatnonzero((groups == group) & usable & ever)
+            rejected = np.flatnonzero((groups == group) & ~usable & ~ever)
+            if not len(accepted) or not len(rejected):
+                continue
+            original_ever = ever.copy()
+            ever[accepted[0]] = False
+            ever[rejected[0]] = True
+            assert int(ever.sum()) == int(original_ever.sum())
+            for ensemble in np.unique(groups):
+                assert int(ever[groups == ensemble].sum()) == int(
+                    original_ever[groups == ensemble].sum()
+                )
+            assert np.any(usable & ~ever)
+            buffer = io.BytesIO()
+            np.savez_compressed(
+                buffer, usable_at_end=usable, usable_ever=ever, ensemble_ids=groups
+            )
+            results[npz_name] = buffer.getvalue()
+            json_name = npz_name[:-4] + ".json"
+            record = json.loads(results[json_name])
+            assert record["usable_at_end_count"] == int(usable.sum())
+            assert record["usable_ever_count"] == int(ever.sum())
+            record["outcomes_sha256"] = hashlib.sha256(results[npz_name]).hexdigest()
+            results[json_name] = json.dumps(record).encode()
+            return npz_name
+    raise AssertionError("Fixture requires opposite outcomes in the same ensemble")
+
+
 @pytest.mark.parametrize(
     "mutation,code",
     [
@@ -446,24 +481,7 @@ def test_captured_registry_mutations_fail_closed(tmp_path, mutation, code):
         row["bootstrap_seed"] = 1
         results[name] = json.dumps(row).encode()
     else:
-        npz_name = next(name for name in results if name.endswith(".npz"))
-        with np.load(io.BytesIO(results[npz_name]), allow_pickle=False) as archive:
-            usable = archive["usable_at_end"].copy()
-            ever = archive["usable_ever"].copy()
-            groups = archive["ensemble_ids"].copy()
-        usable[0] = True
-        ever[0] = False
-        buffer = io.BytesIO()
-        np.savez_compressed(
-            buffer, usable_at_end=usable, usable_ever=ever, ensemble_ids=groups
-        )
-        results[npz_name] = buffer.getvalue()
-        json_name = npz_name[:-4] + ".json"
-        record = json.loads(results[json_name])
-        record["outcomes_sha256"] = hashlib.sha256(results[npz_name]).hexdigest()
-        record["usable_at_end_count"] = int(usable.sum())
-        record["usable_ever_count"] = int(ever.sum())
-        results[json_name] = json.dumps(record).encode()
+        _violate_usable_subset_preserving_counts(results)
     with pytest.raises(PreliminaryResultError) as error:
         validate_preliminary_result_bytes(
             manifest_bytes=manifest,
@@ -474,6 +492,48 @@ def test_captured_registry_mutations_fail_closed(tmp_path, mutation, code):
             project_directory="/home/tal.noa/ytterbium_lab_simulation_new",
         )
     assert error.value.code == code
+
+
+def test_subset_mutation_preserves_metadata_with_zero_usable_archive_first(tmp_path):
+    manifest, selections, results, particle_selection, remote = _closed_fixture(tmp_path)
+    zero_archive = next(
+        name[:-5] + ".npz"
+        for name in sorted(results)
+        if name.endswith(".json")
+        and "worker_" in name
+        and not name.endswith("particle_selection.json")
+        and json.loads(results[name])["usable_at_end_count"] == 0
+    )
+    results = {zero_archive: results[zero_archive], **results}
+    assert next(name for name in results if name.endswith(".npz")) == zero_archive
+    original = dict(results)
+    changed = _violate_usable_subset_preserving_counts(results)
+    assert changed != zero_archive
+    metadata = changed[:-4] + ".json"
+    assert {name for name in results if results[name] != original[name]} == {
+        changed, metadata
+    }
+    before, after = json.loads(original[metadata]), json.loads(results[metadata])
+    assert {k: v for k, v in before.items() if k != "outcomes_sha256"} == {
+        k: v for k, v in after.items() if k != "outcomes_sha256"
+    }
+    with np.load(io.BytesIO(original[changed]), allow_pickle=False) as old, np.load(
+        io.BytesIO(results[changed]), allow_pickle=False
+    ) as new:
+        np.testing.assert_array_equal(old["usable_at_end"], new["usable_at_end"])
+        np.testing.assert_array_equal(old["ensemble_ids"], new["ensemble_ids"])
+        assert int(old["usable_ever"].sum()) == int(new["usable_ever"].sum())
+        assert np.any(new["usable_at_end"] & ~new["usable_ever"])
+    with pytest.raises(PreliminaryResultError) as error:
+        validate_preliminary_result_bytes(
+            manifest_bytes=manifest,
+            selection_bytes=selections,
+            result_files=results,
+            expected_particle_selection=particle_selection,
+            campaign_absolute_path=remote,
+            project_directory="/home/tal.noa/ytterbium_lab_simulation_new",
+        )
+    assert error.value.code == "result_archive_invalid"
 
 
 @pytest.mark.parametrize(
