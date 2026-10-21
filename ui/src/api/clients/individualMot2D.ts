@@ -1,3 +1,4 @@
+import { individualRead } from "./individualRead";
 import {
   isIndividualZeusResources,
   type IndividualZeusResources,
@@ -665,8 +666,7 @@ function parseRun(raw: unknown, detail = false): Mot2DRun {
 export function createIndividualMot2DApi(session: () => Promise<string>) {
   let generation = 0,
     sequence = 0,
-    zsequence = 0,
-    readSequence = 0;
+    zsequence = 0;
   const reviews = new Map<string, CreationContext>(),
     confirmationResults = new Map<string, ReturnType<typeof parseCreated>>(),
     confirmations = new Map<string, Promise<ReturnType<typeof parseCreated>>>(),
@@ -680,12 +680,12 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
       { profile: Profile; jobId: string; submissionKey?: string }
     >(),
     refreshes = new Map<string, number>();
+  const readData = individualRead(() => generation, getData);
   return {
     reset() {
       generation++;
       sequence++;
       zsequence++;
-      readSequence++;
       reviews.clear();
       confirmationResults.clear();
       confirmations.clear();
@@ -901,11 +901,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
       return row;
     },
     async runs() {
-      const activeGeneration = generation,
-        current = ++readSequence;
-      const raw = await getData("/api/v1/individual-runs");
-      if (activeGeneration !== generation || current !== readSequence)
-        throw new Error("The run list response is stale.");
+      const raw = await readData("/api/v1/individual-runs");
       if (!isRecord(raw)) invalid("run list");
       const value = raw as Record<string, unknown>;
       if (
@@ -923,7 +919,7 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
         .map((row) => parseRun(row));
     },
     async catalog() {
-      const raw = await getData("/api/v1/individual-runs");
+      const raw = await readData("/api/v1/individual-runs");
       if (
         !isRecord(raw) ||
         !exactKeys(raw, ["runs", "invalid_count", "total", "truncated"]) ||
@@ -945,16 +941,12 @@ export function createIndividualMot2DApi(session: () => Promise<string>) {
       };
     },
     async run(publicId: string) {
-      const activeGeneration = generation,
-        current = ++readSequence;
       const row = parseRun(
-        await getData(
+        await readData(
           `/api/v1/individual-runs/${encodeURIComponent(publicId)}`,
         ),
         true,
       );
-      if (activeGeneration !== generation || current !== readSequence)
-        throw new Error("The run detail response is stale.");
       if (row.id !== publicId) throw new Error("The run detail did not match.");
       return row;
     },

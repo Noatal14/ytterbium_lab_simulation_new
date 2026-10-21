@@ -1,3 +1,4 @@
+import { individualRead } from "./individualRead";
 import {
   isIndividualZeusResources,
   type IndividualZeusResources,
@@ -987,8 +988,7 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
 export function createIndividualMot3DApi(session: () => Promise<string>) {
   let generation = 0,
     previewSequence = 0,
-    zeusSequence = 0,
-    readSequence = 0;
+    zeusSequence = 0;
   const reviews = new Map<string, CreationContext>();
   const confirmations = new Map<string, Promise<CreatedMot3DRun>>();
   const confirmed = new Map<string, CreatedMot3DRun>();
@@ -1004,12 +1004,12 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
     { profile: Profile; jobId: string; submissionKey?: string }
   >();
   const refreshes = new Map<string, number>();
+  const readData = individualRead(() => generation, getData);
   return {
     reset() {
       generation++;
       previewSequence++;
       zeusSequence++;
-      readSequence++;
       reviews.clear();
       confirmations.clear();
       confirmed.clear();
@@ -1232,11 +1232,7 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
       return row;
     },
     async runs() {
-      const currentGeneration = generation,
-        sequence = ++readSequence;
-      const value = await getData("/api/v1/individual-runs");
-      if (currentGeneration !== generation || sequence !== readSequence)
-        throw new Error("The run list is stale.");
+      const value = await readData("/api/v1/individual-runs");
       if (
         !isRecord(value) ||
         !exactKeys(value, ["runs", "invalid_count", "total", "truncated"]) ||
@@ -1253,7 +1249,7 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
         .map((row: unknown) => parseRun(row));
     },
     async catalog() {
-      const value = await getData("/api/v1/individual-runs");
+      const value = await readData("/api/v1/individual-runs");
       if (
         !isRecord(value) ||
         !exactKeys(value, ["runs", "invalid_count", "total", "truncated"]) ||
@@ -1276,17 +1272,11 @@ export function createIndividualMot3DApi(session: () => Promise<string>) {
     },
     async run(id: string) {
       if (!publicRunId(id)) throw new Error("The run identifier is invalid.");
-      const currentGeneration = generation,
-        sequence = ++readSequence;
       const row = parseRun(
-        await getData(`/api/v1/individual-runs/${encodeURIComponent(id)}`),
+        await readData(`/api/v1/individual-runs/${encodeURIComponent(id)}`),
         true,
       );
-      if (
-        currentGeneration !== generation ||
-        sequence !== readSequence ||
-        row.id !== id
-      )
+      if (row.id !== id)
         throw new Error("The run detail is stale or mismatched.");
       return row;
     },

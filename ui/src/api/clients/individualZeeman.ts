@@ -1,3 +1,4 @@
+import { individualRead } from "./individualRead";
 import {
   isIndividualZeusResources,
   type IndividualZeusResources,
@@ -577,6 +578,7 @@ export function createIndividualZeemanApi(session: () => Promise<string>) {
     ReturnType<typeof parseLocalStart>
   >();
   const refreshSequence = new Map<string, number>();
+  const readData = individualRead(() => generation, getData);
   return {
     reset() {
       generation += 1;
@@ -804,7 +806,7 @@ export function createIndividualZeemanApi(session: () => Promise<string>) {
       return row;
     },
     async catalog() {
-      const value = await getData("/api/v1/individual-runs");
+      const value = await readData("/api/v1/individual-runs");
       if (
         !isRecord(value) ||
         !exactKeys(value, ["runs", "invalid_count", "total", "truncated"]) ||
@@ -825,7 +827,7 @@ export function createIndividualZeemanApi(session: () => Promise<string>) {
       };
     },
     async runs(): Promise<IndividualRun[]> {
-      const value = await getData("/api/v1/individual-runs");
+      const value = await readData("/api/v1/individual-runs");
       if (
         !isRecord(value) ||
         !exactKeys(value, ["runs", "invalid_count", "total", "truncated"]) ||
@@ -842,7 +844,7 @@ export function createIndividualZeemanApi(session: () => Promise<string>) {
     },
     async run(publicId: string): Promise<IndividualRun> {
       const row = parseRun(
-        await getData(
+        await readData(
           `/api/v1/individual-runs/${encodeURIComponent(publicId)}`,
         ),
         true,

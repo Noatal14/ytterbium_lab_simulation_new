@@ -124,7 +124,7 @@ afterEach(() => {
 });
 for (const [family, create] of clients)
   describe(family + " inactive recovery timing with real SDK", () => {
-    it("does not let the retired StrictMode catalog supersede the active detail read", async () => {
+    it("shares the StrictMode catalog while only the active recovery reads detail", async () => {
       const reads = controlledReads(family),
         api: RecoveryApi = create(async () => "unused-readonly");
       render(
@@ -132,14 +132,12 @@ for (const [family, create] of clients)
           <RecoveryMount family={family} api={api} />
         </StrictMode>,
       );
-      await waitFor(() => expect(reads.catalogCount()).toBe(2));
-      await act(async () => {
-        reads.activeCatalog.resolve(reads.catalog());
-      });
-      await waitFor(() => expect(reads.detailCount()).toBe(1));
+      await waitFor(() => expect(reads.catalogCount()).toBe(1));
       await act(async () => {
         reads.retiredCatalog.resolve(reads.catalog());
       });
+      await waitFor(() => expect(reads.detailCount()).toBe(1));
+      expect(reads.catalogCount()).toBe(1);
       expect(reads.detailCount()).toBe(1);
       await act(async () => {
         reads.activeDetail.resolve(envelope(reads.fixture.detail));
@@ -180,7 +178,7 @@ for (const [family] of clients)
   it(
     "the actual " +
       family +
-      " component retires the older StrictMode recovery before its detail read",
+      " component shares the StrictMode catalog and retires inactive detail reads",
     async () => {
       const reads = controlledReads(family);
       const ui =
@@ -201,14 +199,12 @@ for (const [family] of clients)
           />
         );
       render(<StrictMode>{ui}</StrictMode>);
-      await waitFor(() => expect(reads.catalogCount()).toBe(2));
-      await act(async () => {
-        reads.activeCatalog.resolve(reads.catalog());
-      });
-      await waitFor(() => expect(reads.detailCount()).toBe(1));
+      await waitFor(() => expect(reads.catalogCount()).toBe(1));
       await act(async () => {
         reads.retiredCatalog.resolve(reads.catalog());
       });
+      await waitFor(() => expect(reads.detailCount()).toBe(1));
+      expect(reads.catalogCount()).toBe(1);
       expect(reads.detailCount()).toBe(1);
       await act(async () => {
         reads.activeDetail.resolve(envelope(reads.fixture.detail));
