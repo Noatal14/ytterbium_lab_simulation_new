@@ -219,21 +219,36 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     script = tmp_path / "receiver.py"; script.write_text(source)
     def invoke(operation, identity=None, request=None):
         request = request or {"identity": identity or _package_payload(package), "nonce": "1" * 32}
-        encoded = base64.urlsafe_b64encode(json.dumps(request).encode()).decode()
-        return subprocess.run([sys.executable, str(script), operation, "tal.noa", str(project), encoded],
-                              text=True, capture_output=True, check=False)
+        return subprocess.run([sys.executable, str(script), operation, "tal.noa", str(project), "-"],
+                              input=json.dumps(request), text=True, capture_output=True, check=False)
     return package, calls, invoke
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
-def test_receiver_at_most_once_across_restart_and_ambiguous_outcome(tmp_path):
+def test_receiver_at_most_once_across_restart_and_ambiguous_outcome(tmp_path, monkeypatch):
     local = tmp_path / "local"; local.mkdir(); records = _create(local)
     package, calls, invoke = _receiver_harness(tmp_path, records)
+    original_run = subprocess.run
+    receiver_requests = []
+
+    def observe_receiver(argv, **kwargs):
+        if len(argv) > 1 and argv[0] == sys.executable and str(argv[1]).endswith("receiver.py"):
+            # The real frozen package exceeds Linux's 128 KiB single-argument
+            # limit in the legacy encoding; production sends it over stdin.
+            raw_request = kwargs["input"]
+            assert len(base64.urlsafe_b64encode(raw_request.encode())) > 128 * 1024
+            assert argv[-1] == "-"
+            assert max(len(str(arg).encode()) for arg in argv) < 4096
+            receiver_requests.append(json.loads(raw_request))
+        return original_run(argv, **kwargs)
+
+    monkeypatch.setattr(subprocess, "run", observe_receiver)
     assert invoke("stage").returncode == 0
     first = invoke("submit"); second = invoke("submit")
     assert first.returncode == second.returncode == 0
     assert json.loads(first.stdout) == json.loads(second.stdout)
     assert calls.read_text() == "x"
+    assert len(receiver_requests) == 3
     assert (tmp_path / "project/.workflow/individual-mot-2d/submissions" /
             f"{package.submission_key}.json").is_file()
 

@@ -633,9 +633,9 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
 
     def invoke(operation):
         request = {"identity": _package_payload(package), "nonce": "1" * 32}
-        encoded = base64.urlsafe_b64encode(json.dumps(request).encode()).decode()
         return subprocess.run(
-            [sys.executable, str(script), operation, "tal.noa", str(project), encoded],
+            [sys.executable, str(script), operation, "tal.noa", str(project), "-"],
+            input=json.dumps(request),
             text=True,
             capture_output=True,
             check=False,
@@ -719,9 +719,9 @@ def test_receiver_rejects_malicious_package_before_qsub(tmp_path):
     identity["package_sha256"] = "0" * 64
     identity["run_id"] = "x; qsub evil"
     request = {"identity": identity, "nonce": "1" * 32}
-    encoded = base64.urlsafe_b64encode(json.dumps(request).encode()).decode()
     result = subprocess.run(
-        [sys.executable, str(script), "submit", "tal.noa", str(project), encoded],
+        [sys.executable, str(script), "submit", "tal.noa", str(project), "-"],
+        input=json.dumps(request),
         text=True,
         capture_output=True,
         check=False,
