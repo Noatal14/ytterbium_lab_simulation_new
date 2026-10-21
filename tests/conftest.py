@@ -32,6 +32,7 @@ def deterministic_individual_worker_budget(monkeypatch, request):
         'test_run_execution', 'test_local_execution_lease_concurrency', 'test_individual_run_api',
         'test_zeeman_individual_api', 'test_zeeman_individual_http',
         'test_workflow_api_contracts', 'test_workflow_api_server',
+        'test_run_metric_integrity',
     }:
         import workflow_api.zeeman_run_specification as specification
         monkeypatch.setattr(specification.os, 'cpu_count', lambda: 16)

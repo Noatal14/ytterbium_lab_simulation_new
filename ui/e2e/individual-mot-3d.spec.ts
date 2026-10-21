@@ -2,6 +2,8 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { MOT_3D_INDIVIDUAL_SPECIFICATION_V1 as spec } from "../src/generated/mot3dIndividualSpec.v1";
 
+import { overflowDiagnostic } from "./responsive-diagnostics";
+
 const sourceId = `mot3d-source-${"a".repeat(32)}`;
 
 async function routes(page: Page, localWorkerOwned = true) {
@@ -152,7 +154,7 @@ for (const family of ["angled_donut", "single_pass"] as const) {
     const overflow = await page.evaluate(() => [...document.querySelectorAll<HTMLElement>("body *")]
       .filter((element) => element.getBoundingClientRect().right > document.documentElement.clientWidth + 1)
       .map((element) => `${element.tagName.toLowerCase()}.${element.className}`));
-    expect(overflow).toEqual([]);
+    expect(overflow, JSON.stringify(await overflowDiagnostic(page), null, 2)).toEqual([]);
     await page.getByRole("button", { name: "Create run record" }).click();
     await expect(page.getByText("Reviewed run is ready")).toBeVisible();
     await expect(page.getByText(/Nothing is running yet/)).toBeVisible();

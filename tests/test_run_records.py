@@ -1,3 +1,4 @@
+import errno
 import sys
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
@@ -280,11 +281,19 @@ def test_read_rejects_symlinked_record(tmp_path):
     store, directory = create_store(tmp_path)
     original = directory / "configuration.json"
     outside = tmp_path / "outside.json"
-    outside.write_bytes(original.read_bytes())
+    original_bytes = original.read_bytes()
+    outside.write_bytes(original_bytes)
     original.unlink()
     original.symlink_to(outside)
-    with pytest.raises(RunRecordError, match="trusted regular"):
+    # The NT no-follow adapter rejects the reparse point before stat returns.
+    message = r"^Run record is unavailable\.$" if sys.platform == "win32" else "trusted regular"
+    with pytest.raises(RunRecordError, match=message) as rejected:
         store.read("zeeman", "run-1", "configuration")
+    if sys.platform == "win32":
+        assert isinstance(rejected.value.__cause__, OSError)
+        assert rejected.value.__cause__.errno == errno.ELOOP
+    assert original.is_symlink()
+    assert outside.read_bytes() == original_bytes
 
 
 def test_canonical_output_paths_require_exact_kinds_and_required_flag():

@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
+import errno
 import hashlib
 from pathlib import Path
 import shutil
+import sys
 
 import numpy as np
 import pytest
@@ -172,10 +174,17 @@ def test_state_symlink_and_wrong_digest_are_rejected(tmp_path):
         "sha256": hashlib.sha256(raw).hexdigest(),
         "size_bytes": len(raw),
     }
-    with pytest.raises(RunRecordError, match="trusted regular"):
+    # The NT no-follow adapter rejects the reparse point before stat returns.
+    message = r"^Result artifact is unavailable\.$" if sys.platform == "win32" else "trusted regular"
+    with pytest.raises(RunRecordError, match=message) as rejected:
         validate_publication_plan(
             directory, result(artifact, retained=True, captured=1)
         )
+    if sys.platform == "win32":
+        assert isinstance(rejected.value.__cause__, OSError)
+        assert rejected.value.__cause__.errno == errno.ELOOP
+    assert path.is_symlink()
+    assert outside.read_bytes() == raw
     path.unlink()
     path.write_bytes(raw)
     artifact["sha256"] = "f" * 64
