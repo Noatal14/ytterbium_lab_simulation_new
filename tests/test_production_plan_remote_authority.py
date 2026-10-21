@@ -187,6 +187,7 @@ def receiver_coordinator(tmp_path,monkeypatch):
     return coord,request,runner,campaign,rendered
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="Actual POSIX receiver integration uses Unix executables and directory fsync; native plan validation remains active")
 def test_actual_coordinator_pinned_parser_receiver_prepare_duplicate_and_readonly_recovery(tmp_path,monkeypatch):
     coord,request,runner,campaign,raw=receiver_coordinator(tmp_path,monkeypatch)
     preview=coord.preview(request,session_id='owner');assert preview['job']['task_count']==20
@@ -203,6 +204,7 @@ def test_actual_coordinator_pinned_parser_receiver_prepare_duplicate_and_readonl
     assert not (campaign/'.mot_ui/submissions/production.json').exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="Actual POSIX receiver integration uses Unix executables and directory fsync; native plan validation remains active")
 def test_lost_prepare_response_recovers_durable_plan_without_second_prepare(tmp_path,monkeypatch):
     coord,request,runner,campaign,raw=receiver_coordinator(tmp_path,monkeypatch)
     coord.preview(request,session_id='owner');runner.lost=True
@@ -214,6 +216,7 @@ def test_lost_prepare_response_recovers_durable_plan_without_second_prepare(tmp_
     assert not (campaign/'.mot_ui/submissions/production.json').exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="Actual POSIX receiver integration uses Unix executables and directory fsync; native plan validation remains active")
 def test_locked_source_mutation_blocks_publication(tmp_path,monkeypatch):
     from workflow_api import zeus_production_remote as remote
     coord,request,runner,campaign,raw=receiver_coordinator(tmp_path,monkeypatch)
@@ -236,6 +239,7 @@ def test_locked_source_mutation_blocks_publication(tmp_path,monkeypatch):
     assert not (campaign/'jobs/06_production.pbs').exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="Actual POSIX receiver integration uses Unix executables and directory fsync; native plan validation remains active")
 def test_postpublication_plan_validation_failure_requires_unknown_and_readonly_recovery(tmp_path,monkeypatch):
     coord,request,runner,campaign,_=receiver_coordinator(tmp_path,monkeypatch)
     coord.preview(request,session_id='owner')
