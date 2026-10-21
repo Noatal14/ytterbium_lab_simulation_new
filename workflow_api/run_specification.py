@@ -322,3 +322,22 @@ _VALUE = _read_validated()
 INDIVIDUAL_RUN_SPECIFICATION = _freeze(_VALUE)
 INDIVIDUAL_RUN_SPEC_VERSION = _VALUE["spec_version"]
 INDIVIDUAL_RUN_SPEC_SHA256 = _digest(_VALUE)
+
+
+def local_worker_maximum(particle_count: int, *, maximum: int = 256, available_cpus: int | None = None) -> int:
+    """Operational per-run admission limit, independent of saved-record validity."""
+    if type(particle_count) is not int or particle_count < 1:
+        raise ValueError("Particle count is invalid for local worker admission.")
+    detected = os.cpu_count() if available_cpus is None else available_cpus
+    if type(detected) is not int or detected < 1:
+        detected = 1
+    return min(maximum, detected, particle_count)
+
+
+def require_local_worker_budget(mode: str, particle_count: int, workers: int, *, maximum: int = 256) -> None:
+    """Reject new local work above this host/input budget; never reinterpret records."""
+    if mode == "local" and (
+        type(workers) is not int
+        or not 1 <= workers <= local_worker_maximum(particle_count, maximum=maximum)
+    ):
+        raise ValueError("Local worker count exceeds this computer's CPU or particle-count limit.")

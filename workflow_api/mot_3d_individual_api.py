@@ -8,6 +8,7 @@ from typing import Any, Mapping, Protocol
 from workflow_api.mot_3d_individual_sources import list_individual_mot_3d_sources
 from workflow_api.run_discovery import inspect_run
 from workflow_api.run_records import RunRecordError
+from workflow_api.run_specification import require_local_worker_budget
 from workflow_api.zeus_snapshot import ZeusProfile
 
 
@@ -108,6 +109,11 @@ class IndividualMot3DApi:
             )
         if self.local is None:
             raise RuntimeError("Local 3D-MOT execution is unavailable.")
+        try:
+            workers = inspected.configuration["resolved"]["execution"]["workers"]
+        except (KeyError, TypeError) as error:
+            raise ValueError("The reviewed local worker settings could not be verified.") from error
+        require_local_worker_budget("local", inspected.run["particle_count"], workers)
         handle = self.local.submit("mot_3d", run_id)
         return {"status": "queued", "run_id": handle.run_id, "execution_mode": "local"}
 

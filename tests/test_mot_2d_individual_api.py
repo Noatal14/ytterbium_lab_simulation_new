@@ -58,7 +58,8 @@ def test_closed_creation_and_execution_boundaries(tmp_path, monkeypatch):
         "workflow_api.mot_2d_individual_api.inspect_run",
         lambda *_: SimpleNamespace(
             family="mot_2d",
-            run={"family": "mot_2d", "execution_mode": "local"},
+            run={"family": "mot_2d", "execution_mode": "local", "particle_count": 20},
+            configuration={"resolved": {"execution": {"mode": "local", "workers": 1}}},
             state="configured",
             integrity="active",
         ),
@@ -129,7 +130,8 @@ def test_closed_creation_and_execution_boundaries(tmp_path, monkeypatch):
         ),
         SimpleNamespace(
             family="mot_2d",
-            run={"family": "mot_2d", "execution_mode": "local"},
+            run={"family": "mot_2d", "execution_mode": "local", "particle_count": 20},
+            configuration={"resolved": {"execution": {"mode": "local", "workers": 1}}},
             state="configured",
             integrity="invalid",
         ),

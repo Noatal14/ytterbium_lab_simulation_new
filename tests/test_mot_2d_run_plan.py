@@ -35,7 +35,7 @@ def _source(root: Path, rows=4):
 
 
 def _request(source_id, **updates):
-    value = {"source_id": source_id, "particle_count": 20, "selection_seed": 123, "mot_seed": 456, "s0": 1.3, "detuning_gamma": -0.9196610026631429, "magnet_radius_m": 0.04676406447474441, "npools": 8, "retain_particle_states": True, "execution_mode": "local"}
+    value = {"source_id": source_id, "particle_count": 20, "selection_seed": 123, "mot_seed": 456, "s0": 1.3, "detuning_gamma": -0.9196610026631429, "magnet_radius_m": 0.04676406447474441, "npools": 1, "retain_particle_states": True, "execution_mode": "local"}
     value.update(updates)
     if value["execution_mode"] == "zeus" and "npools" not in updates:
         value["npools"] = 200

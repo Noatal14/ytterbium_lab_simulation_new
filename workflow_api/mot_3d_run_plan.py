@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import math
@@ -18,7 +18,7 @@ from lab_setup.physical_specification import LABORATORY_PHYSICAL_SPECIFICATION, 
 from workflow_api.mot_3d_individual_sources import ResolvedMot3DSource, resolve_individual_mot_3d_source
 from workflow_api.mot_3d_run_specification import MOT_3D_RUN_SPECIFICATION, MOT_3D_RUN_SPEC_SHA256, MOT_3D_RUN_SPEC_VERSION
 from workflow_api.run_records import record_sha256, validate_record
-from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
+from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION, local_worker_maximum, require_local_worker_budget
 
 
 @dataclass(frozen=True)
@@ -190,6 +190,9 @@ def build_mot_3d_run_plan(request_value: Mapping[str, Any], *, repository_root: 
     from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
     request = validate_mot_3d_run_request(request_value)
+    if request.execution_mode == "local" and "npools" not in request_value:
+        request = replace(request, npools=min(request.npools, local_worker_maximum(request.particle_count)))
+    require_local_worker_budget(request.execution_mode, request.particle_count, request.npools)
     root = Path(repository_root).resolve(strict=True)
     source = resolve_individual_mot_3d_source(root, request.source_id)
     sampling = _sample(source, request.particle_count, request.selection_seed)

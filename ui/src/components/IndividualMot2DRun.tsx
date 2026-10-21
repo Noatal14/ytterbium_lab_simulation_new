@@ -1,3 +1,4 @@
+import { localWorkerMaximum } from "../features/individual/localWorkerAdmission";
 import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
   ArrowLeft,
@@ -181,7 +182,7 @@ export function IndividualMot2DRun({
     [sources, setSources] = useState<Mot2DSource[]>([]),
     [source, setSource] = useState("");
   const [mode, setMode] = useState<Mot2DMode>("local"),
-    [npools, setNpools] = useState(8),
+    [npools, setNpools] = useState(() => Math.min(8, localWorkerMaximum(200))),
     [particles, setParticles] = useState(200),
     [selectionSeed, setSelectionSeed] = useState(42),
     [motSeed, setMotSeed] = useState(42);
@@ -296,6 +297,23 @@ export function IndividualMot2DRun({
       mode === "local" ? 1000 : 50000,
       selected?.available_particle_count.pooled ?? 0,
     );
+  useEffect(() => {
+    if (max > 0)
+      setParticles((current) =>
+        Number.isInteger(current) && current > 0
+          ? Math.min(current, max)
+          : current,
+      );
+  }, [max]);
+  const workerMaximum = localWorkerMaximum(particles);
+  useEffect(() => {
+    if (mode === "local")
+      setNpools((current) =>
+        Number.isInteger(current) && current > 0
+          ? Math.min(current, workerMaximum)
+          : current,
+      );
+  }, [mode, workerMaximum]);
   const valid =
     !!selected &&
     Number.isInteger(particles) &&
@@ -312,7 +330,9 @@ export function IndividualMot2DRun({
     radiusMm >= 45 &&
     radiusMm <= 51 &&
     Number.isInteger(npools) &&
-    (mode === "local" ? npools >= 1 && npools <= 256 : npools === 200);
+    (mode === "local"
+      ? npools >= 1 && npools <= workerMaximum
+      : npools === 200);
   const request = useMemo(
     () => ({
       source_id: source,
@@ -341,7 +361,18 @@ export function IndividualMot2DRun({
   );
   function changeMode(next: Mot2DMode) {
     setMode(next);
-    setNpools(next === "local" ? 8 : 200);
+    const nextMaximum = Math.min(
+      next === "local" ? 1000 : 50000,
+      selected?.available_particle_count.pooled ?? 0,
+    );
+    const nextParticles =
+      nextMaximum > 0 && Number.isInteger(particles) && particles > 0
+        ? Math.min(particles, nextMaximum)
+        : particles;
+    setParticles(nextParticles);
+    setNpools(
+      next === "local" ? Math.min(8, localWorkerMaximum(nextParticles)) : 200,
+    );
   }
   async function act(work: () => Promise<void>) {
     setBusy(true);
@@ -715,13 +746,13 @@ export function IndividualMot2DRun({
               <div className="form-field local-worker-field">
                 <label htmlFor="mot2d-npools">
                   CPU workers{" "}
-                  <Help text="Choose how many parallel worker processes this computer should use. A larger value is useful only when the machine has enough available CPU cores." />
+                  <Help text="Choose no more workers than this computer’s CPU count or the number of particles." />
                 </label>
                 <input
                   id="mot2d-npools"
                   type="number"
                   min="1"
-                  max="256"
+                  max={workerMaximum}
                   value={npools}
                   onChange={(event) =>
                     setNpools(event.currentTarget.valueAsNumber)

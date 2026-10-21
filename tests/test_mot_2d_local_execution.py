@@ -53,7 +53,7 @@ def _source(root: Path, rows: int = 4) -> str:
 
 
 def _request(source_id: str, *, retained: bool = True) -> dict:
-    return {"source_id": source_id, "particle_count": 20, "selection_seed": 123, "mot_seed": 456, "s0": 1.3, "detuning_gamma": -0.9196610026631429, "magnet_radius_m": 0.04676406447474441, "npools": 8, "retain_particle_states": retained, "execution_mode": "local"}
+    return {"source_id": source_id, "particle_count": 20, "selection_seed": 123, "mot_seed": 456, "s0": 1.3, "detuning_gamma": -0.9196610026631429, "magnet_radius_m": 0.04676406447474441, "npools": 1, "retain_particle_states": retained, "execution_mode": "local"}
 
 
 def _plan(root: Path, *, retained: bool = True):
@@ -85,7 +85,7 @@ def test_worker_materializes_frozen_selection_and_calls_exact_engine_once(tmp_pa
     assert kwargs["dt"] == 0.625e-6
     assert kwargs["t_max_s"] == 0.025
     assert kwargs["gravity_enabled"] is kwargs["stochastic"] is True
-    assert kwargs["npools"] == 8 and kwargs["seed"] == 456
+    assert kwargs["npools"] == 1 and kwargs["seed"] == 456
     frozen_laser = plan.configuration["resolved"]["upstream_zeeman_boundary"]["laser"]
     assert kwargs["zeeman_config"] == {
         "s0": frozen_laser["s0"],

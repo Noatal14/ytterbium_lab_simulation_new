@@ -1,3 +1,4 @@
+import { localWorkerMaximum } from "../features/individual/localWorkerAdmission";
 import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
   ArrowLeft,
@@ -253,7 +254,12 @@ export function IndividualMot3DRun({
     [simulationSeed, setSimulationSeed] = useState<number>(
       spec.simulation_seed.default,
     ),
-    [npools, setNpools] = useState<number>(spec.local_worker_count.default);
+    [npools, setNpools] = useState<number>(() =>
+      Math.min(
+        spec.local_worker_count.default,
+        localWorkerMaximum(spec.particle_count.default),
+      ),
+    );
   const [donut, setDonut] = useState<AngledDonutParameters>({
     ...spec.defaults.angled_donut,
   });
@@ -365,6 +371,26 @@ export function IndividualMot3DRun({
     spec.particle_count.maximum_by_execution_mode[mode],
     selected?.available_particle_count.pooled ?? 0,
   );
+  useEffect(() => {
+    if (maximumParticles > 0)
+      setParticles((current) =>
+        Number.isInteger(current) && current > 0
+          ? Math.min(current, maximumParticles)
+          : current,
+      );
+  }, [maximumParticles]);
+  const workerMaximum = localWorkerMaximum(
+    particles,
+    spec.local_worker_count.maximum,
+  );
+  useEffect(() => {
+    if (mode === "local")
+      setNpools((current) =>
+        Number.isInteger(current) && current > 0
+          ? Math.min(current, workerMaximum)
+          : current,
+      );
+  }, [mode, workerMaximum]);
   const parameters = family === "angled_donut" ? donut : singlePass;
   const parameterBounds = {
     ...spec.common_controls,
@@ -389,8 +415,7 @@ export function IndividualMot3DRun({
     ) &&
     Number.isInteger(npools) &&
     (mode === "local"
-      ? npools >= spec.local_worker_count.minimum &&
-        npools <= spec.local_worker_count.maximum
+      ? npools >= spec.local_worker_count.minimum && npools <= workerMaximum
       : npools === spec.workers_by_execution_mode.zeus);
   const request = useMemo<Mot3DRequest>(
     () =>
@@ -441,7 +466,10 @@ export function IndividualMot3DRun({
     setMode(next);
     setNpools(
       next === "local"
-        ? spec.local_worker_count.default
+        ? Math.min(
+            spec.local_worker_count.default,
+            localWorkerMaximum(particles, spec.local_worker_count.maximum),
+          )
         : spec.workers_by_execution_mode.zeus,
     );
     const nextMaximum = Math.min(
@@ -903,13 +931,13 @@ export function IndividualMot3DRun({
               <div className="form-field local-worker-field">
                 <label htmlFor="mot3d-npools">
                   CPU workers{" "}
-                  <Help text="Choose how many parallel worker processes this computer should use. A larger value is useful only when the machine has enough available CPU cores." />
+                  <Help text="Choose no more workers than this computer’s CPU count or the number of particles." />
                 </label>
                 <input
                   id="mot3d-npools"
                   type="number"
                   min={spec.local_worker_count.minimum}
-                  max={spec.local_worker_count.maximum}
+                  max={workerMaximum}
                   value={npools}
                   onChange={(event) =>
                     setNpools(event.currentTarget.valueAsNumber)
@@ -983,6 +1011,10 @@ export function IndividualMot3DRun({
                     {particles.toLocaleString()} particles · selection{" "}
                     {selectionSeed} · simulation {simulationSeed}
                   </dd>
+                </div>
+                <div>
+                  <dt>CPU workers</dt>
+                  <dd>{preview.plan.locked_settings.workers}</dd>
                 </div>
                 <div>
                   <dt>Execution and retention</dt>

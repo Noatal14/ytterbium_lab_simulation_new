@@ -75,7 +75,7 @@ def _request(source_id: str) -> dict:
         "selection_seed": 123, "mot_seed": 456, "s0": 1.3,
         "detuning_gamma": -0.9196610026631429,
         "magnet_radius_m": 0.04676406447474441,
-        "npools": 8,
+        "npools": 1,
         "retain_particle_states": True, "execution_mode": "local",
     }
 

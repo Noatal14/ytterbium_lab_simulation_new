@@ -506,7 +506,7 @@ def test_local_and_zeus_adapters_have_identical_science_for_same_frozen_states(t
     # the Zeus boundary; only the server-owned worker count may differ.
     local_records = json.loads(json.dumps(records))
     local_records["run"]["execution_mode"] = "local"
-    local_records["configuration"]["resolved"]["execution"] = {"mode": "local", "workers": 8}
+    local_records["configuration"]["resolved"]["execution"] = {"mode": "local", "workers": 1}
     local_product = Mot2DLocalWorker(root, engine=local_engine,
         monotonic=iter((1.0, 2.0)).__next__, clock=lambda: NOW)._run(
             WorkerRequest(local_records["run"], local_records["configuration"], local_records["inputs"]),

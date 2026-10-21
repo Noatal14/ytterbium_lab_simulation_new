@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import math
@@ -26,7 +26,7 @@ from lab_setup.zeeman_laser_setup import resolved_zeeman_laser_parameters
 from workflow_api.mot_2d_individual_sources import ResolvedMot2DSource, resolve_individual_mot_2d_source
 from workflow_api.mot_2d_run_specification import MOT_2D_RUN_SPECIFICATION, MOT_2D_RUN_SPEC_SHA256, MOT_2D_RUN_SPEC_VERSION
 from workflow_api.run_records import record_sha256, validate_record
-from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
+from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION, local_worker_maximum, require_local_worker_budget
 
 
 @dataclass(frozen=True)
@@ -207,6 +207,9 @@ def _outputs(retained: bool) -> list[dict[str, Any]]:
 
 def build_mot_2d_run_plan(request_value: Mapping[str, Any], *, repository_root: Path, run_id: str, git_revision: str, created_utc: str) -> Mot2DRunPlan:
     request = validate_mot_2d_run_request(request_value)
+    if request.execution_mode == "local" and "npools" not in request_value:
+        request = replace(request, npools=min(request.npools, local_worker_maximum(request.particle_count)))
+    require_local_worker_budget(request.execution_mode, request.particle_count, request.npools)
     root = Path(repository_root).resolve(strict=True)
     source = resolve_individual_mot_2d_source(root, request.source_id)
     sampling = _sample(source, request.particle_count, request.selection_seed)

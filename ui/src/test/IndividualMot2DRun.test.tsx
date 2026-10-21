@@ -433,3 +433,95 @@ it("waits for fresh Zeus recovery before enabling status after reload", async ()
   expect(service.confirmZeus).not.toHaveBeenCalled();
   expect(service.startLocal).not.toHaveBeenCalled();
 });
+
+it("caps new local workers by CPU and particles without creating a run", async () => {
+  const cpu = vi
+    .spyOn(navigator, "hardwareConcurrency", "get")
+    .mockReturnValue(4);
+  try {
+    const service = api();
+    render(<IndividualMot2DRun api={service} onBack={() => undefined} />);
+    const user = userEvent.setup();
+    const workers = await screen.findByRole("spinbutton", {
+      name: /^CPU workers/,
+    });
+    expect(workers).toHaveValue(4);
+    expect(workers).toHaveAttribute("max", "4");
+    const count = screen.getByRole("spinbutton", { name: /^Particle count/ });
+    await user.clear(count);
+    await user.type(count, "1");
+    await waitFor(() => expect(workers).toHaveValue(1));
+    expect(workers).toHaveAttribute("max", "1");
+    await user.clear(workers);
+    await user.type(workers, "2");
+    expect(
+      screen.getByRole("button", { name: "Validate and review" }),
+    ).toBeDisabled();
+    expect(service.preview).not.toHaveBeenCalled();
+    expect(service.confirm).not.toHaveBeenCalled();
+    expect(service.startLocal).not.toHaveBeenCalled();
+  } finally {
+    cpu.mockRestore();
+  }
+});
+
+it("keeps workers valid across blank count and Zeus/local mode changes", async () => {
+  const cpu = vi
+    .spyOn(navigator, "hardwareConcurrency", "get")
+    .mockReturnValue(4);
+  try {
+    const service = api();
+    render(<IndividualMot2DRun api={service} onBack={() => undefined} />);
+    const user = userEvent.setup();
+    const count = await screen.findByRole("spinbutton", {
+      name: /^Particle count/,
+    });
+    await user.clear(count);
+    await user.click(screen.getByRole("radio", { name: /^Zeus/ }));
+    await user.click(screen.getByRole("radio", { name: /^This computer/ }));
+    const workers = screen.getByRole("spinbutton", { name: /^CPU workers/ });
+    expect(workers).toHaveValue(4);
+    await user.type(count, "1");
+    await waitFor(() => expect(workers).toHaveValue(1));
+    expect(service.preview).not.toHaveBeenCalled();
+  } finally {
+    cpu.mockRestore();
+  }
+});
+
+it("clamps both particles and workers when a smaller source is selected", async () => {
+  const cpu = vi
+    .spyOn(navigator, "hardwareConcurrency", "get")
+    .mockReturnValue(4);
+  try {
+    const service = api();
+    const rows = await service.sources();
+    const small = {
+      ...rows[0],
+      id: `mot2d-source-${"b".repeat(32)}`,
+      label: "Small bank",
+      available_particle_count: {
+        pooled: 1,
+        minimum_per_ensemble: 1,
+        maximum_per_ensemble: 1,
+      },
+    };
+    vi.mocked(service.sources).mockResolvedValue([rows[0], small]);
+    render(<IndividualMot2DRun api={service} onBack={() => undefined} />);
+    await screen.findByRole("option", { name: /Small bank/ });
+    await userEvent
+      .setup()
+      .selectOptions(document.getElementById("mot2d-source")!, small.id);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /^Particle count/ }),
+      ).toHaveValue(1),
+    );
+    expect(
+      screen.getByRole("spinbutton", { name: /^CPU workers/ }),
+    ).toHaveValue(1);
+    expect(service.preview).not.toHaveBeenCalled();
+  } finally {
+    cpu.mockRestore();
+  }
+});

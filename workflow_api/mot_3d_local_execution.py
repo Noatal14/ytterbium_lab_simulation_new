@@ -25,11 +25,12 @@ from workflow_api.run_execution import (
     IndividualRunExecutionCoordinator,
     WorkerProduct,
     WorkerProductError,
+    WorkerFailed,
     WorkerRequest,
     mot_3d_result_provenance,
 )
 from workflow_api.run_records import encode_record
-from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
+from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION, require_local_worker_budget
 from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
 
 
@@ -251,6 +252,10 @@ class Mot3DLocalWorker:
             or not np.all(np.isfinite(selected))
         ):
             raise WorkerProductError("Frozen 3D-MOT selected states are invalid.")
+        try:
+            require_local_worker_budget(mode, run["particle_count"], execution["workers"])
+        except ValueError as error:
+            raise WorkerFailed(str(error)) from error
         started = self._monotonic()
         outcome = self._engine(
             selected,

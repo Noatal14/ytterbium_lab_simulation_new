@@ -51,7 +51,7 @@ def _plan(root: Path, monkeypatch, *, retained=True, count=5, mode="local"):
         "source_id": SOURCE_ID, "geometry_family": "angled_donut",
         "particle_count": count, "selection_seed": 7, "simulation_seed": 11,
         "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]),
-        "npools": 8 if mode == "local" else 200,
+        "npools": 1 if mode == "local" else 200,
         "retain_particle_states": retained, "execution_mode": mode,
     }
     return build_mot_3d_run_plan(
@@ -95,7 +95,7 @@ def test_worker_executes_exact_frozen_plan_and_labels_both_outcomes(tmp_path, mo
     assert states.shape == (5, 6)
     assert kwargs["_3d_mot_config"] == local_plain(plan.configuration["resolved"]["mot_3d"]["resolved_profile"])
     assert kwargs["dt"] == 1e-5 and kwargs["t_max"] == 0.1
-    assert kwargs["npools"] == 8 and kwargs["seed"] == 11
+    assert kwargs["npools"] == 1 and kwargs["seed"] == 11
     assert kwargs["gravity_enabled"] is plan.configuration["resolved"]["simulation"]["gravity_enabled"]
     assert kwargs["capture_config"] == plan.configuration["resolved"]["mot_3d"]["capture"]
     metrics = product.results["metrics"]

@@ -548,3 +548,101 @@ it("shows a recovered scheduler hold without resubmitting", async () => {
   expect(api.confirmZeus).not.toHaveBeenCalled();
   expect(api.startLocal).not.toHaveBeenCalled();
 });
+
+it("caps local workers and displays their exact reviewed count", async () => {
+  const cpu = vi
+    .spyOn(navigator, "hardwareConcurrency", "get")
+    .mockReturnValue(4);
+  try {
+    const api = service();
+    render(<IndividualMot3DRun api={api} onBack={() => undefined} />);
+    const user = userEvent.setup();
+    const workers = await screen.findByRole("spinbutton", {
+      name: /^CPU workers/,
+    });
+    expect(workers).toHaveValue(4);
+    expect(workers).toHaveAttribute("max", "4");
+    const count = screen.getByRole("spinbutton", { name: /^Particle count/ });
+    await user.clear(count);
+    await user.type(count, "1");
+    await waitFor(() => expect(workers).toHaveValue(1));
+    expect(workers).toHaveAttribute("max", "1");
+    await user.clear(workers);
+    await user.type(workers, "2");
+    expect(
+      screen.getByRole("button", { name: "Validate setup" }),
+    ).toBeDisabled();
+    expect(api.preview).not.toHaveBeenCalled();
+    await user.clear(workers);
+    await user.type(workers, "1");
+    await user.click(screen.getByRole("button", { name: "Validate setup" }));
+    await screen.findByText("Scientific role: individual only");
+    expect(
+      screen.getByText("CPU workers", { exact: true }).parentElement,
+    ).toHaveTextContent("1");
+    expect(api.confirm).not.toHaveBeenCalled();
+    expect(api.startLocal).not.toHaveBeenCalled();
+  } finally {
+    cpu.mockRestore();
+  }
+});
+
+it("does not copy a blank count into workers on a mode roundtrip", async () => {
+  const cpu = vi
+    .spyOn(navigator, "hardwareConcurrency", "get")
+    .mockReturnValue(4);
+  try {
+    const api = service();
+    render(<IndividualMot3DRun api={api} onBack={() => undefined} />);
+    const user = userEvent.setup();
+    const count = await screen.findByRole("spinbutton", {
+      name: /^Particle count/,
+    });
+    await user.clear(count);
+    await user.click(screen.getByRole("radio", { name: /^Zeus/ }));
+    await user.click(screen.getByRole("radio", { name: /^This computer/ }));
+    const workers = screen.getByRole("spinbutton", { name: /^CPU workers/ });
+    expect(workers).toHaveValue(4);
+    await user.type(count, "1");
+    await waitFor(() => expect(workers).toHaveValue(1));
+    expect(api.preview).not.toHaveBeenCalled();
+  } finally {
+    cpu.mockRestore();
+  }
+});
+
+it("clamps both particles and workers on a smaller 3D source", async () => {
+  const cpu = vi
+    .spyOn(navigator, "hardwareConcurrency", "get")
+    .mockReturnValue(4);
+  try {
+    const api = service();
+    const small = {
+      ...source,
+      id: `mot3d-source-${"b".repeat(32)}`,
+      label: "Small bank",
+      available_particle_count: {
+        pooled: 1,
+        minimum_per_ensemble: 1,
+        maximum_per_ensemble: 1,
+      },
+    };
+    vi.mocked(api.sources).mockResolvedValue([source, small]);
+    render(<IndividualMot3DRun api={api} onBack={() => undefined} />);
+    await screen.findByRole("option", { name: /Small bank/ });
+    await userEvent
+      .setup()
+      .selectOptions(document.getElementById("mot3d-source")!, small.id);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /^Particle count/ }),
+      ).toHaveValue(1),
+    );
+    expect(
+      screen.getByRole("spinbutton", { name: /^CPU workers/ }),
+    ).toHaveValue(1);
+    expect(api.preview).not.toHaveBeenCalled();
+  } finally {
+    cpu.mockRestore();
+  }
+});

@@ -25,6 +25,7 @@ from workflow_api.run_execution import (
     IndividualRunExecutionCoordinator,
     WorkerProduct,
     WorkerProductError,
+    WorkerFailed,
     WorkerRequest,
     mot_2d_result_provenance,
 )
@@ -35,7 +36,7 @@ from workflow_api.run_results import (
     _open_repository_root,
     _verify_directory_chain,
 )
-from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
+from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION, require_local_worker_budget
 from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
 from utils.RK4StHybridCustom import RK4StHybridCustom
 
@@ -436,6 +437,10 @@ class Mot2DLocalWorker:
             ):
                 raise WorkerProductError("Frozen selected-row payload is invalid.")
 
+        try:
+            require_local_worker_budget(mode, run["particle_count"], expected_workers)
+        except ValueError as error:
+            raise WorkerFailed(str(error)) from error
         started = self._monotonic()
         outcome = self._engine(
             selected,

@@ -8,6 +8,7 @@ from typing import Any, Mapping, Protocol
 from workflow_api.mot_2d_individual_sources import list_individual_mot_2d_sources
 from workflow_api.run_discovery import inspect_run
 from workflow_api.run_records import RunRecordError
+from workflow_api.run_specification import require_local_worker_budget
 from workflow_api.zeus_snapshot import ZeusProfile
 
 
@@ -105,6 +106,11 @@ class IndividualMot2DApi:
             raise ValueError(
                 "The reviewed 2D-MOT run is not ready for local execution."
             )
+        try:
+            workers = inspected.configuration["resolved"]["execution"]["workers"]
+        except (KeyError, TypeError) as error:
+            raise ValueError("The reviewed local worker settings could not be verified.") from error
+        require_local_worker_budget("local", inspected.run["particle_count"], workers)
         handle = self.local.submit("mot_2d", run_id)
         return {"status": "queued", "run_id": handle.run_id, "execution_mode": "local"}
 

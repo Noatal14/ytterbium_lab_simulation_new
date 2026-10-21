@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PATTERN = re.compile(
     r'^test_(platform_io|repository_paths|run_|individual_run|'
     r'zeeman_(individual|local|run_)|mot_[23]d_(individual|local|run_)|'
+    r'mot_local_worker_admission$|'
     r'mot_3d_campaign|workflow_api|workflow_error_catalog|pinned_ssh|'
     r'config_and_imports|thermal_beam|hybrid_stochastic_solver|simulation_progress)'
 )
