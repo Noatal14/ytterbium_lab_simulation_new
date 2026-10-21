@@ -30,6 +30,14 @@ def _fingerprint(metadata):
             metadata.st_size, metadata.st_mtime_ns, metadata.st_ctime_ns)
 
 
+def _opened_fingerprint(metadata):
+    # Windows path stat exposes creation time while CRT fstat can expose a
+    # different ctime. Compare all common identity/content fields across APIs;
+    # retain each API's full ctime fingerprint for its own before/after proof.
+    values = _fingerprint(metadata)
+    return values[:-1] if os.name == 'nt' else values
+
+
 def _receipt_identity(path: Path) -> str:
     before = path.lstat()
     if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_RECEIPT_BYTES:
@@ -38,10 +46,10 @@ def _receipt_identity(path: Path) -> str:
                          | getattr(os, 'O_NONBLOCK', 0))
     with os.fdopen(descriptor, 'rb') as stream:
         opened = os.fstat(stream.fileno())
-        if not stat.S_ISREG(opened.st_mode) or _fingerprint(opened) != _fingerprint(before):
+        if not stat.S_ISREG(opened.st_mode) or _opened_fingerprint(opened) != _opened_fingerprint(before):
             raise ValueError('Smoke receipt changed during inspection.')
         raw = stream.read(MAX_RECEIPT_BYTES + 1)
-        if _fingerprint(os.fstat(stream.fileno())) != _fingerprint(before):
+        if _fingerprint(os.fstat(stream.fileno())) != _fingerprint(opened):
             raise ValueError('Smoke receipt changed during inspection.')
     after = path.lstat()
     if _fingerprint(after) != _fingerprint(before) or len(raw) != before.st_size:

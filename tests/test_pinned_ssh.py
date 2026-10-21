@@ -298,7 +298,7 @@ def test_refinement_timeout_translation_is_unchanged(
 
 
 @pytest.mark.parametrize("operation", ["inspect", "prepare"])
-def test_refinement_process_oserror_remains_raw(tmp_path, monkeypatch, operation):
+def test_refinement_process_oserror_is_raw_only_for_inspection(tmp_path, monkeypatch, operation):
     def fail(*_args, **_kwargs):
         raise OSError("ssh unavailable")
 
@@ -306,8 +306,15 @@ def test_refinement_process_oserror_remains_raw(tmp_path, monkeypatch, operation
     transport = PinnedSshRefinementTransport(
         tmp_path, executable("ssh"), _profile(),
     )
-    with pytest.raises(OSError, match="ssh unavailable"):
-        getattr(transport, operation)(example=True)
+    if operation == "inspect":
+        with pytest.raises(OSError, match="ssh unavailable"):
+            transport.inspect(example=True)
+    else:
+        with pytest.raises(ZeusRefinementError) as caught:
+            transport.prepare(example=True)
+        assert caught.value.code == "transition_outcome_unknown"
+        assert isinstance(caught.value.__cause__, OSError)
+        assert str(caught.value.__cause__) == "ssh unavailable"
 
 
 @pytest.mark.parametrize("operation,returncode,stderr,stdout,expected", [
@@ -316,9 +323,9 @@ def test_refinement_process_oserror_remains_raw(tmp_path, monkeypatch, operation
     ("inspect", 0, b"warning", _valid_response(), "remote_response_invalid"),
     ("prepare", 0, b"warning", _valid_response(), "transition_outcome_unknown"),
     ("inspect", 0, b"", b"not-json", "remote_response_invalid"),
-    ("prepare", 0, b"", b"not-json", "remote_response_invalid"),
+    ("prepare", 0, b"", b"not-json", "transition_outcome_unknown"),
 ])
-def test_refinement_process_and_decode_error_translation_is_unchanged(
+def test_refinement_process_and_decode_errors_preserve_read_and_block_write_retry(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
@@ -418,7 +425,7 @@ def test_confirmation_timeout_and_oserror_translation_is_unchanged(
 
 
 @pytest.mark.parametrize("operation", ["inspect", "prepare"])
-def test_confirmation_receiver_read_oserror_remains_raw(
+def test_confirmation_receiver_read_oserror_is_raw_only_for_inspection(
     tmp_path, monkeypatch, operation,
 ):
     process_calls = []
@@ -437,8 +444,15 @@ def test_confirmation_receiver_read_oserror_remains_raw(
     transport = PinnedSshConfirmationTransport(
         tmp_path, executable("ssh"), _profile(),
     )
-    with pytest.raises(OSError, match="receiver unreadable"):
-        getattr(transport, operation)(example=True)
+    if operation == "inspect":
+        with pytest.raises(OSError, match="receiver unreadable"):
+            transport.inspect(example=True)
+    else:
+        with pytest.raises(ZeusConfirmationError) as caught:
+            transport.prepare(example=True)
+        assert caught.value.code == "transition_outcome_unknown"
+        assert isinstance(caught.value.__cause__, OSError)
+        assert str(caught.value.__cause__) == "receiver unreadable"
     assert process_calls == []
 
 
@@ -448,9 +462,9 @@ def test_confirmation_receiver_read_oserror_remains_raw(
     ("inspect", 0, b"warning", _valid_confirmation_response(), "remote_response_invalid"),
     ("prepare", 0, b"warning", _valid_confirmation_response(), "transition_outcome_unknown"),
     ("inspect", 0, b"", b"not-json", "remote_response_invalid"),
-    ("prepare", 0, b"", b"not-json", "remote_response_invalid"),
+    ("prepare", 0, b"", b"not-json", "transition_outcome_unknown"),
 ])
-def test_confirmation_process_and_decode_error_translation_is_unchanged(
+def test_confirmation_process_and_decode_errors_preserve_read_and_block_write_retry(
     tmp_path, monkeypatch, operation, returncode, stderr, stdout, expected,
 ):
     monkeypatch.setattr(
@@ -468,7 +482,7 @@ def test_confirmation_process_and_decode_error_translation_is_unchanged(
 
 
 @pytest.mark.parametrize("operation", ["inspect", "prepare"])
-def test_confirmation_remote_error_code_translation_is_unchanged(
+def test_confirmation_remote_error_code_preserves_read_and_blocks_write_retry(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
@@ -482,7 +496,7 @@ def test_confirmation_remote_error_code_translation_is_unchanged(
     )
     with pytest.raises(ZeusConfirmationError) as caught:
         getattr(transport, operation)(example=True)
-    assert caught.value.code == "refinement_not_ready"
+    assert caught.value.code == ("refinement_not_ready" if operation == "inspect" else "transition_outcome_unknown")
 
 
 def _valid_refinement_submission_response() -> bytes:
@@ -775,7 +789,7 @@ def test_screening_serializes_payload_before_receiver_read(tmp_path, monkeypatch
 
 @pytest.mark.parametrize("operation", ["inspect", "prepare"])
 @pytest.mark.parametrize("failure", ["receiver_read", "process_launch"])
-def test_screening_oserror_boundaries_remain_raw(
+def test_screening_oserror_boundaries_preserve_read_and_block_write_retry(
     tmp_path, monkeypatch, operation, failure,
 ):
     calls = []
@@ -796,8 +810,15 @@ def test_screening_oserror_boundaries_remain_raw(
         tmp_path, executable("ssh"), _profile(),
     )
     expected = "receiver unreadable" if failure == "receiver_read" else "ssh unavailable"
-    with pytest.raises(OSError, match=expected):
-        getattr(transport, operation)(example=True)
+    if operation == "inspect":
+        with pytest.raises(OSError, match=expected):
+            transport.inspect(example=True)
+    else:
+        with pytest.raises(ZeusScreeningError) as caught:
+            transport.prepare(example=True)
+        assert caught.value.code == "transition_outcome_unknown"
+        assert isinstance(caught.value.__cause__, OSError)
+        assert str(caught.value.__cause__) == expected
     assert len(calls) == (0 if failure == "receiver_read" else 1)
 
 
@@ -848,7 +869,7 @@ def test_screening_process_and_decode_mapping_is_unchanged(
 
 
 @pytest.mark.parametrize("operation", ["inspect", "prepare"])
-def test_screening_remote_error_code_propagates_unchanged(
+def test_screening_remote_error_code_preserves_read_and_blocks_write_retry(
     tmp_path, monkeypatch, operation,
 ):
     monkeypatch.setattr(
@@ -862,7 +883,7 @@ def test_screening_remote_error_code_propagates_unchanged(
     )
     with pytest.raises(ZeusScreeningError) as caught:
         getattr(transport, operation)(example=True)
-    assert caught.value.code == "screening_transition_busy"
+    assert caught.value.code == ("screening_transition_busy" if operation == "inspect" else "transition_outcome_unknown")
 
 
 @pytest.mark.parametrize("operation", ["inspect", "prepare"])
@@ -872,7 +893,7 @@ def test_screening_remote_error_code_propagates_unchanged(
     (b"Could not resolve hostname zeus", "zeus_unreachable"),
     (b"Connection refused", "zeus_unreachable"),
 ])
-def test_screening_hardened_connection_errors_override_operation_ambiguity(
+def test_screening_connection_errors_preserve_read_and_block_write_retry(
     tmp_path, monkeypatch, operation, stderr, expected,
 ):
     monkeypatch.setattr(
@@ -884,7 +905,7 @@ def test_screening_hardened_connection_errors_override_operation_ambiguity(
     )
     with pytest.raises(ZeusScreeningError) as caught:
         getattr(transport, operation)(example=True)
-    assert caught.value.code == expected
+    assert caught.value.code == (expected if operation == "inspect" else "transition_outcome_unknown")
 
 
 @pytest.mark.parametrize("operation", ["inspect", "submit"])

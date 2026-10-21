@@ -1784,7 +1784,7 @@ def test_cross_family_service_error_preserves_pre_registry_translator(monkeypatc
     assert body == {
         "error": {
             "code": "campaign_not_canonical",
-            "message": "Zeus preparation stopped safely.",
+            "message": "Zeus preparation could not be verified.",
         }
     }
 

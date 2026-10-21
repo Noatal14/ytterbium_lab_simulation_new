@@ -759,13 +759,23 @@ def running_server(
     )
     if repository_root is not None:
         handler.repository_root = repository_root
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    class AcceptedRequestServer(ThreadingHTTPServer):
+        accepted_requests = 0
+
+        def get_request(self):
+            request = super().get_request()
+            self.accepted_requests += 1
+            return request
+
+    server = AcceptedRequestServer(("127.0.0.1", 0), handler)
     server.daemon_threads = True
     server.block_on_close = False
     server.timeout = 2
 
+    stop = threading.Event()
+
     def handle_expected_requests():
-        for _ in range(request_count):
+        while not stop.is_set() and server.accepted_requests < request_count:
             server.handle_request()
 
     thread = threading.Thread(target=handle_expected_requests, daemon=True)
@@ -773,8 +783,10 @@ def running_server(
     try:
         yield f"http://127.0.0.1:{server.server_port}"
     finally:
+        stop.set()
         thread.join(timeout=5)
         server.server_close()
+        assert not thread.is_alive(), "HTTP fixture accept worker did not stop."
 
 
 def request_json(url, *, method="GET", headers=None, request_target=None, body=None):
