@@ -185,8 +185,60 @@ def _trusted_regular(repository_root: Path, recorded: Any) -> Path | None:
     return current if stat.S_ISREG(info.st_mode) else None
 
 
+def _same_json(left: Any, right: Any) -> bool:
+    try:
+        return json.dumps(left, sort_keys=True, allow_nan=False) == json.dumps(
+            right, sort_keys=True, allow_nan=False
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def _survivor_design_matches(payload: dict[str, Any], observed: Any, expected: Any) -> bool:
+    # Preserve the existing exact scientific contract, including callers that
+    # inspect a normalized partial record after separate kind validation.
+    if "acceptance" not in payload and payload.get("kind") != "mot_3d_ui_acceptance_v1" and _same_json(observed, expected):
+        return True
+    from workflow_api.acceptance_profile import policy_for_manifest
+
+    if payload.get("kind") not in {"mot_3d_campaign_v2", "mot_3d_ui_acceptance_v1"}:
+        return False
+    profile = policy_for_manifest(payload)
+    if not isinstance(observed, dict) or not isinstance(expected, dict):
+        return False
+    # These are the additional fields written by the normal Production worker,
+    # not additional physical parameters or an open-ended metadata allowance.
+    extras = {"npools": profile.stage("mot_2d", "production")["npools"] if profile else 150,
+              "uses_all_available_particles": True}
+    if profile is not None:
+        extras["acceptance"] = profile.provenance()
+    return not set(expected).intersection(extras) and _same_json(observed, {**expected, **extras})
+
+
+def _discovery_jobs_match(payload: dict[str, Any], root: Path | None, repository_root: Path) -> bool:
+    if root is None:
+        return False
+    relative = root.relative_to(repository_root)
+    expected = {
+        "smoke": {family: (relative / "jobs" / f"01_smoke_{family}.pbs").as_posix()
+                  for family in ("angled_donut", "single_pass")},
+        "discovery_rounds": {
+            family: [(relative / "jobs" / family / f"round_{index:02d}.pbs").as_posix()
+                     for index in range(1, count + 1)]
+            for family, count in (("angled_donut", 2), ("single_pass", 3))},
+        "discovery_submit_chain": (relative / "jobs/02_submit_discovery_chain.sh").as_posix(),
+        "dependency": "afterok",
+    }
+    paths = [*expected["smoke"].values(), expected["discovery_submit_chain"],
+             *(p for rows in expected["discovery_rounds"].values() for p in rows)]
+    return _same_json(payload.get("jobs"), expected) and all(
+        _trusted_regular(repository_root, p) is not None for p in paths
+    )
+
+
 def _modern_3d_contract(
-    payload: dict[str, Any], progress: list[dict[str, Any]], repository_root: Path
+    payload: dict[str, Any], progress: list[dict[str, Any]], repository_root: Path,
+    campaign_root: Path | None = None,
 ) -> tuple[bool, tuple[str, ...]]:
     errors: list[str] = []
     provenance = payload.get("provenance") if isinstance(payload.get("provenance"), dict) else {}
@@ -262,7 +314,7 @@ def _modern_3d_contract(
                 errors.append("frozen 3D input array identity is invalid")
             if metadata_path is None or _file_sha256(metadata_path) != record.get("metadata_sha256"):
                 errors.append("frozen 3D input metadata identity is invalid")
-            if record.get("source_design") != upstream.get("expected_survivor_design"):
+            if not _survivor_design_matches(payload, record.get("source_design"), upstream.get("expected_survivor_design")):
                 errors.append("frozen 3D input design differs from the upstream handoff")
             if record.get("source_parameters") != upstream.get("expected_survivor_parameters"):
                 errors.append("frozen 3D input parameters differ from the upstream handoff")
@@ -279,6 +331,12 @@ def _modern_3d_contract(
                     or metadata.get("shape") != record.get("shape")
                     or metadata.get("dtype") != record.get("dtype")
                     or metadata.get("n_survivors") != record.get("n_survivors")
+                    or (("acceptance" in payload or not _same_json(record.get("source_design"), upstream.get("expected_survivor_design"))) and (
+                        not _same_json(metadata.get("design"), record.get("source_design"))
+                        or not _same_json(metadata.get("parameters"), record.get("source_parameters"))
+                        or metadata.get("output_sha256") != record.get("sha256")
+                        or ("acceptance" in payload and not _same_json(metadata.get("acceptance"), payload["acceptance"]))
+                    ))
                 ):
                     errors.append("frozen 3D input metadata differs from its registry record")
     try:
@@ -302,7 +360,10 @@ def _modern_3d_contract(
     if stage not in CURRENT_3D_STAGES:
         errors.append("3D campaign stage is not part of the current guarded workflow")
     required_stage = "final_validation" if stage == "complete" else stage
-    if required_stage in CURRENT_3D_STAGES and not isinstance(stages.get(required_stage), dict):
+    if required_stage == "discovery":
+        if not _discovery_jobs_match(payload, campaign_root, repository_root):
+            errors.append("current 3D Discovery job registry is incomplete or noncanonical")
+    elif required_stage in CURRENT_3D_STAGES and not isinstance(stages.get(required_stage), dict):
         errors.append("current 3D stage record is incomplete")
     timestep = next((row for row in progress if row.get("stage") == "dt_validation"), None)
     if not timestep or timestep.get("status") != "complete":
@@ -419,7 +480,7 @@ def inspect_entry(entry: RegistryEntry, repository_root: Path) -> dict[str, Any]
         )
     else:
         progress = list(summary.get("progress", []))
-        contract_ok, contract_errors = _modern_3d_contract(payload, progress, repository_root)
+        contract_ok, contract_errors = _modern_3d_contract(payload, progress, repository_root, entry.manifest.parent)
         remote_preparation = (
             {"status": "ready", "reason_code": None}
             if contract_ok

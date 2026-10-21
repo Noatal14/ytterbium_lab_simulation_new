@@ -26,6 +26,18 @@ const zeusSnapshot = {
 };
 
 describe("onboarding home", () => {
+  it.each([1, 2])("keeps %i omitted local campaign records visible on Zeus readiness without contacting Zeus", async (invalidCount) => {
+    const user = userEvent.setup();
+    const snapshot = vi.fn(async () => zeusSnapshot);
+    const api = { ...fixtureApi, async list() { return { campaigns: [], invalid_count: invalidCount, total: 0 }; } };
+    render(<App api={api} zeus={{ snapshot }} />);
+    await screen.findByText(/unreadable or unsupported campaign/);
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
+    expect(screen.getByRole("status", { name: "Unavailable campaign records" })).toHaveTextContent(`${invalidCount} unreadable or unsupported campaign ${invalidCount === 1 ? "record was" : "records were"} omitted`);
+    expect(screen.getByRole("status", { name: "Unavailable campaign records" })).toHaveTextContent("Open Home to review the saved campaign list.");
+    expect(snapshot).not.toHaveBeenCalled();
+  });
+
   it("guides a new operator without enabling later or blocked workflows", async () => {
     render(<App api={fixtureApi} creation={creationFixture} />);
     expect(screen.getByRole("heading", { name: "Run or inspect a campaign" })).toBeInTheDocument();

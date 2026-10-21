@@ -226,9 +226,14 @@ def _stage_progress(
 
     expected_discovery = 0
     for family in families:
-        expected_discovery += int(
-            _mapping(bounds.get(family)).get("total_discovery_trials") or 0
-        )
+        if manifest.get("kind") == "mot_3d_ui_acceptance_v1":
+            from workflow_api.mot_3d_workload import discovery_targets
+
+            expected_discovery += sum(discovery_targets(manifest, family))
+        else:
+            expected_discovery += int(
+                _mapping(bounds.get(family)).get("total_discovery_trials") or 0
+            )
     completed_discovery = sum(
         _valid_discovery_trial(path, family)
         for family in families
@@ -490,11 +495,26 @@ def read_campaign(path: str | Path, *, manifest: dict[str, Any] | None = None) -
         if manifest is None else manifest
     )
     classify_manifest(manifest, expected_family="mot_3d")
-    if manifest.get("kind") != SUPPORTED_KIND:
+    from workflow_api.acceptance_profile import ACCEPTANCE_KINDS
+
+    if manifest.get("kind") not in {SUPPORTED_KIND, ACCEPTANCE_KINDS["mot_3d"]}:
         raise ValueError(
             f"Unsupported campaign kind {manifest.get('kind')!r}; expected {SUPPORTED_KIND!r}."
         )
     root = manifest_path.parent.resolve()
+    repository_root = _repository_root(root)
+    if manifest.get("kind") == ACCEPTANCE_KINDS["mot_3d"]:
+        from workflow_api.mot_3d_workload import validate_location
+
+        if repository_root is None:
+            raise ValueError("Acceptance inspection requires its trusted repository root.")
+        # The existing workload validator authenticates both the exact reviewed
+        # profile and unchanged physical design, then enforces its own namespace.
+        validate_location(manifest, root.relative_to(repository_root).as_posix())
+    elif repository_root is not None and root.is_relative_to(
+        repository_root / "data/optimization/mot_3d/ui_acceptance"
+    ):
+        raise ValueError("Scientific campaigns cannot use TEST ONLY paths.")
     warnings: list[str] = []
     name = manifest.get("name")
     if not isinstance(name, str) or not name.strip():
