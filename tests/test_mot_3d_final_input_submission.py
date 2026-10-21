@@ -370,6 +370,7 @@ def _invoke_receiver(monkeypatch, root, operation, payload, fake_run):
     receiver.main(trusted_root_override=root)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_receiver_attests_joined_transition_and_submits_exact_chain(
     tmp_path, monkeypatch, capsys
 ):
@@ -416,6 +417,7 @@ def test_real_receiver_attests_joined_transition_and_submits_exact_chain(
     "surface",
     ["science", "code", "pbs", "transition", "bundle", "registry", "chunks"],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_receiver_rejects_identity_mutations_before_qsub(
     tmp_path, monkeypatch, surface
 ):

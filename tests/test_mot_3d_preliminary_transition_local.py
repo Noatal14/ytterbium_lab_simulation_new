@@ -170,7 +170,12 @@ def test_symlink_parent_is_rejected_without_manifest_advance(tmp_path, monkeypat
     coordinator, plan, transport, state, _, _ = fixture(tmp_path, monkeypatch)
     outside = tmp_path / "outside"
     outside.mkdir()
-    os.symlink(outside, plan[2] / "results")
+    try:
+        os.symlink(outside, plan[2] / "results", target_is_directory=True)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            pytest.skip("Fixture needs Windows symlink privilege; native junction rejection is tested separately")
+        raise
     with pytest.raises(Mot3DPreliminaryTransitionError) as error:
         coordinator._synchronize(plan, transport, state)
     assert error.value.code == "local_sync_conflict"
@@ -373,7 +378,12 @@ def test_symlinked_local_receipt_is_never_trusted(tmp_path, monkeypatch):
     outside = tmp_path / "receipt.json"
     outside.write_bytes(receipt.read_bytes())
     receipt.unlink()
-    os.symlink(outside, receipt)
+    try:
+        os.symlink(outside, receipt)
+    except OSError as error:
+        if getattr(error, "winerror", None) == 1314:
+            pytest.skip("Fixture needs Windows symlink privilege; native junction rejection is tested separately")
+        raise
     assert coordinator._verify_local_snapshot(plan[2], state) is None
 
 

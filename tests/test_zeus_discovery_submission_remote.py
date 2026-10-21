@@ -144,6 +144,7 @@ def _invoke(namespace, root, payload, operation, monkeypatch, capsys):
     return json.loads(capsys.readouterr().out)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_inspect_is_zero_write_and_submit_runs_exact_five_round_arrays(
     tmp_path, monkeypatch, capsys
 ):
@@ -245,6 +246,7 @@ def test_receiver_source_never_executes_smoke_or_wrapper():
     assert "shell=True" not in source
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_receiver_cross_process_lock_prevents_duplicate_qsub(
     tmp_path, monkeypatch, capsys
 ):
@@ -289,6 +291,7 @@ def test_receiver_cross_process_lock_prevents_duplicate_qsub(
 
 @pytest.mark.parametrize('when',['before_intent','after_first_qsub'])
 @pytest.mark.parametrize('mutation',['manifest','job','receipt','checkout','dirty_code'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_discovery_reattests_before_intent_and_each_qsub(tmp_path,monkeypatch,capsys,when,mutation):
     namespace,root,base,calls=_receiver_fixture(tmp_path,monkeypatch)
     campaign=root/base['campaign'];original=namespace['run_captured'];changed=False
@@ -350,6 +353,7 @@ def test_orphan_discovery_step_never_submits(tmp_path,monkeypatch,capsys,orphan)
 
 
 @pytest.mark.parametrize('remove_final',[False,True])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_actual_discovery_step_writer_prevents_duplicate_after_aggregate_loss(tmp_path,monkeypatch,capsys,remove_final):
     namespace,root,base,calls=_receiver_fixture(tmp_path,monkeypatch)
     flock=namespace['fcntl'].flock;fds=[]

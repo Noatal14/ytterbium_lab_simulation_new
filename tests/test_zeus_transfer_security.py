@@ -7,6 +7,7 @@ import shutil
 import io
 import base64
 import json
+import os
 import struct
 import subprocess
 import sys
@@ -637,6 +638,7 @@ def test_remote_receiver_atomically_publishes_complete_campaign_and_never_replac
     assert (final / "campaign.json").read_bytes() == contents[0]
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_receiver_verifies_input_digest_and_never_replaces(tmp_path):
     project = tmp_path / "home" / "tester" / "project"
     project.mkdir(parents=True)
@@ -666,6 +668,7 @@ def test_remote_receiver_verifies_input_digest_and_never_replaces(tmp_path):
     assert (project / path).read_bytes() == content
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_receiver_rechecks_commit_before_any_write(tmp_path):
     project = tmp_path / "home" / "tester" / "project"
     project.mkdir(parents=True)
@@ -689,6 +692,7 @@ def test_remote_receiver_rechecks_commit_before_any_write(tmp_path):
     assert commit != "0" * 40
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_remote_receiver_parent_fd_prevents_symlink_swap_redirection(tmp_path):
     project = tmp_path / "home" / "tester" / "project"
     profile = project / "data/particle_states/after_zeeman/profile"
@@ -724,6 +728,7 @@ def test_remote_receiver_parent_fd_prevents_symlink_swap_redirection(tmp_path):
     assert (original / "seed.npy").read_bytes() == content
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_remote_receiver_rechecks_tracked_cleanliness_after_receiving_before_input_publish(tmp_path):
     project = tmp_path / "home" / "tester" / "project"
     project.mkdir(parents=True)
@@ -761,6 +766,7 @@ def test_remote_receiver_rechecks_tracked_cleanliness_after_receiving_before_inp
     assert not list(transfer_dir.glob(".zeus-transfer-*"))
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_remote_receiver_rechecks_head_after_receiving_before_campaign_publish(tmp_path):
     project = tmp_path / "home" / "tester" / "project"
     project.mkdir(parents=True)
@@ -802,6 +808,7 @@ def test_remote_receiver_rechecks_head_after_receiving_before_campaign_publish(t
 @pytest.mark.parametrize('rename_capability', ['missing', 'EINVAL', 'EIO'])
 @pytest.mark.parametrize('failure_step', [None, 'reserved', 'job', 'before_manifest', 'identity_swap', 'checkout_change', 'stage_swap', 'source_swap', 'manifest_copy'])
 @pytest.mark.parametrize('namespace', ['canonical', 'acceptance'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, failure_step, namespace, rename_capability):
     project = tmp_path / 'home' / 'tester' / 'project'
     project.mkdir(parents=True)
@@ -874,6 +881,7 @@ def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, f
 
 
 @pytest.mark.parametrize('existing_kind', ['directory', 'file', 'symlink'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_campaign_fallback_never_replaces_existing_target(tmp_path, existing_kind):
     project = tmp_path / 'home/tester/project'
     project.mkdir(parents=True)

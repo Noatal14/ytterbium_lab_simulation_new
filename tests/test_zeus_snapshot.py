@@ -72,6 +72,7 @@ def _run_remote_script_with_fake_scheduler(tmp_path, *, selected="", select_code
     return completed, calls
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_scheduler_stops_after_qselect_failure(tmp_path):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n", select_code=1)
     assert completed.returncode == 22
@@ -79,6 +80,7 @@ def test_remote_scheduler_stops_after_qselect_failure(tmp_path):
     assert not any(call.startswith("qstat ") for call in calls)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_scheduler_skips_qstat_for_empty_selection(tmp_path):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path)
     assert completed.returncode == 0
@@ -86,6 +88,7 @@ def test_remote_scheduler_skips_qstat_for_empty_selection(tmp_path):
     assert not any(call.startswith("qstat ") for call in calls)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_scheduler_passes_valid_ids_as_separate_qstat_arguments(tmp_path):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n11[].zeus-master\n")
     assert completed.returncode == 0
@@ -97,6 +100,7 @@ def test_remote_scheduler_passes_valid_ids_as_separate_qstat_arguments(tmp_path)
     "10.zeus-master\n10.zeus-master\n",
     "".join(f"{index}.zeus-master\n" for index in range(501)),
 ])
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_scheduler_rejects_invalid_duplicate_or_excessive_ids(tmp_path, selected):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected=selected)
     assert completed.returncode == 21
@@ -104,6 +108,7 @@ def test_remote_scheduler_rejects_invalid_duplicate_or_excessive_ids(tmp_path, s
     assert not any(call.startswith("qstat ") for call in calls)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_remote_scheduler_reports_qstat_failure(tmp_path):
     completed, calls = _run_remote_script_with_fake_scheduler(tmp_path, selected="10.zeus-master\n", qstat_code=1)
     assert completed.returncode == 22

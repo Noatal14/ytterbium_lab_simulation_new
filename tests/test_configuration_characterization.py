@@ -261,6 +261,7 @@ APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS = (
     "workflow_api/acceptance_profile.py",
     "workflow_api/specifications/ui_acceptance_v1.json",
     "workflow_api/smoke_receipt.py",
+    "workflow_api/mot_2d_statistical_verification.py",
 )
 
 

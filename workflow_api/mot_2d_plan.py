@@ -393,6 +393,15 @@ def render_production_transition(
     sensitivity, tasks = derive_production_transition(
         manifest, confirmation_rows, sensitivity_rows
     )
+    return render_production_artifacts(manifest, destination, repository_root, sensitivity, tasks)
+
+
+def render_production_artifacts(manifest, destination, repository_root, sensitivity, tasks):
+    """Encode already validated canonical selection without recomputing statistics."""
+    _validate_acceptance_destination(manifest, destination, repository_root)
+    argument = destination.relative_to(repository_root).as_posix()
+    if manifest.get("stage") != "sensitivity" or not argument.startswith("data/optimization/mot_2d/"):
+        raise ValueError("Campaign is not awaiting Production preparation.")
     sealed = manifest["seed_roles"]["sealed_validation"]
     if len(sealed) != 20 or len(tasks) != 20 * len(manifest["s0_values"]):
         raise ValueError("Production must contain exactly 20 sealed ensembles per s0.")
@@ -687,3 +696,27 @@ def _validate_acceptance_destination(manifest, destination, repository_root):
         from workflow_api.acceptance_profile import assert_acceptance_path
         assert_acceptance_path(destination, repository_root)
         assert_acceptance_path(manifest['ensemble_source']['directory'], repository_root)
+
+
+PRODUCTION_PLAN_SOURCE_KEYS = frozenset({
+    "campaign", "commit", "sensitivity_files", "sensitivity_transition_nonce",
+    "sensitivity_transition_digest", "sensitivity_submission_key",
+    "sensitivity_submission_nonce", "sensitivity_job_id",
+})
+
+
+def encode_production_plan(payload, rendered, confirmation_rows, sensitivity_rows):
+    """Closed byte plan produced only by the canonical remote renderer."""
+    import base64
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False).encode()).hexdigest()
+    if set(rendered) != {"sensitivity_summary.json", "production/tasks.json", "jobs/06_production.pbs", "campaign.json"}:
+        raise ValueError("Invalid Production plan registry")
+    return {
+        "version": 1,
+        "source_digest": digest({key: payload[key] for key in PRODUCTION_PLAN_SOURCE_KEYS}),
+        "confirmation_rows_digest": digest(confirmation_rows),
+        "sensitivity_rows_digest": digest(sensitivity_rows),
+        "files": {name: {"sha256": hashlib.sha256(raw).hexdigest(), "base64": base64.b64encode(raw).decode("ascii")}
+                  for name, raw in rendered.items()},
+    }

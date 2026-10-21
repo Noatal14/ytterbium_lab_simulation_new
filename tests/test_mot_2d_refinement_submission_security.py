@@ -378,6 +378,7 @@ def test_refinement_submission_bad_completion_timestamp_is_terminal(tmp_path, ti
     assert len(transport.submissions) == 1
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_submits_four_verified_byte_streams_with_exact_dependencies(tmp_path, monkeypatch, capsys):
     source=(Path(__file__).parents[1]/"workflow_api/zeus_refinement_submission_remote.py").read_text()
     source=source.replace(' or project!=f"/home/{username}/ytterbium_lab_simulation_new"', '')
@@ -476,6 +477,7 @@ def _fault_receiver(tmp_path,monkeypatch,round_number,mode):
 
 @pytest.mark.parametrize("round_number",(1,2,3,4))
 @pytest.mark.parametrize("mode",("qsub_timeout","after_qsub","after_step_receipt"))
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_crash_or_uncertain_qsub_blocks_every_retry(tmp_path,monkeypatch,capsys,round_number,mode):
     ns,calls,encoded=_fault_receiver(tmp_path,monkeypatch,round_number,mode)
     with pytest.raises((SystemExit,RuntimeError)):ns["main"]()

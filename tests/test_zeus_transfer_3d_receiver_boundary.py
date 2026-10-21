@@ -32,6 +32,7 @@ def test_invalid_3d_transfer_never_publishes(tmp_path,attack):
     assert not result.stderr
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_closed_scientific_campaign_cannot_be_replaced(tmp_path):
     project=tmp_path/'project';project.mkdir();commit=initialize_git_repository(project)
     prefix='data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1'
@@ -43,6 +44,7 @@ def test_closed_scientific_campaign_cannot_be_replaced(tmp_path):
     assert len(list(target.iterdir()))==1
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_sealed_2d_inputs_use_existing_exclusive_input_transport(tmp_path):
     project=tmp_path/'project';project.mkdir();commit=initialize_git_repository(project)
     name='data/particle_states/after_2d_mot/source/seed.npy';files={name:b'exact frozenbytes'}

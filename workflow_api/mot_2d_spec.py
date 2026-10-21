@@ -32,6 +32,7 @@ RELEVANT_FILES = (
     "workflow_api/mot_2d_late_stage.py",
     "workflow_api/mot_2d_prediction.py",
     "workflow_api/mot_2d_validation.py",
+    "workflow_api/mot_2d_statistical_verification.py",
     "workflow_api/repository_paths.py",
     "lab_setup/physical_specification.py",
     "lab_setup/specifications/laboratory_physical_v1.json",

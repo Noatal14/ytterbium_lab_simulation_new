@@ -1,4 +1,5 @@
 import hashlib
+import os
 from pathlib import Path
 import threading
 import json
@@ -579,6 +580,12 @@ def test_receiver_source_has_fixed_qsub_and_targeted_qstat_only():
     assert "qdel" not in source and "shell=False" in source
 
 
+def _receiver_repository_root():
+    # The temporary standalone script needs the real package for its native
+    # Windows locking fallback; no ambient PYTHONPATH authority is inherited.
+    return Path(sys.modules[IndividualZeemanZeusCoordinator.__module__].__file__).resolve().parents[1]
+
+
 def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     project = tmp_path / "project"
     project.mkdir()
@@ -594,8 +601,7 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     )
     qsub.chmod(0o700)
     source = (
-        Path(__file__)
-        .parents[1]
+        _receiver_repository_root()
         .joinpath("workflow_api/zeeman_zeus_remote.py")
         .read_text()
     )
@@ -633,11 +639,13 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
             text=True,
             capture_output=True,
             check=False,
+            env={**os.environ, "PYTHONPATH": str(_receiver_repository_root())},
         )
 
     return package, calls, invoke
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_is_at_most_once_across_process_restarts(tmp_path):
     root = tmp_path / "local"
     root.mkdir()
@@ -654,6 +662,7 @@ def test_receiver_is_at_most_once_across_process_restarts(tmp_path):
     assert (receipt / f"{package.submission_key}.json").is_file()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_durable_pending_blocks_retry_after_ambiguous_qsub(tmp_path):
     root = tmp_path / "local"
     root.mkdir()
@@ -668,6 +677,7 @@ def test_receiver_durable_pending_blocks_retry_after_ambiguous_qsub(tmp_path):
     assert calls.read_text() == "x"
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_concurrent_submit_processes_invoke_qsub_at_most_once(tmp_path):
     root = tmp_path / "local"
     root.mkdir()
@@ -715,6 +725,7 @@ def test_receiver_rejects_malicious_package_before_qsub(tmp_path):
         text=True,
         capture_output=True,
         check=False,
+            env={**os.environ, "PYTHONPATH": str(_receiver_repository_root())},
     )
     assert result.returncode != 0
     assert json.loads(result.stdout) == {"error": "remote_package_invalid"}

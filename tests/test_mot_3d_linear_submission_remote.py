@@ -130,6 +130,7 @@ def test_qstat_rejects_missing_extra_duplicate_and_junk():
         assert scheduler_state(jobs, run=run)[0] == "status_unknown"
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_receipts_submit_and_restart_without_resubmit(tmp_path):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -171,6 +172,7 @@ def test_real_receipts_submit_and_restart_without_resubmit(tmp_path):
         os.close(sfd)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_done_before_compat_is_cas_reconciled_without_qsub(tmp_path):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -227,6 +229,7 @@ def test_done_before_compat_is_cas_reconciled_without_qsub(tmp_path):
         os.close(sfd)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_closed_set_and_symlink_fail_closed(tmp_path):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -247,6 +250,7 @@ def test_closed_set_and_symlink_fail_closed(tmp_path):
         os.close(sfd)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_prior_stage_receipts_are_ignored_and_absent_status_is_zero_write(tmp_path):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -279,6 +283,7 @@ def test_prior_stage_receipts_are_ignored_and_absent_status_is_zero_write(tmp_pa
 
 
 @pytest.mark.parametrize("stamp", [-1, 253402300800, True])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_invalid_global_timestamps_fail_closed(tmp_path, stamp):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -306,6 +311,7 @@ def test_invalid_global_timestamps_fail_closed(tmp_path, stamp):
         os.close(sfd)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_final_before_compat_status_zero_write_submit_reconciles(tmp_path):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -354,6 +360,7 @@ def test_final_before_compat_status_zero_write_submit_reconciles(tmp_path):
         os.close(sfd)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_full_prefix_without_final_is_manual_unknown(tmp_path):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"
@@ -407,6 +414,7 @@ def test_full_prefix_without_final_is_manual_unknown(tmp_path):
 
 @pytest.mark.parametrize("after_side_effect", [False, True])
 @pytest.mark.parametrize("boundary", range(1, 7))
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_publish_fault_boundaries_never_duplicate_qsub(
     tmp_path, monkeypatch, boundary, after_side_effect
 ):
@@ -484,6 +492,7 @@ def test_publish_fault_boundaries_never_duplicate_qsub(
 
 @pytest.mark.parametrize("primitive,total", [("replace_at", 4), ("unlink_at", 4)])
 @pytest.mark.parametrize("after_side_effect", [False, True])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_cas_and_cleanup_faults_restart_without_duplicate_qsub(
     tmp_path, monkeypatch, primitive, total, after_side_effect
 ):
@@ -555,6 +564,7 @@ def test_cas_and_cleanup_faults_restart_without_duplicate_qsub(
             os.close(sfd)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_lock_rejects_concurrent_operation(tmp_path):
     lock = tmp_path / "lock"
     lock.touch()
@@ -573,6 +583,7 @@ def test_lock_rejects_concurrent_operation(tmp_path):
 
 
 @pytest.mark.parametrize("reattest_boundary", [1, 2, 3, 4])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_reattest_failure_stops_before_any_later_qsub(tmp_path, reattest_boundary):
     campaign = tmp_path / "campaign"
     submissions = tmp_path / "submissions"

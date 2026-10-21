@@ -143,6 +143,7 @@ def _fixture(tmp_path, monkeypatch, receiver=remote):
     return root, campaign, payload
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_stage5_wrapper_publishes_exact_208_file_bundle(tmp_path, monkeypatch, capsys):
     root, campaign, payload = _fixture(tmp_path, monkeypatch)
     _invoke(monkeypatch, root, payload)

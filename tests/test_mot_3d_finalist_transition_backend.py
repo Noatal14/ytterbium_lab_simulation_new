@@ -71,6 +71,7 @@ def test_winner_preview_preserves_valid_recomputed_ranked_winner():
     assert selection["rule"] == FINALIST_WINNER_RANKING_RULE
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_finalist_wrapper_publishes_exact_50_and_status_is_zero_write(
     tmp_path, monkeypatch, capsys
 ):

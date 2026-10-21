@@ -21,7 +21,7 @@ def _evaluation(efficiency: float):
                 "zeeman_seed": 3010 + index,
                 "mot_seed": 43010 + index,
                 "n_input": 10_000,
-                "subset_seed": index,
+                "subset_seed": 103010 + index,
                 "conditional_efficiency": efficiency,
             }
             for index in range(5)
@@ -59,6 +59,7 @@ class _Transport:
             tuple(self.rows),
             "main",
             self.receipt,
+            self.production_plan,
         )
 
     def prepare(self, **payload):
@@ -103,8 +104,8 @@ def test_production_preparation_is_explicit_and_freezes_twenty_tasks(
         "stage": "sensitivity",
         "s0_values": [1.3],
         "fixed_design": FIXED_DESIGN,
-        "seed_roles": {"sealed_validation": list(range(3015, 3035))},
-        "mot_seeds": {"sealed_validation": list(range(43015, 43035))},
+        "seed_roles": {"sealed_validation": list(range(3015, 3035)), "held_out_confirmation": list(range(3010, 3015))},
+        "mot_seeds": {"sealed_validation": list(range(43015, 43035)), "held_out_confirmation": list(range(43010, 43015))},
         "provenance": {"git_commit": "a" * 40},
         "stages": {"sensitivity": {"tasks": 17}},
     }
@@ -128,6 +129,7 @@ def test_production_preparation_is_explicit_and_freezes_twenty_tasks(
         for index in range(17)
     ]
     transport = _Transport(rows)
+    from workflow_api.mot_2d_plan import encode_production_plan, render_production_transition
     coordinator = ZeusProductionCoordinator(
         root,
         ssh,
@@ -158,6 +160,7 @@ def test_production_preparation_is_explicit_and_freezes_twenty_tasks(
         "username": "tal.noa",
         "project_directory": profile.project_directory,
     }
+    transport.production_plan = encode_production_plan(coordinator._remote_payload(base), render_production_transition(manifest, campaign, root, confirmation, rows), confirmation, rows)
     preview = coordinator.preview(request, session_id="owner")
     assert preview["job"]["task_count"] == 20
     assert preview["effects"]["submit_production"] is False

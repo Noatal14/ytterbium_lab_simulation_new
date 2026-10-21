@@ -75,6 +75,7 @@ class _Protocol:
         for package_name in ('workflow_api', 'studies', 'simulations', 'utils', 'lab_setup', 'atomsmltr/src'):
             shutil.copytree(CODE / package_name, self.local / package_name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
         shutil.copyfile(CODE / 'config.py', self.local / 'config.py')
+        shutil.copyfile(CODE / '.gitattributes', self.local / '.gitattributes')
         (self.local / '.gitignore').write_text('data/\n__pycache__/\n*.pyc\n')
         for args in (['init', '-q'], ['add', '.'], ['-c', 'user.name=Protocol test', '-c', 'user.email=protocol@example.invalid', 'commit', '-qm', 'Frozen protocol code']):
             subprocess.run([str(self.git), '-C', str(self.local), *args], check=True)
@@ -289,10 +290,12 @@ class _Protocol:
 
 
 @pytest.mark.parametrize('acceptance', [False, True], ids=['scientific', 'TEST-ONLY'])
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance):
     _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance)
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_full_scientific_two_s0_receiver_protocol_chain(tmp_path, monkeypatch):
     # Normal policy supports several independent fixed-s0 groups. The reviewed
     # TEST ONLY profile remains one group and is deliberately not expanded.

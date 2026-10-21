@@ -1,10 +1,13 @@
 """A display name accepted at creation stays usable after real completion."""
 import json
+import pytest
+import os
 
 from tests.test_mot_2d_receiver_protocol_chain import _run_full_on_disk_receiver_protocol_chain
 from workflow_api.mot_3d_bootstrap import Mot3DDiscoveryBootstrapService
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_genuine_completed_testonly_human_display_name_is_catalog_source(tmp_path, monkeypatch):
     name = 'TEST ONLY UI Release Mac 20261020 J'
     chain = _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, True, name=name)

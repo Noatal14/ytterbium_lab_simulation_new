@@ -284,6 +284,7 @@ def test_receiver_rejects_full_transition_receipt_drift_before_qsub(tmp_path,mon
     assert calls==[]
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_submit_ledger_and_targeted_status_are_at_most_once(tmp_path,monkeypatch,capsys):
     _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def captured(argv,**_kwargs):
@@ -306,6 +307,7 @@ def test_receiver_submit_ledger_and_targeted_status_are_at_most_once(tmp_path,mo
     _qstat([('F','0')]*5)+b"garbage suffix\n",
     _qstat([('F','0')]*5).replace(b"    job_state = F",b"malformed line",1),
 ])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_status_maps_non_grammar_qstat_to_unknown_with_targeted_query(tmp_path,monkeypatch,capsys,bad_output):
     _,_,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def captured(argv,**_kwargs):
@@ -317,6 +319,7 @@ def test_receiver_status_maps_non_grammar_qstat_to_unknown_with_targeted_query(t
     assert calls[-1]==["/opt/pbs/bin/qstat","-x","-t","-f","123[].zeus-master"]
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_qsub_crash_leaves_ambiguous_durable_intent_and_blocks_retry(tmp_path,monkeypatch,capsys):
     _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def crash(argv,**_kwargs):calls.append(argv);raise TimeoutError("uncertain")

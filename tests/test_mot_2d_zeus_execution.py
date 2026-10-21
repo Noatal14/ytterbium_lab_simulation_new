@@ -2,6 +2,7 @@ import base64
 from io import BytesIO
 import hashlib
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -224,6 +225,7 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     return package, calls, invoke
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_receiver_at_most_once_across_restart_and_ambiguous_outcome(tmp_path):
     local = tmp_path / "local"; local.mkdir(); records = _create(local)
     package, calls, invoke = _receiver_harness(tmp_path, records)
@@ -246,6 +248,7 @@ def test_receiver_at_most_once_across_restart_and_ambiguous_outcome(tmp_path):
     assert failed_calls.read_text() == "x"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_receiver_reconstructs_pbs_and_rejects_tampering_before_qsub(tmp_path):
     local = tmp_path / "local"; local.mkdir(); records = _create(local)
     package, calls, invoke = _receiver_harness(tmp_path, records)
@@ -265,6 +268,7 @@ def test_receiver_reconstructs_pbs_and_rejects_tampering_before_qsub(tmp_path):
     assert not calls.exists()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_receiver_strict_decodes_records_even_with_recomputed_outer_hashes(tmp_path):
     local = tmp_path / "local"; local.mkdir(); records = _create(local)
     package, calls, invoke = _receiver_harness(tmp_path, records)
@@ -373,6 +377,7 @@ def test_worker_rejects_oversized_stale_product_before_worker_or_json_allocation
         )
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_receiver_rejects_mismatched_retrieval_product(tmp_path):
     local = tmp_path / "local"; local.mkdir(); records = _create(local)
     package, calls, invoke = _receiver_harness(tmp_path, records)
@@ -394,6 +399,7 @@ def test_receiver_rejects_mismatched_retrieval_product(tmp_path):
     assert calls.read_text() == "x"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_receiver_requires_exact_qstat_job_identity(tmp_path):
     local = tmp_path / "local"; local.mkdir(); records = _create(local)
     package, calls, invoke = _receiver_harness(tmp_path, records)

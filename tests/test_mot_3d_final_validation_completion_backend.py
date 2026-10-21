@@ -213,7 +213,8 @@ def test_synchronized_extension_status_restores_closed_completion_detail(tmp_pat
 def test_local_publication_rejects_mutually_exclusive_terminal_artifacts(tmp_path):
     (tmp_path / "final_report.json").write_text("{}", encoding="utf-8")
     (tmp_path / "final_validation_status.json").write_text("{}", encoding="utf-8")
-    campaign_fd = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    from workflow_api.platform_io import os as host_os
+    campaign_fd = host_os.open(tmp_path, host_os.O_RDONLY | host_os.O_DIRECTORY)
     try:
         coordinator = object.__new__(Mot3DFinalValidationCompletionCoordinator)
         with pytest.raises(
@@ -221,7 +222,7 @@ def test_local_publication_rejects_mutually_exclusive_terminal_artifacts(tmp_pat
         ):
             coordinator._expected_paths(campaign_fd)
     finally:
-        os.close(campaign_fd)
+        host_os.close(campaign_fd)
 
 
 def _json(value):
@@ -483,6 +484,7 @@ def test_all_four_family_precision_outcome_combinations(
     ]
     + [("busy_lock", "before"), ("aba", "before"), ("symlink", "before")],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_receiver_main_prepares_and_retrieves_exact17_for_both_outcomes(
     tmp_path, monkeypatch, capsys, extension_family, boundary, phase
 ):

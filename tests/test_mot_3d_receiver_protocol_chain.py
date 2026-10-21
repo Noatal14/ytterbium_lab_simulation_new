@@ -346,6 +346,7 @@ class _ThreeD:
             row['executed_3d'] = True
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver and shell scheduler fixture executes on Zeus; native client contracts remain separate")
 def test_full_testonly_3d_receiver_protocol_chain(tmp_path, monkeypatch):
     upstream = _completed_upstream(tmp_path, monkeypatch)
     chain = _ThreeD(upstream, monkeypatch)

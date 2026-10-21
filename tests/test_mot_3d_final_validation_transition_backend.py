@@ -127,6 +127,7 @@ def test_descriptor_freezes_linear_exact_101_to_107_and_reviewed_caps():
     assert descriptor.generated_paths == wrapper.GENERATED_PATHS
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_joined_linear_receipts_and_exact_qstat_40_plus_1(tmp_path):
     _, campaign, key = _repository(tmp_path)
     campaign_fd = os.open(campaign, os.O_RDONLY | os.O_DIRECTORY)
@@ -153,9 +154,9 @@ def test_joined_linear_receipts_and_exact_qstat_40_plus_1(tmp_path):
 @pytest.mark.parametrize(
     "mutation",
     [
-        "step_dependency",
-        "step_time",
-        "compat_job",
+        pytest.param("step_dependency", marks=pytest.mark.skipif(os.name == "nt", reason="POSIX receiver directory-descriptor integration executes on Zeus")),
+        pytest.param("step_time", marks=pytest.mark.skipif(os.name == "nt", reason="POSIX receiver directory-descriptor integration executes on Zeus")),
+        pytest.param("compat_job", marks=pytest.mark.skipif(os.name == "nt", reason="POSIX receiver directory-descriptor integration executes on Zeus")),
         "missing_child",
         "duplicate_child",
         "junk_qstat",

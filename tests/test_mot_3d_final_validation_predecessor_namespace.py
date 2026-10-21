@@ -43,6 +43,7 @@ def _runner(calls):
     return run
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_prior_exact_authenticated_ledgers_allow_review_submit_and_dedup(tmp_path,monkeypatch,capsys):
     root,campaign,payload=_fixture(tmp_path);calls=[];run=_runner(calls)
     _invoke(monkeypatch,root,'inspect',payload,run)
@@ -58,6 +59,7 @@ def test_prior_exact_authenticated_ledgers_allow_review_submit_and_dedup(tmp_pat
 
 
 @pytest.mark.parametrize('attack',['pending','unknown','missing_step','wrong_nonce','symlink','directory','wrong_transition_key','compat_changed'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_ambiguous_or_unattested_prior_ledgers_never_submit(tmp_path,monkeypatch,capsys,attack):
     root,campaign,payload=_fixture(tmp_path);directory=campaign/'.mot_ui/submissions'
     path=directory/'final_validation_input_generation_mot_2d.json'
@@ -83,6 +85,7 @@ def test_ambiguous_or_unattested_prior_ledgers_never_submit(tmp_path,monkeypatch
     assert json.loads(capsys.readouterr().out)['error']=='final_validation_submission_outcome_unknown'
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_new_prior_pending_after_first_qsub_stops_remaining_jobs(tmp_path,monkeypatch,capsys):
     root,campaign,payload=_fixture(tmp_path);calls=[];base_run=_runner(calls)
     def run(argv,input_data=None,limit=None):

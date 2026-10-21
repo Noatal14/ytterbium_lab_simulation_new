@@ -232,7 +232,8 @@ def _prior_sync_fixture(tmp_path: Path):
 
 def test_prior_sync_authority_rehashes_exact_closed_registry(tmp_path):
     campaign, path, receipt, expected = _prior_sync_fixture(tmp_path)
-    fd = os.open(campaign, os.O_RDONLY | os.O_DIRECTORY)
+    from workflow_api.platform_io import os as host_os
+    fd = host_os.open(campaign, host_os.O_RDONLY | host_os.O_DIRECTORY)
     try:
         parsed, raw = validate_prior_transition_sync(fd, expected)
         assert parsed == receipt
@@ -241,24 +242,30 @@ def test_prior_sync_authority_rehashes_exact_closed_registry(tmp_path):
         with pytest.raises(ValueError):
             validate_prior_transition_sync(fd, expected)
     finally:
-        os.close(fd)
+        host_os.close(fd)
 
 
-def test_prior_sync_authority_rejects_missing_extra_and_symlink(tmp_path):
+@pytest.mark.parametrize("mutation", ["missing", "extra", "symlink"])
+def test_prior_sync_authority_rejects_missing_extra_and_symlink(tmp_path, mutation):
+    from workflow_api.platform_io import os as host_os
     campaign, path, receipt, expected = _prior_sync_fixture(tmp_path)
-    fd = os.open(campaign, os.O_RDONLY | os.O_DIRECTORY)
+    fd = host_os.open(campaign, host_os.O_RDONLY | host_os.O_DIRECTORY)
     try:
-        for changed in (
-            expected - {"campaign.json"},
-            expected | {"extra.json"},
-        ):
+        if mutation in {"missing", "extra"}:
+            changed = expected - {"campaign.json"} if mutation == "missing" else expected | {"extra.json"}
             with pytest.raises(ValueError):
                 validate_prior_transition_sync(fd, frozenset(changed))
-        path.unlink()
-        outside = tmp_path / "outside.json"
-        outside.write_text(json.dumps(receipt))
-        path.symlink_to(outside)
-        with pytest.raises(OSError):
-            validate_prior_transition_sync(fd, expected)
+        else:
+            path.unlink()
+            outside = tmp_path / "outside.json"
+            outside.write_text(json.dumps(receipt))
+            try:
+                path.symlink_to(outside)
+            except OSError as error:
+                if getattr(error, "winerror", None) == 1314:
+                    pytest.skip("Symlink fixture needs Windows privilege; missing/extra checks remain native")
+                raise
+            with pytest.raises(OSError):
+                validate_prior_transition_sync(fd, expected)
     finally:
-        os.close(fd)
+        host_os.close(fd)

@@ -79,6 +79,7 @@ def _invoke(tmp_path, monkeypatch, *, acceptance, target_acceptance=None, attack
 
 
 @pytest.mark.parametrize('acceptance', [False, True], ids=['scientific', 'TEST-ONLY'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_exact_target_reaches_authenticated_receipt_boundary(tmp_path, monkeypatch, acceptance):
     campaign = _invoke(tmp_path, monkeypatch, acceptance=acceptance)
     with pytest.raises(Authenticated):

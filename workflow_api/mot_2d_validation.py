@@ -24,6 +24,7 @@ from workflow_api.mot_2d_spec import validate_campaign_policy, stage_npools, sur
 from utils.mot_2d_study import summarize_replicates
 from workflow_api.mot_2d_late_stage import derive_production_transition
 from workflow_api.mot_2d_prediction import final_prediction
+from workflow_api.mot_2d_statistical_verification import typed_exact, verify_sensitivity_summary
 
 ROLE_NAMES = ("discovery", "refinement", "held_out_confirmation", "sealed_validation")
 CANONICAL_ROLE_SEEDS = {
@@ -709,9 +710,13 @@ def validated_production_transition(
     )
     observed_summary = _json(root / "sensitivity_summary.json", root=root)
     observed_tasks = _json(root / "production/tasks.json", root=root)
-    if observed_summary != expected_summary or observed_tasks != expected_tasks:
+    if not typed_exact(observed_tasks, expected_tasks):
         raise ValueError("Production transition artifacts are not canonical.")
-    return expected_summary, expected_tasks
+    verify_sensitivity_summary(
+        observed_summary, expected_summary,
+        target_loss_fraction=float(manifest["fixed_design"]["target_95_half_width_fraction"]),
+    )
+    return observed_summary, observed_tasks
 
 
 def _progress(stage: str, complete: int, expected: int, invalid: bool = False) -> StageProgress:

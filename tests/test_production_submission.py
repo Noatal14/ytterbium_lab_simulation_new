@@ -95,7 +95,7 @@ def test_plan_binds_the_entire_prepared_production_receipt(tmp_path, monkeypatch
              "completed_unix_s":1}
     plan=("campaign-id",profile,campaign,manifest,"a"*40,{"old":"0"*64},"9"*32,
           "0"*64,"6"*64,files,"8"*64,"5"*64)
-    state=SimpleNamespace(lifecycle="production_prepared",receipt=receipt,rows=receipt["rows"])
+    state=SimpleNamespace(lifecycle="production_prepared",receipt=receipt,rows=receipt["rows"],validated_files=rendered)
     class FakePreparation:
         def __init__(self,*_args):pass
         def _inspect(self,_request):return plan,state
@@ -286,6 +286,7 @@ def test_receiver_rejects_full_transition_receipt_drift_before_qsub(tmp_path,mon
     assert calls==[]
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_submit_ledger_and_targeted_status_are_at_most_once(tmp_path,monkeypatch,capsys):
     _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def captured(argv,**_kwargs):
@@ -303,6 +304,7 @@ def test_receiver_submit_ledger_and_targeted_status_are_at_most_once(tmp_path,mo
     assert done["transition_digest"]==payload["transition_digest"]
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_status_preserves_historical_submission_after_finalization(tmp_path,monkeypatch,capsys):
     _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch)
     def captured(argv,**_kwargs):
@@ -321,6 +323,7 @@ def test_receiver_status_preserves_historical_submission_after_finalization(tmp_
     _qstat([('F','0')]*20)+b"garbage suffix\n",
     _qstat([('F','0')]*20).replace(b"    job_state = F",b"malformed line",1),
 ])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_status_maps_non_grammar_qstat_to_unknown_with_targeted_query(tmp_path,monkeypatch,capsys,bad_output):
     _,_,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def captured(argv,**_kwargs):
@@ -332,6 +335,7 @@ def test_receiver_status_maps_non_grammar_qstat_to_unknown_with_targeted_query(t
     assert calls[-1]==["/opt/pbs/bin/qstat","-x","-t","-f","123[].zeus-master"]
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_qsub_crash_leaves_ambiguous_durable_intent_and_blocks_retry(tmp_path,monkeypatch,capsys):
     _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def crash(argv,**_kwargs):calls.append(argv);raise TimeoutError("uncertain")
@@ -384,6 +388,7 @@ def test_completed_campaign_without_submission_never_becomes_eligible_or_resubmi
 
 
 @pytest.mark.parametrize('operation',['inspect','status','submit'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_completed_campaign_existing_submission_deduplicates_with_exact_history(tmp_path,monkeypatch,capsys,operation):
     _,campaign,_,_,payload=_receiver_fixture(tmp_path,monkeypatch);calls=[]
     def captured(argv,**kwargs):

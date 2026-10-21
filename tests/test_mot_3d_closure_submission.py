@@ -259,6 +259,7 @@ def test_canonical_renderer_matches_reviewed_closure_topology(tmp_path):
         assert "--bootstrap-seed 72001" in merge
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_inspect_is_zero_write_and_rejects_symlinked_receipt_root(
     tmp_path, monkeypatch, capsys
 ):
@@ -411,6 +412,7 @@ def _invoke_receiver(monkeypatch, root, operation, payload, fake_run):
     receiver.main(trusted_root_override=root)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_submits_exact_chain_and_restart_does_not_resubmit(
     tmp_path, monkeypatch, capsys
 ):
@@ -462,6 +464,7 @@ def test_receiver_submits_exact_chain_and_restart_does_not_resubmit(
     assert sorted(path.relative_to(campaign) for path in campaign.rglob("*")) == before
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_recovers_crash_after_final_receipt_without_resubmitting(
     tmp_path, monkeypatch, capsys
 ):
@@ -538,6 +541,7 @@ def test_receiver_recovers_crash_after_final_receipt_without_resubmitting(
     assert not list(submissions.glob("*.pending.json"))
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_ambiguous_qsub_is_durable_and_never_retried(
     tmp_path, monkeypatch, capsys
 ):
@@ -570,6 +574,7 @@ def test_receiver_ambiguous_qsub_is_durable_and_never_retried(
 
 @pytest.mark.parametrize("completed_steps", [1, 2, 3])
 @pytest.mark.parametrize("boundary", ["before_pending_unlink", "before_compat_replace"])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_reconciles_every_intermediate_done_receipt_without_resubmit(
     tmp_path, monkeypatch, capsys, completed_steps, boundary
 ):
@@ -679,6 +684,7 @@ def test_qstat_parser_rejects_noncanonical_output(raw):
         "provenance",
     ],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_rejects_every_frozen_identity_surface_before_qsub(
     tmp_path, monkeypatch, capsys, mutation
 ):
@@ -734,6 +740,7 @@ def test_receiver_rejects_every_frozen_identity_surface_before_qsub(
     assert qsub == 0
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_legacy_closure_alias_cannot_replace_canonical_transition_receipt(
     tmp_path, monkeypatch, capsys
 ):
@@ -759,6 +766,7 @@ def test_legacy_closure_alias_cannot_replace_canonical_transition_receipt(
     }
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_rejects_unexpected_or_symlinked_closure_receipts(
     tmp_path, monkeypatch, capsys
 ):

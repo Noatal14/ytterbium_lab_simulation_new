@@ -190,6 +190,7 @@ def _invoke(monkeypatch, root, operation, payload, run):
 
 
 @pytest.mark.parametrize("array_range", ["0-2:1", "0-2:1%1"])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_receiver_submits_exact_chain_and_restart_is_idempotent(
     tmp_path, monkeypatch, capsys, array_range
 ):
@@ -313,6 +314,7 @@ def test_real_receiver_submits_exact_chain_and_restart_is_idempotent(
 
 
 @pytest.mark.parametrize("surface", ["science", "code", "locked", "pbs", "transition"])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_receiver_rejects_identity_mutation_before_qsub(
     tmp_path, monkeypatch, surface
 ):

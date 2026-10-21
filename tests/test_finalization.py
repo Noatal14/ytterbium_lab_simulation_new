@@ -417,6 +417,7 @@ def test_finalization_base_plan_does_not_traverse_historical_stage_chain(
     assert plan[0] == "campaign-id" and plan[2] == campaign
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_finalization_receiver_inspect_is_zero_write_and_prepare_is_durable(tmp_path):
     root, campaign, _, _, request = _remote_finalization_fixture(tmp_path)
     before = {
@@ -546,6 +547,7 @@ def test_finalization_receiver_has_no_submission_or_scheduler_mutation():
     assert '"/usr/local/bin/qalter"' not in source
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_finalization_receiver_pending_recovery_requires_explicit_prepare(tmp_path):
     root, campaign, _, _, request = _remote_finalization_fixture(tmp_path)
     preview = json.loads(_run_finalization_receiver(root, "inspect", request).stdout)

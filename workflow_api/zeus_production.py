@@ -3,6 +3,8 @@
 from __future__ import annotations
 from workflow_api.mot_2d_spec import reviewed_job_resources, refinement_targets, trial_budget, sensitivity_task_count
 
+import base64
+import math
 import hashlib
 import json
 import re
@@ -14,6 +16,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping, Protocol
+from types import MappingProxyType
 
 from workflow_api.mot_2d_plan import render_production_transition
 from workflow_api.pinned_ssh import (
@@ -59,6 +62,9 @@ class RemoteSensitivityState:
     rows: tuple[Mapping[str, Any], ...]
     branch: str
     receipt: Mapping[str, Any] | None = None
+    production_plan: Mapping[str, Any] | None = None
+    # Internal immutable snapshot; never an additional wire field.
+    validated_files: Mapping[str, bytes] | None = None
 
 
 class ProductionTransport(Protocol):
@@ -93,6 +99,102 @@ def _digest(value: object) -> str:
             ensure_ascii=False,
         ).encode()
     ).hexdigest()
+
+
+def _validated_production_plan(bundle, payload, manifest, campaign, root, confirmation, rows):
+    """Validate remote numerical authority without local statistical recomputation."""
+    from workflow_api.mot_2d_plan import encode_production_plan, render_production_artifacts
+    def require(value):
+        if not value:
+            raise ZeusProductionError("remote_response_invalid")
+    def same(left, right):
+        return json.dumps(left, sort_keys=True, separators=(",", ":"), allow_nan=False) == json.dumps(right, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    def finite(value):
+        require(type(value) is float and math.isfinite(value))
+    def strict_json(raw):
+        def pairs(items):
+            result = {}
+            for key, value in items:
+                require(key not in result)
+                result[key] = value
+            return result
+        return json.loads(raw, object_pairs_hook=pairs, parse_constant=lambda _: require(False))
+    try:
+        require(isinstance(bundle, dict) and set(bundle) == {"version", "source_digest", "confirmation_rows_digest", "sensitivity_rows_digest", "files"})
+        require(type(bundle["version"]) is int and bundle["version"] == 1)
+        files = bundle["files"]
+        require(isinstance(files, dict) and set(files) == OUTPUT_FILES)
+        require(all(isinstance(record, dict) and type(record.get("base64")) is str for record in files.values()))
+        require(sum(len(record["base64"]) for record in files.values()) <= 24 * 1024 * 1024)
+        rendered = {}
+        for name, record in files.items():
+            require(isinstance(record, dict) and set(record) == {"sha256", "base64"})
+            require(type(record["base64"]) is str and len(record["base64"]) <= 12 * 1024 * 1024)
+            raw = base64.b64decode(record["base64"], validate=True)
+            require(0 < len(raw) <= 8 * 1024 * 1024 and base64.b64encode(raw).decode("ascii") == record["base64"])
+            require(hashlib.sha256(raw).hexdigest() == record["sha256"])
+            rendered[name] = raw
+        require(sum(map(len, rendered.values())) <= 16 * 1024 * 1024)
+        expected_bundle = encode_production_plan(payload, rendered, confirmation, rows)
+        require(same(bundle, expected_bundle))
+        summary = strict_json(rendered["sensitivity_summary.json"])
+        values = manifest["s0_values"]
+        require(isinstance(summary, dict) and set(summary) == {f"s0_{float(v):.6f}".replace(".", "p") for v in values})
+        selected = {}
+        for value in values:
+            key = f"s0_{float(value):.6f}".replace(".", "p")
+            entry = summary[key]
+            require(isinstance(entry, dict) and set(entry) == {"reference", "points", "production_selection", "robustness_status", "near_optimality_status"})
+            confirmed = sorted([r for r in confirmation if r["s0"] == value], key=lambda r: (-r["evaluation"]["statistics"]["conditional_95_ci"][0], -r["evaluation"]["statistics"]["mean_conditional_efficiency"], r["candidate_index"]))
+            require(len(confirmed) == 5 and same(entry["reference"], confirmed[0]["parameters"]))
+            source = [r for r in rows if r["s0"] == value]
+            center = next(r for r in source if r["offsets"] == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0})
+            points = entry["points"]
+            require(type(points) is list and len(points) == len(source))
+            for point, row in zip(points, source):
+                require(type(point) is dict and set(point) == {"parameters", "offsets", "mean_efficiency", "comparison_to_reference", "within_loss_margin_at_95_percent"})
+                require(same(point["parameters"], row["parameters"]) and same(point["offsets"], row["offsets"]))
+                finite(point["mean_efficiency"])
+                require(same(point["mean_efficiency"], row["evaluation"]["statistics"]["mean_conditional_efficiency"]))
+                comparison = point["comparison_to_reference"]
+                require(type(comparison) is dict and set(comparison) == {"mean_difference_fraction", "95_ci_fraction", "95_ci_half_width_fraction", "differences_fraction"})
+                left = row["evaluation"]["replicates"]; right = center["evaluation"]["replicates"]
+                require(type(left) is list and type(right) is list and len(left) == len(right) == 5)
+                for index, (a, b) in enumerate(zip(left, right)):
+                    identity = ("zeeman_seed", "mot_seed", "n_input", "subset_seed")
+                    require(all(type(a[k]) is int and type(b[k]) is int and a[k] == b[k] for k in identity))
+                    require(a["zeeman_seed"] == manifest["seed_roles"]["held_out_confirmation"][index]
+                            and a["mot_seed"] == manifest["mot_seeds"]["held_out_confirmation"][index]
+                            and a["n_input"] == manifest["fixed_design"]["particle_counts"]["sensitivity"]
+                            and a["subset_seed"] == 100000 + a["zeeman_seed"])
+                    finite(a["conditional_efficiency"]); finite(b["conditional_efficiency"])
+                    require(0.0 <= a["conditional_efficiency"] <= 1.0 and 0.0 <= b["conditional_efficiency"] <= 1.0)
+                differences = [a["conditional_efficiency"] - b["conditional_efficiency"] for a, b in zip(left, right)]
+                require(same(comparison["differences_fraction"], differences))
+                mean = comparison["mean_difference_fraction"]; half = comparison["95_ci_half_width_fraction"]; ci = comparison["95_ci_fraction"]
+                finite(mean); finite(half)
+                require(half >= 0 and -1.0 <= mean <= 1.0)
+                require(type(ci) is list and len(ci) == 2)
+                for endpoint in ci: finite(endpoint)
+                require(same(ci, [mean - half, mean + half]))
+                require(type(point["within_loss_margin_at_95_percent"]) is bool and point["within_loss_margin_at_95_percent"] == (ci[0] >= -float(manifest["fixed_design"]["target_95_half_width_fraction"])))
+            better = [p for p in points if p["comparison_to_reference"]["95_ci_fraction"][0] > 0.0]
+            chosen = max(better, key=lambda p: (p["comparison_to_reference"]["95_ci_fraction"][0], p["mean_efficiency"])) if better else next(p for p in points if p["offsets"] == {"detuning_gamma": 0.0, "magnet_radius_m": 0.0})
+            expected_selection = {"parameters": chosen["parameters"], "offsets_from_confirmed_winner": chosen["offsets"], "mean_efficiency": chosen["mean_efficiency"], "comparison_to_confirmed_winner": chosen["comparison_to_reference"], "selection_reason": "sensitivity_neighbor_clearly_better_at_95_percent" if better else "no_sensitivity_neighbor_clearly_better_at_95_percent", "familywise_method": "Bonferroni simultaneous paired intervals", "familywise_confidence_per_comparison": 1.0 - 0.05 / max(1, len(source) - 1)}
+            require(same(entry["production_selection"], expected_selection))
+            require(entry["robustness_status"] == "not_established_pending_adaptive_challenger_validation" and entry["near_optimality_status"] == "not_established_pending_domain_challenger_elimination")
+            selected[value] = chosen["parameters"]
+        sealed = manifest["seed_roles"]["sealed_validation"]
+        mot_seeds = manifest["mot_seeds"]["sealed_validation"]
+        require(len(sealed) == len(mot_seeds) == 20)
+        tasks = [{"s0": value, "zeeman_seed": seed, "mot_seed": mot_seeds[index], "parameters": selected[value]} for value in values for index, seed in enumerate(sealed)]
+        expected_files = render_production_artifacts(manifest, campaign, root, summary, tasks)
+        require(rendered == expected_files)
+        return rendered
+    except ZeusProductionError:
+        raise
+    except (ValueError, TypeError, KeyError, StopIteration, OverflowError):
+        raise ZeusProductionError("remote_response_invalid") from None
 
 
 class ZeusProductionCoordinator:
@@ -208,8 +310,8 @@ class ZeusProductionCoordinator:
         transition_key = ""
         if state.lifecycle in {"ready_to_prepare_production", "production_prepared"}:
             confirmation = self._confirmation_rows(request, base)
-            rendered = render_production_transition(
-                base[3], base[2], self.root, confirmation, rows
+            rendered = _validated_production_plan(
+                state.production_plan, self._remote_payload(base), base[3], base[2], self.root, confirmation, rows
             )
             files = {
                 name: hashlib.sha256(data).hexdigest()
@@ -227,6 +329,9 @@ class ZeusProductionCoordinator:
                     "files": files,
                 }
             )
+        if state.lifecycle not in {"ready_to_prepare_production", "production_prepared"} and state.production_plan is not None:
+            raise ZeusProductionError("remote_response_invalid")
+        state = replace(state, validated_files=MappingProxyType(dict(rendered)) if files else None)
         plan = (*base[:9], files, rows_digest, transition_key)
         if state.lifecycle == "production_prepared":
             self._validate_receipt(state, plan, base)
@@ -430,15 +535,7 @@ class ZeusProductionCoordinator:
         token = self._previews.add(
             pending, expires_at=expires, capacity=MAX_PENDING_PREVIEWS
         )
-        tasks = json.loads(
-            render_production_transition(
-                plan[3],
-                plan[2],
-                self.root,
-                self._confirmation_rows(request, self._base_plan(request)),
-                [dict(row) for row in state.rows],
-            )["production/tasks.json"]
-        )
+        tasks = json.loads(state.validated_files["production/tasks.json"])
         return {
             "preview_token": token,
             "expires_in_seconds": TOKEN_LIFETIME_SECONDS,
@@ -539,19 +636,21 @@ class ZeusProductionCoordinator:
                     "nonce": pending.nonce,
                 }
             )
-            result_state = self.transport_factory(plan[1]).prepare(**payload)
-            self._validate_state(result_state, plan[3])
-            self._validate_receipt(
-                result_state,
-                plan,
-                self._base_plan(
-                    {
-                        "campaign_id": pending.campaign_id,
-                        "username": pending.profile.username,
-                        "project_directory": pending.profile.project_directory,
-                    }
-                ),
-            )
+            try:
+                result_state = self.transport_factory(plan[1]).prepare(**payload)
+                self._validate_state(result_state, plan[3])
+                current_request = {"campaign_id": pending.campaign_id, "username": pending.profile.username,
+                                   "project_directory": pending.profile.project_directory}
+                current_base = self._base_plan(current_request)
+                confirmed_files = _validated_production_plan(
+                    result_state.production_plan, self._remote_payload(current_base), plan[3], plan[2], self.root,
+                    self._confirmation_rows(current_request, current_base), [dict(row) for row in result_state.rows],
+                )
+                if {name: hashlib.sha256(raw).hexdigest() for name, raw in confirmed_files.items()} != pending.files:
+                    raise ZeusProductionError("transition_outcome_unknown")
+                self._validate_receipt(result_state, plan, current_base)
+            except ZeusProductionError as error:
+                raise ZeusProductionError("transition_outcome_unknown") from error
             result = {
                 "status": "production_prepared",
                 "campaign_id": pending.campaign_id,
@@ -585,26 +684,38 @@ class PinnedSshProductionTransport:
                 if operation == "prepare"
                 else "zeus_timeout"
             ) from None
+        response_error = "transition_outcome_unknown" if operation == "prepare" else "remote_response_invalid"
         if result.returncode or result.stderr:
-            raise ZeusProductionError("remote_response_invalid")
+            raise ZeusProductionError(response_error)
         try:
-            data = json.loads(result.stdout)
+            def unique(items):
+                value = {}
+                for key, item in items:
+                    if key in value:
+                        raise ValueError("Duplicate remote field")
+                    value[key] = item
+                return value
+            def nonfinite(_):
+                raise ValueError("Nonfinite remote field")
+            data = json.loads(result.stdout, object_pairs_hook=unique, parse_constant=nonfinite)
         except Exception:
-            raise ZeusProductionError("remote_response_invalid") from None
+            raise ZeusProductionError(response_error) from None
         if not isinstance(data, dict) or set(data) != {
             "lifecycle",
             "scheduler",
             "rows",
             "branch",
             "receipt",
-        }:
-            raise ZeusProductionError("remote_response_invalid")
+            "production_plan",
+        } or not isinstance(data["rows"], list):
+            raise ZeusProductionError(response_error)
         return RemoteSensitivityState(
             data["lifecycle"],
             data["scheduler"],
             tuple(data["rows"]),
             data["branch"],
             data["receipt"],
+            data["production_plan"],
         )
 
     def inspect(self, **payload):

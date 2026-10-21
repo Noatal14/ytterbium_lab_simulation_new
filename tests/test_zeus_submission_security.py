@@ -725,6 +725,7 @@ printf '12345.zeus-master\\n'
     return project, campaign, job_bytes, calls, captured, invoke
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_embedded_receiver_submits_verified_bytes_once_and_replays_receipt(tmp_path):
     project, campaign, job_bytes, calls, captured, invoke = _receiver_fixture(tmp_path)
     inspected, state = invoke("inspect")
@@ -756,6 +757,7 @@ def test_embedded_receiver_submits_verified_bytes_once_and_replays_receipt(tmp_p
         "#!/bin/sh\ncat >/dev/null\nprintf 'not-a-job-id\\n'\n",
     ],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_embedded_receiver_qsub_failure_is_durably_ambiguous(tmp_path, qsub_body):
     project, campaign, _job_bytes, _calls, _captured, invoke = _receiver_fixture(
         tmp_path, qsub_body=qsub_body
@@ -768,6 +770,7 @@ def test_embedded_receiver_qsub_failure_is_durably_ambiguous(tmp_path, qsub_body
     assert repeated.returncode != 0 and repeated_state == {"error": "submission_ambiguous"}
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_embedded_receiver_blocks_existing_smoke_and_corrupt_records(tmp_path):
     project, campaign, _job_bytes, _calls, _captured, invoke = _receiver_fixture(tmp_path)
     (project / campaign / "smoke").mkdir()
@@ -787,6 +790,7 @@ def test_embedded_receiver_blocks_existing_smoke_and_corrupt_records(tmp_path):
 
 
 @pytest.mark.parametrize("relative", ["sitecustomize.py", "data/evil.so"])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_embedded_receiver_rejects_untracked_python_runtime_shadow(tmp_path, relative):
     project, _campaign, _job_bytes, _calls, _captured, invoke = _receiver_fixture(tmp_path)
     shadow = project / relative
@@ -851,6 +855,7 @@ def test_embedded_receiver_requires_manifest_digest_and_recomputed_key_before_qs
 
 
 @pytest.mark.parametrize('legacy_state', ['final', 'pending', 'final_conflict', 'pending_conflict', 'locked'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_embedded_smoke_recovers_legacy_namespace_without_resubmission(tmp_path, legacy_state):
     project, campaign, _, calls, _, invoke = _receiver_fixture(tmp_path)
     result, submitted = invoke('submit', '1' * 32)
@@ -891,6 +896,7 @@ def test_embedded_smoke_recovers_legacy_namespace_without_resubmission(tmp_path,
 
 @pytest.mark.parametrize('acceptance', [False, True])
 @pytest.mark.parametrize('receipt_namespace', ['modern','legacy','equaldual','conflict','pending','symlink'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires Unix directory descriptors, locking or shell fixtures")
 def test_actual_embedded_submit_receipt_is_consumed_by_actual_screening_inspect(tmp_path, monkeypatch, capsys, acceptance, receipt_namespace):
     from workflow_api import zeus_screening_remote as remote
     from workflow_api import acceptance_remote

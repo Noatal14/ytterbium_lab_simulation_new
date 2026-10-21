@@ -94,6 +94,7 @@ def test_bounded_read_ignores_access_time_changes(tmp_path, monkeypatch):
     assert remote.bounded(path) == b"{}"
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_inspect_and_status_transition_paths_are_zero_write(tmp_path):
     campaign = tmp_path / "campaign"
     campaign.mkdir()

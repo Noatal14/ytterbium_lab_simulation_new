@@ -181,9 +181,9 @@ def scheduler_snapshot(output: bytes, job_id: str, task_count: int) -> dict[str,
 
 
 def response(lifecycle: str, scheduler: dict[str, object], rows: list[dict],
-             branch: str, receipt: dict | None) -> None:
+             branch: str, receipt: dict | None, production_plan: dict | None = None) -> None:
     print(json.dumps({"lifecycle": lifecycle, "scheduler": scheduler,
-                      "rows": rows, "branch": branch, "receipt": receipt}))
+                      "rows": rows, "branch": branch, "receipt": receipt, "production_plan": production_plan}))
 
 
 def validate_static(payload: dict, root: Path):
@@ -438,7 +438,9 @@ def main() -> None:
                 raise ValueError()
         except Exception:
             fail("transition_outcome_unknown")
-        response("production_prepared", scheduler, rows, branch, receipt); return
+        from workflow_api.mot_2d_plan import encode_production_plan
+        response("production_prepared", scheduler, rows, branch, receipt,
+                 encode_production_plan(payload, rendered, sensitivity_transition["rows"], rows)); return
 
     if manifest.get("stage") != "sensitivity": fail("campaign_not_sensitivity")
     for path in (pending_path, campaign / "sensitivity_summary.json", campaign / "production",
@@ -453,14 +455,17 @@ def main() -> None:
         except FileNotFoundError: lifecycle = "awaiting_outputs"
         except Exception: lifecycle = "outputs_invalid"
         else: lifecycle = "ready_to_prepare_production"
-    if operation == "inspect" or lifecycle != "ready_to_prepare_production":
+    if lifecycle != "ready_to_prepare_production":
         response(lifecycle, scheduler, rows, branch, None); return
 
-    rows_digest = canonical_digest(rows)
-    from workflow_api.mot_2d_plan import render_production_transition
+    from workflow_api.mot_2d_plan import render_production_transition, encode_production_plan
     rendered = render_production_transition(
         manifest, campaign, root, sensitivity_transition["rows"], rows,
     )
+    production_plan = encode_production_plan(payload, rendered, sensitivity_transition["rows"], rows)
+    if operation == "inspect":
+        response(lifecycle, scheduler, rows, branch, None, production_plan); return
+    rows_digest = canonical_digest(rows)
     hashes = {name: hashlib.sha256(data).hexdigest() for name, data in rendered.items()}
     transition_key = canonical_digest({
         "campaign": payload["campaign"], "commit": payload["commit"],
@@ -534,7 +539,7 @@ def main() -> None:
         descriptor = os.open(transitions, os.O_RDONLY); os.fsync(descriptor); os.close(descriptor)
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN); os.close(lock_fd)
-    response("production_prepared", scheduler, rows, branch, receipt)
+    response("production_prepared", scheduler, rows, branch, receipt, production_plan)
 
 
 

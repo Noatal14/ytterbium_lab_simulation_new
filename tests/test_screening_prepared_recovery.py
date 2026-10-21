@@ -27,6 +27,7 @@ def digest(raw): return hashlib.sha256(raw).hexdigest()
 @pytest.mark.parametrize('operation', ['inspect','prepare'])
 @pytest.mark.parametrize('acceptance', [False, True])
 @pytest.mark.parametrize('mutation', [None,'manifest','receipt','missing_receipt','input','transition_file','later_stage','later_mutated_predecessor','manifest_whitespace'])
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_actual_prepare_then_inspect_is_exact_and_read_only(tmp_path, monkeypatch, capsys, acceptance, mutation, operation):
     project=tmp_path/'home/tal.noa'/('ytterbium_lab_simulation_ui_acceptance' if acceptance else 'ytterbium_lab_simulation_new')
     project.mkdir(parents=True)

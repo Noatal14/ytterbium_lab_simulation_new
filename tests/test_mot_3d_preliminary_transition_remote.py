@@ -331,6 +331,7 @@ def _trusted_status_harness(tmp_path, monkeypatch):
     return root, campaign, payload
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_inspect_is_zero_write_and_prepare_publishes_exact_registry(
     tmp_path, monkeypatch, capsys
 ):
@@ -351,6 +352,7 @@ def test_inspect_is_zero_write_and_prepare_publishes_exact_registry(
     assert json.loads(capsys.readouterr().out)["lifecycle"] == "refinement_prepared"
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_status_crosses_real_identity_stage2_qstat_and_152_science_boundaries(
     tmp_path, monkeypatch, capsys
 ):
@@ -386,6 +388,7 @@ def test_status_crosses_real_identity_stage2_qstat_and_152_science_boundaries(
         "result",
     ],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_real_status_rejects_mutated_trust_evidence(
     tmp_path, monkeypatch, capsys, target
 ):
@@ -430,6 +433,7 @@ def test_real_status_rejects_mutated_trust_evidence(
             _invoke(monkeypatch, root, payload, "status")
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_prepare_recovers_after_manifest_commit_boundary_without_overwrite(
     tmp_path, monkeypatch, capsys
 ):
@@ -471,6 +475,7 @@ def test_symlinked_generated_parent_is_rejected_without_external_write(
     assert not list(outside.iterdir())
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_retrieve_rejects_tampered_bundle(tmp_path, monkeypatch, capsys):
     root, campaign, payload = _harness(tmp_path, monkeypatch)
     prepared = dict(payload, nonce="4" * 32)
@@ -492,6 +497,7 @@ def test_retrieve_rejects_tampered_bundle(tmp_path, monkeypatch, capsys):
         _invoke(monkeypatch, root, retrieve, "retrieve")
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_restart_finalizes_durable_pending_after_manifest_commit(
     tmp_path, monkeypatch, capsys
 ):
@@ -529,6 +535,7 @@ def test_restart_finalizes_durable_pending_after_manifest_commit(
     assert not (campaign / ".mot_ui/transitions/refinement.pending.json").exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_prepare_never_overwrites_mismatched_generated_artifact(tmp_path, monkeypatch):
     root, campaign, payload = _harness(tmp_path, monkeypatch)
     target = campaign / "selection/refinement/angled_donut.json"
@@ -559,6 +566,7 @@ def test_prepare_never_overwrites_mismatched_generated_artifact(tmp_path, monkey
         "unlink",
     ],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_every_durable_publication_boundary_recovers_without_overwrite(
     tmp_path, monkeypatch, capsys, boundary
 ):
@@ -623,6 +631,7 @@ def test_every_durable_publication_boundary_recovers_without_overwrite(
     assert not (campaign / ".mot_ui/transitions/refinement.pending.json").exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_unexpected_transition_entry_fails_closed_without_mutation(
     tmp_path, monkeypatch
 ):
@@ -636,6 +645,7 @@ def test_unexpected_transition_entry_fails_closed_without_mutation(
     assert (campaign / "campaign.json").read_bytes() == before
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_prepare_busy_lock_has_no_publication(tmp_path, monkeypatch):
     root, campaign, payload = _harness(tmp_path, monkeypatch)
     original = remote.fcntl.flock
@@ -667,6 +677,7 @@ def test_prepare_busy_lock_has_no_publication(tmp_path, monkeypatch):
         (None, "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"),
     ],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_untrusted_campaign_kind_is_rejected_before_transition_directory_creation(
     tmp_path, monkeypatch, capsys, kind, project
 ):

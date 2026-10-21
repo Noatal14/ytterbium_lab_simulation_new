@@ -67,6 +67,7 @@ def test_closure_result_registry_rejects_substituted_refinement_selection():
         expected_paths(selections)
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_closure_receiver_publishes_exact_208_and_status_is_zero_write(
     tmp_path, monkeypatch, capsys
 ):
@@ -104,6 +105,7 @@ def test_closure_receiver_publishes_exact_208_and_status_is_zero_write(
     assert after == before
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_direct_finalist_renderer_dependency_is_in_frozen_ledger_and_rechecked(
     tmp_path, monkeypatch
 ):
@@ -207,6 +209,7 @@ def test_closure_local_manifest_last_session_stale_and_double_confirm(
         "unlink",
     ],
 )
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_closure_every_durable_publication_boundary_recovers_exactly_once(
     tmp_path, monkeypatch, capsys, boundary
 ):
@@ -273,6 +276,7 @@ def test_closure_every_durable_publication_boundary_recovers_exactly_once(
     assert not (campaign / ".mot_ui/transitions" / DESCRIPTOR.pending_name).exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_closure_closed_transition_namespace_rejects_unexpected_entry_zero_write(
     tmp_path, monkeypatch
 ):
@@ -304,6 +308,7 @@ def test_closure_symlinked_generated_parent_cannot_write_outside_campaign(
     assert json.loads((campaign / "campaign.json").read_text())["stage"] == "closure"
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_closure_transition_accepts_only_exact_stage5_receipts_and_qstat(
     tmp_path, monkeypatch, capsys
 ):

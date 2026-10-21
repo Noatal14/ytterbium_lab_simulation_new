@@ -146,7 +146,8 @@ def test_concurrent_stage_bindings_do_not_leak_receipt_namespace():
     assert observed == [descriptor.stage for descriptor in descriptors]
 
 
-def test_stage_hook_contexts_are_isolated_and_default_publisher_is_real(tmp_path):
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver default publisher uses directory descriptors")
+def test_default_stage_publisher_is_real(tmp_path):
     directory = tmp_path / "receipts"
     directory.mkdir()
     descriptor = preliminary_remote.DESCRIPTOR
@@ -160,6 +161,8 @@ def test_stage_hook_contexts_are_isolated_and_default_publisher_is_real(tmp_path
     finally:
         os.close(fd)
 
+
+def test_stage_hook_contexts_are_isolated():
     def invoke(descriptor):
         observed = []
 

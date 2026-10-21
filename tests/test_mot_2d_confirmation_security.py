@@ -191,6 +191,7 @@ def _receiver_fixture(tmp_path,monkeypatch,*,wrong_dependency=False,failed_child
     return campaign,calls,rendered
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_happy_path_publishes_canonical_confirmation_without_qsub(tmp_path,monkeypatch,capsys):
     campaign,calls,rendered=_receiver_fixture(tmp_path,monkeypatch)
     receiver.main();response=json.loads(capsys.readouterr().out)
@@ -213,6 +214,7 @@ def test_receiver_scheduler_mutation_never_publishes(tmp_path,monkeypatch,mutati
     assert not (campaign/"confirmation").exists()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_replay_revalidates_exact_durable_receipt(tmp_path,monkeypatch,capsys):
     campaign,_,_=_receiver_fixture(tmp_path,monkeypatch)
     receiver.main();capsys.readouterr()
@@ -222,6 +224,7 @@ def test_receiver_replay_revalidates_exact_durable_receipt(tmp_path,monkeypatch,
     with pytest.raises(SystemExit):receiver.main()
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_recovers_crash_after_manifest_under_lock(tmp_path,monkeypatch,capsys):
     campaign,_,_=_receiver_fixture(tmp_path,monkeypatch)
     receiver.main();capsys.readouterr()
@@ -247,6 +250,7 @@ def test_receiver_symlinked_output_parent_is_rejected(tmp_path,monkeypatch):
     assert list(outside.iterdir())==[]
 
 
+@pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_recovery_obeys_confirmation_lock(tmp_path,monkeypatch,capsys):
     campaign,_,_=_receiver_fixture(tmp_path,monkeypatch)
     receiver.main();capsys.readouterr()
