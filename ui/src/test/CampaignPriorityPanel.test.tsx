@@ -50,19 +50,36 @@ describe("CampaignPriorityPanel", () => {
     view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} screenState={screening} />);
     expect(screen.getByText(/51 Screening trials and 3 selected candidates/)).toBeVisible();
     view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh />);
-    expect(screen.getByText(/submission is ready for review/)).toBeVisible();
+    expect(screen.getByText(/Use Check Screening status to recover any existing job/)).toBeVisible();
   });
 
   it("distinguishes fresh and synthetic screen-prepared evidence", () => {
     const view = render(<CampaignPriorityPanel {...base} remoteState={smoke} />);
     expect(screen.getByRole("heading", { name: "Refresh Zeus status" })).toBeVisible();
     view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh />);
-    expect(screen.getByRole("heading", { name: "Action required" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Check Screening status" })).toBeVisible();
   });
 
   it("keeps authoritative Smoke content above local submission state", () => {
     render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh submissionState="terminal" submissionError="local error" />);
-    expect(screen.getByText(/made the Screening files ready on Zeus/)).toBeVisible(); expect(screen.queryByText("local error")).not.toBeInTheDocument();
+    expect(screen.getByText(/does not establish whether Screening or a later stage has been submitted/)).toBeVisible(); expect(screen.queryByText("local error")).not.toBeInTheDocument();
+  });
+
+  it("does not infer an absent Screening job from an upstream-only Smoke snapshot", () => {
+    const view = render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh />);
+    expect(screen.getByRole("heading", { name: "Check Screening status" })).toBeVisible();
+    expect(screen.getByText(/Latest checked stage on Zeus/)).toBeVisible();
+    expect(screen.getByText(/does not establish whether Screening or a later stage has been submitted/)).toBeVisible();
+    expect(screen.queryByText(/No Screening job (?:was|has been) submitted/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/submission is ready for review/)).not.toBeInTheDocument();
+    view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenSubmitState="submitted" />);
+    expect(screen.getByRole("heading", { name: "No action needed" })).toBeVisible();
+    expect(screen.getByText("Screening has been submitted successfully.")).toBeVisible();
+    expect(screen.queryByText(/does not establish whether Screening/)).not.toBeInTheDocument();
+    view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenState={screeningFixture("screen_running")} />);
+    expect(screen.getByRole("heading", { name: "No action needed" })).toBeVisible();
+    expect(screen.getByText(/2\[\].zeus-master/)).toBeVisible();
+    expect(screen.queryByText(/Latest checked stage on Zeus/)).not.toBeInTheDocument();
   });
 
   it("describes a preliminary-check status read without implying submission", () => {
@@ -187,7 +204,7 @@ describe("CampaignPriorityPanel", () => {
     let section = screen.getByRole("heading", { name: "Smoke check needs attention" }).closest("section");
     expect(section).toHaveClass("priority-panel--blocked"); expect(section).toHaveAttribute("aria-labelledby", "priority-heading"); expect(section?.querySelectorAll("#priority-heading")).toHaveLength(1);
     view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh />);
-    section = screen.getByRole("heading", { name: "Action required" }).closest("section"); expect(section).not.toHaveClass("priority-panel--blocked");
+    section = screen.getByRole("heading", { name: "Check Screening status" }).closest("section"); expect(section).not.toHaveClass("priority-panel--blocked");
     view.rerender(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, trust: "legacy-incomplete" }} />);
     expect(screen.getByRole("heading", { name: "Inspection only" }).closest("section")).toHaveClass("priority-panel--blocked");
     view.rerender(<CampaignPriorityPanel {...base} screenState={screeningFixture("screen_failed")} />);

@@ -149,7 +149,14 @@ it.each([
       await user.click(await root.findByRole("button", { name: label }));
     }
     await click("Recover submitted Zeus campaign");
+    const priority = () => within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement);
+    expect(priority().getByRole("heading", { name: "Check Screening status" })).toBeVisible();
+    expect(priority().getByText(/does not establish whether Screening or a later stage has been submitted/)).toBeVisible();
+    expect(screeningLifecycle.status).not.toHaveBeenCalled();
+    expect(forbidden).not.toHaveBeenCalled();
     await click("Check Screening status");
+    expect(priority().queryByText(/does not establish whether Screening/)).not.toBeInTheDocument();
+    expect(priority().getByRole("heading", { name: "Refinement is prepared" })).toBeVisible();
     await click("Check chain status");
     await click("Check Refinement status");
     await click("Check Zeus status", "confirmation-submit-heading");

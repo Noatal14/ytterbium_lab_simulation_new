@@ -111,6 +111,8 @@ export function CampaignPriorityPanel({
   const command = campaign.next_plan?.display_command ?? "";
   const remoteLifecycle = remoteState?.lifecycle;
   const screenLifecycle = screenState?.lifecycle;
+  const screeningStatusUnchecked = remoteLifecycle === "screen_prepared"
+    && screenSubmitState === "idle" && !screenState;
   const chainPriority =
     chainStatus?.chain.status === "not_submitted"
       ? "Action required"
@@ -172,7 +174,7 @@ export function CampaignPriorityPanel({
             ? "No action needed"
             : remoteLifecycle === "screen_prepared"
               ? remoteEvidenceFresh
-                ? "Action required"
+                ? screeningStatusUnchecked ? "Check Screening status" : "Action required"
                 : "Refresh Zeus status"
               : remoteLifecycle
                 ? "Smoke check needs attention"
@@ -529,8 +531,8 @@ export function CampaignPriorityPanel({
       ) : remoteState ? (
         <>
           <p>
-            <strong>Current stage on Zeus:</strong>{" "}
-            {remoteLifecycle === "screen_prepared"
+            <strong>{screeningStatusUnchecked ? "Latest checked stage on Zeus:" : "Current stage on Zeus:"}</strong>{" "}
+            {screeningStatusUnchecked ? "Smoke / Screening preparation" : remoteLifecycle === "screen_prepared"
               ? "Screening prepared"
               : "Smoke check"}
             .
@@ -583,13 +585,18 @@ export function CampaignPriorityPanel({
             remoteLifecycle === "screen_prepared" && (
               <>
                 <p>
-                  This preparation made the Screening files ready on Zeus without
-                  submitting a Screening job or starting a simulation.
+                  {screeningStatusUnchecked
+                    ? "The Smoke snapshot confirms that Screening files were prepared. It does not establish whether Screening or a later stage has been submitted."
+                    : "This preparation made the Screening files ready on Zeus without submitting a Screening job or starting a simulation."}
                 </p>
                 <p>
-                  {remoteEvidenceFresh
-                    ? "A fresh Zeus check confirms that the submission is ready for review."
-                    : "Refresh the Zeus status before reviewing submission; this local transition is not evidence of remote readiness."}
+                  {screeningStatusUnchecked
+                    ? remoteEvidenceFresh
+                      ? "Use Check Screening status to recover any existing job before reviewing submission."
+                      : "Refresh the Smoke status, then use Check Screening status to recover any existing job before reviewing submission."
+                    : remoteEvidenceFresh
+                      ? "A fresh Zeus check confirms that the submission is ready for review."
+                      : "Refresh the Zeus status before reviewing submission; this local transition is not evidence of remote readiness."}
                 </p>
                 <p>
                   The local campaign record has not been synchronized; Zeus is

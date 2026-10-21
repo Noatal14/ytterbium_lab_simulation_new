@@ -600,7 +600,8 @@ describe("onboarding home", () => {
     const confirm = vi.fn(async () => ({ status: "submitted" as const, campaign_id: smokeCampaign.id, stage: "screen" as const, job_id: "4760000[].zeus-master", submitted_at: "2026-10-08T13:02:00Z", later_stages_locked: true as const }));
     render(<App api={api} creation={creationFixture} zeus={{ snapshot: async () => zeusSnapshot }} lifecycle={{ status, preview: vi.fn(), confirm: vi.fn() }} screeningSubmission={{ preview, confirm }} />);
     await user.click(screen.getByRole("link", { name: "Zeus connection" })); await user.type(screen.getByLabelText("Technion username"), "tal.noa"); await user.click(screen.getByRole("button", { name: "Connect and check status" })); await user.click(await screen.findByRole("button", { name: "Inspect campaign" })); await user.click(screen.getByRole("button", { name: "Recover submitted Zeus campaign" }));
-    expect(await screen.findByRole("heading", { name: "Action required" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Check Screening status" })).toBeInTheDocument();
+    expect(screen.getByText(/does not establish whether Screening or a later stage has been submitted/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Review Screening submission" }));
     expect(await screen.findByRole("heading", { name: "Submit Screening to Zeus" })).toHaveFocus();
     expect(screen.getByText("At most 3 tasks at once")).toBeInTheDocument();
