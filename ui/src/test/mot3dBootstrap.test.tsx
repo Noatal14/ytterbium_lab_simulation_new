@@ -180,11 +180,11 @@ describe("3D bootstrap strict contracts", () => {
 
   it("shows the pragmatic policy read-only and requires a new campaign", async () => {
     render(<Mot3DCampaignCreation api={api()} onBack={vi.fn()} />);
-    expect(
-      await screen.findByRole("heading", {
-        name: /Create a 3D-MOT Discovery campaign/i,
-      }),
-    ).toHaveFocus();
+    const heading = await screen.findByRole("heading", {
+      name: /Create a 3D-MOT Discovery campaign/i,
+    });
+    // DOM presence can precede the passive effect that transfers focus.
+    await waitFor(() => expect(heading).toHaveFocus());
     expect(
       screen.getByText(/older inconclusive 3D campaign cannot be resumed/i),
     ).toBeInTheDocument();
@@ -194,6 +194,31 @@ describe("3D bootstrap strict contracts", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/timestep policy is read-only/i)).toBeInTheDocument();
     expect(screen.queryByRole("spinbutton")).not.toBeInTheDocument();
+  });
+
+  it("moves focus after deferred source readiness without starting a review", async () => {
+    let resolveStatus!: (value: typeof status) => void;
+    const pending = new Promise<typeof status>((resolve) => {
+      resolveStatus = resolve;
+    });
+    const service = api({ status: vi.fn(() => pending) });
+    render(<Mot3DCampaignCreation api={service} onBack={vi.fn()} />);
+    const back = screen.getByRole("button", { name: /Back to home/i });
+    back.focus();
+    expect(back).toHaveFocus();
+    expect(screen.getByText("Checking 3D campaign readiness…")).toBeVisible();
+    expect(screen.queryByRole("heading", {
+      name: /Create a 3D-MOT Discovery campaign/i,
+    })).not.toBeInTheDocument();
+
+    await act(async () => resolveStatus(status));
+    const heading = await screen.findByRole("heading", {
+      name: /Create a 3D-MOT Discovery campaign/i,
+    });
+    await waitFor(() => expect(heading).toHaveFocus());
+    expect(service.status).toHaveBeenCalledTimes(1);
+    expect(service.preview).not.toHaveBeenCalled();
+    expect(service.confirm).not.toHaveBeenCalled();
   });
 
   it("reviews before creation and never implies submission", async () => {
