@@ -1761,8 +1761,15 @@ def main(*, trusted_root_override=None):
     }:
         fail("invalid_request")
     try:
+        raw_payload = (
+            sys.stdin.buffer.read(1024 * 1024 + 1)
+            if encoded == "-"
+            else base64.urlsafe_b64decode(encoded)
+        )
+        if len(raw_payload) > 1024 * 1024:
+            raise ValueError("Request exceeds payload limit")
         payload = json.loads(
-            base64.urlsafe_b64decode(encoded),
+            raw_payload,
             parse_constant=lambda _: (_ for _ in ()).throw(ValueError()),
         )
         requested_root = Path(requested)

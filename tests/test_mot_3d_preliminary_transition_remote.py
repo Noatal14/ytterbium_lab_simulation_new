@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import io
 import shutil
 import sys
 from pathlib import Path
@@ -126,7 +127,7 @@ def _harness(tmp_path, monkeypatch):
     return root, campaign, payload
 
 
-def _invoke(monkeypatch, root, payload, operation):
+def _invoke(monkeypatch, root, payload, operation, *, stdin=False):
     encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
     monkeypatch.setattr(
         sys,
@@ -139,6 +140,9 @@ def _invoke(monkeypatch, root, payload, operation):
             encoded,
         ],
     )
+    if stdin:
+        sys.argv[-1] = "-"
+        monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(json.dumps(payload).encode())))
     remote.main(trusted_root_override=root)
 
 
@@ -353,8 +357,9 @@ def test_inspect_is_zero_write_and_prepare_publishes_exact_registry(
 
 
 @pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
+@pytest.mark.parametrize("stdin", [False, True], ids=["legacy-base64", "pinned-stdin"])
 def test_status_crosses_real_identity_stage2_qstat_and_152_science_boundaries(
-    tmp_path, monkeypatch, capsys
+    tmp_path, monkeypatch, capsys, stdin
 ):
     root, campaign, payload = _trusted_status_harness(tmp_path, monkeypatch)
     before = {
@@ -362,7 +367,7 @@ def test_status_crosses_real_identity_stage2_qstat_and_152_science_boundaries(
         for path in campaign.rglob("*")
         if path.is_file()
     }
-    _invoke(monkeypatch, root, payload, "status")
+    _invoke(monkeypatch, root, payload, "status", stdin=stdin)
     response = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert response["lifecycle"] == "ready_to_advance"
     assert response["validation"] == "valid"

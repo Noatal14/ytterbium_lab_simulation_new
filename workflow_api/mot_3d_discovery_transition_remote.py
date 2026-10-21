@@ -369,7 +369,14 @@ def main():
         fail("invalid_request")
     operation, username, requested, encoded = sys.argv[1:]
     try:
-        payload = json.loads(base64.urlsafe_b64decode(encoded))
+        raw_payload = (
+            sys.stdin.buffer.read(1024 * 1024 + 1)
+            if encoded == "-"
+            else base64.urlsafe_b64decode(encoded)
+        )
+        if len(raw_payload) > 1024 * 1024:
+            raise ValueError("Request exceeds payload limit")
+        payload = json.loads(raw_payload)
         root = Path(requested).resolve(strict=True)
         relative = PurePosixPath(payload["campaign"])
     except Exception:
