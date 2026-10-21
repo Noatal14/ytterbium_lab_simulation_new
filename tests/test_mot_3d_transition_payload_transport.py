@@ -12,7 +12,8 @@ from workflow_api.pinned_ssh import ReceiverKind, _RECEIVERS
 
 
 @pytest.mark.parametrize('receiver', [discovery, preliminary])
-@pytest.mark.parametrize('raw', [b'', b'{', b'null', b'[]', b'x' * (1024 * 1024 + 1)])
+@pytest.mark.parametrize('raw', [b'', b'{', b'null', b'[]', b'x' * (1024 * 1024 + 1)],
+    ids=['empty', 'invalid-json', 'null', 'array', 'over-limit'])
 def test_stdin_invalid_or_oversized_request_remains_rejected(monkeypatch, capsys, receiver, raw):
     monkeypatch.setattr(sys, 'argv', ['receiver', 'status', 'tal.noa', '/home/tal.noa/ytterbium_lab_simulation_ui_acceptance', '-'])
     monkeypatch.setattr(sys, 'stdin', io.TextIOWrapper(io.BytesIO(raw)))
@@ -49,7 +50,8 @@ def test_exact_payload_limit_reaches_unchanged_filesystem_boundary(monkeypatch, 
 
 
 @pytest.mark.parametrize('receiver', [discovery, preliminary])
-@pytest.mark.parametrize('raw', [b'{} {}', b'{}' + b' ' * (1024 * 1024 - 1)])
+@pytest.mark.parametrize('raw', [b'{} {}', b'{}' + b' ' * (1024 * 1024 - 1)],
+    ids=['trailing-json', 'one-byte-over-limit'])
 def test_trailing_json_or_one_byte_over_limit_cannot_reach_filesystem(monkeypatch, capsys, receiver, raw):
     monkeypatch.setattr(sys, 'argv', ['receiver', 'status', 'tal.noa', '/home/tal.noa/ytterbium_lab_simulation_ui_acceptance', '-'])
     monkeypatch.setattr(sys, 'stdin', io.TextIOWrapper(io.BytesIO(raw)))
@@ -57,3 +59,10 @@ def test_trailing_json_or_one_byte_over_limit_cannot_reach_filesystem(monkeypatc
     with pytest.raises(SystemExit):
         receiver.main()
     assert json.loads(capsys.readouterr().out) == {'error': 'invalid_request'}
+
+
+def test_payload_boundary_case_ids_fit_windows_environment(request):
+    case_ids = [item.nodeid for item in request.session.items
+                if item.path == request.node.path]
+    assert case_ids
+    assert max(map(len, case_ids)) < 512
