@@ -54,7 +54,7 @@ jobs:
 
       - name: Run complete test suite
         # Preserve per-test failure evidence even if the runner deadline expires.
-        run: python -m pytest -x -vv --tb=short
+        run: python -m pytest -vv --tb=short
 
   frontend-checks:
     strategy:

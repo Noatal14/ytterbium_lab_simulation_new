@@ -69,7 +69,7 @@ def test_full_backend_suite_budget_preserves_selection_and_other_job_limits():
         r"        run: ([^\n]+)", jobs["test"],
     )
     assert complete is not None
-    # No file list, -k/-m, ignore, or skip filters: all collected tests execute
-    # on a green run; the existing first-failure diagnostics remain unchanged.
-    assert complete.group(1) == "python -m pytest -x -vv --tb=short"
+    # No fail-fast, file list, -k/-m, ignore, or skip filters: the full suite
+    # reports all failures within the unchanged serial job budget.
+    assert complete.group(1) == "python -m pytest -vv --tb=short"
     assert "PYTEST_ADDOPTS" not in jobs["test"]
