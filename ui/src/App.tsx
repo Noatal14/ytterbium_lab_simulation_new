@@ -1,7 +1,8 @@
+import type { CanonicalTransitionCommit } from "./features/campaign/shared/observeCampaignTransition";
 import { campaignTestNode } from "./api/campaignPolicy";
 import { campaignAcceptanceMode, zeusTestMode } from "./api/zeusEnvironment";
 import { CheckCircle2, Server } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Campaign, CampaignApi, CreationApi } from "./api/clients/campaign";
 import type { ConfirmationSubmissionApi, RefinementLifecycleApi, RefinementSubmissionApi } from "./api/clients/refinement";
 import type { ScreeningLifecycleApi, ScreeningSubmissionApi } from "./api/clients/screening";
@@ -62,21 +63,69 @@ export function App(props: AppProps = {}) {
   const [page, setPage] = useState<"home" | "jobs">("home");
   const [zeusSnapshot, setZeusSnapshot] = useState<ZeusSnapshot | null>(null);
   const detailRequest = useRef(0);
+  const [detailGeneration, setDetailGeneration] = useState(0);
+  function invalidateDetail() { const generation = ++detailRequest.current; setDetailGeneration(generation); return generation; }
+
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; detailRequest.current += 1; }; }, []);
+  const refreshContext = useMemo(() => ({ api, id: selected?.id ?? null, path: selected?.path, commit: selected?.git_commit, profile: `${zeusSnapshot?.profile.host}:${zeusSnapshot?.profile.username}:${zeusSnapshot?.profile.project_directory}:${zeusSnapshot?.profile.authentication}:${zeusSnapshot?.remote.git_commit}`, generation: detailGeneration }), [detailGeneration, api, selected?.id, selected?.path, selected?.git_commit, zeusSnapshot?.profile.host, zeusSnapshot?.profile.username, zeusSnapshot?.profile.project_directory, zeusSnapshot?.profile.authentication, zeusSnapshot?.remote.git_commit]);
+  const currentRefreshContext = useRef(refreshContext);
+  currentRefreshContext.current = refreshContext;
+  const seenTransitions = useRef<{ context: typeof refreshContext; markers: Set<string> }>({ context: refreshContext, markers: new Set() });
+  const canonicalReadSequence = useRef(0);
+  const retryCanonicalRead = useRef<{ context: typeof refreshContext; read: () => void } | null>(null);
+  const [canonicalRead, setCanonicalRead] = useState<{ context: typeof refreshContext; loading: boolean; error: string } | null>(null);
+  const onTransitionCommitted = useCallback((result: CanonicalTransitionCommit) => {
+    const context = refreshContext;
+    const current = () => mounted.current && currentRefreshContext.current === context && detailRequest.current === context.generation;
+    if (!current()) return;
+    const stages = ["preliminary_check", "refinement", "closure", "finalist_selection", "final_validation_input_generation", "final_validation", "complete", "final_validation_extension_required"];
+    if (result.campaign_id !== context.id || !stages.includes(result.stage) || result.submitted_to_zeus !== false || result.simulation_started !== false || result.local_sync.status !== "synchronized" || !/^[a-f0-9]{64}$/.test(result.local_sync.receipt_sha256)) return;
+    if (seenTransitions.current.context !== context) seenTransitions.current = { context, markers: new Set() };
+    const marker = `${result.stage}:${result.local_sync.receipt_sha256}`;
+    if (seenTransitions.current.markers.has(marker)) return;
+    seenTransitions.current.markers.add(marker);
+    let reading = false;
+    async function read() {
+      if (!current() || reading) return;
+      reading = true;
+      const request = ++canonicalReadSequence.current;
+      setCanonicalRead({ context, loading: true, error: "" });
+      try {
+        const campaign = await context.api.get(result.campaign_id);
+        if (!current() || request !== canonicalReadSequence.current) return;
+        if (campaign.id !== context.id || campaign.family !== "mot_3d" || campaign.path !== context.path || campaign.git_commit !== context.commit || campaign.trust !== "trusted-current" || campaign.stage !== result.stage) throw new Error("The updated campaign identity or stage could not be verified.");
+        setSelected(campaign);
+        retryCanonicalRead.current = null;
+        setCanonicalRead(null);
+      } catch {
+        if (!current() || request !== canonicalReadSequence.current) return;
+        setCanonicalRead({ context, loading: false, error: "Updated campaign details could not be verified. The previous verified stage is still shown. Refresh campaign details before continuing." });
+      } finally {
+        reading = false;
+      }
+    }
+    retryCanonicalRead.current = { context, read: () => { void read(); } };
+    void read();
+  }, [refreshContext]);
 
   async function openCampaign(id: string) {
-    const request = ++detailRequest.current;
+    const request = invalidateDetail();
     setDetailError(null); setRestoreCampaignFocus(null);
     try { const campaign = await api.get(id); if (request === detailRequest.current) setSelected(campaign); }
     catch { if (request === detailRequest.current) setDetailError("That campaign could not be opened safely. The campaign list is still available."); }
   }
-  function leaveDetail(nextPage: "home" | "jobs" = "home") { detailRequest.current += 1; client.reset(); setDetailError(null); setCreating(false); setCreating3D(false); setIndividualRun(null); setSelected(null); setPage(nextPage); }
-  function startCreation() { detailRequest.current += 1; client.reset(); setDetailError(null); setSelected(null); setCreating(true); }
+  function leaveDetail(nextPage: "home" | "jobs" = "home") { invalidateDetail(); client.reset(); setDetailError(null); setCreating(false); setCreating3D(false); setIndividualRun(null); setSelected(null); setPage(nextPage); }
+  function startCreation() { invalidateDetail(); client.reset(); setDetailError(null); setSelected(null); setCreating(true); }
 
   return <div className="app-frame">
     {zeusTestMode() && <div className="state-panel" role="status"><strong>Isolated Zeus test environment</strong><p>Individual simulations use a separate test checkout and Python environment. Campaign actions are unavailable here.</p></div>}
     {campaignAcceptanceMode() && <div className="state-panel" role="status"><strong>TEST ONLY — UI campaign acceptance</strong><p>Versioned miniature workloads in a dedicated Zeus checkout. Results cannot be used as scientific evidence or inputs.{campaignTestNode() ? ` Test compute node: ${campaignTestNode()}.` : ""}</p></div>}
     <AppHeader page={page} onNavigate={(nextPage) => leaveDetail(nextPage)} />
-    {page === "jobs" ? <ZeusJobs campaigns={zeusTestMode() ? [] : campaigns} invalidCount={zeusTestMode() ? 0 : invalidCount} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun === "zeeman" ? <IndividualZeemanRun api={individualZeeman} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_2d" ? <IndividualMot2DRun api={individualMot2D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_3d" ? <IndividualMot3DRun api={individualMot3D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : creating3D ? <Mot3DCampaignCreation api={mot3DBootstrap} onCreated={() => void refreshCampaigns()} onBack={() => { client.reset(); setCreating3D(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} confirmationSubmission={confirmationSubmission} sensitivity={sensitivity} sensitivitySubmission={sensitivitySubmission} production={production} productionSubmission={productionSubmission} finalization={finalization} mot3DDiscovery={mot3DDiscovery} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { detailRequest.current += 1; client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
+    {selected && canonicalRead?.context === refreshContext && canonicalRead.loading && <div className="state-panel" role="status">Refreshing campaign details… The previous verified stage is still shown.</div>}
+    {selected && canonicalRead?.context === refreshContext && canonicalRead.error && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign stage verification is required</strong><p>{canonicalRead.error}</p><button type="button" className="secondary-button compact-action" disabled={canonicalRead.loading} onClick={() => { if (retryCanonicalRead.current?.context === refreshContext) retryCanonicalRead.current.read(); }}>Refresh campaign details</button></div></div>}
+
+    {page === "jobs" ? <ZeusJobs campaigns={zeusTestMode() ? [] : campaigns} invalidCount={zeusTestMode() ? 0 : invalidCount} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun === "zeeman" ? <IndividualZeemanRun api={individualZeeman} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_2d" ? <IndividualMot2DRun api={individualMot2D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_3d" ? <IndividualMot3DRun api={individualMot3D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : creating3D ? <Mot3DCampaignCreation api={mot3DBootstrap} onCreated={() => void refreshCampaigns()} onBack={() => { client.reset(); setCreating3D(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} confirmationSubmission={confirmationSubmission} sensitivity={sensitivity} sensitivitySubmission={sensitivitySubmission} production={production} productionSubmission={productionSubmission} finalization={finalization} mot3DDiscovery={mot3DDiscovery} onTransitionCommitted={onTransitionCommitted} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { invalidateDetail(); client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { invalidateDetail(); client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { invalidateDetail(); client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
       <section className="hero" aria-labelledby="page-title"><p className="eyebrow">Welcome</p><h1 id="page-title">Run or inspect a campaign</h1><p className="hero-copy">A campaign follows several ordered steps. This application will guide you through each one and explain when your input is needed.</p></section>
       {detailError && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign details are unavailable</strong><p>{detailError}</p><button className="secondary-button compact-action" type="button" onClick={() => setDetailError(null)}>Dismiss</button></div></div>}
       {!zeusTestMode() && <CampaignExplorer campaigns={campaigns} invalidCount={invalidCount} loading={loading} error={listError} onRetry={() => void refreshCampaigns()} onOpen={openCampaign} restoreFocusId={restoreCampaignFocus} />}
