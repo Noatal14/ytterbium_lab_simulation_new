@@ -1,3 +1,8 @@
+import {
+  observeNewLocalRun,
+  localRunPublicationMessage,
+  useLocalRunPublication,
+} from "../features/individual/localRunPublication";
 import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
   ArrowLeft,
@@ -248,6 +253,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
   const [run, setRun] = useState<IndividualRun | null>(null);
   const [zeusPreviewToken, setZeusPreviewToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const request = useRef(0);
   const title = useRef<HTMLHeadingElement>(null);
@@ -393,8 +399,13 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
     setBusy(true);
     setError(null);
     try {
+      const publicationRevision = publication.current.revision;
       await api.startLocal(runId);
       if (id === request.current) {
+        if (publication.current.revision === publicationRevision) {
+          publication.current.start(runId);
+          setPublicationPending(true);
+        }
         if (!rememberIndividualRun("zeeman", runId, "local"))
           setError(`${individualRunStorageWarning} Run: ${runId}`);
         setStep("monitor");
@@ -444,6 +455,9 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       if (id === request.current) setBusy(false);
     }
   }
+  const { publication, publicationPending, setPublicationPending } =
+    useLocalRunPublication(api, mode, runId);
+
   async function refresh() {
     if (!runId || busy || recoveryPending) return;
     const id = ++request.current;
@@ -454,8 +468,16 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
         const status = await api.refreshZeus(runId, username);
         if (id === request.current) setZeusHeld(status.state === "held");
       }
-      const summary =
-        (await api.runs()).find((item) => item.display_name === runId) ?? null;
+      const { summary, waiting, retired } = await observeNewLocalRun(
+        api,
+        runId,
+        mode === "local" ? publication.current : undefined,
+        () => id === request.current,
+        mode,
+      );
+      if (id !== request.current || retired) return;
+      if (waiting) return;
+      setPublicationPending(false);
       if (!summary)
         throw new Error(
           "The run has not appeared in the verified run list yet.",
@@ -469,7 +491,11 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
         if (found.lifecycle === "results_ready") setStep("results");
       }
     } catch (caught) {
-      if (id === request.current) setError(userMessage(caught));
+      if (id === request.current) {
+        publication.current.finish();
+        setPublicationPending(false);
+        setError(userMessage(caught));
+      }
     } finally {
       if (id === request.current) setBusy(false);
     }
@@ -482,9 +508,18 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       if (inFlight) return;
       inFlight = true;
       try {
-        const summary = (await api.runs()).find(
-          (item) => item.display_name === runId,
+        const { summary, waiting, retired } = await observeNewLocalRun(
+          api,
+          runId,
+          publication.current,
+          () => active,
         );
+        if (!active || waiting || retired) return;
+        setPublicationPending(false);
+        if (!summary)
+          throw new Error(
+            "The run has not appeared in the verified run list yet.",
+          );
         if (active && summary) {
           const found =
             summary.lifecycle === "results_ready"
@@ -497,7 +532,11 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
           }
         }
       } catch (caught) {
-        if (active) setError(userMessage(caught));
+        if (active) {
+          publication.current.finish();
+          setPublicationPending(false);
+          setError(userMessage(caught));
+        }
       } finally {
         inFlight = false;
       }
@@ -507,7 +546,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       active = false;
       window.clearInterval(timer);
     };
-  }, [api, mode, runId, step]);
+  }, [api, mode, runId, step, publication, setPublicationPending]);
   const particleMaximum = spec.particle_count.maximum_by_execution_mode[mode];
   const localWorkerMaximum = Math.min(
     spec.worker_policy.local.maximum,
@@ -651,6 +690,9 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
             Review existing Zeus job
           </button>
         </section>
+      )}
+      {publicationPending && !error && (
+        <p role="status">{localRunPublicationMessage}</p>
       )}
       {error && (
         <div className="state-panel state-panel--error" role="alert">

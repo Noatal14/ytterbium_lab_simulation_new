@@ -1,3 +1,9 @@
+import {
+  LocalRunPublication,
+  observeNewLocalRun,
+  localRunPublicationMessage,
+  useLocalRunPublication,
+} from "../features/individual/localRunPublication";
 import { localWorkerMaximum } from "../features/individual/localWorkerAdmission";
 import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
@@ -209,14 +215,21 @@ export async function refreshMot3DTransaction(
   username: string,
   isCurrent: () => boolean,
   onSchedulerState?: (state: string) => void,
+  publication?: LocalRunPublication,
 ): Promise<Mot3DRun | null> {
   if (mode === "zeus") {
     const scheduler = await api.refreshZeus(runId, username);
     if (!isCurrent()) return null;
     onSchedulerState?.(scheduler.state);
   }
-  const summary = (await api.runs()).find((row) => row.display_name === runId);
-  if (!isCurrent()) return null;
+  const { summary, waiting, retired } = await observeNewLocalRun(
+    api,
+    runId,
+    publication ?? new LocalRunPublication(),
+    isCurrent,
+    mode,
+  );
+  if (!isCurrent() || waiting || retired) return null;
   if (!summary)
     throw new Error("The run is not visible in the verified run list yet.");
   const next =
@@ -237,6 +250,7 @@ export function IndividualMot3DRun({
     requestSequence = useRef(0),
     mounted = useRef(true);
   const [recoveryPending, setRecoveryPending] = useState(false);
+
   const [zeusHeld, setZeusHeld] = useState(false);
   const [zeusResources, setZeusResources] =
     useState<IndividualZeusResources | null>(null);
@@ -529,7 +543,14 @@ export function IndividualMot3DRun({
     setError(null);
     try {
       if (mode === "local") {
+        const publicationRevision = publication.current.revision;
         await api.startLocal(runId);
+        if (mounted.current && sequence === requestSequence.current) {
+          if (publication.current.revision === publicationRevision) {
+            publication.current.start(runId);
+            setPublicationPending(true);
+          }
+        }
         if (!rememberIndividualRun("mot_3d", runId, "local"))
           setError(`${individualRunStorageWarning} Run: ${runId}`);
       } else if (!zeusToken) {
@@ -561,6 +582,9 @@ export function IndividualMot3DRun({
         setBusy(false);
     }
   }
+  const { publication, publicationPending, setPublicationPending } =
+    useLocalRunPublication(api, mode, runId);
+
   async function refresh() {
     if (!runId || busy || recoveryPending) return;
     const sequence = ++requestSequence.current;
@@ -574,14 +598,19 @@ export function IndividualMot3DRun({
         username,
         () => mounted.current && sequence === requestSequence.current,
         (state) => setZeusHeld(state === "held"),
+        mode === "local" ? publication.current : undefined,
       );
       if (next && mounted.current && sequence === requestSequence.current) {
+        setPublicationPending(false);
         setRun(next);
         if (next.lifecycle === "results_ready") setStep("results");
       }
     } catch (caught) {
-      if (mounted.current && sequence === requestSequence.current)
+      if (mounted.current && sequence === requestSequence.current) {
+        publication.current.finish();
+        setPublicationPending(false);
         setError(errorMessage(caught));
+      }
     } finally {
       if (mounted.current && sequence === requestSequence.current)
         setBusy(false);
@@ -595,9 +624,14 @@ export function IndividualMot3DRun({
       if (inFlight) return;
       inFlight = true;
       try {
-        const summary = (await api.runs()).find(
-          (item) => item.display_name === runId,
+        const { summary, waiting, retired } = await observeNewLocalRun(
+          api,
+          runId,
+          publication.current,
+          () => active,
         );
+        if (!active || waiting || retired) return;
+        setPublicationPending(false);
         if (!summary)
           throw new Error(
             "The run has not appeared in the verified run list yet. Try checking again shortly.",
@@ -614,7 +648,11 @@ export function IndividualMot3DRun({
           }
         }
       } catch (caught) {
-        if (active) setError(errorMessage(caught));
+        if (active) {
+          publication.current.finish();
+          setPublicationPending(false);
+          setError(errorMessage(caught));
+        }
       } finally {
         inFlight = false;
       }
@@ -624,7 +662,7 @@ export function IndividualMot3DRun({
       active = false;
       window.clearInterval(timer);
     };
-  }, [api, mode, runId, step]);
+  }, [api, mode, runId, step, publication, setPublicationPending]);
   const currentStep = steps.findIndex(([id]) => id === step);
 
   async function reconcileRememberedRun() {
@@ -713,6 +751,9 @@ export function IndividualMot3DRun({
             Review existing Zeus job
           </button>
         </section>
+      )}
+      {publicationPending && !error && (
+        <p role="status">{localRunPublicationMessage}</p>
       )}
       {error && (
         <div className="state-panel state-panel--error" role="alert">

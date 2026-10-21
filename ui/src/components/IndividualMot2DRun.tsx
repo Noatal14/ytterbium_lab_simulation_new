@@ -1,3 +1,9 @@
+import {
+  LocalRunPublication,
+  observeNewLocalRun,
+  localRunPublicationMessage,
+  useLocalRunPublication,
+} from "../features/individual/localRunPublication";
 import { localWorkerMaximum } from "../features/individual/localWorkerAdmission";
 import type { IndividualZeusResources } from "../api/clients/individualZeusResources";
 import {
@@ -148,16 +154,21 @@ export async function refreshMot2DTransaction(
   username: string,
   isCurrent: () => boolean,
   onSchedulerState?: (state: string) => void,
+  publication?: LocalRunPublication,
 ): Promise<Mot2DRun | null> {
   if (mode === "zeus") {
     const scheduler = await api.refreshZeus(runId, username);
     if (!isCurrent()) return null;
     onSchedulerState?.(scheduler.state);
   }
-  const summary = (await api.runs()).find(
-    (row: Mot2DRun) => row.display_name === runId,
+  const { summary, waiting, retired } = await observeNewLocalRun(
+    api,
+    runId,
+    publication ?? new LocalRunPublication(),
+    isCurrent,
+    mode,
   );
-  if (!isCurrent()) return null;
+  if (!isCurrent() || waiting || retired) return null;
   if (!summary)
     throw new Error("The run is not visible in the verified run list yet.");
   const next =
@@ -177,6 +188,7 @@ export function IndividualMot2DRun({
   const title = useRef<HTMLHeadingElement>(null);
   const refreshRequest = useRef(0);
   const [recoveryPending, setRecoveryPending] = useState(false);
+
   const [zeusHeld, setZeusHeld] = useState(false);
   const [step, setStep] = useState<Step>("configure"),
     [sources, setSources] = useState<Mot2DSource[]>([]),
@@ -406,7 +418,14 @@ export function IndividualMot2DRun({
     if (!runId) return;
     await act(async () => {
       if (mode === "local") {
+        const publicationRevision = publication.current.revision;
         await api.startLocal(runId);
+        {
+          if (publication.current.revision === publicationRevision) {
+            publication.current.start(runId);
+            setPublicationPending(true);
+          }
+        }
         if (!rememberIndividualRun("mot_2d", runId, "local"))
           setError(`${individualRunStorageWarning} Run: ${runId}`);
       } else if (!zeusToken) {
@@ -427,6 +446,9 @@ export function IndividualMot2DRun({
       if (mode === "local" || zeusToken) setStep("monitor");
     });
   }
+  const { publication, publicationPending, setPublicationPending } =
+    useLocalRunPublication(api, mode, runId);
+
   async function refresh() {
     if (!runId || busy || recoveryPending) return;
     const requestId = ++refreshRequest.current;
@@ -440,12 +462,18 @@ export function IndividualMot2DRun({
         username,
         () => requestId === refreshRequest.current,
         (state) => setZeusHeld(state === "held"),
+        mode === "local" ? publication.current : undefined,
       );
       if (!next) return;
+      setPublicationPending(false);
       setRun(next);
       if (next.lifecycle === "results_ready") setStep("results");
     } catch (caught) {
-      if (requestId === refreshRequest.current) setError(message(caught));
+      if (requestId === refreshRequest.current) {
+        publication.current.finish();
+        setPublicationPending(false);
+        setError(message(caught));
+      }
     } finally {
       if (requestId === refreshRequest.current) setBusy(false);
     }
@@ -458,9 +486,14 @@ export function IndividualMot2DRun({
       if (inFlight) return;
       inFlight = true;
       try {
-        const summary = (await api.runs()).find(
-          (item) => item.display_name === runId,
+        const { summary, waiting, retired } = await observeNewLocalRun(
+          api,
+          runId,
+          publication.current,
+          () => active,
         );
+        if (!active || waiting || retired) return;
+        setPublicationPending(false);
         if (!summary)
           throw new Error(
             "The run has not appeared in the verified run list yet. Try checking again shortly.",
@@ -477,7 +510,11 @@ export function IndividualMot2DRun({
           }
         }
       } catch (caught) {
-        if (active) setError(message(caught));
+        if (active) {
+          publication.current.finish();
+          setPublicationPending(false);
+          setError(message(caught));
+        }
       } finally {
         inFlight = false;
       }
@@ -487,7 +524,7 @@ export function IndividualMot2DRun({
       active = false;
       window.clearInterval(timer);
     };
-  }, [api, mode, runId, step]);
+  }, [api, mode, runId, step, publication, setPublicationPending]);
   async function reconcileRememberedRun() {
     if (!runId || busy) return;
     setBusy(true);
@@ -565,6 +602,9 @@ export function IndividualMot2DRun({
       <div className="sr-only" aria-live="polite">
         {busy ? "Working" : `Current step: ${step}`}
       </div>
+      {publicationPending && !error && (
+        <p role="status">{localRunPublicationMessage}</p>
+      )}
       {step === "configure" && (
         <form
           className="creation-form"

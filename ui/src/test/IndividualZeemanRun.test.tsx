@@ -159,6 +159,24 @@ describe("individual Zeeman wizard", () => {
     await screen.findByText(/check run progress/i); expect(api.startLocal).toHaveBeenCalledTimes(1);
   });
 
+  it("keeps a just-started clean missing entry in verifying status, then reports permanent absence without another start", async () => {
+    const api = fake();
+    api.catalog = vi.fn().mockResolvedValue({ runs: [], invalid_count: 0, total: 0, truncated: false });
+    const user = userEvent.setup(); render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /validate and review/i }));
+    await user.click(await screen.findByRole("button", { name: /create reviewed run/i }));
+    await user.click(await screen.findByRole("button", { name: /start on this computer/i }));
+    expect(await screen.findByText("Verifying the new local run. Do not start it again.")).toBeVisible();
+    const check = screen.getByRole("button", { name: "Check status" });
+    await user.click(check);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await user.click(check);
+    await user.click(check);
+    expect(await screen.findByRole("alert")).toHaveTextContent("not appeared");
+    expect(api.startLocal).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /start on this computer/i })).not.toBeInTheDocument();
+  });
+
   it("does not send a second creation confirmation while the first is pending", async () => {
     const api = fake(); const pending = deferred<Awaited<ReturnType<IndividualZeemanApi["confirm"]>>>(); vi.mocked(api.confirm).mockReturnValue(pending.promise);
     const user = userEvent.setup(); render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
