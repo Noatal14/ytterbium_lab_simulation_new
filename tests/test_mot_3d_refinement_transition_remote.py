@@ -5,6 +5,8 @@ import json
 import sys
 from copy import deepcopy
 
+import pytest
+
 from workflow_api import mot_3d_preliminary_transition_remote as core
 from workflow_api import mot_3d_refinement_transition_remote as remote
 
