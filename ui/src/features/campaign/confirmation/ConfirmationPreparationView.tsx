@@ -262,7 +262,7 @@ export function ConfirmationPreparationView({
                 {result.artifacts.updated} campaign record updated.
               </p>
               <p>
-                No Confirmation job was submitted and no simulation started.
+                This preparation step did not submit a Confirmation job or start a simulation.
               </p>
               <p>
                 Zeus is authoritative; the local campaign record has not been

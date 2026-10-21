@@ -134,7 +134,7 @@ describe("shared workflow presentation", () => {
     const receipt = screen.getByRole("status");
     expect(receipt).toHaveFocus();
     expect(receipt).toHaveTextContent(
-      "No Screening job was submitted and no simulation started.",
+      "This preparation step did not submit a Screening job or start a simulation.",
     );
 
     view.rerender(<SmokeFlow {...props} lifecycle={screenPrepared} />);
@@ -214,7 +214,7 @@ describe("shared workflow presentation", () => {
       .closest('[role="status"]');
     expect(receipt).toHaveFocus();
     expect(receipt).toHaveTextContent(
-      "no action is needed and it is safe to close this application",
+      "Zeus runs independently; it is safe to close this application",
     );
 
     view.rerender(<RefinementFlow {...props} status={null} />);
@@ -277,7 +277,7 @@ describe("shared workflow presentation", () => {
       "Round 4: 4[].zeus-master · afterok 3[].zeus-master",
     );
     expect(receipt).toHaveTextContent(
-      "No later campaign stage was submitted. Zeus runs independently; no action is needed and it is safe to close this application.",
+      "This receipt records only the four Refinement submissions. Later stages have separate receipts. Zeus runs independently; it is safe to close this application.",
     );
     expect(
       screen.queryByRole("button", { name: "Review Refinement submission" }),
@@ -427,7 +427,7 @@ describe("shared workflow presentation", () => {
       .closest('[role="status"]');
     expect(receipt).toHaveFocus();
     expect(receipt).toHaveTextContent(
-      "No Confirmation job was submitted and no simulation started.",
+      "This preparation step did not submit a Confirmation job or start a simulation.",
     );
 
     view.rerender(<ConfirmationStage {...props} lifecycle={prepared} />);

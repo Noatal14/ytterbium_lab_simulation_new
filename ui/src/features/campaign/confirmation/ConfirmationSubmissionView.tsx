@@ -188,8 +188,8 @@ export function ConfirmationSubmissionView({
               Job <code>{result?.job_id ?? status?.submission.job_id}</code>. {trackedMessage}
             </p>
             <p>
-              Sensitivity stays locked until every expected Confirmation output
-              passes the frozen-design and provenance checks.
+              Sensitivity requires validation of every expected Confirmation output
+              against the frozen design and provenance before a separate review.
             </p>
             <button
               className="secondary-button compact-action"

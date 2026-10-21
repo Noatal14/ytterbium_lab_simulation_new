@@ -144,8 +144,8 @@ export function SensitivityStage({
             <div>
               <strong>Sensitivity is prepared</strong>
               <p>
-                The exact Sensitivity array can now be reviewed before
-                submission.
+                This preparation made the Sensitivity array available for a
+                separate submission review.
               </p>
             </div>
           </div>
@@ -267,8 +267,8 @@ export function SensitivityStage({
                     <code>
                       {s.result?.job_id ?? s.status?.submission.job_id}
                     </code>
-                    . Production stays locked until every expected output passes
-                    validation.
+                    . Production requires validation of every expected Sensitivity
+                    output before a separate submission review.
                   </p>
                   <button
                     className="secondary-button compact-action"

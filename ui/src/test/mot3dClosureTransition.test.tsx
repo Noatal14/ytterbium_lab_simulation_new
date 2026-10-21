@@ -94,7 +94,7 @@ describe("3D Closure transition", () => {
     expect(await screen.findByRole("heading", { name: /Synchronize Closure/ })).toHaveFocus();
     expect(screen.getByText(/No job or simulation starts/)).toBeVisible();
     view.rerender(<Mot3DCampaignFlow {...base} onViewJobs={onViewJobs} closureTransition={flow({ phase: "success", result: result() })} />);
-    expect(screen.getByText(/no final result is being claimed/)).toBeVisible();
+    expect(screen.getByText(/This preparation synchronized verified Closure evidence without submitting a Finalist Selection job/)).toBeVisible();
     view.rerender(<Mot3DCampaignFlow {...base} onViewJobs={onViewJobs} closureTransition={flow({ phase: "blocked", error: "Outcome unknown", errorPhase: "confirm_unknown" })} />);
     expect(screen.getByText(/Do not retry/)).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Open Zeus jobs" }));

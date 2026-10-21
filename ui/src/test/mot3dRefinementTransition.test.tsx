@@ -414,7 +414,7 @@ describe("3D Refinement transition", () => {
       />,
     );
     expect(
-      screen.getByText(/No Closure job has been submitted or started/),
+      screen.getByText(/without submitting or starting a Closure job/),
     ).toBeVisible();
   });
 });

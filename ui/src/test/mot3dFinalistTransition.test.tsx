@@ -63,6 +63,8 @@ describe("3D Finalist Selection transition", () => {
     expect(screen.getByText("single_pass_finalist_01")).toBeVisible();
     expect(screen.getByText("None")).toBeVisible();
     view.rerender(<Mot3DCampaignFlow {...base} finalistTransition={flow({ phase: "success", result: result() })} />);
-    expect(screen.getByText(/final validation has not yet been performed/)).toBeVisible();
+    expect(screen.getByText(/This preparation synchronized the verified evidence and winner lock/)).toBeVisible();
+    expect(screen.getByText(/Input generation and Final Validation have separate records/)).toBeVisible();
+    expect(screen.queryByText(/final validation has not yet been performed/)).not.toBeInTheDocument();
   });
 });

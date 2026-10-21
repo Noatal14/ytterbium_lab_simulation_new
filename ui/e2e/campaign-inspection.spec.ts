@@ -119,7 +119,7 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await expect(page.getByText("No Zeus job will be submitted.")).toBeVisible();
   await page.getByRole("button", { name: "Prepare campaign on Zeus" }).click();
   await expect(page.getByText("Campaign prepared on Zeus")).toBeVisible();
-  await expect(page.getByText("No simulation was started and no Zeus job was submitted.")).toBeVisible();
+  await expect(page.getByText("This transfer did not start a simulation or submit a Zeus job.")).toBeVisible();
   await page.getByRole("button", { name: "Review smoke submission" }).click();
   await expect(page.getByRole("heading", { name: "Submit smoke check to Zeus" })).toBeFocused();
   await expect(page.getByText("1 CPU core · 64 GiB memory")).toBeVisible();
@@ -137,7 +137,7 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await expect(page.getByRole("heading", { name: "Prepare Screening on Zeus" })).toBeFocused();
   await page.getByRole("button", { name: "Prepare Screening on Zeus" }).click();
   await expect(page.getByText("Screening prepared on Zeus")).toBeVisible();
-  await expect(page.getByText(/No Screening job was submitted/)).toBeVisible();
+  await expect(page.getByText(/This preparation step did not submit a Screening job/)).toBeVisible();
   await page.getByRole("button", { name: "Refresh Zeus status" }).click();
   await page.getByRole("button", { name: "Review Screening submission" }).click();
   await expect(page.getByRole("heading", { name: "Submit Screening to Zeus" })).toBeFocused();
@@ -155,7 +155,7 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await expect(page.getByText("jobs/03_submit_refinement_chain.sh")).toBeVisible();
   await page.getByRole("button", { name: "Prepare Refinement on Zeus" }).click();
   await expect(page.getByText("Refinement prepared on Zeus")).toBeVisible();
-  await expect(page.getByText(/No Refinement job was submitted/)).toBeVisible();
+  await expect(page.getByText(/This preparation step did not submit a Refinement job/)).toBeVisible();
   await page.getByRole("button", { name: "Check chain status" }).click();
   await page.getByRole("button", { name: "Review Refinement submission" }).click();
   await expect(page.getByRole("heading", { name: "Submit four-round Refinement chain" })).toBeFocused();
@@ -172,7 +172,7 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await expect(page.getByText("jobs/04_confirmation.pbs").first()).toBeVisible();
   await page.getByRole("button", { name: "Prepare Confirmation on Zeus" }).click();
   await expect(page.getByText("Confirmation prepared on Zeus")).toBeVisible();
-  await expect(page.getByText(/No Confirmation job was submitted/)).toBeVisible();
+  await expect(page.getByText(/This preparation step did not submit a Confirmation job/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

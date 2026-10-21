@@ -315,7 +315,7 @@ export function RefinementPreparationSection({
                 {prepareResult.artifacts.created} files created and{" "}
                 {prepareResult.artifacts.updated} campaign record updated.
               </p>
-              <p>No Refinement job was submitted and no simulation started.</p>
+              <p>This preparation step did not submit a Refinement job or start a simulation.</p>
               <p>
                 Zeus is authoritative; the local campaign record has not been
                 synchronized.

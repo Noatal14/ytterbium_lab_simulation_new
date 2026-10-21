@@ -1,0 +1,163 @@
+{
+  "scope": "Unmodified actualP23 public receipt/status DTOs; component test only, no live transport",
+  "producer_commit": "ff13c84805d58f9b5bd2ee5790e5b91a6fb69e55",
+  "source_receipt_sha256": {
+    "1-transfer-receipt.json": "3acbf7b71d9179773b44928d7715ad5c8976278cb52f2e4bcbd4ef23dfd8e898",
+    "2-smoke-receipt.json": "d67f5b08c9b286e23b3681f60800b48d8b6e3f2192a6b2e628d73e7449a48ba2",
+    "3-screen-preparation-receipt.json": "80fdb5272374054063cf10da0f9c5bae1cf35fd002362d99e81968faa0b9385b",
+    "4-screen-receipt.json": "8fd81d9f26542d1f7348385829c30a01c19469c1ff3366946397d7e93e36e419",
+    "5-refinement-preparation-receipt.json": "41732e5b3d25c4aeef3b0ea0bc15ebc7c01b631db616a479aaedbf62e115ff51",
+    "6-refinement-receipt.json": "c7c467f643d4d6d77b96b555efaf6b28502c13f51c7bb7a4b5cf80d59cb39a93",
+    "7-confirmation-preparation-receipt.json": "8c9aebb8deab8da6378aaa624de7ebf7f002e95991002a0f45fb41e502db14d8",
+    "8-confirmation-receipt.json": "7bfabaedda4f00bdce05676b3a0cfca5fb75b9b770b61c5be733e7469fa4099c"
+  },
+  "receipts": {
+    "transfer": {
+      "bytes_transferred": 307102,
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "destination": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance/data/optimization/mot_2d/ui_acceptance/ui_release_mac_20261021_p23",
+      "reused_identical_count": 0,
+      "simulation_started": false,
+      "status": "prepared",
+      "submitted_to_zeus": false,
+      "transferred_count": 72
+    },
+    "smoke": {
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "job_id": "4811530.zeus-master",
+      "later_stages_locked": true,
+      "stage": "smoke",
+      "status": "submitted",
+      "submitted_at": "2026-10-21T08:48:45+00:00"
+    },
+    "screen_preparation": {
+      "artifacts": {
+        "created": 2,
+        "updated": 1
+      },
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "local_sync": {
+        "status": "not_synchronized"
+      },
+      "simulation_started": false,
+      "stage": "screen",
+      "status": "screening_prepared",
+      "submitted_to_zeus": false
+    },
+    "screen_submission": {
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "job_id": "4811558[].zeus-master",
+      "later_stages_locked": true,
+      "stage": "screen",
+      "status": "submitted",
+      "submitted_at": "2026-10-21T09:03:05+00:00"
+    },
+    "refinement_preparation": {
+      "artifacts": {
+        "created": 7,
+        "updated": 1
+      },
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "local_sync": {
+        "status": "not_synchronized"
+      },
+      "simulation_started": false,
+      "stage": "refine",
+      "status": "refinement_prepared",
+      "submitted_to_zeus": false
+    },
+    "refinement_submission": {
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "chain": {
+        "rounds": [
+          {
+            "depends_on_job_id": null,
+            "job_id": "4811580[].zeus-master",
+            "round": 1
+          },
+          {
+            "depends_on_job_id": "4811580[].zeus-master",
+            "job_id": "4811581[].zeus-master",
+            "round": 2
+          },
+          {
+            "depends_on_job_id": "4811581[].zeus-master",
+            "job_id": "4811582[].zeus-master",
+            "round": 3
+          },
+          {
+            "depends_on_job_id": "4811582[].zeus-master",
+            "job_id": "4811583[].zeus-master",
+            "round": 4
+          }
+        ],
+        "status": "submitted"
+      },
+      "local_sync": {
+        "status": "not_synchronized"
+      },
+      "stage": "refine",
+      "status": "submitted",
+      "submitted_at": "2026-10-21T09:15:07+00:00"
+    },
+    "confirmation_preparation": {
+      "artifacts": {
+        "created": 3,
+        "updated": 1
+      },
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "local_sync": {
+        "status": "not_synchronized"
+      },
+      "simulation_started": false,
+      "stage": "confirmation",
+      "status": "confirmation_prepared",
+      "submitted_to_zeus": false
+    },
+    "confirmation_submission": {
+      "campaign_id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "job_id": "4811759[].zeus-master",
+      "local_sync": {
+        "status": "not_synchronized"
+      },
+      "stage": "confirmation",
+      "status": "submitted",
+      "submitted_at": "2026-10-21T09:54:53+00:00"
+    }
+  },
+  "current_confirmation_running": {
+    "campaign": {
+      "id": "mot_2d-6625cf2ce91c3bc9c98a",
+      "name": "TEST ONLY UI Release Mac20261021 P23",
+      "stage": "confirmation"
+    },
+    "confirmation": {
+      "job_id": "4811759[].zeus-master",
+      "scheduler": {
+        "counts": {
+          "failed": 0,
+          "held": 0,
+          "queued": 0,
+          "running": 2,
+          "succeeded": 3
+        },
+        "job_id": "4811759[].zeus-master",
+        "state": "running",
+        "submission_nonce": "13883ae8777349ea17fa8ee9e5959d4f",
+        "task_count": 5
+      },
+      "status": "running"
+    },
+    "local_sync": {
+      "status": "not_synchronized"
+    },
+    "next_action": "wait",
+    "queried_at": "2026-10-21T10:14:59.566382+00:00",
+    "source": "zeus",
+    "validation": {
+      "completed_points": 0,
+      "expected_points": 5,
+      "status": "not_ready"
+    }
+  }
+}

@@ -219,12 +219,12 @@ export function SmokeSubmissionSection({
               <div>
                 <strong>Smoke check submitted</strong>
                 <p>
-                  Zeus job {submissionResult.job_id} was recorded. No later
-                  stage was submitted.
+                  This receipt records Smoke job {submissionResult.job_id}. Later
+                  stages have separate submission receipts.
                 </p>
                 <p>
-                  Screening remains locked until the smoke outputs are complete
-                  and validated.
+                  Screening requires a separate review after the smoke outputs
+                  are complete and validated.
                 </p>
                 <button
                   className="secondary-button compact-action"

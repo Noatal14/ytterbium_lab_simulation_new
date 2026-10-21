@@ -127,7 +127,7 @@ export function ProductionStage({
         {prepared && (
           <Success
             title="Production is prepared"
-            text="The exact sealed Production array can now be reviewed before submission."
+            text="This preparation made the sealed Production array available for a separate submission review."
           />
         )}
         {p.error && (

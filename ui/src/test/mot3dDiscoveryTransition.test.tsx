@@ -99,7 +99,7 @@ describe("3D campaign transition view", () => {
     expect(screen.getAllByText("None", { selector: "dd" })).toHaveLength(2);
     await user.click(screen.getByRole("button", { name: "Synchronize and prepare" }));
     expect(await screen.findByText("Preliminary check is prepared")).toBeInTheDocument();
-    expect(screen.getByText(/No preliminary-check job has been submitted or started/)).toBeInTheDocument();
+    expect(screen.getByText(/without submitting or starting a preliminary-check job/)).toBeInTheDocument();
   });
 
   it("renders queued work as no-action and invalid outputs as blocking", () => {

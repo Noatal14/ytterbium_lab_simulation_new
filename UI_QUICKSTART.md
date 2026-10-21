@@ -122,6 +122,11 @@ the application. Never paste a password, private key, or passphrase into it.
 - **Uncertain submission:** do not submit again. Inspect **Zeus jobs** first
   to avoid duplicate work.
 
+Remote campaign actions and status checks require the code version that created
+the campaign. Keep that checkout for recovery; ask the maintainer to use a
+separate checkout for application updates. Updating another checkout does not
+change or cancel running Zeus jobs.
+
 If something fails, keep the exact message and run/campaign name and send them
 to the project maintainer. Do not delete results, edit campaign files, or
 restart an entire campaign to recover one failed stage.

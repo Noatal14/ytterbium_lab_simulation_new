@@ -62,7 +62,7 @@ describe("CampaignPriorityPanel", () => {
 
   it("keeps authoritative Smoke content above local submission state", () => {
     render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh submissionState="terminal" submissionError="local error" />);
-    expect(screen.getByText(/screening files are ready on Zeus/)).toBeVisible(); expect(screen.queryByText("local error")).not.toBeInTheDocument();
+    expect(screen.getByText(/made the Screening files ready on Zeus/)).toBeVisible(); expect(screen.queryByText("local error")).not.toBeInTheDocument();
   });
 
   it("describes a preliminary-check status read without implying submission", () => {
@@ -120,12 +120,14 @@ describe("CampaignPriorityPanel", () => {
   ])("maps the prepared transition at %s", (stage, lifecycle, heading) => {
     render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage } as Campaign} mot3DLateKind="transition" mot3DLateLifecycle={lifecycle} />);
     expect(screen.getByRole("heading", { name: heading })).toBeVisible();
+    expect(screen.getByText(/This transition prepared .* without submitting a later job or starting a simulation/)).toBeVisible();
+    expect(screen.queryByText(/No later job was submitted or simulation started/)).not.toBeInTheDocument();
   });
 
   it.each([["submitted", "No action needed"], ["terminal", "Check Zeus jobs before continuing"], ["unknown", "Check Zeus jobs before continuing"]] as const)("keeps Smoke content while Screening submission %s controls the heading", (state, heading) => {
     render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenSubmitState={state} />);
     expect(screen.getByRole("heading", { name: heading })).toBeVisible();
-    expect(screen.getByText(state === "submitted" ? "Screening has been submitted successfully." : "The screening files are ready on Zeus. No screening job was submitted and no simulation started.")).toBeVisible();
+    expect(screen.getByText(state === "submitted" ? "Screening has been submitted successfully." : "This preparation made the Screening files ready on Zeus without submitting a Screening job or starting a simulation.")).toBeVisible();
   });
 
   it("renders submitted Smoke job details without lifecycle evidence", () => {

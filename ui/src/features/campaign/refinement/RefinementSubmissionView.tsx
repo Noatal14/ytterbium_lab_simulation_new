@@ -230,9 +230,9 @@ export function RefinementSubmissionView({
                   ))}
                 </ol>
                 <p>
-                  No later campaign stage was submitted. Zeus runs
-                  independently; no action is needed and it is safe to close
-                  this application.
+                  This receipt records only the four Refinement submissions.
+                  Later stages have separate receipts. Zeus runs independently;
+                  it is safe to close this application.
                 </p>
                 <button
                   className="secondary-button compact-action"

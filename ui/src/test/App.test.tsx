@@ -311,7 +311,7 @@ describe("onboarding home", () => {
     await user.click(screen.getByRole("button", { name: "Prepare campaign on Zeus" }));
     expect(confirm).toHaveBeenCalledWith("transfer-token");
     expect(await screen.findByText("Campaign prepared on Zeus")).toBeInTheDocument();
-    expect(screen.getByText("No simulation was started and no Zeus job was submitted.")).toBeInTheDocument();
+    expect(screen.getByText("This transfer did not start a simulation or submit a Zeus job.")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveFocus();
   });
 
@@ -383,7 +383,8 @@ describe("onboarding home", () => {
     expect(status).not.toHaveBeenCalled();
     expect(await screen.findByRole("heading", { name: "No action needed" })).toBeInTheDocument();
     expect(screen.getAllByText(/job 4759999\.zeus-master/i)).toHaveLength(2);
-    expect(screen.getAllByText(/Screening remains locked/i)).toHaveLength(2);
+    expect(screen.getAllByText(/Screening remains locked/i)).toHaveLength(1);
+    expect(screen.getByText(/Screening requires a separate review/)).toBeVisible();
     expect(screen.getByText("Smoke check submitted").closest('[role="status"]')).toHaveFocus();
   });
 
@@ -585,7 +586,7 @@ describe("onboarding home", () => {
     expect(screen.getAllByText(/Does not submit a Zeus job/i).length).toBeGreaterThan(0);
     await user.click(screen.getByRole("button", { name: "Prepare Screening on Zeus" }));
     expect(await screen.findByText("Screening prepared on Zeus")).toBeInTheDocument();
-    expect(screen.getByText(/No Screening job was submitted/)).toBeInTheDocument();
+    expect(screen.getByText(/This preparation step did not submit a Screening job/)).toBeInTheDocument();
     expect(screen.getAllByText(/local campaign record has not been synchronized/i)).toHaveLength(2);
     expect(confirm).toHaveBeenCalledWith("screen-token");
   });

@@ -315,8 +315,9 @@ export function ScreeningSubmissionSection({
                 .
               </p>
               <p>
-                No later stage was submitted. Zeus continues independently; no
-                action is needed and it is safe to close this application.
+                This receipt records only the Screening submission. Later
+                stages have separate receipts. Zeus continues independently;
+                it is safe to close this application.
               </p>
               <button
                 className="secondary-button compact-action"

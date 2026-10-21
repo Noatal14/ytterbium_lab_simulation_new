@@ -113,7 +113,9 @@ describe("final validation transition", () => {
         finalValidationTransition={flow({ phase: "success", result: result() })}
       />,
     );
-    expect(screen.getByText(/no Final Validation result yet/)).toBeVisible();
+    expect(screen.getByText(/This preparation verified and synchronized the frozen inputs/)).toBeVisible();
+    expect(screen.getByText(/Final Validation has separate submission and result records/)).toBeVisible();
+    expect(screen.queryByText(/no Final Validation result yet/)).not.toBeInTheDocument();
   });
   it("guards stale context, duplicate actions, and ambiguous confirmation", async () => {
     const profile={host:"zeus.technion.ac.il" as const,authentication:"ssh-key-or-agent" as const,username:"tal.noa",project_directory:"/home/tal.noa/project"},snap={connection_status:"connected" as const,profile,remote:{project_directory:profile.project_directory,git_commit:"a".repeat(40),branch:"main",dirty:false},scheduler:{status:"available" as const,queried_at:"2026-10-12T00:00:00Z",jobs:[]}};

@@ -291,7 +291,7 @@ function Mot3DFinalValidationCompletionStage({
         {flow.phase === "ready" && <div className="prepare-card"><div><strong>Sealed Final Validation evidence is ready for review</strong><p>Review both families and the precision decision before synchronizing one terminal outcome.</p></div><button className="primary-button" onClick={() => void flow.review()}>Review completion</button></div>}
         {flow.phase === "review" && flow.preview && evidence && <div className="review-panel">
             <ReviewedResources resources={flow.preview && "resources" in flow.preview ? flow.preview.resources : undefined} /><p className="eyebrow">Explicit review</p><h3 ref={heading} tabIndex={-1}>Review the sealed Final Validation result</h3><p>These estimates use only the new sealed ensembles. The precision target is a 95% interval half-width of at most 0.0075 for both families.</p><div className="review-grid">{evidence.families.map((family) => <article className="review-card" key={family.family}><h4>{family.family === "angled_donut" ? "Angled donut" : "Single pass"}</h4><dl><div><dt>Locked finalist</dt><dd>{family.candidate_id}</dd></div><div><dt>Conditional efficiency</dt><dd>{family.conditional_efficiency.toFixed(6)}</dd></div><div><dt>95% interval</dt><dd>{family.bootstrap_95_ci[0].toFixed(6)}–{family.bootstrap_95_ci[1].toFixed(6)}</dd></div><div><dt>Half-width</dt><dd>{family.ci_half_width.toFixed(6)}</dd></div><div><dt>Precision target</dt><dd>{family.precision_target_met ? "Pass" : "Not met"}</dd></div></dl></article>)}</div><div className={extension ? "state-panel state-panel--error" : "state-panel state-panel--success"}><strong>{extension ? "Precision is not established for both families" : "Both families meet the precision target"}</strong><p>{extension ? `The reviewed outcome is extension required. Failing ${failing.length === 1 ? "family" : "families"}: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. No extension policy is defined, so this interface will not submit one or claim a winner.` : "Confirming will publish a final report derived only from the sealed new ensembles."}</p></div><dl className="transfer-facts"><div><dt>Verified result artifacts</dt><dd>14 of 14</dd></div><div><dt>Jobs submitted</dt><dd>None</dd></div><div><dt>Simulation started</dt><dd>No</dd></div></dl><GuardedStageActions phase={flow.phase} labels={{refreshLabel:"Refresh status",reviewLabel:"Review completion",confirmLabel:extension ? "Record extension required" : "Synchronize and publish final report",resetLabel:"Back"}} onRefresh={() => void flow.refresh()} onReview={() => void flow.review()} onConfirm={() => void flow.confirm()} onReset={flow.reset} /></div>}
-        {flow.phase === "success" && !extension && <div className="state-panel state-panel--success" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. No additional job was submitted or simulation started.</p></div>}
+        {flow.phase === "success" && !extension && <div className="state-panel state-panel--success" role="status"><strong>Final report is ready</strong><p>The report was derived only from the 20 sealed new ensembles per family. Publishing this report did not submit an additional job or start a simulation.</p></div>}
         {flow.phase === "success" && extension && <div className="state-panel state-panel--error" role="status"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation extension is required</strong><p>{failing.length ? `Precision was not established for: ${failing.map((family) => family.family === "angled_donut" ? "Angled donut" : "Single pass").join(", ")}. ` : "The precision target was not met. "}No winner or final performance claim is available. No scientifically approved extension policy exists, so no extension action is offered.</p></div></div>}
         {flow.phase === "blocked" && !flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Manual verification required</strong><p>The remote completion outcome is uncertain. Do not retry; inspect the existing Zeus evidence.</p><button className="text-button" onClick={onViewJobs}>Open Zeus jobs</button></div></div>}
         {flow.error && <div className="state-panel state-panel--error" role="alert"><AlertTriangle aria-hidden="true"/><div><strong>Final Validation completion could not be verified</strong><p>{flow.error}</p><p>{flow.errorPhase === "confirm_unknown" ? "Do not retry; inspect Zeus and the campaign first." : "Refresh authoritative status before reviewing again."}</p></div></div>}
@@ -636,9 +636,9 @@ function Mot3DFinalValidationTransitionStage({
           <div className="state-panel state-panel--success" role="status">
             <strong>Final Validation is prepared</strong>
             <p>
-              The frozen inputs are verified and synchronized. No validation job
-              was submitted, no simulation started, and there is no Final
-              Validation result yet.
+              This preparation verified and synchronized the frozen inputs. It
+              did not submit a Final Validation job or start a simulation.
+              Final Validation has separate submission and result records.
             </p>
           </div>
         )}
@@ -1161,9 +1161,9 @@ function Mot3DFinalistTransitionStage({
           <div className="state-panel state-panel--success" role="status">
             <strong>Final-validation inputs are prepared</strong>
             <p>
-              The verified evidence and winner lock are synchronized. No job was
-              submitted, no simulation started, and final validation has not yet
-              been performed.
+              This preparation synchronized the verified evidence and winner
+              lock. It did not submit a job or start a simulation. Input
+              generation and Final Validation have separate records.
             </p>
           </div>
         )}
@@ -1648,8 +1648,9 @@ function Mot3DClosureTransitionStage({
           <div className="state-panel state-panel--success" role="status">
             <strong>Finalist selection is prepared</strong>
             <p>
-              Verified Closure evidence is synchronized. No finalist-selection
-              job has been submitted, and no final result is being claimed.
+              This preparation synchronized verified Closure evidence without
+              submitting a Finalist Selection job. It does not establish a
+              final result.
             </p>
           </div>
         )}
@@ -2053,8 +2054,8 @@ function Mot3DRefinementTransitionStage({
           <div className="state-panel" role="status">
             <strong>Refinement is still running on Zeus</strong>
             <p>
-              No action is needed. Closure remains locked until the complete
-              result set passes validation.
+              Closure requires validation of the complete Refinement result
+              set before a separate submission review.
             </p>
             <div className="form-actions">
               <button
@@ -2163,8 +2164,8 @@ function Mot3DRefinementTransitionStage({
           <div className="state-panel state-panel--success" role="status">
             <strong>Closure is prepared</strong>
             <p>
-              All verified Refinement evidence is synchronized. No Closure job
-              has been submitted or started.
+              This preparation synchronized verified Refinement evidence without
+              submitting or starting a Closure job.
             </p>
           </div>
         )}
@@ -2394,8 +2395,8 @@ function Mot3DRefinementSubmissionStage({
             <strong>Refinement jobs finished on Zeus</strong>
             <p>
               The scheduler completed all four jobs, but their scientific
-              outputs have not been validated or synchronized locally. No later
-              stage has started.
+              outputs still require local validation and synchronization before
+              a separate later-stage review.
             </p>
             <div className="form-actions">
               <button
@@ -2563,8 +2564,8 @@ function Mot3DPreliminaryTransitionStage({
           <div className="state-panel" role="status">
             <strong>Preliminary check is still running on Zeus</strong>
             <p>
-              No action is needed. Refinement remains locked until all four jobs
-              finish and the complete output set passes validation.
+              Refinement requires all four Preliminary jobs to finish and the
+              complete output set to pass validation before a separate review.
             </p>
             <div className="form-actions">
               <button
@@ -2684,8 +2685,8 @@ function Mot3DPreliminaryTransitionStage({
             <strong>Refinement is prepared</strong>
             <p>
               The preliminary-check evidence is scientifically validated,
-              synchronized, and receipt-verified. No Refinement job has been
-              submitted or started.
+              synchronized, and receipt-verified by this preparation step,
+              without submitting or starting a Refinement job.
             </p>
           </div>
         )}
@@ -2931,8 +2932,8 @@ function Mot3DPreliminaryCheckStage({
             <strong>Preliminary-check jobs finished on Zeus</strong>
             <p>
               The scheduler completed the four jobs, but their scientific
-              outputs have not yet been validated or synchronized locally. No
-              later stage has started.
+              outputs still require local validation and synchronization before
+              a separate later-stage review.
             </p>
             <div className="form-actions">
               <button
@@ -3196,12 +3197,11 @@ function Mot3DDiscoveryTransitionStage({
           <div className="state-panel state-panel--success" role="status">
             <strong>Preliminary check is prepared</strong>
             <p>
-              Discovery evidence is synchronized and receipt-verified. No
-              preliminary-check job has been submitted or started.
+              This preparation synchronized and receipt-verified Discovery
+              evidence without submitting or starting a preliminary-check job.
             </p>
             <p>
-              The next milestone will add a separate explicit review before
-              those jobs can be submitted.
+              Submitting those jobs requires a separate explicit review.
             </p>
           </div>
         )}
@@ -3236,8 +3236,8 @@ function Mot3DDiscoveryTransitionStage({
               <strong>Discovery preparation could not be verified</strong>
               <p>{flow.error}</p>
               <p>
-                No later job was submitted. Verify the existing evidence before
-                trying another action.
+                The preparation outcome could not be verified. Inspect existing
+                Zeus jobs and evidence before another action.
               </p>
               <button className="text-button" onClick={onViewJobs}>
                 Open Zeus jobs

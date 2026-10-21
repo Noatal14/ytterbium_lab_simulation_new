@@ -246,7 +246,7 @@ export function ScreeningPreparationSection({
                 {screeningResult.artifacts.created} files created and{" "}
                 {screeningResult.artifacts.updated} campaign record updated.
               </p>
-              <p>No Screening job was submitted and no simulation started.</p>
+              <p>This preparation step did not submit a Screening job or start a simulation.</p>
               <p>
                 Zeus is current; the local campaign record has not been
                 synchronized.
