@@ -16,7 +16,8 @@ import threading
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
+from workflow_api.loopback_http import LoopbackThreadingHTTPServer as ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, TYPE_CHECKING
 from urllib.parse import unquote, urlsplit

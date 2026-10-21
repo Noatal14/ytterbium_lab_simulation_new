@@ -37,7 +37,6 @@ import tempfile
 import shutil
 import os
 from datetime import datetime, timezone
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 
@@ -46,6 +45,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from workflow_api.server import HOST, PORT, WorkflowHandler  # noqa: E402
+from workflow_api.loopback_http import LoopbackThreadingHTTPServer as ThreadingHTTPServer
 from campaign_fixture import prepare
 from workflow_api.mutation import CreationService
 from workflow_api.repository_snapshot import RepositorySnapshotProvider, Mot2DIndividualRepositorySnapshotProvider
