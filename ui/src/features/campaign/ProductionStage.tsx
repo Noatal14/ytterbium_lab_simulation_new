@@ -435,8 +435,10 @@ function Results({
             </div>
           )}
           <p>
-            <strong>Retained outputs:</strong> eligible as validated 3D campaign
-            input.
+            <strong>Retained outputs:</strong>{" "}
+            {row.output_suitability === "acceptance_only"
+              ? "TEST ONLY acceptance testing; not eligible for scientific use."
+              : "eligible as validated 3D campaign input."}
           </p>
           <details>
             <summary>Technical provenance</summary>
