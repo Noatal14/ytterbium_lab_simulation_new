@@ -18,10 +18,12 @@ jobs:
     env:
       MPLBACKEND: Agg
       PYTHONUNBUFFERED: "1"
-      PYTHONPYCACHEPREFIX: ${{ runner.temp }}/pycache
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Keep Python bytecode outside the checkout
+        run: printf 'PYTHONPYCACHEPREFIX=%s/pycache\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v5
