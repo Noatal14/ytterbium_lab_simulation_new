@@ -48,3 +48,28 @@ def test_bytecode_environment_bootstrap_handles_paths_with_spaces(tmp_path):
     )
     assert env_file.read_text() == f"PYTHONPYCACHEPREFIX={runner_temp}/pycache\n"
     assert workflow.index(match.group(0)) < workflow.index("      - name: Set up Python")
+
+
+def test_full_backend_suite_budget_preserves_selection_and_other_job_limits():
+    workflow = WORKFLOW.read_text()
+    jobs_text = workflow.split("\njobs:\n", 1)[1]
+    jobs = dict(re.findall(
+        r"^  ([a-z][a-z0-9-]*):\n(.*?)(?=^  [a-z][a-z0-9-]*:|\Z)",
+        jobs_text, re.MULTILINE | re.DOTALL,
+    ))
+    assert set(jobs) == {"test", "frontend-checks", "frontend-browser", "host-compatibility"}
+    expected_timeouts = {
+        "test": "90", "frontend-checks": "15",
+        "frontend-browser": "25", "host-compatibility": "25",
+    }
+    for name, expected in expected_timeouts.items():
+        assert re.findall(r"^    timeout-minutes: (\d+)$", jobs[name], re.MULTILINE) == [expected]
+    complete = re.search(
+        r"      - name: Run complete test suite\n(?:        #[^\n]*\n)*"
+        r"        run: ([^\n]+)", jobs["test"],
+    )
+    assert complete is not None
+    # No file list, -k/-m, ignore, or skip filters: all collected tests execute
+    # on a green run; the existing first-failure diagnostics remain unchanged.
+    assert complete.group(1) == "python -m pytest -x -vv --tb=short"
+    assert "PYTEST_ADDOPTS" not in jobs["test"]

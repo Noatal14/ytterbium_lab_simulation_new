@@ -14,7 +14,8 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # CI31 reached 36% in 20 minutes (~55 minutes serial); allow install/runtime variance.
+    timeout-minutes: 90
     env:
       MPLBACKEND: Agg
       PYTHONUNBUFFERED: "1"
