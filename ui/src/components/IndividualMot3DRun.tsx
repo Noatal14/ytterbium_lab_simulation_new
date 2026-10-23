@@ -1418,6 +1418,16 @@ export function IndividualMot3DRun({
             <h3>Summary</h3>
             <dl>
               <div>
+                <dt>Geometry</dt>
+                <dd>
+                  {run.metrics?.provenance.geometry_family === "angled_donut"
+                    ? "Angled donut"
+                    : run.metrics?.provenance.geometry_family === "single_pass"
+                      ? "Single pass"
+                      : "—"}
+                </dd>
+              </div>
+              <div>
                 <dt>Selected 2D-MOT survivors</dt>
                 <dd>{run.metrics?.n_input.toLocaleString() ?? "—"}</dd>
               </div>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type {
@@ -347,7 +347,10 @@ describe("IndividualMot3DRun", () => {
       ).toBeEnabled();
     },
   );
-  it("opens locally verified Zeus results without requiring the old remote checkout", async () => {
+  it.each([
+    ["angled_donut", "Angled donut"],
+    ["single_pass", "Single pass"],
+  ] as const)("opens saved %s results with their recorded geometry without the old remote checkout", async (geometry, label) => {
     const api = service();
     const completed = {
       id: `individual-run-${"1".repeat(24)}`,
@@ -367,7 +370,7 @@ describe("IndividualMot3DRun", () => {
         residence_qualified_captured_count: 0,
         residence_qualified_captured_fraction: 0,
         elapsed_s: 1,
-        provenance: {},
+        provenance: { geometry_family: geometry },
       },
     } as unknown as Mot3DRun;
     window.localStorage.setItem(
@@ -392,6 +395,10 @@ describe("IndividualMot3DRun", () => {
     expect(api.recoverZeus).not.toHaveBeenCalled();
     expect(screen.queryByText("Existing Zeus run needs verification")).not.toBeInTheDocument();
     expect(api.startLocal).not.toHaveBeenCalled();
+    const summary = screen.getByRole("heading", { name: "Summary" }).closest("article");
+    expect(summary).not.toBeNull();
+    expect(within(summary!).getByText("Geometry")).toBeVisible();
+    expect(within(summary!).getByText(label)).toBeVisible();
   });
 
   it("keeps an uncertain Zeus identity visible after failed recovery and only reviews linking", async () => {
