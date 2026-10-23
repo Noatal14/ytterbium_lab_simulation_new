@@ -2027,10 +2027,10 @@ function Mot3DRefinementTransitionStage({
         {connected && !flow.status && flow.state === "idle" && (
           <div className="prepare-card">
             <div>
-              <strong>Verify the completed Refinement outputs</strong>
+              <strong>Check Refinement verification status</strong>
               <p>
-                The scheduler has finished. Scientific validation and local
-                synchronization have not happened yet.
+                Check result verification and local synchronization before
+                taking another action. Checking status does not submit jobs.
               </p>
             </div>
             <button
@@ -2537,10 +2537,10 @@ function Mot3DPreliminaryTransitionStage({
         {connected && !flow.status && flow.state === "idle" && (
           <div className="prepare-card">
             <div>
-              <strong>Verify the completed preliminary-check outputs</strong>
+              <strong>Check preliminary-check verification status</strong>
               <p>
-                The scheduler has finished. Scientific validation and local
-                synchronization have not happened yet.
+                Check result verification and local synchronization before
+                taking another action. Checking status does not submit jobs.
               </p>
             </div>
             <button
@@ -3067,10 +3067,10 @@ function Mot3DDiscoveryTransitionStage({
         {connected && !flow.status && flow.state === "idle" && (
           <div className="prepare-card">
             <div>
-              <strong>Verify the completed Discovery outputs</strong>
+              <strong>Check Discovery verification status</strong>
               <p>
-                The scheduler has finished. Scientific validation and local
-                preparation have not happened yet.
+                Check result verification and local preparation before
+                taking another action. Checking status does not submit jobs.
               </p>
             </div>
             <button

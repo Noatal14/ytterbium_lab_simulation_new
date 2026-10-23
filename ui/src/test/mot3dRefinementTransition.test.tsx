@@ -360,7 +360,15 @@ describe("3D Refinement transition", () => {
           reset: vi.fn(),
           ...extra,
         }) as any;
+    const unqueried = flow(status(), "idle", { status: null });
     const view = render(
+      <Mot3DCampaignFlow {...base} refinementTransition={unqueried} />,
+    );
+    expect(screen.getByText("Check Refinement verification status")).toBeVisible();
+    expect(unqueried.refresh).not.toHaveBeenCalled();
+    expect(unqueried.review).not.toHaveBeenCalled();
+    expect(unqueried.confirm).not.toHaveBeenCalled();
+    view.rerender(
       <Mot3DCampaignFlow
         {...base}
         refinementTransition={flow(
@@ -416,5 +424,7 @@ describe("3D Refinement transition", () => {
     expect(
       screen.getByText(/without submitting or starting a Closure job/),
     ).toBeVisible();
+    expect(screen.queryByText("Check Refinement verification status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/have not happened yet/)).not.toBeInTheDocument();
   });
 });

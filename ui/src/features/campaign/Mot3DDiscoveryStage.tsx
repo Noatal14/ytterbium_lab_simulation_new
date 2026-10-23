@@ -72,9 +72,19 @@ export function Mot3DDiscoveryStage({
         {connected && flow.state === "idle" && !tracked && !needsAttention && (
           <div className="prepare-card">
             <div>
-              <strong>{preparationReady ? "Discovery is prepared, but not submitted" : "Prepare this campaign on Zeus first"}</strong>
+              <strong>
+                {!preparationReady
+                  ? "Prepare this campaign on Zeus first"
+                  : flow.status
+                    ? "Discovery is prepared, but not submitted"
+                    : "Check Discovery submission status"}
+              </strong>
               <p>
-                {preparationReady ? "Review the exact five-array dependency chain before any Zeus job starts." : "Review and confirm the campaign transfer above. If jobs already exist, check their status without submitting again."}
+                {!preparationReady
+                  ? "Review and confirm the campaign transfer above. If jobs already exist, check their status without submitting again."
+                  : flow.status
+                    ? "Review the exact five-array dependency chain before any Zeus job starts."
+                    : "Check for existing Zeus jobs before reviewing a new submission."}
               </p>
             </div>
             <div className="form-actions">
