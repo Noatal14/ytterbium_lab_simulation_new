@@ -232,7 +232,7 @@ def bootstrap_input_hashes(manifest):
     return selected
 
 
-def validate_discovery_bootstrap(root: Path, campaign: Path, manifest, receipt, *, campaign_relative: str, validate_inputs: bool = False):
+def validate_discovery_bootstrap(root: Path, campaign: Path, manifest, receipt, *, campaign_relative: str, validate_inputs: bool = False, synchronized_campaign_sha256: str | None = None):
     """Authenticate the existing exact bootstrap registry without submitting jobs.
 
     ``campaign`` may be a private staging directory; ``campaign_relative`` is the
@@ -257,7 +257,7 @@ def validate_discovery_bootstrap(root: Path, campaign: Path, manifest, receipt, 
     if (
         set(receipt) != RECEIPT_KEYS
         or receipt.get("status") != "discovery_prepared"
-        or manifest.get("stage") != "discovery"
+        or manifest.get("stage") != ("preliminary_check" if synchronized_campaign_sha256 is not None else "discovery")
         or manifest.get("name") != Path(relative).name
     ):
         raise ZeusMot3DDiscoverySubmissionError("discovery_not_prepared")
@@ -303,7 +303,11 @@ def validate_discovery_bootstrap(root: Path, campaign: Path, manifest, receipt, 
     )
     if receipt.get("bootstrap_key") != expected:
         raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+    if synchronized_campaign_sha256 is not None and not HEX64.fullmatch(synchronized_campaign_sha256):
+        raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
     for name, digest in files.items():
+        if name == "campaign.json" and synchronized_campaign_sha256 is not None:
+            digest = synchronized_campaign_sha256
         path = campaign.joinpath(*Path(name).parts)
         _reject_symlink_components(root, path)
         raw = _bounded_bytes(path)
@@ -369,7 +373,7 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
         )
         self._confirm = threading.Lock()
 
-    def _plan(self, request: Mapping[str, object]):
+    def _plan(self, request: Mapping[str, object], *, synchronized_transition: bool = False):
         if (
             not isinstance(request, Mapping)
             or set(request) != {"campaign_id", "username", "project_directory"}
@@ -413,8 +417,26 @@ class ZeusMot3DDiscoverySubmissionCoordinator:
             raise ZeusMot3DDiscoverySubmissionError(
                 "discovery_preparation_invalid"
             ) from exc
+        synchronized_campaign_sha256 = None
+        if synchronized_transition and manifest.get("stage") == "preliminary_check":
+            # The bootstrap's campaign.json is superseded only by an exact,
+            # independently authenticated Discovery-to-Preliminary publication.
+            from workflow_api.mot_3d_preliminary_submission import (
+                Mot3DPreliminarySubmissionCoordinator,
+                Mot3DPreliminarySubmissionError,
+            )
+            try:
+                synchronized = Mot3DPreliminarySubmissionCoordinator(
+                    self.root, self.ssh, self.git
+                )._plan(request)
+            except Mot3DPreliminarySubmissionError as exc:
+                raise ZeusMot3DDiscoverySubmissionError(exc.code) from exc
+            if synchronized[:5] != (campaign_id, profile, campaign, manifest, manifest.get("provenance", {}).get("git_commit")):
+                raise ZeusMot3DDiscoverySubmissionError("discovery_preparation_invalid")
+            synchronized_campaign_sha256 = synchronized[5]["campaign_sha256"]
         commit, nonce, files, expected = validate_discovery_bootstrap(
-            self.root, campaign, manifest, receipt, campaign_relative=relative
+            self.root, campaign, manifest, receipt, campaign_relative=relative,
+            synchronized_campaign_sha256=synchronized_campaign_sha256,
         )
         receipt_digest = canonical_digest(receipt)
         key = canonical_digest(

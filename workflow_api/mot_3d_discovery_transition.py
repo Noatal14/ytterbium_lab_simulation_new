@@ -332,7 +332,7 @@ class Mot3DDiscoveryTransitionCoordinator:
             submit = ZeusMot3DDiscoverySubmissionCoordinator(
                 self.root, self.ssh, self.git
             )
-            plan = submit._plan(request)
+            plan = submit._plan(request, synchronized_transition=True)
         except ZeusMot3DDiscoverySubmissionError as exc:
             raise Mot3DDiscoveryTransitionError(exc.code) from exc
         return plan
