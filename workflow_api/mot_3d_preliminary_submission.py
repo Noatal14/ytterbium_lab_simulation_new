@@ -266,6 +266,10 @@ class Mot3DPreliminarySubmissionCoordinator:
             for name, expected in local_receipt["files"].items():
                 if _sha(_read_at(campaign_fd, name)) != expected:
                     raise ValueError
+            from workflow_api.mot_3d_workload import validate_versioned_discovery_files
+            validate_versioned_discovery_files(
+                manifest, lambda name: _strict_json(_read_at(campaign_fd, name))
+            )
             stage = manifest.get("stages", {}).get("preliminary_check")
             if (
                 not isinstance(stage, dict)

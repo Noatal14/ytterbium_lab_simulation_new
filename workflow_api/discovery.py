@@ -211,7 +211,10 @@ def _survivor_design_matches(payload: dict[str, Any], observed: Any, expected: A
     extras = {"npools": profile.stage("mot_2d", "production")["npools"] if profile else 150,
               "uses_all_available_particles": True}
     if profile is not None:
-        extras["acceptance"] = profile.provenance()
+        from workflow_api.acceptance_profile import source_profile_for_consumer
+        extras["acceptance"] = source_profile_for_consumer(
+            profile.profile_id, payload.get("upstream_2d_campaign")
+        ).provenance()
     return not set(expected).intersection(extras) and _same_json(observed, {**expected, **extras})
 
 
@@ -245,6 +248,14 @@ def _modern_3d_contract(
     design = payload.get("design") if isinstance(payload.get("design"), dict) else {}
     upstream = payload.get("upstream_2d_campaign") if isinstance(payload.get("upstream_2d_campaign"), dict) else {}
     roles = payload.get("input_roles") if isinstance(payload.get("input_roles"), dict) else {}
+    source_marker = payload.get("acceptance")
+    approved_survivors = None
+    if "acceptance" in payload:
+        from workflow_api.acceptance_profile import policy_for_manifest, source_profile_for_consumer
+        profile = policy_for_manifest(payload)
+        source_marker = source_profile_for_consumer(profile.profile_id, upstream).provenance()
+        if profile.profile_id == "ui_acceptance_v2":
+            approved_survivors = profile.family("mot_3d")["accepted_upstream"]["survivor_files"]
     if not provenance.get("git_commit") or len(str(provenance.get("physical_model_sha256", ""))) != 64:
         errors.append("3D immutable code and physical-model provenance is incomplete")
     required_design = ("families", "solver", "screening_dt_s", "production_dt_s", "timestep_status", "optimization_bounds", "selection_statistics")
@@ -314,6 +325,12 @@ def _modern_3d_contract(
                 errors.append("frozen 3D input array identity is invalid")
             if metadata_path is None or _file_sha256(metadata_path) != record.get("metadata_sha256"):
                 errors.append("frozen 3D input metadata identity is invalid")
+            if approved_survivors is not None and (
+                array_path is None or metadata_path is None
+                or record.get("sha256") != approved_survivors.get(array_path.name)
+                or record.get("metadata_sha256") != approved_survivors.get(metadata_path.name)
+            ):
+                errors.append("versioned acceptance donor bytes differ from the reviewed original")
             if not _survivor_design_matches(payload, record.get("source_design"), upstream.get("expected_survivor_design")):
                 errors.append("frozen 3D input design differs from the upstream handoff")
             if record.get("source_parameters") != upstream.get("expected_survivor_parameters"):
@@ -335,7 +352,7 @@ def _modern_3d_contract(
                         not _same_json(metadata.get("design"), record.get("source_design"))
                         or not _same_json(metadata.get("parameters"), record.get("source_parameters"))
                         or metadata.get("output_sha256") != record.get("sha256")
-                        or ("acceptance" in payload and not _same_json(metadata.get("acceptance"), payload["acceptance"]))
+                        or ("acceptance" in payload and not _same_json(metadata.get("acceptance"), source_marker))
                     ))
                 ):
                     errors.append("frozen 3D input metadata differs from its registry record")

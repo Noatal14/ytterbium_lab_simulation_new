@@ -465,3 +465,43 @@ def validate_discovery_job_bytes(manifest, commit, campaign_relative, files):
         files[name] != text.encode() for name, text in rendered.items()
     ):
         raise ValueError("Discovery job bytes differ from the reviewed workload.")
+
+
+def discovery_selection(manifest, summary, family):
+    """Canonical science selection, with only the explicit v2 TESTONLY permutation."""
+    import copy
+    from studies.mot_3d.discovery.select import select_candidates
+    selected = select_candidates(summary, family, count=12)
+    profile = policy(manifest)
+    if profile is None or profile.profile_id == "ui_acceptance_v1":
+        return selected
+    permutation = profile.family("mot_3d")["discovery_candidate_permutation"][family]
+    rows = selected.get("candidates")
+    if (not isinstance(rows, list) or len(rows) != 12
+            or [row.get("candidate_id") for row in rows] != [f"{family}_{i:02d}" for i in range(12)]
+            or tuple(sorted(permutation)) != tuple(range(12))
+            or any(type(i) is not int for i in permutation)):
+        raise ValueError("Versioned acceptance permutation requires the exact canonical twelve-candidate input.")
+    result = copy.deepcopy(selected)
+    result["candidates"] = [copy.deepcopy(rows[i]) for i in permutation]
+    for i, row in enumerate(result["candidates"]):
+        row["candidate_id"] = f"{family}_{i:02d}"
+    return result
+
+
+def validate_discovery_selection(manifest, summary, family, observed):
+    import json
+    expected = discovery_selection(manifest, summary, family)
+    if json.dumps(observed, sort_keys=True, allow_nan=False) != json.dumps(expected, sort_keys=True, allow_nan=False):
+        raise ValueError("Discovery selection differs from its exact profile-specific producer.")
+
+
+def validate_versioned_discovery_files(manifest, read_json):
+    """Reproduce the v2 input ordering at both local and remote authority checks."""
+    profile = policy(manifest)
+    if profile is None or profile.profile_id == "ui_acceptance_v1":
+        return
+    for family in ("angled_donut", "single_pass"):
+        summary = read_json(f"discovery/{family}/merged/merged_summary.json")
+        observed = read_json(f"selection/discovery/{family}.json")
+        validate_discovery_selection(manifest, summary, family, observed)

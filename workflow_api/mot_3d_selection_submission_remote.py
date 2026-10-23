@@ -943,6 +943,13 @@ def main(*, trusted_root_override=None):
         workload.validate_location(manifest, relative)
     except ValueError:
         fail(_config().preparation_error)
+    if _config().stage == "preliminary_check":
+        try:
+            workload.validate_versioned_discovery_files(
+                manifest, lambda name: json_bytes(read_relative_at(campaign_fd, name))
+            )
+        except ValueError:
+            fail(_config().preparation_error)
     evidence = manifest.get("design", {}).get("timestep_evidence", {})
     upstream = manifest.get("upstream_2d_campaign", {})
     if (

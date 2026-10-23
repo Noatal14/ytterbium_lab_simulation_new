@@ -1,0 +1,502 @@
+{
+  "profile_id": "ui_acceptance_v2",
+  "schema_version": 1,
+  "suitability": "acceptance_only",
+  "banner": "TEST ONLY \u2014 UI acceptance; no scientific promotion",
+  "kinds": {
+    "mot_2d": "mot_2d_ui_acceptance_v1",
+    "mot_3d": "mot_3d_ui_acceptance_v1"
+  },
+  "physics": {
+    "solver_2d": "RK4StHybridCustom",
+    "working_dt_2d_s": 1.25e-06,
+    "final_dt_2d_s": 6.25e-07,
+    "t_max_2d_s": 0.025,
+    "solver_3d": "RK4StHybridCustom",
+    "search_dt_3d_s": 1e-05,
+    "final_dt_3d_s": 5e-06,
+    "t_max_3d_s": 0.05,
+    "zeeman_dt_s": 4e-05,
+    "zeeman_t_max_s": 0.02
+  },
+  "mot_2d": {
+    "s0_values": [
+      1.3
+    ],
+    "role_seeds": {
+      "discovery": [
+        3000,
+        3001,
+        3002,
+        3003,
+        3004
+      ],
+      "refinement": [
+        3005,
+        3006,
+        3007,
+        3008,
+        3009
+      ],
+      "held_out_confirmation": [
+        3010,
+        3011,
+        3012,
+        3013,
+        3014
+      ],
+      "sealed_validation": [
+        3015,
+        3016,
+        3017,
+        3018,
+        3019,
+        3020,
+        3021,
+        3022,
+        3023,
+        3024,
+        3025,
+        3026,
+        3027,
+        3028,
+        3029,
+        3030,
+        3031,
+        3032,
+        3033,
+        3034
+      ]
+    },
+    "mot_seed_offset": 40000,
+    "refinement_cumulative_targets": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "screen_candidates": 3,
+    "confirmation_candidates": 5,
+    "stages": {
+      "smoke": {
+        "input_role": "discovery",
+        "particles_per_ensemble": 2,
+        "trials_per_worker": 1,
+        "candidates": 1,
+        "workers": 1,
+        "npools": 1,
+        "ncpus": 1,
+        "memory_gb": 4,
+        "walltime_seconds": 3600,
+        "bootstrap_replicates": 10000
+      },
+      "screen": {
+        "input_role": "discovery",
+        "particles_per_ensemble": 2,
+        "trials_per_worker": 1,
+        "candidates": 3,
+        "workers": 3,
+        "npools": 10,
+        "ncpus": 10,
+        "memory_gb": 8,
+        "walltime_seconds": 3600,
+        "bootstrap_replicates": 10000
+      },
+      "refine": {
+        "input_role": "refinement",
+        "particles_per_ensemble": 2,
+        "trials_per_worker": 4,
+        "candidates": 5,
+        "workers": 3,
+        "npools": 10,
+        "ncpus": 10,
+        "memory_gb": 8,
+        "walltime_seconds": 3600,
+        "bootstrap_replicates": 10000
+      },
+      "confirmation": {
+        "input_role": "held_out_confirmation",
+        "particles_per_ensemble": 2,
+        "trials_per_worker": 0,
+        "candidates": 5,
+        "workers": 1,
+        "npools": 10,
+        "ncpus": 10,
+        "memory_gb": 8,
+        "walltime_seconds": 3600,
+        "bootstrap_replicates": 10000
+      },
+      "sensitivity": {
+        "input_role": "held_out_confirmation",
+        "particles_per_ensemble": 2,
+        "trials_per_worker": 0,
+        "candidates": 17,
+        "workers": 1,
+        "npools": 10,
+        "ncpus": 10,
+        "memory_gb": 8,
+        "walltime_seconds": 3600,
+        "bootstrap_replicates": 10000
+      },
+      "production": {
+        "input_role": "sealed_validation",
+        "particles_per_ensemble": "all_available",
+        "trials_per_worker": 0,
+        "candidates": 1,
+        "workers": 1,
+        "npools": 24,
+        "ncpus": 24,
+        "memory_gb": 16,
+        "walltime_seconds": 3600,
+        "bootstrap_replicates": 10000
+      }
+    }
+  },
+  "mot_3d": {
+    "families": [
+      "angled_donut",
+      "single_pass"
+    ],
+    "role_seeds": {
+      "discovery": [
+        3015,
+        3016,
+        3017,
+        3018,
+        3019,
+        3020,
+        3021,
+        3022,
+        3023,
+        3024,
+        3025,
+        3026
+      ],
+      "refinement": [
+        3027,
+        3028,
+        3029,
+        3030
+      ],
+      "preliminary_check": [
+        3031,
+        3032,
+        3033,
+        3034
+      ]
+    },
+    "discovery_targets": {
+      "angled_donut": [
+        4,
+        4,
+        4
+      ],
+      "single_pass": [
+        4,
+        4,
+        4
+      ]
+    },
+    "discovery_rounds": {
+      "angled_donut": 2,
+      "single_pass": 3
+    },
+    "sampler_seeds": [
+      271001,
+      271002,
+      271003
+    ],
+    "final_validation_zeeman_seeds": [
+      3035,
+      3036,
+      3037,
+      3038,
+      3039,
+      3040,
+      3041,
+      3042,
+      3043,
+      3044,
+      3045,
+      3046,
+      3047,
+      3048,
+      3049,
+      3050,
+      3051,
+      3052,
+      3053,
+      3054
+    ],
+    "final_validation_mot_seeds": [
+      43035,
+      43036,
+      43037,
+      43038,
+      43039,
+      43040,
+      43041,
+      43042,
+      43043,
+      43044,
+      43045,
+      43046,
+      43047,
+      43048,
+      43049,
+      43050,
+      43051,
+      43052,
+      43053,
+      43054
+    ],
+    "stages": {
+      "smoke": {
+        "input_role": "discovery",
+        "particles_per_ensemble": 1,
+        "candidates_per_family": 1,
+        "workers": 3,
+        "npools": 4,
+        "ncpus": 4,
+        "memory_gb": 4,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [],
+        "bootstrap_replicates": 10000
+      },
+      "discovery": {
+        "input_role": "discovery",
+        "particles_per_ensemble": 1,
+        "candidates_per_family": 12,
+        "workers": 3,
+        "npools": 4,
+        "ncpus": 4,
+        "memory_gb": 4,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [],
+        "bootstrap_replicates": 10000
+      },
+      "preliminary_check": {
+        "input_role": "preliminary_check",
+        "particles_per_ensemble": 1,
+        "candidates_per_family": 12,
+        "workers": 3,
+        "npools": 4,
+        "ncpus": 4,
+        "memory_gb": 4,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [
+          41001,
+          41002,
+          41003
+        ],
+        "bootstrap_replicates": 10000
+      },
+      "refinement": {
+        "input_role": "refinement",
+        "particles_per_ensemble": 1,
+        "candidates_per_family": 16,
+        "workers": 3,
+        "npools": 4,
+        "ncpus": 4,
+        "memory_gb": 4,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [
+          42001,
+          42002,
+          42003
+        ],
+        "bootstrap_replicates": 10000
+      },
+      "closure": {
+        "input_role": "refinement",
+        "particles_per_ensemble": 1,
+        "candidates_per_family": 16,
+        "workers": 3,
+        "npools": 4,
+        "ncpus": 4,
+        "memory_gb": 4,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [
+          42001,
+          42002,
+          42003
+        ],
+        "bootstrap_replicates": 10000
+      },
+      "finalist_selection": {
+        "input_role": "all_existing_selection",
+        "particles_per_ensemble": "all_available",
+        "candidates_per_family": 3,
+        "workers": 3,
+        "npools": 100,
+        "ncpus": 100,
+        "memory_gb": 64,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [
+          43001,
+          43002,
+          43003
+        ],
+        "bootstrap_replicates": 10000,
+        "array_throttle": 1
+      },
+      "final_validation": {
+        "input_role": "new_sealed_validation",
+        "particles_per_ensemble": "all_available",
+        "candidates_per_family": 1,
+        "workers": 3,
+        "npools": 100,
+        "ncpus": 100,
+        "memory_gb": 64,
+        "walltime_seconds": 3600,
+        "merge_ncpus": 1,
+        "merge_memory_gb": 4,
+        "merge_walltime_seconds": 3600,
+        "recoil_seeds": [
+          44001,
+          44002,
+          44003
+        ],
+        "bootstrap_replicates": 20000,
+        "array_throttle": 1
+      }
+    },
+    "discovery_candidate_permutation": {
+      "angled_donut": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "single_pass": [
+        2,
+        1,
+        0,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    "accepted_upstream": {
+      "profile_id": "ui_acceptance_v1",
+      "profile_sha256": "f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148",
+      "source_id": "29ed43e6837f7e23dbb897fd9b3194f3e3600c346476ebfef2947df14246e6c8",
+      "final_report_sha256": "78bc43b7c67538f512957bd09a2676d98770accb63e4e229c1afe91e3e27d066",
+      "survivor_files": {
+        "mot_2d_survivors_zeeman_seed3015_mot_seed43015.json": "6ab1199b51509ac5e21d418755778c30a5e8d4d1eb8073ab5f227e10518d7f9d",
+        "mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy": "4718385ac717fc6b9dc42a64fbde3fca82fdd3ca8c294dd7905c524666ce96ec",
+        "mot_2d_survivors_zeeman_seed3016_mot_seed43016.json": "d8d4f75f433303756b218e14ea925d5adf27f6013032e85521dfbf2f7dfa52d4",
+        "mot_2d_survivors_zeeman_seed3016_mot_seed43016.npy": "df69d21d62bdb8d826b6ac44073bce9b4dff4411a9778bc3b217d86f6c7a1755",
+        "mot_2d_survivors_zeeman_seed3017_mot_seed43017.json": "7f94e9f789f9e135dec923fe86cc4450481ed7d52553f5af8d3742b91b2db884",
+        "mot_2d_survivors_zeeman_seed3017_mot_seed43017.npy": "6d0995ade242a0bc6bc725327a03665f23032d2580060cfef668718349310cfc",
+        "mot_2d_survivors_zeeman_seed3018_mot_seed43018.json": "254b83afc5d27920a9ba166612338b9df76425b2a0ee77c4ac950ff4d4a4a2d2",
+        "mot_2d_survivors_zeeman_seed3018_mot_seed43018.npy": "85dc77337f2300a5527be3a435c027773fd135a17f642cdfc31e602eeaed82ca",
+        "mot_2d_survivors_zeeman_seed3019_mot_seed43019.json": "a662a03214c345ba6b91b6eb55e279348b4028fdd0efde3d7f7392580545ebd5",
+        "mot_2d_survivors_zeeman_seed3019_mot_seed43019.npy": "ce241f22ab4ba875088d69f9986b90ef4cfa4df396fed1dd4ad9e5c2e148bc98",
+        "mot_2d_survivors_zeeman_seed3020_mot_seed43020.json": "0944bdbe949f13c046da539d88b88ba1c8f68e18d48a0582439a823439ad49c5",
+        "mot_2d_survivors_zeeman_seed3020_mot_seed43020.npy": "94c714c16e440f721aebc9a7989e57e05dc23439ad5c978dee2669b984674cec",
+        "mot_2d_survivors_zeeman_seed3021_mot_seed43021.json": "becb0ac7ec9f73698c6ebfa1c400632721f13ef10b56f00dc5ca3408e9d8d0d4",
+        "mot_2d_survivors_zeeman_seed3021_mot_seed43021.npy": "5e22ef40c3822bd3b3675a1addbf66f1fb0c49f0709443b55db4d6cb96433503",
+        "mot_2d_survivors_zeeman_seed3022_mot_seed43022.json": "10889d54f7db8278a57dd4680e2b3ab34aa255bb2c5b6c5694a5d97d24bc92c6",
+        "mot_2d_survivors_zeeman_seed3022_mot_seed43022.npy": "a10d0537320abf99e89d5ce7991574f886f662cf86845d5e47da868a1c6220a7",
+        "mot_2d_survivors_zeeman_seed3023_mot_seed43023.json": "36aaab6c77cb6075ddbd008a36676aab21d16fdf89214002e5a00a9dc4b891ea",
+        "mot_2d_survivors_zeeman_seed3023_mot_seed43023.npy": "309c5ce71b54d1c62ef094d4fd82d4f78ecf63285a266b28a7f461818f14f8d9",
+        "mot_2d_survivors_zeeman_seed3024_mot_seed43024.json": "18c50178a41b643cb39e82b86fbf3655b65dae1a43c2ca3690d4d055d86266d3",
+        "mot_2d_survivors_zeeman_seed3024_mot_seed43024.npy": "eb273f75059f85ac205befb977f0faf16d71bac9a7aea4f3b11d41247075b6f1",
+        "mot_2d_survivors_zeeman_seed3025_mot_seed43025.json": "f76ac81900452bfe622e12c97925e63431ec1ea1c32998437e834bde2c748580",
+        "mot_2d_survivors_zeeman_seed3025_mot_seed43025.npy": "0a7012850b2518e3933db0e92608ee5569ee04c3dd5da36732e9491a24049902",
+        "mot_2d_survivors_zeeman_seed3026_mot_seed43026.json": "2ce886a5152515659ef4a5567ac3657e219be875c98aa20c968c7a107890fd43",
+        "mot_2d_survivors_zeeman_seed3026_mot_seed43026.npy": "d4f471762e6abbfc47d194016376087126b9c9046c5caf12831e0d97f25252a0",
+        "mot_2d_survivors_zeeman_seed3027_mot_seed43027.json": "1b161175f6e655d81447bc934ace38c6d39be8baad99f6b054eea2b6cc230947",
+        "mot_2d_survivors_zeeman_seed3027_mot_seed43027.npy": "d26a57950485dde4d397854338bd85d8f997e7174958584a45128aad2b5e6a26",
+        "mot_2d_survivors_zeeman_seed3028_mot_seed43028.json": "e7d6d967ea8f5c5fe3cc3ce095036bcda6cbfd40af28605c5be0c5acf3ec350c",
+        "mot_2d_survivors_zeeman_seed3028_mot_seed43028.npy": "75fbd868b06898311ceb2578e89b7bb0ba5e723e466bf8522e21261757fe0668",
+        "mot_2d_survivors_zeeman_seed3029_mot_seed43029.json": "5c599ef70c36a3439eae6ea2fb31f8c26d97c83a22f71d734184f300dd7afc28",
+        "mot_2d_survivors_zeeman_seed3029_mot_seed43029.npy": "8a1d912f297af7fc899e02a31e7d58688c26f5340ef81e7d1ac7143a899a2612",
+        "mot_2d_survivors_zeeman_seed3030_mot_seed43030.json": "51b7691c370bc063d180021e27a6a17a624e780ce5e699176ca5e03e78f6abd6",
+        "mot_2d_survivors_zeeman_seed3030_mot_seed43030.npy": "dc44d8ee566090d9ab4627347ffafc2a25f186e4366d156fde46f2b8d081e8a7",
+        "mot_2d_survivors_zeeman_seed3031_mot_seed43031.json": "1a9e2d053fbecd3317b835c6b4ead354250c3bc0b550d8410ee90b1f5aa88b55",
+        "mot_2d_survivors_zeeman_seed3031_mot_seed43031.npy": "b3c401ee2b47a15781d2216d31199a25ad317c3604be9fa95b67a306720e5096",
+        "mot_2d_survivors_zeeman_seed3032_mot_seed43032.json": "44d5b11d156237f1e71edbd279e9a8c412a32e1975006ac376d01b3eadb05711",
+        "mot_2d_survivors_zeeman_seed3032_mot_seed43032.npy": "5a6dc7d3aa140bffdbe1e1a794e7a4bd04d8870e79901e89db120105f1fff205",
+        "mot_2d_survivors_zeeman_seed3033_mot_seed43033.json": "23a07e7637dd2395c638f97890f813c49af61d218422971e5ed19d2cc53f0480",
+        "mot_2d_survivors_zeeman_seed3033_mot_seed43033.npy": "b93b481245ab0846c19fa6e28bcd93fe25210d1a247f7e20c6463422a157cf0c",
+        "mot_2d_survivors_zeeman_seed3034_mot_seed43034.json": "37e365d5ea29fbc1495e046f341b7e06e73434d667223f8223e79888ee62bd25",
+        "mot_2d_survivors_zeeman_seed3034_mot_seed43034.npy": "dcb32b99ec15272c5fa782057f9f51927a1eef20a9bfda2444c01f7ce3d06534"
+      }
+    }
+  },
+  "generation": {
+    "zeeman_initial_particles": 32,
+    "minimum_survivors_per_ensemble": 2,
+    "controlled_inputs_required": true,
+    "controlled_input_recipe": {
+      "recipe_version": "near_cutoff_all_admitted_v1",
+      "distribution": "controlled_near_cutoff_not_thermal",
+      "random_generator": "numpy.PCG64",
+      "admitted_particles": 32,
+      "upstream_offset_m": 0.0005,
+      "longitudinal_jitter_m": 5e-05,
+      "radial_jitter_m": 1e-05,
+      "speed_m_s": 42.0,
+      "speed_jitter_m_s": 0.2,
+      "transverse_speed_jitter_m_s": 0.005,
+      "off_aperture_radius_m": 0.02
+    },
+    "jobs": {
+      "zeeman": {
+        "npools": 1,
+        "ncpus": 1,
+        "memory_gb": 4,
+        "walltime_seconds": 3600
+      },
+      "mot_2d": {
+        "npools": 10,
+        "ncpus": 10,
+        "memory_gb": 8,
+        "walltime_seconds": 3600
+      },
+      "freeze": {
+        "npools": 1,
+        "ncpus": 1,
+        "memory_gb": 4,
+        "walltime_seconds": 3600
+      }
+    }
+  },
+  "scheduler": {
+    "vnode": "gd002"
+  }
+}

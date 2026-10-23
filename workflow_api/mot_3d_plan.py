@@ -192,7 +192,7 @@ def render_discovery_bootstrap(
         or not re.fullmatch(r"[0-9a-f]{64}", physical_model_sha256)
     ):
         raise ValueError("Invalid 3D campaign identity or provenance.")
-    upstream = validate_upstream_2d_campaign(upstream_campaign, survivor_directory, acceptance_profile_id=acceptance_profile_id)
+    upstream = validate_upstream_2d_campaign(upstream_campaign, survivor_directory, acceptance_profile_id=acceptance_profile_id, repository_root=repository_root)
     expected_pairs = {
         row["zeeman_seed"]: row["mot_seed"] for row in upstream["sealed_seed_pairs"]
     }
@@ -202,6 +202,8 @@ def render_discovery_bootstrap(
         expected_design=upstream["expected_survivor_design"],
         expected_parameters=upstream["expected_survivor_parameters"],
         acceptance_profile_id=acceptance_profile_id,
+        acceptance_upstream=upstream,
+        repository_root=repository_root,
     )
     if approval_path is not None:
         raise ValueError("External 3D timestep approval files are no longer accepted.")

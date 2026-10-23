@@ -156,7 +156,8 @@ def validate_ensemble(path: Path, *, seed: int, n_initial: int, acceptance: dict
                 or metadata.get('software', {}).get('tracked_worktree_was_dirty') is not False))):
         raise ValueError('Acceptance ensemble metadata or array integrity changed.')
     attest_canonical_zeeman_metadata(metadata, allow_legacy=False)
-    profile = load_acceptance_profile()
+    from workflow_api.acceptance_profile import policy_for_marker
+    profile = policy_for_marker(acceptance)
     if 'controlled_input_recipe' in profile.policy['generation']:
         _, origin = controlled_initial_states(seed, profile)
         expected_explicit = {'kind': 'explicit_initial_states', 'suitability': 'acceptance_only',

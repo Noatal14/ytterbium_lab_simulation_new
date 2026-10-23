@@ -1934,15 +1934,21 @@ class WorkflowHandler(BaseHTTPRequestHandler):
                     self._body_consumed = True
                     self.connection.settimeout(previous_timeout)
         body = json.dumps(payload, sort_keys=True).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        for key, value in (extra_headers or {}).items():
-            self.send_header(key, value)
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            for key, value in (extra_headers or {}).items():
+                self.send_header(key, value)
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+            # A client may retire a GET while its response is being sent. Do not
+            # retry a response (including a completed POST's response) or turn a
+            # transport disconnect into a coordinator/serialization failure.
+            self.close_connection = True
 
     def log_message(self, format: str, *args: object) -> None:
         return
@@ -1955,7 +1961,7 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Local simulation workflow API")
-    parser.add_argument("--acceptance-profile", choices=["ui_acceptance_v1"])
+    parser.add_argument("--acceptance-profile", choices=["ui_acceptance_v1", "ui_acceptance_v2"])
     arguments = parser.parse_args()
     WorkflowHandler.acceptance_profile_id = arguments.acceptance_profile
     # Keep scientific simulation/study modules behind process startup.  Merely

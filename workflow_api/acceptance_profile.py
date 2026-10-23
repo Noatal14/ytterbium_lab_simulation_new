@@ -15,6 +15,9 @@ from typing import Any
 
 PROFILE_ID = 'ui_acceptance_v1'
 PROFILE_SHA256 = 'f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148'
+PROFILE_V2_ID = 'ui_acceptance_v2'
+PROFILE_V2_SHA256 = 'b7f40de6cbf9311e42408ecbc0ff3ecfa66195e2ebdab2287c317ee43c1517b7'
+PROFILE_DIGESTS = MappingProxyType({PROFILE_ID: PROFILE_SHA256, PROFILE_V2_ID: PROFILE_V2_SHA256})
 ACCEPTANCE_KINDS = MappingProxyType({'mot_2d': 'mot_2d_ui_acceptance_v1', 'mot_3d': 'mot_3d_ui_acceptance_v1'})
 SCIENTIFIC_KINDS = frozenset(('mot_2d_s0_campaign', 'mot_3d_campaign_v2'))
 
@@ -73,11 +76,11 @@ class AcceptanceProfile:
 
 
 def load_acceptance_profile(profile_id: str = PROFILE_ID) -> AcceptanceProfile:
-    if profile_id != PROFILE_ID:
+    if type(profile_id) is not str or profile_id not in PROFILE_DIGESTS:
         raise ValueError('Unknown acceptance profile.')
-    path = Path(__file__).with_name('specifications') / f'{PROFILE_ID}.json'
+    path = Path(__file__).with_name('specifications') / f'{profile_id}.json'
     value = json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=_unique)
-    if _digest(value) != PROFILE_SHA256:
+    if _digest(value) != PROFILE_DIGESTS[profile_id] or value.get("profile_id") != profile_id:
         raise ValueError('Acceptance policy differs from its reviewed immutable version.')
     from lab_setup.numerical_policy import NUMERICAL_POLICY
     from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
@@ -91,11 +94,20 @@ def load_acceptance_profile(profile_id: str = PROFILE_ID) -> AcceptanceProfile:
     }
     if physics != expected:
         raise ValueError('Acceptance physics no longer matches the canonical physical policy.')
-    return AcceptanceProfile(PROFILE_ID, PROFILE_SHA256, _freeze(value))
+    return AcceptanceProfile(profile_id, PROFILE_DIGESTS[profile_id], _freeze(value))
 
 
 def is_acceptance_manifest(manifest: Mapping[str, Any]) -> bool:
     return manifest.get('kind') in ACCEPTANCE_KINDS.values()
+
+
+def policy_for_marker(marker: Mapping[str, Any]) -> AcceptanceProfile:
+    if not isinstance(marker, Mapping):
+        raise ValueError("Acceptance manifest lacks its reviewed marker.")
+    profile = load_acceptance_profile(marker.get("profile_id"))
+    if dict(marker) != profile.provenance():
+        raise ValueError("Acceptance profile marker differs from its immutable definition.")
+    return profile
 
 
 def policy_for_manifest(manifest: Mapping[str, Any]) -> AcceptanceProfile | None:
@@ -107,7 +119,7 @@ def policy_for_manifest(manifest: Mapping[str, Any]) -> AcceptanceProfile | None
         if manifest.get('kind') not in SCIENTIFIC_KINDS:
             raise ValueError('Unknown campaign kind.')
         return None
-    profile = load_acceptance_profile()
+    profile = policy_for_marker(marker)
     if not isinstance(marker, Mapping) or dict(marker) != profile.provenance():
         raise ValueError('Acceptance manifest lacks exact reviewed profile and physical provenance.')
     return profile
@@ -140,7 +152,7 @@ def assert_scientific_source(value: Mapping[str, Any]) -> None:
         if isinstance(item, Mapping):
             if ('acceptance' in item or item.get('kind') in ACCEPTANCE_KINDS.values()
                     or item.get('suitability') == 'acceptance_only'
-                    or item.get('profile_id') == PROFILE_ID):
+                    or item.get('profile_id') in tuple(PROFILE_DIGESTS)):
                 return True
             return any(marked(child) for child in item.values())
         if isinstance(item, (list, tuple)):
@@ -156,3 +168,26 @@ def assert_same_acceptance_lineage(parent: Mapping[str, Any], child: Mapping[str
         raise ValueError('Acceptance lineage cannot cross into a scientific campaign.')
     if parent['acceptance'] != child['acceptance']:
         raise ValueError('Acceptance profile lineage changed.')
+
+
+def source_profile_for_consumer(profile_id: str, upstream: Mapping[str, Any] | None = None) -> AcceptanceProfile:
+    """Only v2's exact reviewed O16 donor may cross a profile boundary."""
+    consumer = load_acceptance_profile(profile_id)
+    if profile_id == PROFILE_ID:
+        return consumer
+    allowed = consumer.family("mot_3d")["accepted_upstream"]
+    if not isinstance(upstream, Mapping):
+        raise ValueError("Versioned acceptance source authority is required.")
+    try:
+        source_id = _digest({"campaign": upstream["campaign_sha256"],
+                             "report": upstream["final_report_sha256"],
+                             "s0": upstream["selected_result"]["s0"]})
+    except (KeyError, TypeError) as error:
+        raise ValueError("Incomplete acceptance source authority.") from error
+    if (source_id != allowed["source_id"]
+            or upstream["final_report_sha256"] != allowed["final_report_sha256"]):
+        raise ValueError("The source is not the exact reviewed versioned acceptance donor.")
+    source = load_acceptance_profile(allowed["profile_id"])
+    if source.sha256 != allowed["profile_sha256"]:
+        raise ValueError("Versioned acceptance source profile differs.")
+    return source
