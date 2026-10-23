@@ -2665,6 +2665,13 @@
     },
     {
       "domain": "mot_3d_preliminary_transition",
+      "case": "refinement_design_duplicate",
+      "code": "refinement_design_duplicate",
+      "status": 412,
+      "message": "Refinement preparation is blocked: the fixed candidate design produces duplicate parameter points. No Refinement was prepared by this check. Keep the existing results and request review of the campaign design; retrying this action will not resolve it."
+    },
+    {
+      "domain": "mot_3d_preliminary_transition",
       "case": "remote_checkout_mismatch",
       "code": "remote_checkout_mismatch",
       "status": 412,

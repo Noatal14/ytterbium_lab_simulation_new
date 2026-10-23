@@ -332,6 +332,10 @@ def _trusted_status_harness(tmp_path, monkeypatch):
 
     monkeypatch.setattr(remote, "run", fake_run)
     monkeypatch.setattr(stage2_remote, "run", fake_run)
+    # This result-validator fixture deliberately uses empty physical parameters.
+    # Its receiver/152-artifact boundary is independent of next-design rendering;
+    # genuine physical rendering is covered by the captured-summary preflight test.
+    monkeypatch.setattr(remote, "_render_transition", lambda *_: ({}, {}))
     return root, campaign, payload
 
 

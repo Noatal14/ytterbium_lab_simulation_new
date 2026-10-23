@@ -2132,6 +2132,16 @@ def main(*, trusted_root_override=None):
                 reason=getattr(exc, "code", "result_registry_invalid"),
             )
             return
+        # A successful result validation does not prove that the fixed next-stage
+        # design can be rendered. Reject its specific duplicate-role failure before
+        # offering a review or creating any transition lock/publication intent.
+        if _descriptor().to_stage == "refinement":
+            from studies.mot_3d.refinement.select import DuplicateRefinementPointError
+
+            try:
+                _render_transition(relative, manifest, validated, frozen["campaign.json"])
+            except DuplicateRefinementPointError:
+                fail("refinement_design_duplicate")
         if operation in {"inspect", "status"}:
             _response(
                 "ready_to_advance",

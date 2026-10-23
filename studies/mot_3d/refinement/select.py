@@ -8,6 +8,10 @@ from config import MOT_3D_OPTIMIZATION_CONFIG
 from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 
 
+class DuplicateRefinementPointError(ValueError):
+    """The unchanged canonical design cannot produce distinct candidate roles."""
+
+
 COMMON_BOUNDS = {
     "green_s0": "green_s0_bounds",
     "green_detuning_gamma": "green_detuning_gamma_bounds",
@@ -106,7 +110,9 @@ def select_from_summary(family, summary):
     for index, (role, parameters, source) in enumerate(rows):
         signature = tuple(sorted(parameters.items()))
         if signature in signatures:
-            raise ValueError(f"Duplicate refinement point generated for {role}.")
+            raise DuplicateRefinementPointError(
+                f"Duplicate refinement point generated for {role}."
+            )
         signatures.add(signature)
         profile, resolved, derived = build_profile_from_parameters(family, parameters)
         candidates.append(

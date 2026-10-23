@@ -1205,6 +1205,20 @@ MOT_3D_PRELIMINARY_TRANSITION = _generic_stage(
     },
     "mot_3d_preliminary_transition_failed",
 )
+MOT_3D_PRELIMINARY_TRANSITION = _frozen(
+    {
+        **MOT_3D_PRELIMINARY_TRANSITION.entries,
+        "refinement_design_duplicate": _spec(
+            HTTPStatus.PRECONDITION_FAILED,
+            "Refinement preparation is blocked: the fixed candidate design produces "
+            "duplicate parameter points. No Refinement was "
+            "prepared by this check. Keep the existing results and request review "
+            "of the campaign design; retrying this action will not resolve it.",
+        ),
+    },
+    MOT_3D_PRELIMINARY_TRANSITION.fallback,
+    MOT_3D_PRELIMINARY_TRANSITION.fallback_code,
+)
 MOT_3D_REFINEMENT_TRANSITION = _generic_stage(
     {
         "request_invalid",

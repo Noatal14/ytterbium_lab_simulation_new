@@ -1,0 +1,1213 @@
+{
+  "angled_donut": {
+    "kind": "merged_mot_3d_early_independent_check",
+    "family": "angled_donut",
+    "candidate_count": 12,
+    "particle_count": 4,
+    "ensemble_file_indices": [
+      16,
+      17,
+      18,
+      19
+    ],
+    "recoil_seed_count": 3,
+    "bootstrap_method": "crossed hierarchical resampling of ensemble clusters and recoil seeds, with particle resampling within each selected ensemble",
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 52001,
+    "multiplicity_method": "paired centered-bootstrap max-T simultaneous intervals",
+    "simultaneous_critical_value": 2.203780783618783,
+    "paired_difference_critical_value": 2.0920862151857027,
+    "lcb_leader_candidate_id": "angled_donut_00",
+    "ranked_candidates": [
+      {
+        "candidate_id": "angled_donut_00",
+        "selection_roles": [
+          "global_best",
+          "worker_0_best",
+          "lower_power"
+        ],
+        "discovery_rank": 1,
+        "discovery_usable_at_end_fraction": 0.75,
+        "discovery_usable_at_end_count": 9,
+        "worker_index": 0,
+        "trial_number": 2,
+        "normalized_boundary_distance": 0.05935942670042027,
+        "power_proxy": 0.2611314966109719,
+        "parameters": {
+          "green_s0": 121.08816438361195,
+          "green_detuning_gamma": -11.750480495075578,
+          "green_waist_m": 0.018931530319392438,
+          "blue_s0": 0.635958779691486,
+          "blue_waist_m": 0.01393956393687631,
+          "magnetic_gradient_G_cm": 74.72264032058956,
+          "blue_detuning_gamma": -4.857504373426494,
+          "core_shell_split_radius_m": 0.001534049964294786
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.5833333333333334,
+        "mean_usable_count_per_600": 350.0,
+        "bootstrap_95_ci": [
+          0.0,
+          1.0
+        ],
+        "simultaneous_95_ci": [
+          0.05663879091382662,
+          1.1100278757528401
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          2,
+          4,
+          1
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_01",
+        "selection_roles": [
+          "worker_1_best",
+          "best_interior"
+        ],
+        "discovery_rank": 5,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 3,
+        "normalized_boundary_distance": 0.1320635993250504,
+        "power_proxy": 0.11810279393432847,
+        "parameters": {
+          "green_s0": 118.24019979415972,
+          "green_detuning_gamma": -19.69368726984541,
+          "green_waist_m": 0.012885857762606766,
+          "blue_s0": 0.6770391619216674,
+          "blue_waist_m": 0.008642158799295278,
+          "magnetic_gradient_G_cm": 69.06074876469533,
+          "blue_detuning_gamma": -1.226349796287777,
+          "core_shell_split_radius_m": 0.002498872814997087
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_02",
+        "selection_roles": [
+          "worker_2_best"
+        ],
+        "discovery_rank": 3,
+        "discovery_usable_at_end_fraction": 0.08333333333333333,
+        "discovery_usable_at_end_count": 1,
+        "worker_index": 2,
+        "trial_number": 3,
+        "normalized_boundary_distance": 0.07660257088663269,
+        "power_proxy": 0.01050866971987766,
+        "parameters": {
+          "green_s0": 135.53198421642682,
+          "green_detuning_gamma": -24.799490502993415,
+          "green_waist_m": 0.0033788462759593886,
+          "blue_s0": 0.829874710960705,
+          "blue_waist_m": 0.015683658453525255,
+          "magnetic_gradient_G_cm": 64.6924354901,
+          "blue_detuning_gamma": -3.382254471789407,
+          "core_shell_split_radius_m": 0.0025311830151036846
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_04",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 9,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 2,
+        "trial_number": 1,
+        "normalized_boundary_distance": 0.021638176724465885,
+        "power_proxy": 0.002233728111437806,
+        "parameters": {
+          "green_s0": 14.668293734324878,
+          "green_detuning_gamma": -33.10599544913934,
+          "green_waist_m": 0.0036502217797844934,
+          "blue_s0": 0.5687522054226551,
+          "blue_waist_m": 0.017633396933786155,
+          "magnetic_gradient_G_cm": 2.6529985840843557,
+          "blue_detuning_gamma": -3.9389607334966192,
+          "core_shell_split_radius_m": 0.0007150761492336258
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_05",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 6,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 2,
+        "trial_number": 2,
+        "normalized_boundary_distance": 0.0028048613327389393,
+        "power_proxy": 0.016236651097436435,
+        "parameters": {
+          "green_s0": 26.087801997613692,
+          "green_detuning_gamma": -25.526126827245673,
+          "green_waist_m": 0.010108022755989396,
+          "blue_s0": 0.30929231370257054,
+          "blue_waist_m": 0.011465996515186377,
+          "magnetic_gradient_G_cm": 96.90773555842735,
+          "blue_detuning_gamma": -1.6638145469112615,
+          "core_shell_split_radius_m": 0.004887658610135948
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_06",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 8,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 0,
+        "trial_number": 3,
+        "normalized_boundary_distance": 0.043040711079027266,
+        "power_proxy": 0.05495536011959724,
+        "parameters": {
+          "green_s0": 29.97001689624005,
+          "green_detuning_gamma": -16.92863217720867,
+          "green_waist_m": 0.017382508208827543,
+          "blue_s0": 0.7678172682523426,
+          "blue_waist_m": 0.011623603678157237,
+          "magnetic_gradient_G_cm": 89.10849333365792,
+          "blue_detuning_gamma": -5.76327608906535,
+          "core_shell_split_radius_m": 0.0038979155681910403
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_07",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 4,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 0,
+        "trial_number": 1,
+        "normalized_boundary_distance": 0.07808141403467184,
+        "power_proxy": 0.006128616332417093,
+        "parameters": {
+          "green_s0": 12.17317139818344,
+          "green_detuning_gamma": -13.627533076577478,
+          "green_waist_m": 0.008619678000180195,
+          "blue_s0": 0.968187923563244,
+          "blue_waist_m": 0.010992142557535734,
+          "magnetic_gradient_G_cm": 26.722783815012477,
+          "blue_detuning_gamma": -1.3667528986345703,
+          "core_shell_split_radius_m": 0.00407920951522509
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_08",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 12,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 1,
+        "normalized_boundary_distance": 0.19213470102538444,
+        "power_proxy": 0.11862783087204992,
+        "parameters": {
+          "green_s0": 72.05155157505452,
+          "green_detuning_gamma": -18.331935311025816,
+          "green_waist_m": 0.01654157538154308,
+          "blue_s0": 1.2095968719759438,
+          "blue_waist_m": 0.0068218543453675545,
+          "magnetic_gradient_G_cm": 36.06147388240129,
+          "blue_detuning_gamma": -2.261134060451905,
+          "core_shell_split_radius_m": 0.002731912069998997
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_09",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 7,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 2,
+        "normalized_boundary_distance": 0.07469511698436504,
+        "power_proxy": 0.1811270307712058,
+        "parameters": {
+          "green_s0": 118.62877967106678,
+          "green_detuning_gamma": -7.24085350953095,
+          "green_waist_m": 0.015948799978915424,
+          "blue_s0": 0.7940296562455774,
+          "blue_waist_m": 0.004033998716591956,
+          "magnetic_gradient_G_cm": 62.39185710544662,
+          "blue_detuning_gamma": -5.265791693731862,
+          "core_shell_split_radius_m": 0.002171364667153813
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_10",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 10,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 0,
+        "normalized_boundary_distance": 0.020100502512562814,
+        "power_proxy": 0.01053,
+        "parameters": {
+          "green_s0": 30.0,
+          "green_detuning_gamma": -25.0,
+          "green_waist_m": 0.0075,
+          "blue_s0": 1.2,
+          "blue_waist_m": 0.0075,
+          "magnetic_gradient_G_cm": 2.5,
+          "blue_detuning_gamma": -3.0,
+          "core_shell_split_radius_m": 0.0035
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_11",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 11,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 2,
+        "trial_number": 0,
+        "normalized_boundary_distance": 0.0,
+        "power_proxy": 0.01063125,
+        "parameters": {
+          "green_s0": 30.0,
+          "green_detuning_gamma": -25.0,
+          "green_waist_m": 0.0075,
+          "blue_s0": 1.5,
+          "blue_waist_m": 0.0075,
+          "magnetic_gradient_G_cm": 2.5,
+          "blue_detuning_gamma": -2.5,
+          "core_shell_split_radius_m": 0.004
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.0833333333333335,
+          -0.08333333333333337
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "angled_donut_03",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 2,
+        "discovery_usable_at_end_fraction": 0.16666666666666666,
+        "discovery_usable_at_end_count": 2,
+        "worker_index": 0,
+        "trial_number": 0,
+        "normalized_boundary_distance": 0.0,
+        "power_proxy": 0.01063125,
+        "parameters": {
+          "green_s0": 30.0,
+          "green_detuning_gamma": -25.0,
+          "green_waist_m": 0.0075,
+          "blue_s0": 1.5,
+          "blue_waist_m": 0.0075,
+          "magnetic_gradient_G_cm": 2.5,
+          "blue_detuning_gamma": -3.0,
+          "core_shell_split_radius_m": 0.003
+        },
+        "derived_parameters": {},
+        "mean_usable_fraction": 0.08333333333333333,
+        "mean_usable_count_per_600": 50.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.3333333333333333
+        ],
+        "simultaneous_95_ci": [
+          -0.16666666666666669,
+          0.3333333333333333
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -1.155003806016889,
+          0.155003806016889
+        ],
+        "seed_counts": [
+          0,
+          0,
+          1
+        ]
+      }
+    ],
+    "design": {
+      "acceptance": {
+        "physical_identity": {
+          "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "mot_3d_timestep_policy_sha256": "917133f75968d0a1785c4eba4eec2795426c87fc801fe12d5b43585ad35a5152",
+          "numerical_policy_sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+        },
+        "profile_id": "ui_acceptance_v1",
+        "profile_sha256": "f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148",
+        "suitability": "acceptance_only"
+      },
+      "suitability": "acceptance_only",
+      "campaign_manifest_path": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance/data/optimization/mot_3d/ui_acceptance/TESTONLY_Mac3D_UI_Release_20261021_P45/campaign.json",
+      "campaign_manifest_sha256": "c0697f7f3ef1eb202fff3055af0a065a2c87e3df199d162d29be31e7ee36381a",
+      "selection_path": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance/data/optimization/mot_3d/ui_acceptance/TESTONLY_Mac3D_UI_Release_20261021_P45/selection/discovery/angled_donut.json",
+      "selection_sha256": "2566d31def3a86bce8e3ff6314967f575fa6d48baa9b529810bb261b82a3a5fa",
+      "git_commit": "1b6ea5a8f7b97718209f2fc47d7a97b8c5c58e16",
+      "physical_model_sha256": "2d1035a8119805d206e1137f4f576d0c14fa176ccbd6881a3a31534185435f3f",
+      "input_role": "preliminary_check",
+      "input_role_sha256": "ede1626771862786bc2f9e50eaa9fae92d60026fdb38f92af15daab3c66ff7ad",
+      "dt_s": 1e-05,
+      "t_max_s": 0.05,
+      "solver": "RK4StHybridCustom",
+      "particles_per_ensemble": 1,
+      "selection_seed": 51001,
+      "particle_selection_sha256": "1c8f920083f36107544ecf10348fc37c1ad0cb9830e755d9f300faa664a06c15"
+    },
+    "selection_sha256": "2566d31def3a86bce8e3ff6314967f575fa6d48baa9b529810bb261b82a3a5fa"
+  },
+  "single_pass": {
+    "kind": "merged_mot_3d_early_independent_check",
+    "family": "single_pass",
+    "candidate_count": 12,
+    "particle_count": 4,
+    "ensemble_file_indices": [
+      16,
+      17,
+      18,
+      19
+    ],
+    "recoil_seed_count": 3,
+    "bootstrap_method": "crossed hierarchical resampling of ensemble clusters and recoil seeds, with particle resampling within each selected ensemble",
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 52001,
+    "multiplicity_method": "paired centered-bootstrap max-T simultaneous intervals",
+    "simultaneous_critical_value": 2.288542057621831,
+    "paired_difference_critical_value": 2.288542057621831,
+    "lcb_leader_candidate_id": "single_pass_00",
+    "ranked_candidates": [
+      {
+        "candidate_id": "single_pass_00",
+        "selection_roles": [
+          "global_best",
+          "worker_2_best",
+          "lower_power"
+        ],
+        "discovery_rank": 1,
+        "discovery_usable_at_end_fraction": 0.16666666666666666,
+        "discovery_usable_at_end_count": 2,
+        "worker_index": 2,
+        "trial_number": 0,
+        "normalized_boundary_distance": 0.0,
+        "power_proxy": 0.010153125,
+        "parameters": {
+          "green_s0": 30.0,
+          "green_detuning_gamma": -25.0,
+          "green_waist_m": 0.0075,
+          "blue_s0": 0.25,
+          "blue_waist_m": 0.0075,
+          "magnetic_gradient_G_cm": 2.5,
+          "blue_detuning_anchor_gamma": -2.75,
+          "blue_crossing_angle_deg": 50.0,
+          "blue_crossing_z_offset_m": -0.05
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": -2.75,
+          "effective_slowing_z_offset_m": -0.05825,
+          "effective_slowing_field_G": 14.5625,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_01",
+        "selection_roles": [
+          "worker_0_best"
+        ],
+        "discovery_rank": 3,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 0,
+        "trial_number": 2,
+        "normalized_boundary_distance": 0.05935942670042027,
+        "power_proxy": 0.060527993476113574,
+        "parameters": {
+          "green_s0": 116.36010553287338,
+          "green_detuning_gamma": -6.780782801012609,
+          "green_waist_m": 0.009273971058239136,
+          "blue_s0": 1.011798206026147,
+          "blue_waist_m": 0.015427211314277512,
+          "magnetic_gradient_G_cm": 21.168784517102512,
+          "blue_detuning_anchor_gamma": -3.2799772889569154,
+          "blue_crossing_angle_deg": 49.92809647094315,
+          "blue_crossing_z_offset_m": -0.04397621072573622
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 2.4071961168364164,
+          "effective_slowing_z_offset_m": -0.06094614317144149,
+          "effective_slowing_field_G": 129.01557719447237,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_03",
+        "selection_roles": [
+          "best_interior"
+        ],
+        "discovery_rank": 5,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 3,
+        "normalized_boundary_distance": 0.1320635993250503,
+        "power_proxy": 0.041391752787791766,
+        "parameters": {
+          "green_s0": 90.91309641720619,
+          "green_detuning_gamma": -22.026775960241366,
+          "green_waist_m": 0.008642158799295278,
+          "blue_s0": 1.0491264895357613,
+          "blue_waist_m": 0.017622855212149097,
+          "magnetic_gradient_G_cm": 45.701782975502304,
+          "blue_detuning_anchor_gamma": -2.9609201674041703,
+          "blue_crossing_angle_deg": 49.84499676616598,
+          "blue_crossing_z_offset_m": -0.04509023369235712
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 10.957321227291297,
+          "effective_slowing_z_offset_m": -0.06447537442572113,
+          "effective_slowing_field_G": 294.66395692685586,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_04",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 10,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 0,
+        "trial_number": 3,
+        "normalized_boundary_distance": 0.0430407110790273,
+        "power_proxy": 0.10399471506608292,
+        "parameters": {
+          "green_s0": 128.26027651220653,
+          "green_detuning_gamma": -20.14860824305498,
+          "green_waist_m": 0.011623603678157237,
+          "blue_s0": 1.3412795510935072,
+          "blue_waist_m": 0.0027747327994224916,
+          "magnetic_gradient_G_cm": 77.33922705341104,
+          "blue_detuning_anchor_gamma": -3.4559200345154624,
+          "blue_crossing_angle_deg": 68.70729859834688,
+          "blue_crossing_z_offset_m": -0.048728634039239827
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 15.719774700550786,
+          "effective_slowing_z_offset_m": -0.051780840118604565,
+          "effective_slowing_field_G": 400.4690150949134,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_05",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 4,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 0,
+        "trial_number": 1,
+        "normalized_boundary_distance": 0.07808141403467184,
+        "power_proxy": 0.00566068259663066,
+        "parameters": {
+          "green_s0": 12.17317139818344,
+          "green_detuning_gamma": -13.627533076577478,
+          "green_waist_m": 0.008619678000180195,
+          "blue_s0": 0.968187923563244,
+          "blue_waist_m": 0.010992142557535734,
+          "magnetic_gradient_G_cm": 26.722783815012477,
+          "blue_detuning_anchor_gamma": -2.0651828722307526,
+          "blue_crossing_angle_deg": 65.33641770014256,
+          "blue_crossing_z_offset_m": -0.041933902047918935
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 4.384978203553979,
+          "effective_slowing_z_offset_m": -0.05402525886120824,
+          "effective_slowing_field_G": 144.3705313098155,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_06",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 9,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 2,
+        "trial_number": 2,
+        "normalized_boundary_distance": 0.0028048613327389393,
+        "power_proxy": 0.008410960813432776,
+        "parameters": {
+          "green_s0": 47.71146797755906,
+          "green_detuning_gamma": -21.486628740017675,
+          "green_waist_m": 0.005218801135618118,
+          "blue_s0": 0.8125386081677914,
+          "blue_waist_m": 0.019440595377403946,
+          "magnetic_gradient_G_cm": 78.94553683315081,
+          "blue_detuning_anchor_gamma": -1.7556097226654779,
+          "blue_crossing_angle_deg": 67.58059936729546,
+          "blue_crossing_z_offset_m": -0.046599830167664474
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 24.18975878646608,
+          "effective_slowing_z_offset_m": -0.06798448508280881,
+          "effective_slowing_field_G": 536.7071671187675,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_07",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 11,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 2,
+        "normalized_boundary_distance": 0.07469511698436504,
+        "power_proxy": 0.10524293144786212,
+        "parameters": {
+          "green_s0": 138.83308001083742,
+          "green_detuning_gamma": -11.752000035140963,
+          "green_waist_m": 0.011236230215462342,
+          "blue_s0": 0.213849896614352,
+          "blue_waist_m": 0.013196516863296877,
+          "magnetic_gradient_G_cm": 13.78249572248722,
+          "blue_detuning_anchor_gamma": -2.9902887876573576,
+          "blue_crossing_angle_deg": 64.68899662109695,
+          "blue_crossing_z_offset_m": -0.04489789575661514
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 0.35508592642257897,
+          "effective_slowing_z_offset_m": -0.0594140643062417,
+          "effective_slowing_field_G": 81.88740871563567,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_08",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 7,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 1,
+        "trial_number": 1,
+        "normalized_boundary_distance": 0.19213470102538444,
+        "power_proxy": 0.11840266346257525,
+        "parameters": {
+          "green_s0": 72.05155157505452,
+          "green_detuning_gamma": -18.331935311025816,
+          "green_waist_m": 0.01654157538154308,
+          "blue_s0": 1.2095968719759438,
+          "blue_waist_m": 0.0068218543453675545,
+          "magnetic_gradient_G_cm": 36.06147388240129,
+          "blue_detuning_anchor_gamma": -2.3904123856188746,
+          "blue_crossing_angle_deg": 57.681318579539756,
+          "blue_crossing_z_offset_m": -0.04209840938655072
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 5.774213254798704,
+          "effective_slowing_z_offset_m": -0.04960244916645503,
+          "effective_slowing_field_G": 178.87374251192554,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_09",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 6,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 2,
+        "trial_number": 1,
+        "normalized_boundary_distance": 0.021638176724465885,
+        "power_proxy": 0.0015263444045599027,
+        "parameters": {
+          "green_s0": 14.668293734324878,
+          "green_detuning_gamma": -33.10599544913934,
+          "green_waist_m": 0.0036502217797844934,
+          "blue_s0": 0.5687522054226551,
+          "blue_waist_m": 0.017633396933786155,
+          "magnetic_gradient_G_cm": 2.6529985840843557,
+          "blue_detuning_anchor_gamma": -3.0005311758169526,
+          "blue_crossing_angle_deg": 46.22202357519106,
+          "blue_crossing_z_offset_m": -0.048288441337952265
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": -2.8318650234126403,
+          "effective_slowing_z_offset_m": -0.06768517796511704,
+          "effective_slowing_field_G": 17.956868130495312,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_10",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 8,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 2,
+        "trial_number": 3,
+        "normalized_boundary_distance": 0.07660257088663269,
+        "power_proxy": 0.01785972186225913,
+        "parameters": {
+          "green_s0": 11.952084347551587,
+          "green_detuning_gamma": -18.86466115253714,
+          "green_waist_m": 0.015683658453525255,
+          "blue_s0": 0.985467652870804,
+          "blue_waist_m": 0.010567167183234668,
+          "magnetic_gradient_G_cm": 46.43243409154923,
+          "blue_detuning_anchor_gamma": -2.811820370306634,
+          "blue_crossing_angle_deg": 59.12474854073315,
+          "blue_crossing_z_offset_m": -0.044149188596118535
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": 9.332686503953433,
+          "effective_slowing_z_offset_m": -0.05577307249767667,
+          "effective_slowing_field_G": 258.96795128315694,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.0,
+        "mean_usable_count_per_600": 0.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.0
+        ],
+        "simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          0.0,
+          0.0
+        ],
+        "seed_counts": [
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "candidate_id": "single_pass_11",
+        "selection_roles": [
+          "diverse_competitive_region"
+        ],
+        "discovery_rank": 12,
+        "discovery_usable_at_end_fraction": 0.0,
+        "discovery_usable_at_end_count": 0,
+        "worker_index": 0,
+        "trial_number": 0,
+        "normalized_boundary_distance": 0.0,
+        "power_proxy": 0.010153125,
+        "parameters": {
+          "green_s0": 30.0,
+          "green_detuning_gamma": -25.0,
+          "green_waist_m": 0.0075,
+          "blue_s0": 0.25,
+          "blue_waist_m": 0.0075,
+          "magnetic_gradient_G_cm": 2.5,
+          "blue_detuning_anchor_gamma": -2.75,
+          "blue_crossing_angle_deg": 45.0,
+          "blue_crossing_z_offset_m": -0.05
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": -2.75,
+          "effective_slowing_z_offset_m": -0.05825,
+          "effective_slowing_field_G": 14.5625,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.16666666666666666,
+        "mean_usable_count_per_600": 100.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.5
+        ],
+        "simultaneous_95_ci": [
+          -0.22514016785112909,
+          0.5584735011844624
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -0.22514016785112909,
+          0.5584735011844624
+        ],
+        "seed_counts": [
+          0,
+          1,
+          1
+        ]
+      },
+      {
+        "candidate_id": "single_pass_02",
+        "selection_roles": [
+          "worker_1_best"
+        ],
+        "discovery_rank": 2,
+        "discovery_usable_at_end_fraction": 0.08333333333333333,
+        "discovery_usable_at_end_count": 1,
+        "worker_index": 1,
+        "trial_number": 0,
+        "normalized_boundary_distance": 0.0,
+        "power_proxy": 0.010153125,
+        "parameters": {
+          "green_s0": 30.0,
+          "green_detuning_gamma": -25.0,
+          "green_waist_m": 0.0075,
+          "blue_s0": 0.25,
+          "blue_waist_m": 0.0075,
+          "magnetic_gradient_G_cm": 2.5,
+          "blue_detuning_anchor_gamma": -2.75,
+          "blue_crossing_angle_deg": 45.0,
+          "blue_crossing_z_offset_m": -0.045
+        },
+        "derived_parameters": {
+          "blue_detuning_gamma": -2.8121125,
+          "effective_slowing_z_offset_m": -0.05325,
+          "effective_slowing_field_G": 13.3125,
+          "reference_slowing_field_G": 14.5625
+        },
+        "mean_usable_fraction": 0.25,
+        "mean_usable_count_per_600": 150.0,
+        "bootstrap_95_ci": [
+          0.0,
+          0.75
+        ],
+        "simultaneous_95_ci": [
+          -0.24999999999999994,
+          0.75
+        ],
+        "paired_difference_simultaneous_95_ci": [
+          -0.24999999999999994,
+          0.75
+        ],
+        "seed_counts": [
+          1,
+          1,
+          1
+        ]
+      }
+    ],
+    "design": {
+      "acceptance": {
+        "physical_identity": {
+          "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "mot_3d_timestep_policy_sha256": "917133f75968d0a1785c4eba4eec2795426c87fc801fe12d5b43585ad35a5152",
+          "numerical_policy_sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+        },
+        "profile_id": "ui_acceptance_v1",
+        "profile_sha256": "f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148",
+        "suitability": "acceptance_only"
+      },
+      "suitability": "acceptance_only",
+      "campaign_manifest_path": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance/data/optimization/mot_3d/ui_acceptance/TESTONLY_Mac3D_UI_Release_20261021_P45/campaign.json",
+      "campaign_manifest_sha256": "c0697f7f3ef1eb202fff3055af0a065a2c87e3df199d162d29be31e7ee36381a",
+      "selection_path": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance/data/optimization/mot_3d/ui_acceptance/TESTONLY_Mac3D_UI_Release_20261021_P45/selection/discovery/single_pass.json",
+      "selection_sha256": "6a70d581e955cf91866fe5ee81fac3243ea263db56f0f70160f91bb033670e29",
+      "git_commit": "1b6ea5a8f7b97718209f2fc47d7a97b8c5c58e16",
+      "physical_model_sha256": "2d1035a8119805d206e1137f4f576d0c14fa176ccbd6881a3a31534185435f3f",
+      "input_role": "preliminary_check",
+      "input_role_sha256": "ede1626771862786bc2f9e50eaa9fae92d60026fdb38f92af15daab3c66ff7ad",
+      "dt_s": 1e-05,
+      "t_max_s": 0.05,
+      "solver": "RK4StHybridCustom",
+      "particles_per_ensemble": 1,
+      "selection_seed": 51001,
+      "particle_selection_sha256": "1c8f920083f36107544ecf10348fc37c1ad0cb9830e755d9f300faa664a06c15"
+    },
+    "selection_sha256": "6a70d581e955cf91866fe5ee81fac3243ea263db56f0f70160f91bb033670e29"
+  }
+}

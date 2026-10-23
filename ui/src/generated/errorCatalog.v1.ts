@@ -1742,6 +1742,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "mot_3d_preliminary_transition",
+    "code": "refinement_design_duplicate",
+    "semantic": "other"
+  },
+  {
+    "domain": "mot_3d_preliminary_transition",
     "code": "remote_checkout_mismatch",
     "semantic": "other"
   },

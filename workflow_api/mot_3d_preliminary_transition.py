@@ -1172,6 +1172,18 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
             ) from None
         except PinnedSshProcessError as exc:
             raise self.error_type("zeus_unavailable") from exc
+        if (
+            self.error_prefix == "preliminary_transition"
+            and operation in {"inspect", "status"}
+            and result.returncode == 20
+            and not result.stderr
+        ):
+            try:
+                rejection = json.loads(result.stdout, object_pairs_hook=lambda pairs: pairs)
+            except (ValueError, TypeError):
+                rejection = None
+            if rejection == [("error", "refinement_design_duplicate")]:
+                raise self.error_type("refinement_design_duplicate")
         if result.returncode or result.stderr:
             raise self.error_type(
                 "transition_outcome_unknown"
