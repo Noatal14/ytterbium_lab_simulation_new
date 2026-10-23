@@ -697,7 +697,7 @@ def qstat_fields(raw):
                 previous = match.group(1)
                 fields[previous] = match.group(2)
             elif (line.startswith(("\t", "        ")) and previous is not None
-                  and previous not in {"job_state", "Exit_status"}):
+                  and previous not in {"job_state", "Exit_status", "Hold_Types", "depend"}):
                 continuation = line.strip()
                 if not continuation:
                     return None
@@ -723,7 +723,7 @@ def one_state(fields):
     return "status_unknown"
 
 
-def scheduler(job, kind):
+def scheduler(job, kind, *, dependency=None):
     try:
         code, out, err = run(
             ["/opt/pbs/bin/qstat", "-x", "-t", "-f", job], limit=4 * 1024 * 1024
@@ -736,7 +736,19 @@ def scheduler(job, kind):
     if kind == "merge":
         if set(fields) != {job}:
             return "status_unknown", 0
-        state = one_state(fields[job])
+        record = fields[job]
+        state = one_state(record)
+        # Only a durable family-paired, still-incomplete predecessor can explain
+        # PBS's exact system afterok hold. Manual/mixed/unknown holds stay held.
+        if (state == "held" and record.get("job_state") == "H"
+                and record.get("Hold_Types") == "s"
+                and record.get("Exit_status") in (None, "0")
+                and isinstance(dependency, tuple) and len(dependency) == 3
+                and isinstance(dependency[0], str) and ARRAY.fullmatch(dependency[0])
+                and dependency[1] in {"queued", "running"}
+                and type(dependency[2]) is int and 0 <= dependency[2] < 3
+                and record.get("depend") == f"afterok:{dependency[0]}@zeus-master"):
+            state = "queued"
         return state, int(state == "completed_success")
     prefix = job.split("[]", 1)[0]
     expected = {f"{prefix}[{i}].zeus-master" for i in range(3)}
@@ -745,7 +757,15 @@ def scheduler(job, kind):
     states = [one_state(fields[x]) for x in expected]
     complete = states.count("completed_success")
     if job in fields:
-        parent = one_state(fields[job])
+        record = fields[job]
+        parent = one_state(record)
+        # B is PBS's array-parent "begun" marker, never a scalar state.
+        # Child identities/cardinality above remain authoritative for progress.
+        if (record.get("job_state") == "B" and record.get("array") == "True"
+                and record.get("Hold_Types") == "n"
+                and record.get("array_indices_submitted") == "0-2:1"
+                and record.get("Exit_status") in (None, "0") and complete < 3):
+            parent = "running"
         if parent in {"completed_failed", "held", "status_unknown"}:
             return parent, complete
         if parent in {"queued", "running"} and complete == 3:
@@ -760,6 +780,24 @@ def scheduler(job, kind):
         if candidate in states:
             return candidate, complete
     return "completed_success", complete
+
+
+def scheduler_chain(jobs, *, observe=None):
+    """Observe an authenticated two-family receipt chain; never mutate it."""
+    observe = scheduler if observe is None else observe
+    states = []
+    arrays = merges = 0
+    for family in FAMILIES:
+        array, count = observe(jobs[family]["array"], "array")
+        arrays += count
+        merge, count = observe(jobs[family]["merge"], "merge",
+                               dependency=(jobs[family]["array"], array, count))
+        merges += count
+        states.extend((array, merge))
+    lifecycle = next((state for state in (
+        "completed_failed", "held", "status_unknown", "running", "queued"
+    ) if state in states), "completed_success")
+    return lifecycle, arrays, merges
 
 
 def main(*, trusted_root_override=None):
@@ -1266,25 +1304,7 @@ def main(*, trusted_root_override=None):
                 if regular_exists_at(submissions_fd, pending):
                     unlink_at(submissions_fd, pending)
             if operation == "status":
-                states = []
-                array_count = merge_count = 0
-                for family in FAMILIES:
-                    a, c = scheduler(jobs[family]["array"], "array")
-                    m, d = scheduler(jobs[family]["merge"], "merge")
-                    states.extend((a, m))
-                    array_count += c
-                    merge_count += d
-                lifecycle = "completed_success"
-                for candidate in (
-                    "completed_failed",
-                    "held",
-                    "status_unknown",
-                    "running",
-                    "queued",
-                ):
-                    if candidate in states:
-                        lifecycle = candidate
-                        break
+                lifecycle, array_count, merge_count = scheduler_chain(jobs)
                 response(
                     lifecycle, branch, jobs, nonce, submitted, array_count, merge_count
                 )

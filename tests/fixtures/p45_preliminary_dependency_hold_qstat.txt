@@ -1,0 +1,50 @@
+Job Id: 4819160[].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = B
+    depend = beforeok:4819161.zeus-master@zeus-master
+    Hold_Types = n
+    Exit_status = 0
+    array = True
+    array_state_count = Queued:0 Running:1 Exiting:0 Expired:2
+    array_indices_submitted = 0-2:1
+Job Id: 4819160[0].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = X
+    Exit_status = 0
+Job Id: 4819160[1].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = X
+    Exit_status = 0
+Job Id: 4819160[2].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = R
+Job Id: 4819161.zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = H
+    depend = afterok:4819160[].zeus-master@zeus-master
+    Hold_Types = s
+Job Id: 4819162[].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = B
+    depend = beforeok:4819163.zeus-master@zeus-master
+    Hold_Types = n
+    Exit_status = 0
+    array = True
+    array_state_count = Queued:0 Running:1 Exiting:0 Expired:2
+    array_indices_submitted = 0-2:1
+Job Id: 4819162[0].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = X
+    Exit_status = 0
+Job Id: 4819162[1].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = X
+    Exit_status = 0
+Job Id: 4819162[2].zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = R
+Job Id: 4819163.zeus-master
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    job_state = H
+    depend = afterok:4819162[].zeus-master@zeus-master
+    Hold_Types = s

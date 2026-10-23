@@ -79,11 +79,11 @@ unlink_at = core._unlink_at_impl
 run = core._run_impl
 
 
-def scheduler(job, kind):
+def scheduler(job, kind, *, dependency=None):
     with core.descriptor_scope(DESCRIPTOR):
         token = core._RUNNER.set(run)
         try:
-            return core.scheduler(job, kind)
+            return core.scheduler(job, kind, dependency=dependency)
         finally:
             core._RUNNER.reset(token)
 

@@ -962,26 +962,11 @@ def _scheduler(jobs):
         from workflow_api.mot_3d_linear_submission_remote import scheduler_state
 
         return scheduler_state(jobs, run=run)
-    states = []
-    arrays = merges = 0
-    for family in FAMILIES:
-        state, count = scheduler(jobs[family]["array"], "array")
-        states.append(state)
-        arrays += count
-        state, count = scheduler(jobs[family]["merge"], "merge")
-        states.append(state)
-        merges += count
-    lifecycle = "completed_success_unvalidated"
-    for candidate in (
-        "completed_failed",
-        "held",
-        "status_unknown",
-        "running",
-        "queued",
-    ):
-        if candidate in states:
-            lifecycle = candidate
-            break
+    from workflow_api.mot_3d_selection_submission_remote import scheduler_chain
+
+    lifecycle, arrays, merges = scheduler_chain(jobs, observe=scheduler)
+    if lifecycle == "completed_success":
+        lifecycle = "completed_success_unvalidated"
     return lifecycle, arrays, merges
 
 
