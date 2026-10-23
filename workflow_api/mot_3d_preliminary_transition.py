@@ -66,7 +66,7 @@ from workflow_api.verified_artifact_bundle import (
     unpack_artifact_bundle,
 )
 from workflow_api.zeus_discovery_submission import canonical_digest
-from workflow_api.zeus_snapshot import ZeusProfile
+from workflow_api.zeus_snapshot import ZEUS_HOST, ZeusProfile
 
 TTL = 300
 CAPACITY = 32
@@ -1172,6 +1172,22 @@ class PinnedSshMot3DPreliminaryTransitionTransport:
             ) from None
         except PinnedSshProcessError as exc:
             raise self.error_type("zeus_unavailable") from exc
+        # OpenSSH's own ConnectTimeout exits 255 rather than raising Python's
+        # TimeoutExpired. Only its exact, output-free connection diagnostic is
+        # communication evidence; PREPARE retains the unknown-outcome path.
+        if (
+            operation in {"inspect", "status", "retrieve"}
+            and result.returncode == 255
+            and result.stdout == b""
+            and isinstance(result.stderr, bytes)
+            and re.fullmatch(
+                rb"ssh: connect to host "
+                + re.escape(ZEUS_HOST.encode("ascii"))
+                + rb" port 22: (?:Operation|Connection) timed out\r?\n?",
+                result.stderr,
+            )
+        ):
+            raise self.error_type("zeus_timeout")
         if (
             self.error_prefix == "preliminary_transition"
             and operation in {"inspect", "status"}
