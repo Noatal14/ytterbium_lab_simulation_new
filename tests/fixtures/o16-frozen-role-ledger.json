@@ -1,0 +1,972 @@
+{
+  "scope": "Genuine unchanged original O16 acceptance-only frozen donor ledger, not new measurements or campaign-completion evidence. Paths are original portable repository identities. Repeated source fields are factored without changing the expanded canonical ledger.",
+  "upstream_2d_campaign": {
+    "campaign_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/campaign.json",
+    "campaign_sha256": "9eb1f27bec651765128a5cd17529a9cd06b6fc09fcc06943f2208b53bba32dea",
+    "expected_survivor_design": {
+      "dt_s": 6.25e-07,
+      "ensemble_dir": "data/particle_states/after_zeeman/ui_acceptance/release_20261020_o",
+      "git_commit": "db6ff510cab83911cdb053204e062d222f26881c",
+      "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+      "laboratory_spec_version": "laboratory-physical-v2",
+      "stochastic_solver": "RK4StHybridCustom",
+      "zeeman_profile": "corrected_projectant_19ring_20261005",
+      "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+    },
+    "expected_survivor_parameters": {
+      "detuning_gamma": -0.9511010263391556,
+      "magnet_radius": 0.04933200706569167,
+      "s0": 1.3
+    },
+    "final_report_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/final_report.json",
+    "final_report_sha256": "78bc43b7c67538f512957bd09a2676d98770accb63e4e229c1afe91e3e27d066",
+    "git_commit": "db6ff510cab83911cdb053204e062d222f26881c",
+    "laboratory_provenance": {
+      "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+      "laboratory_spec_version": "laboratory-physical-v2",
+      "legacy_attested_profile": false,
+      "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+    },
+    "physical_model_sha256": "d5e6896ebf1978a16407d525408bf1439844597c63db855d8c069ee261cdecca",
+    "sealed_seed_pairs": [
+      {
+        "mot_seed": 43015,
+        "zeeman_seed": 3015
+      },
+      {
+        "mot_seed": 43016,
+        "zeeman_seed": 3016
+      },
+      {
+        "mot_seed": 43017,
+        "zeeman_seed": 3017
+      },
+      {
+        "mot_seed": 43018,
+        "zeeman_seed": 3018
+      },
+      {
+        "mot_seed": 43019,
+        "zeeman_seed": 3019
+      },
+      {
+        "mot_seed": 43020,
+        "zeeman_seed": 3020
+      },
+      {
+        "mot_seed": 43021,
+        "zeeman_seed": 3021
+      },
+      {
+        "mot_seed": 43022,
+        "zeeman_seed": 3022
+      },
+      {
+        "mot_seed": 43023,
+        "zeeman_seed": 3023
+      },
+      {
+        "mot_seed": 43024,
+        "zeeman_seed": 3024
+      },
+      {
+        "mot_seed": 43025,
+        "zeeman_seed": 3025
+      },
+      {
+        "mot_seed": 43026,
+        "zeeman_seed": 3026
+      },
+      {
+        "mot_seed": 43027,
+        "zeeman_seed": 3027
+      },
+      {
+        "mot_seed": 43028,
+        "zeeman_seed": 3028
+      },
+      {
+        "mot_seed": 43029,
+        "zeeman_seed": 3029
+      },
+      {
+        "mot_seed": 43030,
+        "zeeman_seed": 3030
+      },
+      {
+        "mot_seed": 43031,
+        "zeeman_seed": 3031
+      },
+      {
+        "mot_seed": 43032,
+        "zeeman_seed": 3032
+      },
+      {
+        "mot_seed": 43033,
+        "zeeman_seed": 3033
+      },
+      {
+        "mot_seed": 43034,
+        "zeeman_seed": 3034
+      }
+    ],
+    "selected_result": {
+      "prediction": {
+        "binomial_mean_variance": 0.0003821983337402344,
+        "bootstrap_replicates": 20000,
+        "critical_value": 1.96,
+        "empirical_between_ensemble_mean_variance": 0.0002892423930921053,
+        "expected_captured_atoms": 5734375,
+        "future_counting_variance": 2.4460693359375e-08,
+        "pooled_conditional_efficiency": 0.5734375,
+        "predicted_95_captured_atoms_interval": [
+          5223488,
+          6185213
+        ],
+        "predicted_95_half_width_fraction": 0.04808624125000005,
+        "predicted_95_half_width_percentage_points": 4.808624125000005,
+        "predicted_95_interval_fraction": [
+          0.5223487975,
+          0.6185212800000001
+        ],
+        "reporting_zeeman_survivors": 10000000,
+        "selected_mean_variance": 0.0003821983337402344,
+        "selected_mean_variance_source": "pooled_binomial",
+        "simulated_captured_atoms": 367,
+        "simulated_zeeman_survivors": 640,
+        "uncertainty_method": "20,000-draw cluster-aware parametric bootstrap: independent Zeeman/MOT ensemble pairs are resampled as clusters, finite within-cluster capture uncertainty is sampled with a Jeffreys beta model, cluster probabilities are pooled with their resampled survivor counts as weights, and future counting noise is sampled binomially"
+      },
+      "recommended_parameters": {
+        "detuning_gamma": -0.9511010263391556,
+        "magnet_radius": 0.04933200706569167,
+        "s0": 1.3
+      },
+      "s0": 1.3,
+      "sensitivity": {
+        "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+        "points": [
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.2906487740301653,
+                1.0906487740301651
+              ],
+              "95_ci_half_width_fraction": 1.1906487740301652,
+              "differences_fraction": [
+                -0.5,
+                0.0,
+                0.0,
+                0.5,
+                -0.5
+              ],
+              "mean_difference_fraction": -0.1
+            },
+            "mean_efficiency": 0.5,
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "parameters": {
+              "detuning_gamma": -0.9611010263391556,
+              "magnet_radius": 0.04932200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.2906487740301653,
+                1.0906487740301651
+              ],
+              "95_ci_half_width_fraction": 1.1906487740301652,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                -0.5,
+                -0.5,
+                0.5
+              ],
+              "mean_difference_fraction": -0.1
+            },
+            "mean_efficiency": 0.5,
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": 0.0
+            },
+            "parameters": {
+              "detuning_gamma": -0.9611010263391556,
+              "magnet_radius": 0.04933200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0728570801152302,
+                1.47285708011523
+              ],
+              "95_ci_half_width_fraction": 1.2728570801152301,
+              "differences_fraction": [
+                -0.5,
+                0.5,
+                0.5,
+                0.0,
+                0.5
+              ],
+              "mean_difference_fraction": 0.2
+            },
+            "mean_efficiency": 0.8,
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "parameters": {
+              "detuning_gamma": -0.9611010263391556,
+              "magnet_radius": 0.049342007065691675,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0794625904428006,
+                0.47946259044280065
+              ],
+              "95_ci_half_width_fraction": 0.7794625904428006,
+              "differences_fraction": [
+                -0.5,
+                -0.5,
+                -0.5,
+                0.0,
+                0.0
+              ],
+              "mean_difference_fraction": -0.3
+            },
+            "mean_efficiency": 0.3,
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "parameters": {
+              "detuning_gamma": -0.9511010263391556,
+              "magnet_radius": 0.04932200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                0.0,
+                0.0
+              ],
+              "95_ci_half_width_fraction": 0.0,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mean_difference_fraction": 0.0
+            },
+            "mean_efficiency": 0.6,
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 0.0
+            },
+            "parameters": {
+              "detuning_gamma": -0.9511010263391556,
+              "magnet_radius": 0.04933200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": true
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.2906487740301653,
+                1.0906487740301651
+              ],
+              "95_ci_half_width_fraction": 1.1906487740301652,
+              "differences_fraction": [
+                -0.5,
+                0.0,
+                -0.5,
+                0.5,
+                0.0
+              ],
+              "mean_difference_fraction": -0.1
+            },
+            "mean_efficiency": 0.5,
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "parameters": {
+              "detuning_gamma": -0.9511010263391556,
+              "magnet_radius": 0.049342007065691675,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -0.736428540057615,
+                0.5364285400576151
+              ],
+              "95_ci_half_width_fraction": 0.6364285400576151,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                -0.5
+              ],
+              "mean_difference_fraction": -0.1
+            },
+            "mean_efficiency": 0.5,
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "parameters": {
+              "detuning_gamma": -0.9411010263391556,
+              "magnet_radius": 0.04932200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.47285708011523,
+                1.0728570801152302
+              ],
+              "95_ci_half_width_fraction": 1.2728570801152301,
+              "differences_fraction": [
+                -0.5,
+                -0.5,
+                -0.5,
+                0.0,
+                0.5
+              ],
+              "mean_difference_fraction": -0.2
+            },
+            "mean_efficiency": 0.4,
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": 0.0
+            },
+            "parameters": {
+              "detuning_gamma": -0.9411010263391556,
+              "magnet_radius": 0.04933200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0906487740301651,
+                1.2906487740301653
+              ],
+              "95_ci_half_width_fraction": 1.1906487740301652,
+              "differences_fraction": [
+                0.0,
+                -0.5,
+                0.0,
+                0.5,
+                0.5
+              ],
+              "mean_difference_fraction": 0.1
+            },
+            "mean_efficiency": 0.7,
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "parameters": {
+              "detuning_gamma": -0.9411010263391556,
+              "magnet_radius": 0.049342007065691675,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0062818772588864,
+                1.0062818772588864
+              ],
+              "95_ci_half_width_fraction": 1.0062818772588864,
+              "differences_fraction": [
+                -0.5,
+                0.0,
+                0.0,
+                0.5,
+                0.0
+              ],
+              "mean_difference_fraction": 0.0
+            },
+            "mean_efficiency": 0.6,
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "parameters": {
+              "detuning_gamma": -0.9711010263391556,
+              "magnet_radius": 0.04923200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.5906487740301651,
+                0.7906487740301652
+              ],
+              "95_ci_half_width_fraction": 1.1906487740301652,
+              "differences_fraction": [
+                -1.0,
+                0.0,
+                0.0,
+                -0.5,
+                -0.5
+              ],
+              "mean_difference_fraction": -0.4
+            },
+            "mean_efficiency": 0.2,
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": 0.0
+            },
+            "parameters": {
+              "detuning_gamma": -0.9711010263391556,
+              "magnet_radius": 0.04933200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                0.0,
+                0.0
+              ],
+              "95_ci_half_width_fraction": 0.0,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ],
+              "mean_difference_fraction": 0.0
+            },
+            "mean_efficiency": 0.6,
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "parameters": {
+              "detuning_gamma": -0.9711010263391556,
+              "magnet_radius": 0.049432007065691674,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": true
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.7429313381481797,
+                1.7429313381481797
+              ],
+              "95_ci_half_width_fraction": 1.7429313381481797,
+              "differences_fraction": [
+                -1.0,
+                0.5,
+                0.0,
+                0.5,
+                0.0
+              ],
+              "mean_difference_fraction": 0.0
+            },
+            "mean_efficiency": 0.6,
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "parameters": {
+              "detuning_gamma": -0.9511010263391556,
+              "magnet_radius": 0.04923200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.5728570801152302,
+                0.9728570801152301
+              ],
+              "95_ci_half_width_fraction": 1.2728570801152301,
+              "differences_fraction": [
+                -1.0,
+                0.0,
+                -0.5,
+                0.0,
+                0.0
+              ],
+              "mean_difference_fraction": -0.3
+            },
+            "mean_efficiency": 0.3,
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "parameters": {
+              "detuning_gamma": -0.9511010263391556,
+              "magnet_radius": 0.049432007065691674,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0062818772588864,
+                1.0062818772588864
+              ],
+              "95_ci_half_width_fraction": 1.0062818772588864,
+              "differences_fraction": [
+                -0.5,
+                0.0,
+                0.0,
+                0.0,
+                0.5
+              ],
+              "mean_difference_fraction": 0.0
+            },
+            "mean_efficiency": 0.6,
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "parameters": {
+              "detuning_gamma": -0.9311010263391556,
+              "magnet_radius": 0.04923200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0794625904428006,
+                0.47946259044280065
+              ],
+              "95_ci_half_width_fraction": 0.7794625904428006,
+              "differences_fraction": [
+                -0.5,
+                -0.5,
+                -0.5,
+                0.0,
+                0.0
+              ],
+              "mean_difference_fraction": -0.3
+            },
+            "mean_efficiency": 0.3,
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": 0.0
+            },
+            "parameters": {
+              "detuning_gamma": -0.9311010263391556,
+              "magnet_radius": 0.04933200706569167,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "comparison_to_reference": {
+              "95_ci_fraction": [
+                -1.0062818772588864,
+                1.0062818772588864
+              ],
+              "95_ci_half_width_fraction": 1.0062818772588864,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                -0.5,
+                0.0,
+                0.5
+              ],
+              "mean_difference_fraction": 0.0
+            },
+            "mean_efficiency": 0.6,
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "parameters": {
+              "detuning_gamma": -0.9311010263391556,
+              "magnet_radius": 0.049432007065691674,
+              "s0": 1.3
+            },
+            "within_loss_margin_at_95_percent": false
+          }
+        ],
+        "production_selection": {
+          "comparison_to_confirmed_winner": {
+            "95_ci_fraction": [
+              0.0,
+              0.0
+            ],
+            "95_ci_half_width_fraction": 0.0,
+            "differences_fraction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "mean_difference_fraction": 0.0
+          },
+          "familywise_confidence_per_comparison": 0.996875,
+          "familywise_method": "Bonferroni simultaneous paired intervals",
+          "mean_efficiency": 0.6,
+          "offsets_from_confirmed_winner": {
+            "detuning_gamma": 0.0,
+            "magnet_radius_m": 0.0
+          },
+          "parameters": {
+            "detuning_gamma": -0.9511010263391556,
+            "magnet_radius": 0.04933200706569167,
+            "s0": 1.3
+          },
+          "selection_reason": "no_sensitivity_neighbor_clearly_better_at_95_percent"
+        },
+        "reference": {
+          "detuning_gamma": -0.9511010263391556,
+          "magnet_radius": 0.04933200706569167,
+          "s0": 1.3
+        },
+        "robustness_status": "not_established_pending_adaptive_challenger_validation"
+      },
+      "survivor_states_directory": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3",
+      "target_uncertainty_passes": false,
+      "warnings": [
+        "target_95_prediction_half_width_not_met",
+        "robust_operating_region_not_established",
+        "epsilon_near_optimality_not_established"
+      ]
+    }
+  },
+  "shared_record_fields": {
+    "source_design": {
+      "acceptance": {
+        "physical_identity": {
+          "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+          "mot_3d_timestep_policy_sha256": "917133f75968d0a1785c4eba4eec2795426c87fc801fe12d5b43585ad35a5152",
+          "numerical_policy_sha256": "ce051729d9cb6838b6cc0c2c54a048e35a971c2f0de8bbc0d55bc5c730bf6cb6",
+          "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+        },
+        "profile_id": "ui_acceptance_v1",
+        "profile_sha256": "f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148",
+        "suitability": "acceptance_only"
+      },
+      "dt_s": 6.25e-07,
+      "ensemble_dir": "data/particle_states/after_zeeman/ui_acceptance/release_20261020_o",
+      "git_commit": "db6ff510cab83911cdb053204e062d222f26881c",
+      "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+      "laboratory_spec_version": "laboratory-physical-v2",
+      "npools": 24,
+      "stochastic_solver": "RK4StHybridCustom",
+      "uses_all_available_particles": true,
+      "zeeman_profile": "corrected_projectant_19ring_20261005",
+      "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534"
+    },
+    "source_parameters": {
+      "detuning_gamma": -0.9511010263391556,
+      "magnet_radius": 0.04933200706569167,
+      "s0": 1.3
+    },
+    "dtype": "float64",
+    "source_git_commit": "db6ff510cab83911cdb053204e062d222f26881c"
+  },
+  "input_roles": {
+    "discovery": [
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.json",
+        "metadata_sha256": "6ab1199b51509ac5e21d418755778c30a5e8d4d1eb8073ab5f227e10518d7f9d",
+        "mot_seed": 43015,
+        "n_survivors": 19,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy",
+        "sha256": "4718385ac717fc6b9dc42a64fbde3fca82fdd3ca8c294dd7905c524666ce96ec",
+        "shape": [
+          19,
+          6
+        ],
+        "zeeman_seed": 3015
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.json",
+        "metadata_sha256": "d8d4f75f433303756b218e14ea925d5adf27f6013032e85521dfbf2f7dfa52d4",
+        "mot_seed": 43016,
+        "n_survivors": 18,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.npy",
+        "sha256": "df69d21d62bdb8d826b6ac44073bce9b4dff4411a9778bc3b217d86f6c7a1755",
+        "shape": [
+          18,
+          6
+        ],
+        "zeeman_seed": 3016
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.json",
+        "metadata_sha256": "7f94e9f789f9e135dec923fe86cc4450481ed7d52553f5af8d3742b91b2db884",
+        "mot_seed": 43017,
+        "n_survivors": 15,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.npy",
+        "sha256": "6d0995ade242a0bc6bc725327a03665f23032d2580060cfef668718349310cfc",
+        "shape": [
+          15,
+          6
+        ],
+        "zeeman_seed": 3017
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.json",
+        "metadata_sha256": "254b83afc5d27920a9ba166612338b9df76425b2a0ee77c4ac950ff4d4a4a2d2",
+        "mot_seed": 43018,
+        "n_survivors": 16,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.npy",
+        "sha256": "85dc77337f2300a5527be3a435c027773fd135a17f642cdfc31e602eeaed82ca",
+        "shape": [
+          16,
+          6
+        ],
+        "zeeman_seed": 3018
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.json",
+        "metadata_sha256": "a662a03214c345ba6b91b6eb55e279348b4028fdd0efde3d7f7392580545ebd5",
+        "mot_seed": 43019,
+        "n_survivors": 17,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.npy",
+        "sha256": "ce241f22ab4ba875088d69f9986b90ef4cfa4df396fed1dd4ad9e5c2e148bc98",
+        "shape": [
+          17,
+          6
+        ],
+        "zeeman_seed": 3019
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.json",
+        "metadata_sha256": "0944bdbe949f13c046da539d88b88ba1c8f68e18d48a0582439a823439ad49c5",
+        "mot_seed": 43020,
+        "n_survivors": 17,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.npy",
+        "sha256": "94c714c16e440f721aebc9a7989e57e05dc23439ad5c978dee2669b984674cec",
+        "shape": [
+          17,
+          6
+        ],
+        "zeeman_seed": 3020
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.json",
+        "metadata_sha256": "becb0ac7ec9f73698c6ebfa1c400632721f13ef10b56f00dc5ca3408e9d8d0d4",
+        "mot_seed": 43021,
+        "n_survivors": 16,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.npy",
+        "sha256": "5e22ef40c3822bd3b3675a1addbf66f1fb0c49f0709443b55db4d6cb96433503",
+        "shape": [
+          16,
+          6
+        ],
+        "zeeman_seed": 3021
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.json",
+        "metadata_sha256": "10889d54f7db8278a57dd4680e2b3ab34aa255bb2c5b6c5694a5d97d24bc92c6",
+        "mot_seed": 43022,
+        "n_survivors": 17,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.npy",
+        "sha256": "a10d0537320abf99e89d5ce7991574f886f662cf86845d5e47da868a1c6220a7",
+        "shape": [
+          17,
+          6
+        ],
+        "zeeman_seed": 3022
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.json",
+        "metadata_sha256": "36aaab6c77cb6075ddbd008a36676aab21d16fdf89214002e5a00a9dc4b891ea",
+        "mot_seed": 43023,
+        "n_survivors": 22,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.npy",
+        "sha256": "309c5ce71b54d1c62ef094d4fd82d4f78ecf63285a266b28a7f461818f14f8d9",
+        "shape": [
+          22,
+          6
+        ],
+        "zeeman_seed": 3023
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.json",
+        "metadata_sha256": "18c50178a41b643cb39e82b86fbf3655b65dae1a43c2ca3690d4d055d86266d3",
+        "mot_seed": 43024,
+        "n_survivors": 20,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.npy",
+        "sha256": "eb273f75059f85ac205befb977f0faf16d71bac9a7aea4f3b11d41247075b6f1",
+        "shape": [
+          20,
+          6
+        ],
+        "zeeman_seed": 3024
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.json",
+        "metadata_sha256": "f76ac81900452bfe622e12c97925e63431ec1ea1c32998437e834bde2c748580",
+        "mot_seed": 43025,
+        "n_survivors": 24,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.npy",
+        "sha256": "0a7012850b2518e3933db0e92608ee5569ee04c3dd5da36732e9491a24049902",
+        "shape": [
+          24,
+          6
+        ],
+        "zeeman_seed": 3025
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.json",
+        "metadata_sha256": "2ce886a5152515659ef4a5567ac3657e219be875c98aa20c968c7a107890fd43",
+        "mot_seed": 43026,
+        "n_survivors": 20,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.npy",
+        "sha256": "d4f471762e6abbfc47d194016376087126b9c9046c5caf12831e0d97f25252a0",
+        "shape": [
+          20,
+          6
+        ],
+        "zeeman_seed": 3026
+      }
+    ],
+    "preliminary_check": [
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.json",
+        "metadata_sha256": "1a9e2d053fbecd3317b835c6b4ead354250c3bc0b550d8410ee90b1f5aa88b55",
+        "mot_seed": 43031,
+        "n_survivors": 19,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.npy",
+        "sha256": "b3c401ee2b47a15781d2216d31199a25ad317c3604be9fa95b67a306720e5096",
+        "shape": [
+          19,
+          6
+        ],
+        "zeeman_seed": 3031
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.json",
+        "metadata_sha256": "44d5b11d156237f1e71edbd279e9a8c412a32e1975006ac376d01b3eadb05711",
+        "mot_seed": 43032,
+        "n_survivors": 16,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.npy",
+        "sha256": "5a6dc7d3aa140bffdbe1e1a794e7a4bd04d8870e79901e89db120105f1fff205",
+        "shape": [
+          16,
+          6
+        ],
+        "zeeman_seed": 3032
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.json",
+        "metadata_sha256": "23a07e7637dd2395c638f97890f813c49af61d218422971e5ed19d2cc53f0480",
+        "mot_seed": 43033,
+        "n_survivors": 21,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.npy",
+        "sha256": "b93b481245ab0846c19fa6e28bcd93fe25210d1a247f7e20c6463422a157cf0c",
+        "shape": [
+          21,
+          6
+        ],
+        "zeeman_seed": 3033
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.json",
+        "metadata_sha256": "37e365d5ea29fbc1495e046f341b7e06e73434d667223f8223e79888ee62bd25",
+        "mot_seed": 43034,
+        "n_survivors": 18,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.npy",
+        "sha256": "dcb32b99ec15272c5fa782057f9f51927a1eef20a9bfda2444c01f7ce3d06534",
+        "shape": [
+          18,
+          6
+        ],
+        "zeeman_seed": 3034
+      }
+    ],
+    "refinement": [
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.json",
+        "metadata_sha256": "1b161175f6e655d81447bc934ace38c6d39be8baad99f6b054eea2b6cc230947",
+        "mot_seed": 43027,
+        "n_survivors": 19,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.npy",
+        "sha256": "d26a57950485dde4d397854338bd85d8f997e7174958584a45128aad2b5e6a26",
+        "shape": [
+          19,
+          6
+        ],
+        "zeeman_seed": 3027
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.json",
+        "metadata_sha256": "e7d6d967ea8f5c5fe3cc3ce095036bcda6cbfd40af28605c5be0c5acf3ec350c",
+        "mot_seed": 43028,
+        "n_survivors": 15,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.npy",
+        "sha256": "75fbd868b06898311ceb2578e89b7bb0ba5e723e466bf8522e21261757fe0668",
+        "shape": [
+          15,
+          6
+        ],
+        "zeeman_seed": 3028
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.json",
+        "metadata_sha256": "5c599ef70c36a3439eae6ea2fb31f8c26d97c83a22f71d734184f300dd7afc28",
+        "mot_seed": 43029,
+        "n_survivors": 17,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.npy",
+        "sha256": "8a1d912f297af7fc899e02a31e7d58688c26f5340ef81e7d1ac7143a899a2612",
+        "shape": [
+          17,
+          6
+        ],
+        "zeeman_seed": 3029
+      },
+      {
+        "metadata_path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.json",
+        "metadata_sha256": "51b7691c370bc063d180021e27a6a17a624e780ce5e699176ca5e03e78f6abd6",
+        "mot_seed": 43030,
+        "n_survivors": 21,
+        "path": "data/optimization/mot_2d/ui_acceptance/win-ui-acceptance-20261020o-mot2d/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.npy",
+        "sha256": "dc44d8ee566090d9ab4627347ffafc2a25f186e4366d156fde46f2b8d081e8a7",
+        "shape": [
+          21,
+          6
+        ],
+        "zeeman_seed": 3030
+      }
+    ]
+  },
+  "expanded_input_roles_sha256": "e5125b92f6c0bc7941687a2207cfb4c1caf2410ba97f940d0ace757445f839bb"
+}

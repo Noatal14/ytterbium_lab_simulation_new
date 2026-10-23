@@ -85,8 +85,17 @@ def _candidate_ids(selection, family):
 
 def _all_particle_provenance(manifest, project_directory):
     from workflow_api.mot_3d_workload import policy
+    from workflow_api.acceptance_profile import source_profile_for_consumer
 
     acceptance = policy(manifest)
+    try:
+        source_acceptance = (
+            None if acceptance is None else source_profile_for_consumer(
+                acceptance.profile_id, manifest.get("upstream_2d_campaign")
+            ).provenance()
+        )
+    except ValueError as exc:
+        _raise("particle_selection_mismatch", exc)
     roles = manifest.get("input_roles")
     names = ("discovery", "refinement", "preliminary_check")
     if not isinstance(roles, Mapping) or set(roles) != set(names):
@@ -114,9 +123,7 @@ def _all_particle_provenance(manifest, project_directory):
                 project_directory=project_directory,
                 expected_zeeman_seeds=ROLE_SEEDS[role],
                 source_git_commit=commit,
-                acceptance_provenance=(
-                    None if acceptance is None else acceptance.provenance()
-                ),
+                acceptance_provenance=source_acceptance,
             )
         except PreliminaryResultError as exc:
             _raise("particle_selection_mismatch", exc)
