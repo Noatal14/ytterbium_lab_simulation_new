@@ -470,35 +470,63 @@ def json_bytes(raw, keys=None, error=None):
     return value
 
 
-def _publish_at_impl(parent, name, value):
-    raw = canonical(value) + b"\n"
-    temp = f".{name}.{os.getpid()}.{os.urandom(4).hex()}.tmp"
-    fd = -1
+def write_exclusive_at(parent, name, raw, mode=0o600):
+    """Reserve a single-link target; errors retain it for manual reconciliation.
+
+    Callers hold their workflow lock until publication and parent fsync finish.
+    A partial reservation is deliberately never removed or overwritten. Avoid
+    hardlink publication: immediate NFS reads can retain the link-count of two.
+    """
+    if (type(name) is not str or not name or name in {".", ".."}
+            or "/" in name or "\\" in name or "\x00" in name
+            or type(raw) is not bytes or not raw):
+        raise ValueError("Invalid exclusive publication")
+    fd = os.open(name, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                 | getattr(os, "O_NOFOLLOW", 0), mode, dir_fd=parent)
     try:
-        fd = os.open(
-            temp,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
-            0o600,
-            dir_fd=parent,
-        )
-        with os.fdopen(fd, "wb", closefd=True) as stream:
-            fd = -1
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.link(temp, name, src_dir_fd=parent, dst_dir_fd=parent, follow_symlinks=False)
-        os.fsync(parent)
-    except FileExistsError:
-        fail(_outcome_error())
+        initial = os.fstat(fd)
+        if not stat.S_ISREG(initial.st_mode) or initial.st_nlink != 1:
+            raise OSError("Unsafe exclusive publication inode")
+        offset = 0
+        while offset < len(raw):
+            written = os.write(fd, raw[offset:])
+            if written <= 0:
+                raise OSError("Incomplete exclusive publication")
+            offset += written
+        os.fsync(fd)
+        final = os.fstat(fd)
+        named = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        identity = lambda row: (row.st_dev, row.st_ino, row.st_mode,
+                                row.st_uid, row.st_gid, row.st_nlink)
+        if (identity(initial) != identity(final) or identity(final) != identity(named)
+                or final.st_size != len(raw) or named.st_size != len(raw)
+                or final.st_mtime_ns != named.st_mtime_ns
+                or final.st_ctime_ns != named.st_ctime_ns):
+            raise OSError("Exclusive publication identity changed")
+    finally:
+        os.close(fd)
+    os.fsync(parent)
+
+
+@contextmanager
+def publication_read_lock(parent, name):
+    """Fence a completed receipt read against its still-active publisher."""
+    fd = os.open(name, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0), dir_fd=parent)
+    try:
+        row = os.fstat(fd)
+        if not stat.S_ISREG(row.st_mode) or row.st_nlink != 1:
+            raise OSError("Unsafe publication lock")
+        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        yield
+    finally:
+        os.close(fd)
+
+
+def _publish_at_impl(parent, name, value):
+    try:
+        write_exclusive_at(parent, name, canonical(value) + b"\n")
     except OSError:
         fail(_outcome_error())
-    finally:
-        if fd >= 0:
-            os.close(fd)
-        try:
-            os.unlink(temp, dir_fd=parent)
-        except FileNotFoundError:
-            pass
 
 
 def _replace_at_impl(parent, name, value, expected):

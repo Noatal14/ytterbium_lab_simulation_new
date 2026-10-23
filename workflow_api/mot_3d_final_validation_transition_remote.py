@@ -24,6 +24,7 @@ GENERATED_PATHS = frozenset(
 CODE_PATHS = frozenset(
     set(CODE_FILES)
     | {
+        "workflow_api/mot_3d_selection_submission_remote.py",
         "workflow_api/mot_3d_final_input_results.py",
         "workflow_api/mot_3d_final_validation_transition_remote.py",
     }

@@ -26,6 +26,10 @@ import sys
 import time
 from pathlib import Path, PurePosixPath
 
+from workflow_api.mot_3d_selection_submission_remote import (
+    write_exclusive_at, publication_read_lock,
+)
+
 from workflow_api.mot_3d_preliminary_results import (
     FAMILIES,
     expected_paths,
@@ -453,6 +457,7 @@ PRELIMINARY_SOURCE_IDENTITY_PATHS = frozenset(
 )
 PRELIMINARY_CODE_PATHS = frozenset(
     {
+        "workflow_api/mot_3d_selection_submission_remote.py",
         "config.py",
         "studies/mot_3d_campaign.py",
         "studies/mot_3d/integrity.py",
@@ -579,35 +584,12 @@ def _publish_bytes(parent: int, name: str, raw: bytes, *, identical_ok: bool) ->
         ):
             return
         fail(_descriptor().error("conflict"))
-    temporary = f".{name}.{os.getpid()}.{os.urandom(4).hex()}.tmp"
-    fd = -1
     try:
-        fd = os.open(
-            temporary,
-            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
-            0o600,
-            dir_fd=parent,
-        )
-        with os.fdopen(fd, "wb", closefd=True) as stream:
-            fd = -1
-            stream.write(raw)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.link(
-            temporary, name, src_dir_fd=parent, dst_dir_fd=parent, follow_symlinks=False
-        )
-        os.fsync(parent)
+        write_exclusive_at(parent, name, raw)
     except FileExistsError:
         fail(_descriptor().error("conflict"))
     except OSError:
         fail(_descriptor().error("outcome_unknown"))
-    finally:
-        if fd >= 0:
-            os.close(fd)
-        try:
-            os.unlink(temporary, dir_fd=parent)
-        except FileNotFoundError:
-            pass
 
 
 def _publish_relative(campaign_fd: int, relative: str, raw: bytes) -> None:
@@ -1882,12 +1864,16 @@ def main(*, trusted_root_override=None):
         if transitions_fd >= 0 and regular_exists_at(
             transitions_fd, _descriptor().final_name
         ):
-            receipt = strict_json_at(
-                transitions_fd,
-                _descriptor().final_name,
-                keys=FINAL_KEYS,
-                limit=MAX_FILE,
-            )
+            try:
+                with publication_read_lock(transitions_fd, _descriptor().lock_name):
+                    receipt = strict_json_at(
+                        transitions_fd,
+                        _descriptor().final_name,
+                        keys=FINAL_KEYS,
+                        limit=MAX_FILE,
+                    )
+            except OSError:
+                fail(_descriptor().error("busy"))
             if (
                 receipt["transition_key"] != payload["transition_key"]
                 or receipt["commit"] != payload["commit"]

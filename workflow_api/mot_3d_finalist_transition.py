@@ -32,6 +32,7 @@ GENERATED_PATHS = frozenset(
 )
 CODE_PATHS = frozenset(
     {
+        "workflow_api/mot_3d_selection_submission_remote.py",
         "config.py",
         "simulations/mot_3d.py",
         "studies/mot_3d_campaign.py",

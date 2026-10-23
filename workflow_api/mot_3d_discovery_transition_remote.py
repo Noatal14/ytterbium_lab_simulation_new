@@ -125,30 +125,20 @@ def read_json(path, keys=None, limit=8 * 1024 * 1024):
 
 
 def publish(path, data, mode=0o600):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    no_links(path.parents[len(path.parts) - len(path.parts)], path) if False else None
-    tmp = path.parent / f".{path.name}.{os.getpid()}.tmp"
-    fd = os.open(
-        tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), mode
+    from workflow_api.mot_3d_selection_submission_remote import (
+        write_exclusive_at, bounded_at,
     )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    directory = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                        | getattr(os, "O_NOFOLLOW", 0))
     try:
-        with os.fdopen(fd, "wb") as stream:
-            stream.write(data)
-            stream.flush()
-            os.fsync(stream.fileno())
         try:
-            os.link(tmp, path, follow_symlinks=False)
+            write_exclusive_at(directory, path.name, data, mode)
         except FileExistsError:
-            if path.is_symlink() or path.read_bytes() != data:
+            if bounded_at(directory, path.name, max(len(data), MAX_FILE_BYTES)) != data:
                 fail("transition_conflict")
     finally:
-        try:
-            tmp.unlink()
-        except FileNotFoundError:
-            pass
-    directory = os.open(path.parent, os.O_RDONLY)
-    os.fsync(directory)
-    os.close(directory)
+        os.close(directory)
 
 
 def atomic_json(path, value):
@@ -476,7 +466,17 @@ def main():
         )
     )
     if final.exists():
-        receipt = read_json(final)
+        from workflow_api.mot_3d_selection_submission_remote import publication_read_lock
+        directory = os.open(transitions, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+                            | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            try:
+                with publication_read_lock(directory, "preliminary_check.lock"):
+                    receipt = read_json(final)
+            except OSError:
+                fail("transition_busy")
+        finally:
+            os.close(directory)
         if (
             receipt.get("transition_key") != transition_key
             or receipt.get("commit") != payload["commit"]
