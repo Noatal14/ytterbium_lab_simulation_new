@@ -1,0 +1,75 @@
+{
+  "campaign": {
+    "git_commit": "1b6ea5a8f7b97718209f2fc47d7a97b8c5c58e16",
+    "id": "mot_3d-5f8ff5bec1d97c47701a",
+    "name": "TESTONLY_Mac3D_UI_Release_20261021_P45"
+  },
+  "chain": {
+    "dependency": "afterok within each family",
+    "families": [
+      {
+        "array_tasks": 3,
+        "id": "angled_donut",
+        "merge_jobs": 1
+      },
+      {
+        "array_tasks": 3,
+        "id": "single_pass",
+        "merge_jobs": 1
+      }
+    ],
+    "qsub_calls": 4
+  },
+  "effects": {
+    "modify_campaign_files": false,
+    "record_submission_receipt": true,
+    "start_simulation": true,
+    "submit_later_stages": false,
+    "submit_preliminary_check": true
+  },
+  "expires_in_seconds": 300,
+  "preview_token": "sanitized-preliminary-preview-token",
+  "remote": {
+    "branch": "codex/ui-release-acceptance-20261020",
+    "commit": "1b6ea5a8f7b97718209f2fc47d7a97b8c5c58e16",
+    "dirty": false,
+    "host": "zeus.technion.ac.il",
+    "project_directory": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"
+  },
+  "resources": {
+    "array": {
+      "memory_gb_per_task": 4,
+      "ncpus_per_task": 4,
+      "vnode": "gd002",
+      "walltime": "01:00:00"
+    },
+    "merge": {
+      "memory_gb": 4,
+      "ncpus": 1,
+      "vnode": "gd002",
+      "walltime": "01:00:00"
+    }
+  },
+  "science": {
+    "bootstrap_replicates": 10000,
+    "bootstrap_seed": 52001,
+    "candidates_per_family": 12,
+    "classification": "candidate_selection_not_final_validation",
+    "dt_s": 1e-05,
+    "input_ensembles": 4,
+    "particles_per_ensemble": 1,
+    "recoil_seeds": [
+      41001,
+      41002,
+      41003
+    ],
+    "selection_seed": 51001,
+    "solver": "RK4StHybridCustom",
+    "t_max_s": 0.05,
+    "total_particles": 4
+  },
+  "stage": {
+    "id": "preliminary_check",
+    "label": "Preliminary check"
+  }
+}
