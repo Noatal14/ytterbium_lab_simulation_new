@@ -77,6 +77,7 @@ class _Protocol:
         shutil.copyfile(CODE / 'config.py', self.local / 'config.py')
         shutil.copyfile(CODE / '.gitattributes', self.local / '.gitattributes')
         (self.local / '.gitignore').write_text('data/\n__pycache__/\n*.pyc\n')
+        self._prepare_clone()
         for args in (['init', '-q'], ['add', '.'], ['-c', 'user.name=Protocol test', '-c', 'user.email=protocol@example.invalid', 'commit', '-qm', 'Frozen protocol code']):
             subprocess.run([str(self.git), '-C', str(self.local), *args], check=True)
         self.commit = subprocess.check_output([str(self.git), '-C', str(self.local), 'rev-parse', 'HEAD'], text=True).strip()
@@ -107,6 +108,9 @@ class _Protocol:
         from workflow_api.discovery import build_registry
         self.campaign_id = next(key for key, value in build_registry(self.local).items() if value.manifest.parent.name == 'protocol-chain')
         self.request = {'campaign_id': self.campaign_id, 'username': 'tal.noa', 'project_directory': self.logical}
+
+    def _prepare_clone(self):
+        """Provision subclass fixture inputs before the first Git commit."""
 
     def _install_scheduler(self):
         def run(argv, *args, **kwargs):

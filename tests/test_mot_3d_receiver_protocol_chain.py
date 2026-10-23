@@ -27,18 +27,9 @@ import test_mot_2d_receiver_protocol_chain as two_d
 
 
 class _Upstream(two_d._Protocol):
-    def __init__(self, *args, **kwargs):
-        mp = args[1]
-        original_run = subprocess.run
-        def prepare_clone(argv, *positional, **keywords):
-            if 'init' in argv and '-C' in argv:
-                destination = Path(argv[argv.index('-C') + 1]) / 'docs'
-                shutil.copytree(two_d.CODE / 'docs', destination)
-            return original_run(argv, *positional, **keywords)
-        with mp.context() as child:
-            child.setattr(subprocess, 'run', prepare_clone)
-            super().__init__(*args, **kwargs)
-        self._install_scheduler()
+    def _prepare_clone(self):
+        # Exclusive per-clone provisioning; never wrap global subprocess.run.
+        shutil.copytree(two_d.CODE / 'docs', self.local / 'docs')
 
     def _install_workers(self):
         super()._install_workers()
