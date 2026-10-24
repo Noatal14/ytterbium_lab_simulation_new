@@ -8,7 +8,7 @@ import json
 import shlex
 import stat
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from workflow_api.mot_2d import read_campaign as read_2d_campaign
@@ -44,6 +44,7 @@ CURRENT_3D_STAGES = (
     "final_validation_input_generation",
     "final_validation",
     "complete",
+    "final_validation_extension_required",
 )
 CURRENT_3D_ROLE_SEEDS = {
     "discovery": tuple(range(3015, 3027)),
@@ -239,6 +240,91 @@ def _discovery_jobs_match(payload: dict[str, Any], root: Path | None, repository
     )
 
 
+def _validated_3d_extension(payload: dict[str, Any], repository_root: Path, campaign_root: Path) -> bool:
+    """Recompute the saved terminal outcome; summaries alone are not evidence."""
+    from workflow_api.mot_3d_final_validation_results import (
+        expected_paths, validate_final_validation_result_bytes,
+    )
+    from workflow_api.mot_3d_final_input_results import expected_paths as input_paths
+    from workflow_api.platform_io import os
+    from workflow_api.mot_3d_discovery_transition import _DIRECTORY_FLAGS, _READ_FLAGS, _open_parent_at
+
+    def read(name: str) -> bytes:
+        path = _trusted_regular(repository_root, str(campaign_root / name))
+        if path is None:
+            raise ValueError("untrusted terminal artifact")
+        root_fd = os.open(repository_root, _DIRECTORY_FLAGS)
+        parent_fd = -1
+        fd = -1
+        try:
+            parts = path.relative_to(repository_root).parts
+            parent_fd = _open_parent_at(root_fd, parts[:-1], create=False)
+            fd = os.open(parts[-1], _READ_FLAGS, dir_fd=parent_fd)
+            before = os.fstat(fd)
+            if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1 or not 0 < before.st_size <= 2 * 1024 * 1024:
+                raise ValueError("invalid terminal artifact")
+            raw = os.read(fd, before.st_size + 1)
+            identity = lambda row: (row.st_dev, row.st_ino, row.st_mode, row.st_uid, row.st_gid, row.st_nlink, row.st_size, row.st_mtime_ns, row.st_ctime_ns)
+            if len(raw) != before.st_size or identity(os.fstat(fd)) != identity(before) or identity(os.stat(parts[-1], dir_fd=parent_fd, follow_symlinks=False)) != identity(before):
+                raise ValueError("terminal artifact changed")
+            return raw
+        finally:
+            if fd >= 0:
+                os.close(fd)
+            if parent_fd >= 0:
+                os.close(parent_fd)
+            os.close(root_fd)
+
+    relative = campaign_root.relative_to(repository_root).as_posix()
+    root_fd = os.open(repository_root, _DIRECTORY_FLAGS)
+    parent_fd = -1
+    try:
+        parent_fd = _open_parent_at(root_fd, PurePosixPath(relative).parts, create=False)
+        try:
+            os.stat("final_report.json", dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            pass
+        else:
+            return False
+    finally:
+        if parent_fd >= 0:
+            os.close(parent_fd)
+        os.close(root_fd)
+    original = json.loads(json.dumps(payload))
+    if original["stages"].pop("final_validation_status") != relative + "/final_validation_status.json":
+        return False
+    original["stage"] = "final_validation"
+    original_bytes = json.dumps(original, indent=2, ensure_ascii=False, allow_nan=False).encode()
+    inputs_raw = read("final_validation_inputs/input_manifest.json")
+    # These are logical producer paths, never host filesystem read locations.
+    first = json.loads(inputs_raw)["ensembles"][0]["path"]
+    if not isinstance(first, str):
+        return False
+    marker = "/" + relative + "/final_validation_inputs/"
+    project = first.split(marker)[0]
+    if first.count(marker) != 1 or not PurePosixPath(project).is_absolute() or str(PurePosixPath(project)) != project:
+        return False
+    validated = validate_final_validation_result_bytes(
+        manifest_bytes=original_bytes,
+        locked_nominals_bytes=read("selection/locked_nominals.json"),
+        input_manifest_bytes=inputs_raw,
+        generation_submission_bytes=read("final_validation_input_generation_submission.json"),
+        submission_bytes=read("final_validation_submission.json"),
+        job_files={f"jobs/final_validation/{family}_{kind}.pbs": read(f"jobs/final_validation/{family}_{kind}.pbs")
+                   for family in ("angled_donut", "single_pass") for kind in ("array", "merge")},
+        input_files={name: read(name) for name in input_paths(original)},
+        result_files={name: read(name) for name in expected_paths()},
+        logical_campaign_root=relative, project_directory=project,
+        campaign_absolute_path=project + "/" + relative,
+    )
+    return (
+        validated.outcome == payload["stage"] == "final_validation_extension_required"
+        and validated.terminal_name == "final_validation_status.json"
+        and validated.campaign_bytes == read("campaign.json")
+        and validated.terminal_bytes == read("final_validation_status.json")
+    )
+
+
 def _modern_3d_contract(
     payload: dict[str, Any], progress: list[dict[str, Any]], repository_root: Path,
     campaign_root: Path | None = None,
@@ -376,12 +462,19 @@ def _modern_3d_contract(
     stages = payload.get("stages") if isinstance(payload.get("stages"), dict) else {}
     if stage not in CURRENT_3D_STAGES:
         errors.append("3D campaign stage is not part of the current guarded workflow")
-    required_stage = "final_validation" if stage == "complete" else stage
+    required_stage = "final_validation" if stage in {"complete", "final_validation_extension_required"} else stage
     if required_stage == "discovery":
         if not _discovery_jobs_match(payload, campaign_root, repository_root):
             errors.append("current 3D Discovery job registry is incomplete or noncanonical")
     elif required_stage in CURRENT_3D_STAGES and not isinstance(stages.get(required_stage), dict):
         errors.append("current 3D stage record is incomplete")
+    if stage == "final_validation_extension_required":
+        try:
+            terminal_valid = campaign_root is not None and _validated_3d_extension(payload, repository_root, campaign_root)
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
+            terminal_valid = False
+        if not terminal_valid:
+            errors.append("3D precision-extension terminal evidence is invalid or incomplete")
     timestep = next((row for row in progress if row.get("stage") == "dt_validation"), None)
     if not timestep or timestep.get("status") != "complete":
         errors.append("current 3D timestep policy validation is unavailable")
