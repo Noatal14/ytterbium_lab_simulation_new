@@ -3,12 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
   Mot3DFinalValidationCompletionApiError,
+  createMot3DFinalValidationCompletionApi,
   parseMot3DFinalValidationCompletionPreview,
   parseMot3DFinalValidationCompletionStatus,
 } from "../api/clients/mot3dFinalValidationCompletion";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DFinalValidationCompletionController } from "../features/campaign/controllers/useMot3DFinalValidationCompletionController";
 import runningStatus from "./fixtures/c56-final-validation-running-status.json";
+import preparedExtensionStatus from "./fixtures/c56-final-validation-prepared-extension-status.json";
 
 const jobs = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: "610[].zeus-master", merge_job_id: "611.zeus-master" }, { id: "single_pass", array_job_id: "612[].zeus-master", merge_job_id: "613.zeus-master" }] };
 const completion = (outcome: "complete" | "final_validation_extension_required" = "complete") => ({ outcome, families: [{ family: "angled_donut", candidate_id: "angled_donut_finalist_02", conditional_efficiency: .5, bootstrap_95_ci: [.495, .505], ci_half_width: .0050000000000000044, precision_target_met: true }, { family: "single_pass", candidate_id: "single_pass_finalist_03", conditional_efficiency: .5, bootstrap_95_ci: outcome === "complete" ? [.495, .505] : [.49, .51], ci_half_width: outcome === "complete" ? .0050000000000000044 : .010000000000000009, precision_target_met: outcome === "complete" }], evidence_sha256: "b".repeat(64) });
@@ -20,6 +22,72 @@ const base = { stage: "final_validation", connected: true, discovery: {} as neve
 const snapshot = { connection_status: "connected" as const, profile: { host: "zeus.technion.ac.il" as const, authentication: "ssh-key-or-agent" as const, username: "tal.noa", project_directory: "/home/tal.noa/project" }, remote: { project_directory: "/home/tal.noa/project", git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available" as const, queried_at: "2026-10-13T00:00:00Z", jobs: [] } };
 
 describe("Final Validation completion", () => {
+  it.each(["complete", "final_validation_extension_required"] as const)("accepts remote prepared %s without claiming local synchronization", (outcome) => {
+    const value = structuredClone(preparedExtensionStatus);
+    value.final_validation.status = outcome;
+    value.completion.status = outcome;
+    const parsed = parseMot3DFinalValidationCompletionStatus(value);
+    expect(parsed.campaign.stage).toBe("final_validation");
+    expect(parsed.completion.detail).toBeNull();
+    expect(parsed.local_sync).toEqual({ status: "not_synchronized", receipt_sha256: null });
+    expect(parsed.next_action).toBe("synchronize_results");
+  });
+
+  it.each([
+    ["terminal local stage without detail", (v: any): void => { v.campaign.stage = "final_validation_extension_required"; }],
+    ["crossed local terminal stage", (v: any): void => { v.campaign.stage = "complete"; }],
+    ["synchronized without detail", (v: any): void => { v.campaign.stage = "final_validation_extension_required"; v.local_sync = { status: "synchronized", receipt_sha256: "a".repeat(64) }; v.next_action = "review_extension_required"; }],
+    ["receipt before synchronization", (v: any): void => { v.local_sync.receipt_sha256 = "a".repeat(64); }],
+    ["synchronized flag before local transition", (v: any): void => { v.local_sync.status = "synchronized"; }],
+    ["wrong next action", (v: any): void => { v.next_action = "review_completion"; }],
+    ["unvalidated outputs", (v: any): void => { v.validation.status = "not_started"; v.validation.result_artifacts = 0; }],
+    ["missing result", (v: any): void => { v.validation.result_artifacts = 13; }],
+    ["incomplete simulation tasks", (v: any): void => { v.scheduler.completed_array_tasks = 5; }],
+    ["incomplete merge", (v: any): void => { v.scheduler.completed_merge_jobs = 1; }],
+    ["wrong completion outcome", (v: any): void => { v.completion.status = "complete"; }],
+    ["unknown terminal outcome", (v: any): void => { v.final_validation.status = "other_terminal"; v.completion.status = "other_terminal"; }],
+    ["nonterminal with terminal completion", (v: any): void => { v.final_validation.status = "running"; }],
+    ["unknown detail shape", (v: any): void => { v.completion.detail = {}; }],
+    ["detail before local synchronization", (v: any): void => { v.completion.detail = completion("final_validation_extension_required"); }],
+  ] as const)("rejects contradictory prepared status: %s", (_label, mutate) => {
+    const value = structuredClone(preparedExtensionStatus);
+    mutate(value);
+    expect(() => parseMot3DFinalValidationCompletionStatus(value)).toThrow("Invalid Final Validation completion");
+  });
+
+  it("retains detailed synchronized terminal outcome and nonterminal stage guards", () => {
+    const synchronized = terminalStatus();
+    for (const detail of [null, completion("complete"), {}]) {
+      expect(() => parseMot3DFinalValidationCompletionStatus({ ...synchronized, completion: { ...synchronized.completion, detail } })).toThrow();
+    }
+    const waiting = { ...runningStatus, campaign: { ...runningStatus.campaign, stage: "complete" } };
+    expect(() => parseMot3DFinalValidationCompletionStatus(waiting)).toThrow();
+  });
+
+  it("offers review through the real client/controller for the captured unsynchronized terminal receipt", async () => {
+    const user = userEvent.setup();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => { expect(input).toBe("/api/v1/zeus/mot-3d/final-validation-completion/status"); return new Response(JSON.stringify({ api_version: 1, data: preparedExtensionStatus }), { status: 200, headers: { "Content-Type": "application/json" } }); });
+    vi.stubGlobal("fetch", fetchMock);
+    const api = createMot3DFinalValidationCompletionApi(async () => "csrf");
+    function Harness() {
+      const controller = useMot3DFinalValidationCompletionController({ campaignId: preparedExtensionStatus.campaign.id, snapshot, enabled: true, api });
+      return <Mot3DCampaignFlow {...base} finalValidationCompletion={controller} />;
+    }
+    try {
+      render(<Harness />);
+      await user.click(screen.getByRole("button", { name: "Check sealed results" }));
+      expect(await screen.findByRole("button", { name: "Review completion" })).toBeEnabled();
+      expect(screen.queryByText("Final Validation extension is required")).not.toBeInTheDocument();
+      expect(screen.queryByText("Final report is ready")).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Record extension required" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledOnce();
+      expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/zeus/mot-3d/final-validation-completion/status");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("can refresh actual running completion evidence until it becomes reviewable", async () => {
     const user = userEvent.setup();
     const running = parseMot3DFinalValidationCompletionStatus(runningStatus);
