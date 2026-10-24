@@ -109,7 +109,9 @@ def relevant_files():
     paths = {Path(name) for name in CAMPAIGN_FILES}
     for directory in ("lab_setup", "simulations", "utils", "atomsmltr/src/atomsmltr"):
         paths.update(Path(directory).rglob("*.py"))
-    return tuple(path.as_posix() for path in sorted(paths))
+    # Native Windows paths sort without case sensitivity. Provenance must use
+    # the same canonical names and ordering on the submitting host and Zeus.
+    return tuple(sorted((path.as_posix() for path in paths), key=PurePosixPath))
 
 
 EXPECTED_SEEDS = tuple(range(3015, 3035))
