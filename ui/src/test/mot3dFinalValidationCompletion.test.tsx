@@ -192,4 +192,39 @@ describe("Final Validation completion", () => {
     expect(hook.result.current.phase).toBe("success");
     expect(hook.result.current.status?.completion.detail?.outcome).toBe(outcome);
   });
+
+  it("renders typed invalid output counts and reason through the real status controller", async () => {
+    const user = userEvent.setup();
+    const invalid = parseMot3DFinalValidationCompletionStatus({
+      ...status(),
+      final_validation: { ...status().final_validation, status: "completed_success_unvalidated" },
+      validation: { status: "scientifically_invalid", result_artifacts: 0, expected_result_artifacts: 14, reason_code: "artifact_registry_mismatch" },
+      next_action: "inspect_zeus",
+    });
+    const api = { status: vi.fn(async () => invalid), preview: vi.fn(), confirm: vi.fn(), reset: vi.fn() };
+    function Harness() {
+      const controller = useMot3DFinalValidationCompletionController({ campaignId: invalid.campaign.id, snapshot, enabled: true, api });
+      return <Mot3DCampaignFlow {...base} finalValidationCompletion={controller} />;
+    }
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Check sealed results" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Final Validation outputs are invalid");
+    expect(alert).toHaveTextContent("Validated result artifacts: 0 of 14");
+    expect(alert).toHaveTextContent("sealed result files are missing or inconsistent");
+    expect(alert).toHaveTextContent("artifact validation, not physical survivors");
+    expect(alert).not.toHaveTextContent("outcome is uncertain");
+    expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Synchronize|Record extension/ })).not.toBeInTheDocument();
+    expect(api.status).toHaveBeenCalledOnce();
+    expect(api.preview).not.toHaveBeenCalled();
+    expect(api.confirm).not.toHaveBeenCalled();
+  });
+  it("retains uncertainty wording for a genuinely unknown blocked outcome", () => {
+    render(<Mot3DCampaignFlow {...base} finalValidationCompletion={flow({ phase: "blocked", status: null })} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Manual verification required");
+    expect(screen.getByRole("alert")).toHaveTextContent("outcome is uncertain. Do not retry");
+    expect(screen.queryByText(/Validated result artifacts:/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
+  });
 });
