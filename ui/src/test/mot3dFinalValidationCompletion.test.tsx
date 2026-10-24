@@ -1,4 +1,5 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
   Mot3DFinalValidationCompletionApiError,
@@ -7,6 +8,7 @@ import {
 } from "../api/clients/mot3dFinalValidationCompletion";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DFinalValidationCompletionController } from "../features/campaign/controllers/useMot3DFinalValidationCompletionController";
+import runningStatus from "./fixtures/c56-final-validation-running-status.json";
 
 const jobs = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: "610[].zeus-master", merge_job_id: "611.zeus-master" }, { id: "single_pass", array_job_id: "612[].zeus-master", merge_job_id: "613.zeus-master" }] };
 const completion = (outcome: "complete" | "final_validation_extension_required" = "complete") => ({ outcome, families: [{ family: "angled_donut", candidate_id: "angled_donut_finalist_02", conditional_efficiency: .5, bootstrap_95_ci: [.495, .505], ci_half_width: .0050000000000000044, precision_target_met: true }, { family: "single_pass", candidate_id: "single_pass_finalist_03", conditional_efficiency: .5, bootstrap_95_ci: outcome === "complete" ? [.495, .505] : [.49, .51], ci_half_width: outcome === "complete" ? .0050000000000000044 : .010000000000000009, precision_target_met: outcome === "complete" }], evidence_sha256: "b".repeat(64) });
@@ -18,6 +20,53 @@ const base = { stage: "final_validation", connected: true, discovery: {} as neve
 const snapshot = { connection_status: "connected" as const, profile: { host: "zeus.technion.ac.il" as const, authentication: "ssh-key-or-agent" as const, username: "tal.noa", project_directory: "/home/tal.noa/project" }, remote: { project_directory: "/home/tal.noa/project", git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available" as const, queried_at: "2026-10-13T00:00:00Z", jobs: [] } };
 
 describe("Final Validation completion", () => {
+  it("can refresh actual running completion evidence until it becomes reviewable", async () => {
+    const user = userEvent.setup();
+    const running = parseMot3DFinalValidationCompletionStatus(runningStatus);
+    const ready = parseMot3DFinalValidationCompletionStatus({
+      ...running,
+      final_validation: { ...running.final_validation, status: "ready_to_advance" },
+      scheduler: { ...running.scheduler, completed_array_tasks: 6, completed_merge_jobs: 2 },
+      validation: { ...running.validation, status: "valid", result_artifacts: 14 },
+      next_action: "review_completion",
+    });
+    const api = { status: vi.fn().mockResolvedValueOnce(running).mockResolvedValueOnce(ready), preview: vi.fn(), confirm: vi.fn(), reset: vi.fn() };
+    function Harness() {
+      const controller = useMot3DFinalValidationCompletionController({ campaignId: running.campaign.id, snapshot, enabled: true, api });
+      return <Mot3DCampaignFlow {...base} finalValidationCompletion={controller} />;
+    }
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Check sealed results" }));
+    expect(await screen.findByText("Waiting for sealed Final Validation results")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Synchronize and publish final report" })).not.toBeInTheDocument();
+    expect(api.status).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: "Refresh status" }));
+    expect(await screen.findByRole("button", { name: "Review completion" })).toBeEnabled();
+    expect(api.status).toHaveBeenCalledTimes(2);
+    expect(api.preview).not.toHaveBeenCalled();
+    expect(api.confirm).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["queued", 3, 0],
+    ["completed_success_unvalidated", 6, 2],
+  ] as const)("keeps %s completion evidence refreshable without offering publication", async (lifecycle, arrays, merges) => {
+    const user = userEvent.setup();
+    const waiting = parseMot3DFinalValidationCompletionStatus({
+      ...runningStatus,
+      final_validation: { ...runningStatus.final_validation, status: lifecycle },
+      scheduler: { ...runningStatus.scheduler, completed_array_tasks: arrays, completed_merge_jobs: merges },
+    });
+    const refresh = vi.fn();
+    render(<Mot3DCampaignFlow {...base} finalValidationCompletion={flow({ status: waiting, refresh })} />);
+    expect(screen.getByText(/Simulation tasks complete:/)).toHaveTextContent(`Simulation tasks complete: ${arrays} of 6. Merge jobs complete: ${merges} of 2. Results still require validation.`);
+    expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Synchronize and publish final report" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Refresh status" }));
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
   it("strictly binds metrics, decision, evidence and zero-job effects", () => {
     expect(preview().completion.families[0].ci_half_width).toBeCloseTo(.005);
     for (const mutate of [
