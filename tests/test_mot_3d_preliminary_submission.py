@@ -30,6 +30,40 @@ EMPTY = {
 }
 
 
+def test_preliminary_plan_uses_portable_directory_handles(tmp_path, monkeypatch):
+    """An invalid receipt is typed, including on native Windows directory opens."""
+    from types import SimpleNamespace
+    from workflow_api import mot_3d_preliminary_submission as module
+
+    campaign = tmp_path / "campaign with spaces"
+    (campaign / ".mot_ui" / "sync").mkdir(parents=True)
+    (campaign / "campaign.json").write_text("{}")
+    (campaign / ".mot_ui" / "sync" / "discovery_to_preliminary.json").write_text("{}")
+    monkeypatch.setattr(module, "build_registry", lambda root: {
+        "campaign-id": SimpleNamespace(family="mot_3d", manifest=campaign / "campaign.json")
+    })
+    coordinator = object.__new__(Mot3DPreliminarySubmissionCoordinator)
+    coordinator.root = tmp_path
+    with pytest.raises(Mot3DPreliminarySubmissionError) as error:
+        coordinator._plan({"campaign_id": "campaign-id", "username": "tal.noa",
+                           "project_directory": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance"})
+    assert error.value.code == "preliminary_preparation_invalid"
+
+
+def test_preliminary_nested_read_closes_portable_handles(tmp_path):
+    from workflow_api import platform_io
+    from workflow_api.mot_3d_preliminary_submission import _DIRECTORY_FLAGS, _read_at
+
+    nested = tmp_path / "nested directory"
+    nested.mkdir()
+    (nested / "receipt.json").write_bytes(b"receipt")
+    descriptor = platform_io.os.open(tmp_path, _DIRECTORY_FLAGS)
+    try:
+        assert _read_at(descriptor, "nested directory/receipt.json") == b"receipt"
+    finally:
+        platform_io.os.close(descriptor)
+
+
 def test_outcome_unknown_accepts_only_exact_global_prefix_and_nonce():
     valid = {
         "angled_donut": {

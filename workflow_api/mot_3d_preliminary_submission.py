@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Mapping, Protocol
 
 from workflow_api.discovery import build_registry
+from workflow_api.platform_io import os
 from workflow_api.mot_3d_discovery_transition import (
     EXPECTED_BUNDLE_PATHS,
     _expected_bundle_paths,
@@ -140,8 +141,6 @@ def _read_at(root_fd: int, relative: str, limit: int = 8 * 1024 * 1024) -> bytes
     finally:
         for value in reversed(opened):
             try:
-                import os
-
                 os.close(value)
             except OSError:
                 pass
@@ -223,8 +222,6 @@ class Mot3DPreliminarySubmissionCoordinator:
         if entry is None or entry.family != "mot_3d":
             raise Mot3DPreliminarySubmissionError("campaign_not_found")
         campaign = entry.manifest.parent
-        import os
-
         campaign_fd = os.open(campaign, _DIRECTORY_FLAGS)
         try:
             manifest_raw = _read_at(campaign_fd, "campaign.json")
