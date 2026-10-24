@@ -1,0 +1,49 @@
+{
+  "campaign": {
+    "id": "mot_3d-9b8f87352bbf66a53668",
+    "name": "TESTONLY_Mac3D_UI_Release_20261023_V2_C56",
+    "stage": "final_validation_input_generation"
+  },
+  "final_validation_input_generation": {
+    "chain": {
+      "dependency": "afterok linear chain",
+      "jobs": [
+        {
+          "id": "zeeman",
+          "job_id": "4820071[].zeus-master"
+        },
+        {
+          "id": "mot_2d",
+          "job_id": "4820072[].zeus-master"
+        },
+        {
+          "id": "freeze",
+          "job_id": "4820073.zeus-master"
+        }
+      ]
+    },
+    "status": "held"
+  },
+  "local_sync": {
+    "receipt_sha256": null,
+    "status": "not_synchronized"
+  },
+  "next_action": "inspect_zeus",
+  "queried_at": "2026-10-23T23:58:27.852911+00:00",
+  "scheduler": {
+    "completed_array_tasks": 0,
+    "completed_scalar_jobs": 0,
+    "expected_array_tasks": 40,
+    "expected_scalar_jobs": 1
+  },
+  "source": "zeus",
+  "transition": {
+    "status": "not_prepared"
+  },
+  "validation": {
+    "expected_result_artifacts": 101,
+    "reason_code": null,
+    "result_artifacts": 0,
+    "status": "not_started"
+  }
+}

@@ -1,3 +1,5 @@
+import actualHeldInputs from "./fixtures/c56-final-inputs-held-status.json";
+import { parseMot3DFinalValidationTransitionStatus } from "../api/clients/mot3dFinalValidationTransition";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { CampaignPriorityPanel } from "../features/campaign/CampaignPriorityPanel";
@@ -86,6 +88,23 @@ describe("CampaignPriorityPanel", () => {
     render(<CampaignPriorityPanel {...base} campaign={{ ...campaignFixture, family: "mot_3d", stage: "preliminary_check" }} preliminaryCheckState="checking" />);
     expect(screen.getByRole("heading", { name: "Checking Zeus status" })).toBeVisible();
     expect(screen.getByText(/No submission has been reviewed or started by this check/)).toBeVisible();
+  });
+
+  it("keeps actual known input-generation held priority neutral without hiding uncertainty", () => {
+    const status = parseMot3DFinalValidationTransitionStatus(actualHeldInputs);
+    const campaign = {...campaignFixture, ...status.campaign, family:"mot_3d"} as Campaign;
+    const view = render(<CampaignPriorityPanel {...base} campaign={campaign} mot3DLateKind="transition" mot3DLatePhase="idle" mot3DLateLifecycle={status.final_validation_input_generation.status} mot3DLateNextAction={status.next_action}/>);
+    expect(screen.getByRole("heading",{name:"Input generation is held on Zeus"})).toBeVisible();
+    expect(screen.getByText(/Refresh the read-only status below/)).toBeVisible();
+    expect(screen.queryByText("Manual verification required")).not.toBeInTheDocument();
+    for (const lifecycle of ["status_unknown", "completed_failed", "outcome_unknown", "outputs_invalid"]) {
+      view.rerender(<CampaignPriorityPanel {...base} campaign={campaign} mot3DLateKind="transition" mot3DLatePhase="blocked" mot3DLateLifecycle={lifecycle} mot3DLateNextAction="inspect_zeus"/>);
+      expect(screen.getByRole("heading",{name:"Manual verification required"})).toBeVisible();
+    }
+    view.rerender(<CampaignPriorityPanel {...base} campaign={campaign} mot3DLateKind="transition" mot3DLatePhase="blocked" mot3DLateLifecycle="held" mot3DLateNextAction="inspect_zeus"/>);
+    expect(screen.getByRole("heading",{name:"Manual verification required"})).toBeVisible();
+    view.rerender(<CampaignPriorityPanel {...base} campaign={{...campaign,stage:"closure"}} mot3DLateKind="transition" mot3DLatePhase="idle" mot3DLateLifecycle="held" mot3DLateNextAction="inspect_zeus"/>);
+    expect(screen.getByRole("heading",{name:"Manual verification required"})).toBeVisible();
   });
 
   it.each([

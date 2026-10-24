@@ -489,7 +489,9 @@ function Mot3DFinalValidationTransitionStage({
       panel.current?.focus();
   }, [visible, flow.phase, flow.error, flow.status?.next_action]);
   if (!visible) return null;
-  const invalid = flow.status?.validation.status === "scientifically_invalid",
+  const lifecycle = flow.status?.final_validation_input_generation.status,
+    waiting = ["queued", "running", "held"].includes(lifecycle ?? ""),
+    invalid = flow.status?.validation.status === "scientifically_invalid",
     recovery =
       flow.status?.final_validation_input_generation.status ===
         "final_validation_prepared" &&
@@ -546,6 +548,31 @@ function Mot3DFinalValidationTransitionStage({
                 : "Checking generated inputs"
             }
           />
+        )}
+        {waiting && flow.phase === "idle" && !flow.error && (
+          <div className="state-panel state-panel--stacked" role="status">
+            <strong>
+              {lifecycle === "held"
+                ? "Input generation is held on Zeus"
+                : lifecycle === "queued"
+                  ? "Input generation is queued on Zeus"
+                  : "Input generation is running on Zeus"}
+            </strong>
+            <p>
+              {lifecycle === "held"
+                ? "Zeus reports a scheduler hold, which may include a dependency hold. Check the existing jobs for its reason."
+                : "The existing input-generation jobs have not finished."}
+              {" "}The generated inputs remain unverified. No preparation or submission is available.
+            </p>
+            <div className="form-actions">
+              <button className="secondary-button" onClick={() => void flow.refresh()}>
+                Refresh status
+              </button>
+              <button className="text-button" onClick={onViewJobs}>
+                Open Zeus jobs
+              </button>
+            </div>
+          </div>
         )}
         {flow.phase === "ready" && (
           <div className="prepare-card">

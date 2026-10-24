@@ -194,6 +194,11 @@ export function CampaignPriorityPanel({
       final_validation_extension_required: ["Final Validation", "scientific extension decision"],
     };
     const [current, next] = labels[campaign.stage];
+    if (campaign.stage === "final_validation_input_generation"
+      && mot3DLateKind === "transition" && mot3DLatePhase === "idle"
+      && mot3DLateLifecycle === "held" && mot3DLateNextAction === "inspect_zeus") {
+      return <section className="priority-panel" aria-labelledby="priority-heading"><p className="eyebrow">Current priority</p><h2 id="priority-heading">Input generation is held on Zeus</h2><p><strong>Current stage:</strong> {current}.</p><p>Zeus reports a scheduler hold, which may include a dependency hold. Refresh the read-only status below or inspect the existing jobs for its reason. The generated inputs remain unverified; do not submit again.</p></section>;
+    }
     const manual = ["partial", "outcome_unknown", "held", "completed_failed", "status_unknown", "outputs_invalid"].includes(mot3DLateLifecycle ?? "");
     const active = ["submitted", "queued", "running"].includes(mot3DLateLifecycle ?? "");
     const validationRequired = ["completed_success_unvalidated", "ready_to_advance"].includes(mot3DLateLifecycle ?? "");

@@ -43,13 +43,15 @@ export function useMot3DFinalValidationTransitionController({
     contextKey: `${campaignId}:${enabled}:${p?.host ?? ""}:${p?.authentication ?? ""}:${p?.username ?? ""}:${p?.project_directory ?? ""}:${commit ?? ""}:${apiId(api)}`,
     operations,
     stateForStatus: (s) =>
-      ["review_transition", "synchronize_results"].includes(s.next_action)
-        ? "ready"
-        : s.next_action === "open_final_validation"
-          ? "success"
-          : s.next_action === "inspect_zeus"
-            ? "blocked"
-            : "idle",
+      s.final_validation_input_generation.status === "held"
+        ? "idle"
+        : ["review_transition", "synchronize_results"].includes(s.next_action)
+          ? "ready"
+          : s.next_action === "open_final_validation"
+            ? "success"
+            : s.next_action === "inspect_zeus"
+              ? "blocked"
+              : "idle",
     canPreview: (s) =>
       ["review_transition", "synchronize_results"].includes(
         s?.next_action ?? "",
