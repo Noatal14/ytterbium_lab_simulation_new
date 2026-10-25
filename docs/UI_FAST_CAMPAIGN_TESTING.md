@@ -31,31 +31,19 @@ Run success plus held/failed jobs, interrupted checkpoint/resume, corrupt or
 missing results, refresh/reconnection and double-confirmation cases. Keep
 scientific campaigns and their budgets immutable. Test both 2D and 3D flows.
 
-### Version 2: controlled 3D acceptance input
+### Historical version 2 (retired)
 
-Maintainer-operated isolated backends can explicitly select
-`--acceptance-profile ui_acceptance_v2`. The ordinary `dev:acceptance` launcher
-still selects version 1. Version 2 has its own immutable specification,
-`workflow_api/specifications/ui_acceptance_v2.json`, with policy SHA-256
-`b7f40de6cbf9311e42408ecbc0ff3ecfa66195e2ebdab2287c317ee43c1517b7`.
-It retains version 1's particle counts, stage topology, resources, separate
-search/validation populations, 50-ms endpoint, 10-µs search timestep and 5-µs
-validation timestep.
+The one-off v2 candidate permutation and pinned O16 cross-profile handoff are
+not executable product features. Their original policy and tests are preserved
+under `tests/fixtures/historical_acceptance_v2/`; reconstruct earlier runs using
+their recorded commit, not the current backend. Only v1 remains selectable.
 
-Version 2 accepts only the specifically pinned original O16 TEST ONLY 2D
-handoff, including its campaign/report identity and all 40 survivor-state and
-metadata file hashes. Original version-1 provenance is preserved. After normal
-candidate selection, its explicit Single-pass candidate ordering exchanges
-positions 0 and 2; Angled-donut ordering is unchanged. This controlled test
-fixture exercises an interior refinement design instead of a boundary point
-whose upstream perturbation duplicates the original point. Canonical scientific
-selection, parameter bounds and duplicate rejection remain unchanged. This does
-not guarantee that measured downstream results will pass.
-
-All version-2 campaigns and outputs remain TEST ONLY in separate acceptance
-namespaces and cannot be promoted to scientific inputs or results. A successful
-bootstrap or transfer preview does not establish full lifecycle qualification;
-record actual stage completion and final collection separately for each OS.
+**Unresolved release limitation:** canonical Single-pass candidate selection can
+choose a legal boundary point whose clipped refinement perturbation duplicates
+another point. The existing `refinement_design_duplicate` rejection remains;
+this cleanup does not change the algorithm or make that path pass. An explicit
+scientific/product decision and independent qualification are required before
+claiming unrestricted autonomous campaign use by the team.
 
 ## Current regression commands
 

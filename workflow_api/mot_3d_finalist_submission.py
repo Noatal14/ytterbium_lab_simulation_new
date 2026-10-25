@@ -37,6 +37,7 @@ CODE_FILES = frozenset(
         "studies/mot_3d/finalists/merge.py",
         "studies/mot_3d/finalists/select.py",
         "studies/mot_3d/discovery/optimize.py",
+        "utils/optuna_replay.py",
         "workflow_api/mot_3d_closure_results.py",
         "workflow_api/mot_3d_closure_transition.py",
         "workflow_api/mot_3d_closure_transition_remote.py",

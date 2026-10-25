@@ -11,3 +11,6 @@
 *.woff binary
 *.woff2 binary
 *.bat -text
+
+# Operator evidence remains in Git/history, outside distributable source archives.
+/acceptance-evidence/ export-ignore

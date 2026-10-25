@@ -395,7 +395,7 @@ def restore_discovery_sampler(study, *, family, worker_index, sampler_seed, star
     Physics is never replayed. Unknown, partial, concurrent or incompatible
     history fails closed instead of silently starting another random stream.
     """
-    from studies.mot_2d.optimization import _ReplaySampler
+    from utils.optuna_replay import SequentialReplaySampler
 
     saved_trials = study.get_trials(deepcopy=True)
     if not saved_trials:
@@ -442,7 +442,7 @@ def restore_discovery_sampler(study, *, family, worker_index, sampler_seed, star
             rebuilt.set_user_attr(key, value)
         shadow.tell(rebuilt, values=saved.values, state=saved.state)
 
-    class DiscoveryReplaySampler(_ReplaySampler):
+    class DiscoveryReplaySampler(SequentialReplaySampler):
         def after_trial(self, actual_study, trial, state, values):
             source = {key: value for key, value in self.active.user_attrs.items() if key == "source"}
             _validate_replayed_attributes(trial, family=family, particle_count=particle_count,

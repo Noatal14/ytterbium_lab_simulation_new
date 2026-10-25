@@ -803,14 +803,11 @@ def expected_selection_particle_provenance(
         from workflow_api.acceptance_profile import (
             assert_acceptance_path,
             assert_scientific_source,
-            source_profile_for_consumer,
         )
 
         try:
             if acceptance is not None:
-                source_acceptance = source_profile_for_consumer(
-                    acceptance.profile_id, manifest.get("upstream_2d_campaign")
-                ).provenance()
+                source_acceptance = acceptance.provenance()
                 if record["source_design"].get("acceptance") != source_acceptance:
                     raise ValueError(
                         "Acceptance frozen source design has different lineage."

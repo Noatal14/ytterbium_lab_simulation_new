@@ -1961,7 +1961,7 @@ ReadOnlyWorkflowHandler = WorkflowHandler
 def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Local simulation workflow API")
-    parser.add_argument("--acceptance-profile", choices=["ui_acceptance_v1", "ui_acceptance_v2"])
+    parser.add_argument("--acceptance-profile", choices=["ui_acceptance_v1"])
     arguments = parser.parse_args()
     WorkflowHandler.acceptance_profile_id = arguments.acceptance_profile
     # Keep scientific simulation/study modules behind process startup.  Merely

@@ -202,7 +202,6 @@ def render_discovery_bootstrap(
         expected_design=upstream["expected_survivor_design"],
         expected_parameters=upstream["expected_survivor_parameters"],
         acceptance_profile_id=acceptance_profile_id,
-        acceptance_upstream=upstream,
         repository_root=repository_root,
     )
     if approval_path is not None:

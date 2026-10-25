@@ -853,7 +853,7 @@ class CampaignArtifactPlanner:
             roles = freeze_inputs(survivors,
                 expected_seed_pairs={row["zeeman_seed"]: row["mot_seed"] for row in source["sealed_seed_pairs"]},
                 expected_design=source["expected_survivor_design"], expected_parameters=source["expected_survivor_parameters"],
-                acceptance_profile_id=profile_id, acceptance_upstream=source,
+                acceptance_profile_id=profile_id,
                 repository_root=self.root)
             if input_registry_digest(roles) != input_registry_digest(manifest["input_roles"]):
                 raise ValueError("Frozen 3D roles changed")

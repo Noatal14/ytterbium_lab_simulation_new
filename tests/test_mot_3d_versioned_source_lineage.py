@@ -20,7 +20,7 @@ PROJECT='/home/tal.noa/ytterbium_lab_simulation_ui_acceptance'
 FIXTURE=Path(__file__).parent/'fixtures/o16-frozen-role-ledger.json'
 
 
-def manifest(profile='ui_acceptance_v2'):
+def manifest(profile='ui_acceptance_v1'):
     value=json.loads(FIXTURE.read_bytes())
     roles={role:[{**row,**deepcopy(value['shared_record_fields'])}for row in rows]
            for role,rows in value['input_roles'].items()}
@@ -44,16 +44,13 @@ def closure(value):return focused(value,'closure')
 
 def test_genuine_compatible_source_is_exact_original_pinned20_ensemble_ledger():
     value=manifest();rows=[r for records in value['input_roles'].values()for r in records]
-    pins=load_acceptance_profile('ui_acceptance_v2').family('mot_3d')['accepted_upstream']['survivor_files']
-    assert len(rows)==20 and len(pins)==40
+    assert len(rows)==20
     assert {r['zeeman_seed']for r in rows}==set(range(3015,3035))
-    for row in rows:
-        assert pins[Path(row['path']).name]==row['sha256']
-        assert pins[Path(row['metadata_path']).name]==row['metadata_sha256']
-        assert row['source_design']['acceptance']==load_acceptance_profile().provenance()
+    assert all(row['source_design']['acceptance']==load_acceptance_profile().provenance() for row in rows)
 
 
-@pytest.mark.parametrize('profile',['ui_acceptance_v1','ui_acceptance_v2'])
+
+@pytest.mark.parametrize('profile',['ui_acceptance_v1'])
 def test_preliminary_and_finalist_accept_unchanged_genuine_compatible_source(profile):
     value=manifest(profile);before=deepcopy(value)
     chosen=preliminary(value)
@@ -71,19 +68,15 @@ def test_preliminary_and_finalist_accept_unchanged_genuine_compatible_source(pro
 
 
 @pytest.mark.parametrize('validator',[preliminary,refinement,closure,finalist])
-@pytest.mark.parametrize('attack',['campaign_hash','report_hash','s0','missing_authority','source_marker','source_digest','consumer_digest','scientific_promotion'])
+@pytest.mark.parametrize('attack',['source_marker','source_digest','consumer_digest','scientific_promotion'])
 def test_changed_source_or_consumer_identity_cannot_cross_boundary(validator,attack):
     value=manifest()
-    if attack=='campaign_hash':value['upstream_2d_campaign']['campaign_sha256']='0'*64
-    elif attack=='report_hash':value['upstream_2d_campaign']['final_report_sha256']='0'*64
-    elif attack=='s0':value['upstream_2d_campaign']['selected_result']['s0']=2
-    elif attack=='missing_authority':value.pop('upstream_2d_campaign')
-    elif attack=='consumer_digest':value['acceptance']['profile_sha256']='0'*64
+    if attack=='consumer_digest':value['acceptance']['profile_sha256']='0'*64
     elif attack=='scientific_promotion':value['kind']='mot_3d_campaign_v2';value.pop('acceptance')
     else:
         for role in value['input_roles'].values():
             row=role[0]
-            if attack=='source_marker':row['source_design']['acceptance']=load_acceptance_profile('ui_acceptance_v2').provenance()
+            if attack=='source_marker':row['source_design']['acceptance']={**load_acceptance_profile().provenance(),'profile_id':'ui_acceptance_v2'}
             else:row['source_design']['acceptance']['profile_sha256']='0'*64
     before=deepcopy(value)
     with pytest.raises((PreliminaryResultError,FinalistResultError,ValueError)):

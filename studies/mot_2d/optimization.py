@@ -16,6 +16,8 @@ from pathlib import Path
 import numpy as np
 import optuna
 
+from utils.optuna_replay import SequentialReplaySampler
+
 from config import DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED, MOT_2D_SIM_CONFIG
 from simulations.mot_2d import mot_simulation_paired_ensembles
 from utils.RK4StCustom import RK4StCustom
@@ -51,44 +53,6 @@ def suggest_parameters(trial, fixed_s0, bounds_s0, bounds_detuning, bounds_radiu
         "detuning_gamma": trial.suggest_float("detuning_gamma", *bounds_detuning),
         "magnet_radius": trial.suggest_float("magnet_radius", *bounds_radius),
     }
-
-
-class _ReplaySampler(optuna.samplers.BaseSampler):
-    """Keep the advanced sampler attached to its public shadow study."""
-
-    def __init__(self, shadow, suggest):
-        self.shadow = shadow
-        self.suggest = suggest
-        self.active = None
-
-    def before_trial(self, study, trial):
-        if self.active is not None:
-            raise RuntimeError("Concurrent sampler replay is unsupported.")
-        self.active = self.shadow.ask()
-        if self.active.number != trial.number:
-            raise RuntimeError("Sampler replay trial numbering mismatch.")
-        self.suggest(self.active)
-
-    def infer_relative_search_space(self, study, trial):
-        return {}
-
-    def sample_relative(self, study, trial, search_space):
-        return {}
-
-    def sample_independent(self, study, trial, param_name, param_distribution):
-        if self.active is None or self.active.distributions.get(param_name) != param_distribution:
-            raise RuntimeError("Sampler replay distribution mismatch.")
-        return self.active.params[param_name]
-
-    def after_trial(self, study, trial, state, values):
-        if (self.active is None or trial.params != self.active.params
-                or trial.distributions != self.active.distributions):
-            raise RuntimeError("Sampler replay trial mismatch.")
-        self.shadow.tell(self.active, values=values, state=state)
-        self.active = None
-
-    def reseed_rng(self):
-        raise RuntimeError("Parallel/reseeded sampler replay is unsupported.")
 
 
 def restore_sampler(study, *, seed, suggest, enqueue_points):
@@ -135,7 +99,7 @@ def restore_sampler(study, *, seed, suggest, enqueue_points):
         if saved.state == optuna.trial.TrialState.FAIL and saved.values is not None:
             raise RuntimeError("Optuna failed history has unexpected values.")
         replay.tell(trial, values=saved.values, state=saved.state)
-    study.sampler = _ReplaySampler(replay, suggest)
+    study.sampler = SequentialReplaySampler(replay, suggest)
 
 
 def evaluate_configuration(

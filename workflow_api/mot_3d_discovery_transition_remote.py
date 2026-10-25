@@ -268,14 +268,6 @@ def validate_outputs(campaign, manifest):
 
 
 def build_bundle(campaign, commit, *, manifest=None):
-    if manifest is not None:
-        try:
-            workload.validate_versioned_discovery_files(
-                manifest, lambda name: read_json(campaign / name)
-            )
-        except ValueError:
-            fail("transition_preparation_invalid")
-
     files = []
     total = 0
     for name in expected_paths(manifest):

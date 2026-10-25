@@ -257,6 +257,7 @@ def _walk_numbers(value):
 
 
 APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS = (
+    "utils/optuna_replay.py",
     "workflow_api/acceptance_inputs.py",
     "workflow_api/acceptance_profile.py",
     "workflow_api/specifications/ui_acceptance_v1.json",

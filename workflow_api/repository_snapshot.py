@@ -141,6 +141,7 @@ MOT_3D_INDIVIDUAL_RELEVANT_FILES = (
     "simulations/mot_3d.py",
     "studies/mot_3d_campaign.py",
     "studies/mot_3d/discovery/optimize.py",
+    "utils/optuna_replay.py",
     "studies/mot_3d/analysis/retention.py",
     "lab_setup/_3d_mot_mag_field.py",
     "lab_setup/atom_species.py",

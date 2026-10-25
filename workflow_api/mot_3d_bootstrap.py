@@ -253,7 +253,6 @@ class Mot3DDiscoveryBootstrapService:
                         expected_design=upstream["expected_survivor_design"],
                         expected_parameters=upstream["expected_survivor_parameters"],
                         acceptance_profile_id=self.acceptance_profile_id,
-                        acceptance_upstream=upstream,
                         repository_root=self.root,
                     )
                 except (OSError, ValueError, KeyError):

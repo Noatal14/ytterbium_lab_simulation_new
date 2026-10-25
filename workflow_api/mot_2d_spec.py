@@ -22,6 +22,7 @@ RELEVANT_FILES = (
     "workflow_api/acceptance_inputs.py",
     "config.py", "simulations/mot_2d.py", "studies/mot_2d_s0_campaign.py",
     "studies/mot_2d/optimization.py", "studies/mot_2d/production.py",
+    "utils/optuna_replay.py",
     "utils/mot_2d_study.py", "utils/file_helpers.py", "utils/RK4StHybridCustom.py",
     "workflow_api/mot_2d_spec.py", "workflow_api/mot_2d_plan.py",
     "workflow_api/acceptance_profile.py",

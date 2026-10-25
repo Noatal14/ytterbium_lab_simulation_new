@@ -81,7 +81,6 @@ CAMPAIGN_FILES = (
     "workflow_api/mot_3d_workload.py",
     "workflow_api/acceptance_profile.py",
     "workflow_api/specifications/ui_acceptance_v1.json",
-    "workflow_api/specifications/ui_acceptance_v2.json",
     "studies/mot_3d/discovery/optimize.py",
     "studies/mot_3d/analysis/retention.py",
     "studies/mot_3d/discovery/merge.py",
@@ -197,19 +196,16 @@ def validate_upstream_2d_campaign(
     from workflow_api.acceptance_profile import (
         policy_for_manifest,
         load_acceptance_profile,
-        source_profile_for_consumer,
         assert_scientific_source,
         assert_acceptance_path,
     )
 
     upstream_profile = policy_for_manifest(manifest)
     if acceptance_profile_id is not None:
+        consumer_profile = load_acceptance_profile(acceptance_profile_id)
         if (
             upstream_profile is None
-            or upstream_profile.profile_id != (
-                load_acceptance_profile(acceptance_profile_id).family("mot_3d")["accepted_upstream"]["profile_id"]
-                if acceptance_profile_id == "ui_acceptance_v2" else acceptance_profile_id
-            )
+            or upstream_profile.provenance() != consumer_profile.provenance()
             or manifest["kind"] != "mot_2d_ui_acceptance_v1"
             or report.get("acceptance") != manifest["acceptance"]
         ):
@@ -253,14 +249,6 @@ def validate_upstream_2d_campaign(
         raise ValueError(
             "Survivor directory is not the unique selected 2D production output."
         )
-    if acceptance_profile_id is not None:
-        expected_source = source_profile_for_consumer(acceptance_profile_id, {
-            "campaign_sha256": _sha256(manifest_path),
-            "final_report_sha256": _sha256(report_path),
-            "selected_result": matching[0],
-        })
-        if upstream_profile.provenance() != expected_source.provenance():
-            raise ValueError("Upstream acceptance source identity differs.")
     if matching[0].get("s0") not in manifest.get("s0_values", []):
         raise ValueError("Selected 2D result has an unregistered s0 value.")
     fixed = manifest.get("fixed_design", {})
@@ -415,18 +403,12 @@ def freeze_inputs(
     expected_design=None,
     expected_parameters=None,
     acceptance_profile_id=None,
-    acceptance_upstream=None,
     repository_root=None,
 ):
+    from workflow_api.acceptance_profile import load_acceptance_profile
+
+    profile = load_acceptance_profile(acceptance_profile_id) if acceptance_profile_id is not None else None
     directory = Path(directory).resolve()
-    if acceptance_profile_id == "ui_acceptance_v2":
-        from workflow_api.acceptance_profile import load_acceptance_profile, source_profile_for_consumer
-        source_profile_for_consumer(acceptance_profile_id, acceptance_upstream)
-        approved = load_acceptance_profile(acceptance_profile_id).family("mot_3d")["accepted_upstream"]["survivor_files"]
-        actual = {path.name: _sha256(path) for path in directory.iterdir()
-                  if path.is_file() and not path.is_symlink()}
-        if actual != dict(approved) or any(path.is_symlink() or not path.is_file() for path in directory.iterdir()):
-            raise ValueError("The versioned acceptance donor survivor bytes differ from the reviewed original.")
     records = {}
     for seed in EXPECTED_SEEDS:
         matches = sorted(
@@ -443,8 +425,6 @@ def freeze_inputs(
             raise FileNotFoundError(f"Missing survivor metadata: {metadata_path}")
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         from workflow_api.acceptance_profile import (
-            load_acceptance_profile,
-            source_profile_for_consumer,
             assert_scientific_source,
         )
 
@@ -459,7 +439,7 @@ def freeze_inputs(
                     )
             if (
                 metadata.get("acceptance")
-                != source_profile_for_consumer(acceptance_profile_id, acceptance_upstream).provenance()
+                != profile.provenance()
             ):
                 raise ValueError(
                     "Acceptance survivor lineage differs from the reviewed profile."
@@ -570,11 +550,6 @@ def validate_frozen_inputs(manifest_path, role, *, verify_design=True):
         metadata_path = Path(record["metadata_path"])
         if not path.is_file() or not metadata_path.is_file():
             raise FileNotFoundError(f"Frozen input is missing: {path}")
-        if profile is not None and profile.profile_id == "ui_acceptance_v2":
-            approved = profile.family("mot_3d")["accepted_upstream"]["survivor_files"]
-            if (_sha256(path) != approved.get(path.name)
-                    or _sha256(metadata_path) != approved.get(metadata_path.name)):
-                raise ValueError("Versioned acceptance frozen input differs from its original donor.")
         if _sha256(path) != record["sha256"]:
             raise ValueError(f"Frozen array SHA-256 mismatch: {path}")
         if _sha256(metadata_path) != record["metadata_sha256"]:
@@ -589,9 +564,7 @@ def validate_frozen_inputs(manifest_path, role, *, verify_design=True):
                     raise ValueError(
                         "Frozen acceptance files cannot alias another source."
                     )
-            from workflow_api.acceptance_profile import source_profile_for_consumer
-            expected_source = source_profile_for_consumer(profile.profile_id, payload.get("upstream_2d_campaign"))
-            if metadata.get("acceptance") != expected_source.provenance():
+            if metadata.get("acceptance") != profile.provenance():
                 raise ValueError("Frozen acceptance input lineage mismatch.")
         if profile is None:
             from workflow_api.acceptance_profile import assert_scientific_source

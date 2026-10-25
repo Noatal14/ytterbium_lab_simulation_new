@@ -50,3 +50,15 @@ def test_physical_source_hash_uses_portable_posix_name_order(
     # Content validation remains strict; this only canonicalizes name ordering.
     (tmp_path / "utils/RK4StCustom.py").write_bytes(b"changed solver source\n")
     assert mot_3d_campaign._relevant_hash() != expected.hexdigest()
+
+
+@pytest.mark.parametrize('module,attribute', [
+    ('workflow_api.mot_2d_spec', 'RELEVANT_FILES'),
+    ('workflow_api.repository_snapshot', 'MOT_3D_INDIVIDUAL_RELEVANT_FILES'),
+    ('workflow_api.mot_3d_closure_transition', 'CODE_PATHS'),
+    ('workflow_api.mot_3d_finalist_transition', 'CODE_PATHS'),
+    ('workflow_api.mot_3d_finalist_submission', 'CODE_FILES'),
+])
+def test_executable_source_closure_includes_shared_replay(module, attribute):
+    import importlib
+    assert 'utils/optuna_replay.py' in getattr(importlib.import_module(module), attribute)

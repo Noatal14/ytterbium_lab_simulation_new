@@ -38,6 +38,7 @@ CODE_PATHS = frozenset(
         "studies/mot_3d_campaign.py",
         "studies/mot_3d/integrity.py",
         "studies/mot_3d/discovery/optimize.py",
+        "utils/optuna_replay.py",
         "studies/mot_3d/finalists/run.py",
         "studies/mot_3d/finalists/merge.py",
         "workflow_api/mot_3d_finalist_results.py",
