@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-25T12:38:37.497Z",
+  "url": "http://127.0.0.1:5181/api/v1/zeus/submissions/smoke/confirm",
+  "status": 201,
+  "body": {
+    "api_version": 1,
+    "data": {
+      "campaign_id": "mot_2d-bf1fd812508313d485c8",
+      "job_id": "4823012.zeus-master",
+      "later_stages_locked": true,
+      "stage": "smoke",
+      "status": "submitted",
+      "submitted_at": "2026-10-25T12:38:36+00:00"
+    }
+  }
+}

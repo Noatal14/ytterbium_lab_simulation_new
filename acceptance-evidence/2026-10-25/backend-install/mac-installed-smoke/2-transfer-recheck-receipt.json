@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-25T12:38:30.160Z",
+  "url": "http://127.0.0.1:5181/api/v1/zeus/transfers/confirm",
+  "status": 201,
+  "body": {
+    "api_version": 1,
+    "data": {
+      "bytes_transferred": 0,
+      "campaign_id": "mot_2d-bf1fd812508313d485c8",
+      "destination": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance/data/optimization/mot_2d/ui_acceptance/backend_install_mac_20261025_e5",
+      "reused_identical_count": 72,
+      "simulation_started": false,
+      "status": "prepared",
+      "submitted_to_zeus": false,
+      "transferred_count": 0
+    }
+  }
+}

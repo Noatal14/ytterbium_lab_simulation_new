@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-25T12:35:39.454Z",
+  "url": "http://127.0.0.1:5181/api/v1/campaigns/2d/confirm",
+  "status": 201,
+  "body": {
+    "api_version": 1,
+    "data": {
+      "campaign_id": "mot_2d-bf1fd812508313d485c8",
+      "path": "data/optimization/mot_2d/ui_acceptance/backend_install_mac_20261025_e5",
+      "stage": "smoke",
+      "status": "created",
+      "submitted_to_zeus": false
+    }
+  }
+}
