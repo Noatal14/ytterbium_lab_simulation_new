@@ -1,0 +1,320 @@
+{
+  "pass": true,
+  "platform": "win32",
+  "commit": "e5eed6616e5a9f36e71c4ff0764b0f1ec14c90a1",
+  "source_overlay": {
+    "base_commit": "c3c42c95b78324456bfa4d2626776b0b4dc82d43",
+    "patch_sha256": "ab5ddd25e25118ccf8e0f74725358db7b20ea9dda022648ea06ade6c82be5294",
+    "files": {
+      "ui/src/App.tsx": "22fddd0be0b1fc615e7333604f4cd23bd6ee9d59183233201badf50b77c22e6b",
+      "ui/src/features/campaign/CampaignDetail.tsx": "930319d7d0124a0e82941a4636bce8607fcda4c5f196cad233667ccaf63d8feb",
+      "ui/src/features/campaign/controllers/useSmokeController.ts": "db14260d558ec6b8965856af6e4edba9776682c3b488652c56c492a2f5c0c6f6",
+      "ui/src/features/campaign/controllers/useMot2DRecovery.ts": "61d762c18dd25c5569af6f8b715209c1e1a882d821dff20386d6023aa44d7ff1",
+      "ui/src/features/campaign/shared/campaignViewSession.ts": "7eb60780091723672854cf106cf75271e9c246593a11730efb7c872ede701e97"
+    },
+    "note": "Final five product files; clean pinned backend unchanged; UI views store only per-tab id/username/directory"
+  },
+  "reload_interactions": "page.reload only; no Connect, Inspect or stage controls",
+  "statuses": [
+    {
+      "phase": "fresh",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "campaign": {
+            "id": "mot_2d-7e8d787cca2c33c05f5a",
+            "name": "TEST ONLY Backend Install Windows20261025 E5",
+            "stage": "smoke"
+          },
+          "lifecycle": "ready_to_prepare_screen",
+          "next_action": "review_screening_preparation",
+          "queried_at": "2026-10-25T12:53:29.567027+00:00",
+          "scheduler": {
+            "exit_status": 0,
+            "raw_state": "F",
+            "state": "completed_success"
+          },
+          "source": "zeus",
+          "submission": {
+            "job_id": "4823042.zeus-master"
+          },
+          "validation": {
+            "artifact_count": 3,
+            "points": [
+              {
+                "captured": 1,
+                "efficiency": 0.5,
+                "input": 2,
+                "s0": 1.3
+              }
+            ],
+            "status": "valid"
+          }
+        }
+      }
+    },
+    {
+      "phase": "reload",
+      "status": 200,
+      "body": {
+        "api_version": 1,
+        "data": {
+          "campaign": {
+            "id": "mot_2d-7e8d787cca2c33c05f5a",
+            "name": "TEST ONLY Backend Install Windows20261025 E5",
+            "stage": "smoke"
+          },
+          "lifecycle": "ready_to_prepare_screen",
+          "next_action": "review_screening_preparation",
+          "queried_at": "2026-10-25T12:53:35.055452+00:00",
+          "scheduler": {
+            "exit_status": 0,
+            "raw_state": "F",
+            "state": "completed_success"
+          },
+          "source": "zeus",
+          "submission": {
+            "job_id": "4823042.zeus-master"
+          },
+          "validation": {
+            "artifact_count": 3,
+            "points": [
+              {
+                "captured": 1,
+                "efficiency": 0.5,
+                "input": 2,
+                "s0": 1.3
+              }
+            ],
+            "status": "valid"
+          }
+        }
+      }
+    }
+  ],
+  "observations": [
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/snapshot",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/campaigns",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/campaigns",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/campaigns/mot_2d-7e8d787cca2c33c05f5a",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/campaigns/mot_2d-7e8d787cca2c33c05f5a",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/snapshot",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "url": "http://127.0.0.1:5201/api/v1/session",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:5201/api/v1/zeus/smoke/status",
+      "status": 200
+    }
+  ],
+  "blocked": [],
+  "allowed_posts": "Read-only Zeus snapshot and automatic existing saved-campaign status checks only; no submission/finalization confirm"
+}

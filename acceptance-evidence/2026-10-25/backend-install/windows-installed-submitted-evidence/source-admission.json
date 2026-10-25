@@ -1,0 +1,11 @@
+{
+  "pass": true,
+  "platform": "win32",
+  "options": [
+    "Select a validated source",
+    "data/particle_states/after_zeeman/ui_acceptance/backend_e5eed66_inputs_TEST_ONLY",
+    "data/particle_states/after_zeeman/ui_acceptance/release_20261021_p23",
+    "data/particle_states/after_zeeman/ui_acceptance/release_20261021_q23_inputs"
+  ],
+  "negative_fixture_excluded": true
+}

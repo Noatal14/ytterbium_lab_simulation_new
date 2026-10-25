@@ -1,0 +1,56 @@
+{
+  "status": "PASS for authorized backend installation and native UI smoke/reload scope",
+  "source_commit": "e5eed6616e5a9f36e71c4ff0764b0f1ec14c90a1",
+  "proofs": {
+    "mac": {
+      "pass": true,
+      "job_id": "4823012.zeus-master",
+      "smoke_confirm_requests": 1,
+      "source_admission": "mac-installed-smoke/source-admission.json",
+      "source_catalog_invalid_count": 1,
+      "pretransfer_typed_no_job_without_ui_error": true,
+      "terminal_and_reload": "mac-installed-observed-qualified-label/reopen-result.json",
+      "validated_artifacts": 3,
+      "captured": 1,
+      "input": 2,
+      "later_stages_submitted": false
+    },
+    "windows_arm": {
+      "pass": true,
+      "job_id": "4823042.zeus-master",
+      "smoke_confirm_requests": 1,
+      "source_admission": "windows-installed-submitted-evidence/source-admission.json",
+      "source_catalog_invalid_count": 1,
+      "pretransfer_typed_no_job_without_ui_error": true,
+      "terminal_and_reload": "windows-installed-observed-final/reopen-result.json",
+      "validated_artifacts": 3,
+      "captured": 1,
+      "input": 2,
+      "later_stages_submitted": false
+    }
+  },
+  "installed_targets": [
+    "Existing Mac API8768 testcheckout",
+    "Existing nativeWindows API8788 testcheckout",
+    "Existing Zeus isolated checkout only"
+  ],
+  "existing_data_files_preserved": {
+    "mac": 2334,
+    "windows_arm": 1560,
+    "zeus_isolated": 4976
+  },
+  "resources_per_job": {
+    "ncpus": 1,
+    "memory_gib": 4,
+    "walltime_seconds": 3600,
+    "vnode": "gd002"
+  },
+  "sequential_jobs": true,
+  "scientific_campaign_modified": false,
+  "new_product_infrastructure": false,
+  "main_merged_or_pushed": false,
+  "physical_2d_whole_zero_campaign": "explicitly waived by user; not a release blocker",
+  "windows_intel_amd": "not tested; hardware unavailable",
+  "release_recommendation": "Controlled release for tested Mac/WindowsARM scope; unrestricted ordinaryIntel/AMDWindows team release requires a representative-machine installation/connect/local-run/Zeus-smoke check. No fullcampaign rerun needed solely for this backend installation.",
+  "product_source_code_or_dependencies_changed_in_this_task": false
+}

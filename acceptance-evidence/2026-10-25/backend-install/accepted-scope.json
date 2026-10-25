@@ -1,0 +1,7 @@
+{
+  "physical_2d_whole_campaign_zero_capture": "explicitly waived by user on 2026-10-25; not a release blocker",
+  "scientific_campaign": "must not modify",
+  "new_test_infrastructure": "not authorized, none added",
+  "merge_main": "not authorized in this request",
+  "installed_source_commit": "e5eed6616e5a9f36e71c4ff0764b0f1ec14c90a1"
+}

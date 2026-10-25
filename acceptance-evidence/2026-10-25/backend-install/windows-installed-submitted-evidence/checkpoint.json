@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "name": "TEST ONLY Backend Install Windows20261025 E5",
+  "family": "mot_2d",
+  "profile_sha256": "f4f666548ada90aab2938878822dfe5173a140496cadbd7baba68144ad873148",
+  "commit": "e5eed6616e5a9f36e71c4ff0764b0f1ec14c90a1",
+  "next": 2,
+  "created": true,
+  "pending": null,
+  "receipts": [
+    {
+      "id": "create",
+      "receipt": "0-create-receipt.json",
+      "at": "2026-10-25T12:40:59.456Z"
+    },
+    {
+      "id": "transfer",
+      "receipt": "1-transfer-receipt.json",
+      "at": "2026-10-25T12:41:35.506Z"
+    },
+    {
+      "id": "transfer-recheck",
+      "receipt": "2-transfer-recheck-receipt.json",
+      "at": "2026-10-25T12:46:50.409Z"
+    },
+    {
+      "id": "smoke",
+      "receipt": "3-smoke-receipt.json",
+      "at": "2026-10-25T12:46:55.094Z"
+    }
+  ],
+  "finished_ui_sequence": true,
+  "terminal_evidence": "terminal.visible.json"
+}

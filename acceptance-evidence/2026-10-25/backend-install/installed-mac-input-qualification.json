@@ -1,0 +1,14 @@
+{
+  "pass": true,
+  "positive": {
+    "id": "zeeman-fa4866c40018e154195e",
+    "path": "data/particle_states/after_zeeman/ui_acceptance/backend_e5eed66_inputs_TEST_ONLY",
+    "profile": "corrected_projectant_19ring_20261005",
+    "ensemble_count": 35,
+    "minimum_survivors": 32,
+    "maximum_survivors": 32,
+    "fingerprint": "c5b3c87f829f1c833bae086e389eb071a3e4c7690e0fb9a924319ecfd45999b7"
+  },
+  "negative": "N0 rejected by installed inspect_source; synthetic negative fixture labelled TEST ONLY",
+  "source_module": "/private/tmp/UI Release Candidate66 Saved Inspection Shadow Mac/workflow_api/mot_2d_sources.py"
+}

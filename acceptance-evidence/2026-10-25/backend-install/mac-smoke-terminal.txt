@@ -1,0 +1,58 @@
+Job Id: 4823012.zeus-master
+    Job_Name = mot2d_smoke
+    Job_Owner = tal.noa@zeus-login.zeus.technion.ac.il
+    resources_used.cpupercent = 89
+    resources_used.cput = 00:06:05
+    resources_used.mem = 512600kb
+    resources_used.ncpus = 1
+    resources_used.vmem = 1430644kb
+    resources_used.walltime = 00:06:23
+    job_state = F
+    queue = zeus_combined_q
+    server = zeus-master
+    Checkpoint = u
+    ctime = Sun Oct 25 14:38:36 2026
+    Error_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_sim
+	ulation_ui_acceptance/mot2d_smoke.e4823012
+    exec_host = gd002/0
+    exec_vnode = (gd002:ncpus=1:mem=4194304kb)
+    Hold_Types = n
+    Join_Path = n
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Sun Oct 25 14:45:01 2026
+    Output_Path = zeus-login.zeus.technion.ac.il:/home/tal.noa/ytterbium_lab_si
+	mulation_ui_acceptance/mot2d_smoke.o4823012
+    Priority = 0
+    qtime = Sun Oct 25 14:38:36 2026
+    Rerunable = True
+    Resource_List.mem = 4gb
+    Resource_List.ncpus = 1
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.select = 1:ncpus=1:mem=4gb:vnode=gd002
+    Resource_List.walltime = 01:00:00
+    stime = Sun Oct 25 14:38:36 2026
+    obittime = Sun Oct 25 14:45:01 2026
+    session_id = 4057467
+    jobdir = /home/tal.noa
+    substate = 92
+    Variable_List = PBS_O_HOME=/home/tal.noa,
+	PBS_O_PATH=/usr/local/bin:/opt/pbs/bin:/usr/bin:/bin,
+	PBS_O_HOST=zeus-login.zeus.technion.ac.il,
+	PBS_O_WORKDIR=/home/tal.noa/ytterbium_lab_simulation_ui_acceptance,
+	PBS_O_SYSTEM=Linux,
+	MOT_UI_SUBMISSION_ID=153c44d79a04fc92229f1eb6b147313b,
+	PBS_O_QUEUE=zeus_combined_q
+    comment = Job run at Sun Oct 25 at 14:38 on (gd002:ncpus=1:mem=4194304kb) a
+	nd finished
+    etime = Sun Oct 25 14:38:36 2026
+    run_count = 1
+    Stageout_status = 1
+    Exit_status = 0
+    Submit_arguments = -v MOT_UI_SUBMISSION_ID=153c44d79a04fc92229f1eb6b147313b
+	
+    history_timestamp = 1792932301
+    project = _pbs_project_default
+    Submit_Host = zeus-login.zeus.technion.ac.il
+
