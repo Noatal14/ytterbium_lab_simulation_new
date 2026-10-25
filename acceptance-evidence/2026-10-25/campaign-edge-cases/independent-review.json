@@ -1,0 +1,18 @@
+{
+  "verdict": "PASS",
+  "independent_reviewer": "release_safety_audit",
+  "author_review": "windows_audit; not counted as independent",
+  "scope": [
+    "workflow_api/zeus_screening_remote.py",
+    "workflow_api/mot_2d_sources.py",
+    "ui/src/features/campaign/ProductionStage.tsx",
+    "ui/src/features/campaign/Mot3DCampaignFlow.tsx",
+    "ui/src/features/campaign/shared/GuardedStageActions.tsx",
+    "ui/src/test/productionReopen.test.tsx"
+  ],
+  "blocking_findings": [],
+  "observed_artifact_outcome": "Actual controlledmissing/corrupt =>412remote_response_invalid; exactrestored200valid bothOS. Typed200invalid branch has regressioncoverage, not these realartifactfaults.",
+  "zero_caveat": "2Dwholephysicalzero notrun; fixture/contracttest explicitlyseparate fromgenuine3Dzero",
+  "lease_review": "Existing Tree/Lease/protocol unchanged, one300s3Dlease after clean69+idle+normal17/full895qualification, bothclientsphaseACK, fullrestoreverified",
+  "scientific_scope": "No solver/spec/profile/physics policy, seed, campaign or scientific data modifications"
+}

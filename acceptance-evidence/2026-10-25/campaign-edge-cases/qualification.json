@@ -1,0 +1,76 @@
+{
+  "status": "bounded_edge_case_checks_passed_with_explicit_gaps",
+  "scientific_campaign": "not_modified",
+  "proofs": {
+    "2d": {
+      "mac": {
+        "disconnect": "acceptance-evidence/2026-10-25/2d-automatic-recovery/mac-disconnect-edge-bounded-retry/reopen-result.json",
+        "failed": "acceptance-evidence/2026-10-25/campaign-edge-cases/mac-failed-smoke-observed/reopen-result.json",
+        "artifacts": "acceptance-evidence/2026-10-25/campaign-edge-cases/mac-result-fault-observed-guard-qualified-retry-sealed-412-actual-wire/reopen-result.json"
+      },
+      "windows_arm": {
+        "disconnect": "acceptance-evidence/2026-10-25/2d-automatic-recovery/windows-disconnect-edge-collected/reopen-result.json",
+        "failed": "acceptance-evidence/2026-10-25/campaign-edge-cases/windows-failed-smoke-observed-collected/reopen-result.json",
+        "artifacts": "acceptance-evidence/2026-10-25/campaign-edge-cases/windows-result-fault-observed-guard-qualified-retry-sealed-412-actual-wire-collected/reopen-result.json"
+      }
+    },
+    "3d": {
+      "mac": {
+        "disconnect": "acceptance-evidence/2026-10-25/campaign-edge-cases/mac-3d-disconnect-fixed-v2-profile/3d-disconnect-result.json",
+        "failed": "acceptance-evidence/2026-10-25/campaign-edge-cases/mac-3d-failed-observed/failed-result.json",
+        "artifacts": "acceptance-evidence/2026-10-25/campaign-edge-cases/mac-3d-result-fault/3d-result-fault-result.json"
+      },
+      "windows_arm": {
+        "disconnect": "acceptance-evidence/2026-10-25/campaign-edge-cases/windows-3d-disconnect-fixed-v2-profile-collected/3d-disconnect-result.json",
+        "failed": "acceptance-evidence/2026-10-25/campaign-edge-cases/windows-3d-failed-observed-collected/failed-result.json",
+        "artifacts": "acceptance-evidence/2026-10-25/campaign-edge-cases/windows-3d-result-fault-collected/3d-result-fault-result.json"
+      }
+    }
+  },
+  "jobs": {
+    "2d_mac": [
+      "4822734.zeus-master"
+    ],
+    "2d_windows": [
+      "4822739.zeus-master"
+    ],
+    "3d_mac": [
+      "4822830[].zeus-master",
+      "4822831[].zeus-master",
+      "4822832[].zeus-master",
+      "4822833[].zeus-master",
+      "4822834[].zeus-master"
+    ],
+    "3d_windows": [
+      "4822839[].zeus-master",
+      "4822840[].zeus-master",
+      "4822841[].zeus-master",
+      "4822842[].zeus-master",
+      "4822843[].zeus-master"
+    ]
+  },
+  "fault_scope": "Only completed isolated TEST ONLY result JSONs. 2D224 files per campaign; one shared3D895-file closure; original bytes and inode/mode/linkcount/size/mtime restored. ctime changes from reversible rename/link are documented.",
+  "zero_capture": {
+    "3d": "Genuine previous Windows69 Singlepass0, normal14artifact validation and actualMac/Windows UI; same physical data not newMacrun",
+    "2d": "Positive-input zero-capture validator and completed-report component/contract regressions pass onMac+nativeWindows; a whole2D all-zero physical Zeus campaign is NOT performed",
+    "empty_input": "Four API/catalog cases reject N0 input without modifying science; bothOS nativePython passed"
+  },
+  "disconnect_scope": "One controlled readonly status request aborted, recovery and reopen; not actualVPN outage or lost submit acknowledgment",
+  "product_sha256": {
+    "workflow_api/zeus_screening_remote.py": "6a82be0fd7e07a9031c60f5ad15cb41b858187a48edc7a831a163fe5e5dca0a3",
+    "workflow_api/mot_2d_sources.py": "173243d3e35791d57d55b78050468d25388d968cdfcfe914077151e7fe841b27",
+    "ui/src/features/campaign/ProductionStage.tsx": "48c744b5f89eb9627133c83272b511e76d4b1ff51c7df66c2d7f8903201dec7d",
+    "ui/src/features/campaign/Mot3DCampaignFlow.tsx": "8c093b0f0c3fcebaec6b77c6e5b62becff9b01c9c126df75a10ded5f355ac021",
+    "ui/src/features/campaign/shared/GuardedStageActions.tsx": "b21e32c184ca1a44ac8a7f31b4839fbe51003f36da592c51fd1c7d1cd86806de"
+  },
+  "remaining": [
+    "Whole2D zero-capture physical end-to-end run not performed",
+    "New backendfixes tested via qualified actualSSH/nativePython but running saved-campaign backends remain clean producer69",
+    "WindowsIntel/AMD not available, not tested",
+    "This round does not repeat every failure at every intermediate3Dstage",
+    "Lost submission acknowledgment/globalVPN outage not tested"
+  ],
+  "main_merged": false,
+  "new_product_infrastructure": false,
+  "account_idle_evidence": "account-idle-final.txt"
+}

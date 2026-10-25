@@ -41,6 +41,7 @@ export function ProductionStage({
       flow.submission.error ||
       flow.finalization.state === "review" ||
       flow.finalization.state === "success" ||
+      flow.finalization.state === "terminal" ||
       flow.finalization.error
     )
       focus.current?.focus();
@@ -61,7 +62,7 @@ export function ProductionStage({
       p.state === "success" ||
       p.status?.sensitivity.status === "production_prepared",
     submitted = s.state === "success" || Boolean(s.status),
-    finalResults = !f.error ? f.result?.results ??
+    finalResults = f.state === "success" && !f.error ? f.result?.results ??
       (f.state === "success" && f.status?.production.status === "campaign_complete"
         ? f.status.results : undefined) : undefined;
   const observedRows = (["review", "confirming"].includes(f.state) ? f.preview?.results : undefined)
@@ -312,6 +313,24 @@ export function ProductionStage({
                 </div>
                 <Results rows={finalResults} />
               </div>
+            )}
+            {f.state === "terminal" && !f.error && (
+              <Failure
+                title={f.status?.production.status === "outputs_invalid"
+                  ? "Sealed Production outputs failed validation"
+                  : f.status?.production.status === "held" ? "Production job is held"
+                    : f.status?.production.status === "failed" ? "Production job failed"
+                      : "Production job status is unknown"}
+                text={f.status?.production.status === "outputs_invalid"
+                  ? `Missing or invalid output artifacts prevent finalization. ${f.status.validation.completed_ensembles} of ${f.status.validation.expected_ensembles} output ensembles are verified; these counts describe validated outputs, not surviving atoms.`
+                  : f.status?.production.status === "held"
+                    ? "Zeus reports that the Production job is held. Final results remain unavailable until the job and its outputs can be verified."
+                    : f.status?.production.status === "failed"
+                      ? "Zeus reports that the Production job failed. Final results cannot be published from this status."
+                      : "The Production job status could not be established. No completed result or safe retry is established."}
+                refresh={() => void f.refresh()}
+                action={onViewJobs}
+              />
             )}
             {f.error && (
               <Failure

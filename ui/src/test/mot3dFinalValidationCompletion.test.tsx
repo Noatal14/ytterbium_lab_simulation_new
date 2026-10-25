@@ -1,4 +1,4 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import { act, render, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -201,7 +201,7 @@ describe("Final Validation completion", () => {
       validation: { status: "scientifically_invalid", result_artifacts: 0, expected_result_artifacts: 14, reason_code: "artifact_registry_mismatch" },
       next_action: "inspect_zeus",
     });
-    const api = { status: vi.fn(async () => invalid), preview: vi.fn(), confirm: vi.fn(), reset: vi.fn() };
+    const api = { status: vi.fn().mockResolvedValueOnce(invalid).mockResolvedValueOnce(terminalStatus()), preview: vi.fn(), confirm: vi.fn(), reset: vi.fn() };
     function Harness() {
       const controller = useMot3DFinalValidationCompletionController({ campaignId: invalid.campaign.id, snapshot, enabled: true, api });
       return <Mot3DCampaignFlow {...base} finalValidationCompletion={controller} />;
@@ -214,9 +214,11 @@ describe("Final Validation completion", () => {
     expect(alert).toHaveTextContent("sealed result files are missing or inconsistent");
     expect(alert).toHaveTextContent("artifact validation, not physical survivors");
     expect(alert).not.toHaveTextContent("outcome is uncertain");
+    await user.click(screen.getByRole("button", { name: "Refresh status" }));
+    expect(await screen.findByText("Final Validation extension is required")).toBeVisible();
     expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Synchronize|Record extension/ })).not.toBeInTheDocument();
-    expect(api.status).toHaveBeenCalledOnce();
+    expect(api.status).toHaveBeenCalledTimes(2);
     expect(api.preview).not.toHaveBeenCalled();
     expect(api.confirm).not.toHaveBeenCalled();
   });
@@ -227,4 +229,89 @@ describe("Final Validation completion", () => {
     expect(screen.queryByText(/Validated result artifacts:/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
   });
+});
+
+// Genuine final-preview metrics: Mac56 and Windows69 both have a valid zero
+// Single-pass efficiency, with fourteen verified artifacts (not zero artifacts).
+const capturedPhysicalMetrics = [
+  {
+    "bootstrap_95_ci": [
+      0.5662210784313725,
+      0.6741854636591479
+    ],
+    "candidate_id": "angled_donut_finalist_01",
+    "ci_half_width": 0.0539821926138877,
+    "conditional_efficiency": 0.6201353637901861,
+    "family": "angled_donut",
+    "precision_target_met": false
+  },
+  {
+    "bootstrap_95_ci": [
+      0,
+      0
+    ],
+    "candidate_id": "single_pass_finalist_01",
+    "ci_half_width": 0,
+    "conditional_efficiency": 0,
+    "family": "single_pass",
+    "precision_target_met": true
+  }
+];
+it.each([
+  {
+    "label": "Mac56",
+    "campaign": {
+      "git_commit": "6c6209a3986dd3391dbed6cb0cb668b965793ac1",
+      "id": "mot_3d-9b8f87352bbf66a53668",
+      "name": "TESTONLY_Mac3D_UI_Release_20261023_V2_C56"
+    },
+    "evidence_sha256": "1ab3184b94e4dda760e1ff28a91c12a03e88f308c33a2ff7d71cc3b420ab5741"
+  },
+  {
+    "label": "Windows69",
+    "campaign": {
+      "git_commit": "c3c42c95b78324456bfa4d2626776b0b4dc82d43",
+      "id": "mot_3d-3b84a83ea93557c6a6e6",
+      "name": "TESTONLY_Windows3D_UI_Release_20261024_V2_C69"
+    },
+    "evidence_sha256": "ec0b3fe2e424b7d08869fa7e0ab5ab75023776609aaaffdc8a53d41a3086c4b1"
+  }
+])("renders captured $label valid physical zero without treating artifacts as missing", captured => {
+  const raw = structuredClone(preview("final_validation_extension_required"));
+  raw.campaign = captured.campaign;
+  raw.completion = { outcome: "final_validation_extension_required", families: capturedPhysicalMetrics, evidence_sha256: captured.evidence_sha256 } as typeof raw.completion;
+  const artifacts = raw.final_validation as { evidence_sha256: string; result_artifacts: number; expected_result_artifacts: number };
+  artifacts.evidence_sha256 = captured.evidence_sha256;
+  const parsed = parseMot3DFinalValidationCompletionPreview(raw, {campaignId: captured.campaign.id, commit: captured.campaign.git_commit});
+  expect(parsed.final_validation).toMatchObject({result_artifacts:14,expected_result_artifacts:14});
+  render(<Mot3DCampaignFlow {...base} finalValidationCompletion={flow({phase:"review",status:status(),preview:parsed})}/>);
+  const card = screen.getByText("Single pass", {selector:"h4"}).closest("article")!;
+  expect(within(card).getByText("0.000000–0.000000")).toBeVisible();
+  expect(within(card).getAllByText("0.000000")).toHaveLength(2);
+  expect(within(card).getByText("Pass")).toBeVisible();
+  expect(screen.getByText("14 of 14")).toBeVisible();
+  expect(screen.getByRole("button",{name:"Record extension required"})).toBeVisible();
+  expect(screen.queryByRole("button",{name:"Synchronize and publish final report"})).not.toBeInTheDocument();
+  expect(screen.getByText(/Failing family: Angled donut/)).toBeVisible();
+  expect(() => parseMot3DFinalValidationCompletionPreview({...raw,final_validation:{...artifacts,result_artifacts:0}}, {campaignId:captured.campaign.id,commit:captured.campaign.git_commit})).toThrow();
+});
+
+
+it("recovers a failed completion status through the existing read-only controller without preview or confirmation", async () => {
+  const user = userEvent.setup();
+  const api = { status: vi.fn().mockRejectedValueOnce(new Error("Zeus connection unavailable")).mockResolvedValueOnce(terminalStatus()), preview: vi.fn(), confirm: vi.fn(), reset: vi.fn() };
+  function Harness() {
+    const controller = useMot3DFinalValidationCompletionController({ campaignId: "campaign-id", snapshot, enabled: true, api });
+    return <Mot3DCampaignFlow {...base} finalValidationCompletion={controller} />;
+  }
+  render(<Harness />);
+  await user.click(screen.getByRole("button", { name: "Check sealed results" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Zeus connection unavailable");
+  expect(screen.queryByRole("button", { name: "Review completion" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Open Zeus jobs" })).toBeEnabled();
+  await user.click(screen.getByRole("button", { name: "Refresh status" }));
+  expect(await screen.findByText("Final Validation extension is required")).toBeVisible();
+  expect(api.status).toHaveBeenCalledTimes(2);
+  expect(api.preview).not.toHaveBeenCalled();
+  expect(api.confirm).not.toHaveBeenCalled();
 });

@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path, PurePosixPath
@@ -43,6 +44,45 @@ def require_no_symlink(root: Path, path: Path) -> None:
         if current.exists() and current.is_symlink(): fail("transition_conflict")
 
 
+def require_campaign_directory(root: Path, campaign: Path, operation: str) -> None:
+    """Only an absent inspect target means no job; existing bad paths stay errors.
+
+    Anchor every parent to a no-follow directory descriptor. Missing parents,
+    dangling links, non-directories and access failures are not an absent leaf.
+    This read-only observation never authorizes preparation or submission.
+    """
+    descriptors: list[int] = []
+    parents: list[tuple[int, str, int]] = []
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    try:
+        descriptor = os.open(root, flags)
+        descriptors.append(descriptor)
+        parts = campaign.relative_to(root).parts
+        if not parts:
+            fail("remote_preparation_invalid")
+        for name in parts[:-1]:
+            child = os.open(name, flags, dir_fd=descriptor)
+            descriptors.append(child)
+            parents.append((descriptor, name, child))
+            descriptor = child
+        try:
+            leaf = os.stat(parts[-1], dir_fd=descriptor, follow_symlinks=False)
+        except FileNotFoundError:
+            for parent, name, child in parents:
+                named = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                opened = os.fstat(child)
+                if not stat.S_ISDIR(named.st_mode) or (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
+                    fail("remote_preparation_invalid")
+            fail("smoke_not_submitted" if operation == "inspect" else "remote_preparation_invalid")
+        if not stat.S_ISDIR(leaf.st_mode):
+            fail("remote_preparation_invalid")
+    except (OSError, ValueError):
+        fail("remote_preparation_invalid")
+    finally:
+        for descriptor in reversed(descriptors):
+            os.close(descriptor)
+
+
 def main() -> None:
     if len(sys.argv) != 5 or sys.argv[1] not in {"inspect", "prepare"}: fail("invalid_request")
     operation, username, requested, encoded = sys.argv[1:]
@@ -61,13 +101,16 @@ def main() -> None:
     pure = PurePosixPath(relative)
     if pure.is_absolute() or (len(pure.parts) != 4 and not (len(pure.parts) == 5 and pure.parts[3] == "ui_acceptance")) or pure.parts[:3] != ("data", "optimization", "mot_2d") or any(part in {"", ".", ".."} for part in pure.parts): fail("invalid_request")
     campaign = root.joinpath(*pure.parts)
-    _authorize_acceptance_campaign(campaign, root)
     try:
-        if campaign.resolve(strict=True) != campaign or campaign.is_symlink(): fail("remote_preparation_invalid")
         head = subprocess.run(["/usr/bin/git","rev-parse","--verify","HEAD^{commit}"],cwd=root,text=True,capture_output=True,timeout=10,check=True).stdout.strip()
         dirty = subprocess.run(["/usr/bin/git","status","--porcelain=v1","--untracked-files=no","--","workflow_api","studies","simulations","utils","config.py","lab_setup"],cwd=root,text=True,capture_output=True,timeout=10,check=True).stdout
     except (OSError,subprocess.SubprocessError): fail("remote_checkout_mismatch")
     if head != commit or dirty: fail("remote_checkout_mismatch")
+    require_campaign_directory(root, campaign, operation)
+    _authorize_acceptance_campaign(campaign, root)
+    try:
+        if campaign.resolve(strict=True) != campaign or campaign.is_symlink(): fail("remote_preparation_invalid")
+    except OSError: fail("remote_preparation_invalid")
     # Import repository code only after the exact clean commit is established.
     from workflow_api.mot_2d_plan import render_screen_transition
     from workflow_api.mot_2d_smoke import SmokeValidationError, validate_smoke_outputs

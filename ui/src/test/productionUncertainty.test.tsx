@@ -90,3 +90,27 @@ it("keeps Production submission Review disabled after uncertain confirmation the
  expect(screen.getByRole("button",{name:"Review Production job"})).toBeDisabled();
  expect(screen.getByRole("button",{name:"Check Zeus status"})).toBeEnabled();
 });
+
+it.each(["outputs_invalid", "held", "failed", "status_unknown"] as const)("keeps %s final outputs visibly blocked with read-only recovery controls", async lifecycle => {
+ const {hook,finalizationApi}=setup();
+ const raw=data("finalization-status");
+ const production=raw.production as Record<string,unknown>,scheduler=production.scheduler as Record<string,unknown>;
+ production.status=lifecycle;
+ scheduler.state=({outputs_invalid:"completed_success",held:"held",failed:"completed_failed",status_unknown:"unknown"} as const)[lifecycle];
+ scheduler.counts={queued:0,running:0,held:lifecycle==="held"?20:0,succeeded:lifecycle==="outputs_invalid"?20:0,failed:lifecycle==="failed"?20:0};
+ raw.validation={status:lifecycle==="outputs_invalid"?"invalid":"not_ready",completed_ensembles:0,expected_ensembles:20};raw.next_action="wait";
+ finalizationApi.status.mockResolvedValue(parseFinalizationStatus(raw));
+ await act(()=>hook.result.current.preparation.review());await act(()=>hook.result.current.preparation.confirm());
+ await act(()=>hook.result.current.submission.refresh());await act(()=>hook.result.current.finalization.refresh());
+ expect(hook.result.current.finalization.state).toBe("terminal");expect(hook.result.current.finalization.error).toBe("");
+ const jobs=vi.fn();render(<ProductionStage visible flow={hook.result.current} onViewJobs={jobs}/>);
+ expect(screen.getByRole("alert")).toBeVisible();
+ expect(screen.getByRole("alert")).toHaveTextContent(({outputs_invalid:"Sealed Production outputs failed validation",held:"Production job is held",failed:"Production job failed",status_unknown:"Production job status is unknown"} as const)[lifecycle]);
+ if(lifecycle==="outputs_invalid")expect(screen.getByRole("alert")).toHaveTextContent("0 of 20 output ensembles");
+ expect(screen.queryByRole("button",{name:"Review final results"})).not.toBeInTheDocument();
+ expect(screen.queryByRole("button",{name:"Finalize campaign"})).not.toBeInTheDocument();
+ expect(screen.queryByRole("heading",{name:"Sealed final results"})).not.toBeInTheDocument();
+ await userEvent.click(screen.getByRole("button",{name:"View Zeus jobs"}));expect(jobs).toHaveBeenCalledTimes(1);
+ await userEvent.click(screen.getByRole("button",{name:"Check current status"}));expect(finalizationApi.status).toHaveBeenCalledTimes(2);
+ expect(finalizationApi.preview).not.toHaveBeenCalled();expect(finalizationApi.confirm).not.toHaveBeenCalled();
+});

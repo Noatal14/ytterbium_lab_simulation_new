@@ -179,6 +179,8 @@ def inspect_source(
             or metadata.get("output_sha256") != digest
         ):
             raise ValueError("state and metadata mismatch")
+        if len(array) == 0:
+            raise ValueError("Campaign input ensembles must contain survivors for a defined conditional efficiency.")
         profiles.add(str(parameters["resolved_zeeman_magnet_profile"]))
         commits.add(str(software["git_commit"]))
         survivor_counts.append(len(array)); identities.append(f"{seed}:{digest}:{metadata_digest}")

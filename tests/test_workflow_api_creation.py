@@ -467,3 +467,30 @@ def test_rate_limit_is_thread_safe(tmp_path):
     for thread in threads: thread.join()
     assert outcomes.count("allowed") == 12
     assert outcomes.count("blocked") == 8
+
+
+@pytest.mark.parametrize("empty_seeds", [range(3000, 3035), [3000]], ids=["all-empty", "one-empty"])
+@pytest.mark.parametrize("boundary", ["catalogue", "creation"])
+def test_campaign_rejects_empty_input_ensembles_before_creation(tmp_path, empty_seeds, boundary):
+    """Conditional efficiency needs a positive denominator in every ensemble."""
+    from workflow_api.mot_2d_sources import list_sources
+
+    creator, selected = service(tmp_path)
+    directory = tmp_path / selected["path"]
+    for seed in empty_seeds:
+        state = next(directory.glob(f"*_seed{seed}.npy"))
+        np.save(state, np.empty((0, 6), dtype=np.float64))
+        metadata_path = state.with_suffix(".json")
+        metadata = json.loads(metadata_path.read_text())
+        metadata.update(shape=[0, 6], n_survivors=0, output_sha256=hashlib.sha256(state.read_bytes()).hexdigest())
+        metadata_path.write_text(json.dumps(metadata))
+    before = {p.relative_to(tmp_path).as_posix(): p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    if boundary == "catalogue":
+        result = list_sources(tmp_path)
+        assert result["sources"] == []
+        assert result["invalid_count"] == 1
+    else:
+        with pytest.raises(ValueError, match="selected Zeeman source is unavailable"):
+            creator.preview(request(selected), "empty-input-session")
+    assert {p.relative_to(tmp_path).as_posix(): p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()} == before
+    assert not (tmp_path / "data/optimization").exists()
