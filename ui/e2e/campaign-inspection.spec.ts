@@ -53,6 +53,9 @@ test("legacy campaigns remain inspectable but expose no Zeus command", async ({ 
 });
 
 test("operator reviews and confirms missing-only Zeus preparation", async ({ page }) => {
+  let transferConfirmations = 0;
+  let smokeConfirmations = 0;
+  let preSubmissionStatusChecks = 0;
   const smoke = { ...campaign, stage: "smoke", git_commit: "b".repeat(40), next_plan: null };
   await page.route("**/api/v1/campaigns", (route) => route.fulfill({ json: { api_version: 1, data: { campaigns: [smoke], invalid_count: 0, total: 1 } } }));
   await page.route("**/api/v1/campaigns/mot_2d-safe", (route) => route.fulfill({ json: { api_version: 1, data: smoke } }));
@@ -70,9 +73,12 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
     artifacts: { ensemble_count: 35, total_count: 72, missing_count: 12, identical_count: 60, total_bytes: 52_000_000, missing_bytes: 9_000_000 },
     effects: { copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false },
   } } }));
-  await page.route("**/api/v1/zeus/transfers/confirm", (route) => route.fulfill({ json: { api_version: 1, data: {
+  await page.route("**/api/v1/zeus/transfers/confirm", (route) => {
+    transferConfirmations += 1;
+    return route.fulfill({ json: { api_version: 1, data: {
     status: "prepared", campaign_id: smoke.id, destination: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/sample", transferred_count: 12, reused_identical_count: 60, bytes_transferred: 9_000_000, submitted_to_zeus: false, simulation_started: false,
-  } } }));
+    } } });
+  });
   await page.route("**/api/v1/zeus/submissions/smoke/preview", (route) => route.fulfill({ json: { api_version: 1, data: {
     preview_token: "submission-token", expires_in_seconds: 300,
     campaign: { id: smoke.id, name: smoke.name, path: smoke.path, git_commit: "b".repeat(40), s0_values: [1.3] },
@@ -82,11 +88,21 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
     inputs: { verified_count: 72, status: "ready" },
     effects: { submit_smoke: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true,
   } } }));
-  await page.route("**/api/v1/zeus/submissions/smoke/confirm", (route) => route.fulfill({ json: { api_version: 1, data: {
+  await page.route("**/api/v1/zeus/submissions/smoke/confirm", (route) => {
+    smokeConfirmations += 1;
+    return route.fulfill({ json: { api_version: 1, data: {
     status: "submitted", campaign_id: smoke.id, stage: "smoke", job_id: "4759999.zeus-master", submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true,
-  } } }));
+    } } });
+  });
   let statusChecks = 0;
   await page.route("**/api/v1/zeus/smoke/status", (route) => {
+    // Recovery must run normally, but a new campaign has no job before confirm.
+    if (smokeConfirmations === 0) {
+      preSubmissionStatusChecks += 1;
+      return route.fulfill({ status: 412, json: { error: {
+        code: "smoke_not_submitted", message: "No recorded smoke job",
+      } } });
+    }
     statusChecks += 1;
     const running = statusChecks === 1;
     const prepared = statusChecks >= 3;
@@ -114,6 +130,9 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.getByRole("button", { name: "Connect and check status" }).click();
   await expect(page.getByText("Connected — read-only snapshot received")).toBeVisible();
   await page.getByRole("button", { name: "Inspect campaign" }).click();
+  await expect.poll(() => preSubmissionStatusChecks).toBe(1);
+  expect(transferConfirmations).toBe(0);
+  expect(smokeConfirmations).toBe(0);
   await page.getByRole("button", { name: "Review Zeus preparation" }).click();
   await expect(page.getByText("12 · 9 MB")).toBeVisible();
   await expect(page.getByText("No Zeus job will be submitted.")).toBeVisible();
@@ -173,6 +192,8 @@ test("operator reviews and confirms missing-only Zeus preparation", async ({ pag
   await page.getByRole("button", { name: "Prepare Confirmation on Zeus" }).click();
   await expect(page.getByText("Confirmation prepared on Zeus")).toBeVisible();
   await expect(page.getByText(/This preparation step did not submit a Confirmation job/)).toBeVisible();
+  expect(transferConfirmations).toBe(1);
+  expect(smokeConfirmations).toBe(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth)).toBe(false);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });
