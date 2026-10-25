@@ -1,8 +1,8 @@
 /** Component boundary only: real captured coordinator DTOs pass the real parsers.
  * API transport is mocked; no physical solver, SSH or scheduler runs here.
  */
+import { StrictMode } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import success from "../../../tests/contracts/v1/workflow_api_success.json";
 import scientificCapture from "./fixtures/CampaignDetail.readonlyRecovery.v1.json";
@@ -22,13 +22,16 @@ function recorded<T>(
 }
 afterEach(() => vi.unstubAllEnvs());
 it.each([
-  ["development", scientificCapture, false],
-  ["development", scientificCapture, true],
-  ["ui-acceptance", acceptanceCapture, false],
-  ["ui-acceptance", acceptanceCapture, true],
+  ["development", scientificCapture, false, "complete"],
+  ["development", scientificCapture, false, "running"],
+  ["development", scientificCapture, false, "error"],
+  ["ui-acceptance", acceptanceCapture, false, "fresh"],
+  ["development", scientificCapture, true, "complete"],
+  ["ui-acceptance", acceptanceCapture, false, "complete"],
+  ["ui-acceptance", acceptanceCapture, true, "complete"],
 ] as const)(
-  "recovers a reloaded local Smoke campaign in %s through every completed stage using only read-only status calls (historical uncertainty %s)",
-  async (mode, capture, historicalUnknown) => {
+  "recovers a reloaded local Smoke campaign in %s through every completed stage automatically using only read-only status calls (historical uncertainty %s)",
+  async (mode, capture, historicalUnknown, outcome) => {
     vi.stubEnv("MODE", mode);
     vi.resetModules();
     const domain = await import("../api/schema/domain");
@@ -38,7 +41,6 @@ it.each([
       parser: (value: Record<string, unknown>) => T,
       name: string,
     ) => recorded(capture, parser, name);
-    const user = userEvent.setup();
     const reads: string[] = [];
     const forbidden = vi.fn(async () => {
       throw new Error("Recovery must never preview, confirm or submit");
@@ -66,7 +68,12 @@ it.each([
       path: capture.original_job_file.split("/jobs/")[0],
     });
     expect(campaign.stage).toBe("smoke");
-    const lifecycle = operation("Smoke recovery", smoke);
+    const lifecycle = operation("Smoke recovery", outcome === "running" ? { ...smoke, lifecycle: "running" as const } : smoke);
+    if (outcome === "fresh") {
+      const { SmokeLifecycleApiError } = await import("../api/clients/smoke");
+      lifecycle.status.mockImplementation(async () => { reads.push("Smoke recovery"); throw new SmokeLifecycleApiError("smoke_not_submitted", "No recorded smoke job"); });
+    }
+    if (outcome === "error") lifecycle.status.mockImplementation(async () => { reads.push("Smoke recovery"); throw new Error("Controlled disconnected SSH"); });
     const screeningLifecycle = operation(
       "Screening status",
       read(domain.parseScreeningLifecycle, "parseScreeningLifecycle"),
@@ -111,7 +118,7 @@ it.each([
       snapshotValue.remote.project_directory = capture.remote_project_directory;
     const snapshot = domain.parseZeusSnapshot(snapshotValue);
     render(
-      <CampaignDetail
+      <StrictMode><CampaignDetail
         campaign={campaign}
         zeusSnapshot={snapshot}
         onBack={vi.fn()}
@@ -130,50 +137,21 @@ it.each([
         production={production}
         productionSubmission={productionSubmission}
         finalization={finalization}
-      />,
+      /></StrictMode>,
     );
-    async function click(label: string, scope?: string) {
-      if (scope)
-        await waitFor(() =>
-          expect(
-            document.querySelector(`section[aria-labelledby="${scope}"]`),
-          ).not.toBeNull(),
-        );
-      const root = scope
-        ? within(
-            document.querySelector(
-              `section[aria-labelledby="${scope}"]`,
-            ) as HTMLElement,
-          )
-        : screen;
-      await user.click(await root.findByRole("button", { name: label }));
+    if (outcome !== "complete") {
+      await waitFor(() => expect(lifecycle.status).toHaveBeenCalledOnce());
+      if (outcome === "error") await screen.findByText("Controlled disconnected SSH");
+      else await waitFor(() => expect(screen.queryByText(/Restoring verified campaign status/)).not.toBeInTheDocument());
+      if (outcome === "fresh") expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(reads).toEqual(["Smoke recovery"]);
+      expect(screen.queryByRole("heading", { name: "Sealed final results" })).not.toBeInTheDocument();
+      expect(screeningLifecycle.status).not.toHaveBeenCalled();
+      expect(forbidden).not.toHaveBeenCalled();
+      return;
     }
-    await click("Recover submitted Zeus campaign");
-    const priority = () => within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement);
-    expect(priority().getByRole("heading", { name: "Check Screening status" })).toBeVisible();
-    expect(priority().getByText(/does not establish whether Screening or a later stage has been submitted/)).toBeVisible();
-    expect(screeningLifecycle.status).not.toHaveBeenCalled();
-    expect(forbidden).not.toHaveBeenCalled();
-    await click("Check Screening status");
-    expect(priority().queryByText(/does not establish whether Screening/)).not.toBeInTheDocument();
-    expect(priority().getByRole("heading", { name: "Refinement is prepared" })).toBeVisible();
-    await click("Check chain status");
-    await click("Check Refinement status");
-    await click("Check Zeus status", "confirmation-submit-heading");
-    if(historicalUnknown)expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Manual verification required"})).toBeVisible();
-    await click("Check Confirmation results");
-    await click("Check Zeus status", "sensitivity-heading");
-    if(historicalUnknown){
-      expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Sensitivity is running"})).toBeVisible();
-      const historicalCard=document.querySelector('section[aria-labelledby="confirmation-submit-heading"]') as HTMLElement;
-      expect(historicalCard).not.toBeNull();
-      expect(historicalCard.textContent).toMatch(/unknown|could not|inspection|verify|verification/i);
-    }
-    await click("Check Sensitivity results");
-    await click("Check Zeus status", "production-heading");
-    await click("Check Production results");
     expect(
-      await screen.findByRole("heading", { name: mode === "ui-acceptance" ? "TEST ONLY sealed results" : "Sealed final results" }),
+      await screen.findByRole("heading", { name: mode === "ui-acceptance" ? "TEST ONLY sealed results" : "Sealed final results" }, { timeout: 5000 }),
     ).toBeVisible();
     expect(within(document.querySelector('section[aria-labelledby="priority-heading"]') as HTMLElement).getByRole("heading",{name:"Final report is ready"})).toBeVisible();
     expect(reads).toEqual([
@@ -205,10 +183,14 @@ it.each([
         snapshot.profile,
       );
     }
+    const timeline=within(document.querySelector('section[aria-labelledby="timeline-heading"]') as HTMLElement);
+    expect(timeline.getAllByText("Outputs verified on Zeus")).toHaveLength(6);
+    expect(timeline.queryByText(/0 of 1/)).not.toBeInTheDocument();
     expect(forbidden).not.toHaveBeenCalled();
     expect(unused.status).not.toHaveBeenCalled();
     expect(
       screen.queryByRole("button", { name: "Finalize campaign" }),
     ).not.toBeInTheDocument();
+
   },
 );

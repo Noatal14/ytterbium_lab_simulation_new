@@ -90,6 +90,12 @@ export function useSmokeController({
       if (generation.current !== requestGeneration || lifecycleEpoch.current !== requestEpoch) return;
       setLifecycle(null);
       setEvidenceFresh(false);
+      if (cause instanceof SmokeLifecycleApiError && cause.code === "smoke_not_submitted") {
+        // A fresh prepared campaign has no recorded job to recover.
+        setLifecycleError("");
+        setLifecycleCheck("ready");
+        return;
+      }
       setLifecycleError(cause instanceof Error ? cause.message : "The smoke status check stopped safely.");
       setLifecycleCheck("error");
     } finally {

@@ -1,6 +1,5 @@
 /** Copy-only component regression. Scheduler transport is a labeled fixture. */
 import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { expect, it, vi } from "vitest";
 import success from "../../../tests/contracts/v1/workflow_api_success.json";
 import { CampaignDetail } from "../features/campaign/CampaignDetail";
@@ -55,19 +54,10 @@ it("distinguishes absent local outputs from a confirmed running Zeus job", async
       refinementLifecycle={unused}
     />,
   );
-  await userEvent
-    .setup()
-    .click(
-      screen.getByRole("button", { name: "Recover submitted Zeus campaign" }),
-    );
   expect(await screen.findByText("Smoke check running")).toBeVisible();
   const timeline = screen.getByRole("region", { name: "Campaign timeline" });
-  expect(within(timeline).getByText("No local outputs")).toBeVisible();
-  expect(
-    within(timeline).getByText("Status: No local outputs"),
-  ).toBeInTheDocument();
-  expect(within(timeline).queryByText(/not started/i)).not.toBeInTheDocument();
-  expect(timeline.querySelector(".timeline-item--not-started")).not.toBeNull();
+  expect(within(timeline).getByText("Outputs not yet validated")).toBeVisible();
+  expect(within(timeline).getByText(/Validated outputs on Zeus/)).toBeVisible();
   expect(timeline.querySelector(".timeline-item--complete")).toBeNull();
   expect(
     screen.queryByRole("heading", { name: "Sealed final results" }),

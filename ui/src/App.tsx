@@ -1,3 +1,4 @@
+import { readCampaignView, rememberCampaignView, type CampaignView } from "./features/campaign/shared/campaignViewSession";
 import type { CanonicalTransitionCommit } from "./features/campaign/shared/observeCampaignTransition";
 import { campaignTestNode } from "./api/campaignPolicy";
 import { campaignAcceptanceMode, zeusTestMode } from "./api/zeusEnvironment";
@@ -64,7 +65,10 @@ export function App(props: AppProps = {}) {
   const [zeusSnapshot, setZeusSnapshot] = useState<ZeusSnapshot | null>(null);
   const detailRequest = useRef(0);
   const [detailGeneration, setDetailGeneration] = useState(0);
-  function invalidateDetail() { const generation = ++detailRequest.current; setDetailGeneration(generation); return generation; }
+  const [rememberedView] = useState(readCampaignView);
+  const [restoringView, setRestoringView] = useState(false);
+  const restoreConsumed = useRef(false);
+  const invalidateDetail = useCallback(() => { restoreConsumed.current = true; const generation = ++detailRequest.current; setDetailGeneration(generation); setRestoringView(false); return generation; }, []);
 
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; detailRequest.current += 1; }; }, []);
@@ -109,23 +113,48 @@ export function App(props: AppProps = {}) {
     void read();
   }, [refreshContext]);
 
-  async function openCampaign(id: string) {
+  const openCampaign = useCallback(async (id: string, restored?: CampaignView) => {
     const request = invalidateDetail();
-    setDetailError(null); setRestoreCampaignFocus(null);
-    try { const campaign = await api.get(id); if (request === detailRequest.current) setSelected(campaign); }
-    catch { if (request === detailRequest.current) setDetailError("That campaign could not be opened safely. The campaign list is still available."); }
-  }
-  function leaveDetail(nextPage: "home" | "jobs" = "home") { invalidateDetail(); client.reset(); setDetailError(null); setCreating(false); setCreating3D(false); setIndividualRun(null); setSelected(null); setPage(nextPage); }
-  function startCreation() { invalidateDetail(); client.reset(); setDetailError(null); setSelected(null); setCreating(true); }
+    setDetailError(null); setRestoreCampaignFocus(null); setRestoringView(Boolean(restored));
+    const current = () => mounted.current && request === detailRequest.current;
+    try {
+      const campaign = await api.get(id);
+      if (!current()) return;
+      if (restored) {
+        if (campaign.id !== restored.id || campaign.family !== "mot_2d" || campaign.trust !== "trusted-current") throw new Error("Saved view is no longer eligible");
+        const snapshot = await zeus.snapshot(restored.username, restored.project_directory);
+        if (!current()) return;
+        if (snapshot.profile.username !== restored.username || snapshot.profile.project_directory !== restored.project_directory) throw new Error("Saved connection identity mismatch");
+        setZeusSnapshot(snapshot);
+      }
+      setSelected(campaign);
+    } catch {
+      if (current()) setDetailError(restored ? "The saved campaign could not be restored from Zeus. Reconnect and open it again. No jobs were submitted." : "That campaign could not be opened safely. The campaign list is still available.");
+    } finally { if (current()) setRestoringView(false); }
+  }, [api, zeus, invalidateDetail]);
+  useEffect(() => {
+    if (!rememberedView || restoreConsumed.current || zeusTestMode()) return;
+    const generation = detailRequest.current;
+    const timer = window.setTimeout(() => { if (detailRequest.current === generation) void openCampaign(rememberedView.id, rememberedView); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [rememberedView, openCampaign]);
+  useEffect(() => {
+    if (!selected) return;
+    rememberCampaignView(selected.family === "mot_2d" && selected.trust === "trusted-current" && zeusSnapshot
+      ? { id: selected.id, username: zeusSnapshot.profile.username, project_directory: zeusSnapshot.profile.project_directory } : null);
+  }, [selected, zeusSnapshot]);
+  function leaveDetail(nextPage: "home" | "jobs" = "home") { rememberCampaignView(null); invalidateDetail(); client.reset(); setDetailError(null); setCreating(false); setCreating3D(false); setIndividualRun(null); setSelected(null); setPage(nextPage); }
+  function startCreation() { rememberCampaignView(null); invalidateDetail(); client.reset(); setDetailError(null); setSelected(null); setCreating(true); }
 
   return <div className="app-frame">
     {zeusTestMode() && <div className="state-panel" role="status"><strong>Isolated Zeus test environment</strong><p>Individual simulations use a separate test checkout and Python environment. Campaign actions are unavailable here.</p></div>}
     {campaignAcceptanceMode() && <div className="state-panel" role="status"><strong>TEST ONLY — UI campaign acceptance</strong><p>Versioned miniature workloads in a dedicated Zeus checkout. Results cannot be used as scientific evidence or inputs.{campaignTestNode() ? ` Test compute node: ${campaignTestNode()}.` : ""}</p></div>}
+    {restoringView && <p role="status">Reopening the saved 2D campaign and checking Zeus… No jobs are submitted.</p>}
     <AppHeader page={page} onNavigate={(nextPage) => leaveDetail(nextPage)} />
     {selected && canonicalRead?.context === refreshContext && canonicalRead.loading && <div className="state-panel" role="status">Refreshing campaign details… The previous verified stage is still shown.</div>}
     {selected && canonicalRead?.context === refreshContext && canonicalRead.error && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign stage verification is required</strong><p>{canonicalRead.error}</p><button type="button" className="secondary-button compact-action" disabled={canonicalRead.loading} onClick={() => { if (retryCanonicalRead.current?.context === refreshContext) retryCanonicalRead.current.read(); }}>Refresh campaign details</button></div></div>}
 
-    {page === "jobs" ? <ZeusJobs campaigns={zeusTestMode() ? [] : campaigns} invalidCount={zeusTestMode() ? 0 : invalidCount} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun === "zeeman" ? <IndividualZeemanRun api={individualZeeman} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_2d" ? <IndividualMot2DRun api={individualMot2D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_3d" ? <IndividualMot3DRun api={individualMot3D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : creating3D ? <Mot3DCampaignCreation api={mot3DBootstrap} onCreated={() => void refreshCampaigns()} onBack={() => { client.reset(); setCreating3D(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} confirmationSubmission={confirmationSubmission} sensitivity={sensitivity} sensitivitySubmission={sensitivitySubmission} production={production} productionSubmission={productionSubmission} finalization={finalization} mot3DDiscovery={mot3DDiscovery} onTransitionCommitted={onTransitionCommitted} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { invalidateDetail(); client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { invalidateDetail(); client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { invalidateDetail(); client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
+    {page === "jobs" ? <ZeusJobs campaigns={zeusTestMode() ? [] : campaigns} invalidCount={zeusTestMode() ? 0 : invalidCount} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun === "zeeman" ? <IndividualZeemanRun api={individualZeeman} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_2d" ? <IndividualMot2DRun api={individualMot2D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_3d" ? <IndividualMot3DRun api={individualMot3D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : creating3D ? <Mot3DCampaignCreation api={mot3DBootstrap} onCreated={() => void refreshCampaigns()} onBack={() => { client.reset(); setCreating3D(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} confirmationSubmission={confirmationSubmission} sensitivity={sensitivity} sensitivitySubmission={sensitivitySubmission} production={production} productionSubmission={productionSubmission} finalization={finalization} mot3DDiscovery={mot3DDiscovery} onTransitionCommitted={onTransitionCommitted} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
       <section className="hero" aria-labelledby="page-title"><p className="eyebrow">Welcome</p><h1 id="page-title">Run or inspect a campaign</h1><p className="hero-copy">A campaign follows several ordered steps. This application will guide you through each one and explain when your input is needed.</p></section>
       {detailError && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign details are unavailable</strong><p>{detailError}</p><button className="secondary-button compact-action" type="button" onClick={() => setDetailError(null)}>Dismiss</button></div></div>}
       {!zeusTestMode() && <CampaignExplorer campaigns={campaigns} invalidCount={invalidCount} loading={loading} error={listError} onRetry={() => void refreshCampaigns()} onOpen={openCampaign} restoreFocusId={restoreCampaignFocus} />}
