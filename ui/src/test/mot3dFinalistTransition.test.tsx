@@ -1,3 +1,4 @@
+import synchronizedStatusContract from "../../../tests/contracts/v1/mot3d_finalist_synchronized_status.json";
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
@@ -127,6 +128,71 @@ describe("3D Finalist Selection transition", () => {
       expect(fetchMock).toHaveBeenCalledOnce();
     } finally { fetchMock.mockRestore(); }
   });
+it("accepts the synchronized status emitted by the real backend coordinator", () => {
+  expect(
+    parseMot3DFinalistTransitionStatus(synchronizedStatusContract),
+  ).toEqual(synchronizedStatusContract);
+});
+it.each([
+  [
+    "obsolete action",
+    (v: Record<string, unknown>) => {
+      v.next_action = "open_final_validation_input_generation";
+    },
+  ],
+  [
+    "old stage",
+    (v: Record<string, unknown>) => {
+      (v.campaign as Record<string, unknown>).stage = "finalist_selection";
+    },
+  ],
+  [
+    "missing receipt",
+    (v: Record<string, unknown>) => {
+      (v.local_sync as Record<string, unknown>).receipt_sha256 = null;
+    },
+  ],
+  [
+    "Closure count",
+    (v: Record<string, unknown>) => {
+      (v.validation as Record<string, unknown>).result_artifacts = 200;
+    },
+  ],
+] as const)("rejects %s in a synchronized status", (_, mutate) => {
+  const value: Record<string, unknown> = structuredClone(
+    synchronizedStatusContract,
+  );
+  mutate(value);
+  expect(() => parseMot3DFinalistTransitionStatus(value)).toThrow();
+});
+it("recovers synchronized Finalist status as success without preview or confirm", async () => {
+  const api = {
+    status: vi.fn(async () =>
+      parseMot3DFinalistTransitionStatus(synchronizedStatusContract),
+    ),
+    preview: vi.fn(),
+    confirm: vi.fn(),
+    reset: vi.fn(),
+  };
+  const hook = renderHook(() =>
+    useMot3DFinalistTransitionController({
+      campaignId: synchronizedStatusContract.campaign.id,
+      snapshot,
+      enabled: true,
+      api,
+    }),
+  );
+  await act(async () => hook.result.current.refresh());
+  expect(hook.result.current.phase).toBe("success");
+  expect(hook.result.current.status).toEqual(synchronizedStatusContract);
+  await act(async () => {
+    await hook.result.current.review();
+    await hook.result.current.confirm();
+  });
+  expect(api.status).toHaveBeenCalledOnce();
+  expect(api.preview).not.toHaveBeenCalled();
+  expect(api.confirm).not.toHaveBeenCalled();
+});
   it.each(["host", "authentication", "username", "project", "campaign", "enabled", "api", "unmount"])("suppresses deferred status after %s changes", async (change) => {
     let resolve!: (value: ReturnType<typeof status>) => void;
     const makeApi = () => ({ status: vi.fn(() => new Promise<ReturnType<typeof status>>((done) => { resolve = done; })), preview: vi.fn(), confirm: vi.fn(), reset: vi.fn() });

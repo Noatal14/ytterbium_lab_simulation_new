@@ -1,0 +1,47 @@
+{
+  "source": "zeus",
+  "queried_at": "2026-10-12T00:00:00+00:00",
+  "campaign": {
+    "id": "mot_3d-campaign",
+    "name": "campaign",
+    "stage": "final_validation_input_generation"
+  },
+  "finalist_selection": {
+    "status": "final_validation_input_generation_prepared",
+    "chain": {
+      "dependency": "afterok within each family",
+      "families": [
+        {
+          "id": "angled_donut",
+          "array_job_id": "10[].zeus-master",
+          "merge_job_id": "20.zeus-master"
+        },
+        {
+          "id": "single_pass",
+          "array_job_id": "11[].zeus-master",
+          "merge_job_id": "21.zeus-master"
+        }
+      ]
+    }
+  },
+  "scheduler": {
+    "completed_array_tasks": 6,
+    "expected_array_tasks": 6,
+    "completed_merge_jobs": 2,
+    "expected_merge_jobs": 2
+  },
+  "validation": {
+    "status": "valid",
+    "result_artifacts": 44,
+    "expected_result_artifacts": 44,
+    "reason_code": null
+  },
+  "transition": {
+    "status": "final_validation_input_generation_prepared"
+  },
+  "next_action": "open_final_validation_inputs",
+  "local_sync": {
+    "status": "synchronized",
+    "receipt_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+  }
+}

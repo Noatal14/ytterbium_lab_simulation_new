@@ -1,3 +1,4 @@
+from pathlib import Path
 import hashlib
 import json
 import pytest
@@ -170,3 +171,30 @@ def test_finalist_local_manifest_last_session_and_idempotent_confirm(
         coordinator.confirm({"preview_token": "token"}, session_id="session-a")
         == result
     )
+
+
+def test_synchronized_finalist_status_matches_frontend_contract(tmp_path, monkeypatch):
+    coordinator, plan, transport, prepared, _ = local_fixture(
+        tmp_path,
+        monkeypatch,
+        coordinator_type=Mot3DFinalistTransitionCoordinator,
+        from_stage="finalist_selection",
+        to_stage="final_validation_input_generation",
+        prepared_status="final_validation_input_generation_prepared",
+    )
+    # Publish and verify a real local snapshot using the existing temporary fixture.
+    digest = coordinator._synchronize(plan, transport, prepared)
+    coordinator._inspect = lambda _request, operation="inspect": (
+        plan, transport, prepared
+    )
+    actual = coordinator.status({})
+    assert actual["local_sync"]["receipt_sha256"] == digest
+    contract_path = (
+        Path(__file__).parent
+        / "contracts/v1/mot3d_finalist_synchronized_status.json"
+    )
+    expected = json.loads(contract_path.read_text())
+    # Timestamp and receipt digest are instance evidence; wire semantics are not normalized.
+    actual["queried_at"] = expected["queried_at"]
+    actual["local_sync"]["receipt_sha256"] = expected["local_sync"]["receipt_sha256"]
+    assert actual == expected

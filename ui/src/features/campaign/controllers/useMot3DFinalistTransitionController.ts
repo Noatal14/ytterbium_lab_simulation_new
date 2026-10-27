@@ -1,3 +1,4 @@
+import { FINALIST_TRANSITION } from "../../../api/clients/mot3dTransitionValidation";
 import { useMemo } from "react";
 import { finalistTransitionIsUncertain, type Mot3DFinalistTransitionApi, type Mot3DFinalistTransitionStatus } from "../../../api/clients/mot3dFinalistTransition";
 import type { ZeusSnapshot } from "../../../api/schema/domain";
@@ -16,7 +17,7 @@ export function useMot3DFinalistTransitionController({ campaignId, snapshot, ena
   }), [api, campaignId, snapshot]);
   const stateForStatus = (status: Mot3DFinalistTransitionStatus) =>
     ["review_transition", "synchronize_results"].includes(status.next_action) ? "ready" as const
-      : status.next_action === "open_final_validation_input_generation" ? "success" as const
+      : status.next_action === FINALIST_TRANSITION.openAction ? "success" as const
         : status.next_action === "inspect_zeus" ? "blocked" as const : "idle" as const;
   return useGuardedStageController({
     enabled: enabled && Boolean(snapshot),

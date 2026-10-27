@@ -46,7 +46,8 @@ export const FINALIST_TRANSITION = {
   stage: "finalist_selection",
   nextStage: "final_validation_input_generation",
   prepared: "final_validation_input_generation_prepared",
-  openAction: "open_final_validation_input_generation",
+  // The wire action differs from the destination stage identifier.
+  openAction: "open_final_validation_inputs",
   resultFiles: 44,
   selectionFiles: 1,
   jobFiles: 3,
