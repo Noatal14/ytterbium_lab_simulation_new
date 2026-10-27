@@ -34,6 +34,7 @@ from workflow_api.run_records import (
     validate_record,
 )
 from workflow_api.run_results import (
+    validate_worker_artifacts,
     _close_descriptors,
     _open_canonical_run,
     _read_record_at as _read_result_record_at,
@@ -469,27 +470,14 @@ class ExecutorLifecycleStore(RunRecordStore):
         lease: ExecutionLease,
     ) -> None:
         _require_authority(authority)
-        results = validate_record("results", dict(product.results))
+        artifacts = dict(product.artifacts)
+        try:
+            results = validate_worker_artifacts(product.results, product.receipt, artifacts)
+        except (RunRecordError, TypeError, ValueError) as error:
+            raise WorkerProductError(str(error)) from error
         if results["run_id"] != run_id:
             raise WorkerProductError("Worker results belong to another run.")
-        artifacts = dict(product.artifacts)
-        if any(not isinstance(path, str) or not isinstance(data, bytes) for path, data in artifacts.items()):
-            raise WorkerProductError("Worker artifacts are invalid.")
         realized = {row["path"]: row for row in results["artifacts"]}
-        expected_worker_paths = {
-            path
-            for path, row in realized.items()
-            if row["kind"] != "retention_receipt"
-        }
-        if set(artifacts) != expected_worker_paths:
-            raise WorkerProductError("Worker artifacts do not match the result registry.")
-        for path, content in artifacts.items():
-            row = realized[path]
-            if (
-                len(content) != row["size_bytes"]
-                or hashlib.sha256(content).hexdigest() != row["sha256"]
-            ):
-                raise WorkerProductError("Worker artifact digest does not match.")
         with self._held_canonical_run(family, run_id, lease) as (directory, verify, _):
             with self._execution_locked_at(directory):
                 current = _read_record_at(directory, "status.json", "status")

@@ -175,6 +175,8 @@ Individual particle capacities are owned by
 `workflow_api/individual_limits.py`. Family JSON specifications and generated
 TypeScript are checked contract projections, not separate policy owners.
 Run `python -m scripts.generate_individual_limits` after updating the policy;
-regression tests reject divergent family contracts. Storage metadata and SSH
+it updates the family JSON capacity projections and generated TypeScript together.
+`python -m scripts.generate_individual_limits --check` detects drift without
+writing files. Scientific fields and Zeeman defaults are preserved. Storage metadata and SSH
 request byte bounds are separate finite safeguards; full maximum-particle
 packages are tested against them.

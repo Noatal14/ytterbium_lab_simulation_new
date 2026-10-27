@@ -59,3 +59,30 @@ def test_capacity_authority_is_part_of_each_source_provenance_closure(tmp_path):
     policy.write_text(policy.read_text() + "\n# changed capacity authority\n")
     with pytest.raises(RepositoryFilesChangedError):
         provider.capture()
+
+
+def test_generator_repairs_capacity_drift_without_changing_scientific_fields(tmp_path):
+    import json
+    from pathlib import Path
+    from scripts.generate_individual_limits import synchronize
+    specifications = tmp_path / "workflow_api/specifications"
+    specifications.mkdir(parents=True)
+    generated = tmp_path / "ui/src/generated"
+    generated.mkdir(parents=True)
+    originals = {}
+    for family in ("mot_2d", "mot_3d", "zeeman"):
+        filename = f"{family}_individual_v1.json"
+        original = json.loads((Path("workflow_api/specifications") / filename).read_text())
+        originals[family] = original
+        drift = json.loads(json.dumps(original))
+        drift["particle_count"]["maximum_by_execution_mode"]["zeus"] = 123
+        (specifications / filename).write_text(json.dumps(drift))
+    for filename in ("individualLimits.v1.ts", "mot3dIndividualSpec.v1.ts", "zeemanIndividualSpec.v1.ts"):
+        (generated / filename).write_text("stale projection")
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    assert synchronize(tmp_path, check=True)
+    assert before == {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    assert synchronize(tmp_path)
+    assert synchronize(tmp_path, check=True) == []
+    for family, original in originals.items():
+        assert json.loads((specifications / f"{family}_individual_v1.json").read_text()) == original

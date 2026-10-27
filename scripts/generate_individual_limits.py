@@ -1,4 +1,10 @@
-"""Regenerate the UI projection of the individual capacity authority."""
+"""Project the individual capacity authority into checked JSON/TypeScript contracts.
+
+This tool initially imports only the neutral authority so it can repair stale
+JSON projections before importing strict family loaders for TypeScript output. It never edits physics or defaults
+owned by the Zeeman scientific configuration.
+"""
+import argparse
 import json
 from pathlib import Path
 from workflow_api.individual_limits import particle_policy
@@ -11,6 +17,48 @@ def render() -> str:
             + " as const;\n")
 
 
+def synchronize(root: Path, *, check: bool = False) -> list[Path]:
+    changes = {}
+    specification_root = root / "workflow_api/specifications"
+    for family in ("mot_2d", "mot_3d", "zeeman"):
+        path = specification_root / f"{family}_individual_v1.json"
+        raw = path.read_text()
+        value = json.loads(raw)
+        policy = particle_policy()
+        if family == "zeeman":
+            value["particle_count"]["maximum_by_execution_mode"] = policy["maximum_by_execution_mode"]
+        else:
+            value["particle_count"] = policy
+        if value != json.loads(raw):
+            changes[path] = json.dumps(value, indent=2) + "\n"
+    generated = root / "ui/src/generated/individualLimits.v1.ts"
+    if generated.read_text() != render():
+        changes[generated] = render()
+    if check and changes:
+        return list(changes)
+    if not check:
+        for path, content in changes.items():
+            path.write_text(content)
+    # Strict family loaders can be imported only after JSON drift is repaired.
+    from workflow_api.mot_3d_run_specification import render_typescript_specification as render_3d
+    from workflow_api.zeeman_run_specification import render_typescript_specification as render_zeeman
+    for filename, renderer in (("mot3dIndividualSpec.v1.ts", render_3d),
+                               ("zeemanIndividualSpec.v1.ts", render_zeeman)):
+        path = root / "ui/src/generated" / filename
+        content = renderer()
+        if path.read_text() != content:
+            changes[path] = content
+            if not check:
+                path.write_text(content)
+    return list(changes)
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true")
+    arguments = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
-    (root / "ui/src/generated/individualLimits.v1.ts").write_text(render())
+    changed = synchronize(root, check=arguments.check)
+    for path in changed:
+        print(path.relative_to(root))
+    raise SystemExit(1 if arguments.check and changed else 0)

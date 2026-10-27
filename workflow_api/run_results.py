@@ -80,6 +80,39 @@ class InspectedRunPackage:
     publication: PublicationPlan | None
 
 
+def validate_worker_artifacts(results, receipt, artifacts):
+    """Validate the shared worker contract: receipt is separate from state bytes.
+
+    Local publication and Zeus retrieval must agree on this representation.
+    The publisher alone materializes the canonical retention receipt on disk.
+    """
+    results = validate_record("results", dict(results))
+    if any(not isinstance(path, str) or not isinstance(data, bytes) for path, data in artifacts.items()):
+        raise RunRecordError("Worker artifacts are invalid.")
+    registry = {row["path"]: row for row in results["artifacts"]}
+    expected = {path for path, row in registry.items() if row["kind"] != "retention_receipt"}
+    if len(registry) != len(results["artifacts"]) or set(artifacts) != expected:
+        raise RunRecordError("Worker artifacts do not match the result registry.")
+    for path, content in artifacts.items():
+        row = registry[path]
+        if len(content) != row["size_bytes"] or hashlib.sha256(content).hexdigest() != row["sha256"]:
+            raise RunRecordError("Worker artifact digest does not match.")
+    if results["states_retained"]:
+        if receipt is not None:
+            raise RunRecordError("Retained states cannot have a retention receipt.")
+    else:
+        if not isinstance(receipt, Mapping):
+            raise RunRecordError("A retention receipt is required.")
+        content = encode_record("retention_receipt", dict(receipt))
+        row = registry.get(_RECEIPT_PATH)
+        if (receipt["run_id"] != results["run_id"] or row is None
+            or row["kind"] != "retention_receipt"
+            or len(content) != row["size_bytes"]
+            or hashlib.sha256(content).hexdigest() != row["sha256"]):
+            raise RunRecordError("Retention receipt digest does not match.")
+    return results
+
+
 def _freeze(value: Any) -> Any:
     if isinstance(value, dict):
         return MappingProxyType({key: _freeze(child) for key, child in value.items()})

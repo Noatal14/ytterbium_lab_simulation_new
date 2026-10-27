@@ -2,6 +2,7 @@ import base64
 from io import BytesIO
 import hashlib
 import json
+import shutil
 import os
 from pathlib import Path
 import subprocess
@@ -182,9 +183,12 @@ def test_no_cancellation_surface():
         "workflow_api/mot_2d_zeus_execution.py").read_text()
 
 
-def _receiver_harness(tmp_path, records, *, qsub_exit=0):
+def _receiver_harness(tmp_path, records, *, qsub_exit=0, family="mot_2d"):
     project = tmp_path / "project"; project.mkdir()
-    package = build_frozen_mot_2d_package(tmp_path / "local", records, PROFILE)
+    from workflow_api.mot_3d_zeus_execution import build_frozen_mot_3d_package, _package_payload as payload_3d
+    package_payload = _package_payload if family == "mot_2d" else payload_3d
+    builder = build_frozen_mot_2d_package if family == "mot_2d" else build_frozen_mot_3d_package
+    package = builder(tmp_path / "local", records, PROFILE)
     qsub = tmp_path / "qsub"; calls = tmp_path / "qsub.calls"
     qsub.write_text("#!/bin/sh\nprintf x >> " + str(calls) + "\ncat >/dev/null\n" +
                     ("echo 43210.zeus-master\n" if qsub_exit == 0 else "") +
@@ -192,7 +196,7 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     qstat = tmp_path / "qstat"
     qstat.write_text("#!/bin/sh\nprintf 'Job Id: 43210.zeus-master\\n    job_state = R\\n'\n")
     qstat.chmod(0o700)
-    source = Path(__file__).parents[1].joinpath("workflow_api/mot_2d_zeus_remote.py").read_text()
+    source = Path(__file__).parents[1].joinpath(f"workflow_api/{family}_zeus_remote.py").read_text()
     repository_code = Path(__file__).parents[1]
     source = source.replace(
         'allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}',
@@ -211,14 +215,14 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     ).replace(
         'verify_commit(project, value["commit"])', "None"
     ).replace(
-        'verify_commit(project, receipt["commit"])', "None"
+        'verify_commit(project, receipt["commit"], require_head=False)', "None"
     ).replace('"/usr/local/bin/qsub"', repr(str(qsub))).replace(
         '"/usr/local/bin/qstat"', repr(str(qstat))
     )
     source = source.replace("_render_pbs(run, package_hash, str(project))", "_render_pbs(run, package_hash)")
     script = tmp_path / "receiver.py"; script.write_text(source)
     def invoke(operation, identity=None, request=None):
-        request = request or {"identity": identity or _package_payload(package), "nonce": "1" * 32}
+        request = request or {"identity": identity or package_payload(package), "nonce": "1" * 32}
         return subprocess.run([sys.executable, str(script), operation, "tal.noa", str(project), "-"],
                               input=json.dumps(request), text=True, capture_output=True, check=False)
     return package, calls, invoke
@@ -563,3 +567,74 @@ def test_transport_reports_remote_code_mismatch_without_submitting(tmp_path, mon
     with pytest.raises(RuntimeError, match="remote_code_mismatch"):
         transport.inspect(package=package, nonce="1" * 32)
     assert calls == ["inspect"]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receiver executes on Zeus")
+@pytest.mark.parametrize("family", ["mot_2d", "mot_3d"])
+@pytest.mark.parametrize("retained", [False, True])
+def test_receiver_collects_the_real_worker_product_contract(tmp_path, monkeypatch, family, retained):
+    local = tmp_path / "local"
+    local.mkdir()
+    if family == "mot_2d":
+        records = _create(local, retained=retained)
+    else:
+        from tests.test_mot_3d_local_execution import _plan
+        records = _plan(local, monkeypatch, retained=retained, mode="zeus").storage_records()
+    package, calls, invoke = _receiver_harness(tmp_path, records, family=family)
+    assert invoke("stage").returncode == 0
+    submitted = json.loads(invoke("submit").stdout)
+    project = tmp_path / "project"
+    monkeypatch.chdir(project)
+    monkeypatch.setenv("PBS_JOBID", submitted["job_id"])
+    relative = Path(f".workflow/individual-{family.replace('_', '-')}") / package.package_sha256 / "package.json"
+    if family == "mot_2d":
+        product = execute_package(relative, package.package_sha256,
+            worker_factory=lambda: Mot2DLocalWorker(project, engine=Engine(), clock=lambda: NOW))
+    else:
+        from workflow_api.mot_3d_zeus_worker import execute_package as execute_3d
+        from workflow_api.mot_3d_local_execution import Mot3DLocalWorker
+        from tests.test_mot_3d_local_execution import Engine as Engine3D, _analysis
+        product = execute_3d(relative, package.package_sha256,
+            worker_factory=lambda: Mot3DLocalWorker(project, engine=Engine3D(), analyzer=_analysis, clock=lambda: NOW))
+    if not retained:
+        assert product["artifacts"] == {}  # receipt is a separate hash-attested record
+        assert product["receipt"] is not None
+    request = {"job_id": submitted["job_id"], "submission_key": package.submission_key,
+               "package_sha256": package.package_sha256}
+    result = invoke("retrieve", request=request)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["results"] == product["results"]
+    assert calls.read_text() == "x"  # collection never submits again
+    if not retained:
+        original = project / relative.parent / "worker_product.json"
+        product["receipt"]["run_id"] = "different-run"
+        original.write_text(json.dumps(product))
+        invalid = invoke("retrieve", request=request)
+        assert json.loads(invalid.stdout) == {"error": "result_unavailable"}
+
+
+@pytest.mark.parametrize("family", ["mot_2d", "mot_3d"])
+def test_only_read_operations_accept_a_known_historical_commit(tmp_path, family):
+    import ast
+    source = Path(__file__).parents[1] / f"workflow_api/{family}_zeus_remote.py"
+    tree = ast.parse(source.read_text())
+    definition = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "verify_commit")
+    def fail(code):
+        raise RuntimeError(code)
+    import re
+    namespace = {"subprocess": subprocess, "re": re, "fail": fail}
+    exec(compile(ast.Module(body=[definition], type_ignores=[]), str(source), "exec"), namespace)
+    git = shutil.which("git")
+    subprocess.run([git, "init", "-q", str(tmp_path)], check=True)
+    def commit(text):
+        (tmp_path / "file").write_text(text)
+        subprocess.run([git, "-C", str(tmp_path), "add", "file"], check=True)
+        subprocess.run([git, "-C", str(tmp_path), "-c", "user.name=Test", "-c", "user.email=test@example.invalid", "commit", "-qm", text], check=True)
+        return subprocess.check_output([git, "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    old = commit("old")
+    commit("new")
+    namespace["verify_commit"](tmp_path, old, require_head=False)
+    with pytest.raises(RuntimeError, match="remote_code_mismatch"):
+        namespace["verify_commit"](tmp_path, old)
+    with pytest.raises(RuntimeError, match="remote_code_mismatch"):
+        namespace["verify_commit"](tmp_path, "f" * 40, require_head=False)

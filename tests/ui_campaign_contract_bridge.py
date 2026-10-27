@@ -25,7 +25,7 @@ def assert_campaign_client_contracts(cases, *, acceptance):
 import {createServer} from VITE_MODULE;
 let raw='';for await(const chunk of process.stdin)raw+=chunk;
 const input=JSON.parse(raw);
-const server=await createServer({root:UI_ROOT,mode:input.acceptance?'ui-acceptance':'development',configFile:false,server:{middlewareMode:true,hmr:false},appType:'custom'});
+const server=await createServer({root:UI_ROOT,envFile:false,mode:input.acceptance?'ui-acceptance':'development',configFile:false,server:{middlewareMode:true,hmr:false},appType:'custom'});
 try {
  const domain=await server.ssrLoadModule('/src/api/schema/domain.ts');
  for(const row of input.cases){

@@ -61,7 +61,19 @@ def load(path, maximum=MAX_PRODUCT):
     except Exception: fail("remote_package_invalid")
 
 
-def verify_commit(project, expected):
+def verify_commit(project, expected, *, require_head=True):
+    if not re.fullmatch(r"[0-9a-f]{40}", str(expected)):
+        fail("remote_code_mismatch")
+    if not require_head:
+        # Read-only collection remains bound to the original committed receipt.
+        # Never use this branch for inspect/stage/submit scheduler mutations.
+        known = subprocess.run(["/usr/bin/git", "cat-file", "-e", expected + "^{commit}"],
+            cwd=project, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, env={"PATH": "/usr/bin:/bin", "LC_ALL": "C"},
+            shell=False, close_fds=True, timeout=10, check=False)
+        if known.returncode:
+            fail("remote_code_mismatch")
+        return
     result = subprocess.run(
         ["/usr/bin/git", "rev-parse", "--verify", "HEAD^{commit}"], cwd=project,
         stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -224,7 +236,7 @@ elif operation in {"status", "retrieve"}:
     if not isinstance(request, dict) or set(request) != exact or not JOB.fullmatch(str(request["job_id"])) or not HEX.fullmatch(str(request["submission_key"])): fail("remote_request_invalid")
     receipt = load(submissions / (request["submission_key"] + ".json"))
     if receipt.get("job_id") != request["job_id"] or receipt.get("username") != username or receipt.get("project_directory") != str(project): fail("remote_package_invalid")
-    verify_commit(project, receipt["commit"])
+    verify_commit(project, receipt["commit"], require_head=False)
     if operation == "status":
         with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
             qstat_argv = ["/usr/local/bin/qstat", "-x", "-t", "-f", request["job_id"]]
@@ -257,12 +269,13 @@ elif operation in {"status", "retrieve"}:
         try:
             sys.path.insert(0, str(project))
             from workflow_api.run_records import encode_record, decode_record
+            from workflow_api.run_results import validate_worker_artifacts
             results = product["results"]
             decode_record("results", encode_record("results", results))
             if results["run_id"] != product["run_id"] or results["suitability"] != "individual_only":
                 raise ValueError
             registry = {row["path"]: row for row in results["artifacts"]}
-            if len(registry) != len(results["artifacts"]) or set(registry) != set(product["artifacts"]):
+            if len(registry) != len(results["artifacts"]):
                 raise ValueError
             decoded_artifacts = {}
             total = 0
@@ -272,6 +285,7 @@ elif operation in {"status", "retrieve"}:
                 if total > MAX_PRODUCT or len(raw) != registry[name]["size_bytes"] or hashlib.sha256(raw).hexdigest() != registry[name]["sha256"]:
                     raise ValueError
                 decoded_artifacts[name] = raw
+            validate_worker_artifacts(results, product["receipt"], decoded_artifacts)
             retained = results["states_retained"]
             if retained:
                 if product["receipt"] is not None or set(registry) != {"results/states.npy"}:
@@ -279,15 +293,14 @@ elif operation in {"status", "retrieve"}:
                 import numpy as np
                 states = np.load(BytesIO(decoded_artifacts["results/states.npy"]), allow_pickle=False)
                 if (states.dtype != np.float64 or states.ndim != 2 or states.shape[1] != 6
-                    or len(states) != results["metrics"].get("usable_at_end_count")
+                    or len(states) != results["metrics"].get("residence_qualified_captured_count")
                     or not np.all(np.isfinite(states))):
                     raise ValueError
             else:
                 if not isinstance(product["receipt"], dict) or set(registry) != {"results/state_retention_receipt.json"}:
                     raise ValueError
-                receipt_bytes = encode_record("retention_receipt", product["receipt"])
-                if decoded_artifacts["results/state_retention_receipt.json"] != receipt_bytes:
-                    raise ValueError
+                # The shared validator checks the separate receipt against its
+                # canonical registry hash; no duplicate artifact is required.
         except Exception:
             fail("result_unavailable")
         print(canonical({"results": product["results"], "receipt": product["receipt"], "artifacts": product["artifacts"]}).decode())
