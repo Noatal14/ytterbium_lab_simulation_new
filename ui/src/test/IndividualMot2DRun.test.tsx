@@ -1,5 +1,6 @@
+import specification from "../../../workflow_api/specifications/mot_2d_individual_v1.json";
 import { StrictMode } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -123,6 +124,60 @@ describe("IndividualMot2DRun", () => {
     expect(mot2dMonitorCopy("running").body).toMatch(/No action/);
     expect(mot2dMonitorCopy("outcome_unknown").body).toMatch(/Do not resubmit/);
   });
+it.each([
+  ["Selection seed", "selection_seed"],
+  ["MOT seed", "mot_seed"],
+] as const)(
+  "enforces both specification bounds for %s before preview",
+  async (label, field) => {
+    const service = api();
+    vi.mocked(service.preview).mockRejectedValue(
+      new Error("Preview stopped for this form test."),
+    );
+    render(<IndividualMot2DRun api={service} onBack={vi.fn()} />);
+    await screen.findByRole("option", { name: /October ensembles/ });
+    const input = screen.getByRole("spinbutton", { name: new RegExp(label) });
+    const button = screen.getByRole("button", { name: "Validate and review" });
+    const form = button.closest("form")!;
+    const policy = specification[field];
+    expect(input).toHaveAttribute("min", String(policy.minimum));
+    expect(input).toHaveAttribute("max", String(policy.maximum));
+    expect(input).toHaveValue(policy.default);
+    for (const invalid of [policy.minimum - 1, policy.maximum + 1, 1.5, ""]) {
+      fireEvent.change(input, { target: { value: String(invalid) } });
+      expect(button).toBeDisabled();
+      // Exercise the React guard independently of native HTML constraint validation.
+      fireEvent.submit(form);
+      expect(service.preview).not.toHaveBeenCalled();
+    }
+    for (const boundary of [policy.minimum, policy.maximum]) {
+      fireEvent.change(input, { target: { value: String(boundary) } });
+      expect(button).toBeEnabled();
+      fireEvent.submit(form);
+      await waitFor(() =>
+        expect(service.preview).toHaveBeenLastCalledWith(
+          expect.objectContaining({ [field]: boundary }),
+        ),
+      );
+      await screen.findByRole("alert");
+    }
+    expect(service.preview).toHaveBeenCalledTimes(2);
+  },
+);
+it("uses specification control defaults and bounds in displayed units", async () => {
+  render(<IndividualMot2DRun api={api()} onBack={vi.fn()} />);
+  await screen.findByRole("option", { name: /October ensembles/ });
+  for (const [name, policy, scale] of [
+    [/Saturation parameter/, specification.controls.s0, 1],
+    [/Detuning/, specification.controls.detuning_gamma, 1],
+    [/Magnet radius/, specification.controls.magnet_radius_m, 1000],
+  ] as const) {
+    const input = screen.getByRole("spinbutton", { name });
+    expect(input).toHaveAttribute("min", String(policy.minimum * scale));
+    expect(input).toHaveAttribute("max", String(policy.maximum * scale));
+    expect(input).toHaveValue(policy.default * scale);
+  }
+});
   it("uses the reviewed MOT seed default", async () => {
     render(<IndividualMot2DRun api={api()} onBack={vi.fn()} />);
     await screen.findByRole("option", { name: /October ensembles/ });

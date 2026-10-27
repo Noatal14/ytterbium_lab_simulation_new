@@ -1,4 +1,4 @@
-import { INDIVIDUAL_PARTICLE_POLICY as particlePolicy } from "../generated/individualLimits.v1";
+import specification from "../../../workflow_api/specifications/mot_2d_individual_v1.json";
 import {
   localRunNeedsInspection,
   SavedLocalRunNotice,
@@ -38,6 +38,30 @@ import {
   recoverIndividualRun,
   rememberIndividualRun,
 } from "../features/individual/individualRunRecovery";
+
+const particlePolicy = specification.particle_count;
+const localWorkerPolicy = specification.local_worker_count;
+const controls = specification.controls;
+const MILLIMETRES_PER_METRE = 1000;
+const radiusMmPolicy = {
+  minimum: controls.magnet_radius_m.minimum * MILLIMETRES_PER_METRE,
+  maximum: controls.magnet_radius_m.maximum * MILLIMETRES_PER_METRE,
+  default: controls.magnet_radius_m.default * MILLIMETRES_PER_METRE,
+};
+function withinBounds(
+  value: number,
+  policy: { minimum: number; maximum: number },
+) {
+  return (
+    Number.isFinite(value) && value >= policy.minimum && value <= policy.maximum
+  );
+}
+function integerWithinBounds(
+  value: number,
+  policy: { minimum: number; maximum: number },
+) {
+  return Number.isInteger(value) && withinBounds(value, policy);
+}
 
 type Step = "configure" | "review" | "run" | "monitor" | "results";
 const labels: [Step, string][] = [
@@ -202,13 +226,20 @@ export function IndividualMot2DRun({
     [sources, setSources] = useState<Mot2DSource[]>([]),
     [source, setSource] = useState("");
   const [mode, setMode] = useState<Mot2DMode>("local"),
-    [npools, setNpools] = useState(() => Math.min(8, localWorkerMaximum(200))),
+    [npools, setNpools] = useState(() =>
+      Math.min(
+        localWorkerPolicy.default,
+        localWorkerMaximum(particlePolicy.default, localWorkerPolicy.maximum),
+      ),
+    ),
     [particles, setParticles] = useState<number>(particlePolicy.default),
-    [selectionSeed, setSelectionSeed] = useState(42),
-    [motSeed, setMotSeed] = useState(42);
-  const [s0, setS0] = useState(1.3),
-    [detuning, setDetuning] = useState(-0.9196610026631429),
-    [radiusMm, setRadiusMm] = useState(46.76406447474441),
+    [selectionSeed, setSelectionSeed] = useState(
+      specification.selection_seed.default,
+    ),
+    [motSeed, setMotSeed] = useState(specification.mot_seed.default);
+  const [s0, setS0] = useState(controls.s0.default),
+    [detuning, setDetuning] = useState(controls.detuning_gamma.default),
+    [radiusMm, setRadiusMm] = useState(radiusMmPolicy.default),
     [retain, setRetain] = useState(true);
   const [preview, setPreview] = useState<Mot2DPreview | null>(null),
     [runId, setRunId] = useState<string | null>(null),
@@ -332,7 +363,10 @@ export function IndividualMot2DRun({
           : current,
       );
   }, [max]);
-  const workerMaximum = localWorkerMaximum(particles);
+  const workerMaximum = localWorkerMaximum(
+    particles,
+    localWorkerPolicy.maximum,
+  );
   useEffect(() => {
     if (mode === "local")
       setNpools((current) =>
@@ -344,22 +378,17 @@ export function IndividualMot2DRun({
   const valid =
     !!selected &&
     Number.isInteger(particles) &&
-    particles >= 1 &&
+    particles >= particlePolicy.minimum &&
     particles <= max &&
-    Number.isInteger(selectionSeed) &&
-    selectionSeed >= 0 &&
-    Number.isInteger(motSeed) &&
-    motSeed >= 0 &&
-    s0 >= 0.1 &&
-    s0 <= 3 &&
-    detuning >= -1.55 &&
-    detuning <= -0.85 &&
-    radiusMm >= 45 &&
-    radiusMm <= 51 &&
+    integerWithinBounds(selectionSeed, specification.selection_seed) &&
+    integerWithinBounds(motSeed, specification.mot_seed) &&
+    withinBounds(s0, controls.s0) &&
+    withinBounds(detuning, controls.detuning_gamma) &&
+    withinBounds(radiusMm, radiusMmPolicy) &&
     Number.isInteger(npools) &&
     (mode === "local"
-      ? npools >= 1 && npools <= workerMaximum
-      : npools === 200);
+      ? npools >= localWorkerPolicy.minimum && npools <= workerMaximum
+      : npools === specification.workers_by_execution_mode.zeus);
   const request = useMemo(
     () => ({
       source_id: source,
@@ -368,7 +397,7 @@ export function IndividualMot2DRun({
       mot_seed: motSeed,
       s0,
       detuning_gamma: detuning,
-      magnet_radius_m: radiusMm / 1000,
+      magnet_radius_m: radiusMm / MILLIMETRES_PER_METRE,
       npools,
       retain_particle_states: retain,
       execution_mode: mode,
@@ -398,7 +427,12 @@ export function IndividualMot2DRun({
         : particles;
     setParticles(nextParticles);
     setNpools(
-      next === "local" ? Math.min(8, localWorkerMaximum(nextParticles)) : 200,
+      next === "local"
+        ? Math.min(
+            localWorkerPolicy.default,
+            localWorkerMaximum(nextParticles, localWorkerPolicy.maximum),
+          )
+        : specification.workers_by_execution_mode.zeus,
     );
   }
   async function act(work: () => Promise<void>) {
@@ -691,7 +725,7 @@ export function IndividualMot2DRun({
               <input
                 id="mot2d-particles"
                 type="number"
-                min="1"
+                min={particlePolicy.minimum}
                 max={max}
                 value={particles}
                 onChange={(e) => setParticles(e.currentTarget.valueAsNumber)}
@@ -699,7 +733,7 @@ export function IndividualMot2DRun({
                 aria-invalid={
                   !!selected &&
                   (!Number.isInteger(particles) ||
-                    particles < 1 ||
+                    particles < particlePolicy.minimum ||
                     particles > max)
                 }
               />
@@ -708,14 +742,15 @@ export function IndividualMot2DRun({
                 className={
                   particles > max ||
                   !Number.isInteger(particles) ||
-                  particles < 1
+                  particles < particlePolicy.minimum
                     ? "field-error"
                     : undefined
                 }
               >
                 {selected
-                  ? !Number.isInteger(particles) || particles < 1
-                    ? "Choose a whole number of particles, starting at 1."
+                  ? !Number.isInteger(particles) ||
+                    particles < particlePolicy.minimum
+                    ? `Choose a whole number of particles, starting at ${particlePolicy.minimum}.`
                     : particles > max
                       ? `This source contains only ${max.toLocaleString()} available particles. Choose ${max.toLocaleString()} or fewer.`
                       : `Up to ${max.toLocaleString()} particles are available for this execution mode.`
@@ -730,8 +765,8 @@ export function IndividualMot2DRun({
               <input
                 id="mot2d-selection-seed"
                 type="number"
-                min="0"
-                max="4294967295"
+                min={specification.selection_seed.minimum}
+                max={specification.selection_seed.maximum}
                 value={selectionSeed}
                 onChange={(e) =>
                   setSelectionSeed(e.currentTarget.valueAsNumber)
@@ -746,8 +781,8 @@ export function IndividualMot2DRun({
               <input
                 id="mot2d-mot-seed"
                 type="number"
-                min="0"
-                max="4294967295"
+                min={specification.mot_seed.minimum}
+                max={specification.mot_seed.maximum}
                 value={motSeed}
                 onChange={(e) => setMotSeed(e.currentTarget.valueAsNumber)}
               />
@@ -757,8 +792,8 @@ export function IndividualMot2DRun({
               <input
                 id="mot2d-s0"
                 type="number"
-                min="0.1"
-                max="3"
+                min={controls.s0.minimum}
+                max={controls.s0.maximum}
                 step="0.01"
                 value={s0}
                 onChange={(e) => setS0(e.currentTarget.valueAsNumber)}
@@ -769,8 +804,8 @@ export function IndividualMot2DRun({
               <input
                 id="mot2d-detuning"
                 type="number"
-                min="-1.55"
-                max="-0.85"
+                min={controls.detuning_gamma.minimum}
+                max={controls.detuning_gamma.maximum}
                 step="any"
                 value={detuning}
                 onChange={(e) => setDetuning(e.currentTarget.valueAsNumber)}
@@ -781,8 +816,8 @@ export function IndividualMot2DRun({
               <input
                 id="mot2d-radius"
                 type="number"
-                min="45"
-                max="51"
+                min={radiusMmPolicy.minimum}
+                max={radiusMmPolicy.maximum}
                 step="any"
                 value={radiusMm}
                 onChange={(e) => setRadiusMm(e.currentTarget.valueAsNumber)}
@@ -818,7 +853,7 @@ export function IndividualMot2DRun({
                 <input
                   id="mot2d-npools"
                   type="number"
-                  min="1"
+                  min={localWorkerPolicy.minimum}
                   max={workerMaximum}
                   value={npools}
                   onChange={(event) =>
