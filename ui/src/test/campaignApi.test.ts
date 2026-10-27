@@ -5,7 +5,7 @@ const smokePreviewData = (kind: "job" | "array" = "job") => ({
   campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40), s0_values: kind === "job" ? [1.3] : [1.2, 1.3] },
   stage: { id: "smoke", label: "Smoke check", purpose: "Validate setup" },
   job: { file: "jobs/01_smoke.pbs", kind, task_count: kind === "job" ? 1 : 2, queue: "zeus_combined_q", cores_per_task: 1, memory_per_task_bytes: 68719476736, walltime_seconds: 1200 },
-  remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false },
+  remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", commit: "a".repeat(40), branch: "main", dirty: false },
   inputs: { verified_count: 72, status: "ready" }, effects: { submit_smoke: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true,
 });
 
@@ -51,11 +51,11 @@ describe("campaign API runtime validation", () => {
     expect([roundTiesToEven(90.5), roundTiesToEven(91.5), roundTiesToEven(-90.5), roundTiesToEven(-91.5)]).toEqual([90, 92, -90, -92]);
   });
   it("strictly previews and confirms one Screening array submission", async () => {
-    const preview = { preview_token: "screen-submit-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "screen", label: "Screening", purpose: "Find promising candidates" }, job: { file: "jobs/02_screen.pbs", kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 86400 }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false }, inputs: { verified_count: 72, status: "ready" }, smoke: { status: "validated", job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true };
+    const preview = { preview_token: "screen-submit-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "screen", label: "Screening", purpose: "Find promising candidates" }, job: { file: "jobs/02_screen.pbs", kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 86400 }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", commit: "a".repeat(40), branch: "main", dirty: false }, inputs: { verified_count: 72, status: "ready" }, smoke: { status: "validated", job_id: "4759999.zeus-master", point_count: 1 }, effects: { submit_screening: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true };
     const result = { status: "submitted", campaign_id: "mot_2d-x", stage: "screen", job_id: "4760000[].zeus-master", submitted_at: "2026-10-08T13:00:00Z", later_stages_locked: true };
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: result }) });
     vi.stubGlobal("fetch", fetchMock);
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await screeningSubmissionApi.preview("mot_2d-x", profile)).job.array_throttle).toBe(3);
     expect((await screeningSubmissionApi.confirm("screen-submit-token")).job_id).toBe("4760000[].zeus-master");
     expect(fetchMock).toHaveBeenNthCalledWith(3, "/api/v1/zeus/submissions/screening/confirm", expect.objectContaining({ body: JSON.stringify({ preview_token: "screen-submit-token" }) }));
@@ -68,7 +68,7 @@ describe("campaign API runtime validation", () => {
     const preview = { preview_token: "refine-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, from_stage: "screen", to_stage: "refine", bounds: { detuning_gamma: { low: -3, high: -0.1 }, magnet_radius_m: { low: 0.03, high: 0.06 } }, screening: { job_id: "4760000[].zeus-master", completed_trials: 51, expected_trials: 51, candidates: [candidate(1, 0), candidate(2, 1), candidate(3, 2)] }, artifacts: { create: ["screening_candidates.json", "refine/tasks.json", "jobs/03_refine_round_01.pbs", "jobs/03_refine_round_02.pbs", "jobs/03_refine_round_03.pbs", "jobs/03_refine_round_04.pbs", "jobs/03_submit_refinement_chain.sh"], update: ["campaign.json"] }, effects: { prepare_refinement: true, submit_refinement: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } };
     const result = { status: "refinement_prepared", campaign_id: "mot_2d-x", stage: "refine", artifacts: { created: 7, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } };
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "status-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: status }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "refine-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: result }) });
-    vi.stubGlobal("fetch", fetchMock); const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    vi.stubGlobal("fetch", fetchMock); const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await screeningLifecycleApi.status("mot_2d-x", profile)).validation.candidate_count).toBe(3);
     expect((await screeningLifecycleApi.preview("mot_2d-x", profile)).effects.submit_refinement).toBe(false);
     expect((await screeningLifecycleApi.confirm("refine-token")).submitted_to_zeus).toBe(false);
@@ -78,10 +78,10 @@ describe("campaign API runtime validation", () => {
   it("strictly validates the four-round Refinement dependency chain", async () => {
     const ids = ["4770001[].zeus-master", "4770002[].zeus-master", "4770003[].zeus-master", "4770004[].zeus-master"];
     const status = { source: "zeus", queried_at: "2026-10-09T09:00:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "refine" }, chain: { status: "not_submitted", dependency: "afterok", rounds: [1, 2, 3, 4].map((round) => ({ round, state: "not_submitted", job_id: null, depends_on_job_id: null })) }, next_action: "review_submission", local_sync: { status: "not_synchronized" } };
-    const preview = { preview_token: "chain-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "refine", label: "Refinement" }, chain: { dependency: "afterok", rounds: [3, 6, 9, 10].map((target, index) => ({ round: index + 1, file: `jobs/03_refine_round_0${index + 1}.pbs`, cumulative_target: target, kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 72000, depends_on: index === 0 ? null : index })) }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false }, effects: { submit_refinement_chain: true, start_simulation: true, submit_later_stages: false, modify_files: false }, local_sync: { status: "not_synchronized" } };
+    const preview = { preview_token: "chain-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, stage: { id: "refine", label: "Refinement" }, chain: { dependency: "afterok", rounds: [3, 6, 9, 10].map((target, index) => ({ round: index + 1, file: `jobs/03_refine_round_0${index + 1}.pbs`, cumulative_target: target, kind: "array", task_count: 3, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 72000, depends_on: index === 0 ? null : index })) }, remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", commit: "a".repeat(40), branch: "main", dirty: false }, effects: { submit_refinement_chain: true, start_simulation: true, submit_later_stages: false, modify_files: false }, local_sync: { status: "not_synchronized" } };
     const result = { status: "submitted", campaign_id: "mot_2d-x", stage: "refine", chain: { status: "submitted", rounds: ids.map((job_id, index) => ({ round: index + 1, job_id, depends_on_job_id: index === 0 ? null : ids[index - 1] })) }, submitted_at: "2026-10-09T09:01:00Z", local_sync: { status: "not_synchronized" } };
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "status" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: status }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "preview" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: result }) }); vi.stubGlobal("fetch", fetchMock);
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await refinementSubmissionApi.status("mot_2d-x", profile)).next_action).toBe("review_submission"); expect((await refinementSubmissionApi.preview("mot_2d-x", profile)).chain.rounds.map((row) => row.cumulative_target)).toEqual([3, 6, 9, 10]); expect((await refinementSubmissionApi.confirm("chain-token")).chain.rounds.map((row) => row.job_id)).toEqual(ids); vi.unstubAllGlobals();
   });
 
@@ -91,7 +91,7 @@ describe("campaign API runtime validation", () => {
   ])("rejects %s in a partial Refinement receipt", async (_label, rounds) => {
     const data = { source: "zeus", queried_at: "2026-10-09T09:00:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "refine" }, chain: { status: "outcome_unknown", dependency: "afterok", rounds }, next_action: "inspect_zeus", local_sync: { status: "not_synchronized" } };
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "status" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data }) }));
-    await expect(refinementSubmissionApi.status("mot_2d-x", { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" })).rejects.toThrow(/Refinement/); vi.unstubAllGlobals();
+    await expect(refinementSubmissionApi.status("mot_2d-x", { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" })).rejects.toThrow(/Refinement/); vi.unstubAllGlobals();
   });
   it("strictly validates completed Refinement and prepares Confirmation without qsub", async () => {
     const ids = ["4770001[].zeus-master", "4770002[].zeus-master", "4770003[].zeus-master", "4770004[].zeus-master"];
@@ -101,7 +101,7 @@ describe("campaign API runtime validation", () => {
     const preview = { preview_token: "confirmation-token", expires_in_seconds: 300, campaign: { id: "mot_2d-x", name: "x", git_commit: "a".repeat(40), s0_values: [1.3] }, from_stage: "refine", to_stage: "confirmation", bounds: { detuning_gamma: { low: -3, high: -0.1 }, magnet_radius_m: { low: 0.03, high: 0.06 } }, refinement: { round_job_ids: ids, completed_trials: 30, expected_trials: 30, candidates }, artifacts: { create: ["refined_candidates.json", "confirmation/tasks.json", "jobs/04_confirmation.pbs"], update: ["campaign.json"] }, job: { file: "jobs/04_confirmation.pbs", kind: "array", task_count: 5, array_throttle: 3, queue: "zeus_combined_q", cores_per_task: 200, memory_per_task_bytes: 68719476736, walltime_seconds: 36000 }, effects: { prepare_confirmation: true, submit_confirmation: false, start_simulation: false, overwrite_existing: false }, local_sync: { status: "not_synchronized" } };
     const result = { status: "confirmation_prepared", campaign_id: "mot_2d-x", stage: "confirmation", artifacts: { created: 3, updated: 1 }, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } };
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "status" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: status }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "preview" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: preview }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: result }) });
-    vi.stubGlobal("fetch", fetchMock); const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    vi.stubGlobal("fetch", fetchMock); const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await refinementLifecycleApi.status("mot_2d-x", profile)).next_action).toBe("review_confirmation_preparation"); expect((await refinementLifecycleApi.preview("mot_2d-x", profile)).effects.submit_confirmation).toBe(false); expect((await refinementLifecycleApi.confirm("confirmation-token")).submitted_to_zeus).toBe(false); vi.unstubAllGlobals();
   });
 
@@ -182,16 +182,16 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: {
         connection_status: "connected",
-        profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
-        remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
+        profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" },
+        remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", git_commit: "a".repeat(40), branch: "main", dirty: false },
         scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "test", raw_state: "H", state: "held_attention", exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] }] },
       } }) });
     vi.stubGlobal("fetch", fetchMock);
     expect(fetchMock).not.toHaveBeenCalled();
-    const snapshot = await zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new");
+    const snapshot = await zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui");
     expect(snapshot.scheduler.jobs[0].raw_state).toBe("H");
     expect(fetchMock).toHaveBeenNthCalledWith(2, "/api/v1/zeus/snapshot", expect.objectContaining({
-      method: "POST", credentials: "same-origin", body: JSON.stringify({ username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" }),
+      method: "POST", credentials: "same-origin", body: JSON.stringify({ username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui" }),
       headers: expect.objectContaining({ "X-CSRF-Token": "csrf-token" }),
     }));
     vi.unstubAllGlobals();
@@ -203,13 +203,13 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: {
         preview_token: "transfer-token", expires_in_seconds: 300,
         campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40) , family: "mot_2d"},
-        destination: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", campaign_directory: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/x" },
+        destination: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", campaign_directory: "/home/tal.noa/ytterbium_lab_simulation_ui/data/optimization/mot_2d/x" },
         artifacts: { ensemble_count: 35, total_count: 72, missing_count: 2, identical_count: 70, total_bytes: 52_000_000, missing_bytes: 1000 },
         effects: { copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false },
       } }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { status: "prepared", campaign_id: "mot_2d-x", destination: "/home/tal.noa/ytterbium_lab_simulation_new/data/optimization/mot_2d/x", transferred_count: 2, reused_identical_count: 70, bytes_transferred: 1000, submitted_to_zeus: false, simulation_started: false } }) });
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { status: "prepared", campaign_id: "mot_2d-x", destination: "/home/tal.noa/ytterbium_lab_simulation_ui/data/optimization/mot_2d/x", transferred_count: 2, reused_identical_count: 70, bytes_transferred: 1000, submitted_to_zeus: false, simulation_started: false } }) });
     vi.stubGlobal("fetch", fetchMock);
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await transferApi.preview("mot_2d-x", profile)).artifacts.missing_count).toBe(2);
     expect((await transferApi.confirm("transfer-token")).submitted_to_zeus).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -226,12 +226,12 @@ describe("campaign API runtime validation", () => {
         campaign: { id: "mot_2d-x", name: "x", path: "data/optimization/mot_2d/x", git_commit: "a".repeat(40), s0_values: [1.3] },
         stage: { id: "smoke", label: "Smoke check", purpose: "Validate setup" },
         job: { file: "jobs/01_smoke.pbs", kind: "job", task_count: 1, queue: "zeus_combined_q", cores_per_task: 1, memory_per_task_bytes: 68719476736, walltime_seconds: 1200 },
-        remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", commit: "a".repeat(40), branch: "main", dirty: false },
+        remote: { host: "zeus.technion.ac.il", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", commit: "a".repeat(40), branch: "main", dirty: false },
         inputs: { verified_count: 72, status: "ready" }, effects: { submit_smoke: true, submit_later_stages: false, modify_files: false }, later_stages_locked: true,
       } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { status: "submitted", campaign_id: "mot_2d-x", stage: "smoke", job_id: "4759999.zeus-master", submitted_at: "2026-10-08T12:00:00Z", later_stages_locked: true } }) });
     vi.stubGlobal("fetch", fetchMock);
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await submissionApi.preview("mot_2d-x", profile)).job.queue).toBe("zeus_combined_q");
     expect((await submissionApi.confirm("submit-token")).job_id).toBe("4759999.zeus-master");
     expect(fetchMock).toHaveBeenCalledTimes(3);
@@ -249,7 +249,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "screen-csrf" } }) }).mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: preview }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: result }) });
     vi.stubGlobal("fetch", fetchMock);
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     expect((await smokeLifecycleApi.status("mot_2d-x", profile)).validation.points[0].captured).toBe(0);
     expect((await smokeLifecycleApi.preview("mot_2d-x", profile)).effects.submit_screening).toBe(false);
     expect((await smokeLifecycleApi.confirm("screen-token")).submitted_to_zeus).toBe(false);
@@ -261,7 +261,7 @@ describe("campaign API runtime validation", () => {
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { source: "zeus", queried_at: "2026-10-08T12:10:00Z", campaign: { id: "mot_2d-x", name: "x", stage: "smoke" }, submission: { job_id: "4759999.zeus-master" }, scheduler: { state: "running", raw_state: "R", exit_status: null }, validation: { status: "valid", points: [{ s0: 1.3, captured: 0, input: 2, efficiency: 0 }], artifact_count: 3 }, lifecycle: "ready_to_prepare_screen", next_action: "review_screening_preparation" } }) }));
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     await expect(smokeLifecycleApi.status("mot_2d-x", profile)).rejects.toThrow("Inconsistent smoke lifecycle response");
     vi.unstubAllGlobals();
   });
@@ -271,7 +271,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "submit-csrf" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: smokePreviewData() }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: smokeResultData(jobId) }) }));
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     await submissionApi.preview("mot_2d-x", profile);
     await expect(submissionApi.confirm("submit-token")).rejects.toEqual(expect.objectContaining({ code: "submission_outcome_unknown" }));
     vi.unstubAllGlobals();
@@ -282,7 +282,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "submit-csrf" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: smokePreviewData("array") }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: smokeResultData("4759999.zeus-master") }) }));
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     await submissionApi.preview("mot_2d-x", profile);
     await expect(submissionApi.confirm("submit-token")).rejects.toEqual(expect.objectContaining({ code: "submission_outcome_unknown" }));
     vi.unstubAllGlobals();
@@ -298,7 +298,7 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "submit-csrf" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: smokePreviewData() }) })
       .mockImplementationOnce(confirmResponse));
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
     await submissionApi.preview("mot_2d-x", profile);
     await expect(submissionApi.confirm("submit-token")).rejects.toEqual(expect.objectContaining({ code: "submission_outcome_unknown" }));
     vi.unstubAllGlobals();
@@ -309,19 +309,19 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: {
         connection_status: "connected",
-        profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
-        remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
+        profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" },
+        remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", git_commit: "a".repeat(40), branch: "main", dirty: false },
         scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "bad", raw_state: "R", state: "finished", exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] }] },
       } }) }));
-    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).rejects.toThrow("Invalid Zeus job response");
+    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).rejects.toThrow("Invalid Zeus job response");
     vi.unstubAllGlobals();
   });
 
   it("accepts a bounded signed PBS failure code and rejects contradictory normalization", async () => {
     const response = (state: string) => ({ ok: true, json: async () => ({ api_version: 1, data: {
       connection_status: "connected",
-      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
-      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" },
+      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "terminated", raw_state: "X", state, exit_status: -29, walltime: null, start_time: null, comment: null, dependencies: [] }] },
     } }) });
     vi.stubGlobal("fetch", vi.fn()
@@ -329,16 +329,16 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce(response("completed_failed"))
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce(response("completed_success")));
-    expect((await zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).scheduler.jobs[0].exit_status).toBe(-29);
-    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).rejects.toThrow("Inconsistent Zeus job response");
+    expect((await zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).scheduler.jobs[0].exit_status).toBe(-29);
+    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).rejects.toThrow("Inconsistent Zeus job response");
     vi.unstubAllGlobals();
   });
 
   it("treats every held job as attention-required even when dependencies are recorded", async () => {
     const response = (state: string) => ({ ok: true, json: async () => ({ api_version: 1, data: {
       connection_status: "connected",
-      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
-      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" },
+      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1", name: "held", raw_state: "H", state, exit_status: null, walltime: null, start_time: null, comment: null, dependencies: ["2"] }] },
     } }) });
     vi.stubGlobal("fetch", vi.fn()
@@ -346,8 +346,8 @@ describe("campaign API runtime validation", () => {
       .mockResolvedValueOnce(response("held_attention"))
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce(response("waiting_dependency")));
-    expect((await zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).scheduler.jobs[0].state).toBe("held_attention");
-    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).rejects.toThrow("Invalid Zeus job response");
+    expect((await zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).scheduler.jobs[0].state).toBe("held_attention");
+    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).rejects.toThrow("Invalid Zeus job response");
     vi.unstubAllGlobals();
   });
 
@@ -355,26 +355,26 @@ describe("campaign API runtime validation", () => {
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce({ ok: false, status: 401, json: async () => ({ error: { code: "zeus_authentication_required", message: "Configure an existing SSH key or agent." } }) }));
-    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).rejects.toEqual(expect.objectContaining<Partial<ZeusApiError>>({ code: "zeus_authentication_required" }));
+    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).rejects.toEqual(expect.objectContaining<Partial<ZeusApiError>>({ code: "zeus_authentication_required" }));
     vi.unstubAllGlobals();
   });
 
   it.each([
-    ["mismatched profile", { profile: { host: "zeus.technion.ac.il", username: "other", project_directory: "/home/other/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" } }],
-    ["control character", { remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main\u0007", dirty: false } }],
-    ["unexpected secret field", { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent", password: "never" } }],
+    ["mismatched profile", { profile: { host: "zeus.technion.ac.il", username: "other", project_directory: "/home/other/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" } }],
+    ["control character", { remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", git_commit: "a".repeat(40), branch: "main\u0007", dirty: false } }],
+    ["unexpected secret field", { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent", password: "never" } }],
     ["hostile job id", { scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [{ id: "1; qsub x", name: "bad", raw_state: "Q", state: "queued", exit_status: null, walltime: null, start_time: null, comment: null, dependencies: [] }] } }],
   ])("rejects Zeus response with %s", async (_label, override) => {
     const base = {
       connection_status: "connected",
-      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
-      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" },
+      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: "2026-10-08T10:00:00Z", jobs: [] },
     };
     vi.stubGlobal("fetch", vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { csrf_token: "csrf-token" } }) })
       .mockResolvedValueOnce({ ok: true, json: async () => ({ api_version: 1, data: { ...base, ...override } }) }));
-    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new")).rejects.toThrow();
+    await expect(zeusApi.snapshot("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_ui")).rejects.toThrow();
     vi.unstubAllGlobals();
   });
 });

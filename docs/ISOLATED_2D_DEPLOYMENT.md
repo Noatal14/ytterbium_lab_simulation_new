@@ -1,11 +1,15 @@
-# Isolated normal 2D campaign deployment
+# Historical isolated normal 2D campaign deployment
+
+This documents the earlier maintainer deployment. New team installations follow
+[TEAM_DEPLOYMENT.md](TEAM_DEPLOYMENT.md); normal launches no longer select `_ui_test`.
 
 `execution_checkout: "ytterbium_lab_simulation_ui_test"` explicitly binds a new
 normal 2D campaign to the existing isolated UI checkout. This is deployment
 policy, not an acceptance workload or a scientific configuration change.
 
 The binding is allowed only for `mot_2d_s0_campaign`, never an arbitrary path,
-3D campaign or TEST ONLY manifest. Unbound historical manifests retain their
+TEST ONLY manifest. An explicit normal 3D child may now inherit the validated
+parent binding; no historical campaign is rewritten. Unbound historical manifests retain their
 original production target. The shared target validator authenticates the exact
 account/root plus the normal-versus-acceptance campaign path before mutation.
 

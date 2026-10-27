@@ -199,7 +199,7 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0, family="mot_2d"):
     source = Path(__file__).parents[1].joinpath(f"workflow_api/{family}_zeus_remote.py").read_text()
     repository_code = Path(__file__).parents[1]
     source = source.replace(
-        'allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}',
+        'allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test", "ytterbium_lab_simulation_ui")}',
         "allowed = {project}",
     ).replace(
         'sys.path.insert(0, str(project))', f'sys.path.insert(0, {str(repository_code)!r})'

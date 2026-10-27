@@ -1,0 +1,4 @@
+# Qualified product dependencies; tests are installed separately by maintainers.
+-r requirements.txt
+-c constraints-team.txt
+poetry-core==2.5.0

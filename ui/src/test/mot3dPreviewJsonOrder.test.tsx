@@ -1,6 +1,7 @@
+import { zeusProjectDirectory } from "../api/zeusEnvironment";
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import contracts from "../../../tests/contracts/v1/workflow_api_success.json";
+import contracts from "./teamContractFixture";
 import actual from "./fixtures/p45-preliminary-preview.sanitized.json";
 import { createPreliminaryCheckApi, parsePreliminaryCheckPreview } from "../api/clients/mot3dPreliminaryCheck";
 import { parseMot3DRefinementSubmissionPreview } from "../api/clients/mot3dRefinementSubmission";
@@ -11,7 +12,7 @@ import { UI_ACCEPTANCE_POLICY } from "../generated/uiAcceptance.v1";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DPreliminaryCheckController } from "../features/campaign/controllers/useMot3DPreliminaryCheckController";
 
-const profile = (mode: string) => ({ host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: `/home/tal.noa/ytterbium_lab_simulation_${mode === "ui-acceptance" ? "ui_acceptance" : "new"}`, authentication: "ssh-key-or-agent" as const });
+const profile = (mode: string) => ({ host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: zeusProjectDirectory("tal.noa"), authentication: "ssh-key-or-agent" as const });
 const definitions = [
   ["preliminary_check", "mot3d-preliminary-preview", parsePreliminaryCheckPreview],
   ["refinement", "mot3d-refinement-preview", parseMot3DRefinementSubmissionPreview],

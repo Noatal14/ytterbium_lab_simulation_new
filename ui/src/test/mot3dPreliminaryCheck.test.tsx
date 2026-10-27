@@ -7,7 +7,7 @@ import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DPreliminaryCheckController } from "../features/campaign/controllers/useMot3DPreliminaryCheckController";
 
 const campaignId = "campaign-id";
-const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 const emptyChain = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: null, merge_job_id: null }, { id: "single_pass", array_job_id: null, merge_job_id: null }] } as const;
 const fullChain = { dependency: "afterok within each family", families: [{ id: "angled_donut", array_job_id: "100[].zeus-master", merge_job_id: "101.zeus-master" }, { id: "single_pass", array_job_id: "200[].zeus-master", merge_job_id: "201.zeus-master" }] } as const;
 const status = { source: "zeus", queried_at: "2026-10-12T10:00:00Z", campaign: { id: campaignId, name: "campaign", stage: "preliminary_check" }, submission: { status: "not_submitted", chain: emptyChain }, scheduler: { expected_array_tasks: 6, expected_merge_jobs: 2, completed_array_tasks: 0, completed_merge_jobs: 0 }, validation: { status: "not_started", expected_candidates_per_family: 12, expected_recoil_seeds_per_candidate: 3 }, next_action: "review_submission", local_sync: { status: "not_synchronized" } } as const;

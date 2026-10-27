@@ -179,7 +179,7 @@ describe("individual 3D-MOT frontend contract", () => {
     await api.confirmZeus(zeusReview.preview_token);
     await expect(api.refreshZeus("mot3d-test", "other.user")).rejects.toThrow(/profile/);
     await expect(api.refreshZeus("mot3d-test", "tal.noa")).resolves.toEqual({ state: "running", job_id: "500.zeus-master" });
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ run_id: "mot3d-test", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ run_id: "mot3d-test", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui" } });
   });
 
   it("does not retry an ambiguous Zeus confirmation and requires refresh identity", async () => {

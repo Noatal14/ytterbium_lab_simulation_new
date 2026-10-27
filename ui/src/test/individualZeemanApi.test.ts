@@ -83,7 +83,7 @@ describe("individual Zeeman API trust boundary", () => {
     await expect(api.refreshZeus("zeeman-one", "tal.noa")).resolves.toEqual({ state: schedulerState, job_id: "12345.zeus-master" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/individual-runs/zeeman/zeus/recover");
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "zeeman-one", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "zeeman-one", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui" } });
   });
 
   it.each([

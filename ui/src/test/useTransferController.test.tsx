@@ -7,7 +7,7 @@ const snapshot = {
   profile: {
     host: "zeus.technion.ac.il",
     username: "tal.noa",
-    project_directory: "/home/tal.noa/ytterbium_lab_simulation_new",
+    project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui",
     authentication: "ssh-key-or-agent",
   },
 } as ZeusSnapshot;
@@ -126,7 +126,7 @@ describe("useTransferController", () => {
 
   it.each([
     ["campaign", "campaign-b", snapshot],
-    ["profile", "campaign-a", { ...snapshot, profile: { ...snapshot.profile, username: "other.user", project_directory: "/home/other.user/ytterbium_lab_simulation_new" } }],
+    ["profile", "campaign-a", { ...snapshot, profile: { ...snapshot.profile, username: "other.user", project_directory: "/home/other.user/ytterbium_lab_simulation_ui" } }],
   ] as const)("retires a pending preview when the %s changes", async (_label, nextCampaign, nextSnapshot) => {
     const pending = deferred<any>();
     const api = { preview: vi.fn(() => pending.promise), confirm: vi.fn() };

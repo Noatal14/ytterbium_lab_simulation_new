@@ -1,13 +1,13 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 import { Mot3DClosureTransitionApiError, parseMot3DClosureTransitionPreview, parseMot3DClosureTransitionResult, parseMot3DClosureTransitionStatus } from "../api/clients/mot3dClosureTransition";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DClosureTransitionController } from "../features/campaign/controllers/useMot3DClosureTransitionController";
 
 const data = (id: string) => structuredClone((successSnapshot.cases.find((entry) => entry.id === id)?.body as { data: Record<string, unknown> }).data);
-const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 const snapshot = { connection_status: "connected" as const, profile, remote: { project_directory: profile.project_directory, git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available" as const, queried_at: "2026-10-12T00:00:00Z", jobs: [] } };
 const status = () => parseMot3DClosureTransitionStatus(data("mot3d-closure-transition-status"));
 const preview = () => parseMot3DClosureTransitionPreview(data("mot3d-closure-transition-preview"), "campaign-id");

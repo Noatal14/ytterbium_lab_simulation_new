@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import {
   parseMot3DFinalValidationSubmissionPreview,
   parseMot3DFinalValidationSubmissionResult,
@@ -18,7 +18,7 @@ const data = (id: string) =>
 const profile = {
   host: "zeus.technion.ac.il" as const,
   username: "tal.noa",
-  project_directory: "/home/tal.noa/ytterbium_lab_simulation_new",
+  project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui",
   authentication: "ssh-key-or-agent" as const,
 };
 const status = () =>

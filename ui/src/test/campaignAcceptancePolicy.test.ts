@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { parseMot3DFinalistSubmissionPreview } from "../api/clients/mot3dFinalistSubmission";
 import { parseMot3DFinalValidationSubmissionPreview } from "../api/clients/mot3dFinalValidationSubmission";
 import { UI_ACCEPTANCE_POLICY } from "../generated/uiAcceptance.v1";

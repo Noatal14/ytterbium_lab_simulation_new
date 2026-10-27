@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import contracts from "../../../tests/contracts/v1/workflow_api_success.json";
+import contracts from "./teamContractFixture";
 import { App } from "../App";
 import * as transitionObserver from "../features/campaign/shared/observeCampaignTransition";
 import type { CanonicalTransitionCommit } from "../features/campaign/shared/observeCampaignTransition";
@@ -18,7 +18,7 @@ const definitions = [
   ["mot3d-final-validation-transition", "final_validation_input_generation", "final_validation", "final-validation-transition-heading", "Verify, synchronize, and prepare Final Validation", "mot3d-final-validation-submit-heading"],
   ["mot3d-final-validation-completion", "final_validation", "complete", "final-validation-completion-heading", "Synchronize and publish final report", "final-validation-completion-heading"],
 ] as const;
-const profile = { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" } as const;
+const profile = { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" } as const;
 const snapshot: ZeusSnapshot = { connection_status: "connected", profile, remote: { project_directory: profile.project_directory, git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available", queried_at: "2026-10-12T00:00:00Z", jobs: [] } };
 const envelope = (data: unknown) => new Response(JSON.stringify({ api_version: 1, data }), { status: 200 });
 const campaign = (stage: string): Campaign => ({ ...campaignFixture, id: "campaign-id", family: "mot_3d", kind: "mot_3d_campaign_v2", name: "mot_3d_contract", path: "data/optimization/mot_3d/contract", stage, git_commit: "a".repeat(40), progress: [], warnings: [], next_plan: null, families: ["angled_donut", "single_pass"] });

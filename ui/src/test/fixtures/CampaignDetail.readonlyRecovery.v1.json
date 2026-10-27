@@ -3,7 +3,7 @@
   "mode": "scientific",
   "provenance": "Immutable subset of full hermetic real receiver/coordinator/writer protocol, 2026-10-20. Physical solver/input loading and scheduler transport were fixture seams; all public status DTOs are unmodified real output.",
   "original_job_file": "jobs/01_smoke.pbs",
-  "remote_project_directory": "/home/tal.noa/ytterbium_lab_simulation_new",
+  "remote_project_directory": "/home/tal.noa/ytterbium_lab_simulation_ui",
   "responses": [
     {
       "module": "domain",

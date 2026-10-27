@@ -1,13 +1,13 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 import { Mot3DFinalInputSubmissionApiError, parseMot3DFinalInputPreview, parseMot3DFinalInputResult, parseMot3DFinalInputStatus } from "../api/clients/mot3dFinalInputSubmission";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DFinalInputSubmissionController } from "../features/campaign/controllers/useMot3DFinalInputSubmissionController";
 
 const data = (id: string) => structuredClone((successSnapshot.cases.find((entry) => entry.id === id)?.body as { data: Record<string, unknown> }).data);
 const campaignId = "mot3d-campaign", commit = "a".repeat(40);
-const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 const snapshot = { connection_status: "connected" as const, profile, remote: { project_directory: profile.project_directory, git_commit: commit, branch: "main", dirty: false }, scheduler: { status: "available" as const, queried_at: "2026-10-12T00:00:00Z", jobs: [] } };
 const status = () => parseMot3DFinalInputStatus(data("mot3d-final-input-status"));
 const preview = () => parseMot3DFinalInputPreview(data("mot3d-final-input-preview"), { campaignId, commit });

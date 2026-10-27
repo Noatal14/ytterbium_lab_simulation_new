@@ -1,6 +1,6 @@
 import { act,render,renderHook,screen } from "@testing-library/react";
 import { afterEach,expect,it,vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { parseZeusSnapshot } from "../api/schema/domain";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { createMot3DRefinementSubmissionApi } from "../api/clients/mot3dRefinementSubmission";

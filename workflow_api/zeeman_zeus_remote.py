@@ -106,7 +106,7 @@ def verify_commit(expected):
 operation, username, requested, encoded = sys.argv[1:5]
 try:
     project = Path(requested).resolve(strict=True)
-    allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}
+    allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test", "ytterbium_lab_simulation_ui")}
     if Path(requested) not in allowed or project != Path(requested) or not project.is_dir(): raise ValueError
     request_raw = (sys.stdin.buffer.read(MAX_REQUEST + 1)
                    if encoded == "-" else base64.urlsafe_b64decode(encoded))
@@ -115,7 +115,8 @@ try:
 except Exception:
     fail("remote_project_missing")
 
-root = project / ".workflow" / "individual-zeeman"
+runtime = project / ("data/runs/.zeus-state" if project.name == "ytterbium_lab_simulation_ui" else ".workflow")
+root = runtime / "individual-zeeman"
 submissions = root / "submissions"
 submissions.mkdir(parents=True, exist_ok=True)
 

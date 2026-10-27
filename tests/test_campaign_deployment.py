@@ -28,7 +28,7 @@ def test_isolated_binding_cannot_authorize_existing_scientific_or_test_only_root
 @pytest.mark.parametrize("change", [
     {"execution_checkout": None}, {"execution_checkout": "arbitrary"},
     {"execution_checkout": "../ytterbium_lab_simulation_new"},
-    {"kind": "mot_2d_ui_acceptance_v1"}, {"kind": "mot_3d_campaign_v2"},
+    {"kind": "mot_2d_ui_acceptance_v1"}, {"kind": "unknown_campaign"},
     {"acceptance": {}},
 ])
 def test_invalid_binding_does_not_fall_back_to_a_different_target(change):

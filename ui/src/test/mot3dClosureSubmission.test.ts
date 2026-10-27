@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 import {
   createMot3DClosureSubmissionApi,
   Mot3DClosureSubmissionApiError,
@@ -8,7 +8,7 @@ import {
   parseMot3DClosureSubmissionStatus,
 } from "../api/clients/mot3dClosureSubmission";
 
-const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 const data = (id: string) => structuredClone((successSnapshot.cases.find((entry) => entry.id === id)?.body as { data: Record<string, unknown> }).data);
 
 describe("3D-MOT Closure submission contract", () => {

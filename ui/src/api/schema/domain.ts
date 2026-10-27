@@ -62,7 +62,7 @@ export function parseCampaign(value: unknown): Campaign {
 export type ZeemanSource = { id: string; path: string; profile: string; ensemble_count: number; minimum_survivors: number; maximum_survivors: number; fingerprint: string };
 export type CreationPreview = {
   preview_token: string | null; expires_in_seconds: number;
-  plan: null | { name: string; path: string; s0_values: number[]; source_id: string; files: string[]; stage: "smoke"; execution_checkout?: "ytterbium_lab_simulation_ui_test" };
+  plan: null | { name: string; path: string; s0_values: number[]; source_id: string; files: string[]; stage: "smoke"; execution_checkout?: "ytterbium_lab_simulation_ui_test" | "ytterbium_lab_simulation_ui" };
   scientific_design: Record<string, unknown>;
   provenance: { commit: string; input_count: typeof canonicalDesign.ensemble_count };
   duplicate: null | { campaign_id: string | null; path: string; stage: string };
@@ -622,7 +622,7 @@ export function parsePreview(value: Record<string, unknown>): CreationPreview {
   const duplicate = value.duplicate as Record<string, unknown> | null;
   if ((value.preview_token !== null && !text(value.preview_token)) || !finiteNonnegative(value.expires_in_seconds) || !provenance || !text(provenance.commit) || provenance.input_count !== canonicalDesign.ensemble_count || !value.scientific_design || typeof value.scientific_design !== "object") throw new Error("Invalid campaign preview response.");
   if (plan !== null && (!plan || !text(plan.name) || !text(plan.path) || !Array.isArray(plan.s0_values) || !plan.s0_values.every((item) => typeof item === "number" && Number.isFinite(item) && item > 0) || !text(plan.source_id) || !Array.isArray(plan.files) || !plan.files.every(text) || plan.stage !== "smoke")) throw new Error("Invalid campaign preview response.");
-  if (plan && "execution_checkout" in plan && plan.execution_checkout !== "ytterbium_lab_simulation_ui_test") throw new Error("Invalid campaign deployment response.");
+  if (plan && "execution_checkout" in plan && plan.execution_checkout !== "ytterbium_lab_simulation_ui_test" && plan.execution_checkout !== "ytterbium_lab_simulation_ui") throw new Error("Invalid campaign deployment response.");
   if (duplicate !== null && (!duplicate || (duplicate.campaign_id !== null && !text(duplicate.campaign_id)) || !text(duplicate.path) || !text(duplicate.stage))) throw new Error("Invalid campaign preview response.");
   if ((duplicate === null) === (plan === null) || (plan !== null && !text(value.preview_token))) throw new Error("Invalid campaign preview response.");
   return value as unknown as CreationPreview;

@@ -178,7 +178,7 @@ def validate_identity(value, username, project):
 operation, username, requested, encoded = sys.argv[1:5]
 try:
     project = Path(requested).resolve(strict=True)
-    allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}
+    allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test", "ytterbium_lab_simulation_ui")}
     request_raw = (
         sys.stdin.buffer.read(MAX_REQUEST + 1)
         if encoded == "-" else base64.urlsafe_b64decode(encoded)
@@ -187,7 +187,8 @@ try:
     request = json.loads(request_raw)
 except Exception: fail("remote_project_missing")
 
-root = project / ".workflow" / "individual-mot-3d"; submissions = root / "submissions"
+runtime = project / ("data/runs/.zeus-state" if project.name == "ytterbium_lab_simulation_ui" else ".workflow")
+root = runtime / "individual-mot-3d"; submissions = root / "submissions"
 submissions.mkdir(parents=True, exist_ok=True)
 if operation in {"inspect", "stage", "submit"}:
     if not isinstance(request, dict) or set(request) != {"identity", "nonce"} or not NONCE.fullmatch(str(request["nonce"])): fail("remote_request_invalid")

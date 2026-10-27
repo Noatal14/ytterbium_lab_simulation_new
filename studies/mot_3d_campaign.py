@@ -106,6 +106,7 @@ CAMPAIGN_FILES = (
 def relevant_files():
     """Return the conservative closure of code that can affect 3D dynamics."""
     paths = {Path(name) for name in CAMPAIGN_FILES}
+    paths.update(map(Path, ("workflow_api/campaign_deployment.py", "workflow_api/specifications/deployments_v1.json")))
     for directory in ("lab_setup", "simulations", "utils", "atomsmltr/src/atomsmltr"):
         paths.update(Path(directory).rglob("*.py"))
     # Native Windows paths sort without case sensitivity. Provenance must use
@@ -193,6 +194,10 @@ def validate_upstream_2d_campaign(
         )
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    deployment = {}
+    if "execution_checkout" in manifest:
+        from workflow_api.campaign_deployment import normal_checkout
+        deployment = {"execution_checkout": normal_checkout(manifest)}
     from workflow_api.acceptance_profile import (
         policy_for_manifest,
         load_acceptance_profile,
@@ -366,6 +371,7 @@ def validate_upstream_2d_campaign(
     if any(value is None for value in expected_design.values()):
         raise ValueError("Upstream 2D manifest has incomplete production design.")
     return {
+        **deployment,
         "campaign_path": str(manifest_path),
         "campaign_sha256": _sha256(manifest_path),
         "final_report_path": str(report_path),
@@ -1607,26 +1613,21 @@ def render_final_validation_input_transition(
         "jobs/final_validation_inputs/03_freeze_inputs.pbs": freeze_raw.encode(),
         "campaign.json": json.dumps(updated, indent=2, allow_nan=False).encode(),
     }
+    for name, raw in list(artifacts.items()):
+        if not name.endswith(".pbs"):
+            continue
+        job_kind = {
+            "01_generate_zeeman.pbs": "zeeman",
+            "02_generate_2d_survivors.pbs": "mot_2d",
+            "03_freeze_inputs.pbs": "freeze",
+        }[Path(name).name]
+        text = workload.rendered_generation_job(raw.decode(), manifest, job_kind)
+        if acceptance:
+            flag = f" --acceptance-profile {acceptance.profile_id} --input-manifest {root / 'campaign.json'}"
+            text = text.replace(f"--output-dir {zeeman_dir}", f"{flag} --output-dir {zeeman_dir}")
+            text = text.replace(f"--output-dir {output_2d}", f"{flag} --output-dir {output_2d}")
+        artifacts[name] = text.encode()
     if acceptance:
-        for name, raw in list(artifacts.items()):
-            if name.endswith(".pbs"):
-                job_kind = {
-                    "01_generate_zeeman.pbs": "zeeman",
-                    "02_generate_2d_survivors.pbs": "mot_2d",
-                    "03_freeze_inputs.pbs": "freeze",
-                }[Path(name).name]
-                text = workload.rendered_generation_job(
-                    raw.decode(), manifest, job_kind
-                )
-                flag = f" --acceptance-profile {acceptance.profile_id} --input-manifest {root / 'campaign.json'}"
-                text = text.replace(
-                    f"--output-dir {zeeman_dir}",
-                    f"{flag} --output-dir {zeeman_dir}",
-                )
-                text = text.replace(
-                    f"--output-dir {output_2d}", f"{flag} --output-dir {output_2d}"
-                )
-                artifacts[name] = text.encode()
         locked.update(workload.artifact_identity(manifest))
         artifacts["selection/locked_nominals.json"] = json.dumps(
             locked, indent=2, allow_nan=False
@@ -2647,8 +2648,17 @@ def build_campaign_manifest(
         marker = {
             "acceptance": load_acceptance_profile(acceptance_profile_id).provenance()
         }
+    deployment = {}
+    if "execution_checkout" in upstream:
+        if marker:
+            raise ValueError("Acceptance handoff cannot inherit a normal deployment.")
+        from workflow_api.campaign_deployment import normal_checkout
+        deployment = {"execution_checkout": normal_checkout({
+            "kind": "mot_3d_campaign_v2", "execution_checkout": upstream["execution_checkout"],
+        })}
     return {
         **marker,
+        **deployment,
         "kind": "mot_3d_ui_acceptance_v1" if marker else "mot_3d_campaign_v2",
         "name": name,
         "stage": stage,

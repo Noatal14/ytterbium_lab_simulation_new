@@ -124,7 +124,8 @@ def rendered_job(text, manifest, name, *, merge=False):
     """Apply the authenticated workload to ordinary PBS rendering, never physics."""
     selected = stage(manifest, name)
     if selected is None:
-        return text
+        from workflow_api.campaign_deployment import render_normal_deployment
+        return render_normal_deployment(manifest, text.encode()).decode()
     prefix = "merge_" if merge else ""
     if not merge and selected.get("array_throttle") is not None:
         text = text.replace("set -euo pipefail\n", f"#PBS -J {array_range(manifest, name)}\nset -euo pipefail\n")
@@ -156,7 +157,10 @@ def generation_job(manifest, name):
 
 def rendered_generation_job(text, manifest, name):
     selected = generation_job(manifest, name)
-    return text if selected is None else _render_policy_job(text, manifest, selected)
+    if selected is None:
+        from workflow_api.campaign_deployment import render_normal_deployment
+        return render_normal_deployment(manifest, text.encode()).decode()
+    return _render_policy_job(text, manifest, selected)
 
 
 def _render_policy_job(text, manifest, selected):

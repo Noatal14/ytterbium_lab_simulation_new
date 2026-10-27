@@ -12,8 +12,8 @@ const deferred = <T,>() => {
 
 const snapshot = (username: string): ZeusSnapshot => ({
   connection_status: "connected",
-  profile: { host: "zeus.technion.ac.il", username, project_directory: `/home/${username}/ytterbium_lab_simulation_new`, authentication: "ssh-key-or-agent" },
-  remote: { project_directory: `/home/${username}/ytterbium_lab_simulation_new`, git_commit: "a".repeat(40), branch: "main", dirty: false },
+  profile: { host: "zeus.technion.ac.il", username, project_directory: `/home/${username}/ytterbium_lab_simulation_ui`, authentication: "ssh-key-or-agent" },
+  remote: { project_directory: `/home/${username}/ytterbium_lab_simulation_ui`, git_commit: "a".repeat(40), branch: "main", dirty: false },
   scheduler: { status: "available", queried_at: new Date().toISOString(), jobs: [] },
 });
 

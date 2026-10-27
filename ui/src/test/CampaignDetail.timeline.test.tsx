@@ -1,7 +1,7 @@
 /** Copy-only component regression. Scheduler transport is a labeled fixture. */
 import { render, screen, within } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { CampaignDetail } from "../features/campaign/CampaignDetail";
 import {
   parseCampaign,

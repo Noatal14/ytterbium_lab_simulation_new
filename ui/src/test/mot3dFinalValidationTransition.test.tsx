@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import actualHeld from "./fixtures/c56-final-inputs-held-status.json";
-import snapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import snapshot from "./teamContractFixture";
 import {
   Mot3DFinalValidationTransitionApiError,
   parseMot3DFinalValidationTransitionPreview,

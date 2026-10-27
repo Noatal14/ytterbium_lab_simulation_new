@@ -1,7 +1,7 @@
 import { act,render,screen } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
 import { expect,it,vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { parseZeusSnapshot,parseSensitivityStatus,parseSensitivityPreview,parseSensitivityResult,parseSensitivitySubmissionStatus,parseSensitivitySubmissionPreview } from "../api/schema/domain";
 import { useSensitivityController } from "../features/campaign/controllers/useSensitivityController";
 import { SensitivityStage } from "../features/campaign/SensitivityStage";

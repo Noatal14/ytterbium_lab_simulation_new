@@ -7,6 +7,8 @@ artifact registry before any campaign state is advanced.
 
 from __future__ import annotations
 
+from workflow_api.campaign_deployment import normal_checkout
+
 import hashlib
 import contextlib
 import io
@@ -733,7 +735,7 @@ def expected_selection_particle_provenance(
         != (
             "ytterbium_lab_simulation_ui_acceptance"
             if acceptance
-            else "ytterbium_lab_simulation_new"
+            else normal_checkout(manifest)
         )
     ):
         raise PreliminaryResultError("particle_selection_mismatch")
@@ -911,7 +913,7 @@ def validate_preliminary_result_bytes(
         != (
             "ytterbium_lab_simulation_ui_acceptance"
             if acceptance
-            else "ytterbium_lab_simulation_new"
+            else normal_checkout(manifest)
         )
         or not campaign_path.is_absolute()
         or campaign_path

@@ -29,7 +29,7 @@ const previewValue = {
   },
   remote: {
     host: "zeus.technion.ac.il",
-    project_directory: "/home/tal.noa/ytterbium_lab_simulation_new",
+    project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui",
     commit: "a".repeat(40),
     branch: "main",
     dirty: false,

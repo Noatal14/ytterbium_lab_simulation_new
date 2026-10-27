@@ -1,11 +1,11 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 import { Mot3DFinalistSubmissionApiError, parseMot3DFinalistSubmissionPreview, parseMot3DFinalistSubmissionResult, parseMot3DFinalistSubmissionStatus } from "../api/clients/mot3dFinalistSubmission";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DFinalistSubmissionController } from "../features/campaign/controllers/useMot3DFinalistSubmissionController";
 const data=(id:string)=>structuredClone((successSnapshot.cases.find(e=>e.id===id)!.body as {data:Record<string,unknown>}).data);
-const profile={host:"zeus.technion.ac.il" as const,username:"tal.noa",project_directory:"/home/tal.noa/ytterbium_lab_simulation_new",authentication:"ssh-key-or-agent" as const};
+const profile={host:"zeus.technion.ac.il" as const,username:"tal.noa",project_directory:"/home/tal.noa/ytterbium_lab_simulation_ui",authentication:"ssh-key-or-agent" as const};
 const snapshot={connection_status:"connected" as const,profile,remote:{project_directory:profile.project_directory,git_commit:"a".repeat(40),branch:"main",dirty:false},scheduler:{status:"available" as const,queried_at:"2026-10-12T00:00:00Z",jobs:[]}};
 const status=()=>parseMot3DFinalistSubmissionStatus(data("mot3d-finalist-status")),preview=()=>parseMot3DFinalistSubmissionPreview(data("mot3d-finalist-preview"),{campaignId:"campaign-id",profile}),result=()=>parseMot3DFinalistSubmissionResult(data("mot3d-finalist-confirm"),"campaign-id");
 const base={stage:"finalist_selection",connected:true,discovery:{} as never,transition:{} as never,preliminary:{} as never,onConnectZeus:vi.fn(),onViewJobs:vi.fn()};

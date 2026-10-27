@@ -5,7 +5,7 @@ import type { ZeusSnapshot } from "../api/clients/zeus";
 import { parseRefinementLifecycle } from "../api/schema/domain";
 import { useConfirmationController } from "../features/campaign/controllers/useConfirmationController";
 
-const snapshot = { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" } } as ZeusSnapshot;
+const snapshot = { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" } } as ZeusSnapshot;
 const readyLifecycle = parseRefinementLifecycle({
   source: "zeus", queried_at: "2026-10-10T10:00:00Z",
   campaign: { id: "campaign", name: "Campaign", stage: "refine" },

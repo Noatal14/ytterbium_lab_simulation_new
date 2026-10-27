@@ -1,6 +1,6 @@
 import { render, screen, cleanup } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import contracts from "../../../tests/contracts/v1/workflow_api_success.json";
+import contracts from "./teamContractFixture";
 import { parseConfirmationSubmissionPreview } from "../api/schema/domain";
 import { campaignConfirmationParticles } from "../api/campaignPolicy";
 import { UI_ACCEPTANCE_POLICY } from "../generated/uiAcceptance.v1";

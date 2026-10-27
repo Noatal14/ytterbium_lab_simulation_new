@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { createFinalizationApi, createProductionApi, createProductionSubmissionApi } from "../api/clients/production";
 import { parseFinalizationPreview, parseFinalizationStatus, parseProductionPreview, parseProductionResult, parseProductionStatus, parseProductionSubmissionPreview, parseProductionSubmissionResult, parseProductionSubmissionStatus, parseZeusSnapshot } from "../api/schema/domain";
 import { useProductionController } from "../features/campaign/controllers/useProductionController";

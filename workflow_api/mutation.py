@@ -108,8 +108,8 @@ class CreationService:
         if not isinstance(request["name"], str) or not isinstance(request["slug"], str) or not isinstance(request["source_id"], str) or not isinstance(request["s0_values"], list):
             raise ValueError("Preview fields are invalid.")
         if "execution_checkout" in request:
-            from workflow_api.campaign_deployment import ISOLATED_CHECKOUT
-            if request["execution_checkout"] != ISOLATED_CHECKOUT:
+            from workflow_api.campaign_deployment import ISOLATED_CHECKOUT, TEAM_CHECKOUT
+            if request["execution_checkout"] not in (ISOLATED_CHECKOUT, TEAM_CHECKOUT):
                 raise ValueError("Preview deployment is invalid.")
         sources = {row["id"]: row for row in list_sources(self.root, acceptance_profile_id=self.acceptance_profile_id)["sources"]}
         source = sources.get(request["source_id"])

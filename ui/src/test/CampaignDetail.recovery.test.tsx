@@ -4,7 +4,7 @@
 import { StrictMode } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import scientificCapture from "./fixtures/CampaignDetail.readonlyRecovery.v1.json";
 import acceptanceCapture from "./fixtures/CampaignDetail.readonlyRecovery.acceptance.v1.json";
 const contract = (id: string) =>

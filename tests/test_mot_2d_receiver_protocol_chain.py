@@ -203,6 +203,13 @@ class _Protocol:
                         return real_path(value)
                     mapped.cwd = Path.cwd
                     child.setattr(module, 'Path', mapped)
+                    if hasattr(module, 'campaign_checkout_paths'):
+                        from workflow_api.campaign_deployment import campaign_checkout_paths
+                        # Map the fixed logical deployment roots into this fixture's
+                        # temporary home, just as Path above maps receiver I/O.
+                        child.setattr(module, 'campaign_checkout_paths', lambda username:
+                            frozenset(campaign_checkout_paths(username)) |
+                            frozenset(mapped(str(path)) for path in campaign_checkout_paths(username)))
                     if runner._policy.receiver in {pinned_ssh.ReceiverKind.SENSITIVITY_PREPARATION, pinned_ssh.ReceiverKind.PRODUCTION_PREPARATION, pinned_ssh.ReceiverKind.FINALIZATION}:
                         child.setattr(sys, 'argv', ['receiver', operation.value])
                         child.setattr(sys, 'stdin', io.TextIOWrapper(io.BytesIO(json.dumps(payload).encode())))

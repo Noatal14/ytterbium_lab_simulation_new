@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.campaign_deployment import campaign_checkout_paths
+
 from workflow_api import mot_3d_workload as workload
 
 import base64, gzip, hashlib, json, os, re, stat, subprocess, sys, time
@@ -385,10 +387,7 @@ def main():
         not isinstance(payload, dict)
         or set(payload) != expected
         or not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}", username)
-        or root not in {
-            Path(f"/home/{username}/ytterbium_lab_simulation_new"),
-            Path(f"/home/{username}/ytterbium_lab_simulation_ui_acceptance"),
-        }
+        or root not in campaign_checkout_paths(username)
         or relative.is_absolute()
         or relative.parts[:3] != ("data", "optimization", "mot_3d")
         or not (

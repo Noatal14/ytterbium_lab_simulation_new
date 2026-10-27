@@ -5,7 +5,7 @@ import { probeWorkflowApi, requireUnusedWorkflowApi, superviseChildren, waitForW
 
 const uiRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repositoryRoot = path.resolve(uiRoot, "..");
-const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
+const python = process.env.PYTHON || path.join(repositoryRoot, ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
 const vite = path.join(uiRoot, "node_modules", "vite", "bin", "vite.js");
 const children = [];
 const acceptance = process.argv.includes("--ui-acceptance");

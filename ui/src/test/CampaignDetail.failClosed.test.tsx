@@ -59,7 +59,7 @@ const campaign = {
   trust: "trusted-current", scientific_role: "campaign", progress: [], warnings: [], next_plan: null,
   remote_preparation: { status: "ready" },
 };
-const profile = { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" };
+const profile = { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui" };
 const preview = { preview_token: "token" };
 
 function renderDetail(target: string, detailCampaign: any = campaign) {

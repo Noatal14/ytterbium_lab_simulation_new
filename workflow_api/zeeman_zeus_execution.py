@@ -292,6 +292,17 @@ def _target_pbs(text: str, project_directory: str | None) -> bytes:
         )
         if path.name == "ytterbium_lab_simulation_ui_acceptance":
             raise ZeemanZeusError("profile_or_submission_identity_mismatch")
+        from workflow_api.campaign_deployment import TEAM_CHECKOUT, environment_for_checkout
+        if path.name == TEAM_CHECKOUT:
+            text = text.replace("/ytterbium_lab_simulation_new", "/" + TEAM_CHECKOUT)
+            text = text.replace('".workflow/individual-', '"data/runs/.zeus-state/individual-')
+            environment = environment_for_checkout(TEAM_CHECKOUT)
+            text = text.replace("/venvs/atomsmltr/", f"/venvs/{environment}/")
+            if "source " not in text:
+                text = text.replace(
+                    "python -m ",
+                    f'module load SPACK/apps\nmodule load gcc/14.1.0\nmodule load python/3.14.2\nsource "${{HOME}}/venvs/{environment}/bin/activate"\npython -m ',
+                )
         if path.name == "ytterbium_lab_simulation_ui_test":
             # Test-only placement is included in the exact reviewed PBS bytes.
             text = re.sub(r"^(#PBS -l select=1:ncpus=\d+:mem=\d+gb)$", r"\1:vnode=gd002", text, flags=re.M)

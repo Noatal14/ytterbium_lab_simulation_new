@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.campaign_deployment import campaign_checkout_paths
+
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
 
 import base64, hashlib, json, os, re, stat, subprocess, sys, tempfile, time
@@ -841,10 +843,7 @@ def main(*, trusted_root_override=None):
     operation, username, project, encoded = sys.argv[1:]
     if re.fullmatch(
         r"[A-Za-z][A-Za-z0-9._-]{0,31}", username
-    ) is None or project not in {
-        f"/home/{username}/ytterbium_lab_simulation_new",
-        f"/home/{username}/ytterbium_lab_simulation_ui_acceptance",
-    }:
+    ) is None or project not in {str(path) for path in campaign_checkout_paths(username)}:
         fail("invalid_request")
     try:
         if encoded == "-":

@@ -18,6 +18,8 @@ PATHS = (*RELEVANT_FILES, "lab_setup")
 # execution.  Keep this explicit: a new runtime or provenance consumer must be
 # reviewed and added here rather than silently inheriting an entire directory.
 ZEEMAN_RELEVANT_FILES = (
+    "workflow_api/campaign_deployment.py",
+    "workflow_api/specifications/deployments_v1.json",
     "config.py",
     "pyproject.toml",
     "requirements.txt",
@@ -77,6 +79,8 @@ ZEEMAN_RELEVANT_FILES = (
 # files are not Git inputs: the source catalog independently re-attests every
 # constituent artifact at preview and confirmation time.
 MOT_2D_INDIVIDUAL_RELEVANT_FILES = (
+    "workflow_api/campaign_deployment.py",
+    "workflow_api/specifications/deployments_v1.json",
     "config.py",
     "pyproject.toml",
     "requirements.txt",
@@ -137,6 +141,8 @@ MOT_2D_INDIVIDUAL_RELEVANT_FILES = (
 # Exact clean-worktree ledger for individual 3D-MOT admission.  Particle-state
 # inputs are independently re-attested by the source catalog.
 MOT_3D_INDIVIDUAL_RELEVANT_FILES = (
+    "workflow_api/campaign_deployment.py",
+    "workflow_api/specifications/deployments_v1.json",
     "config.py",
     "pyproject.toml",
     "requirements.txt",

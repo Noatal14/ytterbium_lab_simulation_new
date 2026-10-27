@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { parseFinalizationPreview, parseFinalizationResult, parseFinalizationStatus, parseProductionStatus, parseProductionPreview, parseProductionResult, parseProductionSubmissionPreview, parseProductionSubmissionResult, parseProductionSubmissionStatus, parseZeusSnapshot, parseSensitivityStatus, parseSensitivityPreview, parseSensitivityResult, parseSensitivitySubmissionStatus, parseSensitivitySubmissionPreview, parseSensitivitySubmissionResult } from "../api/schema/domain";
 import { useSensitivityController } from "../features/campaign/controllers/useSensitivityController";
 import { useProductionController } from "../features/campaign/controllers/useProductionController";

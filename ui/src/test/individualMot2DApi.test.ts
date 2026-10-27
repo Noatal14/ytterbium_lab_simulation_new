@@ -396,6 +396,6 @@ describe("individual 2D-MOT client", () => {
     await expect(api.recoverZeus("mot2d-test", "tal.noa")).resolves.toEqual(recovered);
     await expect(api.refreshZeus("mot2d-test", "tal.noa")).resolves.toEqual({ state: schedulerState, job_id: "501.zeus-master" });
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "mot2d-test", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" } });
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ run_id: "mot2d-test", profile: { username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui" } });
   });
 });

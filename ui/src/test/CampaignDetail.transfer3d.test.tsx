@@ -8,7 +8,7 @@ it("requires shared preparation before a fresh 3D Discovery and never submits du
   const forbidden = vi.fn(async () => { throw Error("Preparation cannot submit jobs"); });
   const unused = { preview: forbidden, confirm: forbidden, status: forbidden, reset: vi.fn() };
   const campaign = { id: "mot_3d-test", name: "3D transfer test", family: "mot_3d", kind: "mot_3d", path: "data/optimization/mot_3d/transfer_test", stage: "discovery", trust: "trusted-current", scientific_role: "campaign", progress: [], warnings: [], next_plan: null, remote_preparation: {status: "ready", reason_code: null} };
-  const profile = {host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent"};
+  const profile = {host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent"};
   const transfer = {
     preview: vi.fn(async () => ({preview_token: "transfer", expires_in_seconds: 300, campaign: {...campaign, git_commit: "a".repeat(40)}, destination: {host: profile.host, project_directory: profile.project_directory, campaign_directory: `${profile.project_directory}/${campaign.path}`}, artifacts: {ensemble_count: 20, total_count: 52, missing_count: 52, identical_count: 0, total_bytes: 10000, missing_bytes: 10000}, effects: {copy_missing_only: true, overwrite_existing: false, submit_jobs: false, run_simulation: false}})),
     confirm: vi.fn(async () => ({status: "prepared", campaign_id: campaign.id, destination: `${profile.project_directory}/${campaign.path}`, transferred_count: 52, reused_identical_count: 0, bytes_transferred: 10000, submitted_to_zeus: false, simulation_started: false})),

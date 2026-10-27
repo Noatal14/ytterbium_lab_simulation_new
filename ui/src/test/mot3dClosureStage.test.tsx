@@ -1,13 +1,13 @@
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 import { Mot3DClosureSubmissionApiError, parseMot3DClosureSubmissionPreview, parseMot3DClosureSubmissionResult, parseMot3DClosureSubmissionStatus } from "../api/clients/mot3dClosureSubmission";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DClosureSubmissionController } from "../features/campaign/controllers/useMot3DClosureSubmissionController";
 
 const data = (id: string) => structuredClone((successSnapshot.cases.find((entry) => entry.id === id)?.body as { data: Record<string, unknown> }).data);
-const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 const snapshot = { connection_status: "connected" as const, profile, remote: { project_directory: profile.project_directory, git_commit: "a".repeat(40), branch: "main", dirty: false }, scheduler: { status: "available" as const, queried_at: "2026-10-12T00:00:00Z", jobs: [] } };
 const status = () => parseMot3DClosureSubmissionStatus(data("mot3d-closure-status"));
 const preview = () => parseMot3DClosureSubmissionPreview(data("mot3d-closure-preview"), { campaignId: "campaign-id", profile });

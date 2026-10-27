@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 
 const fixture = () => structuredClone(success.cases.find(row => row.id === "smoke-submit-preview")!.body.data) as any;
 afterEach(() => {vi.unstubAllEnvs();vi.resetModules();});
@@ -16,7 +16,7 @@ it("accepts only the isolated 2D smoke resources and destination in TEST ONLY mo
   const node=(UI_ACCEPTANCE_POLICY as any).scheduler?.vnode;
   if(node)row.job.vnode=node;
   expect(parseSmokeSubmissionPreview(row).job.cores_per_task).toBe(policy.ncpus);
-  row.remote.project_directory="/home/tal.noa/ytterbium_lab_simulation_new";
+  row.remote.project_directory="/home/tal.noa/ytterbium_lab_simulation_ui";
   expect(()=>parseSmokeSubmissionPreview(row)).toThrow();
   row.remote.project_directory="/home/tal.noa/ytterbium_lab_simulation_ui_acceptance";
   row.job.vnode="unreviewed-node";

@@ -6,9 +6,9 @@ import { createSmokeLifecycleApi } from "../api/clients/smoke";
 import { createScreeningLifecycleApi, createScreeningSubmissionApi } from "../api/clients/screening";
 import { createRefinementLifecycleApi, createRefinementSubmissionApi } from "../api/clients/refinement";
 import { createWorkflowApiClient } from "../api/workflowClient";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 
-const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 
 function smokePreview(campaignId: string, token: string) {
   return {
@@ -193,7 +193,7 @@ describe.each(contextFlows)("%s preview context", (_name, factory, previewId, co
     const { fetchMock } = installContextServer(previewId, confirmId);
     let sessions = 0;
     const api = factory(async () => `csrf-${++sessions}`) as PreviewContextApi;
-    const replacement = { ...profile, username: "replacement.user", project_directory: "/home/replacement.user/ytterbium_lab_simulation_new" };
+    const replacement = { ...profile, username: "replacement.user", project_directory: "/home/replacement.user/ytterbium_lab_simulation_ui" };
     const first = await api.preview("campaign-a", profile);
     const second = await api.preview("campaign-b", replacement);
     await api.confirm(first.preview_token);

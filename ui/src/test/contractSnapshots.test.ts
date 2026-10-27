@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import errorSnapshot from "../../../tests/contracts/v1/workflow_api_errors.json";
-import successSnapshot from "../../../tests/contracts/v1/workflow_api_success.json";
+import successSnapshot from "./teamContractFixture";
 import {
   campaignApi,
   creationApi,
@@ -81,7 +81,7 @@ describe("backend-generated workflow API contract snapshots", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const campaignId = "campaign-id";
-    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" as const };
+    const profile = { host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" as const };
 
     await campaignApi.list();
     await campaignApi.get(campaignId);

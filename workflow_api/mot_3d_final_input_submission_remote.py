@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.campaign_deployment import campaign_checkout_paths
+
 import base64
 import hashlib
 import json
@@ -136,10 +138,7 @@ def main(*, trusted_root_override=None):
     operation, username, project, encoded = sys.argv[1:]
     if re.fullmatch(
         r"[A-Za-z][A-Za-z0-9._-]{0,31}", username
-    ) is None or project not in {
-        f"/home/{username}/ytterbium_lab_simulation_new",
-        f"/home/{username}/ytterbium_lab_simulation_ui_acceptance",
-    }:
+    ) is None or project not in {str(path) for path in campaign_checkout_paths(username)}:
         fail("invalid_request")
     try:
         raw = (

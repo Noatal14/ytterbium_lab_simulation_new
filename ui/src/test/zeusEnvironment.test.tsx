@@ -11,7 +11,7 @@ it("selects the fixed isolated target only in the explicit test mode", () => {
   expect(zeusProjectDirectory("tal.noa")).toBe("/home/tal.noa/ytterbium_lab_simulation_ui_test");
   vi.stubEnv("MODE", "development");
   expect(zeusTestMode()).toBe(false);
-  expect(zeusProjectDirectory("tal.noa")).toBe("/home/tal.noa/ytterbium_lab_simulation_new");
+  expect(zeusProjectDirectory("tal.noa")).toBe("/home/tal.noa/ytterbium_lab_simulation_ui");
 });
 
 it("keeps campaign actions out of the isolated environment", async () => {
@@ -35,9 +35,17 @@ it("uses a fixed deployment checkout without creating a second UI version", () =
 
 it("binds normal 2D creation to the explicit isolated deployment, never acceptance", () => {
   vi.stubEnv("MODE", "development");
-  expect(campaignExecutionCheckout()).toBeUndefined();
+  expect(campaignExecutionCheckout()).toBe("ytterbium_lab_simulation_ui");
   vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_ui_test");
   expect(campaignExecutionCheckout()).toBe("ytterbium_lab_simulation_ui_test");
   vi.stubEnv("MODE", "ui-acceptance");
+  expect(campaignExecutionCheckout()).toBeUndefined();
+});
+
+
+it("preserves explicitly selected historical deployment without rebinding campaigns", () => {
+  vi.stubEnv("MODE", "development");
+  vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_new");
+  expect(zeusProjectDirectory("new.member")).toBe("/home/new.member/ytterbium_lab_simulation_new");
   expect(campaignExecutionCheckout()).toBeUndefined();
 });

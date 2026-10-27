@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import {
   parseSensitivityPreview,
   parseSensitivityStatus,

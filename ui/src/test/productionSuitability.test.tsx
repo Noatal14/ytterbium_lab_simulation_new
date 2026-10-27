@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import { parseFinalizationPreview, parseFinalizationStatus, parseProductionSubmissionStatus } from "../api/schema/domain";
 import { ProductionStage } from "../features/campaign/ProductionStage";
 import type { useProductionController } from "../features/campaign/controllers/useProductionController";

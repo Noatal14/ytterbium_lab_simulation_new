@@ -5,7 +5,7 @@ import { createRef } from "react";
 import { render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import captured from "./fixtures/historicalReceipts.actualP23.json";
-import success from "../../../tests/contracts/v1/workflow_api_success.json";
+import success from "./teamContractFixture";
 import * as domain from "../api/schema/domain";
 import { CampaignPriorityPanel } from "../features/campaign/CampaignPriorityPanel";
 import { TransferStage } from "../features/campaign/TransferStage";

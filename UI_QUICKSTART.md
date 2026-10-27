@@ -13,8 +13,8 @@ If you do not already have the project, open **Terminal on Mac** or
 **PowerShell on Windows**, then run:
 
 ```text
-git clone https://github.com/Noatal14/ytterbium_lab_simulation_new.git
-cd ytterbium_lab_simulation_new
+git clone --branch main https://github.com/Noatal14/ytterbium_lab_simulation_new.git "Ytterbium UI"
+cd "Ytterbium UI"
 ```
 
 GitHub may ask you to sign in if the repository is private. If you already have
@@ -28,10 +28,12 @@ the project, open a terminal in its main folder instead: the folder containing
 **First time only**, from the main project folder:
 
 ```bash
+set -e
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install -r requirements-dev.txt
-python -m pip install -e ./atomsmltr
+python -m pip install -r requirements-team.txt
+python -m pip install --no-build-isolation -c constraints-team.txt -e ./atomsmltr
+python -m pip check
 cd ui
 npm ci
 npm run dev
@@ -51,11 +53,16 @@ npm run dev
 
 ```powershell
 py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pip install -e .\atomsmltr
-$env:PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
+if ($LASTEXITCODE -ne 0) { throw "Installation failed. Stop here and keep the error message." }
+.\.venv\Scripts\python.exe -m pip install -r requirements-team.txt
+if ($LASTEXITCODE -ne 0) { throw "Installation failed. Stop here and keep the error message." }
+.\.venv\Scripts\python.exe -m pip install --no-build-isolation -c constraints-team.txt -e .\atomsmltr
+if ($LASTEXITCODE -ne 0) { throw "Installation failed. Stop here and keep the error message." }
+.\.venv\Scripts\python.exe -m pip check
+if ($LASTEXITCODE -ne 0) { throw "Installation failed. Stop here and keep the error message." }
 cd ui
 npm.cmd ci
+if ($LASTEXITCODE -ne 0) { throw "Installation failed. Stop here and keep the error message." }
 npm.cmd run dev
 ```
 
@@ -65,12 +72,13 @@ If `py` is unavailable, use `python -m venv .venv` instead, after checking that
 **Next time**, open a new PowerShell window in the main project folder:
 
 ```powershell
-$env:PYTHON = (Resolve-Path .\.venv\Scripts\python.exe).Path
 cd ui
 npm.cmd run dev
 ```
 
-No PowerShell activation script or execution-policy change is needed.
+No PowerShell activation script or execution-policy change is needed. The shared
+launcher uses the Python environment inside this checkout on both platforms.
+Remove any old `PYTHON` environment override before launching a new installation.
 
 ### Open the application — both systems
 
@@ -81,7 +89,8 @@ Do not close it while a local simulation is running.
 ## 3. Choose a simulation or campaign — both systems
 
 - **Run one simulation:** Zeeman, 2D MOT, or 3D MOT. Choose **This computer**
-  for a small local run (up to 1,000 atoms), or **Zeus** for remote work.
+  for a small local run, or **Zeus** for remote work. The form shows the
+  validated capacity for the chosen simulation and execution mode.
 - **Start a campaign:** a 2D-MOT or 3D-MOT optimization on Zeus. Campaigns can
   take days; use an individual simulation for a quick trial.
 
@@ -104,9 +113,10 @@ Local runs do not need Zeus. For remote runs:
    Windows and Mac each need their own working SSH setup.
 3. Enter your Technion username, check the remote project directory, and select
    **Connect and check status**.
-4. Before the first submission, ask the project maintainer to verify that the
-   remote checkout, Python environment, source data, and code revision are ready.
-   A successful connection alone does not install or configure them.
+4. Before the first submission, complete the one-time personal-account setup in
+   [Team deployment](docs/TEAM_DEPLOYMENT.md). The UI must show
+   `/home/YOUR_USERNAME/ytterbium_lab_simulation_ui`. Connecting does not install it.
+   The local and remote commit must match exactly.
 
 SSH setup is a one-time prerequisite, not completed by clicking Connect. Follow
 the official Technion instructions; verify the server fingerprint before
@@ -163,13 +173,11 @@ runs or their scientific evidence. A version mismatch stops submission before
 `qsub` and must be resolved by synchronizing the deployment, not by changing
 saved records.
 
-To use the isolated deployment with the normal UI, put
-`VITE_ZEUS_CHECKOUT=ytterbium_lab_simulation_ui_test` in
-`ui/.env.development.local` before starting. This is a deployment setting, not a
-second product version; it does not change numerical or campaign policies.
-Only the named supported checkouts are accepted. The Zeus connection screen
-shows the selected remote project directory. Restart after changing the setting.
-Do not update the scientific checkout to run UI acceptance tests.
+A normal launch selects `~/ytterbium_lab_simulation_ui` in each member's personal
+Zeus account, with `~/venvs/atomsmltr-ui`. No local environment-file override is
+needed. Test modes are for maintainers only; do not distribute `.env*.local`
+files or saved test browser profiles. The historical scientific checkout is
+never an installation/update target for the team UI.
 
 Individual particle capacities are owned by
 `workflow_api/individual_limits.py`. Family JSON specifications and generated
@@ -180,3 +188,13 @@ it updates the family JSON capacity projections and generated TypeScript togethe
 writing files. Scientific fields and Zeeman defaults are preserved. Storage metadata and SSH
 request byte bounds are separate finite safeguards; full maximum-particle
 packages are tested against them.
+
+## Release limitations
+
+Windows ARM in Parallels and Windows Intel/AMD are different qualification targets;
+check the release report for the systems actually tested. The known 3D refinement
+boundary limitation remains: some boundary designs can fail with
+`refinement_design_duplicate`. Do not retry, change bounds, or edit candidate files
+to bypass it. Installation/preparation checks do not certify a full scientific
+optimization. Individual results currently provide verified summaries and saved
+states; built-in result graphs are not available.

@@ -6,7 +6,7 @@ import { parseRefinementChainStatus, parseRefinementSubmissionPreview, parseRefi
 import { MOT_2D_SPECIFICATION_V1 } from "../generated/mot2dSpec.v1";
 import { useRefinementController } from "../features/campaign/controllers/useRefinementController";
 
-const snapshot = { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" } } as ZeusSnapshot;
+const snapshot = { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" } } as ZeusSnapshot;
 const rounds = [1, 2, 3, 4] as const;
 const notSubmitted = parseRefinementChainStatus({
   source: "zeus", queried_at: "2026-10-10T10:00:00Z", campaign: { id: "campaign", name: "Campaign", stage: "refine" },

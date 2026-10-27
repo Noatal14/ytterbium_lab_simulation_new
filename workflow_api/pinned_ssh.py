@@ -1624,6 +1624,11 @@ class PinnedSshRunner:
         } and profile.project_directory == f"/home/{profile.username}/ytterbium_lab_simulation_new":
             interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
+        from workflow_api.campaign_deployment import TEAM_CHECKOUT, environment_for_checkout
+        if profile.project_directory == f"/home/{profile.username}/{TEAM_CHECKOUT}":
+            environment = environment_for_checkout(TEAM_CHECKOUT)
+            interpreter = f"/home/{profile.username}/venvs/{environment}/bin/python"
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         if operation_only and not prefix:
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         remote = prefix + shlex.join((interpreter, "-c", wrapper))
@@ -1894,11 +1899,12 @@ class PinnedSshRunner:
 
         from pathlib import PurePosixPath
         three_d_paths = [value for value in paths if isinstance(value, str) and PurePosixPath(value).parts[:3] == ("data", "optimization", "mot_3d")]
+        from workflow_api.campaign_deployment import campaign_checkout_paths
         if three_d_paths:
             if len(paths) > 72 or len(set(paths)) != len(paths):
                 raise ValueError("Invalid 3D transfer registry.")
             if (operation is TransferOperation.INPUTS
-                    or profile.project_directory not in {f"/home/{profile.username}/ytterbium_lab_simulation_new", f"/home/{profile.username}/ytterbium_lab_simulation_ui_acceptance"}):
+                    or PurePosixPath(profile.project_directory) not in campaign_checkout_paths(profile.username)):
                 raise ValueError("Invalid 3D transfer target or operation.")
             for value in paths:
                 pure = PurePosixPath(value)
@@ -1951,6 +1957,11 @@ class PinnedSshRunner:
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         elif three_d_paths or profile.project_directory == f"/home/{profile.username}/ytterbium_lab_simulation_new":
             interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
+            prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
+        from workflow_api.campaign_deployment import TEAM_CHECKOUT, environment_for_checkout
+        if profile.project_directory == f"/home/{profile.username}/{TEAM_CHECKOUT}":
+            environment = environment_for_checkout(TEAM_CHECKOUT)
+            interpreter = f"/home/{profile.username}/venvs/{environment}/bin/python"
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         command = prefix + shlex.join((interpreter, "-c", wrapper))
         arguments = [

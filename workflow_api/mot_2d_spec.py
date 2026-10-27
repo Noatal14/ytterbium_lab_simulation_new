@@ -30,6 +30,7 @@ RELEVANT_FILES = (
     "workflow_api/platform_io.py",
     "workflow_api/mot_2d_sources.py",
     "workflow_api/campaign_deployment.py",
+    "workflow_api/specifications/deployments_v1.json",
     "workflow_api/smoke_receipt.py",
     "workflow_api/mot_2d_late_stage.py",
     "workflow_api/mot_2d_prediction.py",

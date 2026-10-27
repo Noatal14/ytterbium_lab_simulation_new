@@ -7,7 +7,7 @@ const snapshot = {
   profile: {
     host: "zeus.technion.ac.il",
     username: "tal.noa",
-    project_directory: "/home/tal.noa/ytterbium_lab_simulation_new",
+    project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui",
     authentication: "ssh-key-or-agent",
   },
 } as any;

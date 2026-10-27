@@ -607,7 +607,7 @@ def _receiver_harness(tmp_path, records, *, qsub_exit=0):
     )
     source = (
         source.replace(
-            'allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}',
+            'allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test", "ytterbium_lab_simulation_ui")}',
             "allowed = {project}",
         )
         .replace(

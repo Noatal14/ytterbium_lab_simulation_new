@@ -1,0 +1,6 @@
+{
+  "team": {"checkout": "ytterbium_lab_simulation_ui", "environment": "atomsmltr-ui"},
+  "historical": {"checkout": "ytterbium_lab_simulation_new", "environment": "atomsmltr"},
+  "test": {"checkout": "ytterbium_lab_simulation_ui_test", "environment": "atomsmltr-ui-test"},
+  "acceptance": {"checkout": "ytterbium_lab_simulation_ui_acceptance", "environment": "atomsmltr-ui-test"}
+}
