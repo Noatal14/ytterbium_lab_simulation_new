@@ -179,6 +179,44 @@ describe("3D Refinement transition", () => {
   ])("rejects impossible matrices %#", (o) =>
     expect(() => parseMot3DRefinementTransitionStatus(status(o))).toThrow(),
   );
+  it.each(["completed_array_tasks", "completed_merge_jobs"] as const)(
+    "rejects nonnumeric and out-of-range original %s values",
+    (field) => {
+      const running = status({
+        refinement: { status: "running", chain },
+        scheduler: {
+          expected_array_tasks: 6,
+          expected_merge_jobs: 2,
+          completed_array_tasks: 0,
+          completed_merge_jobs: 0,
+        },
+        validation: {
+          status: "not_started", result_artifacts: 0,
+          expected_result_artifacts: 200, reason_code: null,
+        },
+        next_action: "wait",
+      });
+      for (const value of ["0", "1", false, true, null, undefined, [], {}, 0.5, -1, NaN, Infinity, 7]) {
+        const scheduler = { ...running.scheduler, [field]: value };
+        expect(() => parseMot3DRefinementTransitionStatus({ ...running, scheduler })).toThrow();
+      }
+      for (const value of [0, 1, field === "completed_array_tasks" ? 6 : 2]) {
+        const scheduler = { ...running.scheduler, [field]: value };
+        const parsed = parseMot3DRefinementTransitionStatus({ ...running, scheduler });
+        expect(parsed.scheduler[field]).toBe(value);
+        expect(typeof parsed.scheduler[field]).toBe("number");
+      }
+    },
+  );
+  it.each(["completed_array_tasks", "completed_merge_jobs"] as const)(
+    "rejects a stringified terminal %s count",
+    (field) => {
+      const ready = status();
+      expect(() => parseMot3DRefinementTransitionStatus({
+        ...ready, scheduler: { ...ready.scheduler, [field]: String(ready.scheduler[field]) },
+      })).toThrow();
+    },
+  );
   it("strictly decodes review and result", () => {
     expect(
       parseMot3DRefinementTransitionPreview(preview, "campaign-id").artifacts

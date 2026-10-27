@@ -10,9 +10,234 @@ export type Mot3DRefinementTransitionLifecycle="not_submitted"|"submitted"|"queu
 export type Mot3DRefinementTransitionStatus={source:"zeus";queried_at:string;campaign:{id:string;name:string;stage:"refinement"|"closure"};refinement:{status:Mot3DRefinementTransitionLifecycle;chain:Mot3DFamilyChain};scheduler:{expected_array_tasks:6;expected_merge_jobs:2;completed_array_tasks:number;completed_merge_jobs:number};validation:{status:"not_started"|"valid"|"scientifically_invalid";result_artifacts:number;expected_result_artifacts:200;reason_code:InvalidReason|null};transition:{status:"not_prepared"|"closure_prepared"};next_action:"wait"|"review_transition"|"synchronize_results"|"open_closure"|"inspect_zeus";local_sync:{status:"not_synchronized"|"synchronized";receipt_sha256:string|null}};
 export type Mot3DRefinementTransitionPreview={preview_token:string;expires_in_seconds:300;campaign:{id:string;name:string;git_commit:string};from_stage:"refinement";to_stage:"closure";refinement:{result_artifacts:200;expected_result_artifacts:200;families:["angled_donut","single_pass"];evidence_sha256:string};artifacts:{synchronize:{result_files:200;submission_receipts:1};create:{selection_files:2;job_files:4};update:["campaign.json"];transfer_files:208};effects:{synchronize_refinement:true;prepare_closure:true;submit_closure:false;start_simulation:false;overwrite_existing:false}};
 export type Mot3DRefinementTransitionResult={status:"closure_prepared";campaign_id:string;stage:"closure";artifacts:{synchronized:201;created:6;updated:1;bundle_sha256:string};submitted_to_zeus:false;simulation_started:false;local_sync:{status:"synchronized";receipt_sha256:string}};
-const SHA40=/^[0-9a-f]{40}$/;const SHA256=/^[0-9a-f]{64}$/;const object=(v:unknown,k:string[],m:string)=>{if(!v||typeof v!=="object"||Array.isArray(v)||!exactKeys(v as Record<string,unknown>,k))throw new Error(m);return v as Record<string,unknown>};const text=(v:unknown,l=256):v is string=>boundedPrintable(v,l)&&v.length>0;const integer=(v:unknown,m:number)=>Number.isInteger(v)&&Number(v)>=0&&Number(v)<=m;
+const SHA40=/^[0-9a-f]{40}$/;const SHA256=/^[0-9a-f]{64}$/;const object=(v:unknown,k:string[],m:string)=>{if(!v||typeof v!=="object"||Array.isArray(v)||!exactKeys(v as Record<string,unknown>,k))throw new Error(m);return v as Record<string,unknown>};const text=(v:unknown,l=256):v is string=>boundedPrintable(v,l)&&v.length>0;const integer = (value: unknown, maximum: number): value is number =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= maximum;
 function sync(v:unknown){const r=object(v,["status","receipt_sha256"],"Invalid Refinement synchronization evidence.");if(!["not_synchronized","synchronized"].includes(String(r.status))||(r.status==="not_synchronized"?r.receipt_sha256!==null:typeof r.receipt_sha256!=="string"||!SHA256.test(r.receipt_sha256)))throw new Error("Invalid Refinement synchronization evidence.");return r as Mot3DRefinementTransitionStatus["local_sync"]}
-export function parseMot3DRefinementTransitionStatus(value:unknown):Mot3DRefinementTransitionStatus{const row=object(value,["source","queried_at","campaign","refinement","scheduler","validation","transition","next_action","local_sync"],"Invalid Refinement transition status.");const campaign=object(row.campaign,["id","name","stage"],"Invalid Refinement transition status.");const refinement=object(row.refinement,["status","chain"],"Invalid Refinement transition status.");const scheduler=object(row.scheduler,["expected_array_tasks","expected_merge_jobs","completed_array_tasks","completed_merge_jobs"],"Invalid Refinement transition status.");const validation=object(row.validation,["status","result_artifacts","expected_result_artifacts","reason_code"],"Invalid Refinement transition status.");const transition=object(row.transition,["status"],"Invalid Refinement transition status.");const local=sync(row.local_sync);const lifecycle=String(refinement.status) as Mot3DRefinementTransitionLifecycle;const allowed=["not_submitted","submitted","queued","running","held","completed_failed","status_unknown","partial","outcome_unknown","completed_success_unvalidated","ready_to_advance","closure_prepared"];const chain=parseMot3DFamilyChain(refinement.chain);const jobs=mot3DFamilyJobCount(chain);const valid=validation.status==="valid";const invalid=validation.status==="scientifically_invalid";const chainOk=isMot3DFamilyCanonicalPrefix(chain)&&(lifecycle==="not_submitted"?jobs===0:lifecycle==="partial"?jobs>=1&&jobs<=3:lifecycle==="outcome_unknown"?(valid?jobs===4:jobs<=3):jobs===4);const arrays=chain.families.filter(f=>f.array_job_id!==null).length,merges=chain.families.filter(f=>f.merge_job_id!==null).length,a=Number(scheduler.completed_array_tasks),m=Number(scheduler.completed_merge_jobs);const counts=integer(a,6)&&integer(m,2)&&a<=arrays*3&&m<=merges&&(["not_submitted","submitted"].includes(lifecycle)||(lifecycle==="outcome_unknown"&&!valid)?a===0&&m===0:true)&&(["completed_success_unvalidated","ready_to_advance","closure_prepared"].includes(lifecycle)||(lifecycle==="outcome_unknown"&&valid)?a===6&&m===2:true);const queuedIncomplete=lifecycle!=="queued"||(integer(scheduler.completed_array_tasks,6)&&integer(scheduler.completed_merge_jobs,2)&&(a!==6||m!==2));const validationOk=validation.expected_result_artifacts===200&&integer(validation.result_artifacts,200)&&(valid?validation.result_artifacts===200&&validation.reason_code===null:invalid?validation.result_artifacts===0&&MOT_3D_REFINEMENT_INVALID_REASONS.includes(validation.reason_code as InvalidReason):validation.status==="not_started"&&validation.result_artifacts===0&&validation.reason_code===null);const expected=lifecycle==="closure_prepared"?(local.status==="synchronized"?["valid","closure_prepared","open_closure","closure","synchronized"]:["valid","closure_prepared","synchronize_results","refinement","not_synchronized"]):lifecycle==="ready_to_advance"?["valid","not_prepared","review_transition","refinement","not_synchronized"]:lifecycle==="completed_success_unvalidated"?(invalid?["scientifically_invalid","not_prepared","inspect_zeus","refinement","not_synchronized"]:["not_started","not_prepared","review_transition","refinement","not_synchronized"]):lifecycle==="outcome_unknown"&&valid?["valid","not_prepared","inspect_zeus","refinement","not_synchronized"]:["not_started","not_prepared",["submitted","queued","running"].includes(lifecycle)?"wait":"inspect_zeus","refinement","not_synchronized"];const observed=[validation.status,transition.status,row.next_action,campaign.stage,local.status];if(row.source!=="zeus"||!text(row.queried_at)||Number.isNaN(Date.parse(row.queried_at))||!text(campaign.id,512)||!text(campaign.name,128)||!allowed.includes(lifecycle)||!chainOk||scheduler.expected_array_tasks!==6||scheduler.expected_merge_jobs!==2||!counts||!queuedIncomplete||!validationOk||!expected.every((x,i)=>x===observed[i]))throw new Error("Invalid Refinement transition status.");return{source:"zeus",queried_at:row.queried_at as string,campaign:campaign as Mot3DRefinementTransitionStatus["campaign"],refinement:{status:lifecycle,chain},scheduler:scheduler as Mot3DRefinementTransitionStatus["scheduler"],validation:validation as Mot3DRefinementTransitionStatus["validation"],transition:transition as Mot3DRefinementTransitionStatus["transition"],next_action:row.next_action as Mot3DRefinementTransitionStatus["next_action"],local_sync:local}}
+export function parseMot3DRefinementTransitionStatus(
+  value: unknown,
+): Mot3DRefinementTransitionStatus {
+  const row = object(
+    value,
+    [
+      "source",
+      "queried_at",
+      "campaign",
+      "refinement",
+      "scheduler",
+      "validation",
+      "transition",
+      "next_action",
+      "local_sync",
+    ],
+    "Invalid Refinement transition status.",
+  );
+  const campaign = object(
+    row.campaign,
+    ["id", "name", "stage"],
+    "Invalid Refinement transition status.",
+  );
+  const refinement = object(
+    row.refinement,
+    ["status", "chain"],
+    "Invalid Refinement transition status.",
+  );
+  const scheduler = object(
+    row.scheduler,
+    [
+      "expected_array_tasks",
+      "expected_merge_jobs",
+      "completed_array_tasks",
+      "completed_merge_jobs",
+    ],
+    "Invalid Refinement transition status.",
+  );
+  const validation = object(
+    row.validation,
+    ["status", "result_artifacts", "expected_result_artifacts", "reason_code"],
+    "Invalid Refinement transition status.",
+  );
+  const transition = object(
+    row.transition,
+    ["status"],
+    "Invalid Refinement transition status.",
+  );
+  const local = sync(row.local_sync);
+  const lifecycle = String(
+    refinement.status,
+  ) as Mot3DRefinementTransitionLifecycle;
+  const allowed = [
+    "not_submitted",
+    "submitted",
+    "queued",
+    "running",
+    "held",
+    "completed_failed",
+    "status_unknown",
+    "partial",
+    "outcome_unknown",
+    "completed_success_unvalidated",
+    "ready_to_advance",
+    "closure_prepared",
+  ];
+  const chain = parseMot3DFamilyChain(refinement.chain);
+  const jobs = mot3DFamilyJobCount(chain);
+  const valid = validation.status === "valid";
+  const invalid = validation.status === "scientifically_invalid";
+  const chainOk =
+    isMot3DFamilyCanonicalPrefix(chain) &&
+    (lifecycle === "not_submitted"
+      ? jobs === 0
+      : lifecycle === "partial"
+        ? jobs >= 1 && jobs <= 3
+        : lifecycle === "outcome_unknown"
+          ? valid
+            ? jobs === 4
+            : jobs <= 3
+          : jobs === 4);
+  if (
+    !integer(scheduler.completed_array_tasks, 6) ||
+    !integer(scheduler.completed_merge_jobs, 2)
+  ) {
+    throw new Error("Invalid Refinement transition status.");
+  }
+  const arrays = chain.families.filter((f) => f.array_job_id !== null).length,
+    merges = chain.families.filter((f) => f.merge_job_id !== null).length,
+    a = scheduler.completed_array_tasks,
+    m = scheduler.completed_merge_jobs;
+  const counts =
+    integer(a, 6) &&
+    integer(m, 2) &&
+    a <= arrays * 3 &&
+    m <= merges &&
+    (["not_submitted", "submitted"].includes(lifecycle) ||
+    (lifecycle === "outcome_unknown" && !valid)
+      ? a === 0 && m === 0
+      : true) &&
+    ([
+      "completed_success_unvalidated",
+      "ready_to_advance",
+      "closure_prepared",
+    ].includes(lifecycle) ||
+    (lifecycle === "outcome_unknown" && valid)
+      ? a === 6 && m === 2
+      : true);
+  const queuedIncomplete =
+    lifecycle !== "queued" ||
+    (integer(scheduler.completed_array_tasks, 6) &&
+      integer(scheduler.completed_merge_jobs, 2) &&
+      (a !== 6 || m !== 2));
+  const validationOk =
+    validation.expected_result_artifacts === 200 &&
+    integer(validation.result_artifacts, 200) &&
+    (valid
+      ? validation.result_artifacts === 200 && validation.reason_code === null
+      : invalid
+        ? validation.result_artifacts === 0 &&
+          MOT_3D_REFINEMENT_INVALID_REASONS.includes(
+            validation.reason_code as InvalidReason,
+          )
+        : validation.status === "not_started" &&
+          validation.result_artifacts === 0 &&
+          validation.reason_code === null);
+  const expected =
+    lifecycle === "closure_prepared"
+      ? local.status === "synchronized"
+        ? [
+            "valid",
+            "closure_prepared",
+            "open_closure",
+            "closure",
+            "synchronized",
+          ]
+        : [
+            "valid",
+            "closure_prepared",
+            "synchronize_results",
+            "refinement",
+            "not_synchronized",
+          ]
+      : lifecycle === "ready_to_advance"
+        ? [
+            "valid",
+            "not_prepared",
+            "review_transition",
+            "refinement",
+            "not_synchronized",
+          ]
+        : lifecycle === "completed_success_unvalidated"
+          ? invalid
+            ? [
+                "scientifically_invalid",
+                "not_prepared",
+                "inspect_zeus",
+                "refinement",
+                "not_synchronized",
+              ]
+            : [
+                "not_started",
+                "not_prepared",
+                "review_transition",
+                "refinement",
+                "not_synchronized",
+              ]
+          : lifecycle === "outcome_unknown" && valid
+            ? [
+                "valid",
+                "not_prepared",
+                "inspect_zeus",
+                "refinement",
+                "not_synchronized",
+              ]
+            : [
+                "not_started",
+                "not_prepared",
+                ["submitted", "queued", "running"].includes(lifecycle)
+                  ? "wait"
+                  : "inspect_zeus",
+                "refinement",
+                "not_synchronized",
+              ];
+  const observed = [
+    validation.status,
+    transition.status,
+    row.next_action,
+    campaign.stage,
+    local.status,
+  ];
+  if (
+    row.source !== "zeus" ||
+    !text(row.queried_at) ||
+    Number.isNaN(Date.parse(row.queried_at)) ||
+    !text(campaign.id, 512) ||
+    !text(campaign.name, 128) ||
+    !allowed.includes(lifecycle) ||
+    !chainOk ||
+    scheduler.expected_array_tasks !== 6 ||
+    scheduler.expected_merge_jobs !== 2 ||
+    !counts ||
+    !queuedIncomplete ||
+    !validationOk ||
+    !expected.every((x, i) => x === observed[i])
+  )
+    throw new Error("Invalid Refinement transition status.");
+  return {
+    source: "zeus",
+    queried_at: row.queried_at as string,
+    campaign: campaign as Mot3DRefinementTransitionStatus["campaign"],
+    refinement: { status: lifecycle, chain },
+    scheduler: {
+      expected_array_tasks: 6,
+      expected_merge_jobs: 2,
+      completed_array_tasks: a,
+      completed_merge_jobs: m,
+    },
+    validation: validation as Mot3DRefinementTransitionStatus["validation"],
+    transition: transition as Mot3DRefinementTransitionStatus["transition"],
+    next_action:
+      row.next_action as Mot3DRefinementTransitionStatus["next_action"],
+    local_sync: local,
+  };
+}
 export function parseMot3DRefinementTransitionPreview(value:unknown,campaignId:string):Mot3DRefinementTransitionPreview{const row=object(value,["preview_token","expires_in_seconds","campaign","from_stage","to_stage","refinement","artifacts","effects"],"Invalid Refinement transition review.");const campaign=object(row.campaign,["id","name","git_commit"],"Invalid Refinement transition review.");const refinement=object(row.refinement,["result_artifacts","expected_result_artifacts","families","evidence_sha256"],"Invalid Refinement transition review.");const artifacts=object(row.artifacts,["synchronize","create","update","transfer_files"],"Invalid Refinement transition review.");const synchronize=object(artifacts.synchronize,["result_files","submission_receipts"],"Invalid Refinement transition review.");const create=object(artifacts.create,["selection_files","job_files"],"Invalid Refinement transition review.");const effects=object(row.effects,["synchronize_refinement","prepare_closure","submit_closure","start_simulation","overwrite_existing"],"Invalid Refinement transition review.");if(!text(row.preview_token,512)||row.expires_in_seconds!==300||campaign.id!==campaignId||!text(campaign.name,128)||typeof campaign.git_commit!=="string"||!SHA40.test(campaign.git_commit)||row.from_stage!=="refinement"||row.to_stage!=="closure"||refinement.result_artifacts!==200||refinement.expected_result_artifacts!==200||JSON.stringify(refinement.families)!==JSON.stringify(["angled_donut","single_pass"])||typeof refinement.evidence_sha256!=="string"||!SHA256.test(refinement.evidence_sha256)||synchronize.result_files!==200||synchronize.submission_receipts!==1||create.selection_files!==2||create.job_files!==4||JSON.stringify(artifacts.update)!==JSON.stringify(["campaign.json"])||artifacts.transfer_files!==208||effects.synchronize_refinement!==true||effects.prepare_closure!==true||effects.submit_closure!==false||effects.start_simulation!==false||effects.overwrite_existing!==false)throw new Error("Invalid Refinement transition review.");return row as unknown as Mot3DRefinementTransitionPreview}
 export function parseMot3DRefinementTransitionResult(value:unknown,campaignId:string):Mot3DRefinementTransitionResult{const row=object(value,["status","campaign_id","stage","artifacts","submitted_to_zeus","simulation_started","local_sync"],"Invalid Refinement transition result.");const artifacts=object(row.artifacts,["synchronized","created","updated","bundle_sha256"],"Invalid Refinement transition result.");const local=sync(row.local_sync);if(row.status!=="closure_prepared"||row.campaign_id!==campaignId||row.stage!=="closure"||artifacts.synchronized!==201||artifacts.created!==6||artifacts.updated!==1||typeof artifacts.bundle_sha256!=="string"||!SHA256.test(artifacts.bundle_sha256)||row.submitted_to_zeus!==false||row.simulation_started!==false||local.status!=="synchronized")throw new Error("Invalid Refinement transition result.");return row as unknown as Mot3DRefinementTransitionResult}
 export function createMot3DRefinementTransitionApi(session:()=>Promise<string>){const contexts=new Map<string,{campaignId:string;csrf:string}>();const body=(campaign_id:string,profile:Profile)=>({campaign_id,username:profile.username,project_directory:profile.project_directory});return{async status(campaignId:string,profile:Profile){const csrf=await session();const parsed=parseMot3DRefinementTransitionStatus(await postData("/api/v1/zeus/mot-3d/refinement-transition/status",body(campaignId,profile),csrf));if(parsed.campaign.id!==campaignId)throw new Error("Refinement transition did not match the selected campaign.");return parsed},async preview(campaignId:string,profile:Profile){const csrf=await session();const parsed=parseMot3DRefinementTransitionPreview(await postData("/api/v1/zeus/mot-3d/refinement-transition/preview",body(campaignId,profile),csrf),campaignId);contexts.set(parsed.preview_token,{campaignId,csrf});return parsed},async confirm(token:string){const context=contexts.get(token);if(!context)throw new Error("The Refinement synchronization review is no longer active.");contexts.delete(token);return parseMot3DRefinementTransitionResult(await postData("/api/v1/zeus/mot-3d/refinement-transition/confirm",{preview_token:token},context.csrf),context.campaignId)},reset(){contexts.clear()}}}
