@@ -99,7 +99,7 @@ export const MOT_3D_INDIVIDUAL_SPECIFICATION_V1 = {
     "single_pass_green_aperture_radius_m": 0.005,
     "solver": "RK4StHybridCustom",
     "suitability": "individual_only",
-    "t_max_s": 0.1,
+    "t_max_s": 0.05,
     "timestep_s": 1e-05
   },
   "geometry_families": [

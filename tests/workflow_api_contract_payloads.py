@@ -78,7 +78,7 @@ _MOT3D_CONTRACT_PAYLOADS = {
             "locked_settings": {
                 "solver": "RK4StHybridCustom",
                 "timestep_s": 0.00001,
-                "t_max_s": 0.1,
+                "t_max_s": 0.05,
                 "convergence_claim": "not_established",
                 "capture": {
                     "capture_radius_m": 0.005,

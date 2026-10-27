@@ -105,7 +105,16 @@ describe("individual 3D-MOT frontend contract", () => {
   it("exposes the reviewed versioned limits and independent horizon", () => {
     expect(MOT_3D_INDIVIDUAL_SPECIFICATION_V1.spec_version).toBe("mot-3d-individual-v1");
     expect(MOT_3D_INDIVIDUAL_SPECIFICATION_V1.particle_count.maximum_by_execution_mode).toEqual({ local: 1000, zeus: 50000 });
-    expect(MOT_3D_INDIVIDUAL_SPECIFICATION_V1.fixed_classification).toMatchObject({ timestep_s: 10e-6, t_max_s: 0.1, convergence_claim: "not_established" });
+    expect(MOT_3D_INDIVIDUAL_SPECIFICATION_V1.fixed_classification).toMatchObject({ timestep_s: 10e-6, t_max_s: 0.05, convergence_claim: "not_established" });
+  });
+
+  it("opens historical 100 ms results but rejects that horizon for new previews", async () => {
+    const detail = { ...completedDetail(), metrics: { ...completedDetail().metrics, provenance: { ...resultProvenance(), t_max_s: 0.1 } } };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope(detail)));
+    expect((await createIndividualMot3DApi(async () => "csrf").run(detail.id)).metrics?.provenance.t_max_s).toBe(0.1);
+    const oldPreview = { ...preview(), plan: { ...preview().plan, locked_settings: { ...preview().plan.locked_settings, t_max_s: 0.1 } } };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(await envelope(oldPreview)));
+    await expect(createIndividualMot3DApi(async () => "csrf").preview(request)).rejects.toThrow(/Invalid/);
   });
 
   it("accepts a verified canonical source without exposing paths", async () => {

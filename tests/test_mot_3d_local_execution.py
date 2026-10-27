@@ -65,7 +65,7 @@ class Engine:
     def __call__(self, states, **kwargs):
         self.calls.append((states.copy(), kwargs))
         trajectories = [
-            SimpleNamespace(t=np.array([0.0, 0.1]), y=np.column_stack((state, state)))
+            SimpleNamespace(t=np.array([0.0, kwargs["t_max"]]), y=np.column_stack((state, state)))
             for state in states
         ]
         return trajectories, np.ascontiguousarray(states[:1])
@@ -94,7 +94,7 @@ def test_worker_executes_exact_frozen_plan_and_labels_both_outcomes(tmp_path, mo
     states, kwargs = engine.calls[0]
     assert states.shape == (5, 6)
     assert kwargs["_3d_mot_config"] == local_plain(plan.configuration["resolved"]["mot_3d"]["resolved_profile"])
-    assert kwargs["dt"] == 1e-5 and kwargs["t_max"] == 0.1
+    assert kwargs["dt"] == 1e-5 and kwargs["t_max"] == 0.05
     assert kwargs["npools"] == 1 and kwargs["seed"] == 11
     assert kwargs["gravity_enabled"] is plan.configuration["resolved"]["simulation"]["gravity_enabled"]
     assert kwargs["capture_config"] == plan.configuration["resolved"]["mot_3d"]["capture"]

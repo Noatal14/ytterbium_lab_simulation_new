@@ -178,7 +178,7 @@ export type Mot3DResultProvenance = {
   geometry_family: Mot3DFamily;
   solver: typeof spec.fixed_classification.solver;
   timestep_s: typeof spec.fixed_classification.timestep_s;
-  t_max_s: typeof spec.fixed_classification.t_max_s;
+  t_max_s: typeof spec.fixed_classification.t_max_s | 0.1;
   convergence_claim: typeof spec.fixed_classification.convergence_claim;
 };
 export type Mot3DResultMetrics = {
@@ -812,7 +812,9 @@ function validMot3DResultProvenance(
       value.geometry_family === "single_pass") &&
     value.solver === spec.fixed_classification.solver &&
     value.timestep_s === spec.fixed_classification.timestep_s &&
-    value.t_max_s === spec.fixed_classification.t_max_s &&
+    // Saved results retain the previously supported 100 ms horizon.
+    // New submission previews remain strict in validLockedSettings.
+    (value.t_max_s === spec.fixed_classification.t_max_s || value.t_max_s === 0.1) &&
     value.convergence_claim === spec.fixed_classification.convergence_claim
   );
 }

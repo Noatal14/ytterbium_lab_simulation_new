@@ -38,7 +38,7 @@ def test_individual_3d_spec_is_versioned_immutable_and_policy_bound():
         "suitability": "individual_only",
         "solver": "RK4StHybridCustom",
         "timestep_s": 10e-6,
-        "t_max_s": 0.1,
+        "t_max_s": 0.05,
         "convergence_claim": "not_established",
         "gravity_enabled": True,
         "capture": {
@@ -109,7 +109,7 @@ def test_individual_horizon_is_explicit_and_not_bound_to_generic_default(monkeyp
         Path("workflow_api/specifications/mot_3d_individual_v1.json").read_text()
     )
     monkeypatch.setitem(specification.MOT_3D_SIM_CONFIG, "t_max_s", 0.777)
-    assert specification._validate(payload)["fixed_classification"]["t_max_s"] == 0.1
+    assert specification._validate(payload)["fixed_classification"]["t_max_s"] == 0.05
 
     payload["fixed_classification"]["t_max_s"] = 0.025
     with pytest.raises(ValueError, match="fixed classification"):

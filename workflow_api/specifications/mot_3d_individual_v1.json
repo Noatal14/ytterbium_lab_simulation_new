@@ -58,7 +58,7 @@
     "suitability": "individual_only",
     "solver": "RK4StHybridCustom",
     "timestep_s": 0.00001,
-    "t_max_s": 0.1,
+    "t_max_s": 0.05,
     "convergence_claim": "not_established",
     "gravity_enabled": true,
     "capture": {"capture_radius_m": 0.005, "minimum_residence_time_s": 0.005, "maximum_final_speed_m_s": 1.0},

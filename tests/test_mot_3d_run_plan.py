@@ -48,7 +48,7 @@ def test_plan_freezes_exact_family_science_sampling_and_d2_records(tmp_path, mon
     records = plan.storage_records(); resolved = records["configuration"]["resolved"]
     assert resolved["mot_3d"]["geometry_family"] == family
     assert set(resolved["mot_3d"]["parameters"]) == set(MOT_3D_RUN_SPECIFICATION["defaults"][family])
-    assert resolved["numerical_policy"] == {"solver": "RK4StHybridCustom", "dt_s": 1e-5, "t_max_s": 0.1, "convergence_claim": "not_established"}
+    assert resolved["numerical_policy"] == {"solver": "RK4StHybridCustom", "dt_s": 1e-5, "t_max_s": 0.05, "convergence_claim": "not_established"}
     assert resolved["sampling"]["selected_identities"] == [[1, 0], [1, 1], [1, 2], [1, 3], [1, 6]]
     assert plan.run["suitability"] == "individual_only"
     assert plan.review.source_qualification == "canonical_campaign_source"

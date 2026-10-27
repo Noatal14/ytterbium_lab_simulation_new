@@ -3657,7 +3657,7 @@
             "locked_settings": {
               "solver": "RK4StHybridCustom",
               "timestep_s": 1e-05,
-              "t_max_s": 0.1,
+              "t_max_s": 0.05,
               "convergence_claim": "not_established",
               "capture": {
                 "capture_radius_m": 0.005,
