@@ -31,7 +31,7 @@ def test_fresh_receiver_validates_retained_product(tmp_path, family, count, corr
     receipt = {"job_id": job_id, "username": "tal.noa", "project_directory": str(project), "commit": commit, "package_sha256": package_hash, "run_id": run_id}
     (submissions / f"{key}.json").write_text(json.dumps(receipt))
     stream = BytesIO(); np.save(stream, np.zeros((count, 6), dtype=np.float64)); raw = stream.getvalue()
-    metrics = {"n_survivors": count} if family == "mot_2d" else {"usable_at_end_count": count}
+    metrics = {"n_survivors": count} if family == "mot_2d" else {"usable_at_end_count": count + 1, "residence_qualified_captured_count": count}
     results = {"schema_version": "run-results-v1", "run_id": run_id, "completed_utc": "2026-10-18T17:00:00+00:00", "states_retained": True, "suitability": "individual_only", "metrics": metrics,
                "artifacts": [{"kind": "particle_states", "path": "results/states.npy", "sha256": hashlib.sha256(raw).hexdigest(), "size_bytes": len(raw)}]}
     encode_record("results", results)

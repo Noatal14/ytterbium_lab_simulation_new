@@ -1,23 +1,68 @@
-# UI limited release notes
+# UI release scope — 2026-10-27
 
-Scope: reviewed UI/product separation candidate based on `2ee6919`. Publication
-remains a separate coordinated step; these notes do not authorize merge or push.
+The official application is the single `main` checkout. On this Mac use
+`/Users/noatal/Ytterbium UI` and the desktop **Open Ytterbium UI.command**.
+The Windows entry is **Open Ytterbium UI (Windows).cmd** and reuses its existing
+native checkout. Historical copies and unique changes are archives, not launch
+locations. Do not remove them without checking their inventory.
 
-- Existing campaign recovery, validation and submission safeguards are retained.
-  One-off v2 candidate ordering and O16 donor authorization are retired; their
-  original policy/tests and historical run evidence remain preserved.
-- **3D refinement limitation:** a legal boundary candidate can stop with
-  `refinement_design_duplicate`. Preserve the existing results and stop there;
-  no automatic alternate candidate or resubmission is supported. Do not promise
-  autonomous completion for every valid campaign. The refinement algorithm is
-  unchanged, as explicitly requested by the user.
-- Windows ARM in Parallels has actual native test evidence. Windows Intel/AMD
-  qualification remains pending; do not label it tested.
-- New physical Zeus lifecycle qualification of this separation candidate and the
-  browser-to-real-backend integration pass remain separate from prior historical
-  campaign results and hermetic receiver checks. Consult the review handoff for
-  exact commit identity, results and remaining gaps.
+## Capacity policy and synchronized deployment
 
-Any team release must disclose these restrictions. This is a limited scope, not
-an unrestricted campaign-readiness claim. Historical scientific data and campaign
-results are unchanged.
+`workflow_api/individual_limits.py` owns individual particle capacity:
+1–1,000 locally and 1–50,000 on Zeus, subject to available input particles.
+`python -m scripts.generate_individual_limits` regenerates the JSON/TypeScript
+projections; `--check` verifies them without writes. Byte-size and metadata
+bounds are separate safeguards, not alternate particle limits. Scientific
+configuration defaults and campaign policies remain separate and unchanged.
+
+The ordinary product UI currently targets the isolated
+`/home/tal.noa/ytterbium_lab_simulation_ui_test` through its ignored local
+`VITE_ZEUS_CHECKOUT` setting. This is the same product code with a separate data
+and job destination. The scientific checkout is deliberately not synchronized.
+Use the quickstart for a fresh team installation; the Mac-specific desktop
+launcher is a local convenience, not a portable repository dependency.
+
+## Actual verification and fixed collection defects
+
+Job **4830031.zeus-master**, run **mot2d-e0e70cc1a91c95fb8b20a53e**:
+5,000 selected Zeeman survivors, seeds 42/42, 200 cores, 64 GiB, 24-hour cap,
+completed on gd002 with Exit 0 in 00:24:38. Results: **129 survivors (2.580%)**.
+Submission, running state, collection, refresh recovery and reopening were
+verified through the real Mac UI. Only one job was submitted. Particle states
+were intentionally not retained; the verified summary and nonretention receipt
+are saved. No extra scientific source population was generated.
+
+The computation used main `9e72647`; collector fix `55419bb` retrieved that exact
+original product without rewriting it or resubmitting. Do not describe this as
+execution of the new collector commit on the compute node. The fix shares
+receipt/artifact validation with local publication. It also corrects the 3D
+retained-state count to residence-qualified captures, distinct from usable-at-end
+particles. Regression coverage includes actual worker serialization for 2D/3D,
+retained/nonretained results, corrupt receipts, and strict new-submission commit
+guards. Known historical commits are admitted only for read-only job retrieval.
+
+Windows ARM/Parallels was synchronized and its real native Edge UI established a
+read-only Zeus connection to the matching isolated checkout. No additional
+Windows job was submitted in this round. Existing campaign evidence is
+historical and must not be relabeled as newly executed qualification.
+
+## Release restrictions
+
+- **3D refinement:** a legal boundary candidate can stop with
+  `refinement_design_duplicate`. Keep the results and stop; no automatic fallback
+  or resubmission is supported. The algorithm is unchanged by explicit decision.
+  Do not promise autonomous completion for every valid campaign.
+- **Windows Intel/AMD remains untested.** Native ARM tests do not qualify it.
+- Individual result pages provide verified summaries and retained data when
+  requested; built-in individual result plots remain a documented gap accepted
+  for this release scope.
+- The 50,000-particle bound is a validated admission/serialization capacity, not
+  a claim that every such physical job completes within its resource limit.
+- This round physically qualifies the 5,000-particle 2D path above. It does not
+  repeat all historical campaign and individual physical runs on this commit.
+
+Recommend a limited team release only with these restrictions disclosed, not an
+unrestricted claim that all campaigns finish autonomously on every Windows PC.
+The final test log, per-platform evidence, consolidation inventory and current
+revision manifest are retained outside the application in
+`Ytterbium UI Archive/2026-10-27/unified-release`.
