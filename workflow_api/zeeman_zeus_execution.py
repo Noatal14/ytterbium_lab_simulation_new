@@ -167,6 +167,7 @@ class PinnedSshZeemanTransport:
             allowed = {
                 "remote_request_invalid",
                 "remote_project_missing",
+                "remote_code_mismatch",
                 "remote_package_invalid",
                 "submission_outcome_unknown",
                 "submission_busy",

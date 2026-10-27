@@ -8,6 +8,8 @@ callable, command, working directory, environment, or argument vector.
 
 from __future__ import annotations
 
+from workflow_api.individual_limits import particle_count_allowed
+
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -109,7 +111,7 @@ class ZeemanLocalWorker:
         )
         if execution["mode"] != mode or not workers_valid:
             raise WorkerProductError("Local worker count is not the server-owned policy value.")
-        if simulation["particle_count"] != run["particle_count"]:
+        if not particle_count_allowed(run["particle_count"], mode) or simulation["particle_count"] != run["particle_count"]:
             raise WorkerProductError("Reviewed particle count is inconsistent.")
         field = _plain(resolved["zeeman"]["field"])
         laser = _plain(resolved["zeeman"]["laser"])

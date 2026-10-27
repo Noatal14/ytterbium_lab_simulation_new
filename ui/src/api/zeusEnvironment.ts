@@ -2,7 +2,14 @@
 export function zeusTestMode(): boolean { return import.meta.env.MODE === "zeus-test"; }
 export function campaignAcceptanceMode(): boolean { return import.meta.env.MODE === "ui-acceptance"; }
 export function zeusProjectDirectory(username: string): string {
-  return `/home/${username}/${campaignAcceptanceMode() ? "ytterbium_lab_simulation_ui_acceptance" : zeusTestMode() ? "ytterbium_lab_simulation_ui_test" : "ytterbium_lab_simulation_new"}`;
+  const configured = import.meta.env.VITE_ZEUS_CHECKOUT;
+  if (configured && !["ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test"].includes(configured)) {
+    throw new Error("Unsupported Zeus checkout configuration.");
+  }
+  const checkout = campaignAcceptanceMode() ? "ytterbium_lab_simulation_ui_acceptance"
+    : zeusTestMode() ? "ytterbium_lab_simulation_ui_test"
+    : configured || "ytterbium_lab_simulation_new";
+  return `/home/${username}/${checkout}`;
 }
 
 export function isCampaignProjectDirectory(value: unknown): boolean {

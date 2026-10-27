@@ -23,3 +23,12 @@ it("keeps campaign actions out of the isolated environment", async () => {
   await userEvent.click(screen.getByRole("link", { name: "Zeus connection" }));
   expect(screen.queryByRole("button", { name: "Inspect campaign" })).not.toBeInTheDocument();
 });
+
+it("uses a fixed deployment checkout without creating a second UI version", () => {
+  vi.stubEnv("MODE", "development");
+  vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_ui_test");
+  expect(zeusTestMode()).toBe(false);
+  expect(zeusProjectDirectory("tal.noa")).toBe("/home/tal.noa/ytterbium_lab_simulation_ui_test");
+  vi.stubEnv("VITE_ZEUS_CHECKOUT", "/arbitrary/path");
+  expect(() => zeusProjectDirectory("tal.noa")).toThrow(/Unsupported Zeus checkout/);
+});

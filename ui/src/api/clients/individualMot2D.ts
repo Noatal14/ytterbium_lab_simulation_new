@@ -1,3 +1,4 @@
+import { INDIVIDUAL_PARTICLE_POLICY as particlePolicy } from "../../generated/individualLimits.v1";
 import { individualRead } from "./individualRead";
 import {
   isIndividualZeusResources,
@@ -314,7 +315,7 @@ function parsePreview(v: unknown): Mot2DPreview {
     (source.kind === "retained_individual_zeeman" &&
       source.qualification === "verified_individual_result");
   const mode = String(execution.mode);
-  const modeCap = mode === "local" ? 1000 : mode === "zeus" ? 50000 : 0;
+  const modeCap = mode === "local" || mode === "zeus" ? particlePolicy.maximum_by_execution_mode[mode] : 0;
   if (
     !/^mot2d-source-[0-9a-f]{32}$/.test(String(source.id)) ||
     !sourcePair ||

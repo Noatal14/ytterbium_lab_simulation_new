@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.individual_limits import SELECTED_STATE_BYTES_MAXIMUM
+
 from datetime import datetime, timezone
 from io import BytesIO
 import hashlib
@@ -41,7 +43,7 @@ from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
 from utils.RK4StHybridCustom import RK4StHybridCustom
 
 
-_MAX_SELECTED_BYTES = max(MOT_2D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"].values()) * 6 * 8
+_MAX_SELECTED_BYTES = SELECTED_STATE_BYTES_MAXIMUM
 
 
 class Mot2DEngine(Protocol):

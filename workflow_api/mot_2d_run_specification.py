@@ -11,6 +11,7 @@ import stat
 from types import MappingProxyType
 from typing import Any
 
+from workflow_api.individual_limits import particle_policy
 from config import DEFAULT_NUM_POOLS
 from lab_setup.numerical_policy import NUMERICAL_POLICY
 
@@ -46,7 +47,7 @@ def _validate(value: Any) -> dict[str, Any]:
     if set(particles) != {"minimum", "default", "maximum_by_execution_mode"} or set(particles["maximum_by_execution_mode"]) != modes:
         raise ValueError("Invalid particle policy.")
     integers = [particles["minimum"], particles["default"], *particles["maximum_by_execution_mode"].values()]
-    if any(isinstance(item, bool) or not isinstance(item, int) or item <= 0 for item in integers) or particles != {"minimum": 1, "default": 200, "maximum_by_execution_mode": {"local": 1000, "zeus": 50000}}:
+    if any(isinstance(item, bool) or not isinstance(item, int) or item <= 0 for item in integers) or particles != particle_policy():
         raise ValueError("Invalid particle policy.")
     for name in ("selection_seed", "mot_seed"):
         policy = value[name]

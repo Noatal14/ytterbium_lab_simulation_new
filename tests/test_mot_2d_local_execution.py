@@ -303,6 +303,9 @@ def test_zeus_package_materializes_admitted_large_selections(tmp_path, count):
     package = build_frozen_mot_2d_package(root, plan.storage_records(),
         ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"))
     selected = np.load(BytesIO(package.selected_states), allow_pickle=False)
+    from workflow_api.mot_2d_zeus_execution import _package_payload
+    envelope = {"identity": _package_payload(package), "nonce": "1" * 32}
+    assert len(json.dumps(envelope).encode()) < 8 * 1024 * 1024
     assert selected.shape == (count, 6)
     assert package.selection_sha256 == plan.configuration["resolved"]["sampling"]["selected_identities_sha256"]
     assert b"ncpus=200:mem=64gb" in package.pbs

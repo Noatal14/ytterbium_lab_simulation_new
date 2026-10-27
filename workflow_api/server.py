@@ -1238,6 +1238,10 @@ def _post_routes() -> tuple[PostRoute, ...]:
 POST_ROUTES = {route.path: route for route in _post_routes()}
 
 _INDIVIDUAL_ZEUS_ERRORS = {
+    "remote_code_mismatch": (
+        HTTPStatus.CONFLICT,
+        "The selected Zeus checkout has a different code version from this saved run. Synchronize the dedicated UI checkout. This request did not submit a new job; keep the existing run and verify its state.",
+    ),
     "zeus_unavailable": (
         HTTPStatus.SERVICE_UNAVAILABLE,
         "Could not reach Zeus. Keep this run and retry checking its status; do not submit another job.",

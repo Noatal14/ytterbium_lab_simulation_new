@@ -11,6 +11,7 @@ import stat
 from types import MappingProxyType
 from typing import Any
 
+from workflow_api.individual_limits import PARTICLE_MAXIMUM_BY_MODE
 from config import DEFAULT_NUM_PARTICLES, DEFAULT_NUM_POOLS, DEFAULT_RANDOM_SEED, ZEEMAN_LASER_CONFIG
 from workflow_api.mot_2d_run_specification import MOT_2D_RUN_SPECIFICATION
 
@@ -100,6 +101,8 @@ def _validate(value: Any) -> dict[str, Any]:
         _EXECUTION_MODES,
         "particle-count execution limits",
     )
+    if maximums != PARTICLE_MAXIMUM_BY_MODE:
+        raise ValueError("Invalid particle-count execution limits.")
     minimum = _positive_integer(particles["minimum"], "minimum particle count")
     for mode in _EXECUTION_MODES:
         default = _positive_integer(defaults[mode], f"{mode} default particle count")

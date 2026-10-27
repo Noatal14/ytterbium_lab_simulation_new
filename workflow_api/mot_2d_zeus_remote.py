@@ -69,7 +69,7 @@ def verify_commit(project, expected):
         close_fds=True, timeout=10, check=False,
     )
     if result.returncode or result.stdout.decode("ascii").strip() != expected:
-        fail("remote_package_invalid")
+        fail("remote_code_mismatch")
 
 
 def validate_identity(value, username, project):
@@ -88,11 +88,14 @@ def validate_identity(value, username, project):
         selected = base64.b64decode(value["selected_states"], validate=True)
         pbs = base64.b64decode(value["pbs"], validate=True)
     except Exception: fail("remote_package_invalid")
-    if set(records) != {"run", "configuration", "inputs", "status"} or len(selected) > 3 * 1024 * 1024:
+    if set(records) != {"run", "configuration", "inputs", "status"}:
         fail("remote_package_invalid")
     try:
         sys.path.insert(0, str(project))
         from workflow_api.run_records import decode_record
+        from workflow_api.individual_limits import SELECTED_STATE_FILE_BYTES_MAXIMUM, particle_count_allowed
+        if len(selected) > SELECTED_STATE_FILE_BYTES_MAXIMUM:
+            fail("remote_package_invalid")
         from workflow_api.mot_2d_run_specification import MOT_2D_RUN_SPECIFICATION
         from workflow_api.mot_2d_zeus_execution import _render_pbs
         from lab_setup.physical_specification import LABORATORY_SPEC_VERSION, LABORATORY_SPEC_SHA256, CANONICAL_ZEEMAN_PROFILE_SHA256, validate_laboratory_provenance_identity
@@ -113,7 +116,7 @@ def validate_identity(value, username, project):
         if (
             run["run_id"] != value["run_id"] or run["git_revision"] != value["commit"]
             or run["family"] != "mot_2d" or run["execution_mode"] != "zeus"
-            or run["particle_count"] > MOT_2D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"]["zeus"]
+            or not particle_count_allowed(run["particle_count"], "zeus")
             or run["configuration_sha256"] != hashlib.sha256(records["configuration"]).hexdigest()
             or run["inputs_sha256"] != hashlib.sha256(records["inputs"]).hexdigest()
             or configuration["run_id"] != run["run_id"] or configuration["family"] != "mot_2d"

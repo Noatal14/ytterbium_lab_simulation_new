@@ -1,3 +1,4 @@
+import { INDIVIDUAL_PARTICLE_POLICY as particlePolicy } from "../generated/individualLimits.v1";
 import {
   localRunNeedsInspection,
   SavedLocalRunNotice,
@@ -202,7 +203,7 @@ export function IndividualMot2DRun({
     [source, setSource] = useState("");
   const [mode, setMode] = useState<Mot2DMode>("local"),
     [npools, setNpools] = useState(() => Math.min(8, localWorkerMaximum(200))),
-    [particles, setParticles] = useState(200),
+    [particles, setParticles] = useState<number>(particlePolicy.default),
     [selectionSeed, setSelectionSeed] = useState(42),
     [motSeed, setMotSeed] = useState(42);
   const [s0, setS0] = useState(1.3),
@@ -320,7 +321,7 @@ export function IndividualMot2DRun({
   }, [api, holdForInspection]);
   const selected = sources.find((row) => row.id === source),
     max = Math.min(
-      mode === "local" ? 1000 : 50000,
+      particlePolicy.maximum_by_execution_mode[mode],
       selected?.available_particle_count.pooled ?? 0,
     );
   useEffect(() => {
@@ -388,7 +389,7 @@ export function IndividualMot2DRun({
   function changeMode(next: Mot2DMode) {
     setMode(next);
     const nextMaximum = Math.min(
-      next === "local" ? 1000 : 50000,
+      particlePolicy.maximum_by_execution_mode[next],
       selected?.available_particle_count.pooled ?? 0,
     );
     const nextParticles =

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.individual_limits import particle_count_allowed
+
 from pathlib import Path
 from typing import Any, Mapping, Protocol
 
@@ -100,7 +102,7 @@ class IndividualMot3DApi:
             inspected.family != "mot_3d"
             or inspected.run.get("family") != "mot_3d"
             or inspected.run.get("execution_mode") != "local"
-            or inspected.run.get("particle_count", 0) > 1_000
+            or not particle_count_allowed(inspected.run.get("particle_count"), "local")
             or inspected.state != "configured"
             or inspected.integrity != "active"
         ):

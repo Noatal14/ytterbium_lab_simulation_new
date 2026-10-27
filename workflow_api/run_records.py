@@ -7,6 +7,8 @@ input suitability.  Those responsibilities belong to later family services.
 
 from __future__ import annotations
 
+from workflow_api.individual_limits import PARTICLE_MAXIMUM
+
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from workflow_api.platform_io import locking as fcntl
@@ -140,7 +142,7 @@ def _finite_tree(value: Any, *, depth: int = 0, path: tuple[str, ...] = ()) -> N
         # Particle identities are bounded independently of artifact metadata.
         # Both MOT planners store one [source_record_index, row_index] per atom.
         selection = path == ("resolved", "sampling", "selected_identities")
-        maximum = 50_000 if selection else _LIMITS["artifact_count_maximum"] * 16
+        maximum = PARTICLE_MAXIMUM if selection else _LIMITS["artifact_count_maximum"] * 16
         if len(value) > maximum:
             raise RunRecordError("Record list is too large.")
         if selection and any(

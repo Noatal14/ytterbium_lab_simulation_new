@@ -38,3 +38,6 @@ data/zeeman_survivors_states.json
 !/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/**
 !/data/particle_states/after_2d_mot/final_validation_s0_1.3/
 !/data/particle_states/after_2d_mot/final_validation_s0_1.3/**
+
+# Local deployment target; source and compiled contracts remain shared.
+/ui/.env*.local

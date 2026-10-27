@@ -154,3 +154,27 @@ Old smoke-test inputs and saved individual runs are not included. New results
 created by a user remain local runtime data and can appear as individual follow-up
 inputs. Scientific reports and closed-campaign evidence are retained separately;
 they are not extra selectable input populations.
+
+### One code version, a separate Zeus deployment
+
+The local UI/backend and the dedicated Zeus checkout must run the same Git
+commit. A saved run also pins that commit; updating code does not rewrite old
+runs or their scientific evidence. A version mismatch stops submission before
+`qsub` and must be resolved by synchronizing the deployment, not by changing
+saved records.
+
+To use the isolated deployment with the normal UI, put
+`VITE_ZEUS_CHECKOUT=ytterbium_lab_simulation_ui_test` in
+`ui/.env.development.local` before starting. This is a deployment setting, not a
+second product version; it does not change numerical or campaign policies.
+Only the named supported checkouts are accepted. The Zeus connection screen
+shows the selected remote project directory. Restart after changing the setting.
+Do not update the scientific checkout to run UI acceptance tests.
+
+Individual particle capacities are owned by
+`workflow_api/individual_limits.py`. Family JSON specifications and generated
+TypeScript are checked contract projections, not separate policy owners.
+Run `python -m scripts.generate_individual_limits` after updating the policy;
+regression tests reject divergent family contracts. Storage metadata and SSH
+request byte bounds are separate finite safeguards; full maximum-particle
+packages are tested against them.

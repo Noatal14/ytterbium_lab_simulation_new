@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from workflow_api.individual_limits import particle_policy as individual_particle_policy
+
 import hashlib
 import json
 import math
@@ -129,11 +131,7 @@ def _validate(value: Any) -> dict[str, Any]:
         or value["geometry_families"] != _FAMILIES
     ):
         raise ValueError("Invalid individual 3D-MOT specification.")
-    particle_policy = {
-        "minimum": 1,
-        "default": 200,
-        "maximum_by_execution_mode": {"local": 1000, "zeus": 50000},
-    }
+    particle_policy = individual_particle_policy()
     if value["particle_count"] != particle_policy:
         raise ValueError("Invalid particle policy.")
     seed_policy = {"minimum": 0, "maximum": 4294967295, "default": 42}

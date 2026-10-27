@@ -348,7 +348,7 @@ def test_pinned_transport_streams_bounded_package_over_stdin_not_argv(tmp_path, 
     assert "python3" not in remote
     assert kwargs.get("stdin") is None
     receiver_line, request_bytes = kwargs["input"].split(b"\n", 1)
-    assert base64.urlsafe_b64decode(receiver_line) == (Path(__file__).parents[1] / "workflow_api/mot_2d_zeus_remote.py").read_bytes()
+    assert base64.urlsafe_b64decode(json.loads(receiver_line)[0]) == (Path(__file__).parents[1] / "workflow_api/mot_2d_zeus_remote.py").read_bytes()
     request = json.loads(request_bytes)
     assert request["identity"]["package_sha256"] == package.package_sha256
 
@@ -545,3 +545,21 @@ def test_read_only_retrieval_failure_can_be_retried_without_resubmission(tmp_pat
     assert inspect_run(root, "mot_2d", "mot2d-zeus-001").status["state"] == "running"
     assert coordinator.refresh(run_id="mot2d-zeus-001", profile=PROFILE)["state"] == "succeeded"
     assert [name for name, _ in transport.calls].count("submit") == 1
+
+
+def test_transport_reports_remote_code_mismatch_without_submitting(tmp_path, monkeypatch):
+    root = tmp_path / "repo"
+    root.mkdir()
+    package = build_frozen_mot_2d_package(root, _create(root), PROFILE)
+    ssh = tmp_path / "ssh"
+    ssh.write_text("")
+    ssh.chmod(0o700)
+    transport = PinnedSshMot2DTransport(root, ssh, PROFILE)
+    calls = []
+    def response(operation, profile, payload):
+        calls.append(operation.value)
+        return subprocess.CompletedProcess([], 21, stdout=b'{"error":"remote_code_mismatch"}', stderr=b"")
+    monkeypatch.setattr(transport.runner, "run", response)
+    with pytest.raises(RuntimeError, match="remote_code_mismatch"):
+        transport.inspect(package=package, nonce="1" * 32)
+    assert calls == ["inspect"]

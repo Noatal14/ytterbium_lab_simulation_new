@@ -32,25 +32,26 @@ NOW = "2026-10-12T10:00:00+00:00"
 SOURCE_ID = "mot3d-source-" + "a" * 32
 
 
-def _plan(root: Path, monkeypatch, *, retained=True, count=5, mode="local"):
+def _plan(root: Path, monkeypatch, *, retained=True, count=5, mode="local", family="angled_donut"):
     directory = root / "data/particle_states/after_2d_mot/source"
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "states.npy"
-    values = np.arange(60, dtype=np.float64).reshape(10, 6)
+    row_count = max(count, 10)
+    values = np.arange(row_count * 6, dtype=np.float64).reshape(row_count, 6)
     np.save(path, values)
     relative = path.relative_to(root).as_posix()
     source = ResolvedMot3DSource(
         SOURCE_ID, "retained_individual_mot_2d", "verified_individual_result",
-        10, "f" * 64,
+        row_count, "f" * 64,
         ({"path": relative, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-          "size_bytes": path.stat().st_size, "shape": [10, 6],
-          "dtype": "float64", "survivor_count": 10},),
+          "size_bytes": path.stat().st_size, "shape": [row_count, 6],
+          "dtype": "float64", "survivor_count": row_count},),
     )
     monkeypatch.setattr(planning, "resolve_individual_mot_3d_source", lambda *_: source)
     request = {
-        "source_id": SOURCE_ID, "geometry_family": "angled_donut",
+        "source_id": SOURCE_ID, "geometry_family": family,
         "particle_count": count, "selection_seed": 7, "simulation_seed": 11,
-        "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"]["angled_donut"]),
+        "parameters": dict(MOT_3D_RUN_SPECIFICATION["defaults"][family]),
         "npools": 1 if mode == "local" else 200,
         "retain_particle_states": retained, "execution_mode": mode,
     }
@@ -302,3 +303,15 @@ def test_shared_3d_selection_validator_accepts_zeus_capacity_and_rejects_overflo
     assert len(_validated_selection(sampling, [{"survivor_count": count}], count)) == count
     with pytest.raises(WorkerProductError, match="selection policy"):
         _validated_selection(sampling, [{"survivor_count": count}], 50001)
+
+
+@pytest.mark.parametrize("family", ["angled_donut", "single_pass"])
+def test_3d_maximum_zeus_package_fits_the_bounded_wire_request(tmp_path, monkeypatch, family):
+    root = tmp_path / "repo"
+    root.mkdir()
+    plan = _plan(root, monkeypatch, count=50000, mode="zeus", family=family)
+    package = build_frozen_mot_3d_package(root, plan.storage_records(),
+        ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"))
+    envelope = {"identity": _package_payload(package), "nonce": "1" * 32}
+    assert len(json.dumps(envelope).encode()) < 8 * 1024 * 1024
+    assert np.load(BytesIO(package.selected_states), allow_pickle=False).shape == (50000, 6)
