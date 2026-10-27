@@ -36,6 +36,7 @@ RELEVANT_FILES = (
     "workflow_api/mot_2d_statistical_verification.py",
     "workflow_api/repository_paths.py",
     "lab_setup/physical_specification.py",
+    "lab_setup/historical_zeeman_source.py",
     "lab_setup/specifications/laboratory_physical_v1.json",
     "lab_setup/specifications/laboratory_physical_v2.json",
     "lab_setup/specifications/zeeman_model_conventions_v1.json",
@@ -69,6 +70,18 @@ def build_manifest(
     git_commit: str, physical_model_sha256: str, hashed_files: list[str],
     acceptance_profile_id: str | None = None,
 ) -> dict[str, Any]:
+    frozen_inputs = deepcopy(frozen_inputs)
+    records = [row for rows in frozen_inputs.values() for row in rows]
+    historical_evidence = None
+    if any(row.get("legacy_attested_profile") for row in records):
+        from lab_setup.historical_zeeman_source import historical_source_evidence
+        if acceptance_profile_id is not None:
+            raise ValueError("Historical scientific inputs cannot be used as TEST ONLY inputs.")
+        historical_evidence = historical_source_evidence(records)
+        # A profile hash alone is not an original laboratory provenance trio.
+        # Preserve legacy identity; do not label these inputs as current-spec.
+        for row in records:
+            row.pop("zeeman_profile_sha256", None)
     roles = deepcopy(ROLE_SEEDS)
     manifest = {
         "kind": "mot_2d_s0_campaign", "name": name, "stage": "smoke",
@@ -90,6 +103,11 @@ def build_manifest(
         },
         "fixed_design": deepcopy(FIXED_DESIGN),
     }
+    if historical_evidence is not None:
+        source = manifest["ensemble_source"]
+        for key in ("laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"):
+            source.pop(key)
+        source["historical_evidence"] = historical_evidence
     if acceptance_profile_id is not None:
         from workflow_api.acceptance_profile import load_acceptance_profile
         profile = load_acceptance_profile(acceptance_profile_id)

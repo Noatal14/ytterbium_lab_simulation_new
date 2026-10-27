@@ -115,10 +115,8 @@ def freeze_input_ensembles(directory, profile, seed_roles):
         records[role] = []
         for row in ensembles:
             if row.get("legacy_attested_profile"):
-                raise ValueError(
-                    "Legacy-attested Zeeman inputs may resume an existing campaign "
-                    "but cannot be frozen into a new campaign."
-                )
+                records[role].append(_project_frozen_ensemble(row, catalog_identity=True))
+                continue
             metadata = read(row["metadata_path"])
             parameters = metadata["parameters"]
             required = (row["sha256"], metadata.get("shape"), metadata.get("dtype"),
@@ -144,6 +142,9 @@ def freeze_input_ensembles(directory, profile, seed_roles):
                                "stochastic": parameters.get("stochastic"),
                                "collimation_angle_deg": parameters.get("collimation_angle_deg")},
             })
+    if any(row.get("legacy_attested_profile") for rows in records.values() for row in rows):
+        from lab_setup.historical_zeeman_source import historical_source_evidence
+        historical_source_evidence([row for rows in records.values() for row in rows])
     return records
 
 

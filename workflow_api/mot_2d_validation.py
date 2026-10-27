@@ -248,6 +248,16 @@ def modern_contract(
             if observed != seeds:
                 errors.append(f"{role} frozen input seed order does not match")
         all_seeds.extend(seeds)
+    if "historical_evidence" in source:
+        from lab_setup.historical_zeeman_source import historical_source_evidence
+        try:
+            evidence = historical_source_evidence([
+                _mapping(row) for role in ROLE_NAMES for row in frozen.get(role, [])
+            ])
+            if source_laboratory_keys or source["historical_evidence"] != evidence:
+                raise ValueError("Historical source identity differs from original evidence.")
+        except (ValueError, TypeError):
+            errors.append("historical ensemble source evidence is invalid")
     if len(all_seeds) != len(set(all_seeds)):
         errors.append("seed roles overlap")
     return not errors, tuple(dict.fromkeys(errors))
