@@ -653,3 +653,21 @@ it("clamps both particles and workers on a smaller 3D source", async () => {
     cpu.mockRestore();
   }
 });
+
+
+it("starts each geometry at its winning preset and preserves user edits", async () => {
+  const user=userEvent.setup();
+  render(<IndividualMot3DRun api={service()} onBack={vi.fn()} />);
+  await waitForSource();
+  const intensity=screen.getByRole("spinbutton", {name:"Green intensity (s₀)"});
+  expect(intensity).toHaveValue(spec.defaults.angled_donut.green_s0);
+  expect(screen.getByRole("spinbutton", {name:/Blue waist radius/})).toHaveValue(spec.defaults.angled_donut.blue_waist_m*1000);
+  await user.click(screen.getByRole("radio", {name:/^Single pass/}));
+  expect(intensity).toHaveValue(spec.defaults.single_pass.green_s0);
+  expect(screen.getByRole("spinbutton", {name:/Blue detuning anchor/})).toHaveValue(spec.defaults.single_pass.blue_detuning_anchor_gamma);
+  await user.clear(intensity); await user.type(intensity,"120");
+  await user.click(screen.getByRole("radio", {name:/^Angled donut/}));
+  expect(intensity).toHaveValue(spec.defaults.angled_donut.green_s0);
+  await user.click(screen.getByRole("radio", {name:/^Single pass/}));
+  expect(intensity).toHaveValue(120);
+});

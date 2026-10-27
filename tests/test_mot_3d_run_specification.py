@@ -4,7 +4,6 @@ from types import MappingProxyType
 
 import pytest
 
-from config import MOT_3D_CONFIGURATIONS
 from studies.mot_3d.discovery.optimize import build_profile_from_parameters
 from lab_setup.numerical_policy import NUMERICAL_POLICY_SHA256, NUMERICAL_POLICY_VERSION
 from lab_setup.physical_specification import LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION
@@ -57,10 +56,12 @@ def test_individual_3d_spec_is_versioned_immutable_and_policy_bound():
 
 
 @pytest.mark.parametrize("family", ["angled_donut", "single_pass"])
-def test_defaults_round_trip_to_current_runnable_family_profile(family):
+def test_defaults_round_trip_to_locked_winning_family_profile(family):
     defaults = dict(MOT_3D_RUN_SPECIFICATION["defaults"][family])
     profile, parameters, _derived = build_profile_from_parameters(family, defaults)
-    current = MOT_3D_CONFIGURATIONS[family]
+    locked = json.loads(specification.WINNING_PRESETS_PATH.read_text())["families"][family]
+    current = locked["resolved_profile"]
+    assert defaults == locked["parameters"]
 
     assert parameters == defaults
     assert profile["556"]["s0"] == current["556"]["s0"]
@@ -113,3 +114,13 @@ def test_individual_horizon_is_explicit_and_not_bound_to_generic_default(monkeyp
     payload["fixed_classification"]["t_max_s"] = 0.025
     with pytest.raises(ValueError, match="fixed classification"):
         specification._validate(payload)
+
+
+def test_defaults_reject_changes_to_locked_winner_evidence(tmp_path, monkeypatch):
+    value = json.loads(specification.WINNING_PRESETS_PATH.read_text())
+    value["families"]["single_pass"]["parameters"]["green_s0"] += 1
+    changed = tmp_path / "changed.json"
+    changed.write_text(json.dumps(value))
+    monkeypatch.setattr(specification, "WINNING_PRESETS_PATH", changed)
+    with pytest.raises(RuntimeError, match="locked winning"):
+        specification._expected_defaults()

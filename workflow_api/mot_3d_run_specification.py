@@ -14,11 +14,11 @@ from typing import Any
 from config import (
     DEFAULT_NUM_POOLS,
     MOT_3D_CAPTURE_CONFIG,
-    MOT_3D_CONFIGURATIONS,
     MOT_3D_OPTIMIZATION_CONFIG,
     MOT_3D_SIM_CONFIG,
 )
 from lab_setup.mot_3d_timestep_policy import MOT_3D_TIMESTEP_POLICY
+from lab_setup.strict_specification import canonical_digest, read_strict_json
 from lab_setup.numerical_policy import NUMERICAL_POLICY_SHA256, NUMERICAL_POLICY_VERSION
 from lab_setup.physical_specification import LABORATORY_SPEC_SHA256, LABORATORY_SPEC_VERSION
 
@@ -85,53 +85,22 @@ def _expected_bounds() -> tuple[dict[str, tuple[float, float]], dict[str, dict[s
     return common_bounds, family_bounds
 
 
+# UI presets are the closed campaign's locked candidates, not changes to the
+# runnable physics configurations or to any historical campaign record.
+WINNING_PRESETS_PATH = Path(__file__).resolve().parents[1] / "data/validation/mot_3d/final_campaign_20261020/selection/locked_nominals.json"
+WINNING_PRESETS_SHA256 = "f989401bc9f8c9df5067817987aaac176eed02f8897cd8a0043b1a07f1b7f257"
+
+
 def _expected_defaults() -> dict[str, dict[str, float]]:
-    donut = MOT_3D_CONFIGURATIONS["angled_donut"]
-    single = MOT_3D_CONFIGURATIONS["single_pass"]
-    anchor = single["399"]["detuning_gamma"]
-    # The runnable profile stores the resolved blue detuning.  The individual
-    # contract exposes the campaign's anchor parameterization, so derive the
-    # unique anchor that round-trips to that runnable profile.
-    settings = MOT_3D_OPTIMIZATION_CONFIG["single_pass"]
-    slowing_position = (
-        single["blue_crossing_z_offset_m"]
-        - settings["slowing_position_waist_factor"] * single["399"]["waist_m"]
+    def validate(value):
+        if canonical_digest(value) != WINNING_PRESETS_SHA256:
+            raise ValueError("Locked winning presets changed.")
+        return {family: dict(value["families"][family]["parameters"]) for family in _FAMILIES}
+
+    return read_strict_json(
+        WINNING_PRESETS_PATH, validate, max_bytes=MAX_SPECIFICATION_BYTES,
+        error_message="The locked winning 3D-MOT presets are invalid.",
     )
-    field_g = single["magnetic_gradient_G_cm"] * abs(100.0 * slowing_position)
-    reference_position = (
-        settings["reference_crossing_z_offset_m"]
-        - settings["slowing_position_waist_factor"]
-        * settings["reference_blue_waist_m"]
-    )
-    reference_field_g = settings["reference_gradient_G_cm"] * abs(
-        100.0 * reference_position
-    )
-    resolved_at_zero = settings["blue_zeeman_gamma_per_G"] * (
-        field_g - reference_field_g
-    )
-    return {
-        "angled_donut": {
-            "green_s0": donut["556"]["s0"],
-            "green_detuning_gamma": donut["556"]["detuning_gamma"],
-            "green_waist_m": donut["556"]["waist_m"],
-            "blue_s0": donut["399"]["s0"],
-            "blue_waist_m": donut["399"]["waist_m"],
-            "magnetic_gradient_G_cm": donut["magnetic_gradient_G_cm"],
-            "blue_detuning_gamma": donut["399"]["detuning_gamma"],
-            "core_shell_split_radius_m": donut["399"]["inner_cutoff_radius_m"],
-        },
-        "single_pass": {
-            "green_s0": single["556"]["s0"],
-            "green_detuning_gamma": single["556"]["detuning_gamma"],
-            "green_waist_m": single["556"]["waist_m"],
-            "blue_s0": single["399"]["s0"],
-            "blue_waist_m": single["399"]["waist_m"],
-            "magnetic_gradient_G_cm": single["magnetic_gradient_G_cm"],
-            "blue_detuning_anchor_gamma": anchor - resolved_at_zero,
-            "blue_crossing_angle_deg": single["blue_crossing_angle_deg"],
-            "blue_crossing_z_offset_m": single["blue_crossing_z_offset_m"],
-        },
-    }
 
 
 def _validate_range(row: Any, expected: tuple[float, float]) -> None:
@@ -191,7 +160,7 @@ def _validate(value: Any) -> dict[str, Any]:
             not _finite_number(item) or not math.isclose(float(item), float(expected[name]), rel_tol=0.0, abs_tol=1e-15)
             for name, item in observed.items()
         ):
-            raise ValueError("Individual defaults do not match the runnable profile.")
+            raise ValueError("Individual defaults do not match the locked winning profiles.")
         all_bounds = common_bounds | family_bounds[family]
         if any(not all_bounds[name][0] <= observed[name] <= all_bounds[name][1] for name in observed):
             raise ValueError("Individual default is outside its reviewed range.")

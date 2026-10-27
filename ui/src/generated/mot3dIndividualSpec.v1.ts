@@ -38,25 +38,25 @@ export const MOT_3D_INDIVIDUAL_SPECIFICATION_V1 = {
   },
   "defaults": {
     "angled_donut": {
-      "blue_detuning_gamma": -3.0,
-      "blue_s0": 1.5,
-      "blue_waist_m": 0.0075,
-      "core_shell_split_radius_m": 0.0025,
-      "green_detuning_gamma": -25.0,
-      "green_s0": 30.0,
-      "green_waist_m": 0.0075,
-      "magnetic_gradient_G_cm": 2.5
+      "blue_detuning_gamma": -3.120575392133525,
+      "blue_s0": 1.3667027005835732,
+      "blue_waist_m": 0.018145079659869626,
+      "core_shell_split_radius_m": 0.0008219179673853373,
+      "green_detuning_gamma": -5.932550002692984,
+      "green_s0": 130.38311874889104,
+      "green_waist_m": 0.008563583550927088,
+      "magnetic_gradient_G_cm": 25.83531679690036
     },
     "single_pass": {
-      "blue_crossing_angle_deg": 45.0,
-      "blue_crossing_z_offset_m": -0.05,
-      "blue_detuning_anchor_gamma": -2.034161875,
-      "blue_s0": 0.75,
-      "blue_waist_m": 0.01,
-      "green_detuning_gamma": -25.0,
-      "green_s0": 30.0,
-      "green_waist_m": 0.01,
-      "magnetic_gradient_G_cm": 2.5
+      "blue_crossing_angle_deg": 57.027282093322945,
+      "blue_crossing_z_offset_m": -0.04278783047732904,
+      "blue_detuning_anchor_gamma": -2.486927112944002,
+      "blue_s0": 0.13639731945918043,
+      "blue_waist_m": 0.016745646876613576,
+      "green_detuning_gamma": -22.76165952007537,
+      "green_s0": 145.39167642788135,
+      "green_waist_m": 0.011801225662163621,
+      "magnetic_gradient_G_cm": 4.001789111515931
     }
   },
   "family_controls": {

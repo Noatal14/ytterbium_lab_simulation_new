@@ -108,6 +108,7 @@ EXPECTED_NUMERICAL_POLICY_CONSUMERS = {
 EXPECTED_ZEEMAN_OPERATING_CONSUMERS = {"config.py"}
 EXPECTED_MOT_2D_OPERATING_CONSUMERS = {"config.py"}
 EXPECTED_STRICT_SPECIFICATION_CONSUMERS = {
+    "workflow_api/mot_3d_run_specification.py",
     "lab_setup/mot_3d_timestep_policy.py",
     "lab_setup/mot_2d_operating_specification.py",
     "lab_setup/numerical_policy.py",

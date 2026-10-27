@@ -170,7 +170,8 @@ ledgers:
 - Versioned `lab_setup.mot_2d_operating_specification`: `config.py`.
 
 - Neutral `lab_setup.strict_specification`: the laboratory physical, numerical
-  policy, Zeeman operating, and generic 2D-MOT operating loaders only.
+  policy, Zeeman operating, generic 2D-MOT operating and 3D timestep-policy
+  loaders, and the individual 3D-MOT loader (for the hash-pinned locked optimization presets).
 
 - Versioned `lab_setup.numerical_policy`: `config.py`,
   `workflow_api/zeeman_run_plan.py`.
