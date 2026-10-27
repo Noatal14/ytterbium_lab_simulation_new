@@ -1949,7 +1949,7 @@ class PinnedSshRunner:
         }:
             interpreter = f"/home/{profile.username}/venvs/atomsmltr-ui-test/bin/python"
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
-        elif three_d_paths:
+        elif three_d_paths or profile.project_directory == f"/home/{profile.username}/ytterbium_lab_simulation_new":
             interpreter = f"/home/{profile.username}/venvs/atomsmltr/bin/python"
             prefix = f"cd -- {shlex.quote(profile.project_directory)} && exec "
         command = prefix + shlex.join((interpreter, "-c", wrapper))

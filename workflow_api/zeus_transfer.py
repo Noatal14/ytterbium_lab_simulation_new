@@ -274,14 +274,14 @@ try:
             for pure,(file_parent_fd,temporary,target_name,digest) in received.items():
                 os.rename(temporary,target_name,src_dir_fd=file_parent_fd,dst_dir_fd=file_parent_fd); os.close(file_parent_fd)
             if not checkout_matches(): raise CheckoutMismatch()
-            if project.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or campaign_parts[2]=='mot_3d':
+            fd=os.open('campaign.json',os.O_RDONLY|NOFOLLOW,dir_fd=stage_fd)
+            with os.fdopen(fd,'r') as record: manifest=strict_record(record)
+            if 'execution_checkout' in manifest or project.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or campaign_parts[2]=='mot_3d':
                 if campaign_parts[2]=='mot_3d':
                     sys.dont_write_bytecode=True
                     sys.path.insert(0,str(project/'atomsmltr/src'))
                 sys.path.insert(0,str(project))
                 from workflow_api.acceptance_remote import assert_campaign_target
-                fd=os.open('campaign.json',os.O_RDONLY|NOFOLLOW,dir_fd=stage_fd)
-                with os.fdopen(fd,'r') as record: manifest=strict_record(record) if campaign_parts[2]=='mot_3d' else json.load(record)
                 if campaign_parts[2]=='mot_3d' and manifest.get('kind')!=('mot_3d_ui_acceptance_v1' if project.name=='ytterbium_lab_simulation_ui_acceptance' else 'mot_3d_campaign_v2'): raise ValueError()
                 assert_campaign_target(manifest,username,project_text,'/'.join(campaign_parts))
             if campaign_parts[2]=='mot_3d':

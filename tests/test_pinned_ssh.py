@@ -1649,9 +1649,10 @@ def test_transfer_runner_preserves_exact_closed_streaming_contract(
         operation, _profile(), paths, "a" * 40, payload,
     ) == (0, b'{"ok":true}', b"")
     remote = shlex.split(observed["argv"][-1])
-    assert remote[:2] == ["python3", "-c"]
-    assert len(remote) == 3
-    assert "sys.stdin.buffer.readline(262145)" in remote[2]
+    assert remote[:4] == ["cd", "--", "/home/tal.noa/ytterbium_lab_simulation_new", "&&"]
+    assert remote[remote.index("-c") - 1] == "/home/tal.noa/venvs/atomsmltr/bin/python"
+    assert len(remote[remote.index("-c"):]) == 2
+    assert "sys.stdin.buffer.readline(262145)" in remote[remote.index("-c") + 1]
     header_line, remaining = bytes(process.stdin.value).split(b"\n", 1)
     source, receiver_argv = json.loads(header_line)
     assert base64.urlsafe_b64decode(source).decode() == _REMOTE_TRANSFER_SCRIPT
@@ -2114,11 +2115,8 @@ def test_transfer_maximum_valid_paths_use_short_command_and_preserve_binary_stre
     assert result == {"argv": [operation.value, profile.username, profile.project_directory, encoded_paths, "a" * 40], "length": len(payload), "sha256": hashlib.sha256(payload).hexdigest()}
     assert observed["length"] < 4000
     parts = observed["remote"]
-    assert parts[parts.index("-c") - 1] == ("/home/tal.noa/venvs/atomsmltr-ui-test/bin/python" if acceptance else "python3")
-    if acceptance:
-        assert parts[:4] == ["cd", "--", profile.project_directory, "&&"]
-    else:
-        assert parts[:2] == ["python3", "-c"]
+    assert parts[parts.index("-c") - 1] == ("/home/tal.noa/venvs/atomsmltr-ui-test/bin/python" if acceptance else "/home/tal.noa/venvs/atomsmltr/bin/python")
+    assert parts[:4] == ["cd", "--", profile.project_directory, "&&"]
 
 
 def test_transfer_rejects_oversized_framing_before_process_creation(tmp_path, monkeypatch):
