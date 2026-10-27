@@ -1,0 +1,910 @@
+{
+  "kind": "mot_2d_s0_campaign",
+  "name": "corrected_zeeman_s0_1p3_20261006",
+  "stage": "complete",
+  "s0_values": [
+    1.3
+  ],
+  "stages": {
+    "screen": {
+      "tasks": 3,
+      "job_file": "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/02_screen.pbs"
+    },
+    "refine": {
+      "tasks": 3,
+      "cumulative_trial_targets": [
+        3,
+        6,
+        9,
+        10
+      ],
+      "round_job_files": [
+        "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/03_refine_round_01.pbs",
+        "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/03_refine_round_02.pbs",
+        "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/03_refine_round_03.pbs",
+        "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/03_refine_round_04.pbs"
+      ],
+      "submit_chain": "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/03_submit_refinement_chain.sh",
+      "dependency": "afterok"
+    },
+    "confirmation": {
+      "tasks": 5,
+      "job_file": "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/04_confirmation.pbs"
+    },
+    "sensitivity": {
+      "tasks": 17,
+      "job_file": "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/05_sensitivity.pbs"
+    },
+    "production": {
+      "tasks": 20,
+      "job_file": "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/jobs/06_production.pbs"
+    },
+    "final_report": "data/optimization/mot_2d/corrected_zeeman_s0_1p3_20261006/final_report.json"
+  },
+  "ensemble_source": {
+    "directory": "data/particle_states/after_zeeman/corrected_projectant_19ring_20261005",
+    "zeeman_profile": "corrected_projectant_19ring_20261005"
+  },
+  "seed_roles": {
+    "discovery": [
+      3000,
+      3001,
+      3002,
+      3003,
+      3004
+    ],
+    "refinement": [
+      3005,
+      3006,
+      3007,
+      3008,
+      3009
+    ],
+    "held_out_confirmation": [
+      3010,
+      3011,
+      3012,
+      3013,
+      3014
+    ],
+    "sealed_validation": [
+      3015,
+      3016,
+      3017,
+      3018,
+      3019,
+      3020,
+      3021,
+      3022,
+      3023,
+      3024,
+      3025,
+      3026,
+      3027,
+      3028,
+      3029,
+      3030,
+      3031,
+      3032,
+      3033,
+      3034
+    ]
+  },
+  "input_ensembles": {
+    "discovery": [
+      {
+        "zeeman_seed": 3000,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3000.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3000.json",
+        "sha256": "bb384407136b8a053ab52d5bd41a66c46a0b350e2721bbd4d40fd9c16e565333",
+        "shape": [
+          31652,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31652,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3001,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3001.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3001.json",
+        "sha256": "28e5ac6ebeb29624117eea1ff1ef406146c80f2ee7a3720e1964a26a7bcdfa8f",
+        "shape": [
+          31685,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31685,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3002,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3002.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3002.json",
+        "sha256": "80fff80c8f6b21d27647ca84d8fe94b76f3ac62454dab56d6bd58a3e69e92ee5",
+        "shape": [
+          31658,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31658,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3003,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3003.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3003.json",
+        "sha256": "a6de70987398bcce8f8bcbeb67bd790935983a1fbf378d56de84f13f82083efd",
+        "shape": [
+          31739,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31739,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3004,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3004.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3004.json",
+        "sha256": "d43402a6d9130e298c6774894697cd82ca312efebd9f60a6ee4f25dda3a981c6",
+        "shape": [
+          31750,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31750,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      }
+    ],
+    "refinement": [
+      {
+        "zeeman_seed": 3005,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3005.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3005.json",
+        "sha256": "a8e625c8c51c4c17ffc8fb490e6a57f0b7538c8cd7ffc5d18ac32b7b157c89cf",
+        "shape": [
+          31669,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31669,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3006,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3006.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3006.json",
+        "sha256": "8b35e848c1b9cbe88248fb09b5851b4a61ba6531fe7401b46d533ecd35b973de",
+        "shape": [
+          31679,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31679,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3007,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3007.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3007.json",
+        "sha256": "4ca7648d7d092d88f9544fac1bfa4bd3125c57bad9970f9d916b8ef812bad803",
+        "shape": [
+          31714,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31714,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3008,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3008.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3008.json",
+        "sha256": "5d9d18dc7a130d114f00a7ef3a91dfe01f079ef72c47cbc3265df6de9dc578bc",
+        "shape": [
+          31825,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31825,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3009,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3009.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3009.json",
+        "sha256": "7bdb0c6051dc1c878267d2572b350fb866d41e012a5f6b6cfbe16898f982fce0",
+        "shape": [
+          31565,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31565,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      }
+    ],
+    "held_out_confirmation": [
+      {
+        "zeeman_seed": 3010,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3010.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3010.json",
+        "sha256": "2e5a7eb54dbfa4966fd72b2574cf22cac2c118cf4d1a5831b6abbc4f682352fa",
+        "shape": [
+          31720,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31720,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3011,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3011.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3011.json",
+        "sha256": "63bacf0051573e2a06ae1299f6d3687d09760f4372a801df9ac05ce77eea8be9",
+        "shape": [
+          31666,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31666,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3012,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3012.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3012.json",
+        "sha256": "08acd15d761682a64ecc04e357e8ff67c8a816c71e02588c33fc97b9a231611f",
+        "shape": [
+          31695,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31695,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3013,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3013.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3013.json",
+        "sha256": "d82e93453e859615dd794975ec5747cf34c4d6476cb799dedaac652d8763861b",
+        "shape": [
+          31602,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31602,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3014,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3014.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3014.json",
+        "sha256": "e24b6c8cd6798da22834a72b5850846b5267660da6037945ce74dbd2fca625c7",
+        "shape": [
+          31689,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31689,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      }
+    ],
+    "sealed_validation": [
+      {
+        "zeeman_seed": 3015,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3015.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3015.json",
+        "sha256": "73160140874501824ec4bf61e3d460d5f2f2852fd83ab3716d395e4e01dfc256",
+        "shape": [
+          31754,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31754,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3016,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3016.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3016.json",
+        "sha256": "14ae66bc465b69f34a2088edfde1712fbbb62d0cfaf6d1f4722d65cbb7bc21d6",
+        "shape": [
+          31689,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31689,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3017,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3017.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3017.json",
+        "sha256": "7f40c0aa43c0d34b88e993d9525e8fd6b53be9453079dc3922567562ce6b2441",
+        "shape": [
+          31763,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31763,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3018,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3018.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3018.json",
+        "sha256": "d2ec68de5529b14b3b31b6ee5a8fbbf97092eab1627d2121ff3fc8695f208ec6",
+        "shape": [
+          31827,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31827,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3019,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3019.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3019.json",
+        "sha256": "f0299398a84ab5d36380ab7581fc18e19972b0ba3eb5960a73a2d8eda103d056",
+        "shape": [
+          31763,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31763,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3020,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3020.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3020.json",
+        "sha256": "bba0e7909d32fc3e576d0ec0a543ed0f002af8046d401656f695273b23f3c317",
+        "shape": [
+          31676,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31676,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3021,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3021.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3021.json",
+        "sha256": "e99b5ae574eed7f754ab62e52102faf559883202db83c995e345bb6e7ea7c1f8",
+        "shape": [
+          31768,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31768,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3022,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3022.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3022.json",
+        "sha256": "27e6d35b84151d9cb3598badb83e45c1bf39da0315b037949cf5f31e6d351c4c",
+        "shape": [
+          31692,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31692,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3023,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3023.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3023.json",
+        "sha256": "b32c9cba11846377d2ef1416c0e53b4278f01fcbda48329c7902dd1e678759c5",
+        "shape": [
+          31657,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31657,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3024,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3024.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3024.json",
+        "sha256": "15149346f55e7da2c3883f530687f8b70c078254b4f66364d393dc105d0ec5bf",
+        "shape": [
+          31939,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31939,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3025,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3025.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3025.json",
+        "sha256": "6ca541ebf0ab7957166e08d983b2b51dfbb1ee3fb5ceff5b12589b66203b2a2a",
+        "shape": [
+          31568,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31568,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3026,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3026.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3026.json",
+        "sha256": "22cfe5b7ee5b6fb90b503a6c8b9dbc752beab92592a47a47fcc9178a5337006e",
+        "shape": [
+          31828,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31828,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3027,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3027.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3027.json",
+        "sha256": "912fda1d3a416b4b83044b5f807023c87042b3f1d5a50480d5a498991e5d9e35",
+        "shape": [
+          31782,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31782,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3028,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3028.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3028.json",
+        "sha256": "f31067f1a75967f3f00289dba2026fb07d407bd3662247bd8278071fd5e19246",
+        "shape": [
+          31693,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31693,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3029,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3029.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3029.json",
+        "sha256": "7f4a2e3a974e758c8d15bb3844d6398be64cf6456e6aa1c2a562d115d768d558",
+        "shape": [
+          31943,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31943,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3030,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3030.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3030.json",
+        "sha256": "5bd76510eac55b858b649f3335786effb4400e111bef833842adb4951ec4701c",
+        "shape": [
+          31620,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31620,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3031,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3031.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3031.json",
+        "sha256": "f4149e9de205f63f8dfe1caa3b47fa44ac2abe854d1bc0723d11e881dbf0003e",
+        "shape": [
+          31702,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31702,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3032,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3032.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3032.json",
+        "sha256": "97edc398cf327ffa55605b344f790a3fe4906beb99a0685237250aec9ac11f2f",
+        "shape": [
+          31794,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31794,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3033,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3033.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3033.json",
+        "sha256": "031d6e33c60a19977a179133f00df7c290b9d0d879c478eed3ca590cbc2aab96",
+        "shape": [
+          31639,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31639,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      },
+      {
+        "zeeman_seed": 3034,
+        "path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3034.npy",
+        "metadata_path": "/home/tal.noa/ytterbium_lab_simulation_new/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/production_zeeman_n50000_dt40us_seed3034.json",
+        "sha256": "f7c39357ab16bea15230eee772de9a3bbdfc598ab204aa34aaf00bbb8f9a53e9",
+        "shape": [
+          31686,
+          6
+        ],
+        "dtype": "float64",
+        "survivor_count": 31686,
+        "zeeman_profile": "corrected_projectant_19ring_20261005",
+        "source_git_commit": "f042931070b58f9dac47789212e449f0552be25b",
+        "generation": {
+          "n_initial_atoms": 50000,
+          "dt_s": 4e-05,
+          "stochastic": true,
+          "collimation_angle_deg": 1.5
+        }
+      }
+    ]
+  },
+  "mot_seeds": {
+    "discovery": [
+      43000,
+      43001,
+      43002,
+      43003,
+      43004
+    ],
+    "refinement": [
+      43005,
+      43006,
+      43007,
+      43008,
+      43009
+    ],
+    "held_out_confirmation": [
+      43010,
+      43011,
+      43012,
+      43013,
+      43014
+    ],
+    "sealed_validation": [
+      43015,
+      43016,
+      43017,
+      43018,
+      43019,
+      43020,
+      43021,
+      43022,
+      43023,
+      43024,
+      43025,
+      43026,
+      43027,
+      43028,
+      43029,
+      43030,
+      43031,
+      43032,
+      43033,
+      43034
+    ]
+  },
+  "provenance": {
+    "git_commit": "9bdacac8d223e59033a883bc331e256bca392075",
+    "physical_model_sha256": "21c8aa2e06f8be7a3997f909306303ddbc57726862477504278822b98f8f0df2",
+    "hashed_files": [
+      "config.py",
+      "simulations/mot_2d.py",
+      "studies/mot_2d_s0_campaign.py",
+      "studies/optimize_2d_mot_joint.py",
+      "studies/run_2d_mot_final_production.py",
+      "utils/mot_2d_study.py",
+      "utils/file_helpers.py",
+      "utils/RK4StHybridCustom.py",
+      "lab_setup/_3d_mot_mag_field.py",
+      "lab_setup/atom_species.py",
+      "lab_setup/config_builder.py",
+      "lab_setup/gravity.py",
+      "lab_setup/laser_setup_2d_mot.py",
+      "lab_setup/laser_setup_3d.py",
+      "lab_setup/mag_field_2d_mot.py",
+      "lab_setup/mag_field_Zeeman.py",
+      "lab_setup/zeeman_laser_setup.py",
+      "lab_setup/zones.py"
+    ],
+    "capture_criterion_version": "mot_2d_extract_survivors_v1"
+  },
+  "fixed_design": {
+    "working_dt_s": 1.25e-06,
+    "final_dt_s": 6.25e-07,
+    "solver": "RK4StHybridCustom",
+    "detuning_bounds_gamma": [
+      -1.55,
+      -0.85
+    ],
+    "magnet_radius_bounds_m": [
+      0.045,
+      0.051
+    ],
+    "detuning_resolution_gamma": 0.01,
+    "magnet_radius_resolution_m": 1e-05,
+    "target_95_half_width_fraction": 0.0005,
+    "reporting_zeeman_survivors": 10000000,
+    "particle_counts": {
+      "screen": 2000,
+      "refine": 10000,
+      "confirmation": 10000,
+      "sensitivity": 10000,
+      "production": "all_available"
+    },
+    "trial_budgets": {
+      "screen_per_worker": 17,
+      "refine_per_worker": 10
+    },
+    "control_resolution": {
+      "status": "provisional",
+      "detuning_gamma": 0.01,
+      "magnet_radius_m": 1e-05
+    },
+    "stress_test_offsets": {
+      "detuning_gamma": 0.02,
+      "magnet_radius_m": 0.0001
+    }
+  }
+}

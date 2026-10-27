@@ -1,0 +1,39 @@
+{
+  "kind": "mot_2d_final_survivor_ensemble",
+  "source_zeeman_ensemble": "production_zeeman_n50000_dt40us_seed3051.npy",
+  "zeeman_seed": 3051,
+  "mot_seed": 43051,
+  "n_input": 31783,
+  "n_survivors": 876,
+  "state_layout": [
+    "x_m",
+    "y_m",
+    "z_m",
+    "vx_m_s",
+    "vy_m_s",
+    "vz_m_s"
+  ],
+  "parameters": {
+    "s0": 1.3,
+    "detuning_gamma": -0.9196610026631429,
+    "magnet_radius": 0.04676406447474441
+  },
+  "design": {
+    "dt_s": 6.25e-07,
+    "stochastic_solver": "RK4StHybridCustom",
+    "uses_all_available_particles": true,
+    "npools": 200,
+    "ensemble_dir": "data/optimization/mot_3d/mot_3d_s0_1p3_search10us_20261012_v1/final_validation_inputs/after_zeeman",
+    "zeeman_profile": "corrected_projectant_19ring_20261005",
+    "laboratory_spec_version": "laboratory-physical-v2",
+    "laboratory_spec_sha256": "1ef77eecdd306d2d92c08fde9897f283de57e741e9f1a45a6bc6c0063779eac3",
+    "zeeman_profile_sha256": "7159e48b25124c3083b0dfa004f07bfdad8ad1aa6ae840a7bae1db970ab7d534",
+    "git_commit": "7facc798d89c5386cacca3f37b5d1158c147348c"
+  },
+  "shape": [
+    876,
+    6
+  ],
+  "dtype": "float64",
+  "output_sha256": "e3753bfd20c8e063add4abbf52c5bbac623d3ab0c4f8e3c2e147c67fae6b437f"
+}

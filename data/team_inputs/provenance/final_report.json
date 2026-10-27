@@ -1,0 +1,563 @@
+{
+  "kind": "mot_2d_s0_campaign_final_report",
+  "always_returns_best_tested_result": true,
+  "results": [
+    {
+      "s0": 1.3,
+      "recommended_parameters": {
+        "s0": 1.3,
+        "detuning_gamma": -0.9196610026631429,
+        "magnet_radius": 0.04676406447474441
+      },
+      "warnings": [
+        "target_95_prediction_half_width_not_met",
+        "robust_operating_region_not_established",
+        "epsilon_near_optimality_not_established"
+      ],
+      "sensitivity": {
+        "reference": {
+          "s0": 1.3,
+          "detuning_gamma": -0.9196610026631429,
+          "magnet_radius": 0.04676406447474441
+        },
+        "points": [
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9296610026631429,
+              "magnet_radius": 0.04675406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.026000000000000002,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 4.000000000000045e-05,
+              "95_ci_fraction": [
+                -0.0014334385959975699,
+                0.001513438595997571
+              ],
+              "95_ci_half_width_fraction": 0.0014734385959975704,
+              "differences_fraction": [
+                -0.00030000000000000165,
+                9.99999999999994e-05,
+                -0.0003999999999999976,
+                0.0009000000000000015,
+                -9.99999999999994e-05
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9296610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.02554,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.00042000000000000023,
+              "95_ci_fraction": [
+                -0.0029926201863162485,
+                0.002152620186316248
+              ],
+              "95_ci_half_width_fraction": 0.0025726201863162483,
+              "differences_fraction": [
+                -0.0010000000000000009,
+                -0.0015000000000000013,
+                -0.0005000000000000004,
+                0.0008000000000000021,
+                9.99999999999994e-05
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9296610026631429,
+              "magnet_radius": 0.046774064474744415
+            },
+            "offsets": {
+              "detuning_gamma": -0.010000000000000009,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02556,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.000399999999999999,
+              "95_ci_fraction": [
+                -0.002969469394948659,
+                0.0021694693949486613
+              ],
+              "95_ci_half_width_fraction": 0.00256946939494866,
+              "differences_fraction": [
+                -9.99999999999994e-05,
+                -0.0019999999999999983,
+                0.0,
+                0.00020000000000000226,
+                -9.99999999999994e-05
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.04675406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.025980000000000003,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 2.0000000000000574e-05,
+              "95_ci_fraction": [
+                -0.002104184533585187,
+                0.002144184533585188
+              ],
+              "95_ci_half_width_fraction": 0.0021241845335851876,
+              "differences_fraction": [
+                -9.99999999999994e-05,
+                -0.0011999999999999997,
+                0.0005000000000000004,
+                0.00020000000000000226,
+                0.0006999999999999992
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.02596,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0,
+              "95_ci_fraction": [
+                0.0,
+                0.0
+              ],
+              "95_ci_half_width_fraction": 0.0,
+              "differences_fraction": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "within_loss_margin_at_95_percent": true
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.046774064474744415
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02566,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.00030000000000000024,
+              "95_ci_fraction": [
+                -0.0030373826554023374,
+                0.0024373826554023367
+              ],
+              "95_ci_half_width_fraction": 0.002737382655402337,
+              "differences_fraction": [
+                -0.0009000000000000015,
+                -0.0016000000000000007,
+                0.0006999999999999992,
+                -0.0001999999999999988,
+                0.0005000000000000004
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9096610026631429,
+              "magnet_radius": 0.04675406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": -1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02616,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.00020000000000000017,
+              "95_ci_fraction": [
+                -0.0026390705527227338,
+                0.003039070552722734
+              ],
+              "95_ci_half_width_fraction": 0.002839070552722734,
+              "differences_fraction": [
+                -0.00040000000000000105,
+                -0.0011999999999999997,
+                0.0005000000000000004,
+                0.0013000000000000025,
+                0.0007999999999999986
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9096610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.026000000000000002,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 4.000000000000045e-05,
+              "95_ci_fraction": [
+                -0.0033908161986023304,
+                0.0034708161986023315
+              ],
+              "95_ci_half_width_fraction": 0.003430816198602331,
+              "differences_fraction": [
+                -0.0017999999999999995,
+                0.0001999999999999988,
+                0.0005000000000000004,
+                0.0015000000000000013,
+                -0.0001999999999999988
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9096610026631429,
+              "magnet_radius": 0.046774064474744415
+            },
+            "offsets": {
+              "detuning_gamma": 0.010000000000000009,
+              "magnet_radius_m": 1.0000000000003062e-05
+            },
+            "mean_efficiency": 0.02622,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0002600000000000005,
+              "95_ci_fraction": [
+                -0.00150142449606987,
+                0.002021424496069871
+              ],
+              "95_ci_half_width_fraction": 0.0017614244960698704,
+              "differences_fraction": [
+                -0.0007000000000000027,
+                0.0005000000000000004,
+                0.00020000000000000226,
+                0.0010000000000000009,
+                0.00030000000000000165
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9396610026631429,
+              "magnet_radius": 0.04666406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "mean_efficiency": 0.0262,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.00023999999999999992,
+              "95_ci_fraction": [
+                -0.002862221940740678,
+                0.0033422219407406775
+              ],
+              "95_ci_half_width_fraction": 0.0031022219407406777,
+              "differences_fraction": [
+                -0.0007000000000000027,
+                -0.0006999999999999992,
+                -9.99999999999994e-05,
+                0.0009000000000000015,
+                0.0017999999999999995
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9396610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.0262,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.00024000000000000063,
+              "95_ci_fraction": [
+                -0.0018183323001485004,
+                0.0022983323001485017
+              ],
+              "95_ci_half_width_fraction": 0.002058332300148501,
+              "differences_fraction": [
+                -0.00030000000000000165,
+                9.99999999999994e-05,
+                -0.0003999999999999976,
+                0.001400000000000002,
+                0.00040000000000000105
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9396610026631429,
+              "magnet_radius": 0.046864064474744414
+            },
+            "offsets": {
+              "detuning_gamma": -0.020000000000000018,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "mean_efficiency": 0.02592,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -3.999999999999976e-05,
+              "95_ci_fraction": [
+                -0.003882890228647075,
+                0.003802890228647076
+              ],
+              "95_ci_half_width_fraction": 0.0038428902286470755,
+              "differences_fraction": [
+                -0.0016000000000000007,
+                -0.0010000000000000009,
+                -0.0002999999999999982,
+                0.0013000000000000025,
+                0.0013999999999999985
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.04666406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "mean_efficiency": 0.02646,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0005000000000000004,
+              "95_ci_fraction": [
+                -0.0013771945006894853,
+                0.0023771945006894864
+              ],
+              "95_ci_half_width_fraction": 0.0018771945006894857,
+              "differences_fraction": [
+                0.0001999999999999988,
+                -0.0002999999999999982,
+                0.0005000000000000004,
+                0.0015000000000000013,
+                0.0005999999999999998
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.9196610026631429,
+              "magnet_radius": 0.046864064474744414
+            },
+            "offsets": {
+              "detuning_gamma": 0.0,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "mean_efficiency": 0.02566,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.0002999999999999996,
+              "95_ci_fraction": [
+                -0.002821735156517813,
+                0.002221735156517814
+              ],
+              "95_ci_half_width_fraction": 0.0025217351565178137,
+              "differences_fraction": [
+                -0.0005999999999999998,
+                -0.0017000000000000001,
+                0.0,
+                0.0005000000000000004,
+                0.00030000000000000165
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.8996610026631429,
+              "magnet_radius": 0.04666406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": -0.00010000000000000286
+            },
+            "mean_efficiency": 0.02626,
+            "comparison_to_reference": {
+              "mean_difference_fraction": 0.0002999999999999996,
+              "95_ci_fraction": [
+                -0.0017915176057778184,
+                0.0023915176057778174
+              ],
+              "95_ci_half_width_fraction": 0.002091517605777818,
+              "differences_fraction": [
+                -0.0008000000000000021,
+                9.99999999999994e-05,
+                0.0005999999999999998,
+                0.0011999999999999997,
+                0.00040000000000000105
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.8996610026631429,
+              "magnet_radius": 0.04676406447474441
+            },
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": 0.0
+            },
+            "mean_efficiency": 0.025679999999999998,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.0002800000000000004,
+              "95_ci_fraction": [
+                -0.002569374204581306,
+                0.0020093742045813054
+              ],
+              "95_ci_half_width_fraction": 0.0022893742045813057,
+              "differences_fraction": [
+                -0.00040000000000000105,
+                -0.0010000000000000009,
+                -0.0005999999999999998,
+                0.0011000000000000003,
+                -0.0005000000000000004
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          },
+          {
+            "parameters": {
+              "s0": 1.3,
+              "detuning_gamma": -0.8996610026631429,
+              "magnet_radius": 0.046864064474744414
+            },
+            "offsets": {
+              "detuning_gamma": 0.020000000000000018,
+              "magnet_radius_m": 0.00010000000000000286
+            },
+            "mean_efficiency": 0.0256,
+            "comparison_to_reference": {
+              "mean_difference_fraction": -0.0003599999999999999,
+              "95_ci_fraction": [
+                -0.0041176241497615715,
+                0.0033976241497615718
+              ],
+              "95_ci_half_width_fraction": 0.003757624149761572,
+              "differences_fraction": [
+                -0.0007000000000000027,
+                -0.0023999999999999994,
+                -0.0002999999999999982,
+                0.0008000000000000021,
+                0.0007999999999999986
+              ]
+            },
+            "within_loss_margin_at_95_percent": false
+          }
+        ],
+        "production_selection": {
+          "parameters": {
+            "s0": 1.3,
+            "detuning_gamma": -0.9196610026631429,
+            "magnet_radius": 0.04676406447474441
+          },
+          "offsets_from_confirmed_winner": {
+            "detuning_gamma": 0.0,
+            "magnet_radius_m": 0.0
+          },
+          "mean_efficiency": 0.02596,
+          "comparison_to_confirmed_winner": {
+            "mean_difference_fraction": 0.0,
+            "95_ci_fraction": [
+              0.0,
+              0.0
+            ],
+            "95_ci_half_width_fraction": 0.0,
+            "differences_fraction": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "selection_reason": "no_sensitivity_neighbor_clearly_better_at_95_percent",
+          "familywise_method": "Bonferroni simultaneous paired intervals",
+          "familywise_confidence_per_comparison": 0.996875
+        },
+        "robustness_status": "not_established_pending_adaptive_challenger_validation",
+        "near_optimality_status": "not_established_pending_domain_challenger_elimination"
+      },
+      "prediction": {
+        "reporting_zeeman_survivors": 10000000,
+        "simulated_zeeman_survivors": 634783,
+        "simulated_captured_atoms": 16883,
+        "pooled_conditional_efficiency": 0.026596490454218212,
+        "expected_captured_atoms": 265965,
+        "predicted_95_interval_fraction": [
+          0.0260770925,
+          0.0271680025
+        ],
+        "predicted_95_captured_atoms_interval": [
+          260771,
+          271680
+        ],
+        "predicted_95_half_width_fraction": 0.0005454550000000002,
+        "predicted_95_half_width_percentage_points": 0.054545500000000025,
+        "binomial_mean_variance": 4.0784200505900275e-08,
+        "empirical_between_ensemble_mean_variance": 3.4632694924472833e-08,
+        "selected_mean_variance": 4.0784200505900275e-08,
+        "selected_mean_variance_source": "pooled_binomial",
+        "critical_value": 1.96,
+        "future_counting_variance": 2.5889117149736892e-09,
+        "uncertainty_method": "20,000-draw cluster-aware parametric bootstrap: independent Zeeman/MOT ensemble pairs are resampled as clusters, finite within-cluster capture uncertainty is sampled with a Jeffreys beta model, cluster probabilities are pooled with their resampled survivor counts as weights, and future counting noise is sampled binomially",
+        "bootstrap_replicates": 20000
+      },
+      "target_uncertainty_passes": false,
+      "survivor_states_directory": "data/particle_states/after_2d_mot/final_ensemble_s0_1.3"
+    }
+  ]
+}

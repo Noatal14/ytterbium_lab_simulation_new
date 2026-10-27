@@ -64,7 +64,10 @@ type LockedSettings = {
 };
 export type Mot3DSource = {
   id: string;
-  source_kind: "canonical_2d_campaign" | "retained_individual_mot_2d";
+  source_kind:
+    | "canonical_2d_campaign"
+    | "retained_individual_mot_2d"
+    | "bundled_2d_ensemble";
   label: string;
   ensemble_count: number;
   available_particle_count: {
@@ -73,7 +76,9 @@ export type Mot3DSource = {
     maximum_per_ensemble: number;
   };
   source_qualification:
-    "canonical_campaign_source" | "verified_individual_result";
+    | "canonical_campaign_source"
+    | "verified_individual_result"
+    | "verified_bundled_ensemble";
   result_suitability: "individual_only";
   provenance: Record<string, unknown>;
 };
@@ -340,6 +345,17 @@ function parseSources(value: unknown): Mot3DSource[] {
         !hex64(provenance.fingerprint)
       )
         invalid("source catalog");
+    } else if (row.source_kind === "bundled_2d_ensemble") {
+      if (
+        row.source_qualification !== "verified_bundled_ensemble" ||
+        !exactKeys(provenance, ["validation", "population", "fingerprint"]) ||
+        provenance.validation !== "bundled_2d_survivors_v1" ||
+        !["optimization", "held_out_validation"].includes(
+          String(provenance.population),
+        ) ||
+        !hex64(provenance.fingerprint)
+      )
+        invalid("source catalog");
     } else invalid("source catalog");
     return row as unknown as Mot3DSource;
   });
@@ -565,7 +581,9 @@ function parsePreview(value: unknown): Mot3DPreview {
     (source.kind === "canonical_2d_campaign" &&
       source.qualification === "canonical_campaign_source") ||
     (source.kind === "retained_individual_mot_2d" &&
-      source.qualification === "verified_individual_result");
+      source.qualification === "verified_individual_result") ||
+    (source.kind === "bundled_2d_ensemble" &&
+      source.qualification === "verified_bundled_ensemble");
   if (
     !sourceId(source.id) ||
     !sourcePair ||
@@ -859,7 +877,8 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     execution = row.execution as Record<string, unknown>,
     retention = row.retention as Record<string, unknown>,
     results = row.results as Record<string, unknown>;
-  if (execution.locally_scheduled === undefined) execution.locally_scheduled = false;
+  if (execution.locally_scheduled === undefined)
+    execution.locally_scheduled = false;
   const progress = execution.progress === undefined ? null : execution.progress;
   if (progress !== null && !isRunProgress(progress)) invalid("run progress");
   delete execution.progress;
@@ -882,7 +901,11 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     !isRecord(execution) ||
     !exactKeys(execution, ["mode", "zeus_job_id", "locally_scheduled"]) ||
     typeof execution.locally_scheduled !== "boolean" ||
-    (execution.locally_scheduled && (execution.mode !== "local" || !["configured", "validated", "reviewed", "queued", "running"].includes(String(row.record_state)))) ||
+    (execution.locally_scheduled &&
+      (execution.mode !== "local" ||
+        !["configured", "validated", "reviewed", "queued", "running"].includes(
+          String(row.record_state),
+        ))) ||
     !["local", "zeus"].includes(String(execution.mode)) ||
     (execution.zeus_job_id !== null && !jobId(execution.zeus_job_id)) ||
     !isRecord(retention) ||
@@ -902,11 +925,12 @@ function parseRun(value: unknown, detail = false): Mot3DRun {
     integrity = String(row.integrity);
   const active = ["configured", "validated", "reviewed", "queued", "running"],
     terminal = ["failed", "outcome_unknown", "cancelled"];
-  const expectedAction = execution.locally_scheduled || ["queued", "running"].includes(state)
-    ? "wait"
-    : state === "outcome_unknown"
-      ? "inspect_execution"
-      : "none";
+  const expectedAction =
+    execution.locally_scheduled || ["queued", "running"].includes(state)
+      ? "wait"
+      : state === "outcome_unknown"
+        ? "inspect_execution"
+        : "none";
   if (lifecycle === "results_ready") {
     if (
       state !== "succeeded" ||

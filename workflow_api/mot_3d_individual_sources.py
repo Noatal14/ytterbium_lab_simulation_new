@@ -166,54 +166,60 @@ def _bounded_json(path: Path, root: Path) -> dict[str, Any]:
 def _portable_campaign_records(
     repository_root: Path, roles: Mapping[str, list[Mapping[str, Any]]]
 ) -> tuple[Mapping[str, Any], ...]:
+    return _portable_source_records(repository_root, [
+        source for role in ("discovery", "refinement", "preliminary_check")
+        for source in roles[role]
+    ])
+
+
+def _portable_source_records(repository_root: Path, sources) -> tuple[Mapping[str, Any], ...]:
     records = []
     limits = individual_mot_3d_source_scan_limits()
     total_bytes = 0
     total_rows = 0
-    for role in ("discovery", "refinement", "preliminary_check"):
-        for source in roles[role]:
-            state = Path(source["path"])
-            metadata = Path(source["metadata_path"])
-            if not state.is_absolute():
-                state = repository_root / state
-            if not metadata.is_absolute():
-                metadata = repository_root / metadata
-            state = state.absolute()
-            metadata = metadata.absolute()
-            if not _safe_regular(state, repository_root) or not _safe_regular(
-                metadata, repository_root, maximum=MAX_JSON_BYTES
-            ):
-                raise ValueError("Untrusted 2D survivor artifact.")
-            state_size = state.stat().st_size
-            metadata_size = metadata.stat().st_size
-            rows = int(source["n_survivors"])
-            total_bytes += state_size
-            total_rows += rows
-            if (
-                state_size > limits.maximum_file_bytes
-                or total_bytes > limits.maximum_total_bytes
-                or rows > limits.maximum_rows_per_file
-                or total_rows > limits.maximum_total_rows
-            ):
-                raise ValueError("2D survivor source exceeds interactive limits.")
-            records.append(
-                _freeze(
-                    {
-                        "source_index": len(records),
-                        "path": state.relative_to(repository_root).as_posix(),
-                        "metadata_path": metadata.relative_to(repository_root).as_posix(),
-                        "sha256": source["sha256"],
-                        "metadata_sha256": source["metadata_sha256"],
-                        "size_bytes": state_size,
-                        "metadata_size_bytes": metadata_size,
-                        "shape": list(source["shape"]),
-                        "dtype": source["dtype"],
-                        "survivor_count": rows,
-                        "zeeman_seed": int(source["zeeman_seed"]),
-                        "mot_seed": int(source["mot_seed"]),
-                    }
-                )
+    for source in sources:
+        state = Path(source["path"])
+        metadata = Path(source["metadata_path"])
+        if not state.is_absolute():
+            state = repository_root / state
+        if not metadata.is_absolute():
+            metadata = repository_root / metadata
+        state = state.absolute()
+        metadata = metadata.absolute()
+        if not _safe_regular(state, repository_root) or not _safe_regular(
+            metadata, repository_root, maximum=MAX_JSON_BYTES
+        ):
+            raise ValueError("Untrusted 2D survivor artifact.")
+        state_size = state.stat().st_size
+        metadata_size = metadata.stat().st_size
+        rows = int(source["n_survivors"])
+        total_bytes += state_size
+        total_rows += rows
+        if (
+            state_size > limits.maximum_file_bytes
+            or total_bytes > limits.maximum_total_bytes
+            or rows > limits.maximum_rows_per_file
+            or total_rows > limits.maximum_total_rows
+        ):
+            raise ValueError("2D survivor source exceeds interactive limits.")
+        records.append(
+            _freeze(
+                {
+                    "source_index": len(records),
+                    "path": state.relative_to(repository_root).as_posix(),
+                    "metadata_path": metadata.relative_to(repository_root).as_posix(),
+                    "sha256": source["sha256"],
+                    "metadata_sha256": source["metadata_sha256"],
+                    "size_bytes": state_size,
+                    "metadata_size_bytes": metadata_size,
+                    "shape": list(source["shape"]),
+                    "dtype": source["dtype"],
+                    "survivor_count": rows,
+                    "zeeman_seed": int(source["zeeman_seed"]),
+                    "mot_seed": int(source["mot_seed"]),
+                }
             )
+        )
     return tuple(records)
 
 
@@ -465,10 +471,85 @@ def _public(source: _SourceEvidence) -> dict[str, Any]:
     }
 
 
+def _bundled_sources(repository_root: Path) -> tuple[list[_SourceEvidence], int]:
+    """Attest shipped input populations; this does not admit them to campaigns."""
+    index_path = repository_root / "data/team_inputs/mot_3d_sources.json"
+    if not index_path.exists():
+        return [], 0
+    from workflow_api.repository_paths import resolve_repo_relative
+    from workflow_api.mot_2d_local_execution import _attest_artifact
+    import numpy as np
+
+    try:
+        index = _bounded_json(index_path, repository_root)
+        if index.get("version") != 1 or not isinstance(index.get("sources"), list) or len(index["sources"]) > 20:
+            raise ValueError("Invalid bundled input index.")
+    except (OSError, ValueError, TypeError):
+        return [], 1
+    sources, invalid = [], 0
+    for entry in index["sources"]:
+        try:
+            if (not isinstance(entry, dict) or not isinstance(entry.get("name"), str)
+                or _SAFE_CAMPAIGN_NAME.fullmatch(entry["name"]) is None
+                or not isinstance(entry.get("label"), str) or not 1 <= len(entry["label"]) <= 128
+                or any(ord(c) < 32 for c in entry["label"])
+                or entry.get("population") not in {"optimization", "held_out_validation"}
+                or not isinstance(entry.get("records"), list) or not 1 <= len(entry["records"]) <= 35
+                or not isinstance(entry.get("provenance_documents"), list) or not 1 <= len(entry["provenance_documents"]) <= 3):
+                raise ValueError("Invalid bundled input description.")
+            for document in entry["provenance_documents"]:
+                path = resolve_repo_relative(repository_root, document["path"], allowed_root="data", require="file")
+                _bounded_json(path, repository_root)
+                _attest_artifact(repository_root, document)
+            # Apply shared per-file, row and aggregate limits before loading arrays.
+            records = _portable_source_records(repository_root, entry["records"])
+            counts, pairs = [], set()
+            for record in entry["records"]:
+                state = resolve_repo_relative(repository_root, record["path"], allowed_root="data/particle_states/after_2d_mot", require="file")
+                metadata_path = resolve_repo_relative(repository_root, record["metadata_path"], allowed_root="data/particle_states/after_2d_mot", require="file")
+                artifacts = (
+                    {"path": record["path"], "sha256": record["sha256"], "size_bytes": record["size_bytes"]},
+                    {"path": record["metadata_path"], "sha256": record["metadata_sha256"], "size_bytes": record["metadata_size_bytes"]},
+                )
+                for artifact in artifacts:
+                    _attest_artifact(repository_root, artifact)
+                metadata = _bounded_json(metadata_path, repository_root)
+                states = np.load(state, mmap_mode="r", allow_pickle=False, max_header_size=individual_mot_3d_source_scan_limits().maximum_npy_header_bytes)
+                pair = (record["zeeman_seed"], record["mot_seed"])
+                if (states.dtype != np.dtype("float64") or states.ndim != 2 or states.shape[1] != 6
+                    or list(states.shape) != record["shape"] or record["dtype"] != "float64"
+                    or len(states) > individual_mot_3d_source_scan_limits().maximum_rows_per_file
+                    or len(states) < 1
+                    or len(states) != record["n_survivors"] or metadata.get("kind") != "mot_2d_final_survivor_ensemble"
+                    or metadata.get("shape") != record["shape"] or metadata.get("dtype") != record["dtype"]
+                    or metadata.get("n_survivors") != len(states) or metadata.get("output_sha256") != record["sha256"]
+                    or metadata.get("zeeman_seed") != pair[0] or metadata.get("mot_seed") != pair[1]
+                    or pair in pairs or not np.all(np.isfinite(states))):
+                    raise ValueError("Bundled survivor evidence differs from its frozen manifest.")
+                # np.load opens the pathname separately: bind that scan back to
+                # the frozen bytes before publishing a catalog identity.
+                for artifact in artifacts:
+                    _attest_artifact(repository_root, artifact)
+                counts.append(len(states)); pairs.add(pair)
+            if sum(counts) != entry["particle_count"]:
+                raise ValueError("Bundled survivor total differs from its manifest.")
+            fingerprint = hashlib.sha256(json.dumps(entry, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+            sources.append(_SourceEvidence(
+                _opaque_id("bundled_2d_ensemble", {"fingerprint": fingerprint}),
+                "bundled_2d_ensemble", "verified_bundled_ensemble", entry["label"],
+                sum(counts), min(counts), max(counts), fingerprint,
+                _freeze({"validation": "bundled_2d_survivors_v1", "population": entry["population"], "fingerprint": fingerprint}), records,
+            ))
+        except (OSError, ValueError, TypeError, KeyError):
+            invalid += 1
+    return sources, invalid
+
+
 def _all_sources(repository_root: Path) -> tuple[list[_SourceEvidence], int, bool]:
     canonical, canonical_invalid, canonical_truncated = _campaign_sources(repository_root)
     retained, retained_invalid, retained_truncated = _retained_sources(repository_root)
-    sources = canonical + retained
+    bundled, bundled_invalid = _bundled_sources(repository_root)
+    sources = canonical + retained + bundled
     sources.sort(key=lambda row: (row.source_kind, row.label, row.source_id))
     if len(sources) > MAX_CATALOG_SOURCES:
         sources = sources[:MAX_CATALOG_SOURCES]
@@ -478,7 +559,7 @@ def _all_sources(repository_root: Path) -> tuple[list[_SourceEvidence], int, boo
         raise RuntimeError("3D-MOT source catalog contains duplicate identities.")
     return (
         sources,
-        canonical_invalid + retained_invalid,
+        canonical_invalid + retained_invalid + bundled_invalid,
         canonical_truncated or retained_truncated,
     )
 

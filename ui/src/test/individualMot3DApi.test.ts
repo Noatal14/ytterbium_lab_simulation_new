@@ -259,3 +259,64 @@ describe("individual 3D-MOT frontend contract", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/individual-runs/mot-3d/zeus/recover");
   });
 });
+
+
+describe.each(["optimization", "held_out_validation"])(
+  "bundled %s population",
+  (population) => {
+    it("accepts the attested catalog and reviewed source without campaign promotion", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockImplementationOnce(() =>
+            envelope({
+              contract_version: "mot-3d-individual-source-catalog-v1",
+              invalid_count: 0,
+              total: 1,
+              truncated: false,
+              sources: [
+                {
+                  id: sourceId,
+                  source_kind: "bundled_2d_ensemble",
+                  source_qualification: "verified_bundled_ensemble",
+                  label: "Included 2D-MOT population",
+                  ensemble_count: 20,
+                  result_suitability: "individual_only",
+                  available_particle_count: {
+                    pooled: 16675,
+                    minimum_per_ensemble: 700,
+                    maximum_per_ensemble: 900,
+                  },
+                  provenance: {
+                    validation: "bundled_2d_survivors_v1",
+                    population,
+                    fingerprint: "b".repeat(64),
+                  },
+                },
+              ],
+            }),
+          )
+          .mockImplementationOnce(() => {
+            const value = preview();
+            return envelope({
+              ...value,
+              plan: {
+                ...value.plan,
+                source: {
+                  ...value.plan.source,
+                  kind: "bundled_2d_ensemble",
+                  qualification: "verified_bundled_ensemble",
+                },
+              },
+            });
+          }),
+      );
+      const api = createIndividualMot3DApi(async () => "csrf");
+      expect((await api.sources())[0].provenance.population).toBe(population);
+      expect((await api.preview(request)).plan.source.qualification).toBe(
+        "verified_bundled_ensemble",
+      );
+    });
+  },
+);

@@ -822,16 +822,22 @@ export function IndividualMot3DRun({
                 Select a verified source
               </option>
               {(
-                ["canonical_2d_campaign", "retained_individual_mot_2d"] as const
+                [
+                  "bundled_2d_ensemble",
+                  "canonical_2d_campaign",
+                  "retained_individual_mot_2d",
+                ] as const
               ).map((kind) => {
                 const rows = sources.filter((row) => row.source_kind === kind);
                 return rows.length ? (
                   <optgroup
                     key={kind}
                     label={
-                      kind === "canonical_2d_campaign"
-                        ? "Completed 2D-MOT campaigns"
-                        : "Saved individual 2D-MOT results"
+                      kind === "bundled_2d_ensemble"
+                        ? "Included 2D-MOT input populations"
+                        : kind === "canonical_2d_campaign"
+                          ? "Completed 2D-MOT campaigns"
+                          : "Saved individual 2D-MOT results"
                     }
                   >
                     {rows.map((row) => (

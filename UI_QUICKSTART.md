@@ -133,3 +133,24 @@ restart an entire campaign to recover one failed stage.
 
 For maintainers: [release tests and isolated Zeus test mode](docs/UI_RELEASE_ACCEPTANCE_CHECKLIST.md)
 and [Windows validation details](docs/windows-validation.md).
+
+## Included team inputs
+
+A checkout of `main` includes exactly three initial particle populations:
+
+| Input | Particles | Original ensembles | Intended use |
+| --- | ---: | ---: | --- |
+| Canonical Zeeman survivors | 1,110,091 | 35 | Input to 2D MOT |
+| Optimized 2D-MOT survivors, s₀=1.3 | 16,883 | 20 | Individual 3D-MOT input |
+| Held-out 2D-MOT validation survivors, s₀=1.3 | 16,675 | 20 | Individual 3D-MOT input; retains its historical held-out identity |
+
+Each population preserves its original ensemble files and metadata, rather
+than merging away seed identities. All arrays and provenance are checked before
+use. The two 3D input populations remain separate; their presence does not admit
+them as fresh campaign search or validation inputs. New campaigns retain their
+existing upstream qualification and population-separation requirements.
+
+Old smoke-test inputs and saved individual runs are not included. New results
+created by a user remain local runtime data and can appear as individual follow-up
+inputs. Scientific reports and closed-campaign evidence are retained separately;
+they are not extra selectable input populations.

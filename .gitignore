@@ -30,3 +30,11 @@ data/zeeman_survivors_states.json
 *.zeus-master.err
 *.o[0-9]*
 *.e[0-9]*
+
+# Curated team inputs ship with main; generated runs remain ignored.
+!/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/
+!/data/particle_states/after_zeeman/corrected_projectant_19ring_20261005/**
+!/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/
+!/data/particle_states/after_2d_mot/final_ensemble_s0_1.3/**
+!/data/particle_states/after_2d_mot/final_validation_s0_1.3/
+!/data/particle_states/after_2d_mot/final_validation_s0_1.3/**
