@@ -156,3 +156,16 @@ def test_storage_records_are_detached_and_plan_is_immutable(tmp_path):
     assert plan.run["seed"] == 456
     with pytest.raises(TypeError):
         plan.configuration["resolved"]["simulation"]["mot_seed"] = 1
+
+
+@pytest.mark.parametrize("count", [5000, 50000])
+def test_zeus_plan_accepts_advertised_large_particle_selections(tmp_path, count):
+    root = tmp_path / "repo"
+    root.mkdir()
+    source_id = _source(root, rows=1500)
+    plan = _plan(root, _request(source_id, particle_count=count, execution_mode="zeus"))
+    records = plan.storage_records()
+    assert len(records["configuration"]["resolved"]["sampling"]["selected_identities"]) == count
+    for kind, record in records.items():
+        validate_record(kind, record)
+    assert not (root / "data/runs").exists()

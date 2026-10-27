@@ -87,3 +87,20 @@ def test_count_cannot_exceed_fresh_source_and_plan_is_immutable(tmp_path, monkey
     detached = plan.storage_records(); detached["run"]["seed"] = 1
     assert plan.run["seed"] == 11
     with pytest.raises(TypeError): plan.configuration["resolved"]["mot_3d"]["parameters"]["green_s0"] = 1
+
+
+@pytest.mark.parametrize("family", ["angled_donut", "single_pass"])
+def test_zeus_plan_accepts_large_particle_identity_lists(tmp_path, monkeypatch, family):
+    root = tmp_path / "repo"
+    root.mkdir()
+    source = ResolvedMot3DSource(
+        SOURCE_ID, "canonical_2d_campaign", "canonical_campaign_source", 50000,
+        "f" * 64,
+        ({"path": "data/particle_states/after_2d_mot/a.npy", "sha256": "1" * 64,
+          "size_bytes": 2400128, "shape": [50000, 6], "dtype": "float64", "survivor_count": 50000},),
+    )
+    plan = _plan(root, _request(family, particle_count=50000, execution_mode="zeus"), monkeypatch, source)
+    records = plan.storage_records()
+    assert len(records["configuration"]["resolved"]["sampling"]["selected_identities"]) == 50000
+    for kind, record in records.items():
+        validate_record(kind, record)

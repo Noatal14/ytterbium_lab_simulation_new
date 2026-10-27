@@ -404,3 +404,24 @@ def test_update_remains_bound_after_lock_when_run_path_is_swapped(
         store.update_status("zeeman", "run-1", cancelled)
         assert read_record(displaced / "status.json", "status") == cancelled
         assert (directory / "status.json").read_bytes() == replacement_status
+
+
+@pytest.mark.parametrize("count", [2049, 5000, 50000])
+def test_mot_particle_identity_lists_have_their_own_bounded_capacity(count):
+    value = configuration(family="mot_2d")
+    value["resolved"] = {"sampling": {"selected_identities": [[0, i] for i in range(count)]}}
+    assert decode_record("configuration", encode_record("configuration", value)) == value
+
+
+def test_particle_identity_capacity_does_not_relax_other_record_lists():
+    value = configuration(family="mot_2d")
+    value["resolved"] = {"other": list(range(2049))}
+    with pytest.raises(RunRecordError, match="list is too large"):
+        encode_record("configuration", value)
+    value["resolved"] = {"sampling": {"selected_identities": [[0, i] for i in range(50001)]}}
+    with pytest.raises(RunRecordError, match="list is too large"):
+        encode_record("configuration", value)
+    for pair in [[True, 0], [-1, 0], [0, 1, 2], [0, "1"]]:
+        value["resolved"] = {"sampling": {"selected_identities": [pair]}}
+        with pytest.raises(RunRecordError, match="Invalid selected"):
+            encode_record("configuration", value)

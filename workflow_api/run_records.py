@@ -123,7 +123,7 @@ def _relative(value: Any, label: str) -> str:
     return value
 
 
-def _finite_tree(value: Any, *, depth: int = 0) -> None:
+def _finite_tree(value: Any, *, depth: int = 0, path: tuple[str, ...] = ()) -> None:
     if depth > 32:
         raise RunRecordError("Record nesting is too deep.")
     if value is None or isinstance(value, (str, bool, int)):
@@ -137,17 +137,27 @@ def _finite_tree(value: Any, *, depth: int = 0) -> None:
             raise RunRecordError("Record contains a non-finite number.")
         return
     if isinstance(value, list):
-        if len(value) > _LIMITS["artifact_count_maximum"] * 16:
+        # Particle identities are bounded independently of artifact metadata.
+        # Both MOT planners store one [source_record_index, row_index] per atom.
+        selection = path == ("resolved", "sampling", "selected_identities")
+        maximum = 50_000 if selection else _LIMITS["artifact_count_maximum"] * 16
+        if len(value) > maximum:
             raise RunRecordError("Record list is too large.")
+        if selection and any(
+            not isinstance(pair, list) or len(pair) != 2
+            or any(type(index) is not int or index < 0 for index in pair)
+            for pair in value
+        ):
+            raise RunRecordError("Invalid selected particle identities.")
         for child in value:
-            _finite_tree(child, depth=depth + 1)
+            _finite_tree(child, depth=depth + 1, path=path + ("[]",))
         return
     if isinstance(value, dict):
         if len(value) > _LIMITS["artifact_count_maximum"] * 4:
             raise RunRecordError("Record object is too large.")
         for key, child in value.items():
             _text(key, "record key", maximum=128)
-            _finite_tree(child, depth=depth + 1)
+            _finite_tree(child, depth=depth + 1, path=path + (key,))
         return
     raise RunRecordError("Record contains a non-JSON value.")
 
@@ -285,7 +295,7 @@ def _validate_configuration(value: Any) -> None:
         _sha(spec["sha256"], f"{label} digest")
     if not isinstance(row["resolved"], dict):
         raise RunRecordError("Resolved configuration must be an object.")
-    _finite_tree(row["resolved"])
+    _finite_tree(row["resolved"], path=("resolved",))
 
 
 def _validate_inputs(value: Any) -> None:
