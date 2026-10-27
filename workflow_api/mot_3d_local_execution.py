@@ -34,7 +34,7 @@ from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION, require
 from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
 
 
-_MAX_SELECTED_BYTES = 1_000 * 6 * 8
+_MAX_SELECTED_BYTES = max(MOT_3D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"].values()) * 6 * 8
 
 
 class Mot3DEngine(Protocol):

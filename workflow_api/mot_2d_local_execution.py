@@ -41,7 +41,7 @@ from workflow_api.zeeman_local_execution import BoundedLocalExecutionPool
 from utils.RK4StHybridCustom import RK4StHybridCustom
 
 
-_MAX_SELECTED_BYTES = 1_000 * 6 * 8
+_MAX_SELECTED_BYTES = max(MOT_2D_RUN_SPECIFICATION["particle_count"]["maximum_by_execution_mode"].values()) * 6 * 8
 
 
 class Mot2DEngine(Protocol):

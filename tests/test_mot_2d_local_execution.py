@@ -287,3 +287,23 @@ def test_parent_aba_during_attested_read_is_rejected_before_engine(tmp_path, mon
         Mot2DLocalWorker(root, engine=engine).run(_worker_request(plan))
     assert swapped is True
     assert engine.calls == []
+
+
+@pytest.mark.parametrize("count", [5000, 50000])
+def test_zeus_package_materializes_admitted_large_selections(tmp_path, count):
+    from io import BytesIO
+    from workflow_api.mot_2d_zeus_execution import build_frozen_mot_2d_package
+    from workflow_api.zeus_snapshot import ZeusProfile
+    root = tmp_path / "repo"
+    root.mkdir()
+    request = _request(_source(root, rows=1500))
+    request.update(particle_count=count, execution_mode="zeus", npools=200)
+    plan = build_mot_2d_run_plan(request, repository_root=root, run_id="mot2d-large",
+        git_revision="b" * 40, created_utc=NOW)
+    package = build_frozen_mot_2d_package(root, plan.storage_records(),
+        ZeusProfile("tal.noa", "/home/tal.noa/ytterbium_lab_simulation_new"))
+    selected = np.load(BytesIO(package.selected_states), allow_pickle=False)
+    assert selected.shape == (count, 6)
+    assert package.selection_sha256 == plan.configuration["resolved"]["sampling"]["selected_identities_sha256"]
+    assert b"ncpus=200:mem=64gb" in package.pbs
+    assert not (root / "data/runs").exists()

@@ -290,3 +290,15 @@ def test_zeus_preview_confirm_refresh_is_idempotent_and_publishes_results(
         root, "mot_3d", "mot3d-local-1"
     )
     assert inspected.integrity == "complete_verified"
+
+
+@pytest.mark.parametrize("count", [5000, 50000])
+def test_shared_3d_selection_validator_accepts_zeus_capacity_and_rejects_overflow(count):
+    from workflow_api.mot_3d_local_execution import _validated_selection
+    identities = [[0, i] for i in range(count)]
+    sampling = dict(MOT_3D_RUN_SPECIFICATION["sampling"])
+    sampling.update(selected_count=count, selected_identities=identities,
+        selected_identities_sha256=hashlib.sha256(json.dumps(identities, separators=(",", ":")).encode()).hexdigest())
+    assert len(_validated_selection(sampling, [{"survivor_count": count}], count)) == count
+    with pytest.raises(WorkerProductError, match="selection policy"):
+        _validated_selection(sampling, [{"survivor_count": count}], 50001)
