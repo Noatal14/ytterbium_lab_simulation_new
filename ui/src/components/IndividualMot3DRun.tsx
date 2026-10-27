@@ -1,4 +1,9 @@
 import {
+  localRunNeedsInspection,
+  SavedLocalRunNotice,
+  useLocalRunInspection,
+} from "../features/individual/localRunInspection";
+import {
   LocalRunPublication,
   observeNewLocalRun,
   localRunPublicationMessage,
@@ -250,6 +255,8 @@ export function IndividualMot3DRun({
     requestSequence = useRef(0),
     mounted = useRef(true);
   const [recoveryPending, setRecoveryPending] = useState(false);
+  const { inspectionRun, holdForInspection } =
+    useLocalRunInspection<Mot3DRun>(api);
 
   const [zeusHeld, setZeusHeld] = useState(false);
   const [zeusResources, setZeusResources] =
@@ -333,6 +340,13 @@ export function IndividualMot3DRun({
       }
       const found = await recoverIndividualRun("mot_3d", api, isCurrent);
       if (!isCurrent() || !found) return;
+      if (holdForInspection(found as Mot3DRun)) {
+        setRunId(null);
+        setRun(null);
+        setRecoveryPending(false);
+        setStep("configure");
+        return;
+      }
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot3DRun);
@@ -378,7 +392,7 @@ export function IndividualMot3DRun({
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, holdForInspection]);
 
   const selected = sources.find((row) => row.id === sourceId);
   const maximumParticles = Math.min(
@@ -774,6 +788,18 @@ export function IndividualMot3DRun({
         {busy ? "Validating the reviewed setup" : `Current step: ${step}`}
       </div>
 
+      {step === "configure" && inspectionRun && (
+        <SavedLocalRunNotice
+          run={inspectionRun}
+          disabled={busy || recoveryPending}
+          onInspect={() => {
+            setRunId(inspectionRun.display_name);
+            setRun(inspectionRun);
+            setMode("local");
+            setStep("monitor");
+          }}
+        />
+      )}
       {step === "configure" && (
         <form
           className="creation-form"
@@ -1380,6 +1406,23 @@ export function IndividualMot3DRun({
             ))}
           {mode === "local" && run?.execution.progress && (
             <RunProgressPanel progress={run.execution.progress} />
+          )}
+          {localRunNeedsInspection(run) && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy || recoveryPending}
+              onClick={() => {
+                if (!run || !holdForInspection(run)) return;
+                setRunId(null);
+                setRun(null);
+                setPreview(null);
+                setError(null);
+                setStep("configure");
+              }}
+            >
+              Configure a separate simulation
+            </button>
           )}
           <div className="form-actions">
             <button

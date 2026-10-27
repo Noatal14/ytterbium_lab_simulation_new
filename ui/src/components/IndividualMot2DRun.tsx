@@ -1,4 +1,9 @@
 import {
+  localRunNeedsInspection,
+  SavedLocalRunNotice,
+  useLocalRunInspection,
+} from "../features/individual/localRunInspection";
+import {
   LocalRunPublication,
   observeNewLocalRun,
   localRunPublicationMessage,
@@ -188,6 +193,8 @@ export function IndividualMot2DRun({
   const title = useRef<HTMLHeadingElement>(null);
   const refreshRequest = useRef(0);
   const [recoveryPending, setRecoveryPending] = useState(false);
+  const { inspectionRun, holdForInspection } =
+    useLocalRunInspection<Mot2DRun>(api);
 
   const [zeusHeld, setZeusHeld] = useState(false);
   const [step, setStep] = useState<Step>("configure"),
@@ -258,6 +265,13 @@ export function IndividualMot2DRun({
         () => active && id === refreshRequest.current,
       );
       if (!active || id !== refreshRequest.current || !found) return;
+      if (holdForInspection(found as Mot2DRun)) {
+        setRunId(null);
+        setRun(null);
+        setRecoveryPending(false);
+        setStep("configure");
+        return;
+      }
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as Mot2DRun);
@@ -303,7 +317,7 @@ export function IndividualMot2DRun({
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, holdForInspection]);
   const selected = sources.find((row) => row.id === source),
     max = Math.min(
       mode === "local" ? 1000 : 50000,
@@ -604,6 +618,18 @@ export function IndividualMot2DRun({
       </div>
       {publicationPending && !error && (
         <p role="status">{localRunPublicationMessage}</p>
+      )}
+      {step === "configure" && inspectionRun && (
+        <SavedLocalRunNotice
+          run={inspectionRun}
+          disabled={busy || recoveryPending}
+          onInspect={() => {
+            setRunId(inspectionRun.display_name);
+            setRun(inspectionRun);
+            setMode("local");
+            setStep("monitor");
+          }}
+        />
       )}
       {step === "configure" && (
         <form
@@ -1050,6 +1076,23 @@ export function IndividualMot2DRun({
             ))}
           {mode === "local" && run?.execution.progress && (
             <RunProgressPanel progress={run.execution.progress} />
+          )}
+          {localRunNeedsInspection(run) && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy || recoveryPending}
+              onClick={() => {
+                if (!run || !holdForInspection(run)) return;
+                setRunId(null);
+                setRun(null);
+                setPreview(null);
+                setError(null);
+                setStep("configure");
+              }}
+            >
+              Configure a separate simulation
+            </button>
           )}
           <div className="form-actions">
             <button

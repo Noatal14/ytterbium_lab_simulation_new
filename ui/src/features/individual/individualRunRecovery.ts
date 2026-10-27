@@ -18,7 +18,11 @@ export type RecoverableRun = {
   display_name: string;
   lifecycle: string;
   record_state: string;
-  execution: { mode: RecoverableExecutionMode; locally_scheduled?: boolean };
+  execution: {
+    mode: RecoverableExecutionMode;
+    locally_scheduled?: boolean;
+    progress?: unknown;
+  };
 };
 
 export function recoveredRunStep(

@@ -1,4 +1,9 @@
 import {
+  localRunNeedsInspection,
+  SavedLocalRunNotice,
+  useLocalRunInspection,
+} from "../features/individual/localRunInspection";
+import {
   observeNewLocalRun,
   localRunPublicationMessage,
   useLocalRunPublication,
@@ -216,6 +221,8 @@ export function monitorCopy(
 
 export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
   const [recoveryPending, setRecoveryPending] = useState(false);
+  const { inspectionRun, holdForInspection } =
+    useLocalRunInspection<IndividualRun>(api);
   const [zeusHeld, setZeusHeld] = useState(false);
   const [zeusResources, setZeusResources] =
     useState<IndividualZeusResources | null>(null);
@@ -302,6 +309,13 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
       }
       const found = await recoverIndividualRun("zeeman", api, isCurrent);
       if (!isCurrent() || !found) return;
+      if (holdForInspection(found as IndividualRun)) {
+        setRunId(null);
+        setRun(null);
+        setRecoveryPending(false);
+        setStep("configure");
+        return;
+      }
       setRunId(found.display_name);
       setMode(found.execution.mode);
       setRun(found as IndividualRun);
@@ -347,7 +361,7 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
     return () => {
       active = false;
     };
-  }, [api]);
+  }, [api, holdForInspection]);
 
   async function validate() {
     const id = ++request.current;
@@ -706,6 +720,18 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
         {busy ? "Working" : `Current step: ${step}`}
       </div>
 
+      {step === "configure" && inspectionRun && (
+        <SavedLocalRunNotice
+          run={inspectionRun}
+          disabled={busy || recoveryPending}
+          onInspect={() => {
+            setRunId(inspectionRun.display_name);
+            setRun(inspectionRun);
+            setMode("local");
+            setStep("monitor");
+          }}
+        />
+      )}
       {step === "configure" && (
         <form
           className="creation-form"
@@ -1165,7 +1191,11 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
               <div>
                 <dt>Status</dt>
                 <dd>
-                  {zeusHeld ? "held" : run.record_state.replaceAll("_", " ")}
+                  {localRunNeedsInspection(run)
+                    ? "Needs inspection"
+                    : zeusHeld
+                      ? "held"
+                      : run.record_state.replaceAll("_", " ")}
                 </dd>
               </div>
               <div>
@@ -1181,6 +1211,23 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
                 <dd>{run.retention.status.replaceAll("_", " ")}</dd>
               </div>
             </dl>
+          )}
+          {localRunNeedsInspection(run) && (
+            <button
+              type="button"
+              className="secondary-button"
+              disabled={busy || recoveryPending}
+              onClick={() => {
+                if (!run || !holdForInspection(run)) return;
+                setRunId(null);
+                setRun(null);
+                setPreview(null);
+                setError(null);
+                setStep("configure");
+              }}
+            >
+              Configure a separate simulation
+            </button>
           )}
           <div className="form-actions">
             <button
