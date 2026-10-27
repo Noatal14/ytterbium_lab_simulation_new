@@ -566,7 +566,7 @@ def plan_from_frozen_manifest(
         "source": source_fingerprint,
         "model": manifest["provenance"]["physical_model_sha256"],
         "design": manifest["fixed_design"],
-    }, sort_keys=True).encode()).hexdigest()
+        **({"execution_checkout": manifest["execution_checkout"]} if "execution_checkout" in manifest else {}),    }, sort_keys=True).encode()).hexdigest()
     return CampaignPlan(
         str(manifest["name"]), destination.name, tuple(map(float, manifest["s0_values"])),
         "canonical-cli", destination, manifest, files, source_fingerprint,
@@ -574,7 +574,7 @@ def plan_from_frozen_manifest(
     )
 
 
-def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[Any], source: dict[str, Any], snapshot: RepositorySnapshot, acceptance_profile_id: str | None = None) -> CampaignPlan:
+def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[Any], source: dict[str, Any], snapshot: RepositorySnapshot, acceptance_profile_id: str | None = None, execution_checkout: str | None = None) -> CampaignPlan:
     repository_root = repository_root.resolve(); name = name.strip()
     if not name or len(name) > 120: raise ValueError("Campaign name is required and must be at most 120 characters.")
     if not SLUG.fullmatch(slug): raise ValueError("Campaign folder is invalid.")
@@ -593,13 +593,14 @@ def build_plan(repository_root: Path, *, name: str, slug: str, s0_values: list[A
         zeeman_profile=frozen["profile"],
         frozen_inputs={role: [by_seed[seed] for seed in seeds] for role, seeds in ROLE_SEEDS.items()},
         git_commit=snapshot.commit, physical_model_sha256=model_hash,
-        hashed_files=hashed_files, acceptance_profile_id=acceptance_profile_id,
+        hashed_files=hashed_files, acceptance_profile_id=acceptance_profile_id, execution_checkout=execution_checkout,
     )
     files = render_campaign_files(manifest, destination, repository_root)
     plan_digest = hashlib.sha256(b"".join(name.encode() + b"\0" + data for name, data in sorted(files.items()))).hexdigest()
     semantic = hashlib.sha256(json.dumps({
         "s0": sorted(values), "source": source["fingerprint"],
         "model": model_hash, "design": manifest["fixed_design"],
+        **({"execution_checkout": manifest["execution_checkout"]} if "execution_checkout" in manifest else {}),
     }, sort_keys=True).encode()).hexdigest()
     return CampaignPlan(name, slug, values, source["id"], destination, manifest, files, source["fingerprint"], plan_digest, snapshot, semantic)
 
@@ -670,7 +671,8 @@ def _acceptance_pbs(manifest: dict[str, Any], stage: str, rendered: bytes) -> by
     """Apply authenticated resources to the normal stage renderer's PBS header."""
     profile = validate_campaign_policy(manifest)
     if profile is None:
-        return rendered
+        from workflow_api.campaign_deployment import render_normal_deployment
+        return render_normal_deployment(manifest, rendered)
     policy = profile.stage('mot_2d', stage)
     seconds = policy['walltime_seconds']
     walltime = f'{seconds // 3600:02d}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}'

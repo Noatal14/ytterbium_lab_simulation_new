@@ -1,5 +1,6 @@
 """Pinned receiver: submit only the prepared canonical Confirmation PBS."""
 from __future__ import annotations
+from workflow_api.campaign_deployment import campaign_checkout_paths
 import base64, hashlib, json, os, re, stat, subprocess, sys, tempfile, time
 from pathlib import Path, PurePosixPath
 
@@ -89,7 +90,7 @@ def scheduler_state(output,job_id,task_count):
 def main():
     if len(sys.argv)!=5 or sys.argv[1] not in {"inspect","submit","status"}: fail("invalid_request")
     operation,username,project,encoded=sys.argv[1:]
-    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}",username) or project!=f"/home/{username}/ytterbium_lab_simulation_new" and project!=f"/home/{username}/ytterbium_lab_simulation_ui_acceptance": fail("invalid_request")
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9._-]{0,31}",username) or PurePosixPath(project) not in campaign_checkout_paths(username): fail("invalid_request")
     try: payload=json.loads(base64.urlsafe_b64decode(encoded));root=Path(project).resolve(strict=True);relative=PurePosixPath(payload["campaign"])
     except Exception: fail("invalid_request")
     if set(payload)!={"campaign","commit","confirmation_files","transition_nonce","transition_digest","submission_key","nonce"} or relative.is_absolute() or ((len(relative.parts) != 4 and not (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")) and not (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")) or relative.parts[:3]!=("data","optimization","mot_2d") or any(part in {"",".",".."} for part in relative.parts): fail("invalid_request")
@@ -195,7 +196,7 @@ def _authorize_acceptance_campaign(campaign, root):
         if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             raise ValueError('Unsafe campaign manifest.')
         value = json.loads(manifest_path.read_text(encoding='utf-8'))
-        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+        if is_acceptance_manifest(value) or 'acceptance' in value or 'execution_checkout' in value or root.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or 'ui_acceptance' in campaign.parts:
             from workflow_api.acceptance_remote import assert_campaign_target
             from workflow_api.mot_2d_spec import validate_campaign_policy
             validate_campaign_policy(value)

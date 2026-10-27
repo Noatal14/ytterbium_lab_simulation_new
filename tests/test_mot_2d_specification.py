@@ -117,13 +117,16 @@ def test_finalization_artifacts_expand_in_manifest_s0_order():
     )
 
 
+@pytest.mark.parametrize("isolated", [False, True])
 def test_production_renderer_freezes_twenty_sealed_ensembles_and_resources(
-    tmp_path: Path,
+    tmp_path: Path, isolated,
 ):
     root = tmp_path
     campaign = root / "data/optimization/mot_2d/campaign"
     campaign.mkdir(parents=True)
     manifest = _manifest("sensitivity")
+    if isolated:
+        manifest["execution_checkout"] = "ytterbium_lab_simulation_ui_test"
     manifest["seed_roles"] = {"sealed_validation": list(range(3015, 3035))}
     manifest["mot_seeds"] = {"sealed_validation": list(range(43015, 43035))}
     confirmation_rows = []
@@ -157,6 +160,8 @@ def test_production_renderer_freezes_twenty_sealed_ensembles_and_resources(
     assert set(rendered) == set(
         MOT_2D_SPECIFICATION["stages"]["production"]["artifacts"]
     )
+    expected = "ytterbium_lab_simulation_ui_test" if isolated else "ytterbium_lab_simulation_new"
+    assert ('${HOME}/' + expected).encode() in rendered["jobs/06_production.pbs"]
     tasks = json.loads(rendered["production/tasks.json"])
     assert len(tasks) == 20
     assert [task["zeeman_seed"] for task in tasks] == list(range(3015, 3035))
@@ -176,13 +181,19 @@ def test_finalization_artifact_expansion_rejects_ambiguous_s0_values(values):
         expand_finalization_artifacts(values)
 
 
-def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Path):
+@pytest.mark.parametrize("isolated", [False, True])
+def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Path, isolated):
+    def deployment_manifest(stage):
+        value = _manifest(stage)
+        if isolated:
+            value["execution_checkout"] = "ytterbium_lab_simulation_ui_test"
+        return value
     root = tmp_path
     campaign = root / "data/optimization/mot_2d/campaign"
     campaign.mkdir(parents=True)
     stages = MOT_2D_SPECIFICATION["stages"]
-    smoke = render_campaign_files(_manifest("smoke"), campaign, root)
-    screen = render_screen_transition(_manifest("smoke"), campaign, root)
+    smoke = render_campaign_files(deployment_manifest("smoke"), campaign, root)
+    screen = render_screen_transition(deployment_manifest("smoke"), campaign, root)
     screen_rows = [
         {
             "s0": 1.3,
@@ -193,7 +204,7 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
         }
         for index in range(3)
     ]
-    refine = render_refine_transition(_manifest("screen"), campaign, root, screen_rows)
+    refine = render_refine_transition(deployment_manifest("screen"), campaign, root, screen_rows)
     refine_rows = [
         {
             "s0": 1.3,
@@ -205,7 +216,7 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
         for index in range(5)
     ]
     confirmation = render_confirmation_transition(
-        _manifest("refine"), campaign, root, refine_rows
+        deployment_manifest("refine"), campaign, root, refine_rows
     )
     confirmation_rows = []
     for index in range(5):
@@ -223,7 +234,7 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
             },
         })
     sensitivity = render_sensitivity_transition(
-        _manifest("confirmation"), campaign, root, confirmation_rows
+        deployment_manifest("confirmation"), campaign, root, confirmation_rows
     )
     rendered = {
         "smoke": smoke,
@@ -232,6 +243,11 @@ def test_v1_stage_artifacts_and_resources_match_canonical_renderers(tmp_path: Pa
         "confirmation": confirmation,
         "sensitivity": sensitivity,
     }
+    for files in rendered.values():
+        for name, content in files.items():
+            if name.endswith(".pbs"):
+                expected = "ytterbium_lab_simulation_ui_test" if isolated else "ytterbium_lab_simulation_new"
+                assert ('${HOME}/' + expected).encode() in content
     for stage in rendered:
         assert set(rendered[stage]) == set(stages[stage]["artifacts"])
     jobs = {

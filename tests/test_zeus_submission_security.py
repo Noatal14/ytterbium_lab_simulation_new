@@ -927,6 +927,12 @@ def test_actual_embedded_submit_receipt_is_consumed_by_actual_screening_inspect(
     payload = {'campaign':campaign.as_posix(),'commit':commit,'prepared_files':prepared,'submission_key':receipt['submission_key'],'transition_files':{name:hashlib.sha256(raw).hexdigest() for name,raw in transition.items()}}
     original_path = Path
     monkeypatch.setattr(remote, 'Path', lambda value: project.parent.parent if value == '/home' else original_path(value))
+    monkeypatch.setattr(remote, 'campaign_checkout_paths', lambda username: {
+        project.parent / name for name in (
+            'ytterbium_lab_simulation_new', 'ytterbium_lab_simulation_ui_acceptance',
+            'ytterbium_lab_simulation_ui_test',
+        )
+    })
     original_authorize = acceptance_remote.assert_campaign_target
     def authorize(value, username, project_arg, campaign_arg=None):
         if Path(project_arg) == project:

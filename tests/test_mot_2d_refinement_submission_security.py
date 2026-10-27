@@ -381,8 +381,8 @@ def test_refinement_submission_bad_completion_timestamp_is_terminal(tmp_path, ti
 @pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_receiver_submits_four_verified_byte_streams_with_exact_dependencies(tmp_path, monkeypatch, capsys):
     source=(Path(__file__).parents[1]/"workflow_api/zeus_refinement_submission_remote.py").read_text()
-    source=source.replace(' or project!=f"/home/{username}/ytterbium_lab_simulation_new"', '')
     namespace={"__name__":"receiver_under_test"};exec(compile(source,"<receiver>","exec"),namespace)
+    namespace["campaign_checkout_paths"] = lambda username: {Path(tmp_path / "repo")}
     root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign";(campaign/"jobs").mkdir(parents=True);(campaign/"refine").mkdir();(campaign/".mot_ui/transitions").mkdir(parents=True)
     commit="a"*40;names=[*(f"jobs/03_refine_round_{i:02d}.pbs" for i in range(1,5)),"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh"]
     for index,name in enumerate(names):
@@ -442,8 +442,9 @@ def test_partial_status_never_attaches_dependencies_to_unsubmitted_rounds(tmp_pa
 
 
 def _fault_receiver(tmp_path,monkeypatch,round_number,mode):
-    source=(Path(__file__).parents[1]/"workflow_api/zeus_refinement_submission_remote.py").read_text().replace(' or project!=f"/home/{username}/ytterbium_lab_simulation_new"','')
+    source=(Path(__file__).parents[1]/"workflow_api/zeus_refinement_submission_remote.py").read_text()
     ns={"__name__":"fault_receiver"};exec(compile(source,"<receiver>","exec"),ns)
+    ns["campaign_checkout_paths"] = lambda username: {Path(tmp_path / "repo")}
     root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign";(campaign/"jobs").mkdir(parents=True);(campaign/"refine").mkdir();state=campaign/".mot_ui/transitions";state.mkdir(parents=True)
     commit="a"*40;names=[*(f"jobs/03_refine_round_{i:02d}.pbs" for i in range(1,5)),"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh"]
     for i,name in enumerate(names):

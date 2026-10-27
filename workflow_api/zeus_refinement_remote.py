@@ -1,5 +1,6 @@
 """Pinned read-only Screening inspector and no-submit Refinement publisher."""
 from __future__ import annotations
+from workflow_api.campaign_deployment import campaign_checkout_paths
 import base64,hashlib,json,math,os,re,stat,subprocess,sys,time
 from pathlib import Path,PurePosixPath
 
@@ -46,7 +47,7 @@ def main():
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9._-]{0,31}',username):fail('invalid_request')
     try:root=Path(requested).resolve(strict=True);payload=json.loads(base64.urlsafe_b64decode(encoded))
     except Exception:fail('invalid_request')
-    if root not in {Path('/home')/username/'ytterbium_lab_simulation_new', Path('/home')/username/'ytterbium_lab_simulation_ui_acceptance'} or not isinstance(payload,dict):fail('remote_project_missing')
+    if root not in campaign_checkout_paths(username) or not isinstance(payload,dict):fail('remote_project_missing')
     inspect_keys={'campaign','commit','prepared_files','screen_files','screen_digest','screening_submission_key'};prepare_keys=inspect_keys|{'rows_digest','refine_files','nonce'}
     if set(payload)!=(inspect_keys if operation=='inspect' else prepare_keys):fail('invalid_request')
     relative=payload['campaign'];commit=payload['commit'];pure=PurePosixPath(relative)
@@ -207,7 +208,7 @@ def _authorize_acceptance_campaign(campaign, root):
         if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             raise ValueError('Unsafe campaign manifest.')
         value = json.loads(manifest_path.read_text(encoding='utf-8'))
-        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+        if is_acceptance_manifest(value) or 'acceptance' in value or 'execution_checkout' in value or root.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or 'ui_acceptance' in campaign.parts:
             from workflow_api.acceptance_remote import assert_campaign_target
             from workflow_api.mot_2d_spec import validate_campaign_policy
             validate_campaign_policy(value)

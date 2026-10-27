@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { App } from "../App";
 import { fixtureApi } from "./campaignFixture";
 import { afterEach, expect, it, vi } from "vitest";
-import { zeusProjectDirectory, zeusTestMode } from "../api/zeusEnvironment";
+import { campaignExecutionCheckout, zeusProjectDirectory, zeusTestMode } from "../api/zeusEnvironment";
 afterEach(() => vi.unstubAllEnvs());
 it("selects the fixed isolated target only in the explicit test mode", () => {
   vi.stubEnv("MODE", "zeus-test");
@@ -31,4 +31,13 @@ it("uses a fixed deployment checkout without creating a second UI version", () =
   expect(zeusProjectDirectory("tal.noa")).toBe("/home/tal.noa/ytterbium_lab_simulation_ui_test");
   vi.stubEnv("VITE_ZEUS_CHECKOUT", "/arbitrary/path");
   expect(() => zeusProjectDirectory("tal.noa")).toThrow(/Unsupported Zeus checkout/);
+});
+
+it("binds normal 2D creation to the explicit isolated deployment, never acceptance", () => {
+  vi.stubEnv("MODE", "development");
+  expect(campaignExecutionCheckout()).toBeUndefined();
+  vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_ui_test");
+  expect(campaignExecutionCheckout()).toBe("ytterbium_lab_simulation_ui_test");
+  vi.stubEnv("MODE", "ui-acceptance");
+  expect(campaignExecutionCheckout()).toBeUndefined();
 });

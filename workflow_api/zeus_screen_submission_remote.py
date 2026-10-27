@@ -1,5 +1,6 @@
 """Pinned Zeus receiver for exactly one screening-array submission."""
 from __future__ import annotations
+from workflow_api.campaign_deployment import campaign_checkout_paths
 import base64,hashlib,json,os,re,subprocess,sys,time,stat
 import math
 from pathlib import Path,PurePosixPath
@@ -64,7 +65,7 @@ def main():
     root=Path(requested)
     try:resolved=root.resolve(strict=True)
     except OSError:fail("remote_project_missing")
-    if resolved not in {Path("/home")/username/"ytterbium_lab_simulation_new", Path("/home")/username/"ytterbium_lab_simulation_ui_acceptance"}:fail("remote_project_missing")
+    if resolved not in campaign_checkout_paths(username):fail("remote_project_missing")
     root=resolved
     try:payload=json.loads(base64.urlsafe_b64decode(encoded).decode())
     except Exception:fail("invalid_request")
@@ -176,7 +177,7 @@ def _authorize_acceptance_campaign(campaign, root):
         if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             raise ValueError('Unsafe campaign manifest.')
         value = json.loads(manifest_path.read_text(encoding='utf-8'))
-        if is_acceptance_manifest(value) or 'acceptance' in value or root.name == 'ytterbium_lab_simulation_ui_acceptance' or 'ui_acceptance' in campaign.parts:
+        if is_acceptance_manifest(value) or 'acceptance' in value or 'execution_checkout' in value or root.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or 'ui_acceptance' in campaign.parts:
             from workflow_api.acceptance_remote import assert_campaign_target
             from workflow_api.mot_2d_spec import validate_campaign_policy
             validate_campaign_policy(value)

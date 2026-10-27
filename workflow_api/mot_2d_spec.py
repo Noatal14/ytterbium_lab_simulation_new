@@ -29,6 +29,7 @@ RELEVANT_FILES = (
     "workflow_api/specifications/ui_acceptance_v1.json",
     "workflow_api/platform_io.py",
     "workflow_api/mot_2d_sources.py",
+    "workflow_api/campaign_deployment.py",
     "workflow_api/smoke_receipt.py",
     "workflow_api/mot_2d_late_stage.py",
     "workflow_api/mot_2d_prediction.py",
@@ -69,6 +70,7 @@ def build_manifest(
     zeeman_profile: str, frozen_inputs: dict[str, list[dict[str, Any]]],
     git_commit: str, physical_model_sha256: str, hashed_files: list[str],
     acceptance_profile_id: str | None = None,
+    execution_checkout: str | None = None,
 ) -> dict[str, Any]:
     frozen_inputs = deepcopy(frozen_inputs)
     records = [row for rows in frozen_inputs.values() for row in rows]
@@ -103,6 +105,12 @@ def build_manifest(
         },
         "fixed_design": deepcopy(FIXED_DESIGN),
     }
+    if execution_checkout is not None:
+        from workflow_api.campaign_deployment import normal_checkout
+        manifest["execution_checkout"] = execution_checkout
+        normal_checkout(manifest)
+        if acceptance_profile_id is not None:
+            raise ValueError("TEST ONLY policy cannot override its deployment.")
     if historical_evidence is not None:
         source = manifest["ensemble_source"]
         for key in ("laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"):

@@ -17,3 +17,9 @@ export function isCampaignProjectDirectory(value: unknown): boolean {
   const match = /^\/home\/([A-Za-z][A-Za-z0-9._-]{0,31})\/[^/]+$/.exec(value);
   return match !== null && value === zeusProjectDirectory(match[1]);
 }
+
+export function campaignExecutionCheckout(): string | undefined {
+  const project = zeusProjectDirectory("deployment");
+  return project.endsWith("/ytterbium_lab_simulation_ui_test")
+    ? "ytterbium_lab_simulation_ui_test" : undefined;
+}

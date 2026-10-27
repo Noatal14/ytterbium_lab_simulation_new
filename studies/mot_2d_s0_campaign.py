@@ -255,7 +255,7 @@ def paths(root):
     return root, root / "campaign.json", root / "jobs"
 
 
-def write_pbs(path, name, array, ncpus, walltime, command, revision=None):
+def write_pbs(path, name, array, ncpus, walltime, command, revision=None, manifest=None):
     throttle = 3 if ncpus == 200 else 4 if ncpus == 150 else 1
     array_line = ""
     scalar_index_line = ""
@@ -267,7 +267,7 @@ def write_pbs(path, name, array, ncpus, walltime, command, revision=None):
         else:
             array_line = f"#PBS -J {array}%{throttle}\n"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f"""#!/bin/bash
+    rendered = f"""#!/bin/bash
 #PBS -N {name}
 #PBS -q zeus_combined_q
 {array_line}#PBS -l select=1:ncpus={ncpus}:mem=64gb
@@ -291,7 +291,9 @@ mkdir -p "${{RUN_TMP}}"
 export TMPDIR="${{RUN_TMP}}" TMP="${{RUN_TMP}}" TEMP="${{RUN_TMP}}"
 trap 'rm -rf -- "${{RUN_TMP}}"' EXIT
 {command}
-""", encoding="utf-8")
+""".encode("utf-8")
+    from workflow_api.campaign_deployment import render_normal_deployment
+    path.write_bytes(render_normal_deployment(manifest or {}, rendered))
 
 
 def create(args):
@@ -369,7 +371,7 @@ def prepare(root, manifest, stage, specs, number, ncpus, walltime):
     write_pbs(job, f"mot2d_{stage[:5]}", f"0-{len(specs)-1}", ncpus, walltime,
               f"python -m studies.mot_2d_s0_campaign {stage}-task "
               f"--campaign {shlex.quote(root_identity)} --task-index $PBS_ARRAY_INDEX",
-              manifest["provenance"]["git_commit"])
+              manifest["provenance"]["git_commit"], manifest=manifest)
     manifest["stage"] = stage
     manifest["stages"][stage] = {
         "tasks": len(specs),

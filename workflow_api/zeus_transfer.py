@@ -274,7 +274,7 @@ try:
             for pure,(file_parent_fd,temporary,target_name,digest) in received.items():
                 os.rename(temporary,target_name,src_dir_fd=file_parent_fd,dst_dir_fd=file_parent_fd); os.close(file_parent_fd)
             if not checkout_matches(): raise CheckoutMismatch()
-            if project.name=='ytterbium_lab_simulation_ui_acceptance' or campaign_parts[2]=='mot_3d':
+            if project.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or campaign_parts[2]=='mot_3d':
                 if campaign_parts[2]=='mot_3d':
                     sys.dont_write_bytecode=True
                     sys.path.insert(0,str(project/'atomsmltr/src'))

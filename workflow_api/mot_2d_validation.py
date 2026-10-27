@@ -115,6 +115,11 @@ def modern_contract(
 ) -> tuple[bool, tuple[str, ...]]:
     errors: list[str] = []
     try:
+        from workflow_api.campaign_deployment import normal_checkout
+        normal_checkout(manifest)
+    except ValueError as error:
+        errors.append(str(error))
+    try:
         validate_campaign_policy(manifest)
     except ValueError as error:
         errors.append(str(error))

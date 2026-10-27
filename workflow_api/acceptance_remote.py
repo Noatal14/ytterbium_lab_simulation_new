@@ -6,8 +6,7 @@ from typing import Any, Mapping
 
 from workflow_api.acceptance_profile import assert_acceptance_path, policy_for_manifest
 
-ACCEPTANCE_CHECKOUT = 'ytterbium_lab_simulation_ui_acceptance'
-SCIENTIFIC_CHECKOUT = 'ytterbium_lab_simulation_new'
+from workflow_api.campaign_deployment import ACCEPTANCE_CHECKOUT, SCIENTIFIC_CHECKOUT, normal_checkout
 
 
 def assert_campaign_target(manifest: Mapping[str, Any], username: str, project_directory: str | Path,
@@ -21,7 +20,9 @@ def assert_campaign_target(manifest: Mapping[str, Any], username: str, project_d
     if not isinstance(username, str) or not USERNAME_RE.fullmatch(username):
         raise ValueError('Invalid campaign account.')
     profile = policy_for_manifest(manifest)
-    expected = PurePosixPath('/home') / username / (ACCEPTANCE_CHECKOUT if profile else SCIENTIFIC_CHECKOUT)
+    if profile is not None and 'execution_checkout' in manifest:
+        raise ValueError('TEST ONLY policy cannot override its deployment.')
+    expected = PurePosixPath('/home') / username / (ACCEPTANCE_CHECKOUT if profile else normal_checkout(manifest))
     if str(project_directory) != str(expected):
         raise ValueError('Campaign policy does not match the isolated Zeus checkout.')
     if campaign_path is not None:

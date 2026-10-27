@@ -170,6 +170,7 @@ def _receiver_fixture(tmp_path,monkeypatch,*,wrong_dependency=False,failed_child
     monkeypatch.setattr(plan_module,"render_confirmation_transition",lambda *_:rendered)
     real_path=Path;home=tmp_path
     monkeypatch.setattr(receiver,"Path",lambda value:home if str(value)=="/home" else real_path(value))
+    monkeypatch.setattr(receiver, "campaign_checkout_paths", lambda username: {home / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_acceptance", "ytterbium_lab_simulation_ui_test")})
     import workflow_api.zeus_snapshot as snapshot
     def parsed(output):
         match=output.splitlines()[0].split(":",1)[1].strip();match=re.sub(r"\[\d+\]", "[]", match);states=["completed_success"]*3

@@ -89,6 +89,7 @@ class CreationService:
                     and source_fingerprint == plan.source_fingerprint
                     and model == plan.manifest["provenance"]["physical_model_sha256"]
                     and manifest["fixed_design"] == plan.manifest["fixed_design"]
+                    and manifest.get("execution_checkout") == plan.manifest.get("execution_checkout")
                 )
             except (OSError, ValueError, TypeError, KeyError):
                 continue
@@ -102,15 +103,19 @@ class CreationService:
 
     def preview(self, request: dict[str, Any], session: str) -> dict[str, Any]:
         self._rate_limit(session)
-        if set(request) != {"name", "slug", "s0_values", "source_id"}:
+        if set(request) not in ({"name", "slug", "s0_values", "source_id"}, {"name", "slug", "s0_values", "source_id", "execution_checkout"}):
             raise ValueError("Preview fields are invalid.")
         if not isinstance(request["name"], str) or not isinstance(request["slug"], str) or not isinstance(request["source_id"], str) or not isinstance(request["s0_values"], list):
             raise ValueError("Preview fields are invalid.")
+        if "execution_checkout" in request:
+            from workflow_api.campaign_deployment import ISOLATED_CHECKOUT
+            if request["execution_checkout"] != ISOLATED_CHECKOUT:
+                raise ValueError("Preview deployment is invalid.")
         sources = {row["id"]: row for row in list_sources(self.root, acceptance_profile_id=self.acceptance_profile_id)["sources"]}
         source = sources.get(request["source_id"])
         if source is None: raise ValueError("The selected Zeeman source is unavailable.")
         before = self.snapshots.capture()
-        plan = build_plan(self.root, name=request["name"], slug=request["slug"], s0_values=request["s0_values"], source=source, snapshot=before, acceptance_profile_id=self.acceptance_profile_id)
+        plan = build_plan(self.root, name=request["name"], slug=request["slug"], s0_values=request["s0_values"], source=source, snapshot=before, acceptance_profile_id=self.acceptance_profile_id, execution_checkout=request.get("execution_checkout"))
         after = self.snapshots.capture()
         if before != after: raise RuntimeError("Repository changed during preview.")
         duplicate = self._duplicate(plan)
@@ -132,7 +137,7 @@ class CreationService:
                 raise RuntimeError("Too many pending previews.") from error
         return {
             "preview_token": raw, "expires_in_seconds": 300,
-            "plan": {"name": plan.name, "path": plan.destination.relative_to(self.root).as_posix(), "s0_values": list(plan.s0_values), "source_id": plan.source_id, "files": sorted(plan.files), "stage": "smoke"},
+            "plan": {"name": plan.name, "path": plan.destination.relative_to(self.root).as_posix(), "s0_values": list(plan.s0_values), "source_id": plan.source_id, "files": sorted(plan.files), "stage": "smoke", **({"execution_checkout": plan.manifest["execution_checkout"]} if "execution_checkout" in plan.manifest else {})},
             "scientific_design": plan.manifest["fixed_design"],
             "provenance": {"commit": plan.snapshot.commit, "input_count": MOT_2D_SPECIFICATION["design"]["ensemble_count"]},
             "duplicate": None,
@@ -154,7 +159,7 @@ class CreationService:
             source = sources.get(pending.request["source_id"])
             if source is None: raise RuntimeError("Zeeman source changed after preview.")
             snapshot = self.snapshots.capture()
-            refreshed = build_plan(self.root, name=pending.request["name"], slug=pending.request["slug"], s0_values=pending.request["s0_values"], source=source, snapshot=snapshot, acceptance_profile_id=self.acceptance_profile_id)
+            refreshed = build_plan(self.root, name=pending.request["name"], slug=pending.request["slug"], s0_values=pending.request["s0_values"], source=source, snapshot=snapshot, acceptance_profile_id=self.acceptance_profile_id, execution_checkout=pending.request.get("execution_checkout"))
             if refreshed.plan_digest != pending.plan.plan_digest or refreshed.source_fingerprint != pending.plan.source_fingerprint or refreshed.snapshot != pending.plan.snapshot:
                 raise RuntimeError("Preview is stale; review the campaign again.")
             if self.snapshots.capture() != snapshot: raise RuntimeError("Repository changed before creation.")
