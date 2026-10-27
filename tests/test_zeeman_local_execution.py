@@ -119,6 +119,7 @@ def test_local_worker_calls_trusted_engine_once_and_builds_exact_metrics(retaine
     "survivors,indices",
     [
         (np.ones((2, 6), dtype=np.float32), np.array([0, 1])),
+        (np.ones((2, 6), dtype=np.float64), np.array([0.0, 1.0])),
         (np.ones((2, 5), dtype=np.float64), np.array([0, 1])),
         (np.array([[np.nan] * 6], dtype=np.float64), np.array([0])),
         (np.ones((2, 6), dtype=np.float64), np.array([0])),
@@ -427,3 +428,20 @@ def test_custom_reviewed_laser_reaches_engine_and_real_beam(mode):
     resolved = records["configuration"]["resolved"]["zeeman"]["laser"]
     assert beam.detuning == resolved["detuning_rad_s"]
     assert beam.power == resolved["power_W"]
+
+
+@pytest.mark.parametrize("retained", [False, True])
+def test_zero_survivors_accepts_real_extractor_empty_indices(retained):
+    from utils.simulation_helpers import zeeman_extract_survivors
+
+    states, indices = zeeman_extract_survivors([], cutoff_distance=0.1)
+    assert indices == []
+    worker = ZeemanLocalWorker(
+        engine=Engine(states, indices),
+        monotonic=iter([1.0, 2.0]).__next__,
+        clock=lambda: NOW,
+    )
+    product = worker.run(request(retained=retained))
+    assert product.results["metrics"]["n_survivors"] == 0
+    assert product.results["metrics"]["survival_fraction"] == 0.0
+    assert product.results["states_retained"] is retained

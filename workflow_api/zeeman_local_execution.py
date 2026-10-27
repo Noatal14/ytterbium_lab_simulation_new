@@ -190,10 +190,12 @@ class ZeemanLocalWorker:
         count = int(survivors.shape[0])
         initial = int(run["particle_count"])
         indices = np.asarray(survivor_indices)
+        # The trusted extractor returns [] when no particles survive; NumPy
+        # gives that empty sequence a float dtype despite containing no indices.
         if (
             indices.ndim != 1
             or len(indices) != count
-            or not np.issubdtype(indices.dtype, np.integer)
+            or (count > 0 and not np.issubdtype(indices.dtype, np.integer))
             or (count and (int(indices.min()) < 0 or int(indices.max()) >= initial))
             or len(np.unique(indices)) != count
         ):

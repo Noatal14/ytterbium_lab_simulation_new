@@ -19,7 +19,7 @@ def _publish(root, monkeypatch, family, retained, zero=False):
     root.mkdir()
     if family == 'zeeman':
         plan = zeeman.plan(retained=retained)
-        engine = zeeman.Engine(survivors=np.empty((0, 6)), indices=np.empty(0, dtype=np.int64)) if zero else zeeman.Engine()
+        engine = zeeman.Engine(survivors=np.empty((0, 6)), indices=[]) if zero else zeeman.Engine()
         worker = zeeman.ZeemanLocalWorker(engine=engine, monotonic=iter((1., 2.)).__next__, clock=lambda: zeeman.NOW)
     elif family == 'mot_2d':
         plan = mot2d._plan(root, retained=retained)
