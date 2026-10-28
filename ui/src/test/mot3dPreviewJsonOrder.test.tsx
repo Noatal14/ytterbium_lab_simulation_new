@@ -12,7 +12,7 @@ import { UI_ACCEPTANCE_POLICY } from "../generated/uiAcceptance.v1";
 import { Mot3DCampaignFlow } from "../features/campaign/Mot3DCampaignFlow";
 import { useMot3DPreliminaryCheckController } from "../features/campaign/controllers/useMot3DPreliminaryCheckController";
 
-const profile = (mode: string) => ({ host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: zeusProjectDirectory("tal.noa"), authentication: "ssh-key-or-agent" as const });
+const profile = () => ({ host: "zeus.technion.ac.il" as const, username: "tal.noa", project_directory: zeusProjectDirectory("tal.noa"), authentication: "ssh-key-or-agent" as const });
 const definitions = [
   ["preliminary_check", "mot3d-preliminary-preview", parsePreliminaryCheckPreview],
   ["refinement", "mot3d-refinement-preview", parseMot3DRefinementSubmissionPreview],
@@ -32,7 +32,7 @@ it("accepts the actual sanitized P45 preview through the real client and control
   const requests: string[] = [];
   vi.stubGlobal("fetch", vi.fn(async (url: string) => { requests.push(url); expect(url).toBe("/api/v1/zeus/submissions/mot-3d-preliminary-check/preview"); return new Response(JSON.stringify({api_version:1,data:actual}), {status:200}); }));
   const api = createPreliminaryCheckApi(async () => "csrf");
-  const p = profile("ui-acceptance");
+  const p = profile();
   const snapshot = { connection_status: "connected" as const, profile:p, remote:{project_directory:p.project_directory,git_commit:actual.campaign.git_commit,branch:"test",dirty:false},scheduler:{status:"available" as const,queried_at:"2026-10-21T00:00:00Z",jobs:[]} };
   const { result } = renderHook(() => useMot3DPreliminaryCheckController({ campaignId:actual.campaign.id, snapshot, enabled:true, api }));
   await act(async () => { await result.current.review(); });
@@ -51,7 +51,7 @@ for (const mode of ["development", "ui-acceptance"]) {
     const contract = contracts.cases.find(c => c.id === id);
     expect(contract, id).toBeDefined();
     const row = structuredClone(contract!.body.data) as unknown as typeof actual & {local_sync?:unknown};
-    const p = profile(mode);
+    const p = profile();
     if (mode === "ui-acceptance") {
       const policy = UI_ACCEPTANCE_POLICY.mot_3d.stages[stage];
       row.remote.project_directory = p.project_directory;

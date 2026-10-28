@@ -638,11 +638,11 @@ def test_remote_receiver_contains_only_fixed_smoke_qsub_and_no_mutating_admin_co
         assert forbidden not in _REMOTE_SCRIPT
 
 
-def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_mutation=None, acceptance=False):
+def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_mutation=None, acceptance=False, checkout=None, binding=None):
     """Build a hermetic stand-in for the fixed Zeus receiver contract."""
 
     fake_home = tmp_path / "home" / "tal.noa"
-    project = fake_home / ("ytterbium_lab_simulation_ui_acceptance" if acceptance else "ytterbium_lab_simulation_new")
+    project = fake_home / (checkout or ("ytterbium_lab_simulation_ui_acceptance" if acceptance else "ytterbium_lab_simulation_new"))
     campaign = Path("data/optimization/mot_2d" + ("/ui_acceptance" if acceptance else "") + "/campaign")
     job_file = campaign / "jobs/01_smoke.pbs"
     files: dict[str, str] = {}
@@ -659,6 +659,8 @@ def _receiver_fixture(tmp_path: Path, *, qsub_body: str | None = None, request_m
         manifest_value = two_d_manifest()
     else:
         manifest_value = {"kind":"mot_2d_s0_campaign","stage":"smoke","s0_values":[1.3],"provenance":{"git_commit":"a" * 40}}
+    if binding is not None:
+        manifest_value["execution_checkout"] = binding
     # Match the real campaign writer so exact historical SHA proofs inspect
     # genuine canonical bytes rather than a compact hand-built approximation.
     manifest.write_text(json.dumps(manifest_value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -694,7 +696,7 @@ printf '12345.zeus-master\\n'
         "home=pathlib.Path('/home')/username",
         f"home=pathlib.Path({str(fake_home)!r})",
     )
-    if acceptance:
+    if acceptance or checkout is not None:
         # Translate only the synthetic physical home to its exact logical target;
         # the authentic profile/physics/path authorizer still runs unchanged.
         script = script.replace("assert_campaign_target(manifest,username,project,campaign_path)", "assert_campaign_target(manifest,username,'/home/'+username+'/'+project.name,campaign_pure.as_posix())")
@@ -964,3 +966,20 @@ def test_actual_embedded_submit_receipt_is_consumed_by_actual_screening_inspect(
     assert len(calls.read_text().splitlines()) == 1
     assert any(command[0] == '/opt/pbs/bin/qstat' for command in observed)
     assert all(Path(command[0]).name != 'qsub' for command in observed)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX receiver and fake shell scheduler")
+@pytest.mark.parametrize("binding,accepted", [(None,False), ("ytterbium_lab_simulation_ui",True), ("ytterbium_lab_simulation_ui_test",False)])
+def test_team_smoke_receiver_requires_binding_before_locks_or_qsub(tmp_path, binding, accepted):
+    project,campaign,job_bytes,calls,captured,invoke = _receiver_fixture(
+        tmp_path, checkout="ytterbium_lab_simulation_ui", binding=binding)
+    result,state = invoke("submit", "1"*32)
+    assert (result.returncode == 0) is accepted, (state,result.stderr)
+    if accepted:
+        assert state["status"] == "submitted"
+        assert calls.read_text().splitlines() == ["call"]
+        assert captured.read_bytes() == job_bytes
+    else:
+        assert state == {"error":"remote_preparation_invalid"}
+        assert not calls.exists()
+        assert not (project/campaign/".mot_ui").exists()

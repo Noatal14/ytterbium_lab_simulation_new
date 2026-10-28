@@ -33,6 +33,18 @@ def campaign_checkout_paths(username: str) -> frozenset[PurePosixPath]:
     return frozenset(home / deployment["checkout"] for deployment in DEPLOYMENTS.values())
 
 
+def requires_deployment_attestation(manifest: Mapping[str, Any], project: str | Path) -> bool:
+    """Only the historical root may consume an unbound historical manifest.
+
+    A missing binding on any other target must reach the target validator,
+    rather than skipping it. Callers still authenticate TEST ONLY namespaces.
+    """
+    return (
+        "execution_checkout" in manifest
+        or PurePosixPath(str(project)).name != SCIENTIFIC_CHECKOUT
+    )
+
+
 def render_normal_deployment(manifest: Mapping[str, Any], rendered: bytes) -> bytes:
     """Bind the existing renderer to its explicit target; fail on template drift."""
     checkout = normal_checkout(manifest)

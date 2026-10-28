@@ -276,7 +276,9 @@ try:
             if not checkout_matches(): raise CheckoutMismatch()
             fd=os.open('campaign.json',os.O_RDONLY|NOFOLLOW,dir_fd=stage_fd)
             with os.fdopen(fd,'r') as record: manifest=strict_record(record)
-            if 'execution_checkout' in manifest or project.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or campaign_parts[2]=='mot_3d':
+            sys.path.insert(0,str(project))
+            from workflow_api.campaign_deployment import requires_deployment_attestation
+            if requires_deployment_attestation(manifest, project) or campaign_parts[2]=='mot_3d':
                 if campaign_parts[2]=='mot_3d':
                     sys.dont_write_bytecode=True
                     sys.path.insert(0,str(project/'atomsmltr/src'))

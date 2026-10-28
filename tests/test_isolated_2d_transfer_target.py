@@ -14,6 +14,10 @@ from workflow_api.zeus_transfer import _REMOTE_TRANSFER_SCRIPT
 
 
 @pytest.mark.parametrize("checkout,binding,accepted", [
+    ("ytterbium_lab_simulation_ui", None, False),
+    ("ytterbium_lab_simulation_ui", "ytterbium_lab_simulation_ui", True),
+    ("ytterbium_lab_simulation_ui", "ytterbium_lab_simulation_ui_test", False),
+    ("ytterbium_lab_simulation_ui", "ytterbium_lab_simulation_new", False),
     ("ytterbium_lab_simulation_ui_test", "ytterbium_lab_simulation_ui_test", True),
     ("ytterbium_lab_simulation_new", None, True),
     ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test", False),

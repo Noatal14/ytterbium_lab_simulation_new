@@ -25,6 +25,7 @@ def assert_campaign_client_contracts(cases, *, acceptance):
 import {createServer} from VITE_MODULE;
 let raw='';for await(const chunk of process.stdin)raw+=chunk;
 const input=JSON.parse(raw);
+if(input.checkout && !input.acceptance)process.env.VITE_ZEUS_CHECKOUT=input.checkout;
 const server=await createServer({root:UI_ROOT,envFile:false,mode:input.acceptance?'ui-acceptance':'development',configFile:false,server:{middlewareMode:true,hmr:false},appType:'custom'});
 try {
  const domain=await server.ssrLoadModule('/src/api/schema/domain.ts');
@@ -36,8 +37,12 @@ try {
  console.log('CAMPAIGN_CLIENT_CONTRACT_COUNT:'+input.cases.length);
 }finally{await server.close();}
 '''.replace('VITE_MODULE', json.dumps(vite.as_uri())).replace('UI_ROOT', json.dumps(str(root/'ui')))
+    checkout = next((row['value']['remote']['project_directory'].rsplit('/',1)[-1]
+        for row in cases if isinstance(row.get('value'),dict)
+        and isinstance(row['value'].get('remote'),dict)
+        and isinstance(row['value']['remote'].get('project_directory'),str)), None)
     result = subprocess.run([node, '--input-type=module', '-e', script],
-                            input=json.dumps({'cases':cases,'acceptance':acceptance}, allow_nan=False),
+                            input=json.dumps({'cases':cases,'acceptance':acceptance,'checkout':checkout}, allow_nan=False),
                             capture_output=True, text=True, timeout=60)
     assert result.returncode == 0, result.stdout + result.stderr
     assert f'CAMPAIGN_CLIENT_CONTRACT_COUNT:{len(cases)}' in result.stdout

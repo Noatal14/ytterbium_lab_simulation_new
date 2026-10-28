@@ -810,7 +810,7 @@ def test_remote_receiver_rechecks_head_after_receiving_before_campaign_publish(t
 @pytest.mark.parametrize('namespace', ['canonical', 'acceptance'])
 @pytest.mark.skipif(__import__("sys").platform == "win32", reason="POSIX receiver integration requires directory descriptors and Unix process primitives")
 def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, failure_step, namespace, rename_capability):
-    project = tmp_path / 'home' / 'tester' / 'project'
+    project = tmp_path / 'home' / 'tester' / ('ytterbium_lab_simulation_ui_acceptance' if namespace == 'acceptance' else 'ytterbium_lab_simulation_new')
     project.mkdir(parents=True)
     commit = initialize_git_repository(project)
     # Synthetic home and namespace only: execute the exact real publication
@@ -821,11 +821,10 @@ def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, f
         script = script.replace('renameat2=None', "class UnsupportedRename:\n                def __call__(self,*args): ctypes.set_errno(errno." + rename_capability + "); return -1\n            renameat2=UnsupportedRename()")
     prefix = 'data/optimization/mot_2d/campaign'
     if namespace == 'acceptance':
-        # Isolate logical prefix handling from the separately tested authentic
-        # acceptance-manifest validator and its exact /home target policy.
-        script = script.replace("count=5 if project.name=='ytterbium_lab_simulation_ui_acceptance' else 4", 'count=5')
-        script = script.replace("elif 'ui_acceptance' in pure.parts: raise ValueError()", "elif 'ui_acceptance' in pure.parts: pass")
         prefix = 'data/optimization/mot_2d/ui_acceptance/campaign'
+        # Map only the temporary physical home; keep real deployment authorization.
+        script = script.replace("assert_campaign_target(manifest,username,project_text,'/'.join(campaign_parts))",
+            "assert_campaign_target(manifest,username,'/home/'+username+'/'+project.name,'/'.join(campaign_parts))")
     if failure_step == 'reserved':
         script = script.replace('reservation=os.fstat(final_fd)', "raise ValueError('injected after reservation')\n                reservation=os.fstat(final_fd)")
     elif failure_step == 'job':
@@ -843,9 +842,12 @@ def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, f
     elif failure_step == 'before_manifest':
         script = script.replace("if relative==('campaign.json',):", "if relative==('campaign.json',):\n                            raise ValueError('injected before manifest')")
     paths = (prefix + '/campaign.json', prefix + '/jobs/01_smoke.pbs')
-    contents = (b'{"kind":"mot_2d_s0_campaign"}', b'#!/bin/bash\ntrue\n')
+    from tests.test_acceptance_profile import two_d_manifest
+    value = two_d_manifest() if namespace == 'acceptance' else {"kind":"mot_2d_s0_campaign"}
+    contents = (json.dumps(value).encode(), b'#!/bin/bash\ntrue\n')
     payload = b''.join(struct.pack('!Q', len(content)) + hashlib.sha256(content).hexdigest().encode() + content for content in contents)
     encoded = base64.urlsafe_b64encode(json.dumps(paths).encode()).decode()
+    script = 'import sys;sys.path.insert(0,' + repr(str(Path(__file__).resolve().parents[1])) + ')\n' + script
     argv = [sys.executable, '-c', script, 'campaign', 'tester', str(project), encoded, commit]
     first = subprocess.run(argv, input=payload, capture_output=True)
     final = project / prefix
@@ -854,7 +856,7 @@ def test_campaign_manifest_last_fallback_retains_failed_reservations(tmp_path, f
         assert not final.exists()
         assert not list(final.parent.glob('.zeus-campaign-*'))
         return
-    assert final.is_dir()
+    assert final.is_dir(), (first.returncode, first.stdout, first.stderr)
     if failure_step and failure_step != 'stage_swap':
         assert first.returncode == (25 if failure_step == 'checkout_change' else 24), first.stderr.decode()
         assert (final / 'campaign.json').exists() == (failure_step == 'manifest_copy')

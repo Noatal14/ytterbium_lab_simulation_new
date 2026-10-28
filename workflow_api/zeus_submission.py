@@ -202,7 +202,9 @@ def validate_all():
                         or value.get('kind') in ('mot_2d_ui_acceptance_v1','mot_3d_ui_acceptance_v1')
                         or any(acceptance_marked(item) for item in value.values()))
             return isinstance(value,list) and any(acceptance_marked(item) for item in value)
-        if acceptance_marked(manifest) or 'execution_checkout' in manifest or project.name in ('ytterbium_lab_simulation_ui_acceptance','ytterbium_lab_simulation_ui_test') or 'ui_acceptance' in campaign_pure.parts:
+        sys.path.insert(0,str(project))
+        from workflow_api.campaign_deployment import requires_deployment_attestation
+        if acceptance_marked(manifest) or requires_deployment_attestation(manifest, project) or 'ui_acceptance' in campaign_pure.parts:
             sys.path.insert(0,str(project))
             from workflow_api.acceptance_remote import assert_campaign_target
             from workflow_api.mot_2d_spec import validate_campaign_policy
@@ -284,6 +286,8 @@ if op=='inspect':
     except (OSError,ValueError): print(json.dumps({'error':'submission_record_invalid'})); raise SystemExit(23)
     raise SystemExit()
 if op!='submit': print(json.dumps({'error':'invalid_request'})); raise SystemExit(20)
+# Authenticate before creating metadata or acquiring locks; repeat under locks.
+if validate_all() is None: print(json.dumps({'error':'remote_preparation_invalid'})); raise SystemExit(22)
 locked_records=[]
 try:
     # Acquire the legacy lock too, so an already running legacy receiver cannot

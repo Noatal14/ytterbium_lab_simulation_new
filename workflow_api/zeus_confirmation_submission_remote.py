@@ -186,6 +186,7 @@ def main():
 def _authorize_acceptance_campaign(campaign, root):
     """Authenticate acceptance before locks, publication, or scheduler mutation."""
     try:
+        from workflow_api.campaign_deployment import requires_deployment_attestation
         from workflow_api.acceptance_profile import assert_scientific_source, is_acceptance_manifest
         current = root
         for part in campaign.relative_to(root).parts:
@@ -196,7 +197,7 @@ def _authorize_acceptance_campaign(campaign, root):
         if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
             raise ValueError('Unsafe campaign manifest.')
         value = json.loads(manifest_path.read_text(encoding='utf-8'))
-        if is_acceptance_manifest(value) or 'acceptance' in value or 'execution_checkout' in value or root.name in ('ytterbium_lab_simulation_ui_acceptance', 'ytterbium_lab_simulation_ui_test') or 'ui_acceptance' in campaign.parts:
+        if is_acceptance_manifest(value) or 'acceptance' in value or requires_deployment_attestation(value, root) or 'ui_acceptance' in campaign.parts:
             from workflow_api.acceptance_remote import assert_campaign_target
             from workflow_api.mot_2d_spec import validate_campaign_policy
             validate_campaign_policy(value)

@@ -64,7 +64,7 @@ def _source(root, commit, acceptance):
 
 
 class _Protocol:
-    def __init__(self, tmp_path, monkeypatch, acceptance, *, s0_values=None, name=None):
+    def __init__(self, tmp_path, monkeypatch, acceptance, *, s0_values=None, name=None, checkout=None):
         from workflow_api.mot_2d_plan import build_plan, materialize
         from workflow_api.repository_snapshot import RepositorySnapshot
         self.mp = monkeypatch
@@ -83,10 +83,10 @@ class _Protocol:
         self.commit = subprocess.check_output([str(self.git), '-C', str(self.local), 'rev-parse', 'HEAD'], text=True).strip()
         source = _source(self.local, self.commit, acceptance)
         plan = build_plan(self.local, name='protocol-chain' if name is None else name, slug='protocol-chain', s0_values=[1.3] if s0_values is None else s0_values, source=source,
-                          snapshot=RepositorySnapshot(self.commit), acceptance_profile_id='ui_acceptance_v1' if acceptance else None)
+                          snapshot=RepositorySnapshot(self.commit), acceptance_profile_id='ui_acceptance_v1' if acceptance else None, execution_checkout=checkout)
         materialize(plan)
         self.relative = 'data/optimization/mot_2d/' + ('ui_acceptance/' if acceptance else '') + 'protocol-chain'
-        self.logical = '/home/tal.noa/' + ('ytterbium_lab_simulation_ui_acceptance' if acceptance else 'ytterbium_lab_simulation_new')
+        self.logical = '/home/tal.noa/' + (checkout or ('ytterbium_lab_simulation_ui_acceptance' if acceptance else 'ytterbium_lab_simulation_new'))
         self.remote = tmp_path / 'home/tal.noa' / Path(self.logical).name
         self.remote.parent.mkdir(parents=True)
         subprocess.run([str(self.git), 'clone', '-q', str(self.local), str(self.remote)], check=True)
@@ -313,8 +313,8 @@ def test_full_scientific_two_s0_receiver_protocol_chain(tmp_path, monkeypatch):
     _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, False, [1.1, 1.3])
 
 
-def _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance, s0_values=None, *, name=None):
-    chain = _Protocol(tmp_path, monkeypatch, acceptance, s0_values=s0_values, name=name)
+def _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance, s0_values=None, *, name=None, checkout=None):
+    chain = _Protocol(tmp_path, monkeypatch, acceptance, s0_values=s0_values, name=name, checkout=checkout)
     smoke = chain.coordinator('zeus_submission', 'ZeusSmokeSubmissionCoordinator')
     chain.confirm(smoke)
     chain.work('smoke')
@@ -407,3 +407,11 @@ def _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, acceptance,
     from ui_campaign_contract_bridge import assert_campaign_client_contracts
     assert_campaign_client_contracts(chain.dto, acceptance=acceptance)
     return chain
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX receivers run on Zeus")
+def test_team_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch):
+    chain = _run_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch, False,
+        checkout="ytterbium_lab_simulation_ui")
+    assert chain.logical.endswith("/ytterbium_lab_simulation_ui")
+    assert json.loads((chain.campaign/'campaign.json').read_bytes())['execution_checkout'] == 'ytterbium_lab_simulation_ui'
