@@ -257,30 +257,35 @@ def _walk_numbers(value):
         yield value
 
 
-APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS = (
+APPROVED_WORKFLOW_CODE_CLOSURE_ADDITIONS = (
     "utils/optuna_replay.py",
     "workflow_api/acceptance_inputs.py",
     "workflow_api/acceptance_profile.py",
     "workflow_api/specifications/ui_acceptance_v1.json",
     "workflow_api/smoke_receipt.py",
     "workflow_api/mot_2d_statistical_verification.py",
+    # Reviewed source authentication and deployment dependencies only. Their
+    # presence remains mandatory; neither historical physics golden changes.
+    "lab_setup/historical_zeeman_source.py",
+    "workflow_api/campaign_deployment.py",
+    "workflow_api/specifications/deployments_v1.json",
 )
 
 
-def _without_approved_acceptance_code_closure(payload):
+def _without_approved_workflow_code_closure(payload):
     # Compare the original complete physics payload while explicitly accounting
     # for the explicitly reviewed workflow code/policy dependencies.
     # Copy before projection: the raw payload references executable constants.
     projected = _normalize(payload)
     files = projected["mot_2d_executable_campaign"]["relevant_files"]
-    for name in APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS:
+    for name in APPROVED_WORKFLOW_CODE_CLOSURE_ADDITIONS:
         assert files.count(name) == 1, f"Approved closure file missing or duplicated: {name}"
         files.remove(name)
     return projected
 
 
 def test_complete_normalized_resolved_baseline_has_golden_hash():
-    payload = _without_approved_acceptance_code_closure(_resolved_baseline_payload())
+    payload = _without_approved_workflow_code_closure(_resolved_baseline_payload())
     assert all(math.isfinite(value) for value in _walk_numbers(payload))
     # Approved v2 changes only the 3D horizon/production timestep and policy
     # provenance. The historical golden below still protects all other values.
@@ -290,7 +295,7 @@ def test_complete_normalized_resolved_baseline_has_golden_hash():
 
 
 def test_only_approved_3d_protocol_and_portability_differ_from_historical_baseline():
-    payload = _without_approved_acceptance_code_closure(_resolved_baseline_payload())
+    payload = _without_approved_workflow_code_closure(_resolved_baseline_payload())
     payload["versioned_numerical_policy"] = json.loads(
         Path("lab_setup/specifications/numerical_policy_v1.json").read_text()
     )
@@ -475,26 +480,26 @@ def test_ast_discovered_configuration_consumer_ledgers_are_complete():
     assert consumers == EXPECTED_VERSIONED_SPEC_CONSUMERS
 
 
-def test_approved_acceptance_closure_projection_is_exact_and_nonmutating():
+def test_approved_workflow_closure_projection_is_exact_and_nonmutating():
     original = _resolved_baseline_payload()
     raw_files = list(original["mot_2d_executable_campaign"]["relevant_files"])
-    projected = _without_approved_acceptance_code_closure(original)
+    projected = _without_approved_workflow_code_closure(original)
     assert list(original["mot_2d_executable_campaign"]["relevant_files"]) == raw_files
     files = projected["mot_2d_executable_campaign"]["relevant_files"]
-    assert files == [name for name in raw_files if name not in APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS]
+    assert files == [name for name in raw_files if name not in APPROVED_WORKFLOW_CODE_CLOSURE_ADDITIONS]
     # Unreviewed dependencies and physical changes still affect both goldens.
     projected["mot_2d"]["simulation"]["dt_s"] *= 2
     assert _canonical_sha256(projected) != "865e9e5ee473a871b9bbd328e273f4a97d61ad9c0d2ef7e503aee5249e2ab12d"
     unknown = _normalize(original)
     unknown["mot_2d_executable_campaign"]["relevant_files"].append("workflow_api/unreviewed.py")
-    assert "workflow_api/unreviewed.py" in _without_approved_acceptance_code_closure(unknown)["mot_2d_executable_campaign"]["relevant_files"]
+    assert "workflow_api/unreviewed.py" in _without_approved_workflow_code_closure(unknown)["mot_2d_executable_campaign"]["relevant_files"]
 
 
 @pytest.mark.parametrize("count", [0, 2])
-@pytest.mark.parametrize("name", APPROVED_ACCEPTANCE_CODE_CLOSURE_ADDITIONS)
-def test_approved_acceptance_closure_projection_rejects_missing_or_duplicate(count, name):
+@pytest.mark.parametrize("name", APPROVED_WORKFLOW_CODE_CLOSURE_ADDITIONS)
+def test_approved_workflow_closure_projection_rejects_missing_or_duplicate(count, name):
     payload = _normalize(_resolved_baseline_payload())
     files = payload["mot_2d_executable_campaign"]["relevant_files"]
     files[:] = [item for item in files if item != name] + [name] * count
     with pytest.raises(AssertionError, match="missing or duplicated"):
-        _without_approved_acceptance_code_closure(payload)
+        _without_approved_workflow_code_closure(payload)

@@ -185,7 +185,8 @@ def test_remote_receiver_contains_only_the_frozen_confirmation_array_qsub():
 
 
 def _receiver_fixture(tmp_path, monkeypatch):
-    root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign"
+    # Model the historical unbound checkout, not an arbitrary deployment root.
+    root=tmp_path/"ytterbium_lab_simulation_new";campaign=root/"data/optimization/mot_2d/campaign"
     (campaign/"jobs").mkdir(parents=True);(campaign/"confirmation").mkdir()
     (campaign/".mot_ui/transitions").mkdir(parents=True)
     artifacts={

@@ -19,7 +19,9 @@ from workflow_api.run_records import encode_record
 @pytest.mark.parametrize("count", [0, 1])
 @pytest.mark.parametrize("corrupt", [False, True])
 def test_fresh_receiver_validates_retained_product(tmp_path, family, count, corrupt):
-    project = tmp_path / "project"; project.mkdir()
+    home = tmp_path / "home"
+    project = home / "tal.noa" / "ytterbium_lab_simulation_new"
+    project.mkdir(parents=True)
     git = str(executable("git"))
     subprocess.run([git, "init", str(project)], check=True, capture_output=True)
     subprocess.run([git, "-C", str(project), "-c", "user.name=Acceptance", "-c", "user.email=acceptance@example.invalid", "commit", "--allow-empty", "-m", "fixture"], check=True, capture_output=True)
@@ -40,7 +42,10 @@ def test_fresh_receiver_validates_retained_product(tmp_path, family, count, corr
     target = directory / package_hash; target.mkdir(); (target / "worker_product.json").write_text(json.dumps(product))
     root = Path(__file__).resolve().parents[1]
     source = (root / "workflow_api" / f"{family}_zeus_remote.py").read_text()
-    source = source.replace('allowed = {Path("/home") / username / name for name in ("ytterbium_lab_simulation_new", "ytterbium_lab_simulation_ui_test")}', 'allowed = {project}')
+    # Map only the host home prefix; preserve the receiver's closed checkout list.
+    home_expression = 'Path("/home") / username'
+    assert source.count(home_expression) == 3
+    source = source.replace(home_expression, f'Path({str(home)!r}) / username')
     source = source.replace('sys.path.insert(0, str(project))', f'sys.path.insert(0, {str(root)!r})')
     source = source.replace('"/usr/bin/git"', repr(git))
     script = tmp_path / "receiver.py"; script.write_text(source)

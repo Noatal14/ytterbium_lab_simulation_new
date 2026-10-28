@@ -24,7 +24,8 @@ def _remote_finalization_fixture(tmp_path: Path):
     from test_mot_2d_campaign_integrity import _write_portable_sealed_campaign
     from workflow_api.zeus_sensitivity_remote import canonical_digest
 
-    root = tmp_path / "repo"
+    # The unbound fixture models the historical checkout's deployment identity.
+    root = tmp_path / "ytterbium_lab_simulation_new"
     campaign, manifest = _write_portable_sealed_campaign(root)
     generated_states = root / "data/particle_states/after_2d_mot/fixed_s0/s0_1p300000"
     canonical_states = root / "data/particle_states/after_2d_mot/final_ensemble_s0_1.3"
