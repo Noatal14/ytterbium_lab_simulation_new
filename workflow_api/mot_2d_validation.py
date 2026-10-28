@@ -24,7 +24,9 @@ from workflow_api.mot_2d_spec import validate_campaign_policy, stage_npools, sur
 from utils.mot_2d_study import summarize_replicates
 from workflow_api.mot_2d_late_stage import derive_production_transition
 from workflow_api.mot_2d_prediction import final_prediction
-from workflow_api.mot_2d_statistical_verification import typed_exact, verify_sensitivity_summary
+from workflow_api.mot_2d_statistical_verification import (
+    typed_exact, verify_sensitivity_summary, verify_replicate_statistics,
+)
 
 ROLE_NAMES = ("discovery", "refinement", "held_out_confirmation", "sealed_validation")
 CANONICAL_ROLE_SEEDS = {
@@ -1010,9 +1012,9 @@ def sealed_final_is_valid(
                 validated_replicates,
                 reporting_survivors=reporting_survivors,
             )
+            verify_replicate_statistics(summary.get("replicate_statistics"), recomputed_statistics)
             if (
-                summary.get("replicate_statistics") != recomputed_statistics
-                or summary.get("prediction_for_10m_zeeman_survivors")
+                summary.get("prediction_for_10m_zeeman_survivors")
                 != recomputed_prediction
                 or recomputed_prediction.get("reporting_zeeman_survivors")
                 != reporting_survivors

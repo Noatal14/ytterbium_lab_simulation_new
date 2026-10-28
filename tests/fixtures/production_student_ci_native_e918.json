@@ -1,0 +1,35 @@
+{
+  "scope": "TEST ONLY actual e918 producer vs native Windows ARM read-only recomputation; descriptive Student intervals only",
+  "producer_commit": "e918ef0c0806e35f36b17209dd0bc81740ab10d3",
+  "producer_summary_sha256": "896665ad59dffafcfc8835961bd6f4702be69801badb0de3c21ec4e1f92decf9",
+  "recorded": {
+    "conditional_95_ci": [
+      0.5378411725974779,
+      0.6090338274025222
+    ],
+    "conditional_95_ci_half_width": 0.035596327402522186,
+    "estimated_total_95_ci": [
+      0.5378411725974779,
+      0.6090338274025222
+    ],
+    "estimated_total_95_ci_half_width": 0.035596327402522186,
+    "mean_conditional_efficiency": 0.5734375,
+    "mean_estimated_total_efficiency": 0.5734375,
+    "n_replicates": 20
+  },
+  "native_recomputed": {
+    "conditional_95_ci": [
+      0.5378411725974779,
+      0.6090338274025222
+    ],
+    "conditional_95_ci_half_width": 0.03559632740252218,
+    "estimated_total_95_ci": [
+      0.5378411725974779,
+      0.6090338274025222
+    ],
+    "estimated_total_95_ci_half_width": 0.03559632740252218,
+    "mean_conditional_efficiency": 0.5734375,
+    "mean_estimated_total_efficiency": 0.5734375,
+    "n_replicates": 20
+  }
+}

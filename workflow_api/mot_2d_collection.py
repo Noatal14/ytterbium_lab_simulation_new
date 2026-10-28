@@ -318,7 +318,25 @@ def validate_rendered_history(root, campaign, manifest):
         relative = campaign.relative_to(root).as_posix()
         for files in rendered:
             for name, data in files.items():
-                if name != "campaign.json" and read(fd, f"{relative}/{name}") != data:
+                if name == "campaign.json":
+                    continue
+                observed = read(fd, f"{relative}/{name}")
+                if name == "sensitivity_summary.json":
+                    from workflow_api.mot_2d_statistical_verification import (
+                        verify_sensitivity_summary,
+                    )
+
+                    # Reuse the scientific reader's narrowly bounded Student-CI
+                    # portability contract. Producer bytes remain hash-verified
+                    # and unchanged; no tolerance applies to other artifacts.
+                    verify_sensitivity_summary(
+                        _strict_json(observed),
+                        _strict_json(data),
+                        target_loss_fraction=float(
+                            manifest["fixed_design"]["target_95_half_width_fraction"]
+                        ),
+                    )
+                elif observed != data:
                     raise ValueError("Canonical prepared artifact differs")
     finally:
         os.close(fd)

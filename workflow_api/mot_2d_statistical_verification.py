@@ -1,4 +1,4 @@
-"""Narrow read verification of cross-platform paired Student intervals.
+"""Narrow read verification of paired and descriptive Student intervals.
 
 Producer bytes are never normalized.  This is not a tolerance for means,
 observations, prediction/bootstrap statistics, or scientific decision changes.
@@ -34,40 +34,83 @@ def _float(value: Any) -> float:
     return value
 
 
-def _comparison(observed: dict[str, Any], expected: dict[str, Any]) -> tuple[float, float, bool]:
-    # Exact non-CI equality is checked by the caller before this function.
-    mean = _float(expected["mean_difference_fraction"])
-    halves = [_float(item[_HALF]) for item in (observed, expected)]
+def _student_interval(
+    mean: float, observed_half: Any, observed_interval: Any,
+    expected_half: Any, expected_interval: Any,
+) -> tuple[float, float, bool]:
+    """Prove bounded rounding of one interval, without changing its bytes."""
+    mean = _float(mean)
+    halves = [_float(half) for half in (observed_half, expected_half)]
+    intervals = (observed_interval, expected_interval)
     budget = 0.0 if mean == 0.0 and halves == [0.0, 0.0] else 4 * max(
         math.ulp(mean), *(math.ulp(half) for half in halves)
     )
     if budget == 0.0 and (
-        not typed_exact(observed[_HALF], expected[_HALF])
-        or not typed_exact(observed[_CI], expected[_CI])
+        not typed_exact(observed_half, expected_half)
+        or not typed_exact(observed_interval, expected_interval)
     ):
         raise ValueError("Zero-scale sensitivity intervals must match exactly.")
     if not math.isfinite(budget) or min(halves) < 0:
         raise ValueError("Sensitivity interval has an invalid scale.")
     lows = []
-    for item, half in zip((observed, expected), halves):
-        interval = item[_CI]
+    for interval, half in zip(intervals, halves):
         if type(interval) is not list or len(interval) != 2:
             raise ValueError("Sensitivity interval has an invalid shape.")
         low, high = map(_float, interval)
         if not typed_exact(low, mean - half) or not typed_exact(high, mean + half):
             raise ValueError("Sensitivity interval is internally inconsistent.")
         lows.append(low)
-    if any(abs(_float(observed[key]) - _float(expected[key])) > budget for key in (_HALF,)) or any(
-        abs(observed[_CI][index] - expected[_CI][index]) > budget for index in (0, 1)
+    if abs(halves[0] - halves[1]) > budget or any(
+        abs(observed_interval[index] - expected_interval[index]) > budget for index in (0, 1)
     ):
         raise ValueError("Sensitivity interval exceeds the portability bound.")
-    differences = expected["differences_fraction"]
     zero = (
         budget == 0.0 and mean == 0.0 and halves == [0.0, 0.0]
-        and all(type(value) is float and value == 0.0 for value in differences)
-        and all(value == 0.0 for item in (observed, expected) for value in item[_CI])
+        and all(value == 0.0 for interval in intervals for value in interval)
     )
     return min(lows) - budget, max(lows) + budget, zero
+
+
+def _comparison(observed: dict[str, Any], expected: dict[str, Any]) -> tuple[float, float, bool]:
+    # Exact non-CI equality is checked by the caller before this function.
+    low, high, zero = _student_interval(
+        expected["mean_difference_fraction"], observed[_HALF], observed[_CI],
+        expected[_HALF], expected[_CI],
+    )
+    differences = expected["differences_fraction"]
+    return low, high, zero and all(
+        type(value) is float and value == 0.0 for value in differences
+    )
+
+
+def verify_replicate_statistics(observed: Any, expected: Any) -> None:
+    """Verify descriptive Student intervals; predictions remain strictly exact."""
+    fields = (
+        ("mean_conditional_efficiency", "conditional_95_ci", "conditional_95_ci_half_width"),
+        ("mean_estimated_total_efficiency", "estimated_total_95_ci", "estimated_total_95_ci_half_width"),
+    )
+    keys = {"n_replicates", *(name for group in fields for name in group)}
+    if (
+        type(observed) is not dict or type(expected) is not dict
+        or observed.keys() != keys or expected.keys() != keys
+        or type(expected["n_replicates"]) is not int or expected["n_replicates"] < 1
+        or not typed_exact(observed["n_replicates"], expected["n_replicates"])
+    ):
+        raise ValueError("Replicate statistics schema differs.")
+    for mean, interval, half in fields:
+        _float(expected[mean])
+        if not typed_exact(observed[mean], expected[mean]):
+            raise ValueError("Replicate statistics mean differs.")
+        if expected["n_replicates"] == 1:
+            if any(value is not None for value in (
+                observed[interval], observed[half], expected[interval], expected[half],
+            )):
+                raise ValueError("Single-replicate interval must be absent.")
+        else:
+            _student_interval(
+                expected[mean], observed[half], observed[interval],
+                expected[half], expected[interval],
+            )
 
 
 def verify_sensitivity_summary(observed: Any, expected: Any, *, target_loss_fraction: float) -> None:
