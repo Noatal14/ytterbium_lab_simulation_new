@@ -664,7 +664,7 @@ export type FinalizationCollectionResult = {
   submitted_to_zeus: false;
   simulation_started: false;
   local_sync: { status: "synchronized"; receipt_sha256: string };
-  artifacts: { created: number; identical: number; updated: 1 };
+  artifacts: { created: number; identical: number; updated: number };
 };
 const collectionRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);

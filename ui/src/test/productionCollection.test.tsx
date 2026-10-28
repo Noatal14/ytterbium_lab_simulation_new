@@ -135,6 +135,15 @@ describe("strict local collection contracts", () => {
       }),
     ).toThrow();
   });
+  it.each([0, 2, true, "1"])("rejects collection update count %s", (updated) => {
+    const result = resultValue();
+    expect(() =>
+      parseFinalizationCollectionResult({
+        ...result,
+        artifacts: { ...result.artifacts, updated },
+      }),
+    ).toThrow();
+  });
   it.each([
     [
       "count",
