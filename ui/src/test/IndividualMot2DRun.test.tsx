@@ -1,3 +1,4 @@
+import { individualRunStorageKey } from "../features/individual/individualRunRecovery";
 import specification from "../../../workflow_api/specifications/mot_2d_individual_v1.json";
 import { StrictMode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -405,7 +406,7 @@ it("uses specification control defaults and bounds in displayed units", async ()
     );
     expect(onBack).toHaveBeenCalledOnce();
     expect(
-      window.localStorage.getItem("ytterbium.individual-run.mot_2d.v1"),
+      window.localStorage.getItem(individualRunStorageKey("mot_2d")),
     ).toBeNull();
   });
   it.each(["local", "zeus"] as const)(
@@ -435,7 +436,7 @@ it("uses specification control defaults and bounds in displayed units", async ()
         provenance: {},
       } as unknown as Awaited<ReturnType<IndividualMot2DApi["run"]>>;
       window.localStorage.setItem(
-        "ytterbium.individual-run.mot_2d.v1",
+        individualRunStorageKey("mot_2d"),
         JSON.stringify({
           version: 1,
           family: "mot_2d",
@@ -470,7 +471,7 @@ it("waits for fresh Zeus recovery before enabling status after reload", async ()
   const service = api(), user = userEvent.setup();
   let resolveRecovery!: (value: unknown) => void;
   const recovery = new Promise((resolve) => { resolveRecovery = resolve; });
-  window.localStorage.setItem("ytterbium.individual-run.mot_2d.v1", JSON.stringify({version: 1, family: "mot_2d", display_name: "mot2d-reloaded", execution_mode: "zeus", username: "tal.noa"}));
+  window.localStorage.setItem(individualRunStorageKey("mot_2d"), JSON.stringify({version: 1, family: "mot_2d", display_name: "mot2d-reloaded", execution_mode: "zeus", username: "tal.noa"}));
   const queued = {id: "individual-run-test", display_name: "mot2d-reloaded", record_state: "queued", lifecycle: "queued", execution: {mode: "zeus", zeus_job_id: "4807729.zeus-master"}} as unknown as Mot2DRun;
   vi.mocked(service.runs).mockResolvedValue([queued]);
   service.recoverZeus = vi.fn().mockReturnValue(recovery);

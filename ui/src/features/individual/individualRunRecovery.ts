@@ -1,3 +1,5 @@
+import deployments from "../../../../workflow_api/specifications/deployments_v1.json";
+import { zeusDeploymentCheckout } from "../../api/zeusEnvironment";
 import { individualZeusConfirmWasDefinitelyRejected } from "../../api/clients/individualZeusRecovery";
 
 export type RecoverableRunFamily = "zeeman" | "mot_2d" | "mot_3d";
@@ -36,8 +38,15 @@ export function recoveredRunStep(
   return "monitor";
 }
 
-const key = (family: RecoverableRunFamily) =>
-  `ytterbium.individual-run.${family}.v1`;
+export function individualRunStorageKey(family: RecoverableRunFamily): string {
+  const legacy = `ytterbium.individual-run.${family}.v1`;
+  // Pre-team bookmarks have no deployment identity. Keep them intact for the
+  // historical checkout, never mistake them for this separate team deployment.
+  const checkout = zeusDeploymentCheckout();
+  return checkout === deployments.team.checkout
+    ? `${legacy}.${checkout}`
+    : legacy;
+}
 const identifiers: Record<RecoverableRunFamily, RegExp> = {
   zeeman: /^zeeman-[a-z0-9-]{1,120}$/,
   mot_2d: /^mot2d-[a-z0-9-]{1,120}$/,
@@ -72,7 +81,10 @@ export function rememberIndividualRun(
     ...(username ? { username } : {}),
   };
   try {
-    window.localStorage.setItem(key(family), JSON.stringify(value));
+    window.localStorage.setItem(
+      individualRunStorageKey(family),
+      JSON.stringify(value),
+    );
     return true;
   } catch {
     return false;
@@ -81,7 +93,18 @@ export function rememberIndividualRun(
 
 export function forgetIndividualRun(family: RecoverableRunFamily) {
   try {
-    window.localStorage.removeItem(key(family));
+    const key = individualRunStorageKey(family);
+    const selected = window.localStorage.getItem(key);
+    window.localStorage.removeItem(key);
+    const legacyKey = `ytterbium.individual-run.${family}.v1`;
+    if (key !== legacyKey && selected === null) {
+      const legacy = parseRememberedRun(
+        family,
+        window.localStorage.getItem(legacyKey),
+      );
+      if (legacy?.execution_mode === "local")
+        window.localStorage.removeItem(legacyKey);
+    }
   } catch {
     /* Storage may be disabled. */
   }
@@ -106,31 +129,59 @@ export async function confirmRememberedZeusRun(
   }
 }
 
-export function readRememberedIndividualRun(
+function parseRememberedRun(
   family: RecoverableRunFamily,
+  encoded: string | null,
 ): RememberedIndividualRun | null {
-  let encoded: string | null;
+  if (!encoded) return null;
   try {
-    encoded = window.localStorage.getItem(key(family));
+    const value: unknown = JSON.parse(encoded);
+    if (typeof value !== "object" || value === null) return null;
+    const row = value as Record<string, unknown>;
+    if (
+      row.version !== 1 ||
+      row.family !== family ||
+      typeof row.display_name !== "string" ||
+      !identifiers[family].test(row.display_name) ||
+      (row.execution_mode !== "local" && row.execution_mode !== "zeus") ||
+      (row.execution_mode === "zeus"
+        ? typeof row.username !== "string" ||
+          !usernamePattern.test(row.username)
+        : row.username !== undefined)
+    )
+      return null;
+    return {
+      version: 1,
+      family,
+      display_name: row.display_name,
+      execution_mode: row.execution_mode,
+      ...(row.execution_mode === "zeus"
+        ? { username: row.username as string }
+        : {}),
+    };
   } catch {
     return null;
   }
-  if (!encoded) return null;
+}
+
+export function readRememberedIndividualRun(
+  family: RecoverableRunFamily,
+): RememberedIndividualRun | null {
   try {
-    const value = JSON.parse(encoded) as Partial<StoredRun>;
-    if (
-      value.version !== 1 ||
-      value.family !== family ||
-      !identifiers[family].test(String(value.display_name)) ||
-      !["local", "zeus"].includes(String(value.execution_mode)) ||
-      (value.execution_mode === "zeus"
-        ? !usernamePattern.test(String(value.username))
-        : value.username !== undefined)
-    )
-      throw new Error("invalid");
-    return value as StoredRun;
+    const key = individualRunStorageKey(family);
+    const encoded = window.localStorage.getItem(key);
+    // A selected TEAM run takes precedence, including malformed data: never
+    // silently switch to an older run when its bookmark cannot be validated.
+    if (encoded !== null) return parseRememberedRun(family, encoded);
+    const legacyKey = `ytterbium.individual-run.${family}.v1`;
+    if (key === legacyKey) return null;
+    const legacy = parseRememberedRun(
+      family,
+      window.localStorage.getItem(legacyKey),
+    );
+    // Local records belong to this backend, independent of the Zeus target.
+    return legacy?.execution_mode === "local" ? legacy : null;
   } catch {
-    forgetIndividualRun(family);
     return null;
   }
 }

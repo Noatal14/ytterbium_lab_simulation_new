@@ -1,3 +1,4 @@
+import { individualRunStorageKey } from "../features/individual/individualRunRecovery";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   confirmRememberedZeusRun,
@@ -215,7 +216,7 @@ describe("individual run recovery", () => {
 
   it("rejects malformed or wrong-family persisted identity without a catalog request", async () => {
     localStorage.setItem(
-      "ytterbium.individual-run.mot_3d.v1",
+      individualRunStorageKey("mot_3d"),
       JSON.stringify({
         version: 1,
         family: "zeeman",
@@ -338,4 +339,116 @@ describe("individual run recovery", () => {
       storage.mockRestore();
     }
   });
+});
+
+it.each(["zeeman", "mot_2d", "mot_3d"] as const)(
+  "keeps retired deployment bookmarks separate from team %s runs",
+  (family) => {
+    const prefix = { zeeman: "zeeman", mot_2d: "mot2d", mot_3d: "mot3d" }[
+      family
+    ];
+    const original = JSON.stringify({
+      version: 1,
+      family,
+      display_name: `${prefix}-retired`,
+      execution_mode: "zeus",
+      username: "tal.noa",
+    });
+    vi.stubEnv("MODE", "development");
+    vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_new");
+    const legacyKey = individualRunStorageKey(family);
+    localStorage.setItem(legacyKey, original);
+    try {
+      vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_ui");
+      expect(readRememberedIndividualRun(family)).toBeNull();
+      expect(localStorage.getItem(legacyKey)).toBe(original);
+      expect(
+        rememberIndividualRun(family, `${prefix}-team`, "zeus", "tal.noa"),
+      ).toBe(true);
+      expect(readRememberedIndividualRun(family)?.display_name).toBe(
+        `${prefix}-team`,
+      );
+      forgetIndividualRun(family);
+      expect(localStorage.getItem(legacyKey)).toBe(original);
+      vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_new");
+      expect(readRememberedIndividualRun(family)?.display_name).toBe(
+        `${prefix}-retired`,
+      );
+    } finally {
+      localStorage.removeItem(legacyKey);
+      vi.unstubAllEnvs();
+    }
+  },
+);
+
+it.each(["zeeman", "mot_2d", "mot_3d"] as const)(
+  "recovers legacy local %s runs after changing the Zeus deployment",
+  async (family) => {
+    const prefix = { zeeman: "zeeman", mot_2d: "mot2d", mot_3d: "mot3d" }[
+      family
+    ];
+    const name = `${prefix}-active-local`;
+    const legacyKey = `ytterbium.individual-run.${family}.v1`;
+    const original = JSON.stringify({
+      version: 1,
+      family,
+      display_name: name,
+      execution_mode: "local",
+    });
+    vi.stubEnv("MODE", "development");
+    vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_ui");
+    localStorage.setItem(legacyKey, original);
+    const run = {
+      id: name,
+      display_name: name,
+      lifecycle: "running",
+      record_state: "running",
+      execution: { mode: "local" as const, locally_scheduled: true },
+    };
+    const api = { runs: vi.fn().mockResolvedValue([run]), run: vi.fn() };
+    try {
+      expect(await recoverIndividualRun(family, api)).toEqual(run);
+      expect(recoveredRunStep(run)).toBe("monitor");
+      expect(localStorage.getItem(legacyKey)).toBe(original);
+      expect(api.run).not.toHaveBeenCalled();
+      forgetIndividualRun(family);
+      expect(readRememberedIndividualRun(family)).toBeNull();
+    } finally {
+      localStorage.removeItem(legacyKey);
+      vi.unstubAllEnvs();
+    }
+  },
+);
+
+it("preserves local recovery when a selected TEAM Zeus submission is rejected", async () => {
+  vi.stubEnv("MODE", "development");
+  vi.stubEnv("VITE_ZEUS_CHECKOUT", "ytterbium_lab_simulation_ui");
+  const legacyKey = "ytterbium.individual-run.mot_2d.v1";
+  const local = JSON.stringify({
+    version: 1,
+    family: "mot_2d",
+    display_name: "mot2d-existing-local",
+    execution_mode: "local",
+  });
+  localStorage.setItem(legacyKey, local);
+  try {
+    await expect(
+      confirmRememberedZeusRun(
+        "mot_2d",
+        "mot2d-team-rejected",
+        "tal.noa",
+        async () => {
+          throw new IndividualZeusApiError("confirmation_expired", "expired");
+        },
+      ),
+    ).rejects.toThrow("expired");
+    expect(localStorage.getItem(legacyKey)).toBe(local);
+    expect(readRememberedIndividualRun("mot_2d")?.display_name).toBe(
+      "mot2d-existing-local",
+    );
+  } finally {
+    localStorage.removeItem(legacyKey);
+    localStorage.removeItem(individualRunStorageKey("mot_2d"));
+    vi.unstubAllEnvs();
+  }
 });

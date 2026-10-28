@@ -1,19 +1,32 @@
 import deployments from "../../../workflow_api/specifications/deployments_v1.json";
 
 /** Normal launches use the personal-account team deployment. Tests stay explicit. */
-export function zeusTestMode(): boolean { return import.meta.env.MODE === "zeus-test"; }
-export function campaignAcceptanceMode(): boolean { return import.meta.env.MODE === "ui-acceptance"; }
-function checkout(): string {
+export function zeusTestMode(): boolean {
+  return import.meta.env.MODE === "zeus-test";
+}
+export function campaignAcceptanceMode(): boolean {
+  return import.meta.env.MODE === "ui-acceptance";
+}
+export function zeusDeploymentCheckout(): string {
   const configured = import.meta.env.VITE_ZEUS_CHECKOUT;
-  if (configured && ![deployments.team.checkout, deployments.historical.checkout, deployments.test.checkout].includes(configured)) {
+  if (
+    configured &&
+    ![
+      deployments.team.checkout,
+      deployments.historical.checkout,
+      deployments.test.checkout,
+    ].includes(configured)
+  ) {
     throw new Error("Unsupported Zeus checkout configuration.");
   }
-  return campaignAcceptanceMode() ? deployments.acceptance.checkout
-    : zeusTestMode() ? deployments.test.checkout
-    : configured || deployments.team.checkout;
+  return campaignAcceptanceMode()
+    ? deployments.acceptance.checkout
+    : zeusTestMode()
+      ? deployments.test.checkout
+      : configured || deployments.team.checkout;
 }
 export function zeusProjectDirectory(username: string): string {
-  return `/home/${username}/${checkout()}`;
+  return `/home/${username}/${zeusDeploymentCheckout()}`;
 }
 export function isCampaignProjectDirectory(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -21,6 +34,10 @@ export function isCampaignProjectDirectory(value: unknown): boolean {
   return match !== null && value === zeusProjectDirectory(match[1]);
 }
 export function campaignExecutionCheckout(): string | undefined {
-  const selected = checkout();
-  return [deployments.team.checkout, deployments.test.checkout].includes(selected) ? selected : undefined;
+  const selected = zeusDeploymentCheckout();
+  return [deployments.team.checkout, deployments.test.checkout].includes(
+    selected,
+  )
+    ? selected
+    : undefined;
 }

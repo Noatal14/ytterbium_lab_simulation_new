@@ -1,3 +1,4 @@
+import { individualRunStorageKey } from "../features/individual/individualRunRecovery";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -294,7 +295,7 @@ describe("IndividualMot3DRun", () => {
     );
     expect(onBack).toHaveBeenCalledOnce();
     expect(
-      window.localStorage.getItem("ytterbium.individual-run.mot_3d.v1"),
+      window.localStorage.getItem(individualRunStorageKey("mot_3d")),
     ).toBeNull();
   });
 
@@ -374,7 +375,7 @@ describe("IndividualMot3DRun", () => {
       },
     } as unknown as Mot3DRun;
     window.localStorage.setItem(
-      "ytterbium.individual-run.mot_3d.v1",
+      individualRunStorageKey("mot_3d"),
       JSON.stringify({
         version: 1,
         family: "mot_3d",
@@ -405,7 +406,7 @@ describe("IndividualMot3DRun", () => {
     const user = userEvent.setup();
     const api = service();
     window.localStorage.setItem(
-      "ytterbium.individual-run.mot_3d.v1",
+      individualRunStorageKey("mot_3d"),
       JSON.stringify({
         version: 1,
         family: "mot_3d",
@@ -516,7 +517,7 @@ describe("IndividualMot3DRun", () => {
   it("keeps the remembered Zeus identity blocked when the catalog is unavailable", async () => {
     const api = service();
     window.localStorage.setItem(
-      "ytterbium.individual-run.mot_3d.v1",
+      individualRunStorageKey("mot_3d"),
       JSON.stringify({
         version: 1,
         family: "mot_3d",
@@ -543,7 +544,7 @@ describe("IndividualMot3DRun", () => {
 it("shows a recovered scheduler hold without resubmitting", async () => {
   const api = service();
   const openJobs = vi.fn();
-  window.localStorage.setItem("ytterbium.individual-run.mot_3d.v1", JSON.stringify({
+  window.localStorage.setItem(individualRunStorageKey("mot_3d"), JSON.stringify({
     version: 1, family: "mot_3d", display_name: "mot3d-browser", execution_mode: "zeus", username: "tal.noa",
   }));
   vi.mocked(api.runs).mockResolvedValue([{ id: "individual-run-test", display_name: "mot3d-browser", record_state: "queued", lifecycle: "queued", execution: { mode: "zeus", zeus_job_id: "123.zeus-master" } } as unknown as Mot3DRun]);

@@ -1,3 +1,4 @@
+import { individualRunStorageKey } from "../features/individual/individualRunRecovery";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -201,14 +202,14 @@ describe("individual Zeeman wizard", () => {
     const completed = { id: `individual-run-${"a".repeat(24)}`, display_name: "zeeman-test",
       lifecycle: "results_ready", record_state: "succeeded", execution: { mode },
       retention: { status: "retained" }, metrics: { n_initial: 30, n_survivors: 20 } } as unknown as Awaited<ReturnType<IndividualZeemanApi["run"]>>;
-    window.localStorage.setItem("ytterbium.individual-run.zeeman.v1", JSON.stringify({version: 1, family: "zeeman", display_name: "zeeman-test", execution_mode: mode, ...(mode === "zeus" ? { username: "tal.noa" } : {})}));
+    window.localStorage.setItem(individualRunStorageKey("zeeman"), JSON.stringify({version: 1, family: "zeeman", display_name: "zeeman-test", execution_mode: mode, ...(mode === "zeus" ? { username: "tal.noa" } : {})}));
     vi.mocked(api.runs).mockResolvedValue([completed]); vi.mocked(api.run).mockResolvedValue(completed);
     api.recoverZeus = vi.fn().mockRejectedValue(new Error("offline"));
     render(<IndividualZeemanRun api={api} onBack={onBack} />);
     await screen.findByRole("heading", { name: "Verified results are ready" });
     await user.click(screen.getByRole("button", { name: "Configure another simulation" }));
     expect(onBack).toHaveBeenCalledOnce();
-    expect(window.localStorage.getItem("ytterbium.individual-run.zeeman.v1")).toBeNull();
+    expect(window.localStorage.getItem(individualRunStorageKey("zeeman"))).toBeNull();
     expect(api.recoverZeus).not.toHaveBeenCalled();
     expect(api.startLocal).not.toHaveBeenCalled();
     expect(screen.queryByText("Existing Zeus run needs verification")).not.toBeInTheDocument(); expect(api.confirm).not.toHaveBeenCalled();
@@ -218,7 +219,7 @@ describe("individual Zeeman wizard", () => {
     const api = fake();
     const queued = { id: `individual-run-${"b".repeat(24)}`, display_name: "zeeman-queued", lifecycle: "configured", record_state: "configured", retention: { particle_states_requested: true, status: "pending" }, execution: { mode: "local", locally_scheduled: true, progress: null } } as unknown as Awaited<ReturnType<IndividualZeemanApi["run"]>>;
     const completed = { ...queued, lifecycle: "results_ready", record_state: "succeeded", execution: { ...queued.execution, locally_scheduled: false }, retention: { particle_states_requested: true, status: "retained" }, metrics: { n_initial: 30, n_survivors: 20 } } as typeof queued;
-    window.localStorage.setItem("ytterbium.individual-run.zeeman.v1", JSON.stringify({ version: 1, family: "zeeman", display_name: queued.display_name, execution_mode: "local" }));
+    window.localStorage.setItem(individualRunStorageKey("zeeman"), JSON.stringify({ version: 1, family: "zeeman", display_name: queued.display_name, execution_mode: "local" }));
     vi.mocked(api.runs).mockResolvedValue([queued]);
     vi.mocked(api.run).mockResolvedValue(completed);
     render(<IndividualZeemanRun api={api} onBack={vi.fn()} />);
