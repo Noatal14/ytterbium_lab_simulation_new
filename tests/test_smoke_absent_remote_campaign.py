@@ -106,6 +106,11 @@ def test_actual_receiver_entry_distinguishes_absence_after_pinned_checkout(tmp_p
     source = Path(receiver.__file__).read_text().replace('Path("/home")', 'Path(test_home)')
     namespace = {"__name__": "receiver_test", "test_home": str(home)}
     exec(compile(source, receiver.__file__, "exec"), namespace)
+    # Preserve the genuine deployment allowlist, mapping only its /home anchor.
+    checkout_paths = namespace["campaign_checkout_paths"]
+    namespace["campaign_checkout_paths"] = lambda username: frozenset(
+        home / path.relative_to("/home") for path in checkout_paths(username)
+    )
     with pytest.raises(SystemExit) as error: namespace["main"]()
     assert error.value.code == 20
     assert json.loads(capsys.readouterr().out)["error"] == expected

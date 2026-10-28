@@ -25,6 +25,10 @@ def test_physical_source_hash_uses_portable_posix_name_order(
     monkeypatch.chdir(tmp_path)
     sources = {
         "studies/mot_3d_campaign.py": b"campaign source\n",
+        # Deployment authority is an explicit dependency even when the test
+        # replaces CAMPAIGN_FILES with its minimal portable-ordering fixture.
+        "workflow_api/campaign_deployment.py": b"deployment source\n",
+        "workflow_api/specifications/deployments_v1.json": b"{}\n",
         "utils/RK4StCustom.py": b"mixed case solver source\n",
         "utils/__init__.py": b"package source\n",
         "utils/data_helpers.py": b"helper source\n",

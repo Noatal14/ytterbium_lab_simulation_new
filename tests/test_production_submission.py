@@ -223,7 +223,8 @@ def test_remote_receiver_contains_only_the_frozen_production_array_qsub():
 
 
 def _receiver_fixture(tmp_path, monkeypatch):
-    root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign"
+    # Unbound manifests here exercise the historical scientific deployment.
+    root=tmp_path/"ytterbium_lab_simulation_new";campaign=root/"data/optimization/mot_2d/campaign"
     (campaign/"jobs").mkdir(parents=True);(campaign/"production").mkdir()
     (campaign/".mot_ui/transitions").mkdir(parents=True)
     artifacts={

@@ -191,12 +191,13 @@ def test_preparation_qstat_parser_accepts_exact_children_and_tab_continuations()
 
 
 def _historical_remote_fixture(tmp_path,monkeypatch):
-    root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign"
+    from workflow_api.campaign_deployment import SCIENTIFIC_CHECKOUT
+    root=tmp_path/SCIENTIFIC_CHECKOUT;campaign=root/"data/optimization/mot_2d/campaign"
     (campaign/"jobs").mkdir(parents=True);(campaign/"confirmation").mkdir()
     (campaign/".mot_ui/transitions").mkdir(parents=True)
     (campaign/".mot_ui/submissions").mkdir()
     commit="a"*40;relative="data/optimization/mot_2d/campaign"
-    current_manifest={"stage":"sensitivity","s0_values":[1.3],"provenance":{"git_commit":commit}}
+    current_manifest={"kind":"mot_2d_s0_campaign","stage":"sensitivity","s0_values":[1.3],"provenance":{"git_commit":commit}}
     (campaign/"campaign.json").write_text(json.dumps(current_manifest))
     historical={"refined_candidates.json":b"{}\n","confirmation/tasks.json":b"[]\n",
                 "jobs/04_confirmation.pbs":b"pbs\n","campaign.json":b"historical manifest\n"}

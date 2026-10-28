@@ -80,6 +80,12 @@ def test_actual_prepare_then_inspect_is_exact_and_read_only(tmp_path, monkeypatc
     payload={'campaign':relative,'commit':commit,'prepared_files':prepared,'submission_key':key,'transition_files':{name:digest(raw) for name,raw in transition.items()}}
     original_path=Path
     monkeypatch.setattr(receiver,'Path',lambda value:project.parent.parent if value=='/home' else original_path(value))
+    # Relocate the real closed deployment registry with the temporary /home.
+    # Patching Path alone does not relocate this imported registry helper.
+    registered_paths = receiver.campaign_checkout_paths
+    monkeypatch.setattr(receiver, 'campaign_checkout_paths', lambda user: frozenset(
+        tmp_path.joinpath(*path.parts[1:]) for path in registered_paths(user)
+    ))
     def invoke(operation,body):
         monkeypatch.setattr(sys,'argv',['receiver',operation,'tal.noa',str(project),base64.urlsafe_b64encode(json.dumps(body).encode()).decode()])
         receiver.main()
