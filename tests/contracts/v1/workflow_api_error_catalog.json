@@ -610,7 +610,7 @@
       "case": "invalid_request#laboratory_provenance",
       "code": "invalid_request",
       "status": 412,
-      "message": "This source cannot create a new campaign without explicit laboratory provenance. Select a source with verified laboratory provenance; existing campaigns can still use this source."
+      "message": "This source cannot create a new campaign without explicit laboratory provenance or verified original historical evidence. Select a source with verified provenance; existing campaigns can still use this source."
     },
     {
       "domain": "creation",

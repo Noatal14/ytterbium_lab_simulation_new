@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, TYPE_CHECKING
 from urllib.parse import unquote, urlsplit
 
+from lab_setup.historical_zeeman_source import HistoricalSourceEvidenceError
 from workflow_api.platform_io import executable
 from workflow_api import list_workflows
 from workflow_api.discovery import DiscoveryError, get_campaign, list_campaigns
@@ -1794,6 +1795,9 @@ class WorkflowHandler(BaseHTTPRequestHandler):
             return
         except RepositoryFilesChangedError:
             self._catalog_error("creation", "local_files_changed")
+            return
+        except HistoricalSourceEvidenceError:
+            self._catalog_error("creation", "invalid_request#laboratory_provenance")
             return
         except ValueError as error:
             if route.service_attr == "mot_3d_bootstrap_service":

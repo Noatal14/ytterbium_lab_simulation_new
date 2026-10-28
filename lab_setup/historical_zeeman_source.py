@@ -16,9 +16,13 @@ SOURCE_FINGERPRINT = "a8699ba2f14146c7427cda8118e688cf3b3157792be9c0b7e0d99d832e
 EVIDENCE_ID = "corrected-19ring-original-35-ensembles-v1"
 
 
+class HistoricalSourceEvidenceError(ValueError):
+    """The original historical bank identity could not be authenticated."""
+
+
 def historical_source_evidence(records: Sequence[Mapping]) -> dict[str, str]:
     """Authenticate reviewed records without claiming missing original lab IDs."""
-    invalid = ValueError(
+    invalid = HistoricalSourceEvidenceError(
         "This source cannot create a new campaign without explicit laboratory "
         "provenance or verified original historical evidence."
     )

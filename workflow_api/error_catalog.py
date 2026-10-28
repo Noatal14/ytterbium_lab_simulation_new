@@ -195,7 +195,7 @@ CREATION = _frozen(
         ),
         "invalid_request#laboratory_provenance": ErrorSpec(
             HTTPStatus.PRECONDITION_FAILED,
-            "This source cannot create a new campaign without explicit laboratory provenance. Select a source with verified laboratory provenance; existing campaigns can still use this source.",
+            "This source cannot create a new campaign without explicit laboratory provenance or verified original historical evidence. Select a source with verified provenance; existing campaigns can still use this source.",
             "invalid_request",
         ),
         "invalid_request#source_unavailable": ErrorSpec(

@@ -1275,6 +1275,34 @@ def test_creation_requires_same_origin_csrf_and_confirm_is_local_only(tmp_path):
         assert status == 201 and replay == payload
 
 
+def test_unverified_historical_source_returns_safe_provenance_error_without_writes(tmp_path):
+    root = tmp_path / "repo"
+    service = _creation_service(root)
+    directory = root / "data/particle_states/after_zeeman/source"
+    for path in directory.glob("*.json"):
+        record = json.loads(path.read_text())
+        for key in ("laboratory_spec_version", "laboratory_spec_sha256", "zeeman_profile_sha256"):
+            record.pop(key)
+        path.write_text(json.dumps(record))
+    original = {path: path.read_bytes() for path in directory.iterdir()}
+    source_id = list_sources(root)["sources"][0]["id"]
+    with running_server(request_count=2, repository_root=root, creation_service=service) as base_url:
+        _, headers, session = request_json(
+            f"{base_url}/api/v1/session", headers={"Sec-Fetch-Site": "same-origin"}
+        )
+        status, _, payload = request_json(
+            f"{base_url}/api/v1/campaigns/2d/preview", method="POST",
+            headers=_session_headers(base_url, headers["Set-Cookie"].split(";", 1)[0], session["data"]["csrf_token"]),
+            body=json.dumps({"name": "Unverified legacy", "slug": "unverified-legacy",
+                             "source_id": source_id, "s0_values": [1.3]}),
+        )
+    expected = ERROR_DOMAINS["creation"].entries["invalid_request#laboratory_provenance"]
+    assert status == 412
+    assert payload["error"] == {"code": "invalid_request", "message": expected.message}
+    assert {path: path.read_bytes() for path in directory.iterdir()} == original
+    assert not (root / "data/optimization/mot_2d/unverified-legacy").exists()
+
+
 def test_creation_rejects_unknown_fields_and_oversized_body(tmp_path):
     root = tmp_path / "repo"
     service = _creation_service(root)

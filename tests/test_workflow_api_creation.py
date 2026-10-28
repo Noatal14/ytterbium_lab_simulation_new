@@ -15,6 +15,7 @@ from lab_setup.physical_specification import (
     LABORATORY_PHYSICAL_SPECIFICATION,
 )
 
+from lab_setup.historical_zeeman_source import HistoricalSourceEvidenceError
 from workflow_api.mot_2d_plan import RELEVANT_FILES, build_plan, materialize, physical_model_hash, plan_from_frozen_manifest
 from workflow_api.mot_2d_sources import inspect_source
 from workflow_api.repository_snapshot import (
@@ -66,7 +67,7 @@ def test_pre_c2_corrected_source_is_discovered_without_rewriting_files(tmp_path)
     assert {path: path.read_bytes() for path in directory.iterdir()} == before
     repository(tmp_path)
     public_source = {key: value for key, value in inspected.items() if key != "records"}
-    with pytest.raises(ValueError, match="cannot create a new campaign"):
+    with pytest.raises(HistoricalSourceEvidenceError, match="cannot create a new campaign"):
         build_plan(
             tmp_path, name="Blocked legacy", slug="blocked-legacy", s0_values=[1.3],
             source=public_source, snapshot=RepositorySnapshot("a" * 40),
