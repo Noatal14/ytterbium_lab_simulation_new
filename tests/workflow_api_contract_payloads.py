@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
+from pathlib import Path
 
 _MOT3D_SOURCE_ID = "mot3d-source-" + "a" * 32
 _MOT3D_PARAMETERS = {
@@ -2414,6 +2416,13 @@ _PAYLOADS["mot3d-final-validation-completion-confirm"] = {
     "simulation_started": False,
     "local_sync": {"status": "synchronized", "receipt_sha256": "d" * 64},
 }
+
+
+# This producer-captured DTO is independent of the HTTP-envelope golden below.
+# Its existing on-disk fixture uses fake scheduling/trajectories, not live physics.
+_collection = json.loads((Path(__file__).parent / 'contracts/v1/finalization_collection_v1.json').read_text())
+_PAYLOADS['finalization-collection-preview'] = _collection['preview']
+_PAYLOADS['finalization-collection-confirm'] = _collection['confirm']
 
 
 def fake_service_payloads() -> dict[str, object]:

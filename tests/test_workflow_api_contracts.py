@@ -65,6 +65,12 @@ class _Service:
     def confirm(self, payload, *, session_id):
         return self._result("confirm", payload, session_id)
 
+    def collection_preview(self, payload, *, session_id):
+        return self._result("collection-preview", payload, session_id)
+
+    def collection_confirm(self, payload, *, session_id):
+        return self._result("collection-confirm", payload, session_id)
+
     def status(self, payload, **kwargs):
         return self._result("status", payload, kwargs.get("session_id"))
 
@@ -407,6 +413,18 @@ def _load(name):
     return json.loads((CONTRACT_ROOT / name).read_text(encoding="utf-8"))
 
 
+def _contract_request(case_id, payloads):
+    if case_id == 'creation-confirm':
+        return {'preview_token': 'token'}
+    if case_id == 'finalization-collection-preview':
+        return {'campaign_id': payloads['finalization-collection-preview']['campaign']['id'],
+                'username': 'tal.noa',
+                'project_directory': '/home/tal.noa/ytterbium_lab_simulation_ui_acceptance'}
+    if case_id == 'finalization-collection-confirm':
+        return {'preview_token': payloads['finalization-collection-preview']['preview_token']}
+    return {}
+
+
 def collect_success(monkeypatch):
     expected = _load("workflow_api_success.json")
     payloads = fake_service_payloads()
@@ -442,9 +460,8 @@ def collect_success(monkeypatch):
                 case["path"],
                 headers,
                 (
-                    json.dumps({"preview_token": "token"})
-                    if case["id"] == "creation-confirm"
-                    else "{}" if case["method"] == "POST" else None
+                    json.dumps(_contract_request(case["id"], payloads))
+                    if case["method"] == "POST" else None
                 ),
             )
             if case["id"] == "session":
@@ -589,6 +606,8 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
         "production-submit-preview",
         "production-submit-confirm",
         "finalization-status",
+        "finalization-collection-preview",
+        "finalization-collection-confirm",
         "finalization-preview",
         "finalization-confirm",
         "mot3d-run-preview",
@@ -616,11 +635,22 @@ def test_v1_success_contracts_are_exact_and_deterministic(monkeypatch):
     ]
     session_ids = {entry[2] for entry in ledger if entry[2] is not None}
     assert len(session_ids) == 1
+    collection_ids = {"finalization-collection-preview", "finalization-collection-confirm"}
     assert all(
         entry[1]
         == ({"preview_token": "token"} if entry[0] == "creation-confirm" else {})
-        for entry in ledger
+        for entry in ledger if entry[0] not in collection_ids
     )
+    collection_calls = [entry for entry in ledger if entry[0] in collection_ids]
+    payloads = fake_service_payloads()
+    assert [entry[1] for entry in collection_calls] == [
+        {
+            "campaign_id": payloads["finalization-collection-preview"]["campaign"]["id"],
+            "username": "tal.noa",
+            "project_directory": "/home/tal.noa/ytterbium_lab_simulation_ui_acceptance",
+        },
+        {"preview_token": payloads["finalization-collection-preview"]["preview_token"]},
+    ]
 
 
 def test_v1_error_contracts_remain_unversioned():
@@ -1498,6 +1528,26 @@ def test_declarative_post_registry_is_complete_unique_and_compatible():
             "status",
             "payload",
             200,
+            "zeus_finalization_unavailable",
+            "Zeus campaign finalization is unavailable.",
+            "ZeusFinalizationError",
+        ),
+        (
+            "/api/v1/zeus/finalization/collection/preview",
+            "finalization_service",
+            "collection_preview",
+            "session_kw",
+            200,
+            "zeus_finalization_unavailable",
+            "Zeus campaign finalization is unavailable.",
+            "ZeusFinalizationError",
+        ),
+        (
+            "/api/v1/zeus/finalization/collection/confirm",
+            "finalization_service",
+            "collection_confirm",
+            "session_kw",
+            201,
             "zeus_finalization_unavailable",
             "Zeus campaign finalization is unavailable.",
             "ZeusFinalizationError",
