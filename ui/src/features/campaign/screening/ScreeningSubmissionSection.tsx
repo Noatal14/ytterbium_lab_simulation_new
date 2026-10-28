@@ -252,6 +252,9 @@ export function ScreeningSubmissionSection({
               </div>
             </div>
           )}
+
+        </section>
+      )}
           {submitError && (
             <div
               ref={submitPanel}
@@ -269,7 +272,7 @@ export function ScreeningSubmissionSection({
                       : "Screening submission could not be verified"}
                 </strong>
                 <p>{submitError}</p>
-                {["unknown", "terminal"].includes(submitState) ? (
+                {["unknown", "terminal"].includes(submitState) || lifecycle ? (
                   <button
                     className="secondary-button compact-action"
                     type="button"
@@ -289,8 +292,6 @@ export function ScreeningSubmissionSection({
               </div>
             </div>
           )}
-        </section>
-      )}
       {submitState === "submitted" && submitResult && !lifecycle && (
         <section
           className="section-block"

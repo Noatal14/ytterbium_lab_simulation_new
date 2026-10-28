@@ -146,10 +146,13 @@ describe("shared workflow presentation", () => {
     expect(receipt).toHaveFocus();
   });
 
-  it("keeps Screening status evidence visible when its submission action fails", () => {
-    render(<ScreeningFlow visible evidenceFresh smokeCheck="ready" submitState="error" submitPreview={null} submitResult={null} submitError="Submission stopped." lifecycle={{ source: "zeus", queried_at: "2026-10-09T10:00:00Z", campaign: { id: "c", name: "C", stage: "screen" }, submission: { job_id: "2[].zeus-master" }, scheduler: { state: "running", raw_state: "R", exit_status: null, task_count: 3, counts: { queued: 0, running: 3, held: 0, succeeded: 0, failed: 0 } }, validation: { status: "not_ready", completed_trials: 0, expected_trials: 51, candidate_count: 0 }, lifecycle: "screen_running", next_action: "wait" }} lifecycleCheck="ready" lifecycleError="" prepareState="idle" preparePreview={null} prepareResult={null} prepareError="" onRefreshSmoke={noop} onPreviewSubmit={noop} onConfirmSubmit={noop} onResetSubmit={noop} onRefreshLifecycle={noop} onPreviewPrepare={noop} onConfirmPrepare={noop} onResetPrepare={noop} onViewJobs={noop} />);
+  it.each(["error", "unknown", "terminal"] as const)("keeps Screening status and the %s submission failure visible without offering another submission", (submitState) => {
+    render(<ScreeningFlow visible evidenceFresh smokeCheck="ready" submitState={submitState} submitPreview={null} submitResult={null} submitError="Submission stopped." lifecycle={{ source: "zeus", queried_at: "2026-10-09T10:00:00Z", campaign: { id: "c", name: "C", stage: "screen" }, submission: { job_id: "2[].zeus-master" }, scheduler: { state: "running", raw_state: "R", exit_status: null, task_count: 3, counts: { queued: 0, running: 3, held: 0, succeeded: 0, failed: 0 } }, validation: { status: "not_ready", completed_trials: 0, expected_trials: 51, candidate_count: 0 }, lifecycle: "screen_running", next_action: "wait" }} lifecycleCheck="ready" lifecycleError="" prepareState="idle" preparePreview={null} prepareResult={null} prepareError="" onRefreshSmoke={noop} onPreviewSubmit={noop} onConfirmSubmit={noop} onResetSubmit={noop} onRefreshLifecycle={noop} onPreviewPrepare={noop} onConfirmPrepare={noop} onResetPrepare={noop} onViewJobs={noop} />);
     expect(screen.getByRole("alert")).toHaveTextContent("Submission stopped.");
     expect(screen.getByText("Array tasks")).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Review Screening submission" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Review again" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View Zeus jobs" })).toBeVisible();
   });
 
   it("moves focus into the Screening submission review", () => {
