@@ -213,6 +213,19 @@ export async function recoverIndividualRun<Run extends RecoverableRun>(
   );
   if (matches.length === 0) {
     const incomplete = catalog.truncated || catalog.invalid_count > 0;
+    // A complete local catalog proves this old browser bookmark no longer
+    // identifies a stored run. Never apply this to uncertain Zeus submissions
+    // or to legacy/incomplete catalog responses.
+    if (api.catalog && !incomplete && stored.execution_mode === "local") {
+      const current = readRememberedIndividualRun(family);
+      if (
+        current?.display_name === stored.display_name &&
+        current.execution_mode === stored.execution_mode &&
+        current.username === stored.username
+      )
+        forgetIndividualRun(family);
+      return null;
+    }
     throw new Error(
       incomplete
         ? "The run catalog is incomplete, so the remembered run cannot be verified yet. It remains remembered and was not restarted. Retry after resolving the catalog warning."

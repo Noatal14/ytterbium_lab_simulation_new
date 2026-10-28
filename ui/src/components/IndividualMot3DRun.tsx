@@ -339,7 +339,14 @@ export function IndividualMot3DRun({
         setRecoveryPending(remembered.execution_mode === "zeus");
       }
       const found = await recoverIndividualRun("mot_3d", api, isCurrent);
-      if (!isCurrent() || !found) return;
+      if (!isCurrent()) return;
+      if (!found) {
+        setRunId(null);
+        setRun(null);
+        setRecoveryPending(false);
+        setStep("configure");
+        return;
+      }
       if (holdForInspection(found as Mot3DRun)) {
         setRunId(null);
         setRun(null);

@@ -296,7 +296,14 @@ export function IndividualMot2DRun({
         api,
         () => active && id === refreshRequest.current,
       );
-      if (!active || id !== refreshRequest.current || !found) return;
+      if (!active || id !== refreshRequest.current) return;
+      if (!found) {
+        setRunId(null);
+        setRun(null);
+        setRecoveryPending(false);
+        setStep("configure");
+        return;
+      }
       if (holdForInspection(found as Mot2DRun)) {
         setRunId(null);
         setRun(null);

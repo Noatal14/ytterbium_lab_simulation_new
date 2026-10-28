@@ -308,7 +308,14 @@ export function IndividualZeemanRun({ api, onBack, onViewZeusJobs }: Props) {
         setRecoveryPending(remembered.execution_mode === "zeus");
       }
       const found = await recoverIndividualRun("zeeman", api, isCurrent);
-      if (!isCurrent() || !found) return;
+      if (!isCurrent()) return;
+      if (!found) {
+        setRunId(null);
+        setRun(null);
+        setRecoveryPending(false);
+        setStep("configure");
+        return;
+      }
       if (holdForInspection(found as IndividualRun)) {
         setRunId(null);
         setRun(null);

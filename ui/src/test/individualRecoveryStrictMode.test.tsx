@@ -273,3 +273,62 @@ for (const [family] of clients)
       expect(reads.detailCount()).toBe(0);
     },
   );
+
+for (const [family] of clients)
+  it(`${family} returns to configuration when its old local bookmark was removed`, async () => {
+    rememberIndividualRun(
+      family,
+      fixtures[family].detail.display_name,
+      "local",
+    );
+    const fetcher = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      expect(init?.method ?? "GET").toBe("GET");
+      const path = new URL(String(input), "http://localhost").pathname;
+      if (path === "/api/v1/individual-runs")
+        return Promise.resolve(
+          envelope({ runs: [], total: 0, invalid_count: 0, truncated: false }),
+        );
+      if (path.endsWith("/sources"))
+        return Promise.resolve(
+          envelope({
+            contract_version: `${family === "mot_2d" ? "mot-2d" : "mot-3d"}-individual-source-catalog-v1`,
+            sources: [],
+            invalid_count: 0,
+            total: 0,
+            truncated: false,
+          }),
+        );
+      throw new Error(`Unexpected request ${path}`);
+    });
+    vi.stubGlobal("fetch", fetcher);
+    const ui =
+      family === "zeeman" ? (
+        <IndividualZeemanRun
+          api={createIndividualZeemanApi(async () => "unused")}
+          onBack={() => {}}
+        />
+      ) : family === "mot_2d" ? (
+        <IndividualMot2DRun
+          api={createIndividualMot2DApi(async () => "unused")}
+          onBack={() => {}}
+        />
+      ) : (
+        <IndividualMot3DRun
+          api={createIndividualMot3DApi(async () => "unused")}
+          onBack={() => {}}
+        />
+      );
+    render(<StrictMode>{ui}</StrictMode>);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /Particle count/ }),
+      ).toBeVisible(),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Check status" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(
+      fetcher.mock.calls.every(([, init]) => (init?.method ?? "GET") === "GET"),
+    ).toBe(true);
+  });

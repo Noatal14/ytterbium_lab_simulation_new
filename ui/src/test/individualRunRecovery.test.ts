@@ -181,6 +181,77 @@ describe("individual run recovery", () => {
     },
   );
 
+  it.each([
+    ["zeeman", "zeeman-removed"],
+    ["mot_2d", "mot2d-removed"],
+    ["mot_3d", "mot3d-removed"],
+  ] as const)(
+    "forgets a removed local %s bookmark only after a complete catalog",
+    async (family, name) => {
+      rememberIndividualRun(family, name, "local");
+      const api = {
+        runs: vi.fn(),
+        catalog: vi.fn(async () => ({
+          runs: [],
+          total: 0,
+          invalid_count: 0,
+          truncated: false,
+        })),
+        run: vi.fn(),
+      };
+      await expect(recoverIndividualRun(family, api)).resolves.toBeNull();
+      expect(readRememberedIndividualRun(family)).toBeNull();
+      expect(api.run).not.toHaveBeenCalled();
+    },
+  );
+
+  it("does not erase a newer Zeus bookmark while an old local catalog read is pending", async () => {
+    rememberIndividualRun("zeeman", "zeeman-removed", "local");
+    let resolve!: (value: {
+      runs: ReturnType<typeof row>[];
+      total: number;
+      invalid_count: number;
+      truncated: boolean;
+    }) => void;
+    const catalog = new Promise<{
+      runs: ReturnType<typeof row>[];
+      total: number;
+      invalid_count: number;
+      truncated: boolean;
+    }>((done) => {
+      resolve = done;
+    });
+    const pending = recoverIndividualRun("zeeman", {
+      runs: vi.fn(),
+      catalog: () => catalog,
+      run: vi.fn(),
+    });
+    rememberIndividualRun("zeeman", "zeeman-new-remote", "zeus", "tal.noa");
+    resolve({ runs: [], total: 0, invalid_count: 0, truncated: false });
+    await expect(pending).resolves.toBeNull();
+    expect(readRememberedIndividualRun("zeeman")?.display_name).toBe(
+      "zeeman-new-remote",
+    );
+  });
+
+  it("preserves a missing Zeus submission even with a complete catalog", async () => {
+    rememberIndividualRun("zeeman", "zeeman-remote", "zeus", "tal.noa");
+    const api = {
+      runs: vi.fn(),
+      catalog: vi.fn(async () => ({
+        runs: [],
+        total: 0,
+        invalid_count: 0,
+        truncated: false,
+      })),
+      run: vi.fn(),
+    };
+    await expect(recoverIndividualRun("zeeman", api)).rejects.toThrow(
+      /remains remembered/,
+    );
+    expect(readRememberedIndividualRun("zeeman")).not.toBeNull();
+  });
+
   it("keeps a remembered run unresolved when it is absent from the current catalog", async () => {
     rememberIndividualRun("mot_2d", "mot2d-recovery", "local");
     const api = { runs: vi.fn(async () => []), run: vi.fn() };
