@@ -1,4 +1,4 @@
-# UI release scope — 2026-10-27
+# UI release scope — 2026-10-28
 
 The official application is the single `main` checkout. On this Mac use
 `/Users/noatal/Ytterbium UI` and the desktop **Open Ytterbium UI.command**.
@@ -50,6 +50,13 @@ historical and must not be relabeled as newly executed qualification.
 
 ## Release restrictions
 
+- **Local publication on Windows:** one qualification run produced valid saved
+  result files but did not finish publishing its completed status. Its cause is
+  unresolved; later native runs passing does not establish a fix. If the UI
+  reports that local execution needs inspection, keep the run and its files,
+  stop, and contact the maintainer. Do not resubmit to recover that run. Filtered
+  error IDs now help diagnose a recurrence without exposing private paths or
+  exception text. This issue remains a release qualification limitation.
 - **3D refinement:** a legal boundary candidate can stop with
   `refinement_design_duplicate`. Keep the results and stop; no automatic fallback
   or resubmission is supported. The algorithm is unchanged by explicit decision.
