@@ -8,6 +8,10 @@ is needed only to install and start it; run controls are in the browser.
 Install **Python 3.12**, **Node.js 24 LTS** (includes npm), and **Git**.
 On Windows, enable “Add Python to PATH” during installation and use a folder
 on the local Windows drive, not a shared Mac folder or network drive.
+Use a short, writable checkout path, for example `C:\work\Ytterbium UI`.
+Deeply nested paths can make generated result paths exceed Windows' legacy
+path-length limit and fail validation even when the files were saved. Long-path
+support is not qualified for this release; retain the files if this occurs.
 
 If you do not already have the project, open **Terminal on Mac** or
 **PowerShell on Windows**, then run:

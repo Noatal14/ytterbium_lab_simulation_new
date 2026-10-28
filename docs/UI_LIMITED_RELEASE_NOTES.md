@@ -62,6 +62,11 @@ historical and must not be relabeled as newly executed qualification.
   or resubmission is supported. The algorithm is unchanged by explicit decision.
   Do not promise autonomous completion for every valid campaign.
 - **Windows Intel/AMD remains untested.** Native ARM tests do not qualify it.
+- **Windows paths:** install in a short, writable local folder. Native collection
+  tests passed with generated paths up to 199 characters. An earlier test at
+  265 characters published the exact expected bytes but failed the existing
+  validator's ordinary path lookup at the Win32 path-length limit. Those failures
+  remain recorded; arbitrary long paths are not supported or qualified.
 - Individual result pages provide verified summaries and retained data when
   requested; built-in individual result plots remain a documented gap accepted
   for this release scope.
