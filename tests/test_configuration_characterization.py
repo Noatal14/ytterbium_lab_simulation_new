@@ -70,6 +70,7 @@ EXPECTED_EXECUTABLE_SPEC_CONSUMERS = {
     'workflow_api/mot_2d_screen.py',
     'workflow_api/mot_2d_smoke.py',
     'workflow_api/mot_2d_validation.py',
+    'workflow_api/mot_2d_collection.py',  # Reuses the frozen policy for verified output custody.
     'workflow_api/zeus_confirmation.py',
     'workflow_api/zeus_confirmation_remote.py',
     'workflow_api/zeus_confirmation_submission.py',
