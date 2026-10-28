@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import errorSnapshot from "../../../tests/contracts/v1/workflow_api_errors.json";
 import successSnapshot from "./teamContractFixture";
+import { parseFinalizationCollectionPreview } from "../api/schema/domain";
 import {
   campaignApi,
   creationApi,
@@ -18,7 +19,7 @@ import {
   zeusApi,
 } from "../api/campaigns";
 import { sensitivityApi, sensitivitySubmissionApi } from "../api/clients/sensitivity";
-import { finalizationApi, productionApi, productionSubmissionApi } from "../api/clients/production";
+import { createFinalizationCollectionApi, finalizationApi, productionApi, productionSubmissionApi } from "../api/clients/production";
 import { createMot3DBootstrapApi } from "../api/clients/mot3d";
 import { createMot3DDiscoveryApi } from "../api/clients/mot3dDiscovery";
 import { createMot3DDiscoveryTransitionApi } from "../api/clients/mot3dDiscoveryTransition";
@@ -192,6 +193,10 @@ describe("backend-generated workflow API contract snapshots", () => {
     await finalizationApi.status(campaignId, profile);
     const finalizationPreview = await finalizationApi.preview(campaignId, profile);
     await finalizationApi.confirm(finalizationPreview.preview_token);
+    const finalizationCollection = createFinalizationCollectionApi(async () => "<csrf-token>");
+    const collectionCampaignId = parseFinalizationCollectionPreview(dataById("finalization-collection-preview")).campaign.id;
+    const collectionPreview = await finalizationCollection.preview(collectionCampaignId, profile);
+    await finalizationCollection.confirm(collectionPreview.preview_token);
     const individualMot3D = createIndividualMot3DApi(async () => "<csrf-token>");
     await individualMot3D.sources();
     const individualMot3DRequest: Mot3DRequest = {
