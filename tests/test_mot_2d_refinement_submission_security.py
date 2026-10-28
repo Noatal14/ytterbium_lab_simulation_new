@@ -382,8 +382,8 @@ def test_refinement_submission_bad_completion_timestamp_is_terminal(tmp_path, ti
 def test_receiver_submits_four_verified_byte_streams_with_exact_dependencies(tmp_path, monkeypatch, capsys):
     source=(Path(__file__).parents[1]/"workflow_api/zeus_refinement_submission_remote.py").read_text()
     namespace={"__name__":"receiver_under_test"};exec(compile(source,"<receiver>","exec"),namespace)
-    namespace["campaign_checkout_paths"] = lambda username: {Path(tmp_path / "repo")}
-    root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign";(campaign/"jobs").mkdir(parents=True);(campaign/"refine").mkdir();(campaign/".mot_ui/transitions").mkdir(parents=True)
+    namespace["campaign_checkout_paths"] = lambda username: {Path(tmp_path / "ytterbium_lab_simulation_new")}
+    root=tmp_path/"ytterbium_lab_simulation_new";campaign=root/"data/optimization/mot_2d/campaign";(campaign/"jobs").mkdir(parents=True);(campaign/"refine").mkdir();(campaign/".mot_ui/transitions").mkdir(parents=True)
     commit="a"*40;names=[*(f"jobs/03_refine_round_{i:02d}.pbs" for i in range(1,5)),"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh"]
     for index,name in enumerate(names):
         path=campaign/name;path.parent.mkdir(parents=True,exist_ok=True)
@@ -444,8 +444,8 @@ def test_partial_status_never_attaches_dependencies_to_unsubmitted_rounds(tmp_pa
 def _fault_receiver(tmp_path,monkeypatch,round_number,mode):
     source=(Path(__file__).parents[1]/"workflow_api/zeus_refinement_submission_remote.py").read_text()
     ns={"__name__":"fault_receiver"};exec(compile(source,"<receiver>","exec"),ns)
-    ns["campaign_checkout_paths"] = lambda username: {Path(tmp_path / "repo")}
-    root=tmp_path/"repo";campaign=root/"data/optimization/mot_2d/campaign";(campaign/"jobs").mkdir(parents=True);(campaign/"refine").mkdir();state=campaign/".mot_ui/transitions";state.mkdir(parents=True)
+    ns["campaign_checkout_paths"] = lambda username: {Path(tmp_path / "ytterbium_lab_simulation_new")}
+    root=tmp_path/"ytterbium_lab_simulation_new";campaign=root/"data/optimization/mot_2d/campaign";(campaign/"jobs").mkdir(parents=True);(campaign/"refine").mkdir();state=campaign/".mot_ui/transitions";state.mkdir(parents=True)
     commit="a"*40;names=[*(f"jobs/03_refine_round_{i:02d}.pbs" for i in range(1,5)),"campaign.json","screening_candidates.json","refine/tasks.json","jobs/03_submit_refinement_chain.sh"]
     for i,name in enumerate(names):
         path=campaign/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes((json.dumps({"stage":"refine","provenance":{"git_commit":commit}})+"\n").encode() if name=="campaign.json" else f"p{i}\n".encode())
@@ -483,7 +483,7 @@ def test_receiver_crash_or_uncertain_qsub_blocks_every_retry(tmp_path,monkeypatc
     ns,calls,encoded=_fault_receiver(tmp_path,monkeypatch,round_number,mode)
     with pytest.raises((SystemExit,RuntimeError)):ns["main"]()
     attempted=len(calls);capsys.readouterr()
-    monkeypatch.setattr(sys,"argv",["receiver","inspect","tal.noa",str(tmp_path/"repo"),encoded])
+    monkeypatch.setattr(sys,"argv",["receiver","inspect","tal.noa",str(tmp_path/"ytterbium_lab_simulation_new"),encoded])
     ns["main"]();reply=json.loads(capsys.readouterr().out)
     assert reply["status"]=="ambiguous"
     assert len(calls)==attempted

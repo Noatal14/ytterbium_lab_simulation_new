@@ -55,6 +55,11 @@ def _invoke(tmp_path, monkeypatch, *, acceptance, target_acceptance=None, attack
             return tmp_path / text[len(prefix):]
         return Path(value)
     monkeypatch.setattr(receiver, 'Path', mapped)
+    # The receiver's deployment allowlist uses PurePosixPath, not the patched
+    # Path constructor. Map the genuine allowlist into this hermetic filesystem.
+    from workflow_api.campaign_deployment import campaign_checkout_paths
+    monkeypatch.setattr(receiver, 'campaign_checkout_paths',
+                        lambda username: frozenset(mapped(path) for path in campaign_checkout_paths(username)))
     monkeypatch.setattr(sys, 'argv', ['receiver', 'prepare' if race else 'inspect', 'tal.noa', logical,
                                     base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()])
     if stdin:

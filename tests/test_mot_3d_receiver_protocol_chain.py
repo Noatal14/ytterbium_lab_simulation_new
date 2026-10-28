@@ -169,6 +169,10 @@ class _ThreeD:
                                     return original_path(self.remote.parent / text[len(prefix):])
                                 return original_path(value)
                             child.setattr(module, 'Path', mapped)
+                            if hasattr(module, 'campaign_checkout_paths'):
+                                from workflow_api.campaign_deployment import campaign_checkout_paths
+                                child.setattr(module, 'campaign_checkout_paths', lambda username:
+                                    frozenset(mapped(str(path)) for path in campaign_checkout_paths(username)))
                             module.main()
                     except SystemExit as error:
                         import traceback
