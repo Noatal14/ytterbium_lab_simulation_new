@@ -52,6 +52,8 @@ def normalize_s0(values: list[Any]) -> tuple[float, ...]:
         value = float(raw)
         if not math.isfinite(value) or value <= 0: raise ValueError("Every s0 value must be positive and finite.")
         if value not in normalized: normalized.append(value)
+    if len({f"{value:.6f}" for value in normalized}) != len(normalized):
+        raise ValueError("Fixed s0 values must have distinct six-decimal output labels.")
     return tuple(normalized)
 
 

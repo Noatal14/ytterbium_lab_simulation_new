@@ -415,3 +415,7 @@ def test_team_full_on_disk_receiver_protocol_chain(tmp_path, monkeypatch):
         checkout="ytterbium_lab_simulation_ui")
     assert chain.logical.endswith("/ytterbium_lab_simulation_ui")
     assert json.loads((chain.campaign/'campaign.json').read_bytes())['execution_checkout'] == 'ytterbium_lab_simulation_ui'
+    report = json.loads((chain.campaign/'final_report.json').read_bytes())
+    for result in report['results']:
+        assert '/campaigns/protocol-chain/' in result['survivor_states_directory']
+        assert 'final_ensemble_s0_' not in result['survivor_states_directory']

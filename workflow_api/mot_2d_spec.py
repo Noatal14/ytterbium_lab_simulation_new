@@ -184,10 +184,16 @@ def refinement_targets(manifest: dict[str, Any]) -> tuple[int, ...]:
 
 def survivor_states_directory(manifest: dict[str, Any], campaign_root, value: float):
     from pathlib import Path
+    from workflow_api.campaign_deployment import TEAM_CHECKOUT, normal_checkout
     profile = validate_campaign_policy(manifest)
     label = f'{float(value):.6f}'.rstrip('0').rstrip('.')
     if profile:
         return Path(campaign_root) / 'survivor_states' / f's0_{label}'
+    if normal_checkout(manifest) == TEAM_CHECKOUT:
+        # The folder slug is unique at creation; the display name is not a path.
+        # Never let overlapping s0 values overwrite another campaign's inputs.
+        return (Path('data/particle_states/after_2d_mot/campaigns')
+                / Path(campaign_root).name / f's0_{label}')
     return Path('data/particle_states/after_2d_mot') / f'final_ensemble_s0_{label}'
 
 

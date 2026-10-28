@@ -114,3 +114,61 @@ def test_actual_final_input_generation_and_validation_renderers_use_team_target(
     for name,raw in final_files.items():
         if name.endswith('.pbs'):
             assert_team_job(raw.decode())
+
+
+def test_overlapping_team_campaigns_keep_survivor_banks_separate(tmp_path):
+    from workflow_api.mot_2d_spec import survivor_states_directory
+    from utils.data_paths import save_particle_states
+    import numpy as np
+    manifest = {'kind':'mot_2d_s0_campaign', 'execution_checkout':TEAM_CHECKOUT,
+        'name':'Display name can be shared'}
+    first = survivor_states_directory(manifest, Path('data/optimization/mot_2d/first'), 1.35)
+    second = survivor_states_directory(manifest, Path('data/optimization/mot_2d/second'), 1.35)
+    assert first == Path('data/particle_states/after_2d_mot/campaigns/first/s0_1.35')
+    assert second == Path('data/particle_states/after_2d_mot/campaigns/second/s0_1.35')
+    assert first != second
+    filename = 'mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy'
+    a = save_particle_states(tmp_path/first/filename, np.ones((3,6)))
+    original = a.read_bytes()
+    save_particle_states(tmp_path/second/filename, np.zeros((4,6)))
+    assert a.read_bytes() == original
+    for legacy in ({'kind':'mot_2d_s0_campaign'},
+                   {'kind':'mot_2d_s0_campaign','execution_checkout':'ytterbium_lab_simulation_ui_test'}):
+        assert survivor_states_directory(legacy, 'data/optimization/mot_2d/first', 1.35) == Path('data/particle_states/after_2d_mot/final_ensemble_s0_1.35')
+
+
+def test_team_completed_report_cannot_rebind_another_campaign_survivors(tmp_path, monkeypatch):
+    import json
+    import shutil
+    from tests.test_mot_2d_campaign_integrity import (
+        _write_portable_sealed_campaign, _patch_portable_production_transition,
+    )
+    from workflow_api.mot_2d_spec import survivor_states_directory
+    from workflow_api.mot_2d_validation import sealed_final_is_valid
+    from workflow_api.models import StageProgress
+    _patch_portable_production_transition(monkeypatch)
+    root, manifest = _write_portable_sealed_campaign(tmp_path)
+    manifest.update(kind='mot_2d_s0_campaign', execution_checkout=TEAM_CHECKOUT)
+    progress = (StageProgress('sensitivity',17,17,'complete'), StageProgress('production',20,20,'complete'))
+    report_file = root/'final_report.json'
+    report = json.loads(report_file.read_bytes())
+    previous = tmp_path/report['results'][0]['survivor_states_directory']
+    expected = survivor_states_directory(manifest, root, 1.3)
+    (tmp_path/expected).parent.mkdir(parents=True,exist_ok=True)
+    previous.rename(tmp_path/expected)
+    report['results'][0]['survivor_states_directory'] = expected.as_posix()
+    report_file.write_text(json.dumps(report))
+    assert sealed_final_is_valid(root,manifest,progress,tmp_path)
+    foreign = expected.parent.parent/'another-campaign'/expected.name
+    shutil.copytree(tmp_path/expected,tmp_path/foreign)
+    report['results'][0]['survivor_states_directory'] = foreign.as_posix()
+    report_file.write_text(json.dumps(report))
+    assert not sealed_final_is_valid(root,manifest,progress,tmp_path)
+
+
+def test_creation_rejects_colliding_s0_output_labels_without_rounding_physics():
+    from workflow_api.mot_2d_plan import normalize_s0
+    with pytest.raises(ValueError, match='output labels'):
+        normalize_s0([1.3,1.3000001])
+    assert normalize_s0([1.3000001]) == (1.3000001,)
+    assert normalize_s0([1.3,1.3,1.35]) == (1.3,1.35)

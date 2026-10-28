@@ -75,6 +75,16 @@ edit metadata, or invent provenance. A new 3D campaign still requires an approve
 completed 2D handoff; these two banks support individual 3D simulations, not an
 automatic new-campaign qualification.
 
+## Result ownership
+
+Each new team 2D campaign stores its reusable survivor bank under
+`data/particle_states/after_2d_mot/campaigns/CAMPAIGN_FOLDER/s0_VALUE/`.
+Different campaigns may share an s0 value without sharing output filenames.
+The final report freezes that exact directory and the original per-seed metadata;
+3D follows that verified handoff. The three shipped banks and historical campaign
+paths are not rewritten. Local and remote copies are verified against their
+recorded hashes when collecting/using results.
+
 ## Deployment and recovery rules
 
 New campaigns freeze their explicit target in `execution_checkout`. A 3D child

@@ -1059,6 +1059,11 @@ def sealed_final_is_valid(
                 or summary.get("stopping_rule_passes") is not stopping_rule_passes
             ):
                 return False
+            from workflow_api.campaign_deployment import TEAM_CHECKOUT, normal_checkout
+            if normal_checkout(manifest) == TEAM_CHECKOUT:
+                expected_states = survivor_states_directory(manifest, root, value).as_posix()
+                if result.get("survivor_states_directory") != expected_states:
+                    return False
             states = resolve_repo_relative(
                 repository_root,
                 result["survivor_states_directory"],
