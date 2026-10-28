@@ -45,6 +45,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from workflow_api.server import HOST, PORT, WorkflowHandler  # noqa: E402
+from workflow_api.campaign_deployment import TEAM_CHECKOUT
 from workflow_api.loopback_http import LoopbackThreadingHTTPServer as ThreadingHTTPServer
 from campaign_fixture import prepare
 from workflow_api.mutation import CreationService
@@ -88,7 +89,7 @@ class FakeZeusSnapshotService:
         username = payload["username"]
         project_directory = payload["project_directory"]
         if not isinstance(username, str) or project_directory != (
-            f"/home/{username}/ytterbium_lab_simulation_new"
+            f"/home/{username}/{TEAM_CHECKOUT}"
         ):
             raise ValueError("Unexpected integration snapshot profile.")
         return {

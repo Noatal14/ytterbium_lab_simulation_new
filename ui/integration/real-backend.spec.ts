@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import deployments from "../../workflow_api/specifications/deployments_v1.json" with { type: "json" };
+
+const teamProjectDirectory = `/home/tal.noa/${deployments.team.checkout}`;
 
 test("browser uses the real workflow handler session and CSRF boundary", async ({ page }) => {
   const session = await page.request.get("http://127.0.0.1:8765/api/v1/session", {
@@ -9,7 +12,7 @@ test("browser uses the real workflow handler session and CSRF boundary", async (
   const rejected = await page.request.post("http://127.0.0.1:8765/api/v1/zeus/snapshot", {
     data: {
       username: "tal.noa",
-      project_directory: "/home/tal.noa/ytterbium_lab_simulation_new",
+      project_directory: teamProjectDirectory,
     },
     headers: {
       Origin: "http://127.0.0.1:8765",
@@ -26,7 +29,7 @@ test("browser uses the real workflow handler session and CSRF boundary", async (
 
   await page.getByLabel("Technion username").fill("tal.noa");
   await expect(page.getByLabel("Remote project directory")).toHaveValue(
-    "/home/tal.noa/ytterbium_lab_simulation_new",
+    teamProjectDirectory,
   );
   await page.getByRole("button", { name: "Connect and check status" }).click();
 
