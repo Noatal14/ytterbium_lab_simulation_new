@@ -4,20 +4,18 @@ import { CircleCheck, CircleX, LockKeyhole } from "lucide-react";
 type Props = {
   title: string;
   description: string;
-  badge: string;
   readiness: "later-milestone" | "blocked";
   points: readonly ReactNode[];
   onStart?: () => void;
 };
 
-export function CampaignCard({ title, description, badge, readiness, points, onStart }: Props) {
+export function CampaignCard({ title, description, readiness, points, onStart }: Props) {
   const blocked = readiness === "blocked";
   const actionId = `${title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-action-explanation`;
   return (
     <article className={`campaign-card${blocked ? " campaign-card--locked" : ""}`}>
       <div className="card-heading">
         <h3>{title}</h3>
-        <span className="card-badge">{badge}</span>
       </div>
       <p>{description}</p>
       <ul>

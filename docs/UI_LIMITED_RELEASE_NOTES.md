@@ -2,8 +2,7 @@
 
 The official application is the single `main` checkout. On this Mac use
 `/Users/noatal/Ytterbium UI` and the desktop **Open Ytterbium UI.command**.
-The Windows entry is **Open Ytterbium UI (Windows).cmd** and reuses its existing
-native checkout. Historical copies and unique changes are archives, not launch
+The Windows entry is **Open Ytterbium UI (Windows).cmd** and uses `C:\Users\noatal\work\Ytterbium UI`, a native Windows checkout. Historical copies and unique changes are archives, not launch
 locations. Do not remove them without checking their inventory.
 
 ## Capacity policy and synchronized deployment
@@ -15,14 +14,17 @@ projections; `--check` verifies them without writes. Byte-size and metadata
 bounds are separate safeguards, not alternate particle limits. Scientific
 configuration defaults and campaign policies remain separate and unchanged.
 
-The ordinary product UI currently targets the isolated
-`/home/tal.noa/ytterbium_lab_simulation_ui_test` through its ignored local
-`VITE_ZEUS_CHECKOUT` setting. This is the same product code with a separate data
-and job destination. The scientific checkout is deliberately not synchronized.
-Use the quickstart for a fresh team installation; the Mac-specific desktop
-launcher is a local convenience, not a portable repository dependency.
+The ordinary product UI defaults to the dedicated team deployment
+`/home/YOUR_USERNAME/ytterbium_lab_simulation_ui` in each member's own Zeus
+account, with `~/venvs/atomsmltr-ui`. It requires no ignored local environment
+file. The deployment registry is shared by backend, frontend and job rendering.
+The historical scientific checkout is not an update target. Use
+[UI quickstart](../UI_QUICKSTART.md) and [Team deployment](TEAM_DEPLOYMENT.md)
+for installation. Desktop shortcuts are local conveniences, not portable
+repository dependencies. The older isolated target used in the historical
+qualification below is not the default team destination.
 
-## Actual verification and fixed collection defects
+## Historical verification and fixed collection defects (2026-10-27)
 
 Job **4830031.zeus-master**, run **mot2d-e0e70cc1a91c95fb8b20a53e**:
 5,000 selected Zeeman survivors, seeds 42/42, 200 cores, 64 GiB, 24-hour cap,

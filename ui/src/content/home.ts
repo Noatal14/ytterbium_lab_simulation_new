@@ -10,7 +10,6 @@ export const homeFixture = {
     {
       id: "mot-2d",
       title: "2D-MOT campaign",
-      badge: "Recommended first",
       description: "Optimize detuning and magnet radius for one or more fixed laser intensities, then produce survivor ensembles for the 3D MOT.",
       points: ["Requires validated Zeeman survivor ensembles", "You will choose one or more fixed s₀ values"],
       readiness: "later-milestone",
@@ -18,7 +17,6 @@ export const homeFixture = {
     {
       id: "mot-3d",
       title: "3D-MOT campaign",
-      badge: "Readiness checked in setup",
       description: "Compare and optimize the donut and single-pass geometries using survivor ensembles from a completed canonical 2D campaign.",
       points: ["Requires a completed canonical 2D-MOT campaign", "Requires separately reviewed 3D timestep evidence"],
       readiness: "later-milestone",

@@ -28,6 +28,13 @@ const zeusSnapshot = {
 };
 
 describe("onboarding home", () => {
+  it("shows campaign actions without development availability badges", async () => {
+    render(<App api={fixtureApi} />);
+    expect(screen.getByRole("button", { name: "Start 2D-MOT campaign" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Start 3D-MOT campaign" })).toBeEnabled();
+    expect(screen.queryByText(/Available now|Readiness checked in setup|Recommended first/)).not.toBeInTheDocument();
+    expect(screen.getByText("Zeus jobs start only after you review and confirm a submission.")).toBeVisible();
+  });
   it("reopens a remembered 2D view through the existing connection and campaign APIs without preview or submit", async () => {
     rememberCampaignView({ id: campaignFixture.id, username: "tal.noa", project_directory: zeusSnapshot.profile.project_directory });
     const get=vi.fn(async () => campaignFixture), snapshot=vi.fn(async () => zeusSnapshot);
@@ -83,7 +90,7 @@ describe("onboarding home", () => {
     expect(screen.getByRole("heading", { name: "Run or inspect a campaign" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Start 2D-MOT campaign/ })).toBeEnabled();
     expect(screen.getByRole("button", { name: /Start 3D-MOT campaign/ })).toBeEnabled();
-    expect(screen.getByText(/Zeus is contacted only after an explicit connection or preparation action/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zeus jobs start only after you review and confirm a submission/i)).toBeInTheDocument();
     await screen.findByRole("button", { name: "Open campaign" });
   });
 
