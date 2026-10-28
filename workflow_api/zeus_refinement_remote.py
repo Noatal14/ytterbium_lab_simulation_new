@@ -6,6 +6,25 @@ from pathlib import Path,PurePosixPath
 
 def fail(code,status=20):print(json.dumps({"error":code}));raise SystemExit(status)
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def screening_submission_absent(submissions):
+    """Only a stable, no-follow empty submission namespace proves no record."""
+    try:
+        descriptor = os.open(submissions, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        try:
+            present = set()
+            for name in ('screening.json', 'screening.pending.json', 'screening.lock'):
+                try: os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+                except FileNotFoundError: continue
+                present.add(name)
+            opened = os.fstat(descriptor); named = submissions.lstat()
+            if not stat.S_ISDIR(named.st_mode) or (opened.st_dev, opened.st_ino) != (named.st_dev, named.st_ino):
+                fail('transition_conflict')
+            if 'screening.json' not in present and present: fail('transition_conflict')
+            return 'screening.json' not in present
+        finally: os.close(descriptor)
+    except OSError: fail('transition_conflict')
+
 def no_links(root,path):
     current=root
     for part in path.relative_to(root).parts:
@@ -92,12 +111,18 @@ def main():
     def smoke_record():
         try: return read_json(resolve_smoke_receipt(campaign))
         except (OSError,ValueError): fail('transition_conflict')
-    screen_transition=read_json(transitions/'screen.json');smoke_submission=smoke_record();screen_submission=read_json(submissions/'screening.json')
+    screen_transition=read_json(transitions/'screen.json');smoke_submission=smoke_record()
     smoke_key=hashlib.sha256(json.dumps({'campaign':relative,'commit':commit,'manifest':prepared[f'{relative}/campaign.json'],'pbs':prepared[f'{relative}/jobs/01_smoke.pbs']},sort_keys=True,separators=(',',':')).encode()).hexdigest()
     smoke_keys={'version','submission_key','nonce','job_file','commit','created_unix_s','status','job_id','completed_unix_s'}
     if set(smoke_submission)!=smoke_keys or smoke_submission.get('version')!=1 or smoke_submission.get('status')!='submitted' or smoke_submission.get('submission_key')!=smoke_key or smoke_submission.get('commit')!=commit or smoke_submission.get('job_file')!=f'{relative}/jobs/01_smoke.pbs' or not re.fullmatch(r'[0-9a-f]{32}',str(smoke_submission.get('nonce',''))) or not re.fullmatch(r'\d+(?:\[\])?\.zeus-master',str(smoke_submission.get('job_id',''))) or not timestamp(smoke_submission.get('created_unix_s')) or not timestamp(smoke_submission.get('completed_unix_s')) or smoke_submission['completed_unix_s']<smoke_submission['created_unix_s']:fail('submission_record_invalid')
     transition_keys={'status','nonce','job_id','smoke_digest','points','artifact_count','commit','submission_key','transition_files','completed_unix_s'}
     if set(screen_transition)!=transition_keys or screen_transition.get('status')!='screening_prepared' or screen_transition.get('submission_key')!=smoke_key or screen_transition.get('job_id')!=smoke_submission.get('job_id') or not re.fullmatch(r'[0-9a-f]{32}',str(screen_transition.get('nonce',''))) or not re.fullmatch(r'[0-9a-f]{64}',str(screen_transition.get('smoke_digest',''))) or not isinstance(screen_transition.get('points'),list) or screen_transition.get('artifact_count')!=3*len(screen_transition['points']) or hashlib.sha256(json.dumps(screen_transition['points'],sort_keys=True).encode()).hexdigest()!=screen_transition['smoke_digest'] or screen_transition.get('transition_files')!=screen_hashes or screen_transition.get('commit')!=commit or not timestamp(screen_transition.get('completed_unix_s')):fail('transition_conflict')
+    if screening_submission_absent(submissions):
+        if (operation == 'inspect' and manifest.get('stage') == 'screen'
+                and {path.name for path in (campaign/'screen').iterdir()} == {'tasks.json'}):
+            fail('screen_not_submitted')
+        fail('transition_conflict')
+    screen_submission=read_json(submissions/'screening.json')
     if set(screen_submission)!={'version','status','submission_key','transition_digest','nonce','job_file','commit','job_id','created_unix_s','completed_unix_s'} or screen_submission.get('version')!=1 or screen_submission.get('status')!='submitted' or screen_submission.get('submission_key')!=payload['screening_submission_key'] or screen_submission.get('transition_digest')!=payload['screen_digest'] or screen_submission.get('commit')!=commit or screen_submission.get('job_file')!=f'{relative}/jobs/02_screen.pbs' or not re.fullmatch(r'[0-9a-f]{32}',str(screen_submission.get('nonce',''))) or not re.fullmatch(r'\d+\[\]\.zeus-master',str(screen_submission.get('job_id',''))) or not timestamp(screen_submission.get('created_unix_s')) or not timestamp(screen_submission.get('completed_unix_s')) or screen_submission['completed_unix_s']<screen_submission['created_unix_s']:fail('submission_record_invalid')
     state_dir=transitions;receipt=state_dir/'refine.json';pending=state_dir/'refine.pending.json';lock=state_dir/'refine.lock'
     if manifest.get('stage')=='refine':

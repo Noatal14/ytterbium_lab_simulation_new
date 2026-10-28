@@ -133,6 +133,10 @@ class PinnedSshRefinementTransport:
         if pinned_operation is None:raise ZeusRefinementError("remote_response_invalid")
         try:r=self.runner.run(pinned_operation,self.profile,payload)
         except subprocess.TimeoutExpired:raise ZeusRefinementError("transition_outcome_unknown" if operation=="prepare" else "zeus_timeout") from None
+        if operation == "inspect" and r.returncode == 20 and not r.stderr and len(r.stdout) <= 512:
+            try: absent = json.loads(r.stdout.decode("utf-8"), object_pairs_hook=lambda pairs: pairs) == [("error", "screen_not_submitted")]
+            except (ValueError, UnicodeDecodeError): absent = False
+            if absent: raise ZeusRefinementError("screen_not_submitted")
         if r.returncode or r.stderr:raise ZeusRefinementError("transition_outcome_unknown" if operation=="prepare" else "remote_response_invalid")
         try:data=json.loads(r.stdout)
         except Exception:raise ZeusRefinementError("remote_response_invalid") from None

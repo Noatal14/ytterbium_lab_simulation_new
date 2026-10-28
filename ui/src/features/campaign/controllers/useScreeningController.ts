@@ -114,6 +114,11 @@ export function useScreeningController({
     } catch (cause) {
       if (generation.current !== requestGeneration || lifecycleEpoch.current !== requestEpoch) return;
       setLifecycle(null);
+      if (cause instanceof ScreeningLifecycleApiError && cause.code === "screen_not_submitted") {
+        setLifecycleError("");
+        setLifecycleCheck("ready");
+        return;
+      }
       setLifecycleError(cause instanceof Error ? cause.message : "The Screening status check stopped safely.");
       setLifecycleCheck("error");
     } finally {
@@ -132,7 +137,7 @@ export function useScreeningController({
   }
 
   async function previewSubmission() {
-    if (!snapshot || !smokeEvidenceFresh || smokeLifecycle?.lifecycle !== "screen_prepared" || submissionActive.current) return;
+    if (!snapshot || !smokeEvidenceFresh || smokeLifecycle?.lifecycle !== "screen_prepared" || lifecycle || submissionActive.current) return;
     submissionActive.current = true;
     const requestGeneration = generation.current;
     const requestAuthorityKey = authorityKeyRef.current;
@@ -164,6 +169,7 @@ export function useScreeningController({
 
   async function confirmSubmission() {
     if (!submissionPreview
+      || lifecycle
       || submissionActive.current
       || !smokeEvidenceFresh
       || smokeLifecycle?.lifecycle !== "screen_prepared"

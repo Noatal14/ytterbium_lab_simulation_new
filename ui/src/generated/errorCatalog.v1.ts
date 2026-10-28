@@ -302,6 +302,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "confirmation_transition",
+    "code": "screen_not_submitted",
+    "semantic": "other"
+  },
+  {
+    "domain": "confirmation_transition",
     "code": "screen_outputs_invalid",
     "semantic": "other"
   },
@@ -2422,6 +2427,11 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "refinement_submission",
+    "code": "screen_not_submitted",
+    "semantic": "other"
+  },
+  {
+    "domain": "refinement_submission",
     "code": "screen_outputs_invalid",
     "semantic": "other"
   },
@@ -2643,6 +2653,11 @@ export const serverErrorCatalog = [
   {
     "domain": "refinement_transition",
     "code": "screen_held",
+    "semantic": "other"
+  },
+  {
+    "domain": "refinement_transition",
+    "code": "screen_not_submitted",
     "semantic": "other"
   },
   {

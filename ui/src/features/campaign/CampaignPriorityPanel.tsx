@@ -46,6 +46,7 @@ export function CampaignPriorityPanel({
   remoteState,
   remoteEvidenceFresh,
   screenSubmitState,
+  screenCheck = "idle",
   screenState,
   chainStatus,
   refinementLifecycle,
@@ -81,6 +82,7 @@ export function CampaignPriorityPanel({
   remoteState: SmokeLifecycle | null;
   remoteEvidenceFresh: boolean;
   screenSubmitState: ScreeningSubmitState;
+  screenCheck?: "idle" | "checking" | "ready" | "error";
   screenState: ScreeningLifecycle | null;
   chainStatus: RefinementChainStatus | null;
   refinementLifecycle: RefinementLifecycle | null;
@@ -112,7 +114,7 @@ export function CampaignPriorityPanel({
   const remoteLifecycle = remoteState?.lifecycle;
   const screenLifecycle = screenState?.lifecycle;
   const screeningStatusUnchecked = remoteLifecycle === "screen_prepared"
-    && screenSubmitState === "idle" && !screenState;
+    && screenSubmitState === "idle" && !screenState && screenCheck !== "ready";
   const chainPriority =
     chainStatus?.chain.status === "not_submitted"
       ? "Action required"

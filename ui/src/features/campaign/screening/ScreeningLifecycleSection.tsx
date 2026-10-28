@@ -93,6 +93,12 @@ export function ScreeningLifecycleSection({
             ? `Screening lifecycle: ${words(lifecycle.lifecycle)}.`
             : ""}
       </div>
+      {!lifecycle && lifecycleCheck === "ready" && !lifecycleError && (
+        <div className="remote-status-card">
+          <h3 ref={statusHeading} tabIndex={-1}>Screening has not been submitted</h3>
+          <p>No Screening submission is recorded. Review the prepared job before submitting it.</p>
+        </div>
+      )}
       {lifecycle && (
         <div
           className={`remote-status-card remote-status-card--${screenLifecycle}`}

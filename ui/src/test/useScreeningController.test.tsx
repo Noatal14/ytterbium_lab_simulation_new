@@ -1,9 +1,10 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ScreeningLifecycleApiError, ScreeningSubmissionApiError } from "../api/clients/screening";
 import type { ZeusSnapshot } from "../api/clients/zeus";
 import { parseRefinementPreview, parseRefinementResult, parseScreeningLifecycle, parseScreeningSubmissionPreview, parseScreeningSubmissionResult, parseSmokeLifecycle } from "../api/schema/domain";
 import { MOT_2D_SPECIFICATION_V1 } from "../generated/mot2dSpec.v1";
+import { ScreeningFlow } from "../features/campaign/ScreeningFlow";
 import { useScreeningController } from "../features/campaign/controllers/useScreeningController";
 
 const snapshot = { profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_ui", authentication: "ssh-key-or-agent" } } as ZeusSnapshot;
@@ -159,5 +160,54 @@ describe("useScreeningController", () => {
     else unmount();
     pending.resolve(refinementResult); await act(() => request);
     if (boundary !== "unmount") { expect(result.current.refinementPreparation.state).toBe("idle"); expect(result.current.refinementPreparation.result).toBeNull(); }
+  });
+});
+
+
+describe("Screening without a durable submission", () => {
+  it("handles only the typed authenticated absence neutrally and retains submission review", async () => {
+    const api = services({ lifecycleApi: { status: vi.fn().mockRejectedValue(new ScreeningLifecycleApiError("screen_not_submitted", "no record")) } });
+    const { result } = renderHook(() => useScreeningController(props(api)));
+    await act(() => result.current.lifecycle.refresh());
+    expect(result.current.lifecycle.check).toBe("ready");
+    expect(result.current.lifecycle.error).toBe("");
+    expect(result.current.lifecycle.value).toBeNull();
+    expect(api.lifecycleApi.preview).not.toHaveBeenCalled();
+    expect(api.submissionApi.confirm).not.toHaveBeenCalled();
+    await act(() => result.current.submission.previewSubmission());
+    expect(api.submissionApi.preview).toHaveBeenCalledOnce();
+  });
+
+  it.each(["remote_response_invalid", "transition_conflict", "zeus_timeout", "zeus_authentication_required"])("does not treat %s as no recorded job", async (code) => {
+    const api = services({ lifecycleApi: { status: vi.fn().mockRejectedValue(new ScreeningLifecycleApiError(code, "blocked")) } });
+    const { result } = renderHook(() => useScreeningController(props(api)));
+    await act(() => result.current.lifecycle.refresh());
+    expect(result.current.lifecycle.check).toBe("error");
+    expect(result.current.lifecycle.error).toBe("blocked");
+    expect(api.submissionApi.confirm).not.toHaveBeenCalled();
+  });
+
+  it("blocks another submission review and a stale confirm after recovering a real job", async () => {
+    const api = services();
+    const { result } = renderHook(() => useScreeningController(props(api)));
+    await act(() => result.current.submission.previewSubmission());
+    await act(() => result.current.lifecycle.refresh());
+    await act(() => result.current.submission.confirmSubmission());
+    await act(() => result.current.submission.previewSubmission());
+    expect(result.current.lifecycle.value?.submission.job_id).toBe("2[].zeus-master");
+    expect(api.submissionApi.preview).toHaveBeenCalledOnce();
+    expect(api.submissionApi.confirm).not.toHaveBeenCalled();
+  });
+
+  it("renders a neutral checked-absence card and hides submission review for an actual recovered job", () => {
+    const action = vi.fn();
+    const flow = { visible: true, evidenceFresh: true, smokeCheck: "ready" as const, submitState: "idle" as const, submitPreview: null, submitResult: null, submitError: "", lifecycle: null, lifecycleCheck: "ready" as const, lifecycleError: "", prepareState: "idle" as const, preparePreview: null, prepareResult: null, prepareError: "", onRefreshSmoke: action, onPreviewSubmit: action, onConfirmSubmit: action, onResetSubmit: action, onRefreshLifecycle: action, onPreviewPrepare: action, onConfirmPrepare: action, onResetPrepare: action, onViewJobs: action };
+    const view = render(<ScreeningFlow {...flow} />);
+    expect(screen.getByRole("heading", { name: "Screening has not been submitted" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Review Screening submission" })).toBeEnabled();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    view.rerender(<ScreeningFlow {...flow} lifecycle={ready} />);
+    expect(screen.queryByRole("button", { name: "Review Screening submission" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Review Refinement preparation" })).toBeVisible();
   });
 });

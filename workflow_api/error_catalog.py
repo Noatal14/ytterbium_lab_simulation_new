@@ -730,6 +730,12 @@ REFINEMENT_TRANSITION = _generic_stage(
     },
     "refinement_preparation_failed",
 )
+REFINEMENT_TRANSITION = _frozen(
+    {**REFINEMENT_TRANSITION.entries, "screen_not_submitted": _spec(
+        HTTPStatus.PRECONDITION_FAILED,
+        "No Screening submission is recorded. Review the prepared Screening job before submitting.",
+    )}, REFINEMENT_TRANSITION.fallback, REFINEMENT_TRANSITION.fallback_code,
+)
 REFINEMENT_SUBMISSION = _generic_stage(
     {
         "transition_outcome_unknown",

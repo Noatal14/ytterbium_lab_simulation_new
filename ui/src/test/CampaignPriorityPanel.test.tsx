@@ -359,3 +359,13 @@ it("prefers a newer full Sensitivity validator over an older unknown submission 
   view.rerender(<CampaignPriorityPanel {...base} campaign={lateCampaign} sensitivityFlow={sensitivity} productionFlow={production} />);
   expect(screen.getByRole("heading",{name:"Manual verification required"})).toBeVisible();
 });
+
+
+it("offers Screening submission review after an authenticated empty submission check only", () => {
+  const view = render(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenCheck="ready" />);
+  expect(screen.getByRole("heading", { name: "Action required" })).toBeVisible();
+  expect(screen.queryByText(/Use Check Screening status/)).not.toBeInTheDocument();
+  expect(screen.getByText(/submission is ready for review/)).toBeVisible();
+  view.rerender(<CampaignPriorityPanel {...base} remoteState={smoke} remoteEvidenceFresh screenCheck="error" />);
+  expect(screen.getByRole("heading", { name: "Check Screening status" })).toBeVisible();
+});

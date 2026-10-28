@@ -439,6 +439,13 @@
     },
     {
       "domain": "confirmation_transition",
+      "case": "screen_not_submitted",
+      "code": "screen_not_submitted",
+      "status": 412,
+      "message": "Confirmation preparation could not be verified."
+    },
+    {
+      "domain": "confirmation_transition",
       "case": "screen_outputs_invalid",
       "code": "screen_outputs_invalid",
       "status": 412,
@@ -3652,6 +3659,13 @@
     },
     {
       "domain": "refinement_submission",
+      "case": "screen_not_submitted",
+      "code": "screen_not_submitted",
+      "status": 412,
+      "message": "Refinement submission could not be verified."
+    },
+    {
+      "domain": "refinement_submission",
       "case": "screen_outputs_invalid",
       "code": "screen_outputs_invalid",
       "status": 412,
@@ -3971,6 +3985,13 @@
       "code": "screen_held",
       "status": 412,
       "message": "Refinement preparation could not be verified."
+    },
+    {
+      "domain": "refinement_transition",
+      "case": "screen_not_submitted",
+      "code": "screen_not_submitted",
+      "status": 412,
+      "message": "No Screening submission is recorded. Review the prepared Screening job before submitting."
     },
     {
       "domain": "refinement_transition",

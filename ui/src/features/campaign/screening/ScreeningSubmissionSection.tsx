@@ -51,7 +51,7 @@ export function ScreeningSubmissionSection({
 }) {
   return (
     <>
-      {submitState !== "submitted" && (
+      {submitState !== "submitted" && !lifecycle && (
         <section
           className="section-block"
           aria-labelledby="screen-submit-section-heading"
