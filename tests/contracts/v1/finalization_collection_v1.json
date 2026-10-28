@@ -1,0 +1,939 @@
+{
+  "fixture_scope": "Hermetic existing on-disk protocol: genuine worker/receiver/collection/validators, fake scheduler and trajectories; not physical evidence. Command: COLLECTION_FIXTURE_EXPORT=/private/tmp/team-collection-native-fixtures pytest tests/test_mot_2d_collection.py",
+  "producer": "4fd9507a995330897993b3f9b8ccb501719e9bc6",
+  "preview": {
+    "preview_token": "collection-contract-test-token",
+    "expires_in_seconds": 300,
+    "campaign": {
+      "id": "mot_2d-61a2454deb285495a7e5",
+      "name": "protocol-chain",
+      "git_commit": "4fd9507a995330897993b3f9b8ccb501719e9bc6",
+      "stage": "complete"
+    },
+    "source": {
+      "finalization_receipt_sha256": "cf203dce38585e1be1d8c4e41922156ac17a39c60c37ed2d77b22da17efb1a9d",
+      "complete_manifest_sha256": "d0e1e88c06c4b0b9da756cb062faf391e3469af95cd0d044b12a09a9c018d0bc",
+      "registry_sha256": "71dcbe36f423084947f2ba1b102c20e8a22785f877d7d0f65f9f3739339c9d93",
+      "bundle_sha256": "9767d7823b2c2b5202ed2d6bf27d0a416dc0d7a3198d66cb85d792a39869a181"
+    },
+    "artifacts": {
+      "files": [
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/campaign.json",
+          "size": 51264,
+          "sha256": "d0e1e88c06c4b0b9da756cb062faf391e3469af95cd0d044b12a09a9c018d0bc"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_00.json",
+          "size": 4502,
+          "sha256": "49134ac62018c18f75057328f3afdceecf8f5b060d64f2847a1a643c0e624841"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_01.json",
+          "size": 4508,
+          "sha256": "e0f3224269987703d8f8899ec66e775e4fd0b611e44f2a894acfd97edb127362"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_02.json",
+          "size": 4508,
+          "sha256": "ce7abdc7dea994a49620f2d2076a27e5ed8518548cd2616556d61aba15dce684"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_03.json",
+          "size": 4508,
+          "sha256": "333136c99e6a25e5052800f16801f66c132ed7e2b1df118ae2930189a3e2db63"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_04.json",
+          "size": 4503,
+          "sha256": "fe0f23833bdc5590abeee96112b645a769839cc6a9964c81c9f98c9430eae324"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/tasks.json",
+          "size": 909,
+          "sha256": "68e9e96969d8420222475aa364c63644efa5aafcf38cd69a8b12c2afe81fe66c"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/final_report.json",
+          "size": 18133,
+          "sha256": "a6003d89253a375d5e7da19ef54db4e4a7c9951696260d1e5d3012fb7670ce34"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/01_smoke.pbs",
+          "size": 962,
+          "sha256": "83241bb29d892044eac1fae05ea7ebeced5875ce36844c90fd7c55d32f7c6d97"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/02_screen.pbs",
+          "size": 960,
+          "sha256": "407efc6971f0a04b44e71419fe62cacdae7bda6aebbeffbda2dd0daad0a7ab42"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_01.pbs",
+          "size": 976,
+          "sha256": "8e1a1266856ad754d663cadb96048581e6adad69a1feb9bb36afb668f1201494"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_02.pbs",
+          "size": 976,
+          "sha256": "ee3c894139de9f20629d40869730b32fd68254daf4b3d4fbd9efd3fa399a024a"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_03.pbs",
+          "size": 976,
+          "sha256": "c3e8e3426cbb440085016bc663c646b82e9e22dfa662449a82445d452ed6f7e5"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_04.pbs",
+          "size": 976,
+          "sha256": "00fe3b97430ec507af3e39565d5901ea745081ec7616d3090b757fd9dd413832"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_submit_refinement_chain.sh",
+          "size": 726,
+          "sha256": "fcf316600606a517a28a8327ae6209ecace5c6bf334880052a9bcb331da35740"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/04_confirmation.pbs",
+          "size": 966,
+          "sha256": "48b229aa8d40468fc5130273980b7734446db546a2de0d43dcd505dc7f8c9109"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/05_sensitivity.pbs",
+          "size": 966,
+          "sha256": "72130b9d4dd8f5782bbb9b9a8ba64164787c6968fd557b59db4e4edc27c4232c"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/06_production.pbs",
+          "size": 966,
+          "sha256": "ed3b8eb132b1dd1da0f33c1d4a5bec3e12aa4b7e3822d4571795316a111f7e3f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3015.json",
+          "size": 2448,
+          "sha256": "4f43e7625b8f1601935ae895bedb176936b6106b3bbc2f1bcb790dfce0e0f328"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3016.json",
+          "size": 2448,
+          "sha256": "5052807a69b5129303b476128be4b791eec2f32ba2da6425fd6931286c78b74b"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3017.json",
+          "size": 2447,
+          "sha256": "230acfc8a564f5569f4b15b1e86a444403dc5d0808efcc94766c597474cd2d16"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3018.json",
+          "size": 2448,
+          "sha256": "66db008b546f0d787b22d5f711d27bfd60fc5af1f685fd309c84727495f63c7e"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3019.json",
+          "size": 2448,
+          "sha256": "c60a3f9e2cde654569733e7ef5ec6f7479abaced51fcc8bf989344ab7e873df6"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3020.json",
+          "size": 2448,
+          "sha256": "68954aeb5a468b67e6133c3ed95f5982193615fca0b84c50d1bb66b17eb3d771"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3021.json",
+          "size": 2448,
+          "sha256": "d9861e53306df0344b9ab09392e74cc55da069281ef5cc57ae2af02f4ad24a10"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3022.json",
+          "size": 2447,
+          "sha256": "bf200380352591a90a3efda7c84f74a8f1778559c6d6f6adb228196793014f81"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3023.json",
+          "size": 2448,
+          "sha256": "b3d7d1cc9344c65bd6e7f393369dfbbe376d80e72b4158b4760b689e05bd830e"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3024.json",
+          "size": 2448,
+          "sha256": "7574354be54a20febe2a81e50b19a85d497cfde052c289716d97c4c1769c408c"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3025.json",
+          "size": 2448,
+          "sha256": "2a28bf21d9ab29a21b9096512cd21fc8fa45aed2254babe0362fb091d1abfaf8"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3026.json",
+          "size": 2448,
+          "sha256": "dfc14d8b30a4a0c131a0220b26e456a701422dcedd7f4732f5dca71c48a87bc3"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3027.json",
+          "size": 2447,
+          "sha256": "46f187ffad9013287f17f0f444033d537411238d6778f311fa25f3b153ce14d0"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3028.json",
+          "size": 2448,
+          "sha256": "e6be893360a355f2f078474257351746bd7b804aa97b14e455034b57099f9c47"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3029.json",
+          "size": 2446,
+          "sha256": "5610fe0f06bb8d95957d1aa56f06fe0b09df88ba9c7d113e342ee4519ea8c337"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3030.json",
+          "size": 2448,
+          "sha256": "a64c352e4f8e3f61889c178b0a34d5c8189758a27dadfa75a9cd387aedc072e6"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3031.json",
+          "size": 2448,
+          "sha256": "52a1103385af0d59cb65a47a1e2f14cebea85a67fa984a487ab83c38b5a87897"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3032.json",
+          "size": 2447,
+          "sha256": "87d2dfe166c6de5327b44b48d50af37491c6a81c8052ff2f6cdac77f50e9741b"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3033.json",
+          "size": 2448,
+          "sha256": "beb47155fe7a97b9748e9bce28023fb3c9a3eb3f9fdeb99d456b5c71b75bdb34"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3034.json",
+          "size": 2447,
+          "sha256": "eba283c8c63a0b716222c7de5458c4e81ce4cd75cb63bc7d5c79af2a3a24f6e4"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/summary.json",
+          "size": 11614,
+          "sha256": "08acc093f4bf8a3c20715e6c4ffe96040a29f1183b8cab0275136c5acccf4d17"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/tasks.json",
+          "size": 4063,
+          "sha256": "b49c62d4eac1edb39481a8818651f00d58ae6c40826adabfa8cce4112c2fa30a"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/joint_screening.db",
+          "size": 114688,
+          "sha256": "9e79b968e733c7cd739e1f6ddec1d1c41c96e92d7cb5c72021cbb98f224b3e59"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/summary.json",
+          "size": 2441,
+          "sha256": "a48479ec0087265f286837bc1083aa352a9e788f84fcac7eb7bac113b6b44b1f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0000.json",
+          "size": 3965,
+          "sha256": "7778a70c3443f0ebf476edb4ab0cae0f86e4c7e3ba657c55e1b0a5846b93f974"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0001.json",
+          "size": 3965,
+          "sha256": "a4f9047dc458c29123fdc1384da5a5baf4de4bd74ea7dcd0cb2e1f8bbdbabbe7"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0002.json",
+          "size": 3965,
+          "sha256": "c34a700cea47507a30fb4f527be971d49603fc2f12c867c5079a6230deab5661"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0003.json",
+          "size": 3965,
+          "sha256": "c6dbcf7f54e55b0603bafc3c483f6912d7269cb569d7d228d536af195666e0d5"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/joint_screening.db",
+          "size": 114688,
+          "sha256": "c692a467ca2577d5555f37cfe0193a20db8716498c62ceba199294778adaa556"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/summary.json",
+          "size": 2440,
+          "sha256": "fb16018a1e71ee82dee175c803929ca75ce6b50f1e5b1c70c863ab43f6956cc9"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0000.json",
+          "size": 3966,
+          "sha256": "d3ae41b686863cde4c4092fd31286c285b1e10a172ffedab4a639a449c368f47"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0001.json",
+          "size": 3965,
+          "sha256": "0a4fc35671ec9beb5da10a7fbb6c4c56d79a451f0f994eeaa02ad00d562039a0"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0002.json",
+          "size": 3964,
+          "sha256": "be2e15bb01ea577ea688a7446739cce593162ef9d3414bab06941fb09b3bdc6f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0003.json",
+          "size": 3966,
+          "sha256": "4d761383237e7621a862c3ac4d17ecf9331c3b008f43eee9017894c4f495e783"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/joint_screening.db",
+          "size": 114688,
+          "sha256": "b5ec8fcd58d4b678e23dfedcdd154ae37f3419cefa27adf2d5438ebdd3e3064f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/summary.json",
+          "size": 2426,
+          "sha256": "98fcdc00875b7cddff3d8d325bd0d0df163b1f4679b7bdf1a4971f4fbbd45587"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0000.json",
+          "size": 3965,
+          "sha256": "6833658086b6f097c7c4fef77867bc417a34dace8ca39b41c7a06a08927edfd1"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0001.json",
+          "size": 3965,
+          "sha256": "ab51af1525ae188b7b5428c11eaa4015b419b99da447975da81598798ee33f14"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0002.json",
+          "size": 3959,
+          "sha256": "8c9f7d7628acffee1b6869eeb83ff97bc592ee282153c5cbf14de797b24db3dd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0003.json",
+          "size": 3964,
+          "sha256": "de6a7b2b2431d856142e854704e889e980e567c184010efe44fa6cdf44416cb5"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/tasks.json",
+          "size": 1398,
+          "sha256": "8008d756180cb580f92752f89d03e6bc16a6861a9b29f3642933ab556a5dc292"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/refined_candidates.json",
+          "size": 1172,
+          "sha256": "3ca5146f84b8623b853f2083224678138aa2601085c063cdbb02aa13bafdfd4a"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker0/joint_screening.db",
+          "size": 114688,
+          "sha256": "310f10a238758051d39408aae3ae83a30445d877c9cbddc2a8d171429a907fa2"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker0/summary.json",
+          "size": 1721,
+          "sha256": "e436836c661ac22252c16ae8a524cd545df0fa088e68d8b8456caf544f15d9f7"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker0/trials/trial_0000.json",
+          "size": 3964,
+          "sha256": "6d04e2b310ea8e854f82081b670aafd1ca33cf5f499c5c51974d5f45d14e1cf0"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker1/joint_screening.db",
+          "size": 114688,
+          "sha256": "bddd71f9018a6672b6dde8026564995c16f6aaadd3249bcd6b9d376ee07f7a69"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker1/summary.json",
+          "size": 1721,
+          "sha256": "59fd94044509d4cf0772e9499bb9b1f185295387ffce0790b5b1c1ce95458e2d"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker1/trials/trial_0000.json",
+          "size": 3958,
+          "sha256": "2dd072ebc726ee34a69127d75a37ae1a9879acf31ba80a3825dc461d23424022"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker2/joint_screening.db",
+          "size": 114688,
+          "sha256": "b1fdc759233130e1bb46ffce3521566e8b6b7fe3441adae52f477014cd215435"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker2/summary.json",
+          "size": 1722,
+          "sha256": "7c8767c199763b7e759394564fb692c4003628ea88960f759089be85b755487b"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker2/trials/trial_0000.json",
+          "size": 3965,
+          "sha256": "2364dfcc53af7da267623831572b466f6971329741b9a5299647cb04d77d9fdc"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/tasks.json",
+          "size": 123,
+          "sha256": "aadb4d05f8a0bf164d62906da2cecab72808e68ce8390f7d33c1ec05a5ea87d9"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/screening_candidates.json",
+          "size": 711,
+          "sha256": "334331974f5f95c780a0a8f348d888286323c4bd8fab7592641d5646bad53c8f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_00.json",
+          "size": 4771,
+          "sha256": "b73e00dbc836fd327f7e8ade192972160252021fe3947083e258a00c1f520735"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_01.json",
+          "size": 4747,
+          "sha256": "9d0c0253c54b1d56a8880d2cbb611030917f1b63099e4e6b7c2503a11a539ad2"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_02.json",
+          "size": 4768,
+          "sha256": "0e659f14b43d03c671dbcd0b38c89a5e52f8ade55f3596ff333d25ed619c1e93"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_03.json",
+          "size": 4751,
+          "sha256": "37a901168077b3fb68af5cdd86cd9f0acfb0096bf365a2857d707407013f4871"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_04.json",
+          "size": 4843,
+          "sha256": "3a5941b16abacef8a084f9c4834205a2268d0b6d2aaadec88189fd52b79db7f2"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_05.json",
+          "size": 4748,
+          "sha256": "10c7e1f992db282136637804c33b097031295601def013e8b4fb2b5cb4fe9382"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_06.json",
+          "size": 4775,
+          "sha256": "54caf657619a8835ca660b93796eef8eb79e87e2bcb4a54485901ea60a8a0d8b"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_07.json",
+          "size": 4751,
+          "sha256": "897649fabc2ff1b718ae44d97012ea5c070336335312a22fb461d3a69b0bca46"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_08.json",
+          "size": 4766,
+          "sha256": "7efd438bb207e2dda65e1a9199e3225f8155da56bc4721a95fd7db5272357d9f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_09.json",
+          "size": 4761,
+          "sha256": "553405aadc1ec2932bbf217eec0f92f144e190a5fe5fd473b2c21af7732b5092"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_10.json",
+          "size": 4737,
+          "sha256": "732c033b443a68e0a69d9afce6e56a763a9282794148bd5d40a1597a125840a8"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_11.json",
+          "size": 4765,
+          "sha256": "0f3ee531802e82f93c95dbc63acaeb727ab03706b0c351ba84445adfec442d1e"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_12.json",
+          "size": 4742,
+          "sha256": "62442d8d91695d866821bfaee0408924dbce3715f3f675817927edae00c66fdc"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_13.json",
+          "size": 4745,
+          "sha256": "5d383744878c33735638b93724aaa79bd4e5bf66db4f46bd645245c631995bf7"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_14.json",
+          "size": 4766,
+          "sha256": "b0ea4c37d334262f9e34edc03aa612e09706d59a9b5e5c55cd7062f94b800f2f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_15.json",
+          "size": 4735,
+          "sha256": "7f480ddc761e2c2bf186f85d7b503a4b93d9cf1e140cc1a0df11040a690c6412"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_16.json",
+          "size": 4763,
+          "sha256": "c149a9a048273f28853723cd034534b4085bec27b755078f052499948c7e2e8c"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/tasks.json",
+          "size": 7845,
+          "sha256": "4a96fb89fd24f8d92560957aefb50fc57e21b72105bbde04bca9ccdc91fc85db"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity_summary.json",
+          "size": 13395,
+          "sha256": "1885a4a895b2d4b9b8ad9f919eecdac46cc63a7690cef0a35c514bbc720985f0"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/smoke/s0_1p300000/summary.json",
+          "size": 1668,
+          "sha256": "8f34eb98cbc4fc466f7a2a9d26cba647823522e5479d9f6d60ce367db61bdffe"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/smoke/s0_1p300000/trials/trial_0000.json",
+          "size": 2144,
+          "sha256": "e17f7b76fe1bf67113acc6d190e56c52b4818f85127420bb91ba6b4be07dc6b4"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.json",
+          "size": 2494,
+          "sha256": "5c12349ebf2f3e737c8ec5b8aed1d547f6e9e5137de7d74ed0d58328a4219f11"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.json",
+          "size": 2494,
+          "sha256": "1006ee9d22efc05af15fd628bb2917cbc03b95c7749e40bf076619bba57aaff6"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.json",
+          "size": 2494,
+          "sha256": "10f92c4745cfecbf1cdb1823a1df1ebd05c34dc0095eac5a9f40facc1c46cc2b"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.json",
+          "size": 2494,
+          "sha256": "feb369cba13bbb8245bd6ea19307febc03693992b85525b5c22bd940ca45281d"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.json",
+          "size": 2494,
+          "sha256": "dc9ae0c8d165d417a59c552d24010a11fdb0ef8ffcc487bf4b35375d5213b3d8"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.json",
+          "size": 2494,
+          "sha256": "008e7e1f5579ca89da8ad4cc3106a1a2ad409662a097b3c1d07ec4b3883e9c3c"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.json",
+          "size": 2494,
+          "sha256": "f4852daaf5de9cbaa5add83e9896688d87536e2cec95e75c517d4d193aaf7c0a"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.json",
+          "size": 2494,
+          "sha256": "f814169504f9d9c8d49f7117375acbbff17ece58f43f6ce3e57a1b98643d7e72"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.json",
+          "size": 2494,
+          "sha256": "0ce89d99ca09b7a300039616015f25c6bd10d87c064e51a67b34ae485d71b947"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.json",
+          "size": 2494,
+          "sha256": "65b94ce8ded895b4d230250f6adcf9d2115866220d83592786efca71e3ef76d3"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.json",
+          "size": 2494,
+          "sha256": "b5d453495a4e3fbe3ec12176b65c8cdbd7bb4920e2f5bc0b9d9b09f4346d901d"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.json",
+          "size": 2494,
+          "sha256": "b12829f67a5497ed7372aa6ebc78dba9f9bd7358d0c5188485aa4994b6454ec0"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.json",
+          "size": 2494,
+          "sha256": "4c69345065964a419a8c5a1e052cba95175beadfa86762f602db8d2d52f1affe"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.json",
+          "size": 2494,
+          "sha256": "b004128a0e63678c8ebcd147b785eaca9a9a046c2510f11996caf9153329ce6f"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.json",
+          "size": 2494,
+          "sha256": "919d9a88fea113284852a784ef62a5b0967446a2fee92c3cc3fb47ea75991273"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.json",
+          "size": 2494,
+          "sha256": "4a4bfdda3d38d445e8c7e6d55682d0ec919b0404a81a393c83fd45cc48baeaed"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.json",
+          "size": 2494,
+          "sha256": "ef4ae0cb565d21b187a3e523f3544082bd7d783ee36deac85418a900fa6637d1"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.json",
+          "size": 2494,
+          "sha256": "e0207c3b537004fe170a4c3b314626c0e78093230fe33f7372bfadc30d41a987"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.json",
+          "size": 2494,
+          "sha256": "4479cfeae5bfbeafb783399be0874b73dbd2b9b456b15c4700f86f434b5070ad"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.json",
+          "size": 2494,
+          "sha256": "bc2df7a394ef016b9aa64437a88059ecaa69559b04e7bee76ee798eb3a62c4c4"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.npy",
+          "size": 176,
+          "sha256": "634814aaa857fec80376d9fe41b0d4cb5f9d5a896cc9b10f4f5a028d8d6c93fd"
+        },
+        {
+          "path": "data/optimization/mot_2d/ui_acceptance/protocol-chain/winners.json",
+          "size": 6011,
+          "sha256": "701c56d7b017a1dab2af53ae2d8f1c3de06e689878ea922a3fafda04256ae6c7"
+        }
+      ],
+      "file_count": 133,
+      "total_bytes": 1095776,
+      "maximum_file_bytes": 114688,
+      "create": [
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_00.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_01.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_02.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_03.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/s0_1p300000/point_04.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/confirmation/tasks.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/final_report.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/02_screen.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_01.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_02.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_03.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_refine_round_04.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/03_submit_refinement_chain.sh",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/04_confirmation.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/05_sensitivity.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/06_production.pbs",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3015.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3016.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3017.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3018.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3019.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3020.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3021.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3022.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3023.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3024.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3025.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3026.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3027.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3028.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3029.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3030.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3031.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3032.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3033.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/replicates/zeeman_seed3034.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/s0_1p300000/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/production/tasks.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/joint_screening.db",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0001.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0002.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker0/trials/trial_0003.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/joint_screening.db",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0001.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0002.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker1/trials/trial_0003.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/joint_screening.db",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0001.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0002.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/s0_1p300000/worker2/trials/trial_0003.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refine/tasks.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/refined_candidates.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker0/joint_screening.db",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker0/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker0/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker1/joint_screening.db",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker1/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker1/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker2/joint_screening.db",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker2/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/s0_1p300000/worker2/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screen/tasks.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/screening_candidates.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_00.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_01.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_02.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_03.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_04.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_05.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_06.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_07.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_08.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_09.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_10.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_11.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_12.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_13.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_14.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_15.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/s0_1p300000/point_16.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity/tasks.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/sensitivity_summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/smoke/s0_1p300000/summary.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/smoke/s0_1p300000/trials/trial_0000.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3015_mot_seed43015.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3016_mot_seed43016.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3017_mot_seed43017.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3018_mot_seed43018.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3019_mot_seed43019.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3020_mot_seed43020.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3021_mot_seed43021.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3022_mot_seed43022.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3023_mot_seed43023.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3024_mot_seed43024.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3025_mot_seed43025.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3026_mot_seed43026.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3027_mot_seed43027.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3028_mot_seed43028.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3029_mot_seed43029.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3030_mot_seed43030.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3031_mot_seed43031.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3032_mot_seed43032.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3033_mot_seed43033.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.json",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/survivor_states/s0_1.3/mot_2d_survivors_zeeman_seed3034_mot_seed43034.npy",
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/winners.json"
+      ],
+      "identical": [
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/jobs/01_smoke.pbs"
+      ],
+      "update": [
+        "data/optimization/mot_2d/ui_acceptance/protocol-chain/campaign.json"
+      ]
+    },
+    "effects": {
+      "collect_verified_outputs": true,
+      "submit_job": false,
+      "start_simulation": false
+    },
+    "local_sync": {
+      "status": "not_synchronized"
+    }
+  },
+  "confirm": {
+    "status": "collected",
+    "campaign_id": "mot_2d-61a2454deb285495a7e5",
+    "stage": "complete",
+    "submitted_to_zeus": false,
+    "simulation_started": false,
+    "local_sync": {
+      "status": "synchronized",
+      "receipt_sha256": "0d0e24d78e2fa92b2cb9ed20d7dca980d866a47d7e30ae6611d407dbd1770dea"
+    },
+    "artifacts": {
+      "created": 131,
+      "identical": 1,
+      "updated": 1
+    }
+  },
+  "status": {
+    "source": "zeus",
+    "queried_at": "2026-10-28T03:31:23.797590+00:00",
+    "campaign": {
+      "id": "mot_2d-61a2454deb285495a7e5",
+      "name": "protocol-chain",
+      "stage": "complete"
+    },
+    "production": {
+      "status": "campaign_complete",
+      "job_id": "70008[].zeus-master",
+      "scheduler": {
+        "counts": {
+          "failed": 0,
+          "held": 0,
+          "queued": 0,
+          "running": 0,
+          "succeeded": 20
+        },
+        "job_id": "70008[].zeus-master",
+        "state": "completed_success",
+        "submission_nonce": "8607236d43a40a4b1e71a7db8ba262ab",
+        "task_count": 20
+      }
+    },
+    "validation": {
+      "status": "valid",
+      "completed_ensembles": 20,
+      "expected_ensembles": 20
+    },
+    "next_action": "none",
+    "local_sync": {
+      "status": "synchronized",
+      "receipt_sha256": "0d0e24d78e2fa92b2cb9ed20d7dca980d866a47d7e30ae6611d407dbd1770dea"
+    },
+    "results": [
+      {
+        "s0": 1.3,
+        "n_ensembles": 20,
+        "total_input": 640,
+        "total_survivors": 20,
+        "recommended_parameters": {
+          "detuning_gamma": -1.2671032493116698,
+          "magnet_radius": 0.04964851839399881,
+          "s0": 1.3
+        },
+        "prediction": {
+          "reporting_zeeman_survivors": 10000000,
+          "simulated_zeeman_survivors": 640,
+          "simulated_captured_atoms": 20,
+          "pooled_conditional_efficiency": 0.03125,
+          "expected_captured_atoms": 312500,
+          "predicted_95_interval_fraction": [
+            0.03109624,
+            0.06253980999999996
+          ],
+          "predicted_95_captured_atoms_interval": [
+            310962,
+            625398
+          ],
+          "predicted_95_half_width_fraction": 0.01572178499999998,
+          "predicted_95_half_width_percentage_points": 1.5721784999999981,
+          "binomial_mean_variance": 4.730224609375e-05,
+          "empirical_between_ensemble_mean_variance": 0.0,
+          "selected_mean_variance": 4.730224609375e-05,
+          "selected_mean_variance_source": "pooled_binomial",
+          "critical_value": 1.96,
+          "future_counting_variance": 3.02734375e-09,
+          "uncertainty_method": "20,000-draw cluster-aware parametric bootstrap: independent Zeeman/MOT ensemble pairs are resampled as clusters, finite within-cluster capture uncertainty is sampled with a Jeffreys beta model, cluster probabilities are pooled with their resampled survivor counts as weights, and future counting noise is sampled binomially",
+          "bootstrap_replicates": 20000
+        },
+        "target_uncertainty_passes": false,
+        "robustness_status": "not_established_pending_adaptive_challenger_validation",
+        "near_optimality_status": "not_established_pending_domain_challenger_elimination",
+        "warnings": [
+          "target_95_prediction_half_width_not_met",
+          "robust_operating_region_not_established",
+          "epsilon_near_optimality_not_established"
+        ],
+        "retention": "retained",
+        "output_suitability": "acceptance_only"
+      }
+    ]
+  }
+}

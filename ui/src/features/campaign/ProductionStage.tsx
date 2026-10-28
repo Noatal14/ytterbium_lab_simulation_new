@@ -42,7 +42,8 @@ export function ProductionStage({
       flow.finalization.state === "review" ||
       flow.finalization.state === "success" ||
       flow.finalization.state === "terminal" ||
-      flow.finalization.error
+      flow.finalization.error ||
+      flow.collection?.state === "review" || flow.collection?.state === "success" || Boolean(flow.collection?.error)
     )
       focus.current?.focus();
   }, [
@@ -52,11 +53,13 @@ export function ProductionStage({
     flow.submission.error,
     flow.finalization.state,
     flow.finalization.error,
+    flow.collection?.state, flow.collection?.error,
   ]);
   if (!visible) return null;
   const p = flow.preparation,
     s = flow.submission,
     f = flow.finalization,
+    c = flow.collection,
     ready = !p.error && p.status?.sensitivity.status === "ready_to_prepare_production",
     prepared =
       p.state === "success" ||
@@ -314,6 +317,7 @@ export function ProductionStage({
                 <Results rows={finalResults} />
               </div>
             )}
+            {finalResults && c && <LocalCollection operation={c} synchronized={f.status?.local_sync.status === "synchronized"} />}
             {f.state === "terminal" && !f.error && (
               <Failure
                 title={f.status?.production.status === "outputs_invalid"
@@ -479,7 +483,7 @@ function Results({
             <strong>Retained outputs:</strong>{" "}
             {row.output_suitability === "acceptance_only"
               ? "TEST ONLY acceptance testing; not eligible for scientific use."
-              : "eligible as validated 3D campaign input."}
+              : "Scientific output suitability is recorded. The normal 3D source catalogue checks locally validated outputs; remote completion alone does not provide local inputs."}
           </p>
           <details>
             <summary>Technical provenance</summary>
@@ -496,5 +500,157 @@ function Results({
         </article>
       ))}
     </div>
+  );
+}
+
+function LocalCollection({
+  operation: c,
+  synchronized,
+}: {
+  operation: ReturnType<typeof useProductionController>["collection"];
+  synchronized: boolean;
+}) {
+  const collected =
+    !c.error &&
+    ((c.state === "idle" && c.lastObservation === null && synchronized) ||
+      (c.state === "success" &&
+        (c.lastObservation === "confirm"
+          ? c.result?.local_sync.status === "synchronized"
+          : c.status?.local_sync.status === "synchronized")));
+  return (
+    <section aria-label="Local collection">
+      <div className="section-heading">
+        <h3>Collect completed outputs on this computer</h3>
+        <p>
+          Remote finalization and local collection are separate. Collection
+          submits no job and runs no simulation.
+        </p>
+      </div>
+      {collected ? (
+        <Success
+          title="Local collection verified"
+          text="The completed outputs and synchronization receipt are verified locally. The normal 3D source catalogue independently checks input eligibility, including whether ensembles contain surviving atoms."
+        />
+      ) : (
+        <>
+          {c.state === "idle" &&
+            !c.error &&
+            (!c.status ||
+              c.status.production.status === "campaign_complete") && (
+              <div className="prepare-card">
+                <div>
+                  <strong>Completed on Zeus — local collection not verified</strong>
+                  <p>
+                    Review the exact files and sizes before collecting the
+                    verified outputs.
+                  </p>
+                </div>
+                <button
+                  className="primary-button"
+                  onClick={() => void c.review()}
+                >
+                  Review local collection
+                </button>
+              </div>
+            )}
+          {c.state === "idle" &&
+            !c.error &&
+            c.status &&
+            c.status.production.status !== "campaign_complete" && (
+              <Failure
+                title="Completed outputs are not established by the latest status"
+                text="Check the current status before reviewing local collection."
+                refresh={() => void c.refresh()}
+              />
+            )}
+          {c.state === "checking" && (
+            <Busy title="Checking completed outputs and local collection" />
+          )}
+          {c.state === "confirming" && (
+            <Busy title="Collecting the reviewed verified outputs" />
+          )}
+          {c.state === "review" && c.preview && (
+            <Review
+              title="Review local collection"
+              description="Collect only this verified output registry. No job is submitted and no simulation starts."
+              back={c.reset}
+              confirm={() => void c.confirm()}
+              confirmLabel="Collect verified outputs"
+            >
+              <dl className="transfer-facts">
+                <div>
+                  <dt>Files</dt>
+                  <dd>{c.preview.artifacts.file_count.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Total bytes</dt>
+                  <dd>{c.preview.artifacts.total_bytes.toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt>Largest file</dt>
+                  <dd>
+                    {c.preview.artifacts.maximum_file_bytes.toLocaleString()}{" "}
+                    bytes
+                  </dd>
+                </div>
+                <div>
+                  <dt>Disposition</dt>
+                  <dd>
+                    {c.preview.artifacts.create.length} new ·{" "}
+                    {c.preview.artifacts.identical.length} already identical ·{" "}
+                    {c.preview.artifacts.update.length} campaign manifest update
+                  </dd>
+                </div>
+                <div>
+                  <dt>Finalization receipt SHA-256</dt>
+                  <dd>
+                    <code>{c.preview.source.finalization_receipt_sha256}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Complete manifest SHA-256</dt>
+                  <dd>
+                    <code>{c.preview.source.complete_manifest_sha256}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Registry SHA-256</dt>
+                  <dd>
+                    <code>{c.preview.source.registry_sha256}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Bundle SHA-256</dt>
+                  <dd>
+                    <code>{c.preview.source.bundle_sha256}</code>
+                  </dd>
+                </div>
+              </dl>
+              <details>
+                <summary>Exact reviewed files</summary>
+                <ul>
+                  {c.preview.artifacts.files.map((file) => (
+                    <li key={file.path}>
+                      <code>{file.path}</code> · {file.size.toLocaleString()}{" "}
+                      bytes · SHA-256 <code>{file.sha256}</code>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            </Review>
+          )}
+          {(c.error || c.state === "terminal") && (
+            <Failure
+              title="Local collection could not be verified"
+              text={
+                c.error ||
+                "The latest authoritative status does not establish valid completed outputs. No local synchronization is claimed."
+              }
+              refresh={() => void c.refresh()}
+            />
+          )}
+        </>
+      )}
+    </section>
   );
 }

@@ -72,7 +72,7 @@ it.each(["development", "ui-acceptance"])("scopes persistent later preparation r
   const action = vi.fn();
   const idle = { state: "idle", status: null, preview: null, result: null, error: "", refresh: action, review: action, confirm: action, reset: action, lastObservation: null };
   const sensitivity = { preparation: { ...idle, state: "success", result: domain.parseSensitivityResult(data("sensitivity-confirm")) }, submission: { ...idle, state: "success", result: domain.parseSensitivitySubmissionResult(data("sensitivity-submit-confirm")) } } as ReturnType<typeof useSensitivityController>;
-  const production = { preparation: { ...idle, state: "success", result: domain.parseProductionResult(data("production-confirm")) }, submission: idle, finalization: idle } as ReturnType<typeof useProductionController>;
+  const production = { preparation: { ...idle, state: "success", result: domain.parseProductionResult(data("production-confirm")) }, submission: idle, finalization: idle, collection: idle } as ReturnType<typeof useProductionController>;
   render(<><SensitivityStage visible flow={sensitivity} onViewJobs={action} /><ProductionStage visible flow={production} onViewJobs={action} /></>);
   expect(screen.getByText(/This preparation made the Sensitivity array available for a separate submission review/)).toBeVisible();
   expect(screen.getByText(/This preparation made the sealed Production array available for a separate submission review/)).toBeVisible();

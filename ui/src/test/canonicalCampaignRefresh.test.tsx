@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import contracts from "./teamContractFixture";
 import { App } from "../App";
+import * as productionController from "../features/campaign/controllers/useProductionController";
 import * as transitionObserver from "../features/campaign/shared/observeCampaignTransition";
 import type { CanonicalTransitionCommit } from "../features/campaign/shared/observeCampaignTransition";
 import { campaignFixture } from "./campaignFixture";
@@ -176,3 +177,182 @@ describe("canonical campaign refresh after a verified 3D transition", () => {
   });
 
 });
+
+it.each(["confirm", "status"])(
+  "rereads the canonical 2D campaign and catalogue after a verified collection %s receipt",
+  async (method) => {
+    const { createFinalizationCollectionApi } =
+      await import("../api/clients/production");
+    const selected: Campaign = {
+      ...campaignFixture,
+      id: "campaign-id",
+      family: "mot_2d",
+      kind: "mot_2d_s0_campaign",
+      path: "data/optimization/mot_2d/contract",
+      git_commit: "a".repeat(40),
+      stage: "production",
+    };
+    const completed: Campaign = { ...selected, stage: "complete" };
+    let collected = false;
+    const get = vi.fn(async () => (collected ? completed : selected));
+    const list = vi.fn(async () => ({
+      campaigns: [collected ? completed : selected],
+      invalid_count: 0,
+      total: 1,
+    }));
+    const api: CampaignApi = { list, get };
+    const finalizationCollection = createFinalizationCollectionApi(
+      async () => "csrf",
+    );
+    let confirm!: typeof finalizationCollection.confirm;
+    let readCollected!: typeof finalizationCollection.status;
+    const originalHook = productionController.useProductionController;
+    vi.spyOn(
+      productionController,
+      "useProductionController",
+    ).mockImplementation((args) => {
+      if (args.collectionApi) readCollected = args.collectionApi.status;
+      return originalHook(args);
+    });
+    const original = transitionObserver.observeCampaignTransition;
+    vi.spyOn(
+      transitionObserver,
+      "observeCampaignTransition",
+    ).mockImplementation((candidate, callback) => {
+      const observed = original(candidate, callback);
+      if (candidate === finalizationCollection)
+        confirm = observed as typeof finalizationCollection.confirm;
+      return observed;
+    });
+    const manifest = selected.path + "/campaign.json",
+      report = selected.path + "/final_report.json";
+    const review = {
+      preview_token: "collection",
+      expires_in_seconds: 300,
+      campaign: {
+        id: selected.id,
+        name: selected.name,
+        git_commit: selected.git_commit,
+        stage: "complete",
+      },
+      source: {
+        finalization_receipt_sha256: "b".repeat(64),
+        complete_manifest_sha256: "a".repeat(64),
+        registry_sha256: "c".repeat(64),
+        bundle_sha256: "d".repeat(64),
+      },
+      artifacts: {
+        files: [
+          { path: manifest, sha256: "a".repeat(64), size: 10 },
+          { path: report, sha256: "b".repeat(64), size: 20 },
+        ],
+        file_count: 2,
+        total_bytes: 30,
+        maximum_file_bytes: 20,
+        create: [report],
+        identical: [],
+        update: [manifest],
+      },
+      effects: {
+        collect_verified_outputs: true,
+        submit_job: false,
+        start_simulation: false,
+      },
+      local_sync: { status: "not_synchronized" },
+    };
+    const posts: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (path: string) => {
+        posts.push(path);
+        if (
+          method === "status" &&
+          path === "/api/v1/zeus/production-results/status"
+        ) {
+          const value = structuredClone(
+            contracts.cases.find((row) => row.id === "finalization-status")!
+              .body.data,
+          ) as Record<string, unknown>;
+          value.campaign = {
+            ...(value.campaign as object),
+            id: selected.id,
+            stage: "complete",
+          };
+          (value.production as Record<string, unknown>).status =
+            "campaign_complete";
+          value.next_action = "none";
+          const finalData = contracts.cases.find(row => row.id === "finalization-confirm")!.body.data as Record<string, unknown>;
+          value.results = finalData.results;
+          value.local_sync = {
+            status: "synchronized",
+            receipt_sha256: "e".repeat(64),
+          };
+          collected = true;
+          return envelope(value);
+        }
+        if (path.endsWith("/collection/preview")) return envelope(review);
+        if (path.endsWith("/collection/confirm")) {
+          collected = true;
+          return envelope({
+            status: "collected",
+            campaign_id: selected.id,
+            stage: "complete",
+            submitted_to_zeus: false,
+            simulation_started: false,
+            local_sync: {
+              status: "synchronized",
+              receipt_sha256: "e".repeat(64),
+            },
+            artifacts: { created: 1, identical: 0, updated: 1 },
+          });
+        }
+        throw new Error(
+          "Other stage status is not supplied by this receipt-refresh test.",
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    render(
+      <App
+        api={api}
+        finalizationCollection={finalizationCollection}
+        zeus={{ snapshot: async () => snapshot }}
+      />,
+    );
+    await user.click(screen.getByRole("link", { name: "Zeus connection" }));
+    await user.type(screen.getByLabelText("Technion username"), "tal.noa");
+    await user.click(
+      screen.getByRole("button", { name: "Connect and check status" }),
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Inspect campaign" }),
+    );
+    await waitFor(() => expect(confirm).toBeTypeOf("function"));
+    const baseline = list.mock.calls.length;
+    await act(async () => {
+      if (method === "confirm") {
+        const preview = await finalizationCollection.preview(
+          selected.id,
+          snapshot.profile,
+        );
+        await confirm(preview.preview_token);
+      } else await readCollected(selected.id, snapshot.profile);
+    });
+    await waitFor(() => expect(get).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(list.mock.calls.length).toBe(baseline + 1));
+    await expect(get.mock.results[1].value).resolves.toMatchObject({
+      family: "mot_2d",
+      stage: "complete",
+      id: selected.id,
+    });
+    expect(posts.filter((p) => p.includes("/collection/"))).toEqual(
+      method === "confirm"
+        ? [
+            "/api/v1/zeus/finalization/collection/preview",
+            "/api/v1/zeus/finalization/collection/confirm",
+          ]
+        : [],
+    );
+    sessionStorage.clear();
+  },
+);

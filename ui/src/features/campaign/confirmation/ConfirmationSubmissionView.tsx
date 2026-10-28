@@ -115,7 +115,7 @@ export function ConfirmationSubmissionView({
               not submit Sensitivity or Production.
             </p>
             <p>
-              Confirmation evaluates one selected candidate on five frozen
+              Each array task evaluates one selected candidate across the frozen
               held-out ensembles, using {campaignConfirmationParticles().toLocaleString("en")} particles per ensemble and the
               final RK4StHybridCustom solver at a 0.625 µs timestep. This is a
               selection check, not the sealed final performance estimate.

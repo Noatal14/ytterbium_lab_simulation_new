@@ -16,6 +16,7 @@ it.each([["development",10_000,"10,000"],["ui-acceptance",UI_ACCEPTANCE_POLICY.m
  const noop=vi.fn();
  render(<ConfirmationSubmissionView enabled state="review" status={null} preview={preview} result={null} error="" onRefresh={noop} onReview={noop} onConfirm={noop} onReset={noop} onViewJobs={noop}/>);
  expect(screen.getByText(new RegExp('using '+label+' particles per ensemble'))).toBeVisible();
+ expect(screen.getByText(/Each array task evaluates one selected candidate across the frozen held-out ensembles/)).toBeVisible();
  cleanup();
  render(<CampaignPriorityPanel campaign={campaignFixture} transferState="idle" submissionState="idle" submissionResult={null} submissionError="" submissionTerminalCode={null} remoteState={null} remoteEvidenceFresh={false} screenSubmitState="idle" screenState={null} chainStatus={null} refinementLifecycle={null} confirmationSubmitState="review" copyStatus="" onCopyCommand={noop}/>);
  expect(screen.getByText(new RegExp('with '+label+' particles each'))).toBeVisible();

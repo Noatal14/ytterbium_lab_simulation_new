@@ -5,7 +5,7 @@ type Operation<T> = Pick<T, Extract<keyof T, "state" | "status" | "result" | "er
 type SensitivityFlow = ReturnType<typeof useSensitivityController>;
 type ProductionFlow = ReturnType<typeof useProductionController>;
 export type SensitivityPriorityFlow = { [K in keyof SensitivityFlow]: Operation<SensitivityFlow[K]> };
-export type ProductionPriorityFlow = { [K in keyof ProductionFlow]: Operation<ProductionFlow[K]> };
+export type ProductionPriorityFlow = { [K in "preparation" | "submission" | "finalization"]: Operation<ProductionFlow[K]> };
 type Evidence = { stage: "Confirmation" | "Sensitivity" | "Production" | "Final report"; lifecycle: string; error: boolean; time: number; order: number };
 
 /** Only same-campaign controller evidence can supersede an earlier stage card.

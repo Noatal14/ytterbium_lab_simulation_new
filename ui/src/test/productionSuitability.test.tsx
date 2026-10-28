@@ -23,14 +23,14 @@ describe("authoritative retained-output suitability", () => {
     const noop = vi.fn();
     const operation = { lastObservation: null, state: "idle", status: null, preview: null, result: null, error: "", refresh: noop, review: noop, confirm: noop, reset: noop };
     const flow = {
-      preparation: operation,
+      collection: operation, preparation: operation,
       submission: { ...operation, state: "success", status: parseProductionSubmissionStatus(data("production-submit-status")) },
       finalization: { ...operation, state: "review", preview: parsedPreview },
     } as ReturnType<typeof useProductionController>;
     const view = render(<ProductionStage visible flow={flow} onViewJobs={noop} />);
     const check = () => {
       const retained = screen.getByText("Retained outputs:").parentElement!;
-      expect(retained).toHaveTextContent(suitability === "acceptance_only" ? "TEST ONLY acceptance testing; not eligible for scientific use." : "eligible as validated 3D campaign input.");
+      expect(retained).toHaveTextContent(suitability === "acceptance_only" ? "TEST ONLY acceptance testing; not eligible for scientific use." : "normal 3D source catalogue checks locally validated outputs");
       if (suitability === "acceptance_only") {
         expect(retained).not.toHaveTextContent("eligible as validated 3D campaign input");
         expect(screen.queryByText(/unbiased/i)).not.toBeInTheDocument();
@@ -83,13 +83,13 @@ describe("authoritative retained-output suitability", () => {
     const mixed = { ...scientific, results: [...scientific.results, ...acceptance.results] };
     expect(() => parseFinalizationPreview(mixed as unknown as Record<string, unknown>)).toThrow("Invalid finalization preview");
     const noop = vi.fn(), operation = { lastObservation: null, state: "idle", status: null, preview: null, result: null, error: "", refresh: noop, review: noop, confirm: noop, reset: noop };
-    const flow = { preparation: operation, submission: { ...operation, state: "success" }, finalization: { ...operation, state: "review", preview: mixed } } as ReturnType<typeof useProductionController>;
+    const flow = { collection: operation, preparation: operation, submission: { ...operation, state: "success" }, finalization: { ...operation, state: "review", preview: mixed } } as ReturnType<typeof useProductionController>;
     const view = render(<ProductionStage visible flow={flow} onViewJobs={noop} />);
     expect(screen.getByRole("heading", { name: "Finalize results including TEST ONLY outputs" })).toBeVisible();
     expect(screen.queryByText(/unbiased/)).not.toBeInTheDocument();
     const rows = screen.getAllByRole("article");
     expect(within(rows[0]).getByText("Scientific qualifications")).toBeVisible();
-    expect(within(rows[0]).getByText(/eligible as validated 3D campaign input/)).toBeVisible();
+    expect(within(rows[0]).getByText(/normal 3D source catalogue checks locally validated outputs/)).toBeVisible();
     expect(within(rows[1]).getByText("Acceptance diagnostics")).toBeVisible();
     expect(within(rows[1]).getByText(/not eligible for scientific use/)).toBeVisible();
     view.rerender(<ProductionStage visible flow={{ ...flow, finalization: { ...operation, state: "success", result: { status: "campaign_complete", campaign_id: scientific.campaign.id, stage: "complete", results: mixed.results, submitted_to_zeus: false, simulation_started: false, local_sync: { status: "not_synchronized" } } } }} onViewJobs={noop} />);

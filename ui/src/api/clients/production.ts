@@ -16,6 +16,10 @@ import {
   parseFinalizationPreview,
   parseFinalizationResult,
   parseFinalizationStatus,
+  parseFinalizationCollectionPreview,
+  parseFinalizationCollectionResult,
+  type FinalizationCollectionPreview,
+  type FinalizationCollectionResult,
   type ProductionPreview,
   type ProductionResult,
   type ProductionStatus,
@@ -47,10 +51,13 @@ function transitionApi<TS, TP, TR>(
   label: string,
   domain: ServerErrorDomain,
   outcomeCode: string,
+  verifyResult?: (preview: TP, result: TR) => boolean,
 ) {
-  const contexts = new Map<string, { campaignId: string; csrf: string }>();
+  const contexts = new Map<string, { campaignId: string; csrf: string; preview: TP }>();
+  let generation = 0;
   return {
     async status(id: string, p: Profile) {
+      const activeGeneration = generation;
       const csrf = await session(),
         v = parse.status(
           await postData(
@@ -60,11 +67,13 @@ function transitionApi<TS, TP, TR>(
             (e) => new ErrorType(e.code, e.message),
           ),
         );
+      if (activeGeneration !== generation) throw new Error(`${label} response is stale.`);
       if ((v as { campaign: { id: string } }).campaign.id !== id)
         throw new Error(`${label} status did not match the selected campaign.`);
       return v;
     },
     async preview(id: string, p: Profile) {
+      const activeGeneration = generation;
       const csrf = await session(),
         v = parse.preview(
           await postData(
@@ -75,15 +84,17 @@ function transitionApi<TS, TP, TR>(
           ),
         ),
         token = (v as { preview_token: string }).preview_token;
+      if (activeGeneration !== generation) throw new Error(`${label} response is stale.`);
       if ((v as { campaign: { id: string } }).campaign.id !== id)
         throw new Error(`${label} review did not match the selected campaign.`);
-      contexts.set(token, { campaignId: id, csrf });
+      contexts.set(token, { campaignId: id, csrf, preview: v });
       return v;
     },
     async confirm(token: string) {
       const c = contexts.get(token);
       if (!c) throw new Error(`The ${label} review is no longer active.`);
       contexts.delete(token);
+      const activeGeneration = generation;
       try {
       const v = parse.result(
         await postData(
@@ -93,6 +104,7 @@ function transitionApi<TS, TP, TR>(
           (e) => new ErrorType(e.code, e.message),
         ),
       );
+      if (activeGeneration !== generation || verifyResult && !verifyResult(c.preview, v)) throw new Error(`${label} result could not be verified.`);
       if ((v as { campaign_id: string }).campaign_id !== c.campaignId)
         throw new Error(`${label} result did not match the reviewed campaign.`);
       return v;
@@ -103,6 +115,7 @@ function transitionApi<TS, TP, TR>(
       }
     },
     reset() {
+      generation++;
       contexts.clear();
     },
   };
@@ -182,5 +195,38 @@ export const productionSubmissionApi = createProductionSubmissionApi(() =>
   creationApi.session(),
 );
 export const finalizationApi = createFinalizationApi(() =>
+  creationApi.session(),
+);
+
+export function createFinalizationCollectionApi(session: Session) {
+  return transitionApi<
+    FinalizationStatus,
+    FinalizationCollectionPreview,
+    FinalizationCollectionResult
+  >(
+    session,
+    {
+      status: "/api/v1/zeus/production-results/status",
+      preview: "/api/v1/zeus/finalization/collection/preview",
+      confirm: "/api/v1/zeus/finalization/collection/confirm",
+    },
+    {
+      status: parseFinalizationStatus,
+      preview: parseFinalizationCollectionPreview,
+      result: parseFinalizationCollectionResult,
+    },
+    FinalizationApiError,
+    "local collection",
+    "finalization",
+    "collection_outcome_unknown",
+    (preview, result) =>
+      result.artifacts.created === preview.artifacts.create.length &&
+      result.artifacts.identical === preview.artifacts.identical.length,
+  );
+}
+export type FinalizationCollectionApi = ReturnType<
+  typeof createFinalizationCollectionApi
+>;
+export const finalizationCollectionApi = createFinalizationCollectionApi(() =>
   creationApi.session(),
 );

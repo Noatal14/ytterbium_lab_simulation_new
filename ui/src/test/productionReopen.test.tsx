@@ -29,7 +29,7 @@ describe("reopening sealed final results", () => {
     expect(status.results?.[0].total_input).toBeGreaterThan(0);
     const noop = vi.fn();
     const operation = { lastObservation: null, state: "idle", status: null, preview: null, result: null, error: "", refresh: noop, review: noop, confirm: noop, reset: noop };
-    const flow = { preparation: operation, submission: { ...operation, state: "success", status: parseProductionSubmissionStatus(data("production-submit-status")) }, finalization: { ...operation, state: "success", status } } as ReturnType<typeof useProductionController>;
+    const flow = { collection: operation, preparation: operation, submission: { ...operation, state: "success", status: parseProductionSubmissionStatus(data("production-submit-status")) }, finalization: { ...operation, state: "success", status } } as ReturnType<typeof useProductionController>;
     render(<ProductionStage visible flow={flow} onViewJobs={noop} />);
     expect(screen.getByRole("heading", { name: "Sealed final results" })).toBeVisible();
     expect(screen.getByRole("heading", { name: "0.000% conditional capture" })).toBeVisible();
@@ -60,7 +60,7 @@ describe("reopening sealed final results", () => {
     const noop = vi.fn();
     const operation = { lastObservation: null, state: "idle", status: null, preview: null, result: null, error: "", refresh: noop, review: noop, confirm: noop, reset: noop };
     const flow = {
-      preparation: operation,
+      collection: operation, preparation: operation,
       submission: { ...operation, state: "success", status: parseProductionSubmissionStatus(data("production-submit-status")) },
       finalization: { ...operation, state: "success", status: parseFinalizationStatus(completeStatus()) },
     } as ReturnType<typeof useProductionController>;
@@ -78,7 +78,7 @@ describe("reopening sealed final results", () => {
 it("retires a retained successful result when the next artifact observation is invalid", () => {
   const noop=vi.fn();
   const operation={lastObservation:null,state:"idle",status:null,preview:null,result:null,error:"",refresh:noop,review:noop,confirm:noop,reset:noop};
-  const flow={preparation:operation,submission:{...operation,state:"success",status:parseProductionSubmissionStatus(data("production-submit-status"))},finalization:{...operation,state:"success",result:parseFinalizationResult(data("finalization-confirm"))}} as ReturnType<typeof useProductionController>;
+  const flow={collection:operation,preparation:operation,submission:{...operation,state:"success",status:parseProductionSubmissionStatus(data("production-submit-status"))},finalization:{...operation,state:"success",result:parseFinalizationResult(data("finalization-confirm"))}} as ReturnType<typeof useProductionController>;
   const view=render(<ProductionStage visible flow={flow} onViewJobs={noop}/>);
   expect(screen.getByRole("heading",{name:"Sealed final results"})).toBeVisible();
   const invalid=data("finalization-status");(invalid.production as Record<string,unknown>).status="outputs_invalid";invalid.validation={status:"invalid",completed_ensembles:0,expected_ensembles:20};invalid.next_action="wait";

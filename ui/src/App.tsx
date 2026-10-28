@@ -20,7 +20,7 @@ import type { IndividualZeemanApi } from "./api/clients/individualZeeman";
 import { IndividualMot2DRun } from "./components/IndividualMot2DRun";
 import type { IndividualMot2DApi } from "./api/clients/individualMot2D";
 import type { SensitivityApi, SensitivitySubmissionApi } from "./api/clients/sensitivity";
-import type { FinalizationApi, ProductionApi, ProductionSubmissionApi } from "./api/clients/production";
+import type { FinalizationApi, FinalizationCollectionApi, ProductionApi, ProductionSubmissionApi } from "./api/clients/production";
 import { homeFixture } from "./content/home";
 import { useCampaignQuery } from "./hooks/useCampaignQuery";
 import { Mot3DCampaignCreation } from "./components/Mot3DCampaignCreation";
@@ -29,7 +29,7 @@ import type { Mot3DDiscoveryApi } from "./api/clients/mot3dDiscovery";
 import { IndividualMot3DRun } from "./components/IndividualMot3DRun";
 import type { IndividualMot3DApi } from "./api/clients/individualMot3D";
 
-type AppProps = { client?: WorkflowApiClient; api?: CampaignApi; creation?: CreationApi; zeus?: ZeusApi; transfer?: TransferApi; submission?: SubmissionApi; lifecycle?: SmokeLifecycleApi; screeningSubmission?: ScreeningSubmissionApi; screeningLifecycle?: ScreeningLifecycleApi; refinementSubmission?: RefinementSubmissionApi; refinementLifecycle?: RefinementLifecycleApi; confirmationSubmission?: ConfirmationSubmissionApi; sensitivity?: SensitivityApi; sensitivitySubmission?: SensitivitySubmissionApi; production?: ProductionApi; productionSubmission?: ProductionSubmissionApi; finalization?: FinalizationApi; individualZeeman?: IndividualZeemanApi; individualMot2D?: IndividualMot2DApi; individualMot3D?: IndividualMot3DApi; mot3DBootstrap?: Mot3DBootstrapApi; mot3DDiscovery?: Mot3DDiscoveryApi };
+type AppProps = { client?: WorkflowApiClient; api?: CampaignApi; creation?: CreationApi; zeus?: ZeusApi; transfer?: TransferApi; submission?: SubmissionApi; lifecycle?: SmokeLifecycleApi; screeningSubmission?: ScreeningSubmissionApi; screeningLifecycle?: ScreeningLifecycleApi; refinementSubmission?: RefinementSubmissionApi; refinementLifecycle?: RefinementLifecycleApi; confirmationSubmission?: ConfirmationSubmissionApi; sensitivity?: SensitivityApi; sensitivitySubmission?: SensitivitySubmissionApi; production?: ProductionApi; productionSubmission?: ProductionSubmissionApi; finalization?: FinalizationApi; finalizationCollection?: FinalizationCollectionApi; individualZeeman?: IndividualZeemanApi; individualMot2D?: IndividualMot2DApi; individualMot3D?: IndividualMot3DApi; mot3DBootstrap?: Mot3DBootstrapApi; mot3DDiscovery?: Mot3DDiscoveryApi };
 
 export function App(props: AppProps = {}) {
   const [client] = useState(() => props.client ?? createWorkflowApiClient());
@@ -49,6 +49,7 @@ export function App(props: AppProps = {}) {
   const production = props.production ?? client.production;
   const productionSubmission = props.productionSubmission ?? client.productionSubmission;
   const finalization = props.finalization ?? client.finalization;
+  const finalizationCollection = props.finalizationCollection ?? client.finalizationCollection;
   const individualZeeman = props.individualZeeman ?? client.individualZeeman;
   const individualMot2D = props.individualMot2D ?? client.individualMot2D;
   const individualMot3D = props.individualMot3D ?? client.individualMot3D;
@@ -72,7 +73,7 @@ export function App(props: AppProps = {}) {
 
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; detailRequest.current += 1; }; }, []);
-  const refreshContext = useMemo(() => ({ api, id: selected?.id ?? null, path: selected?.path, commit: selected?.git_commit, profile: `${zeusSnapshot?.profile.host}:${zeusSnapshot?.profile.username}:${zeusSnapshot?.profile.project_directory}:${zeusSnapshot?.profile.authentication}:${zeusSnapshot?.remote.git_commit}`, generation: detailGeneration }), [detailGeneration, api, selected?.id, selected?.path, selected?.git_commit, zeusSnapshot?.profile.host, zeusSnapshot?.profile.username, zeusSnapshot?.profile.project_directory, zeusSnapshot?.profile.authentication, zeusSnapshot?.remote.git_commit]);
+  const refreshContext = useMemo(() => ({ api, id: selected?.id ?? null, path: selected?.path, family: selected?.family, commit: selected?.git_commit, profile: `${zeusSnapshot?.profile.host}:${zeusSnapshot?.profile.username}:${zeusSnapshot?.profile.project_directory}:${zeusSnapshot?.profile.authentication}:${zeusSnapshot?.remote.git_commit}`, generation: detailGeneration }), [detailGeneration, api, selected?.id, selected?.path, selected?.family, selected?.git_commit, zeusSnapshot?.profile.host, zeusSnapshot?.profile.username, zeusSnapshot?.profile.project_directory, zeusSnapshot?.profile.authentication, zeusSnapshot?.remote.git_commit]);
   const currentRefreshContext = useRef(refreshContext);
   currentRefreshContext.current = refreshContext;
   const seenTransitions = useRef<{ context: typeof refreshContext; markers: Set<string> }>({ context: refreshContext, markers: new Set() });
@@ -83,7 +84,7 @@ export function App(props: AppProps = {}) {
     const context = refreshContext;
     const current = () => mounted.current && currentRefreshContext.current === context && detailRequest.current === context.generation;
     if (!current()) return;
-    const stages = ["preliminary_check", "refinement", "closure", "finalist_selection", "final_validation_input_generation", "final_validation", "complete", "final_validation_extension_required"];
+    const stages = context.family === "mot_2d" ? ["complete"] : ["preliminary_check", "refinement", "closure", "finalist_selection", "final_validation_input_generation", "final_validation", "complete", "final_validation_extension_required"];
     if (result.campaign_id !== context.id || !stages.includes(result.stage) || result.submitted_to_zeus !== false || result.simulation_started !== false || result.local_sync.status !== "synchronized" || !/^[a-f0-9]{64}$/.test(result.local_sync.receipt_sha256)) return;
     if (seenTransitions.current.context !== context) seenTransitions.current = { context, markers: new Set() };
     const marker = `${result.stage}:${result.local_sync.receipt_sha256}`;
@@ -98,8 +99,9 @@ export function App(props: AppProps = {}) {
       try {
         const campaign = await context.api.get(result.campaign_id);
         if (!current() || request !== canonicalReadSequence.current) return;
-        if (campaign.id !== context.id || campaign.family !== "mot_3d" || campaign.path !== context.path || campaign.git_commit !== context.commit || campaign.trust !== "trusted-current" || campaign.stage !== result.stage) throw new Error("The updated campaign identity or stage could not be verified.");
+        if (campaign.id !== context.id || campaign.family !== context.family || campaign.path !== context.path || campaign.git_commit !== context.commit || campaign.trust !== "trusted-current" || campaign.stage !== result.stage) throw new Error("The updated campaign identity or stage could not be verified.");
         setSelected(campaign);
+        void refreshCampaigns();
         retryCanonicalRead.current = null;
         setCanonicalRead(null);
       } catch {
@@ -111,7 +113,7 @@ export function App(props: AppProps = {}) {
     }
     retryCanonicalRead.current = { context, read: () => { void read(); } };
     void read();
-  }, [refreshContext]);
+  }, [refreshContext, refreshCampaigns]);
 
   const openCampaign = useCallback(async (id: string, restored?: CampaignView) => {
     const request = invalidateDetail();
@@ -154,7 +156,7 @@ export function App(props: AppProps = {}) {
     {selected && canonicalRead?.context === refreshContext && canonicalRead.loading && <div className="state-panel" role="status">Refreshing campaign details… The previous verified stage is still shown.</div>}
     {selected && canonicalRead?.context === refreshContext && canonicalRead.error && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign stage verification is required</strong><p>{canonicalRead.error}</p><button type="button" className="secondary-button compact-action" disabled={canonicalRead.loading} onClick={() => { if (retryCanonicalRead.current?.context === refreshContext) retryCanonicalRead.current.read(); }}>Refresh campaign details</button></div></div>}
 
-    {page === "jobs" ? <ZeusJobs campaigns={zeusTestMode() ? [] : campaigns} invalidCount={zeusTestMode() ? 0 : invalidCount} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun === "zeeman" ? <IndividualZeemanRun api={individualZeeman} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_2d" ? <IndividualMot2DRun api={individualMot2D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_3d" ? <IndividualMot3DRun api={individualMot3D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : creating3D ? <Mot3DCampaignCreation api={mot3DBootstrap} onCreated={() => void refreshCampaigns()} onBack={() => { client.reset(); setCreating3D(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} confirmationSubmission={confirmationSubmission} sensitivity={sensitivity} sensitivitySubmission={sensitivitySubmission} production={production} productionSubmission={productionSubmission} finalization={finalization} mot3DDiscovery={mot3DDiscovery} onTransitionCommitted={onTransitionCommitted} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
+    {page === "jobs" ? <ZeusJobs campaigns={zeusTestMode() ? [] : campaigns} invalidCount={zeusTestMode() ? 0 : invalidCount} api={zeus} loading={loading} error={listError} onInspect={(id) => { setPage("home"); void openCampaign(id); }} savedSnapshot={zeusSnapshot} onSnapshot={setZeusSnapshot} /> : individualRun === "zeeman" ? <IndividualZeemanRun api={individualZeeman} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_2d" ? <IndividualMot2DRun api={individualMot2D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : individualRun === "mot_3d" ? <IndividualMot3DRun api={individualMot3D} onViewZeusJobs={() => leaveDetail("jobs")} onBack={() => { client.reset(); setIndividualRun(null); }} /> : creating3D ? <Mot3DCampaignCreation api={mot3DBootstrap} onCreated={() => void refreshCampaigns()} onBack={() => { client.reset(); setCreating3D(false); }} /> : creating ? <CampaignCreation api={creation} onCreated={() => void refreshCampaigns()} onCancel={() => { client.reset(); setCreating(false); setDetailError(null); }} onInspect={(id) => { client.reset(); setCreating(false); void refreshCampaigns(); void openCampaign(id); }} /> : selected ? <CampaignDetail campaign={selected} transfer={transfer} submission={submission} lifecycle={lifecycle} screeningSubmission={screeningSubmission} screeningLifecycle={screeningLifecycle} refinementSubmission={refinementSubmission} refinementLifecycle={refinementLifecycle} confirmationSubmission={confirmationSubmission} sensitivity={sensitivity} sensitivitySubmission={sensitivitySubmission} production={production} productionSubmission={productionSubmission} finalization={finalization} finalizationCollection={finalizationCollection} mot3DDiscovery={mot3DDiscovery} onTransitionCommitted={onTransitionCommitted} zeusSnapshot={zeusSnapshot} onConnectZeus={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setSelected(null); setPage("jobs"); }} onViewJobs={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setZeusSnapshot(null); setSelected(null); setPage("jobs"); }} onBack={() => { rememberCampaignView(null); invalidateDetail(); client.reset(); setDetailError(null); setRestoreCampaignFocus(selected.id); setSelected(null); }} /> : <main id="main">
       <section className="hero" aria-labelledby="page-title"><p className="eyebrow">Welcome</p><h1 id="page-title">Run or inspect a campaign</h1><p className="hero-copy">A campaign follows several ordered steps. This application will guide you through each one and explain when your input is needed.</p></section>
       {detailError && <div className="state-panel state-panel--error" role="alert"><div><strong>Campaign details are unavailable</strong><p>{detailError}</p><button className="secondary-button compact-action" type="button" onClick={() => setDetailError(null)}>Dismiss</button></div></div>}
       {!zeusTestMode() && <CampaignExplorer campaigns={campaigns} invalidCount={invalidCount} loading={loading} error={listError} onRetry={() => void refreshCampaigns()} onOpen={openCampaign} restoreFocusId={restoreCampaignFocus} />}

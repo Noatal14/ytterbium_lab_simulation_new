@@ -591,7 +591,7 @@ export type ProductionSubmissionPreview = Omit<SensitivitySubmissionPreview,"sta
 export type ProductionSubmissionResult = {status:"submitted";campaign_id:string;stage:"production";job_id:string;submitted_at:string;local_sync:{status:"not_synchronized"}};
 export type FinalPrediction = {reporting_zeeman_survivors:number;simulated_zeeman_survivors:number;simulated_captured_atoms:number;pooled_conditional_efficiency:number;expected_captured_atoms:number;predicted_95_interval_fraction:[number,number];predicted_95_captured_atoms_interval:[number,number];predicted_95_half_width_fraction:number;predicted_95_half_width_percentage_points:number;binomial_mean_variance:number;empirical_between_ensemble_mean_variance:number;selected_mean_variance:number;selected_mean_variance_source:"empirical_between_ensemble"|"pooled_binomial";critical_value:number;future_counting_variance:number;uncertainty_method:string;bootstrap_replicates:20000};
 export type FinalCampaignResult = {s0:number;n_ensembles:20;total_input:number;total_survivors:number;recommended_parameters:{s0:number;detuning_gamma:number;magnet_radius:number};prediction:FinalPrediction;target_uncertainty_passes:boolean;robustness_status:string;near_optimality_status:string;warnings:string[];retention:"retained";output_suitability:"eligible_as_3d_campaign_input"|"acceptance_only"};
-export type FinalizationStatus = {source:"zeus";queried_at:string;campaign:{id:string;name:string;stage:"production"|"complete"};production:{status:"queued"|"running"|"held"|"failed"|"status_unknown"|"awaiting_outputs"|"outputs_invalid"|"ready_to_finalize"|"campaign_complete";job_id:string;scheduler:{state:string;task_count:number;counts:{queued:number;running:number;held:number;succeeded:number;failed:number};job_id:string;submission_nonce:string}};validation:{status:"valid"|"invalid"|"not_ready";completed_ensembles:number;expected_ensembles:number};next_action:"review_finalization"|"none"|"wait";local_sync:{status:"not_synchronized"};results?:FinalCampaignResult[]};
+export type FinalizationStatus = {source:"zeus";queried_at:string;campaign:{id:string;name:string;stage:"production"|"complete"};production:{status:"queued"|"running"|"held"|"failed"|"status_unknown"|"awaiting_outputs"|"outputs_invalid"|"ready_to_finalize"|"campaign_complete";job_id:string;scheduler:{state:string;task_count:number;counts:{queued:number;running:number;held:number;succeeded:number;failed:number};job_id:string;submission_nonce:string}};validation:{status:"valid"|"invalid"|"not_ready";completed_ensembles:number;expected_ensembles:number};next_action:"review_finalization"|"none"|"wait";local_sync:FinalizationLocalSync;results?:FinalCampaignResult[]};
 export type FinalizationPreview = {preview_token:string;expires_in_seconds:number;campaign:{id:string;name:string;git_commit:string;s0_values:number[]};from_stage:"production";to_stage:"complete";production:{job_id:string;completed_ensembles:number;expected_ensembles:number};results:FinalCampaignResult[];artifacts:{create:string[];update:string[]};effects:{finalize_campaign:true;submit_job:false;start_simulation:false;overwrite_existing:false};local_sync:{status:"not_synchronized"}};
 export type FinalizationResult = {status:"campaign_complete";campaign_id:string;stage:"complete";results:FinalCampaignResult[];submitted_to_zeus:false;simulation_started:false;local_sync:{status:"not_synchronized"}};
 
@@ -610,7 +610,7 @@ const probability=(x:unknown)=>nonnegativeFinite(x)&&Number(x)<=1;
 const integerNonnegative=(x:unknown)=>Number.isInteger(x)&&Number(x)>=0;
 const finalResult=(value:unknown)=>{const r=value as Record<string,unknown>,p=r?.recommended_parameters as Record<string,unknown>,x=r?.prediction as Record<string,unknown>;const interval=x?.predicted_95_interval_fraction as unknown[],atoms=x?.predicted_95_captured_atoms_interval as unknown[],warnings=r?.warnings as unknown[];const required=["robust_operating_region_not_established","epsilon_near_optimality_not_established",...(r?.target_uncertainty_passes===false?["target_95_prediction_half_width_not_met"]:[])],allowed=new Set([...required,"detuning_lower","detuning_upper","radius_lower","radius_upper"]);return !!r&&exactKeys(r,["s0","n_ensembles","total_input","total_survivors","recommended_parameters","prediction","target_uncertainty_passes","robustness_status","near_optimality_status","warnings","retention","output_suitability"])&&typeof r.s0==="number"&&Number.isFinite(r.s0)&&r.s0>0&&r.n_ensembles===20&&integerNonnegative(r.total_input)&&integerNonnegative(r.total_survivors)&&Number(r.total_survivors)<=Number(r.total_input)&&!!p&&exactKeys(p,["s0","detuning_gamma","magnet_radius"])&&p.s0===r.s0&&[p.detuning_gamma,p.magnet_radius].every(z=>typeof z==="number"&&Number.isFinite(z))&&!!x&&exactKeys(x,["reporting_zeeman_survivors","simulated_zeeman_survivors","simulated_captured_atoms","pooled_conditional_efficiency","expected_captured_atoms","predicted_95_interval_fraction","predicted_95_captured_atoms_interval","predicted_95_half_width_fraction","predicted_95_half_width_percentage_points","binomial_mean_variance","empirical_between_ensemble_mean_variance","selected_mean_variance","selected_mean_variance_source","critical_value","future_counting_variance","uncertainty_method","bootstrap_replicates"])&&integerNonnegative(x.reporting_zeeman_survivors)&&x.simulated_zeeman_survivors===r.total_input&&x.simulated_captured_atoms===r.total_survivors&&probability(x.pooled_conditional_efficiency)&&integerNonnegative(x.expected_captured_atoms)&&Array.isArray(interval)&&interval.length===2&&interval.every(probability)&&Number(interval[0])<=Number(interval[1])&&Array.isArray(atoms)&&atoms.length===2&&atoms.every(integerNonnegative)&&Number(atoms[0])<=Number(atoms[1])&&[x.predicted_95_half_width_fraction,x.predicted_95_half_width_percentage_points,x.binomial_mean_variance,x.empirical_between_ensemble_mean_variance,x.selected_mean_variance,x.critical_value,x.future_counting_variance].every(nonnegativeFinite)&&["empirical_between_ensemble","pooled_binomial"].includes(String(x.selected_mean_variance_source))&&boundedPrintable(x.uncertainty_method,1000)&&x.bootstrap_replicates===20000&&typeof r.target_uncertainty_passes==="boolean"&&r.robustness_status==="not_established_pending_adaptive_challenger_validation"&&r.near_optimality_status==="not_established_pending_domain_challenger_elimination"&&Array.isArray(warnings)&&warnings.every(w=>typeof w==="string"&&allowed.has(w))&&new Set(warnings).size===warnings.length&&required.every(w=>warnings.includes(w))&&r.retention==="retained"&&r.output_suitability===(campaignAcceptanceMode()?"acceptance_only":"eligible_as_3d_campaign_input")};
 const finalResults=(values:unknown,s0s:unknown[])=>Array.isArray(values)&&values.length===s0s.length&&values.every(finalResult)&&values.every((r,i)=>(r as Record<string,unknown>).s0===s0s[i]);
-export function parseFinalizationStatus(value:Record<string,unknown>):FinalizationStatus{const c=value.campaign as Record<string,unknown>,x=value.production as Record<string,unknown>,v=value.validation as Record<string,unknown>,state=String(x?.status),states=["queued","running","held","failed","status_unknown","awaiting_outputs","outputs_invalid","ready_to_finalize","campaign_complete"],ready=["ready_to_finalize","campaign_complete"].includes(state),expected=Number((x?.scheduler as Record<string,unknown>)?.task_count),action=state==="ready_to_finalize"?"review_finalization":state==="campaign_complete"?"none":"wait";if(!exactKeys(value,["source","queried_at","campaign","production","validation","next_action","local_sync",...(state==="campaign_complete"?["results"]:[])])||value.source!=="zeus"||!validUtc(value.queried_at)||!c||!exactKeys(c,["id","name","stage"])||!campaignCore(c)||c.stage!==(state==="campaign_complete"?"complete":"production")||!x||!exactKeys(x,["status","job_id","scheduler"])||!states.includes(state)||!canonicalArrayJob.test(String(x.job_id))||!Number.isInteger(expected)||expected<1||expected>1000||!arrayScheduler(x.scheduler,expected,state,state==="campaign_complete"?"campaign_complete":"ready_to_finalize")||(x.scheduler as Record<string,unknown>).job_id!==x.job_id||!v||!exactKeys(v,["status","completed_ensembles","expected_ensembles"])||v.status!==(ready?"valid":state==="outputs_invalid"?"invalid":"not_ready")||v.expected_ensembles!==expected||v.completed_ensembles!==(ready?expected:0)||value.next_action!==action||!syncOk(value.local_sync)||(state==="campaign_complete"&&(!Array.isArray(value.results)||value.results.length*20!==expected||!value.results.every(finalResult)||new Set(value.results.map(r=>(r as FinalCampaignResult).s0)).size!==value.results.length)))throw new Error("Invalid finalization status.");return value as unknown as FinalizationStatus}
+export function parseFinalizationStatus(value:Record<string,unknown>):FinalizationStatus{const c=value.campaign as Record<string,unknown>,x=value.production as Record<string,unknown>,v=value.validation as Record<string,unknown>,state=String(x?.status),states=["queued","running","held","failed","status_unknown","awaiting_outputs","outputs_invalid","ready_to_finalize","campaign_complete"],ready=["ready_to_finalize","campaign_complete"].includes(state),expected=Number((x?.scheduler as Record<string,unknown>)?.task_count),action=state==="ready_to_finalize"?"review_finalization":state==="campaign_complete"?"none":"wait";if(!exactKeys(value,["source","queried_at","campaign","production","validation","next_action","local_sync",...(state==="campaign_complete"?["results"]:[])])||value.source!=="zeus"||!validUtc(value.queried_at)||!c||!exactKeys(c,["id","name","stage"])||!campaignCore(c)||c.stage!==(state==="campaign_complete"?"complete":"production")||!x||!exactKeys(x,["status","job_id","scheduler"])||!states.includes(state)||!canonicalArrayJob.test(String(x.job_id))||!Number.isInteger(expected)||expected<1||expected>1000||!arrayScheduler(x.scheduler,expected,state,state==="campaign_complete"?"campaign_complete":"ready_to_finalize")||(x.scheduler as Record<string,unknown>).job_id!==x.job_id||!v||!exactKeys(v,["status","completed_ensembles","expected_ensembles"])||v.status!==(ready?"valid":state==="outputs_invalid"?"invalid":"not_ready")||v.expected_ensembles!==expected||v.completed_ensembles!==(ready?expected:0)||value.next_action!==action||!(state==="campaign_complete" ? finalizationSync(value.local_sync) : syncOk(value.local_sync))||(state==="campaign_complete"&&(!Array.isArray(value.results)||value.results.length*20!==expected||!value.results.every(finalResult)||new Set(value.results.map(r=>(r as FinalCampaignResult).s0)).size!==value.results.length)))throw new Error("Invalid finalization status.");return value as unknown as FinalizationStatus}
 export function parseFinalizationPreview(value:Record<string,unknown>):FinalizationPreview{const c=value.campaign as Record<string,unknown>,p=value.production as Record<string,unknown>,a=value.artifacts as Record<string,unknown>,e=value.effects as Record<string,unknown>,s0s=c.s0_values as unknown[];if(!exactKeys(value,["preview_token","expires_in_seconds","campaign","from_stage","to_stage","production","results","artifacts","effects","local_sync"])||!boundedPrintable(value.preview_token,512)||!Number.isInteger(value.expires_in_seconds)||Number(value.expires_in_seconds)<=0||!c||!exactKeys(c,["id","name","git_commit","s0_values"])||!campaignWithS0(c)||value.from_stage!=="production"||value.to_stage!=="complete"||!p||!exactKeys(p,["job_id","completed_ensembles","expected_ensembles"])||!canonicalArrayJob.test(String(p.job_id))||p.expected_ensembles!==20*s0s.length||p.completed_ensembles!==p.expected_ensembles||!finalResults(value.results,s0s)||!a||!exactKeys(a,["create","update"])||JSON.stringify(a.create)!==JSON.stringify([...s0s.map(v=>`production/s0_${Number(v).toFixed(6).replace(".","p")}/summary.json`),"final_report.json"].sort())||JSON.stringify(a.update)!==JSON.stringify(finalizationUpdates)||!e||!exactKeys(e,["finalize_campaign","submit_job","start_simulation","overwrite_existing"])||e.finalize_campaign!==true||e.submit_job!==false||e.start_simulation!==false||e.overwrite_existing!==false||!syncOk(value.local_sync))throw new Error("Invalid finalization preview.");return value as unknown as FinalizationPreview}
 export function parseFinalizationResult(value:Record<string,unknown>):FinalizationResult{const results=value.results as unknown[];if(!exactKeys(value,["status","campaign_id","stage","results","submitted_to_zeus","simulation_started","local_sync"])||value.status!=="campaign_complete"||!boundedPrintable(value.campaign_id,512)||value.stage!=="complete"||!Array.isArray(results)||results.length<1||!results.every(finalResult)||value.submitted_to_zeus!==false||value.simulation_started!==false||!syncOk(value.local_sync))throw new Error("Invalid finalization result.");return value as unknown as FinalizationResult}
 
@@ -626,4 +626,203 @@ export function parsePreview(value: Record<string, unknown>): CreationPreview {
   if (duplicate !== null && (!duplicate || (duplicate.campaign_id !== null && !text(duplicate.campaign_id)) || !text(duplicate.path) || !text(duplicate.stage))) throw new Error("Invalid campaign preview response.");
   if ((duplicate === null) === (plan === null) || (plan !== null && !text(value.preview_token))) throw new Error("Invalid campaign preview response.");
   return value as unknown as CreationPreview;
+}
+
+export type FinalizationLocalSync =
+  | { status: "not_synchronized" }
+  | { status: "synchronized"; receipt_sha256: string };
+export type FinalizationCollectionPreview = {
+  preview_token: string;
+  expires_in_seconds: number;
+  campaign: { id: string; name: string; git_commit: string; stage: "complete" };
+  source: {
+    finalization_receipt_sha256: string;
+    complete_manifest_sha256: string;
+    registry_sha256: string;
+    bundle_sha256: string;
+  };
+  artifacts: {
+    files: { path: string; sha256: string; size: number }[];
+    file_count: number;
+    total_bytes: number;
+    maximum_file_bytes: number;
+    create: string[];
+    identical: string[];
+    update: [string];
+  };
+  effects: {
+    collect_verified_outputs: true;
+    submit_job: false;
+    start_simulation: false;
+  };
+  local_sync: { status: "not_synchronized" };
+};
+export type FinalizationCollectionResult = {
+  status: "collected";
+  campaign_id: string;
+  stage: "complete";
+  submitted_to_zeus: false;
+  simulation_started: false;
+  local_sync: { status: "synchronized"; receipt_sha256: string };
+  artifacts: { created: number; identical: number; updated: 1 };
+};
+const collectionRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+const collectionHash = (v: unknown): v is string =>
+  typeof v === "string" && /^[a-f0-9]{64}$/.test(v);
+// Use the shared printable-text guard, then reject native drive and traversal syntax.
+const collectionPath = (v: unknown): v is string =>
+  boundedPrintable(v, 4096) && v.length > 0 && !/[\\:]/.test(v) &&
+  v.split("/").every(part => part !== "" && part !== "." && part !== "..");
+
+function finalizationSync(v: unknown): v is FinalizationLocalSync {
+  return (
+    collectionRecord(v) &&
+    (syncOk(v) ||
+      (exactKeys(v, ["status", "receipt_sha256"]) &&
+        v.status === "synchronized" &&
+        collectionHash(v.receipt_sha256)))
+  );
+}
+export function parseFinalizationCollectionPreview(
+  value: Record<string, unknown>,
+): FinalizationCollectionPreview {
+  const c = value.campaign,
+    source = value.source,
+    a = value.artifacts,
+    effects = value.effects;
+  if (
+    !exactKeys(value, [
+      "preview_token",
+      "expires_in_seconds",
+      "campaign",
+      "source",
+      "artifacts",
+      "effects",
+      "local_sync",
+    ]) ||
+    !boundedPrintable(value.preview_token, 512) ||
+    value.preview_token.length === 0 ||
+    !Number.isSafeInteger(value.expires_in_seconds) ||
+    Number(value.expires_in_seconds) <= 0 ||
+    !collectionRecord(c) ||
+    !exactKeys(c, ["id", "name", "git_commit", "stage"]) ||
+    !campaignCore(c) ||
+    !/^[a-f0-9]{40}$/.test(String(c.git_commit)) ||
+    c.stage !== "complete" ||
+    !collectionRecord(source) ||
+    !exactKeys(source, [
+      "finalization_receipt_sha256",
+      "complete_manifest_sha256",
+      "registry_sha256",
+      "bundle_sha256",
+    ]) ||
+    !Object.values(source).every(collectionHash) ||
+    !collectionRecord(a) ||
+    !exactKeys(a, [
+      "files",
+      "file_count",
+      "total_bytes",
+      "maximum_file_bytes",
+      "create",
+      "identical",
+      "update",
+    ]) ||
+    !Array.isArray(a.files) ||
+    a.files.length === 0 ||
+    a.files.length > 10000 ||
+    a.file_count !== a.files.length ||
+    !Number.isSafeInteger(a.total_bytes) ||
+    !Number.isSafeInteger(a.maximum_file_bytes) ||
+    !Array.isArray(a.create) ||
+    !Array.isArray(a.identical) ||
+    !a.create.every(collectionPath) ||
+    !a.identical.every(collectionPath) ||
+    !Array.isArray(a.update) ||
+    a.update.length !== 1 ||
+    !collectionPath(a.update[0]) ||
+    !a.update[0].startsWith("data/optimization/mot_2d/") ||
+    !a.update[0].endsWith("/campaign.json") ||
+    !collectionRecord(effects) ||
+    !exactKeys(effects, [
+      "collect_verified_outputs",
+      "submit_job",
+      "start_simulation",
+    ]) ||
+    effects.collect_verified_outputs !== true ||
+    effects.submit_job !== false ||
+    effects.start_simulation !== false ||
+    !syncOk(value.local_sync)
+  )
+    throw new Error("Invalid local collection review.");
+  const files: FinalizationCollectionPreview["artifacts"]["files"] = [];
+  for (const row of a.files) {
+    if (
+      !collectionRecord(row) ||
+      !exactKeys(row, ["path", "sha256", "size"]) ||
+      !collectionPath(row.path) ||
+      !collectionHash(row.sha256) ||
+      !Number.isSafeInteger(row.size) ||
+      Number(row.size) <= 0 ||
+      Number(row.size) > 8388608
+    )
+      throw new Error("Invalid local collection file registry.");
+    files.push({ path: row.path, sha256: row.sha256, size: Number(row.size) });
+  }
+  const paths = files.map((row) => row.path),
+    total = files.reduce((sum, row) => sum + row.size, 0);
+  if (
+    new Set(paths).size !== paths.length ||
+    total > 134217728 ||
+    a.total_bytes !== total ||
+    a.maximum_file_bytes !== Math.max(...files.map((row) => row.size)) ||
+    new Set([...a.create, ...a.identical]).size !==
+      a.create.length + a.identical.length
+  )
+    throw new Error("Invalid local collection registry totals.");
+  const manifestPath = a.update[0];
+  const changed = [...a.create, ...a.identical];
+  if (
+    !paths.includes(manifestPath) ||
+    files.find((row) => row.path === manifestPath)?.sha256 !==
+      source.complete_manifest_sha256 ||
+    changed.includes(manifestPath) ||
+    changed.length !== paths.length - 1 ||
+    changed.some((name) => !paths.includes(name))
+  )
+    throw new Error("Invalid local collection path partition.");
+  return value as unknown as FinalizationCollectionPreview;
+}
+export function parseFinalizationCollectionResult(
+  value: Record<string, unknown>,
+): FinalizationCollectionResult {
+  const a = value.artifacts;
+  if (
+    !exactKeys(value, [
+      "status",
+      "campaign_id",
+      "stage",
+      "submitted_to_zeus",
+      "simulation_started",
+      "local_sync",
+      "artifacts",
+    ]) ||
+    value.status !== "collected" ||
+    !boundedPrintable(value.campaign_id, 512) ||
+    value.campaign_id.length === 0 ||
+    value.stage !== "complete" ||
+    value.submitted_to_zeus !== false ||
+    value.simulation_started !== false ||
+    !finalizationSync(value.local_sync) ||
+    value.local_sync.status !== "synchronized" ||
+    !collectionRecord(a) ||
+    !exactKeys(a, ["created", "identical", "updated"]) ||
+    !Number.isSafeInteger(a.created) ||
+    Number(a.created) < 0 ||
+    !Number.isSafeInteger(a.identical) ||
+    Number(a.identical) < 0 ||
+    a.updated !== 1
+  )
+    throw new Error("Invalid local collection result.");
+  return value as unknown as FinalizationCollectionResult;
 }
