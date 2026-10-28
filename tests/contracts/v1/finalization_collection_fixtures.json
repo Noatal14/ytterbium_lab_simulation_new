@@ -1,0 +1,16 @@
+{
+  "scope": "Captured real on-disk test producer/receiver with fake scheduler and physical trajectory seam. No real jobs/physics claim. Original input bytes/provenance are unchanged inside each fixture. Portable local transaction tests call normal validators without monkeypatches.",
+  "capture_command": "COLLECTION_FIXTURE_EXPORT=/private/tmp/team-collection-native-fixtures PYTHONPATH=.:tests python -B -m pytest -p no:cacheprovider -q tests/test_mot_2d_collection.py",
+  "files": [
+    {
+      "path": "finalization_collection_v1.zip",
+      "sha256": "f8ba4285d3c4dd3a7212b77e03f4da19786093ceec3f12eea053db825f7cabe2",
+      "size": 182836
+    },
+    {
+      "path": "finalization_collection_TEAM.zip",
+      "sha256": "b170e1633703d15c1bd914af651637e8d8e8fc46dd350cfec8acf562c59c7da1",
+      "size": 357207
+    }
+  ]
+}

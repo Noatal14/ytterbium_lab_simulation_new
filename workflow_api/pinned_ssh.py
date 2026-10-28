@@ -901,7 +901,7 @@ _RECEIVERS = {
     ReceiverKind.FINALIZATION: _ReceiverDefinition(
         "zeus_finalization_remote.py",
         "<finalization>",
-        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE}),
+        frozenset({ReceiverOperation.INSPECT, ReceiverOperation.PREPARE, ReceiverOperation.RETRIEVE}),
         True,
     ),
     ReceiverKind.MOT_3D_DISCOVERY_SUBMISSION: _ReceiverDefinition(

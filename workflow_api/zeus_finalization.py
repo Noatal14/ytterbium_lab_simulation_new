@@ -105,6 +105,21 @@ class ZeusFinalizationCoordinator:
             clock=clock, token_factory=token_factory
         )
         self._confirm = threading.Lock()
+        from workflow_api.mot_2d_collection import CollectionCoordinator
+
+        self.collection = CollectionCoordinator(self)
+
+    def collection_preview(self, request, *, session_id):
+        try:
+            return self.collection.preview(request, session_id=session_id)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ZeusFinalizationError("collection_invalid") from exc
+
+    def collection_confirm(self, request, *, session_id):
+        try:
+            return self.collection.confirm(request, session_id=session_id)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            raise ZeusFinalizationError("collection_invalid") from exc
 
     def _base_plan(self, request: Mapping[str, object]):
         try:
@@ -182,7 +197,9 @@ class ZeusFinalizationCoordinator:
             acceptance = validate_campaign_policy(dict(manifest))
         except ValueError as error:
             raise ZeusFinalizationError("remote_response_invalid") from error
-        expected_suitability = "acceptance_only" if acceptance else "eligible_as_3d_campaign_input"
+        expected_suitability = (
+            "acceptance_only" if acceptance else "eligible_as_3d_campaign_input"
+        )
         allowed = {
             "queued",
             "running",
@@ -380,6 +397,12 @@ class ZeusFinalizationCoordinator:
         ):
             raise ZeusFinalizationError("finalization_outcome_unknown")
 
+    def _collection_sync_status(self, campaign, receipt):
+        try:
+            return self.collection.status(campaign, receipt)
+        except (OSError, ValueError, TypeError, KeyError) as exc:
+            raise ZeusFinalizationError("collection_conflict") from exc
+
     def status(self, request):
         plan, state = self._inspect(request)
         valid = state.lifecycle in {"ready_to_finalize", "campaign_complete"}
@@ -410,9 +433,7 @@ class ZeusFinalizationCoordinator:
                         else "not_ready"
                     )
                 ),
-                "completed_ensembles": (
-                    state.scheduler["task_count"] if valid else 0
-                ),
+                "completed_ensembles": (state.scheduler["task_count"] if valid else 0),
                 "expected_ensembles": 20 * len(plan[3]["s0_values"]),
             },
             "next_action": (
@@ -420,9 +441,16 @@ class ZeusFinalizationCoordinator:
                 if state.lifecycle == "ready_to_finalize"
                 else "none" if state.lifecycle == "campaign_complete" else "wait"
             ),
-            "local_sync": {"status": "not_synchronized"},
-            **({"results": [dict(item) for item in state.results]}
-               if state.lifecycle == "campaign_complete" else {}),
+            "local_sync": (
+                self._collection_sync_status(plan[2], state.receipt)
+                if state.lifecycle == "campaign_complete"
+                else {"status": "not_synchronized"}
+            ),
+            **(
+                {"results": [dict(item) for item in state.results]}
+                if state.lifecycle == "campaign_complete"
+                else {}
+            ),
         }
 
     def preview(self, request, *, session_id: str):
@@ -625,6 +653,29 @@ class PinnedSshFinalizationTransport:
             data["branch"],
             data["receipt"],
         )
+
+    def retrieve(self, **payload):
+        try:
+            result = self.runner.run(ReceiverOperation.RETRIEVE, self.profile, payload)
+        except (subprocess.TimeoutExpired, PinnedSshProcessError):
+            raise ZeusFinalizationError("zeus_timeout") from None
+        if result.returncode or result.stderr:
+            if result.returncode == 20 and not result.stderr:
+                from workflow_api.verified_artifact_bundle import _strict_json
+
+                try:
+                    value = _strict_json(result.stdout)
+                    if value == {"error": "collection_too_large"}:
+                        raise ZeusFinalizationError("collection_too_large")
+                except (ValueError, TypeError):
+                    pass
+            raise ZeusFinalizationError("remote_response_invalid")
+        from workflow_api.verified_artifact_bundle import _strict_json
+
+        try:
+            return _strict_json(result.stdout)
+        except (ValueError, TypeError, UnicodeError):
+            raise ZeusFinalizationError("remote_response_invalid") from None
 
     def inspect(self, **payload):
         return self._call("inspect", payload)

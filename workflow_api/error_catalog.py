@@ -985,6 +985,16 @@ FINALIZATION = _generic_stage(
     {"remote_files_changed", "finalization_outcome_unknown"},
     "finalization_failed",
 )
+FINALIZATION = _frozen({**FINALIZATION.entries,
+    "collection_too_large": _spec(HTTPStatus.PRECONDITION_FAILED,
+        "These verified outputs exceed the supported local collection size. No collection was published."),
+    "collection_invalid": _spec(HTTPStatus.PRECONDITION_FAILED,
+        "The completed campaign outputs could not be verified for local collection."),
+    "collection_conflict": _spec(HTTPStatus.CONFLICT,
+        "Local files or a collection record conflict with these outputs. Inspect the existing files before continuing."),
+    "collection_outcome_unknown": _spec(HTTPStatus.CONFLICT,
+        "The local collection outcome is unknown. Inspect the campaign and collection record before any new confirmation."),
+}, FINALIZATION.fallback, FINALIZATION.fallback_code)
 MOT_3D_DISCOVERY_SUBMISSION = _generic_stage(
     {
         "request_invalid",

@@ -78,7 +78,10 @@ def validate_static(payload: dict, root: Path):
     relative = PurePosixPath(str(payload.get("campaign", "")))
     if (
         relative.is_absolute()
-        or (len(relative.parts) != 4 and not (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance"))
+        or (
+            len(relative.parts) != 4
+            and not (len(relative.parts) == 5 and relative.parts[3] == "ui_acceptance")
+        )
         or relative.parts[:3] != ("data", "optimization", "mot_2d")
         or any(part in {"", ".", ".."} for part in relative.parts)
     ):
@@ -92,9 +95,7 @@ def validate_static(payload: dict, root: Path):
     if not campaign.is_dir():
         fail("campaign_not_found")
     try:
-        head = run_captured(
-            ["/usr/bin/git", "rev-parse", "HEAD"], cwd=root, limit=4096, timeout=10
-        )
+        head = run_captured(["/usr/bin/git", "rev-parse", "HEAD"], cwd=root, limit=4096, timeout=10)
         branch_row = run_captured(
             ["/usr/bin/git", "branch", "--show-current"],
             cwd=root,
@@ -159,15 +160,11 @@ def validate_static(payload: dict, root: Path):
         not isinstance(rows, list)
         or not re.fullmatch(r"[0-9a-f]{64}", str(rows_digest))
         or canonical_digest(rows) != rows_digest
-        or not re.fullmatch(
-            r"[0-9a-f]{64}", str(transition.get("sensitivity_submission_key", ""))
-        )
+        or not re.fullmatch(r"[0-9a-f]{64}", str(transition.get("sensitivity_submission_key", "")))
         or not re.fullmatch(
             r"[0-9a-f]{32}", str(transition.get("sensitivity_submission_nonce", ""))
         )
-        or not re.fullmatch(
-            r"\d+\[\]\.zeus-master", str(transition.get("sensitivity_job_id", ""))
-        )
+        or not re.fullmatch(r"\d+\[\]\.zeus-master", str(transition.get("sensitivity_job_id", "")))
     ):
         fail("production_preparation_invalid")
     production_files = transition.get("files")
@@ -180,10 +177,7 @@ def validate_static(payload: dict, root: Path):
     if (
         not isinstance(production_files, dict)
         or set(production_files) != expected
-        or any(
-            not re.fullmatch(r"[0-9a-f]{64}", str(value))
-            for value in production_files.values()
-        )
+        or any(not re.fullmatch(r"[0-9a-f]{64}", str(value)) for value in production_files.values())
     ):
         fail("production_preparation_invalid")
     expected_transition_key = canonical_digest(
@@ -331,6 +325,7 @@ def raw_evidence_paths(campaign: Path, manifest: dict, root: Path):
         label = f"{float(value):.6f}".rstrip("0").rstrip(".")
         replicate = campaign / "production" / key / "replicates"
         from workflow_api.mot_2d_spec import survivor_states_directory
+
         states = survivor_states_directory(manifest, campaign, float(value))
         if not states.is_absolute():
             states = root / states
@@ -339,9 +334,7 @@ def raw_evidence_paths(campaign: Path, manifest: dict, root: Path):
             manifest["mot_seeds"]["sealed_validation"],
         ):
             paths.append(replicate / f"zeeman_seed{seed}.json")
-            state = (
-                states / f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy"
-            )
+            state = states / f"mot_2d_survivors_zeeman_seed{seed}_mot_seed{mot_seed}.npy"
             paths.extend((state, state.with_suffix(".json")))
     return paths
 
@@ -373,9 +366,7 @@ def _open_evidence(campaign: Path, manifest: dict, root: Path):
             digest.update(path.relative_to(root).as_posix().encode())
             digest.update(b"\0")
             if path == campaign / "campaign.json":
-                digest.update(
-                    (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
-                )
+                digest.update((json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode())
             else:
                 while True:
                     chunk = os.read(fd, 1024 * 1024)
@@ -432,8 +423,41 @@ def derive(campaign: Path, manifest: dict, root: Path, *, retain_evidence=False)
     return prior, files, results, evidence
 
 
+def completed_receipt_valid(receipt, key, commit, identity, submission, evidence, hashes, results):
+    exact = {
+        "status",
+        "nonce",
+        "finalization_key",
+        "commit",
+        "production_submission_key",
+        "production_submission_nonce",
+        "production_job_id",
+        "evidence_digest",
+        "files",
+        "results_digest",
+        "results",
+        "scheduler",
+        "completed_unix_s",
+    }
+    return not (
+        not isinstance(receipt, dict)
+        or set(receipt) != exact
+        or receipt.get("status") != "campaign_complete"
+        or receipt.get("finalization_key") != key
+        or receipt.get("commit") != commit
+        or receipt.get("production_submission_key") != identity["submission_key"]
+        or receipt.get("production_submission_nonce") != submission["nonce"]
+        or receipt.get("production_job_id") != submission["job_id"]
+        or receipt.get("evidence_digest") != evidence
+        or receipt.get("files") != hashes
+        or receipt.get("results_digest") != canonical_digest(results)
+        or receipt.get("results") != results
+        or not timestamp(receipt.get("completed_unix_s"))
+    )
+
+
 def main():
-    if len(sys.argv) != 2 or sys.argv[1] not in {"inspect", "prepare"}:
+    if len(sys.argv) != 2 or sys.argv[1] not in {"inspect", "prepare", "retrieve"}:
         fail("invalid_request")
     operation = sys.argv[1]
     try:
@@ -446,9 +470,26 @@ def main():
     if not isinstance(payload, dict):
         fail("invalid_request")
     root = Path.cwd().resolve(strict=True)
-    campaign, manifest, branch, submission, relative, identity = validate_static(
-        payload, root
-    )
+    if operation == "retrieve":
+        if set(payload) not in (
+            {"campaign", "commit"},
+            {"campaign", "commit", "bundle_sha256", "chunk_index"},
+        ):
+            fail("invalid_request")
+        # Authenticate the complete remote operational checkout before loading
+        # the collection helper and its verified-bundle/FD dependencies.
+        authenticated = validate_static({key: payload[key] for key in ("campaign", "commit")}, root)
+        from workflow_api.mot_2d_collection import remote_collection
+
+        try:
+            result = remote_collection(root, payload, authenticated=authenticated)
+        except Exception as exc:
+            if getattr(exc, "code", None) == "collection_too_large":
+                fail("collection_too_large")
+            fail("collection_invalid")
+        print(json.dumps(result, allow_nan=False))
+        return
+    campaign, manifest, branch, submission, relative, identity = validate_static(payload, root)
     current_scheduler = scheduler(root, manifest, submission)
     state = campaign / ".mot_ui"
     transitions = state / "transitions"
@@ -462,9 +503,7 @@ def main():
     if receipt is not None or manifest.get("stage") == "complete":
         try:
             _, files, results, evidence = derive(campaign, manifest, root)
-            hashes = {
-                name: hashlib.sha256(data).hexdigest() for name, data in files.items()
-            }
+            hashes = {name: hashlib.sha256(data).hexdigest() for name, data in files.items()}
             results_digest = canonical_digest(results)
             key = canonical_digest(
                 {
@@ -521,8 +560,7 @@ def main():
                     or set(pending) != pending_exact
                     or pending.get("status") != "finalization_pending"
                     or pending.get("finalization_key") != key
-                    or pending.get("production_submission_key")
-                    != identity["submission_key"]
+                    or pending.get("production_submission_key") != identity["submission_key"]
                     or pending.get("production_submission_nonce") != submission["nonce"]
                     or pending.get("production_job_id") != submission["job_id"]
                     or pending.get("evidence_digest") != evidence
@@ -552,36 +590,15 @@ def main():
                 }
                 atomic_json(receipt_path, receipt)
                 pending_path.unlink()
-            exact = {
-                "status",
-                "nonce",
-                "finalization_key",
-                "commit",
-                "production_submission_key",
-                "production_submission_nonce",
-                "production_job_id",
-                "evidence_digest",
-                "files",
-                "results_digest",
-                "results",
-                "scheduler",
-                "completed_unix_s",
-            }
-            if (
-                not isinstance(receipt, dict)
-                or set(receipt) != exact
-                or receipt.get("status") != "campaign_complete"
-                or receipt.get("finalization_key") != key
-                or receipt.get("commit") != payload["commit"]
-                or receipt.get("production_submission_key")
-                != identity["submission_key"]
-                or receipt.get("production_submission_nonce") != submission["nonce"]
-                or receipt.get("production_job_id") != submission["job_id"]
-                or receipt.get("evidence_digest") != evidence
-                or receipt.get("files") != hashes
-                or receipt.get("results_digest") != results_digest
-                or receipt.get("results") != results
-                or not timestamp(receipt.get("completed_unix_s"))
+            if not completed_receipt_valid(
+                receipt,
+                key,
+                payload["commit"],
+                identity,
+                submission,
+                evidence,
+                hashes,
+                results,
             ):
                 raise ValueError()
             response(
@@ -612,10 +629,7 @@ def main():
     if lifecycle == "complete":
         try:
             _, rendered, results, evidence = derive(campaign, manifest, root)
-            files = {
-                name: hashlib.sha256(data).hexdigest()
-                for name, data in rendered.items()
-            }
+            files = {name: hashlib.sha256(data).hexdigest() for name, data in rendered.items()}
         except FileNotFoundError:
             lifecycle = "awaiting_outputs"
         except Exception:
@@ -657,9 +671,7 @@ def main():
     ):
         fail("finalization_conflict")
     transitions.mkdir(parents=True, exist_ok=True)
-    lock_fd = os.open(
-        lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600
-    )
+    lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
     try:
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -680,14 +692,9 @@ def main():
             evidence_fds,
         ) = derive(campaign, manifest, root, retain_evidence=True)
         locked_hashes = {
-            name: hashlib.sha256(data).hexdigest()
-            for name, data in locked_rendered.items()
+            name: hashlib.sha256(data).hexdigest() for name, data in locked_rendered.items()
         }
-        if (
-            locked_evidence != evidence
-            or locked_hashes != files
-            or locked_results != results
-        ):
+        if locked_evidence != evidence or locked_hashes != files or locked_results != results:
             fail("finalization_conflict")
         if receipt_path.exists() or pending_path.exists():
             fail("finalization_outcome_unknown")
@@ -758,30 +765,44 @@ def main():
     )
 
 
-
 def _authorize_acceptance_campaign(campaign, root):
     """Authenticate acceptance before locks, publication, or scheduler mutation."""
     try:
         from workflow_api.campaign_deployment import requires_deployment_attestation
-        from workflow_api.acceptance_profile import assert_scientific_source, is_acceptance_manifest
+        from workflow_api.acceptance_profile import (
+            assert_scientific_source,
+            is_acceptance_manifest,
+        )
+
         current = root
         for part in campaign.relative_to(root).parts:
             current = current / part
             if current.is_symlink():
-                raise ValueError('Unsafe campaign path.')
-        manifest_path = campaign / 'campaign.json'
-        if manifest_path.is_symlink() or not manifest_path.is_file() or manifest_path.stat().st_size > 2 * 1024 * 1024:
-            raise ValueError('Unsafe campaign manifest.')
-        value = json.loads(manifest_path.read_text(encoding='utf-8'))
-        if is_acceptance_manifest(value) or 'acceptance' in value or requires_deployment_attestation(value, root) or 'ui_acceptance' in campaign.parts:
+                raise ValueError("Unsafe campaign path.")
+        manifest_path = campaign / "campaign.json"
+        if (
+            manifest_path.is_symlink()
+            or not manifest_path.is_file()
+            or manifest_path.stat().st_size > 2 * 1024 * 1024
+        ):
+            raise ValueError("Unsafe campaign manifest.")
+        value = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if (
+            is_acceptance_manifest(value)
+            or "acceptance" in value
+            or requires_deployment_attestation(value, root)
+            or "ui_acceptance" in campaign.parts
+        ):
             from workflow_api.acceptance_remote import assert_campaign_target
             from workflow_api.mot_2d_spec import validate_campaign_policy
+
             validate_campaign_policy(value)
             assert_campaign_target(value, root.parent.name, root, campaign)
         else:
             assert_scientific_source(value)
     except (OSError, ValueError, TypeError, KeyError):
-        fail('remote_preparation_invalid')
+        fail("remote_preparation_invalid")
+
 
 if __name__ == "__main__":
     main()

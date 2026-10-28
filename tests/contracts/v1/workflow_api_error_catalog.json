@@ -719,6 +719,34 @@
     },
     {
       "domain": "finalization",
+      "case": "collection_conflict",
+      "code": "collection_conflict",
+      "status": 409,
+      "message": "Local files or a collection record conflict with these outputs. Inspect the existing files before continuing."
+    },
+    {
+      "domain": "finalization",
+      "case": "collection_invalid",
+      "code": "collection_invalid",
+      "status": 412,
+      "message": "The completed campaign outputs could not be verified for local collection."
+    },
+    {
+      "domain": "finalization",
+      "case": "collection_outcome_unknown",
+      "code": "collection_outcome_unknown",
+      "status": 409,
+      "message": "The local collection outcome is unknown. Inspect the campaign and collection record before any new confirmation."
+    },
+    {
+      "domain": "finalization",
+      "case": "collection_too_large",
+      "code": "collection_too_large",
+      "status": 412,
+      "message": "These verified outputs exceed the supported local collection size. No collection was published."
+    },
+    {
+      "domain": "finalization",
       "case": "confirmation_expired",
       "code": "confirmation_expired",
       "status": 412,

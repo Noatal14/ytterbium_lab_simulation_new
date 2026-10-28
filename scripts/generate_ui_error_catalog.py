@@ -24,6 +24,7 @@ OUTCOME_UNKNOWN = {
     "sensitivity_submission_outcome_unknown",
     "production_submission_outcome_unknown",
     "finalization_outcome_unknown",
+    "collection_outcome_unknown",
     "transition_outcome_unknown",
 }
 MANUAL = {

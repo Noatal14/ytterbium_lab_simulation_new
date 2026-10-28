@@ -132,6 +132,16 @@ the application. Never paste a password, private key, or passphrase into it.
 - **Uncertain submission:** do not submit again. Inspect **Zeus jobs** first
   to avoid duplicate work.
 
+After a 2D campaign finishes on Zeus, check Finalization and select
+**Review local collection**. Review the exact files and sizes, then select
+**Collect verified outputs**. This copies and verifies the completed results;
+it does not submit a job. Keep the original local checkout and matching Zeus
+deployment at the campaign's pinned commit throughout collection. Once the
+verified local collection is recorded, eligible 2D results can appear in the
+3D campaign source list. Completion alone does not bypass the existing source
+qualification requirements. If collection is interrupted, check its status
+before taking another action; do not restart the campaign or edit its files.
+
 Remote campaign actions and status checks require the code version that created
 the campaign. Keep that checkout for recovery; ask the maintainer to use a
 separate checkout for application updates. Updating another checkout does not

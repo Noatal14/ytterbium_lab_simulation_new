@@ -427,6 +427,26 @@ export const serverErrorCatalog = [
   },
   {
     "domain": "finalization",
+    "code": "collection_conflict",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "collection_invalid",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
+    "code": "collection_outcome_unknown",
+    "semantic": "outcome_unknown"
+  },
+  {
+    "domain": "finalization",
+    "code": "collection_too_large",
+    "semantic": "other"
+  },
+  {
+    "domain": "finalization",
     "code": "confirmation_expired",
     "semantic": "fresh_review"
   },
