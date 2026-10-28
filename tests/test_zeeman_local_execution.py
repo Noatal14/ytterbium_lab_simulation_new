@@ -445,3 +445,82 @@ def test_zero_survivors_accepts_real_extractor_empty_indices(retained):
     assert product.results["metrics"]["n_survivors"] == 0
     assert product.results["metrics"]["survival_fraction"] == 0.0
     assert product.results["states_retained"] is retained
+
+
+@pytest.mark.parametrize("kind", ["timeout", "record", "os"])
+def test_background_failure_logs_safe_locations_and_keeps_no_replay_guard(tmp_path, caplog, kind):
+    import errno
+    import json
+    import time
+    from workflow_api.run_records import RunRecordError
+    from workflow_api.run_progress import IndividualRunProgressRegistry
+
+    secret = "PRIVATE_TOKEN_do_not_log /Users/private/person/results.npy"
+    error = {"timeout": TimeoutError(secret), "record": RunRecordError(secret),
+             "os": OSError(errno.EACCES, secret)}[kind]
+    calls = []
+
+    class FailingCoordinator:
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def execute(self, family, run_id):
+            calls.append((family, run_id))
+            raise error
+
+    root = tmp_path / "repo"
+    root.mkdir()
+    records = plan(count=1).storage_records()
+    store = RunRecordStore(root)
+    try:
+        store.create(*(records[key] for key in ("run", "configuration", "inputs", "status")))
+    finally:
+        store.close()
+    registry = IndividualRunProgressRegistry()
+    pool = BoundedLocalExecutionPool(root, issue_execution_authority(), max_pending=2,
+                                    coordinator_factory=FailingCoordinator, progress_registry=registry)
+    try:
+        handle = pool.submit("zeeman", "zeeman-local-001")
+        with pytest.raises(type(error)):
+            handle.future.result(timeout=2)
+        deadline = time.monotonic() + 2
+        while pool.failure("zeeman", "zeeman-local-001") is None and time.monotonic() < deadline:
+            time.sleep(.001)
+        with pytest.raises(RuntimeError, match="explicit recovery"):
+            pool.submit("zeeman", "zeeman-local-001")
+        assert not registry.is_scheduled("zeeman", "zeeman-local-001")
+        assert registry.failure("zeeman", "zeeman-local-001") == "background_execution_failed"
+        assert pool._slots.acquire(blocking=False)
+        assert pool._slots.acquire(blocking=False)
+        pool._slots.release()
+        pool._slots.release()
+    finally:
+        pool.close()
+    assert calls == [("zeeman", "zeeman-local-001")]
+    assert secret not in caplog.text
+    record = next(row for row in caplog.records if row.message.startswith("Local execution failed: "))
+    event = json.loads(record.message.split(": ", 1)[1])
+    assert event["run_id"] == "zeeman-local-001" and event["family"] == "zeeman"
+    assert len(event["error_id"]) == 12
+    assert event["causes"][0]["type"] == type(error).__name__
+    assert any("workflow_api/zeeman_local_execution.py:" in frame for frame in event["causes"][0]["frames"])
+    assert str(root) not in caplog.text
+    assert record.exc_info is None
+    if kind == "os":
+        assert event["causes"][0]["errno"] == errno.EACCES
+
+
+def test_failure_diagnostics_cannot_raise_or_disclose_arbitrary_messages(monkeypatch):
+    from workflow_api import zeeman_local_execution as module
+    calls = []
+
+    def broken_logger(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise RuntimeError("logging unavailable")
+
+    monkeypatch.setattr(module._LOG, "error", broken_logger)
+    module._log_background_failure(("zeeman", "zeeman-safe"), TimeoutError("SECRET"))
+    assert len(calls) == 1
+    assert "SECRET" not in str(calls)
+    module._log_background_failure(("zeeman", "invalid\nSECRET"), TimeoutError("SECRET"))
+    assert len(calls) == 1

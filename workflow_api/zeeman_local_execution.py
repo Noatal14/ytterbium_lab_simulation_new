@@ -15,6 +15,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from io import BytesIO
 import hashlib
+import json
+import logging
+import secrets
 import math
 from pathlib import Path
 import threading
@@ -40,13 +43,59 @@ from workflow_api.run_execution import (
     WorkerProductError,
     WorkerRequest,
 )
-from workflow_api.run_records import RunRecordError, RunRecordStore, encode_record
+from workflow_api.run_records import RunRecordError, RunRecordStore, encode_record, _identifier
 from workflow_api.run_specification import INDIVIDUAL_RUN_SPECIFICATION
 from workflow_api.run_progress import IndividualRunProgressRegistry
 from workflow_api.zeeman_run_specification import (
     ZEEMAN_RUN_SPECIFICATION,
     local_worker_maximum,
 )
+
+
+_LOG = logging.getLogger(__name__)
+
+
+def _log_background_failure(key: tuple[str, str], error: BaseException) -> None:
+    """Keep actionable locations and OS codes, never exception text or locals."""
+    try:
+        family, run_id = key
+        if family not in INDIVIDUAL_RUN_SPECIFICATION["layout"]["families"]:
+            return
+        _identifier(run_id, "run id")
+        root = Path(__file__).resolve().parents[1]
+        causes = []
+        seen = set()
+        current: BaseException | None = error
+        while current is not None and id(current) not in seen and len(causes) < 4:
+            seen.add(id(current))
+            frames = []
+            trace = current.__traceback__
+            while trace is not None:
+                code = trace.tb_frame.f_code
+                try:
+                    relative = Path(code.co_filename).resolve().relative_to(root)
+                    if relative.parts[0] == "workflow_api":
+                        frames.append(f"{relative.as_posix()}:{trace.tb_lineno}:{code.co_name}")
+                except (OSError, ValueError):
+                    pass
+                trace = trace.tb_next
+            cause = {"type": type(current).__name__, "frames": frames[-8:]}
+            if isinstance(current, OSError):
+                for name in ("errno", "winerror"):
+                    value = getattr(current, name, None)
+                    if type(value) is int:
+                        cause[name] = value
+            causes.append(cause)
+            current = current.__cause__ or (
+                None if current.__suppress_context__ else current.__context__
+            )
+        _LOG.error("Local execution failed: %s", json.dumps({
+            "error_id": secrets.token_hex(6), "family": family,
+            "run_id": run_id, "causes": causes,
+        }, sort_keys=True))
+    except Exception:
+        # Diagnostics must never change pool cleanup or admission safety.
+        pass
 
 
 class ZeemanEngine(Protocol):
@@ -365,6 +414,7 @@ class BoundedLocalExecutionPool:
         return coordinator.execute(family, run_id)
 
     def _release(self, key: tuple[str, str], future: Future[dict[str, Any]]) -> None:
+        failure = None
         with self._lock:
             current = self._handles.get(key)
             if current is None or current.future is not future:
@@ -378,11 +428,14 @@ class BoundedLocalExecutionPool:
                 if error is not None:
                     # Keep bounded, traceback-free diagnostics after removing
                     # the Future, and never silently resubmit this failed key.
+                    failure = error
                     self._failures[key] = type(error).__name__[:128]
                     if self._progress_registry is not None:
                         self._progress_registry.fail(*key, "background_execution_failed")
                     if len(self._failures) >= self._failure_limit:
                         self._closed = True
+        if failure is not None:
+            _log_background_failure(key, failure)
 
     def failure(self, family: str, run_id: str) -> str | None:
         """Return non-authoritative background failure diagnostics."""
