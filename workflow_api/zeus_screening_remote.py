@@ -46,11 +46,11 @@ def require_no_symlink(root: Path, path: Path) -> None:
 
 
 def require_campaign_directory(root: Path, campaign: Path, operation: str) -> None:
-    """Only an absent inspect target means no job; existing bad paths stay errors.
+    """Observe a missing canonical component without following or creating paths.
 
-    Anchor every parent to a no-follow directory descriptor. Missing parents,
-    dangling links, non-directories and access failures are not an absent leaf.
-    This read-only observation never authorizes preparation or submission.
+    The caller first validates the canonical relative path and clean pinned
+    checkout. Existing aliases, non-directories, access errors or a changed
+    ancestor are never interpreted as absence. This does not authorize writes.
     """
     descriptors: list[int] = []
     parents: list[tuple[int, str, int]] = []
@@ -59,22 +59,36 @@ def require_campaign_directory(root: Path, campaign: Path, operation: str) -> No
         descriptor = os.open(root, flags)
         descriptors.append(descriptor)
         parts = campaign.relative_to(root).parts
-        if not parts:
+        if (parts[:3] != ('data', 'optimization', 'mot_2d')
+                or not (len(parts) == 4 or len(parts) == 5 and parts[3] == 'ui_acceptance')
+                or any(part in ('', '.', '..') for part in parts)):
             fail("remote_preparation_invalid")
+
+        def absent(name):
+            # FileNotFoundError from open alone could be a dangling alias.
+            try: os.stat(name, dir_fd=descriptor, follow_symlinks=False)
+            except FileNotFoundError: pass
+            else: fail("remote_preparation_invalid")
+            named_root = root.lstat(); opened_root = os.fstat(descriptors[0])
+            if not stat.S_ISDIR(named_root.st_mode) or (named_root.st_dev, named_root.st_ino) != (opened_root.st_dev, opened_root.st_ino):
+                fail("remote_preparation_invalid")
+            for parent, component, child in parents:
+                named = os.stat(component, dir_fd=parent, follow_symlinks=False)
+                opened = os.fstat(child)
+                if not stat.S_ISDIR(named.st_mode) or (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
+                    fail("remote_preparation_invalid")
+            fail("smoke_not_submitted" if operation == "inspect" else "remote_preparation_invalid")
+
         for name in parts[:-1]:
-            child = os.open(name, flags, dir_fd=descriptor)
+            try: child = os.open(name, flags, dir_fd=descriptor)
+            except FileNotFoundError: absent(name)
             descriptors.append(child)
             parents.append((descriptor, name, child))
             descriptor = child
         try:
             leaf = os.stat(parts[-1], dir_fd=descriptor, follow_symlinks=False)
         except FileNotFoundError:
-            for parent, name, child in parents:
-                named = os.stat(name, dir_fd=parent, follow_symlinks=False)
-                opened = os.fstat(child)
-                if not stat.S_ISDIR(named.st_mode) or (named.st_dev, named.st_ino) != (opened.st_dev, opened.st_ino):
-                    fail("remote_preparation_invalid")
-            fail("smoke_not_submitted" if operation == "inspect" else "remote_preparation_invalid")
+            absent(parts[-1])
         if not stat.S_ISDIR(leaf.st_mode):
             fail("remote_preparation_invalid")
     except (OSError, ValueError):

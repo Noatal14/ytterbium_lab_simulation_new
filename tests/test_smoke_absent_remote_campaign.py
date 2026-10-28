@@ -31,8 +31,8 @@ def test_only_exact_absent_inspect_leaf_is_not_submitted(campaign, capsys):
     assert sorted(p.relative_to(root).as_posix() for p in root.rglob("*")) == before
 
 @posix_receiver
-@pytest.mark.parametrize("kind", ["file", "dangling_link", "directory_link", "missing_parent", "parent_link", "parent_file"])
-def test_unsafe_or_missing_parent_is_never_fresh(campaign, capsys, kind, tmp_path):
+@pytest.mark.parametrize("kind", ["file", "dangling_link", "directory_link", "parent_link", "parent_file"])
+def test_unsafe_parent_is_never_fresh(campaign, capsys, kind, tmp_path):
     root, target = campaign
     if kind == "file": target.write_bytes(b"not a directory")
     elif kind == "dangling_link": target.symlink_to(tmp_path / "absent")
@@ -74,6 +74,9 @@ def test_existing_typed_inspect_transport_preserves_distinction(code):
 @posix_receiver
 @pytest.mark.parametrize("operation,kind,head,expected", [
     ("inspect", "absent", "a" * 40, "smoke_not_submitted"),
+    ("inspect", "missing_parents", "a" * 40, "smoke_not_submitted"),
+    ("prepare", "missing_parents", "a" * 40, "remote_preparation_invalid"),
+    ("inspect", "missing_parents", "b" * 40, "remote_checkout_mismatch"),
     ("prepare", "absent", "a" * 40, "remote_preparation_invalid"),
     ("inspect", "corrupt", "a" * 40, "remote_preparation_invalid"),
     ("inspect", "dangling", "a" * 40, "remote_preparation_invalid"),
@@ -86,7 +89,8 @@ def test_actual_receiver_entry_distinguishes_absence_after_pinned_checkout(tmp_p
     home = tmp_path / "home"
     root = home / "tal.noa/ytterbium_lab_simulation_ui_acceptance"
     target = root / "data/optimization/mot_2d/ui_acceptance/TESTONLY_fresh"
-    target.parent.mkdir(parents=True)
+    if kind == "missing_parents": root.mkdir(parents=True)
+    else: target.parent.mkdir(parents=True)
     if kind == "corrupt":
         target.mkdir()
         (target / "campaign.json").write_bytes(b"bad json")
@@ -116,3 +120,53 @@ def test_actual_receiver_entry_distinguishes_absence_after_pinned_checkout(tmp_p
     assert json.loads(capsys.readouterr().out)["error"] == expected
     assert len(calls) == 2
     assert not (target / ".mot_ui").exists()
+
+
+@posix_receiver
+@pytest.mark.parametrize("depth", [0, 1, 2, 3])
+def test_first_missing_canonical_parent_is_neutral_only_for_inspect(tmp_path, capsys, depth):
+    root = tmp_path / "clean-team-root"; root.mkdir()
+    target = root / "data/optimization/mot_2d/fresh"
+    current = root
+    for part in target.relative_to(root).parts[:depth]:
+        current /= part; current.mkdir()
+    before = sorted(p.relative_to(root).as_posix() for p in root.rglob('*'))
+    assert observed_error(capsys, root, target) == "smoke_not_submitted"
+    assert observed_error(capsys, root, target, "prepare") == "remote_preparation_invalid"
+    assert before == sorted(p.relative_to(root).as_posix() for p in root.rglob('*'))
+
+
+@posix_receiver
+@pytest.mark.parametrize("component", ["data", "optimization", "mot_2d"])
+@pytest.mark.parametrize("kind", ["file", "dangling", "directory_link"])
+def test_first_parent_alias_or_non_directory_is_not_absence(tmp_path, capsys, component, kind):
+    root = tmp_path / 'root'; root.mkdir()
+    target = root / 'data/optimization/mot_2d/fresh'
+    current = root
+    for part in target.relative_to(root).parts:
+        current /= part
+        if part == component: break
+        current.mkdir()
+    if kind == 'file': current.write_text('not a directory')
+    elif kind == 'dangling': current.symlink_to(tmp_path/'absent')
+    else: current.symlink_to(tmp_path, target_is_directory=True)
+    assert observed_error(capsys, root, target) == 'remote_preparation_invalid'
+
+
+@posix_receiver
+@pytest.mark.parametrize('replace_root', [False, True])
+def test_missing_component_cannot_hide_ancestor_replacement(campaign, capsys, monkeypatch, replace_root):
+    root, target = campaign
+    original = receiver.os.stat
+    changed = False
+    def raced(path, *args, **kwargs):
+        nonlocal changed
+        if not changed and str(path) == target.name:
+            changed = True
+            ancestor = root if replace_root else target.parent
+            ancestor.rename(ancestor.with_name(ancestor.name+'-original'))
+            ancestor.mkdir()
+            raise FileNotFoundError('missing leaf after rename')
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(receiver.os, 'stat', raced)
+    assert observed_error(capsys, root, target) == 'remote_preparation_invalid'
