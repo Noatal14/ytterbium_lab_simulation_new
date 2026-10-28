@@ -1,9 +1,11 @@
+import deployments from "../../workflow_api/specifications/deployments_v1.json" with { type: "json" };
 import { expect, test, type Route } from "@playwright/test";
 
+const teamProjectDirectory = `/home/tal.noa/${deployments.team.checkout}`;
 test("fresh 3D preparation transfers once before Discovery and reload retires submit authority", async ({page}) => {
   const id = "mot_3d-transfer";
   const campaign = {id, family: "mot_3d", kind: "mot_3d_campaign_v2", name: "3D transfer acceptance", path: "data/optimization/mot_3d/transfer_acceptance", stage: "discovery", stage_semantics: "prepared-workflow-stage", scheduler_status: "unchecked", trust: "trusted-current", scientific_role: "candidate-selection", progress: [], warnings: [], next_plan: null, s0_values: [], families: ["angled_donut", "single_pass"], git_commit: "a".repeat(40), remote_preparation: {status: "ready", reason_code: null}};
-  const profile = {host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent"};
+  const profile = {host: "zeus.technion.ac.il", username: "tal.noa", project_directory: teamProjectDirectory, authentication: "ssh-key-or-agent"};
   const calls: string[] = [];
   page.on("request", request => {if(request.method() === "POST")calls.push(new URL(request.url()).pathname);});
   const respond = async (route: Route, data: unknown) => route.fulfill({json: {api_version: 1, data}});

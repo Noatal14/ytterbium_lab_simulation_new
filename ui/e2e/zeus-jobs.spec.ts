@@ -1,6 +1,8 @@
+import deployments from "../../workflow_api/specifications/deployments_v1.json" with { type: "json" };
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 
+const teamProjectDirectory = `/home/tal.noa/${deployments.team.checkout}`;
 test("Zeus Jobs connects only on request and renders a read-only snapshot", async ({ page }) => {
   const requests: string[] = [];
   let snapshotRequests = 0;
@@ -13,11 +15,11 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
     snapshotRequests += 1;
     expect(route.request().method()).toBe("POST");
     expect(route.request().headers()["x-csrf-token"]).toBe("csrf-token");
-    expect(route.request().postDataJSON()).toEqual({ username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new" });
+    expect(route.request().postDataJSON()).toEqual({ username: "tal.noa", project_directory: teamProjectDirectory });
     await route.fulfill({ json: { api_version: 1, data: {
       connection_status: "connected",
-      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" },
-      remote: { project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", git_commit: "a".repeat(40), branch: "main", dirty: false },
+      profile: { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: teamProjectDirectory, authentication: "ssh-key-or-agent" },
+      remote: { project_directory: teamProjectDirectory, git_commit: "a".repeat(40), branch: "main", dirty: false },
       scheduler: { status: "available", queried_at: new Date().toISOString(), jobs: [
         { id: "4756504[0]", name: "2D confirmation", raw_state: "R", state: "running", exit_status: null, walltime: "00:12:00", start_time: null, comment: null, dependencies: [] },
         { id: "4756505", name: "Held merge", raw_state: "H", state: "held_attention", exit_status: null, walltime: null, start_time: null, comment: "held", dependencies: ["4756504[0]"] },
@@ -53,7 +55,7 @@ test("Zeus Jobs connects only on request and renders a read-only snapshot", asyn
     expect(usernameBox && errorBox && directoryBox && usernameBox.y < errorBox.y && errorBox.y < directoryBox.y).toBe(true);
   }
   await page.getByLabel("Technion username").fill("tal.noa");
-  await expect(page.getByLabel("Remote project directory")).toHaveValue("/home/tal.noa/ytterbium_lab_simulation_new");
+  await expect(page.getByLabel("Remote project directory")).toHaveValue(teamProjectDirectory);
   await page.getByRole("button", { name: "Connect and check status" }).click();
   await expect(page.getByText("Connected — read-only snapshot received")).toBeVisible();
   await expect(page.getByText("Running", { exact: true })).toBeVisible();

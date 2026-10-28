@@ -29,7 +29,7 @@ test("operator reviews and explicitly starts one local Zeeman run", async ({ pag
     const complete = catalogReads > 1;
     const run = complete
       ? { ...runBase, record_state: "succeeded", integrity: "complete_verified", lifecycle: "results_ready", next_action: "view_results", retention: { particle_states_requested: true, status: "retained" }, results: { availability: "verified", completed_at: "2026-10-13T10:00:00+00:00" } }
-      : { ...runBase, record_state: "running", integrity: "active", lifecycle: "running", next_action: "wait", retention: { particle_states_requested: true, status: "pending" }, results: { availability: "not_ready", completed_at: null } };
+      : { ...runBase, execution: { ...runBase.execution, locally_scheduled: true }, record_state: "running", integrity: "active", lifecycle: "running", next_action: "wait", retention: { particle_states_requested: true, status: "pending" }, results: { availability: "not_ready", completed_at: null } };
     return route.fulfill({ json: { api_version: 1, data: { runs: [run], invalid_count: 0, total: 1, truncated: false } } });
   });
   await page.goto("/");

@@ -1,7 +1,9 @@
+import deployments from "../../workflow_api/specifications/deployments_v1.json" with { type: "json" };
 import AxeBuilder from "@axe-core/playwright";
 import { overflowDiagnostic, visibilityDiagnostic } from "./responsive-diagnostics";
 import { expect, test } from "@playwright/test";
 
+const teamProjectDirectory = `/home/tal.noa/${deployments.team.checkout}`;
 const id = "mot_3d-safe";
 const campaign = {
   id, family: "mot_3d", kind: "mot_3d_campaign_v2", name: "Canonical 3D campaign",
@@ -11,7 +13,7 @@ const campaign = {
   s0_values: [], families: ["angled_donut", "single_pass"], git_commit: "a".repeat(40),
   remote_preparation: { status: "ready", reason_code: null },
 };
-const profile = { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: "/home/tal.noa/ytterbium_lab_simulation_new", authentication: "ssh-key-or-agent" };
+const profile = { host: "zeus.technion.ac.il", username: "tal.noa", project_directory: teamProjectDirectory, authentication: "ssh-key-or-agent" };
 const chain = { angled_donut: ["100[].zeus-master", "101[].zeus-master"], single_pass: ["200[].zeus-master", "201[].zeus-master", "202[].zeus-master"] };
 
 // A click starts the async check; navigation must await its accepted UI state.
