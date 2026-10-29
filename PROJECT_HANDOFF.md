@@ -1,5 +1,8 @@
 # Project handoff: Yb-171 laser-cooling simulation
 
+> **Laboratory workflow:** the laboratory plans to use the documented AI prompts and command-line workflows, rather than the UI. The UI code is retained as an optional legacy interface; it is not the planned laboratory entry point. Start with [the prompt guide](prompts/README.md) for individual simulations, plots, Zeus access, and complete optimization campaigns.
+
+
 > Runtime campaign inputs and outputs are not bundled with this repository.
 > Generate or import a provenance-validated, versioned Zeeman source before
 > creating a 2D campaign; a 3D campaign consumes the selected 2D campaign's

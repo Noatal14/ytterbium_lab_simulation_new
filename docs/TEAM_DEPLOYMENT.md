@@ -1,5 +1,8 @@
 # Personal-account team deployment
 
+> **Status:** this document describes the retained optional UI deployment. The laboratory plans to use [AI prompts and command-line workflows](../prompts/README.md). For current Zeus setup, follow [the connection prompt](../prompts/connect_to_zeus.md); the UI-specific installation below is not required for that workflow.
+
+
 Use one `main` revision for the local UI/backend and the dedicated Zeus checkout.
 Each member uses their own Technion username, SSH key and scheduler permissions.
 The product target is **`/home/USERNAME/ytterbium_lab_simulation_ui`**, with

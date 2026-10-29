@@ -1,5 +1,8 @@
 # UI quick start
 
+> **Laboratory workflow:** the laboratory plans to use the documented AI prompts and command-line workflows, rather than the UI. The UI code is retained as an optional legacy interface; it is not the planned laboratory entry point. Start with [the prompt guide](prompts/README.md) for individual simulations, plots, Zeus access, and complete optimization campaigns.
+
+
 Use the application to run simulations and optimization campaigns. The terminal
 is needed only to install and start it; run controls are in the browser.
 
@@ -17,7 +20,7 @@ If you do not already have the project, open **Terminal on Mac** or
 **PowerShell on Windows**, then run:
 
 ```text
-git clone --branch main https://github.com/Noatal14/ytterbium_lab_simulation_new.git "Ytterbium UI"
+git clone --branch main https://github.com/YoavLaboratory/ytterbium_lab_simulation_new.git "Ytterbium UI"
 cd "Ytterbium UI"
 ```
 

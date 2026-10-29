@@ -1,6 +1,9 @@
 # Simulation control center UI
 
-For the short, user-facing launch and operation guide, start with
+> **Laboratory workflow:** the laboratory plans to use the documented AI prompts and command-line workflows, rather than the UI. The UI code is retained as an optional legacy interface; it is not the planned laboratory entry point. Start with [the prompt guide](../prompts/README.md) for individual simulations, plots, Zeus access, and complete optimization campaigns.
+
+
+For optional UI maintenance and launch instructions, see
 [`../UI_QUICKSTART.md`](../UI_QUICKSTART.md). This file documents development
 and implementation details.
 

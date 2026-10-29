@@ -123,3 +123,7 @@ Retired exploratory programs remain available in Git history. Reintroduce one
 only if its scientific question becomes active again; do not copy an old
 submitter into a new campaign. New work must use the canonical campaign
 manager, frozen manifests, and current corrected 2D-MOT survivor inputs.
+
+## Five-beam MOT screening
+
+The retired gravity-assisted design and compact screening records are preserved in [the five-beam archive](historical/five_beam_mot/README.md). These early results must remain separate from final Core MOT / Cross MOT validation.

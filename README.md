@@ -1,12 +1,15 @@
 # Yb-171 Laser-Cooling Simulation
 
-**New to the project? Start with [`UI_QUICKSTART.md`](UI_QUICKSTART.md).**
+> **Laboratory workflow:** the laboratory plans to use the documented AI prompts and command-line workflows, rather than the UI. The UI code is retained as an optional legacy interface; it is not the planned laboratory entry point. Start with [the prompt guide](prompts/README.md) for individual simulations, plots, Zeus access, and complete optimization campaigns.
+
+
+**New to the project? Start with [`prompts/README.md`](prompts/README.md).**
 
 This repository models a Yb-171 atomic beam and the downstream laser-cooling stages used to study a compact apparatus: a thermal source, a Zeeman slower, a 2D MOT, and, where applicable, a 3D MOT and transport region.
 
 The canonical 3D-MOT optimization study is closed (2026-10-20). See
 [final results and preserved evidence](docs/3D_MOT_FINAL_RESULTS.md).
-For running the application, start with [UI_QUICKSTART.md](UI_QUICKSTART.md).
+For laboratory use, start with [the prompt guide](prompts/README.md).
 Software release acceptance is tracked separately from scientific completion.
 
 The code is primarily a simulation and analysis project for understanding how atoms move through the apparatus and how survival/capture depend on geometry, laser detuning, magnetic fields, and timestep choices.
@@ -326,7 +329,7 @@ The exact upstream revision and the full set of project-specific modifications c
 
 This project relies on Python scientific libraries, plus the local vendored `atomsmltr` package.
 
-For native Windows installation and checks, see [UI_QUICKSTART.md](UI_QUICKSTART.md#windows-powershell).
+For optional UI installation on native Windows and its checks, see [UI_QUICKSTART.md](UI_QUICKSTART.md#windows-powershell).
 
 ### Recommended setup
 
