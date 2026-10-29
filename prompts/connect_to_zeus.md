@@ -40,7 +40,7 @@ Never ask me to share the password itself.
 The project repository is:
 
 ```text
-https://github.com/Noatal14/ytterbium_lab_simulation_new
+https://github.com/YoavLaboratory/ytterbium_lab_simulation_new
 ```
 
 The expected repository location on Zeus is:
@@ -55,8 +55,15 @@ The expected Python environment is:
 ~/venvs/atomsmltr
 ```
 
-These are expected locations, not permission to overwrite anything already
-present there.
+These are the historical CLI defaults, not permission to overwrite anything.
+Before choosing a target, inspect `workflow_api/specifications/deployments_v1.json`
+and `workflow_api/campaign_deployment.py`. The current team checkout is
+`~/ytterbium_lab_simulation_ui` with environment `~/venvs/atomsmltr-ui`;
+test/acceptance checkouts are separate. Match any existing campaign's
+`execution_checkout` and pinned revision. An unbound historical campaign uses
+the historical defaults above. Do not assume a generated job follows whichever
+folder is currently open; inspect its actual target. Do not manually change
+manifest or PBS paths to retarget a campaign.
 
 ## Step 1: establish the connection
 
@@ -93,7 +100,7 @@ Do not create a new clone or environment until these checks are complete.
 
 ## Step 3: obtain or update the repository
 
-If `~/ytterbium_lab_simulation_new` already exists:
+If the selected deployment checkout already exists:
 
 1. enter it;
 2. show `git status --short`;
@@ -102,20 +109,21 @@ If `~/ytterbium_lab_simulation_new` already exists:
 5. fetch safely before deciding whether a fast-forward pull is possible.
 
 Never pull, switch branches, rebase, stash, discard, or overwrite local changes
-without showing me what exists and explaining the consequence. If the checkout
-is clean and on `main`, use:
+without showing me what exists and explaining the consequence. Only when
+preparing a new run in a clean checkout on `main`, and no active or pinned job
+depends on its revision, use:
 
 ```bash
 git pull --ff-only origin main
 ```
 
-If the repository does not exist, guide me through cloning it into the expected
-path. Determine whether HTTPS or SSH authentication is actually available
-instead of guessing. Do not request or expose a GitHub token.
+If the selected checkout does not exist, guide me through cloning the official
+repository into the verified deployment path. Determine whether HTTPS or SSH
+authentication is actually available instead of guessing. Do not request or expose a GitHub token.
 
 ## Step 4: inspect or prepare Python
 
-If `~/venvs/atomsmltr` exists, activate it and verify:
+If the environment for the selected deployment exists, activate it and verify:
 
 - the selected Python executable and version;
 - that the repository imports successfully; and
@@ -126,7 +134,8 @@ setup documentation before suggesting installation commands.
 
 If the environment is missing or broken, first inspect the current Zeus module
 system and the versions used by the repository's existing PBS examples. Then
-give me commands to create or repair the environment under `~/venvs/atomsmltr`.
+give me commands to create or repair the environment at the selected
+deployment path.
 Do not install into the system Python and do not replace an existing environment
 without my explicit approval.
 
@@ -160,8 +169,8 @@ job unless I explicitly ask.
 Consider the setup complete only when all of the following are true:
 
 - I can log in to Zeus;
-- `~/ytterbium_lab_simulation_new` is present and its Git state is understood;
-- `~/venvs/atomsmltr` activates successfully;
+- the selected deployment checkout is present and its Git state is understood;
+- its matching Python environment activates successfully;
 - Python can import the project; and
 - I know how to reconnect and inspect my own PBS jobs.
 

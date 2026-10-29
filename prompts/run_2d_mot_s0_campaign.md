@@ -1,251 +1,288 @@
-# Prompt: run the automated fixed-intensity 2D-MOT campaign
+# Prompt: run the existing fixed-intensity 2D-MOT campaign
 
-Copy everything below this line into a new AI conversation.
+Copy everything below the separator into an AI coding assistant with access to
+this repository and, when available, the Zeus terminal. Use
+`connect_to_zeus.md` first if the connection is not ready.
 
 ---
 
-I want you to guide me through running an automated 2D-MOT optimization
-campaign on the Zeus cluster.
+Help me operate the **existing fixed-intensity 2D-MOT optimization workflow**
+on Zeus. Use `studies/mot_2d_s0_campaign.py`; do not design a replacement search,
+write a new optimizer, or change its scientific decisions between stages.
 
-The repository is:
+Repository:
 
 ```text
-https://github.com/Noatal14/ytterbium_lab_simulation_new
+https://github.com/YoavLaboratory/ytterbium_lab_simulation_new
 ```
 
-Its expected location on Zeus is:
+For each positive finite `s0` value I supply, keep that value fixed while the
+implemented workflow optimizes laser detuning and magnet radius. The current
+reference intensity is `s0=1.3`, not a value to assume without my instruction.
+
+## Read the current implementation first
+
+Read these sources before proposing execution commands:
 
 ```text
-~/ytterbium_lab_simulation_new
-```
-
-The Python environment is:
-
-```text
-~/venvs/atomsmltr
-```
-
-I know how to connect to Zeus, but I need you to guide me through everything
-else. At every stage, provide complete, copy-ready commands. Do not give vague
-instructions such as "update the file" or "run the script."
-
-## Campaign objective
-
-Run a corrected-Zeeman campaign for the explicit fixed `s0` value or values I
-provide. The current canonical example is `s0=1.3`. Each supplied value remains
-fixed during its detuning/radius optimization. The campaign must:
-
-1. find the recommended detuning and magnet radius;
-2. perform broad screening and focused refinement;
-3. confirm the five strongest distinguishable candidates;
-4. measure sensitivity to small detuning and radius changes;
-5. perform final production runs;
-6. predict capture for `10,000,000` Zeeman survivors with a 95% interval;
-7. save all captured 2D-MOT states for future 3D-MOT studies; and
-8. return the best tested result even when it lies on a search boundary or
-   misses the uncertainty target, with a clear warning.
-
-If a local sensitivity neighbor is clearly better than the confirmed center
-under the paired 95% comparison, promote that neighbor to final production.
-Otherwise retain the center and report equivalent neighbors as the stable
-operating region.
-
-## Sources of truth
-
-Before providing commands, read the current versions of:
-
-```text
+PROJECT_HANDOFF.md
 docs/2D_MOT_S0_CAMPAIGN.md
 docs/2D_MOT_OPTIMIZATION_PLAN.md
-PROJECT_HANDOFF.md
+docs/CONFIGURATION_OWNERSHIP.md
+docs/HISTORICAL_ZEEMAN_SOURCE_EVIDENCE.md
 data/README.md
-config.py
 studies/mot_2d_s0_campaign.py
 studies/mot_2d/optimization.py
 studies/mot_2d/production.py
+workflow_api/mot_2d_spec.py
+workflow_api/mot_2d_plan.py
+workflow_api/mot_2d_late_stage.py
+workflow_api/mot_2d_validation.py
+workflow_api/campaign_deployment.py
+workflow_api/specifications/deployments_v1.json
 ```
 
-If this prompt, the campaign guide, scientific plan, configuration, and
-implementation disagree, stop before submission, report the discrepancy, and
-do not silently select one source.
+Inspect `python -m studies.mot_2d_s0_campaign --help` and subcommand help.
+Use the executable rules and versioned specifications, including the approved
+historical-source route. Some prose documentation predates the deployment and
+statistical-validation changes. If a discrepancy affecting this run remains
+unresolved by the explicit implementation and evidence, report it before
+submission; do not bypass a check or edit a manifest to make it pass.
 
-Use the fixed `s0` value supplied by the operator and an explicitly selected,
-versioned source under `data/particle_states/after_zeeman/<SOURCE_DIRECTORY>`.
-The source is a generated or imported runtime input, not a repository fixture.
-Seed roles are discovery
-`3000-3004`, refinement `3005-3009`, held-out confirmation/tuning `3010-3014`,
-and sealed validation `3015-3034`. Working/final timesteps are `1.25 us` and
-`0.625 us`; solver is `RK4StHybridCustom`; bounds are `[-1.55,-0.85] Gamma`
-and `[0.045,0.051] m`. Every job must enforce the pinned Git revision.
-All 35 input ensembles for seeds `3000-3034` must exist and pass immutable
-provenance validation before campaign creation.
-Candidate selection and sealed performance validation are distinct. Never
-claim robustness or epsilon-near-optimality unless simultaneous checks pass.
+## Choose a new campaign or resume an existing one
 
-## Locked scientific design
+For a new campaign, obtain:
 
-Do not change these settings unless I explicitly ask:
+- the fixed `s0` value or values and campaign name;
+- the versioned Zeeman-survivor source directory;
+- the Zeus checkout/environment in which the campaign will execute.
 
-```text
-2D-MOT working timestep for screening/refinement: 1.25 microseconds
-2D-MOT final timestep for confirmation/sensitivity/production: 0.625 microseconds
-stochastic solver: RK4StHybridCustom
-detuning search domain: -1.55 to -0.85 Gamma
-magnet-radius search domain: 0.045 to 0.051 m
-provisional detuning resolution: 0.01 Gamma
-provisional magnet-radius resolution: 0.00001 m
-prediction population: 10,000,000 Zeeman survivors
-target 95% prediction half-width: 0.05 percentage points
-```
+If I do not know the source path, inspect the available source records and
+identify eligible banks. For resumption, inspect the existing campaign instead
+of creating a second one. Give commands for the actual paths and username,
+not unresolved placeholders or another researcher's account.
 
-Use `docs/CONFIGURATION_OWNERSHIP.md` to resolve the authority for each default;
-`config.py` is the compatibility facade. Verify that the 2D
-MOT uses `RK4StHybridCustom` by default and reads its timestep from
-`MOT_2D_SIM_CONFIG`. Do not alter the physics, capture criterion, search bounds,
-particle counts, seed counts, or winner-selection rule during the campaign.
+Show Git status, the revision, the active Python environment, and current jobs.
+Do not automatically run `git pull`, rebase, or switch revisions in a checkout
+used by active/pinned jobs. If a new campaign needs an update, first establish
+that the checkout is suitable and preserve existing work; use a fast-forward
+update only where safe. Never discard changes to satisfy provenance checks.
 
-## How to work with me
+## Match the campaign to its execution checkout
 
-- Guide me one stage at a time.
-- Give only the commands needed now and a short explanation.
-- Put commands in separate code blocks.
-- Replace placeholders with actual values as soon as I provide them.
-- Never infer success merely because a job disappeared from `qstat`.
-- Check `Exit_status`, error logs, and expected result counts.
-- Run the built-in smoke test before expensive work.
-- Preserve valid results and never rerun completed tasks.
-- Diagnose failures and rerun only missing tasks.
-- Respect the approximately 600-core simultaneous project limit.
-- Prefer a few long-lived jobs that reuse worker pools over many short jobs.
-- Do not ask me to make scientific decisions between stages.
-
-## Starting the campaign
-
-First ask me only for the fixed `s0` value or values and campaign name. After I
-answer, provide
-copy-ready commands that enter the repository, activate the environment, check
-for old matching jobs, inspect Git status, update safely, display the commit,
-and run a short syntax/import check. Use:
+Read the deployment specification rather than assuming all jobs use the same
+folder. The current historical CLI defaults are:
 
 ```bash
 cd ~/ytterbium_lab_simulation_new
 source ~/venvs/atomsmltr/bin/activate
-git status --short
-git pull --ff-only origin main
-git log -1 --oneline
 ```
 
-Then create the campaign using actual values in this structure:
+The team deployment is `~/ytterbium_lab_simulation_ui` with environment
+`~/venvs/atomsmltr-ui`; test and acceptance deployments are separate.
+The directory name does not require using the graphical interface.
+
+A manifest with an explicit `execution_checkout` must execute in that bound
+checkout with its corresponding environment. An unbound historical manifest
+uses the historical defaults. In the current CLI, `create` has **no**
+`--execution-checkout` argument and does not set this binding. Do not invent
+such a flag or assume that invoking `create` inside the team folder binds its
+jobs there. For the direct CLI route, use the verified historical target. If a
+team-bound campaign is required, use an existing supported creation route that
+records that binding, or explain the missing route before submission. Never
+retarget a campaign by hand-editing JSON or PBS files.
+
+## Validate the atomic inputs without rewriting them
+
+All 35 Zeeman ensembles, seeds 3000-3034, must exist and pass the implemented
+array, metadata, profile, hash, and scientific-source checks. Runtime inputs
+are not supplied by an ordinary code checkout. The non-overlapping roles are:
+
+| Role | Zeeman seeds | Use |
+| --- | --- | --- |
+| Discovery | 3000-3004 | Broad screening |
+| Refinement | 3005-3009 | Focused search |
+| Held-out confirmation | 3010-3014 | Candidate selection and sensitivity |
+| Sealed validation | 3015-3034 | Final production only |
+
+The manager records the corresponding MOT recoil seeds; currently they are
+`40000 + zeeman_seed`. Use the manifest's actual registry. Parameter settings
+must share the same input subsets and matched recoil realizations.
+
+The original corrected 19-ring bank is explicitly supported through
+`lab_setup/historical_zeeman_source.py` and its evidence document. It may lack
+later laboratory-specification metadata. Admit it only when the current reader
+and exact historical-bank attestation pass; unknown or modified legacy banks
+are not authorized. Do not reject the approved original bank solely because
+it lacks later metadata, and do not add fabricated laboratory identity fields
+or rewrite its original arrays/metadata to make it look newly generated.
+Keep the historical input identity separate from the executing code identity.
+
+## Preserve the scientific design
+
+Verify these values against `mot_2d_spec.FIXED_DESIGN` and the numerical policy:
+
+```text
+solver: RK4StHybridCustom
+screen/refine timestep: 1.25 microseconds
+confirmation/sensitivity/production timestep: 0.625 microseconds
+detuning domain: -1.55 to -0.85 Gamma
+magnet-radius domain: 0.045 to 0.051 m
+provisional control shifts: +/-0.01 Gamma and +/-0.00001 m
+stress-test shifts: +/-0.02 Gamma and +/-0.0001 m
+reporting population: 10,000,000 incoming Zeeman survivors
+95% prediction half-width target: 0.05 percentage points
+```
+
+The reporting population is a reference count, not a measured laboratory flux.
+Do not substitute a mean-efficiency confidence interval for the prediction
+interval used by the implemented stopping flag. Do not change the bounds,
+solver, timesteps, sample sizes, seed roles, or selection rules unless I
+explicitly request a separate scientific change. Use a normal scientific
+campaign, not a miniature TEST ONLY/acceptance profile as a shortcut.
+
+## Create once, then operate the existing stages
+
+Use a new empty directory under `data/optimization/mot_2d/`. With verified
+values, the creation command is:
 
 ```bash
 python -m studies.mot_2d_s0_campaign create \
   --name <CAMPAIGN_NAME> \
   --s0 <EXPLICIT_S0_VALUES> \
   --ensemble-dir data/particle_states/after_zeeman/<SOURCE_DIRECTORY> \
-  --zeeman-profile <PROFILE_RECORDED_IN_SOURCE_METADATA> \
+  --zeeman-profile <PROFILE_VALIDATED_FROM_SOURCE> \
   --output-dir data/optimization/mot_2d/<CAMPAIGN_DIRECTORY>
 ```
 
-Replace the placeholders with the values I supplied; do not leave angle-bracket
-placeholders in the final command. The program will
-print the first generated PBS file; give me its exact `qsub` command.
+`create` freezes the design and inputs and prints the first job; it submits
+nothing. `--campaign` below takes the campaign directory, not its JSON file.
+Follow the unchanged sequence:
 
-## Advancing and monitoring
+```text
+smoke -> screen -> refine -> confirmation -> sensitivity -> production -> complete
+```
 
-After each job finishes successfully, use:
+| Stage | Implemented work for each s0 |
+| --- | --- |
+| Smoke | Two-particle check, using the generated smoke job |
+| Screen | Three Optuna workers, 17 completed trials each; five discovery ensembles of 2,000 atoms per setting |
+| Refine | Three distinguishable centers; five refinement ensembles of 10,000 atoms; four cumulative rounds with targets 3, 6, 9, 10 completed trials per worker |
+| Confirmation | Five candidates on five held-out groups of 10,000 atoms |
+| Sensitivity | Deduplicated control-resolution and stress grids around the confirmed center, normally 17 settings; the same five held-out groups |
+| Production | Every available survivor in the 20 sealed ensembles, at the selected production settings |
+
+Run the first generated smoke PBS job and verify it before advancing. After
+**all** jobs for a stage have completed successfully, invoke:
 
 ```bash
 python -m studies.mot_2d_s0_campaign advance \
   --campaign data/optimization/mot_2d/<CAMPAIGN_DIRECTORY>
 ```
 
-This validates the stage and creates the next submission artifact. Display it,
-verify its array size, cores, walltime, and dependencies, then give me the exact
-copy-ready command. Refinement is a four-round dependent chain; submit its
-generated shell script once and do not advance until all four rounds finish.
-The script must use `depend=afterok:<complete-array-job-id>` with the exact ID
-returned by Zeus, including `[]` when present; do not use `afterokarray`.
-The stages are:
+The manager validates that stage and writes the next stage's tasks and job
+files. Submit the generated artifact it identifies, rather than manually
+constructing the trials. Refinement uses the generated
+`jobs/03_submit_refinement_chain.sh` **once**, not four independent submissions.
+It preserves each worker's database, study, bounds, seed, and cumulative targets
+with whole-array `afterok` dependencies. Wait for the entire chain before
+advancing; never interpret each cumulative target as that many extra trials.
+Do not invent 3D-manager commands such as `submit-stage` for this 2D CLI.
 
-```text
-smoke
-screen
-refine
-confirmation
-sensitivity
-production
-complete
-```
-
-Never skip or reorder them. Show scientific progress with:
+Inspect progress at any stage with:
 
 ```bash
 python -m studies.mot_2d_s0_campaign status \
   --campaign data/optimization/mot_2d/<CAMPAIGN_DIRECTORY>
 ```
 
-Use the real Job ID I provide for scheduler checks. For example:
+## Selection and the meaning of sensitivity results
 
-```bash
-qstat -t -u tal.noa
-qstat -f '<JOB_ID>[<ARRAY_INDEX>]' | grep -E \
-  'job_state|resources_used.cpupercent|resources_used.cput|resources_used.walltime|exec_host|Resource_List.walltime'
-qstat -xf '<JOB_ID>' | grep -E \
-  'job_state|Exit_status|resources_used.cpupercent|resources_used.cput|resources_used.walltime|exec_host|Resource_List.walltime'
-```
+The confirmed center is selected by the highest lower endpoint of its 95%
+mean-efficiency interval, then higher mean efficiency, with the implemented
+candidate-index tie-break. The sensitivity stage can change the production
+point: use `select_production_point` and the generated `production_selection`,
+not a manual choice based on the largest observed mean.
 
-Adapt these to the actual Zeus Job ID syntax and remove placeholders from the
-commands you give me. Locate `.out` and `.err` files using the Job ID and file
-timestamps rather than guessing names.
+The current neighbor-promotion rule uses **Bonferroni simultaneous paired
+intervals**, with per-comparison confidence `1 - 0.05 / (number_of_points - 1)`.
+A neighbor is promoted only when its corrected difference interval lies wholly
+above zero. If several qualify, the code ranks by the lower difference bound
+and then the mean. Otherwise retain the confirmed center.
 
-## Failure handling
+An interval containing zero is not evidence of equivalence. The fixed grid
+does not establish a stable/robust region or epsilon-near-optimality. Preserve
+and report the actual `robustness_status`, `near_optimality_status`, and
+selection flags. Do not turn unresolved differences into claims of stability.
 
-If `advance` reports missing results, preserve completed files, read the stage's
-`tasks.json`, identify exact missing array indices, inspect their logs, and give
-copy-ready commands to rerun only those tasks. If PBS cannot submit one index,
-create a temporary non-array PBS file that explicitly sets `PBS_ARRAY_INDEX`.
-For Python, import, path, or serialization errors, run a tiny local test before
-resubmitting expensive work. Never delete a whole campaign because one task
-failed.
+## Submission, monitoring, and recovery
 
-## Final result
+- Give complete commands for the current step and explain their purpose. If
+  you have terminal access and I authorized execution, operate the existing
+  workflow directly. Otherwise, wait for my command output before dependent
+  steps. Do not request a new optimization strategy between routine stages.
+- Check generated PBS paths, loaded modules, the activated environment, pinned
+  revision, CPUs, memory, walltime, and concurrency before submission. Screen
+  currently requests 24 hours; refinement has four 20-hour rounds. Canonical
+  heavy arrays allow three 200-core or four 150-core tasks. Account for other
+  running campaigns and verify the laboratory's current total allocation.
+- Record exact IDs returned by `qsub`, including array syntax. Use active and
+  historical scheduler status, stdout/stderr, expected outputs, and exit codes.
+  Disappearance from `qstat` does not establish success.
+- Preserve completed tasks and valid databases. If work is missing, identify
+  exact failed indices and use the documented recovery route. Do not delete
+  the campaign, reset its databases, or resubmit successful tasks wholesale.
+  Do not bypass receipt/hash checks by inventing replacement PBS files or
+  manually editing frozen manifests and result records.
 
-At `complete`, read `final_report.json` from the campaign directory. For each
-`s0`, report:
+## Final results and the 3D-MOT handoff
+
+At `complete`, read the actual `final_report.json`. A boundary winner or a
+missed prediction-precision target is still returned with warnings; it does
+not authorize changing the target, automatically expanding the search, or
+hiding the best tested result.
+
+For every s0, report:
 
 ```text
-s0:
-recommended detuning:
-recommended magnet radius:
-expected conditional capture efficiency:
-expected captured atoms from 10,000,000 Zeeman survivors:
-95% predicted captured-atoms range:
-95% half-width in percentage points:
-uncertainty target: PASS/FAIL
-boundary warnings:
-local sensitivity conclusions:
-saved 2D-MOT survivor-state directory:
+fixed s0 and recommended detuning / magnet radius:
+production-selection reason, including any promoted sensitivity neighbor:
+sealed sample size and number of ensembles:
+conditional mean transfer efficiency and its confidence interval:
+prediction for the reference population and its prediction interval:
+implemented prediction-precision target: PASS/FAIL
+boundary, robustness, and near-optimality flags:
+survivor_states_directory from the final report:
+completed campaign directory and frozen revision:
 ```
 
-State clearly that efficiency is conditional on entering the 2D MOT as a
-Zeeman survivor, not relative to all oven atoms.
+Efficiency is conditional on incoming Zeeman survivors, not on all oven atoms.
+The reference-population prediction is not atoms per second. Do not conflate
+pooled efficiency, equal-ensemble mean, confidence intervals, and prediction
+intervals; use the exact quantities supplied by the saved summary.
 
-For each `s0`, verify its directory under:
+Resolve survivor outputs from the final report or
+`mot_2d_spec.survivor_states_directory`, not a guessed hardcoded folder. Current
+team-bound campaigns use
+`data/particle_states/after_2d_mot/campaigns/<CAMPAIGN_SLUG>/s0_<VALUE>/`;
+unbound historical CLI campaigns retain
+`data/particle_states/after_2d_mot/final_ensemble_s0_<VALUE>/`.
+Check for pre-existing outputs **before** starting a new campaign. In particular,
+legacy campaigns with the same s0 share the latter path: do not overwrite
+another campaign's survivors. Use an existing supported namespace/deployment
+route or resolve the conflict before running; do not manually redirect frozen
+jobs. Verify all 20 state arrays and adjacent metadata, `(N, 6)` layout, finite
+values, hashes, counts, and the exact registered source/recoil seed pairs.
 
-```text
-data/particle_states/after_2d_mot/final_ensemble_s0_<value>/
-```
+Use that completed campaign and its matching survivor directory as the 3D-MOT
+source, following `prompts/run_3d_mot_campaign.md`. Do not assume a new full 3D
+optimization is scientifically necessary for every 2D retuning; the documented
+transferability study is a separate follow-up, not part of this campaign.
 
-For all 20 Zeeman seeds, verify an `.npy` array and adjacent `.json` metadata,
-shape `(N, 6)`, finite values, and matching survivor counts.
+Do not commit, push, or add runtime artifacts to Git unless I explicitly ask.
+For data retention, follow the scientific-data archive policy. Never add
+SQLite databases, credentials, logs, or temporary files.
 
-## Git handling
-
-Do not add SQLite databases, logs, or temporary files to Git. At the end, first
-show `git status --short` and identify valid summaries, production results, and
-survivor states. Only after my approval, provide exact commands for staging,
-committing, pulling with rebase, and pushing. Never commit or push without my
-explicit approval.
-
-Begin now with one short question only: Which `s0` values should be tested, and
-what should the campaign be called?
+Begin by asking for my fixed s0 value(s), campaign name, and the intended input
+source and execution checkout. If I instead supply an existing campaign,
+inspect it for resumption rather than creating another one.

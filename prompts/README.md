@@ -3,6 +3,11 @@
 This directory contains reusable starting prompts for future researchers who
 use an AI assistant to operate established project workflows.
 
+For individual simulations and plots, describe the requested task directly to
+the assistant. For a Zeus connection or a complete optimization, use the
+corresponding prompt below to operate the existing workflow. These prompts do
+not ask the assistant to design a new optimization.
+
 ## How to use a prompt
 
 1. Open the relevant Markdown file.
@@ -24,3 +29,6 @@ files.
   minimum PBS concepts needed to begin working on Zeus.
 - [`run_2d_mot_s0_campaign.md`](run_2d_mot_s0_campaign.md) — guides an operator
   through the automated fixed-intensity 2D-MOT optimization campaign on Zeus.
+- [`run_3d_mot_campaign.md`](run_3d_mot_campaign.md) — guides an operator
+  through the implemented 3D-MOT campaign manager, from the completed 2D-MOT
+  survivor handoff through both geometries and sealed final validation.
